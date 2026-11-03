@@ -90,9 +90,10 @@ jobs:
     steps:
       # Corpus mutual exclusion, now that scheduled and manual runs no longer
       # share a concurrency group. Two refreshes must never mutate the corpus
-      # at once — the merge step closes older runs' open auto/refresh-data-*
-      # PRs as superseded, so an overlap does not merely race, it destroys the
-      # other run's scrape (2026-09-10: ~3h of day-6 scraping lost this way).
+      # at once — the merge step closes an older run's open auto/refresh-data-*
+      # PR when it republishes that PR's schools, so an overlap does not merely
+      # race, it can destroy the other run's scrape (2026-09-10: ~3h of day-6
+      # scraping lost this way).
       #
       # Production wins. A manual recovery dispatch defers to any refresh in
       # progress; a scheduled refresh cancels a manual one and waits for it to
@@ -355,19 +356,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # An earlier run's PR can linger open when main moved between its
-          # checks going green and its merge (how #637 sat stuck for days,
-          # blocking the pipeline). This scrape supersedes its data either way:
-          # close leftovers before opening a fresh PR. Only older runs' — a
-          # newer run's PR holds a newer scrape, and it used to be closed too.
-          STALE=$(gh pr list --state open --json number,headRefName \
-            | python3 scripts/refresh_rotation.py --superseded-prs --run-id "${{ github.run_id }}") \
-            || STALE=""
-          for PR in $STALE; do
-            echo "closing superseded refresh PR #$PR"
-            gh pr close "$PR" --comment "Superseded by a newer data-refresh run." --delete-branch || true
-          done
-
           # A deep scrape can run hours, during which other PRs can merge to main and
           # rewrite these same data files. Branching from the run-start checkout would
           # then conflict at PR-open time — and GitHub schedules NO pull_request CI on a
@@ -459,7 +447,7 @@ jobs:
               END="WITHHELD_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
               { echo "withheld<<$END"; echo "$NOTES"; echo "$END"; } >> "$GITHUB_OUTPUT"
             fi
-            python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
+            python3 scripts/shard_corpus.py split --only-shards "$TARGETS" --retained-file "$RUNNER_TEMP/retained-shards"
 
             # ...and the cost of that guarantee, paid here. Deadlines pass on
             # the calendar's schedule, not the rotation's: the work-file pass
@@ -503,6 +491,27 @@ jobs:
             if [ -f data/processed/professor_tracking.json ]; then
               git add data/processed/professor_tracking.json
             fi
+
+            # An earlier run's PR can linger open: main moved between its
+            # checks going green and its merge (how #637 sat stuck for days,
+            # blocking the pipeline), or a check failed. Close it before
+            # opening a fresh PR only when every shard file it changes is one
+            # this run publishes, and only an older run's: a newer run's PR
+            # holds a newer scrape. Age alone used to decide, so on 2026-10-31
+            # a run publishing 22 schools closed #1174, which held 15 others.
+            # A shard the split kept from main (shrink guard) is not published.
+            if [ "$ATTEMPT" -eq 1 ]; then
+              STALE=$(timeout 60 gh pr list --state open --json number,headRefName,files,changedFiles \
+                | python3 scripts/refresh_rotation.py --superseded-prs \
+                    --run-id "${{ github.run_id }}" --published "$TARGETS" \
+                    --retained-file "$RUNNER_TEMP/retained-shards") \
+                || { STALE=""; echo "::warning::The open data PRs could not be listed or read; no older data PR was closed this run."; }
+              for PR in $STALE; do
+                echo "closing superseded refresh PR #$PR"
+                gh pr close "$PR" --comment "Superseded by a newer data-refresh run." --delete-branch || true
+              done
+            fi
+
             if git diff --cached --quiet; then
               echo "Latest main already matches this scrape — nothing to ship."
               exit 0

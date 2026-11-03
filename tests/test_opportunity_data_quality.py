@@ -58,6 +58,12 @@ def _is_faculty(o: dict) -> bool:
     return o.get("source_type") == "faculty_research"
 
 
+def _shown_as_live(o: dict) -> bool:
+    """A row a student can be shown as live. An inactive row is never offered,
+    so a duplicate kept inactive for a saved id cannot show a person twice."""
+    return (o.get("metadata") or {}).get("is_active") is not False
+
+
 def _parse_iso(d):
     if not d or not isinstance(d, str):
         return None
@@ -340,15 +346,15 @@ class TestR70ADataQuality:
     def test_no_shared_admin_contact_emails(self):
         """D3: a scraped department/advising inbox (amwhit@ on 123 profs, nslack@
         on 116) attached as many professors' contact_email misfires cold emails to
-        the wrong person. After the null-pass no faculty contact_email may be
-        shared by the collector's threshold of distinct professors."""
+        the wrong person. After the null-pass no live faculty contact_email may
+        be shared by the collector's threshold of distinct professors."""
         from collections import defaultdict
 
         from src.collectors.uiuc_faculty import _SHARED_ADMIN_EMAIL_THRESHOLD
 
         names_by_email: dict[str, set[str]] = defaultdict(set)
         for o in _load_data():
-            if not _is_faculty(o):
+            if not _is_faculty(o) or not _shown_as_live(o):
                 continue
             email = (o.get("contact_email") or "").strip().lower()
             if email:
@@ -585,6 +591,69 @@ class TestR70ADataQuality:
         offenders = [o.get("id") for o in _load_data() if "research_areas" in o]
         assert not offenders, f"{len(offenders)} records carry a top-level research_areas: {offenders[:5]}"
 
+    def test_wigg_directory_rows_hold_no_research_text_and_no_unstamped_keywords(self):
+        """The UIUC WIGG directory (AHS, Education, Social Work) lists keywords
+        that look like Illinois Experts concepts and classification labels, not
+        words the person wrote (M166). Stored as research text or unstamped, the
+        detail page, the email and the match reasons said them as the
+        professor's own work. So a WIGG row holds no research text, and its
+        keywords are the department's field (the loader's tag) or stamped; a
+        data PR that writes the earlier rows back fails here."""
+        from src.collectors.uiuc_faculty import _keywords_are_department_field
+        from src.collectors.uiuc_json_faculty import WIGG_ID_PREFIXES
+        from src.evidence import inferred_method
+
+        # Keywords OpenAlex Pass B wrote on 2026-07-01 (be5dc8de), before
+        # stamps existed, beside the department's field as research text. M170
+        # stamps them; the next UIUC refresh drops that text.
+        pass_b = frozenset({
+            "faculty-ahs-3a219d59", "faculty-ahs-a13ecbb9", "faculty-ahs-ad323917",
+            "faculty-education-29349b67", "faculty-education-4b0f4b2c", "faculty-education-54b73a25",
+            "faculty-education-7446b8c6", "faculty-education-80b7c52d", "faculty-social work-5e89f5d1",
+            "faculty-social work-9d5329be", "faculty-social work-bc688a08", "faculty-social work-c6864e4c",
+            "faculty-social work-cb376b7e",
+        })
+        text, unstamped = [], []
+        for o in _load_data():
+            oid = str(o.get("id") or "")
+            if o.get("source") != "uiuc_faculty" or not oid.startswith(WIGG_ID_PREFIXES) or oid in pass_b:
+                continue
+            if str((o.get("metadata") or {}).get("research_areas_raw") or "").strip():
+                text.append(oid)
+            if o.get("keywords") and inferred_method(o, "keywords") is None and not _keywords_are_department_field(o):
+                unstamped.append(oid)
+        assert not text, f"{len(text)} WIGG directory rows hold research text: {text[:5]}"
+        assert not unstamped, f"{len(unstamped)} WIGG directory rows hold unstamped keywords: {unstamped[:5]}"
+
+    def test_active_uiuc_research_text_is_what_the_collector_keeps(self):
+        """A UIUC profile's research text ends at a publication-list heading
+        (M163). Stored past it, "Articles in Conference Proceedings" and the
+        co-authors after it were the detail page's research areas, the merge
+        made co-author names keywords, and the template email said "your work
+        on" three of them. So every active UIUC row's stored research text is
+        what _trim_research_areas keeps of it; a data PR that writes the
+        earlier rows back, or a stop heading added without a repair, fails
+        here. The message counts the keywords found only in the dropped part
+        and names rows by id alone: that part names people."""
+        from src.collectors.uiuc_faculty import _trim_research_areas
+
+        offenders, keywords = [], 0
+        for o in _load_data():
+            md = o.get("metadata") or {}
+            raw = md.get("research_areas_raw")
+            if o.get("source") != "uiuc_faculty" or md.get("is_active") is False or not isinstance(raw, str):
+                continue
+            kept = _trim_research_areas(raw)
+            if kept == raw:
+                continue
+            offenders.append(o.get("id"))
+            low, cut = raw.lower(), len(kept)
+            keywords += sum(1 for k in o.get("keywords") or [] if isinstance(k, str)
+                            and low.find(k.lower(), 0, cut) == -1 and low.find(k.lower(), cut) != -1)
+        assert not offenders, (
+            f"{len(offenders)} active UIUC research texts run past what the collector keeps, and "
+            f"{keywords} of their keywords are read only off the dropped part: {offenders[:5]}")
+
     def test_no_duplicate_faculty_at_same_url(self):
         """A cross-appointed professor scraped from two department pages shares
         one profile URL — those must be collapsed to a single record so the
@@ -593,7 +662,8 @@ class TestR70ADataQuality:
         counts = Counter(
             (o.get("school"), o.get("url") or o.get("source_url"), o.get("pi_name"))
             for o in _load_data()
-            if _is_faculty(o) and o.get("pi_name") and (o.get("url") or o.get("source_url"))
+            if _is_faculty(o) and _shown_as_live(o)
+            and o.get("pi_name") and (o.get("url") or o.get("source_url"))
         )
         dups = [k for k, n in counts.items() if n > 1]
         assert not dups, f"{len(dups)} faculty appear >1× at the same URL: {dups[:3]}"
@@ -610,7 +680,7 @@ class TestR70ADataQuality:
         by_email: dict[str, list[str]] = defaultdict(list)
         by_name: dict[str, list[str]] = defaultdict(list)
         for o in _load_data():
-            if not (o.get("source") or "").startswith("ucb_"):
+            if not (o.get("source") or "").startswith("ucb_") or not _shown_as_live(o):
                 continue
             email = (o.get("contact_email") or "").strip().lower()
             if email:
@@ -643,6 +713,89 @@ class TestR70ADataQuality:
             f"{len(offenders)} ucb_* records have an institution/place pi_name "
             f"(scrape mis-selected a non-person element). First: {offenders[:5]}"
         )
+
+
+def _one_person_twice(second_metadata: dict) -> list[dict]:
+    """One person's two ucb rows on one profile URL, name and address."""
+    first = {
+        "id": "faculty-ucb-physics-00000001", "source": "ucb_physics_faculty",
+        "source_type": "faculty_research", "school": "ucb", "pi_name": "Avery Sample",
+        "url": "https://physics.testu.edu/people/avery-sample",
+        "contact_email": "asample@testu.edu", "metadata": {"is_active": True},
+    }
+    second = {**first, "id": "faculty-ucb-astro-00000002", "source": "ucb_astro_faculty",
+              "metadata": second_metadata}
+    return [first, second]
+
+
+_DUPLICATE_GATES = (
+    "test_no_same_school_same_email_faculty_duplicates",
+    "test_no_duplicate_faculty_at_same_url",
+    "test_no_ucb_joint_appointment_duplicates",
+)
+
+
+class TestDuplicateGatesJudgeLiveRows:
+    """The duplicate gates count what a student can be shown as live. A
+    duplicate kept inactive (so a saved id still resolves) passes them; two
+    live rows for one person still fail every one of them."""
+
+    @pytest.mark.parametrize("gate", _DUPLICATE_GATES)
+    def test_an_inactive_duplicate_passes(self, monkeypatch, gate):
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: _one_person_twice({"is_active": False}))
+        getattr(TestR70ADataQuality(), gate)()
+
+    @pytest.mark.parametrize("second_metadata", [{"is_active": True}, {}], ids=["active", "unstated"])
+    @pytest.mark.parametrize("gate", _DUPLICATE_GATES)
+    def test_two_live_rows_still_fail(self, monkeypatch, gate, second_metadata):
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: _one_person_twice(second_metadata))
+        with pytest.raises(AssertionError):
+            getattr(TestR70ADataQuality(), gate)()
+
+
+def _row_on_one_address(rid, dept, name, url, keywords, email="asample@testu.edu"):
+    return {"id": rid, "source": "testu_faculty", "source_type": "faculty_research",
+            "school": "testu", "department": dept, "pi_name": name, "contact_email": email,
+            "url": url, "title": f"Research with Prof. {name} — {dept}", "keywords": keywords,
+            "metadata": {"is_active": True}}
+
+
+class TestSharedInboxGateJudgesLiveRows:
+    """test_no_shared_admin_contact_emails counts the professors a student can
+    be shown on one address. Rows kept inactive under their old spellings of
+    one person's name are not more professors; three live ones still fail."""
+
+    def test_one_person_archived_under_two_old_spellings_passes(self, monkeypatch):
+        from src.collectors.faculty_graph import collapse_same_person_faculty
+        from src.collectors.uiuc_faculty import _null_shared_admin_emails
+
+        def run(rows):
+            _null_shared_admin_emails(rows)
+            return collapse_same_person_faculty(rows, published_ids=frozenset(o["id"] for o in rows))["kept"]
+
+        rows = run([
+            _row_on_one_address("faculty-testu-cs-0000bbbb", "CS", "Avery B. Sample",
+                                "https://cs.testu.edu/people/asample", ["optics", "lasers"]),
+            _row_on_one_address("faculty-testu-bio-0000cccc", "BIO", "Sample, Avery",
+                                "https://bio.testu.edu/p/1", ["optics"]),
+        ])
+        # A new unit lists the person under the same profile slug, its card without an address.
+        rows = run(rows + [_row_on_one_address("faculty-testu-ee-0000aaaa", "EE", "Avery Sample",
+                                               "https://ee.testu.edu/people/asample",
+                                               ["optics", "lasers", "imaging"], email=None)])
+        assert [(o["id"][-4:], o["metadata"]["is_active"], o["contact_email"]) for o in rows] == [
+            ("bbbb", False, "asample@testu.edu"), ("cccc", False, "asample@testu.edu"),
+            ("aaaa", True, "asample@testu.edu")]
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        TestR70ADataQuality().test_no_shared_admin_contact_emails()
+
+    def test_three_live_professors_on_one_address_still_fail(self, monkeypatch):
+        rows = [_row_on_one_address(f"faculty-testu-ece-0000000{i}", "ECE", name,
+                                    f"https://ece.testu.edu/p/{i}", ["optics"])
+                for i, name in enumerate(["Avery Sample", "Blair Example", "Casey Placeholder"])]
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        with pytest.raises(AssertionError):
+            TestR70ADataQuality().test_no_shared_admin_contact_emails()
 
 
 class TestDeactivatePastLogic:

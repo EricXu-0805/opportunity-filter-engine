@@ -22,6 +22,7 @@ import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
+  inactiveAsDuplicate,
   opportunitySourceUrl,
   targetPosture,
   targetStatusReason,
@@ -243,7 +244,9 @@ export function OpportunityCard({
                 faculty stop, which the red badge above already states in the
                 source's own words. */}
             {statusReason && !(statusReason === 'faculty_not_accepting' && facultyUnavailable) && (
-              <Badge variant="red">{t(SAVED_STATUS_KEY[statusReason])}</Badge>
+              <Badge variant="red">
+                {t(inactiveAsDuplicate(opp) ? 'compare.status.inactiveDuplicate' : SAVED_STATUS_KEY[statusReason])}
+              </Badge>
             )}
             {showsOfferTerms && opp.opportunity_type && (
               <Badge variant="indigo">{typeLabel(opp.opportunity_type, t)}</Badge>

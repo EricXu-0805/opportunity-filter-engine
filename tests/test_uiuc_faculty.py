@@ -657,6 +657,20 @@ def test_carry_forward_keeps_the_inference_stamp_with_the_keywords():
     assert incoming3["keywords"] == stated["keywords"]
     assert "inferred_fields" not in (incoming3.get("metadata") or {})
 
+    # The WIGG directory's keyword list (M166): a stored, richer list keeps its
+    # stamp over a fresh read that lists only the department's field.
+    from src.collectors.uiuc_json_faculty import DIRECTORY_KEYWORDS_METHOD
+
+    directory = {"id": "faculty-ahs-0a1b2c3d", "source": "uiuc_faculty", "pi_name": "A B",
+                 "department": "Department of Health and Kinesiology",
+                 "keywords": ["Physical Activity", "Exercise Intervention"],
+                 "metadata": {"inferred_fields": {"keywords": DIRECTORY_KEYWORDS_METHOD}}}
+    incoming4 = {"id": "faculty-ahs-0a1b2c3d", "source": "uiuc_faculty", "pi_name": "A B",
+                 "department": "Department of Health and Kinesiology", "keywords": ["health and kinesiology"]}
+    _carry_forward_enrichment(directory, incoming4)
+    assert incoming4["keywords"] == directory["keywords"]
+    assert incoming4["metadata"]["inferred_fields"]["keywords"] == DIRECTORY_KEYWORDS_METHOD
+
 def test_carry_forward_keeps_research_areas_raw():
     """The professor's own stated research areas survive a re-scrape that did
     not reach their detail page.
@@ -694,6 +708,36 @@ def test_carry_forward_keeps_research_areas_raw():
     # The carried statement keeps the date it was actually observed, so nothing
     # downstream can present last week's prose as verified today.
     assert incoming["metadata"]["research_areas_verified_at"] == "2026-08-15T03:59:15"
+
+
+@pytest.mark.parametrize("unit", ["ahs", "education", "social work"])
+def test_carry_forward_gives_a_wigg_row_no_stored_research_text(unit):
+    """What the WIGG directory's rows (AHS, Education, Social Work) held as
+    research text was its keyword list, which the detail page showed as the
+    profile's own words (M166). The collector writes none now; carried, a
+    refresh after a lost repair would show the list again, dated when it was
+    first read."""
+    stored = {
+        "id": f"faculty-{unit}-0a1b2c3d", "source": "uiuc_faculty", "pi_name": "Avery Example",
+        "department": "Department of Speech and Hearing Science", "keywords": ["Vocal Fatigue", "Room Acoustics"],
+        "metadata": {"research_areas_raw": "Vocal Fatigue; Room Acoustics", "last_verified": "2026-10-26T00:00:00"},
+    }
+    # This read lists no keywords for the person: the department's field, with
+    # no stamp, so the rule rests on the id the collector gives the row.
+    fresh = {**stored, "keywords": ["speech and hearing science"],
+             "metadata": {"research_areas_raw": "", "last_verified": "2026-11-02T00:00:00"}}
+    _carry_forward_enrichment(stored, fresh)
+    assert fresh["metadata"]["research_areas_raw"] == ""
+    assert "research_areas_verified_at" not in fresh["metadata"]
+
+    # Another UIUC unit's row, or another collector's under the same id, still
+    # keeps its stored statement.
+    for other in ({"id": "faculty-psych-0a1b2c3d"}, {"source": "faculty_graph"}):
+        prior = {**stored, **other}
+        again = {**fresh, **other, "metadata": {"research_areas_raw": ""}}
+        _carry_forward_enrichment(prior, again)
+        assert again["metadata"]["research_areas_raw"] == "Vocal Fatigue; Room Acoustics"
+        assert again["metadata"]["research_areas_verified_at"] == "2026-10-26T00:00:00"
 
 
 def test_carry_forward_fresh_research_areas_win():
@@ -1409,6 +1453,41 @@ def test_joint_appointment_personal_email_is_not_nulled():
     assert all(r["contact_email"] == "daf@illinois.edu" for r in rows)
 
 
+def _one_person_row(rid, dept, name, keywords, published=True):
+    return {"id": rid, "source": "testu_faculty", "source_type": "faculty_research",
+            "school": "testu", "department": dept, "pi_name": name,
+            "contact_email": "asample@testu.edu", "url": f"https://{dept.lower()}.testu.edu/p/{rid[-4:]}",
+            "title": f"Research with Prof. {name} — {dept}", "keywords": keywords,
+            "metadata": {"is_active": True}}
+
+
+def test_an_archived_spelling_never_takes_a_live_professors_address():
+    """Consolidation keeps a published duplicate inactive with its address and
+    its own spelling of the name. On a later run a third spelling of the same
+    person must not make the address look like a shared inbox."""
+    from src.collectors.faculty_graph import collapse_same_person_faculty
+
+    rows = [_one_person_row("faculty-testu-chem-0000aaaa", "CHEM", "Avery Sample", ["catalysis", "kinetics"]),
+            _one_person_row("faculty-testu-che-0000bbbb", "CHE", "A. Sample", ["catalysis"])]
+    assert _null_shared_admin_emails(rows) == 0
+    rows = collapse_same_person_faculty(rows, published_ids=frozenset(o["id"] for o in rows))["kept"]
+    published = frozenset(o["id"] for o in rows)
+    rows.append(_one_person_row("faculty-testu-bio-0000cccc", "BIO", "Avery B. Sample", ["catalysis"]))
+
+    assert _null_shared_admin_emails(rows) == 0
+    rows = collapse_same_person_faculty(rows, published_ids=published)["kept"]
+    assert [(o["id"][-4:], o["metadata"]["is_active"], o["contact_email"]) for o in rows] == [
+        ("aaaa", True, "asample@testu.edu"), ("bbbb", False, "asample@testu.edu")]
+
+
+def test_three_live_professors_on_one_inbox_lose_it_and_an_inactive_row_keeps_it():
+    rows = [_one_person_row(f"faculty-testu-ece-0000000{i}", "ECE", name, ["optics"])
+            for i, name in enumerate(["Avery Sample", "Blair Example", "Casey Placeholder", "Devon Example"])]
+    rows[3]["metadata"]["is_active"] = False
+    assert _null_shared_admin_emails(rows) == 3
+    assert [o["contact_email"] for o in rows] == [None, None, None, "asample@testu.edu"]
+
+
 def test_rebuild_title_drops_navmenu_for_broad_only_prof():
     rows = [{
         "source": "uiuc_faculty", "pi_name": "Sasa Misailovic",
@@ -1448,7 +1527,8 @@ def test_rebuild_title_keeps_genuine_specific_areas():
     assert "positions in their lab" not in rows[0]["description_raw"]
 
 
-@pytest.mark.parametrize("method", ["derived:illinois_experts_concepts", "derived:openalex_topics"])
+@pytest.mark.parametrize("method", ["derived:illinois_experts_concepts", "derived:openalex_topics",
+                                    "derived:illinois_directory_keywords"])
 def test_rebuild_does_not_say_inferred_keywords_as_the_profiles_areas(method):
     # M161: Illinois Experts concepts are stamped as inferred; the stored
     # title and description read "Research areas: <concepts>" as stated.
@@ -2044,6 +2124,53 @@ def test_dedup_lifts_a_retirement_the_new_sighting_disproves():
     assert meta["is_active"] is True
     assert "deactivated_at" not in meta
     assert "deactivation_reason" not in meta
+
+
+# What consolidation leaves on a published row it keeps inactive as a duplicate.
+_ARCHIVED_DUPLICATE = {"is_active": False, "deactivated_at": "2026-11-06",
+                       "deactivation_reason": "duplicate_of_live_record",
+                       "duplicate_of": "faculty-test-kept"}
+_INACTIVE_STATE = {"deactivated_at", "deactivation_reason", "duplicate_of"}
+_ROW_DEDUPS = pytest.mark.parametrize("dedup", [
+    _dedup_faculty_records,
+    _dedup_faculty_by_email,
+    lambda rows: _dedup_decredentialed_faculty(rows)[0],
+], ids=["url_and_surname", "address_and_name", "url_and_full_name"])
+
+
+def _archived_and_seen_again(archived_metadata: dict, seen_metadata: dict) -> list[dict]:
+    """One person's archived row and a newer sighting of them on the same card."""
+    url = "https://physics.testu.edu/people/directory/profile/asample"
+    archived = _seen("Avery Sample", url, "2026-10-30T00:00:00", keywords=["optics", "lasers"],
+                     metadata_extra=archived_metadata)
+    fresh = _seen("Avery Sample", url, "2026-11-13T00:00:00", metadata_extra=seen_metadata)
+    archived["contact_email"] = fresh["contact_email"] = "asample@testu.edu"
+    return [archived, fresh]
+
+
+@pytest.mark.parametrize("reason", ["duplicate_of_live_record", "absent_from_directory_rescrape"])
+@_ROW_DEDUPS
+def test_a_newer_sighting_puts_an_archived_duplicate_back_live_without_its_pointer(dedup, reason):
+    """The pointer is part of the inactive state: a row put back live drops it
+    with the retirement stamps, whatever retired the row."""
+    (row,) = dedup(_archived_and_seen_again({**_ARCHIVED_DUPLICATE, "deactivation_reason": reason}, {}))
+    assert row["metadata"]["is_active"] is True
+    assert _INACTIVE_STATE.isdisjoint(row["metadata"])
+
+
+@_ROW_DEDUPS
+def test_an_archived_duplicate_seen_again_only_as_inactive_keeps_its_pointer(dedup):
+    # Guard: a row that stays inactive keeps the state it was archived with.
+    (row,) = dedup(_archived_and_seen_again(dict(_ARCHIVED_DUPLICATE), {"is_active": False}))
+    assert {k: row["metadata"][k] for k in ("is_active", *_INACTIVE_STATE)} == _ARCHIVED_DUPLICATE
+
+
+def test_lifting_an_emeritus_retirement_drops_a_duplicate_pointer_too():
+    from src.collectors.uiuc_faculty import _lift_emeritus
+
+    metadata = {**_ARCHIVED_DUPLICATE, "deactivation_reason": "listed_as_emeritus"}
+    _lift_emeritus(metadata)
+    assert metadata == {"is_active": True}
 
 
 def test_dedup_keeps_a_retirement_the_dropped_row_agrees_with():
@@ -2750,6 +2877,18 @@ def _merge(tmp_path, stored: list[dict], fresh: list[dict]) -> dict[str, dict]:
     path.write_text(json.dumps(stored), encoding="utf-8")
     merge_into_processed(fresh, str(path))
     return {r["pi_name"]: r for r in json.loads(path.read_text(encoding="utf-8"))}
+
+
+def test_a_card_listed_again_brings_an_archived_duplicate_back_live_without_its_pointer(tmp_path):
+    # Guard (holds before the pointer rule too): the merge replaces the stored
+    # metadata of a card the page lists again, the inactive state with it.
+    stored = _stored_psych_row("Avery Example", "person1")
+    stored["metadata"].update(_ARCHIVED_DUPLICATE)
+    fresh = _stored_psych_row("Avery Example", "person1")
+    fresh["metadata"]["last_seen_at"] = "2026-11-13T00:00:00"
+    row = _merge(tmp_path, [stored], [fresh])["Avery Example"]
+    assert row["metadata"]["is_active"] is True
+    assert _INACTIVE_STATE.isdisjoint(row["metadata"])
 
 
 def test_a_card_under_in_memoriam_retires_the_stored_row_and_drops_its_address(tmp_path, monkeypatch):
@@ -3753,3 +3892,46 @@ def test_a_title_a_later_card_states_is_never_replaced_by_an_earlier_cards(tmp_p
     rows = _merge(tmp_path, [], [card("Research Professor", "Research Faculty"), card("Associate Professor", "Faculty")])
     md = rows["Avery Example"]["metadata"]
     assert (md["faculty_title"], md["directory_section"]) == ("Associate Professor", "Faculty")
+
+
+# --- M163: on a Grainger profile the publication list follows the research
+# areas, and the eight lines the marker read takes ran on into it: "Articles in
+# Conference Proceedings", then co-authors and a paper title, stored as the
+# professor's research areas, and the co-authors became keywords ("your work on
+# <three co-authors>"). The headings are the five the stored pages carried on
+# 2026-11-02, and the edited-books heading without its edition note.
+# Synthetic people and titles. ---
+
+@pytest.mark.parametrize("heading", [
+    "Articles in Conference Proceedings", "Monographs", "Journal Editorships",
+    "Books Edited or Co-Edited (Original Editions)", "Books Edited or Co-Edited", "Patents",
+])
+def test_research_text_ends_at_a_publication_list_heading(heading):
+    from src.collectors.uiuc_faculty import _trim_research_areas
+
+    text = (f"Example Systems, Placeholder Theory, {heading}, Avery Example, Blair Sample, "
+            '"A Placeholder Paper Title"')
+    assert _trim_research_areas(text) == "Example Systems, Placeholder Theory"
+
+
+def test_a_profiles_publication_list_is_not_read_as_its_research_areas():
+    page = BeautifulSoup("""<html><body><main><h1>Profile</h1>
+      <h2>Research Areas</h2><p>Artificial Intelligence</p>
+      <h2>Articles in Conference Proceedings</h2>
+      <p>Avery Example, Blair Sample, Casey Placeholder, "A Placeholder Paper Title"</p>
+      </main></body></html>""", "html.parser")
+    assert _research_areas_from_soup(page) == "Artificial Intelligence"
+
+
+def test_a_fresh_run_keeps_co_authors_out_of_the_research_text_and_keywords(tmp_path, monkeypatch):
+    profile = ("<h2>Research Areas</h2><p>Artificial Intelligence</p>"
+               "<h2>Articles in Conference Proceedings</h2>"
+               '<p>Blair Sample, Casey Placeholder, Devon Example, "A Placeholder Paper Title"</p>')
+    stored = [_stored_unit_row("cs", "Avery Example", "person1", "Artificial Intelligence",
+                               ["artificial intelligence"])]
+    fresh = _fetch_unit(monkeypatch, "cs", _SECTION_MENU, [("person1", "Avery Example")],
+                        profiles={"person1": profile})
+    row = _merge(tmp_path, stored, fresh)["Avery Example"]
+    assert row["metadata"]["research_areas_raw"] == "Artificial Intelligence"
+    assert row["keywords"] == ["artificial intelligence"]
+    assert "sample" not in row["title"].lower() + row["description_clean"].lower()

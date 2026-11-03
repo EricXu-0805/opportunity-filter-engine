@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { LanguageProvider } from '@/i18n/client';
 import type { Opportunity } from '@/lib/types';
-import BucketCards from './BucketCards';
+import BucketCards, { ReferenceOnlyCard } from './BucketCards';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 import type { CompareRow } from './scores';
@@ -318,6 +318,32 @@ describe('BucketCards degrades a dead target on its own', () => {
     expect(links).toContain('https://example.edu/source-page');
     expect(links).not.toContain('https://example.edu/apply-here');
     expect(links).not.toContain('https://example.edu/display-page');
+  });
+
+  it('says an inactive duplicate was matched by our system, not dropped from the catalog', () => {
+    const row = deadRow({
+      ...ACTIONABLE_TRUTH, actionable: false, listing_state: 'unknown',
+      accepting_state: 'unknown', reason_code: 'inactive',
+    });
+    row.opp = { ...row.opp, metadata: { duplicate_of: 'faculty-x-aa-00000001' } } as unknown as Opportunity;
+    render(<BucketCards rows={[row]} />);
+
+    const card = screen.getByTestId('compare-reference-card');
+    expect(card).toHaveTextContent('Inactive — our system inferred this duplicates another record');
+    expect(card).not.toHaveTextContent('no longer carried in the catalog');
+  });
+
+  it("keeps the caller's status over the duplicate label", () => {
+    const row = deadRow({
+      ...ACTIONABLE_TRUTH, actionable: false, listing_state: 'unknown',
+      accepting_state: 'unknown', reason_code: 'inactive',
+    });
+    const opp = { ...row.opp, metadata: { duplicate_of: 'faculty-x-aa-00000001' } } as unknown as Opportunity;
+    render(<ReferenceOnlyCard opp={opp} statusOverride="Not in your current results — shown for reference only" />);
+
+    const card = screen.getByTestId('compare-reference-card');
+    expect(card).toHaveTextContent('Not in your current results — shown for reference only');
+    expect(card).not.toHaveTextContent('our system inferred');
   });
 
   it('never blurs four reasons into one label', async () => {

@@ -1676,12 +1676,19 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # ours too (the field, our tags, or a stamp), is the collector's fallback
     # and goes (M154); beside topics the page is taken to state it stays, or
     # the description would say those as research areas in its place.
+    # A WIGG directory row (AHS, Education, Social Work) gets none: what its
+    # rows held was the directory's keyword list (M166).
+    # Imported here: that module imports this one.
+    from .uiuc_json_faculty import WIGG_ID_PREFIXES
+
     areas = (existing.get("metadata") or {}).get("research_areas_raw")
     if (
         isinstance(areas, str)
         and areas.strip()
         and not _is_site_menu_text(areas)
         and not _is_fallback_research_text(areas, existing)
+        and not (incoming.get("source") == "uiuc_faculty"
+                 and str(incoming.get("id") or "").startswith(WIGG_ID_PREFIXES))
         and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
     ):
         md = incoming.setdefault("metadata", {})
@@ -1791,6 +1798,7 @@ def _lift_emeritus(metadata: dict) -> None:
     metadata["is_active"] = True
     metadata.pop("deactivated_at", None)
     metadata.pop("deactivation_reason", None)
+    metadata.pop("duplicate_of", None)
 
 
 def _current_role(opp: dict) -> dict:
@@ -1891,11 +1899,13 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
             and (dropped.get("source_url") or "") != (survivor.get("source_url") or "")
             and not _listed_with_active_lab(dropped["metadata"])):
         # Observed after the retirement that removed it: absence is disproven,
-        # so the retirement stamp goes with the timestamp it contradicted. An
+        # so the retirement stamp goes with the timestamp it contradicted, and
+        # the duplicate_of an archived duplicate carries goes with it. An
         # emeritus listing is lifted only by the same card or an active lab.
         meta["is_active"] = True
         meta.pop("deactivated_at", None)
         meta.pop("deactivation_reason", None)
+        meta.pop("duplicate_of", None)
 
 
 def _dedup_decredentialed_faculty(opps: list[dict]) -> tuple[list[dict], int]:
@@ -2643,11 +2653,14 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     X' cold email sent to a shared coordinator inbox misfires; an empty recipient
     (the modal then disables send) is safer than a confidently wrong one. Covers
     every school's faculty (emails are domain-unique, so cross-school counting
-    never conflates). Mutates ``opps`` in place; returns the count nulled."""
+    never conflates). Only rows shown as live count, and only they are nulled:
+    a row kept inactive so a saved id still resolves keeps its address and its
+    own spelling of the name, which would otherwise count as another professor.
+    Mutates ``opps`` in place; returns the count nulled."""
+    live = [opp for opp in opps
+            if _is_faculty_record(opp) and (opp.get("metadata") or {}).get("is_active") is not False]
     names_by_email: dict[str, set[str]] = defaultdict(set)
-    for opp in opps:
-        if not _is_faculty_record(opp):
-            continue
+    for opp in live:
         email = (opp.get("contact_email") or "").strip().lower()
         if email:
             names_by_email[email].add((opp.get("pi_name") or "").strip().lower())
@@ -2657,9 +2670,7 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
         if len(names) >= _SHARED_ADMIN_EMAIL_THRESHOLD
     }
     nulled = 0
-    for opp in opps:
-        if not _is_faculty_record(opp):
-            continue
+    for opp in live:
         if (opp.get("contact_email") or "").strip().lower() in shared:
             clear_contact_claim(opp)
             nulled += 1
@@ -2848,6 +2859,12 @@ _AREA_STOP_HEADINGS = (
     "graduate students", "edit your profile", "selected articles in journals",
     "additional campus affiliations", "books authored or co-authored",
     "books authored", "affiliations", "courses", "service", "grants",
+    # The rest of a Grainger profile's publication list, as the stored pages
+    # carried it on 2026-11-02: what followed these headings was co-authors,
+    # titles and venues, shown as the professor's research areas, and the
+    # co-authors became keywords (M163).
+    "articles in conference proceedings", "books edited or co-edited",
+    "monographs", "journal editorships", "patents",
 )
 
 

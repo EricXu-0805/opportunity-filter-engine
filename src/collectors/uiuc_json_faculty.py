@@ -1,16 +1,19 @@
 """UIUC faculty from campus JSON directory APIs (no per-profile HTML scraping).
 
 Two large UIUC units publish their directory as a paginated JSON API that
-already carries each person's email and (for the WIGG units) structured
-research keywords, so the slow per-profile page fetch the HTML collector needs
-is unnecessary here:
+already carries each person's email and (for the WIGG units) a keyword list,
+so the slow per-profile page fetch the HTML collector needs is unnecessary here:
 
   WIGG DirectoryCore — College of Applied Health Sciences + School of Social
   Work:  ``directoryapi.wigg.illinois.edu/api/Directory/Search/{slug}?take=N``
      -> ``{"people": [{jobProfiles:[{jobType, office, title}], keywords, ...}]}``
      Faculty are the rows carrying a ``jobType == "Faculty"`` job profile (the
-     rest are staff/admin and must be dropped); ``keywords`` are
-     publication-derived research areas (deduped + lightly noise-stripped here).
+     rest are staff/admin and must be dropped). ``keywords`` look like Illinois
+     Experts (Pure) fingerprint concepts and classification labels reaching us
+     through the directory ("Illinois", "95% Confidence Interval", "L Education
+     (General)"), not words the person wrote: our inference, not checked
+     against the API. Deduped and lightly noise-stripped here, they are stamped
+     ``DIRECTORY_KEYWORDS_METHOD`` and never stored as research text (M166).
 
   Gies facultysearchapi — Gies College of Business:
      ``facultysearchapi.itpartners.illinois.edu/api/Search?collegeType=business&take=N``
@@ -36,6 +39,7 @@ import time
 
 import requests
 
+from ..evidence import stamp_inferred
 from .uiuc_faculty import (
     DELAY,
     HEADERS,
@@ -53,9 +57,14 @@ GIES_URL = (
     "?collegeType=business&take=2000"
 )
 TIMEOUT = 30
+# Every reader shows keywords with this stamp as inferred
+# (``src.evidence.keywords_are_source_topics``).
+DIRECTORY_KEYWORDS_METHOD = "derived:illinois_directory_keywords"
+# The ids normalize_faculty gives the WIGG units' rows ("faculty-<short>-<hash>").
+WIGG_ID_PREFIXES = ("faculty-ahs-", "faculty-social work-", "faculty-education-")
 
-# WIGG ``keywords`` are publication-derived (MeSH-style): most are real research
-# areas, but a minority are population/geography descriptors that aren't topical.
+# WIGG ``keywords`` look like concepts drawn from a person's papers: most name a
+# topic, but a minority are population/geography descriptors that aren't topical.
 # Drop only the unambiguous ones — never anything that could be a research focus.
 _KEYWORD_NOISE = frozenset({
     "adult", "adults", "us adults", "young adults", "middle-aged", "older adults",
@@ -74,8 +83,7 @@ _GIES_NON_FACULTY = re.compile(r"(ph\.?d student|postdoc)", re.IGNORECASE)
 
 
 def _clean_keywords(raw: list[str], fallback: str) -> list[str]:
-    """Dedupe (case-insensitive, order-preserving — the API ranks by publication
-    frequency so the leading terms are the truest focus), drop population/
+    """Dedupe (case-insensitive, in the directory's order), drop population/
     geography noise, cap at 8. Empty -> the department broad field so the record
     is never keyword-less."""
     seen: set[str] = set()
@@ -141,18 +149,23 @@ _GIES_FALLBACK = ("Department of Business Administration", "business", ["Busines
 def _normalize_wigg(person: dict, short: str, dept: str, majors: list[str]) -> dict | None:
     broad = _dept_broad_field(dept)
     kws = _clean_keywords(person.get("keywords") or [], broad)
-    return normalize_faculty(
+    rec = normalize_faculty(
         {
             "name": (person.get("fullName") or "").strip(),
             "email": (person.get("email") or "").strip(),
             "url": person.get("profileUrl") or "",
             "title": (person.get("primaryTitle") or "").strip(),
-            # The broad field stands in for keywords, never for stated areas.
-            "research_areas": "" if kws == [broad] else "; ".join(kws),
+            # The keywords are not the person's words, and the detail page shows
+            # research text as the profile's own.
+            "research_areas": "",
         },
         {"short": short, "name": dept, "majors": majors, "keywords": [broad]},
         keywords=kws,
     )
+    # The broad field stays unstamped: the loader stamps it as our tag.
+    if rec is not None and kws != [broad]:
+        stamp_inferred(rec["metadata"], "keywords", DIRECTORY_KEYWORDS_METHOD)
+    return rec
 
 
 def _fetch_wigg(slug: str, short: str, resolve) -> list[dict]:

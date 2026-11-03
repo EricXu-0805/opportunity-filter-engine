@@ -440,6 +440,16 @@ describe('AcademicProfileCard — private controls reset independently of text i
   });
 });
 
+describe('AcademicProfileCard — quick-add interests (M175)', () => {
+  it('hides a suggestion the box already names after a full-width comma or ideographic comma', () => {
+    renderCard({ major: 'Computer Science', research_interests: 'machine learning，computer vision、algorithms' });
+    expect(screen.queryByRole('button', { name: '+ Machine Learning' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '+ Computer Vision' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '+ Algorithms' })).toBeNull();
+    expect(screen.getByRole('button', { name: '+ Artificial Intelligence' })).toBeInTheDocument();
+  });
+});
+
 describe('AcademicProfileCard — international status switch', () => {
   // A screen reader announced an unnamed switch: the visible label sat in a
   // separate span with nothing tying it to the control.

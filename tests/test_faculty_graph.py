@@ -13,7 +13,7 @@ sharing a non-null contact_email — so a config edit can't silently break them.
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -1786,6 +1786,223 @@ class TestCollapseSamePersonFaculty:
         assert res["removed_by_school"] == {}
 
 
+def _same_person_pair(collapse_pass):
+    """(kept row, dropped row) for one person, paired by one collapse pass only."""
+    name = "Avery Sample"
+    if collapse_pass == "url_and_name":
+        return (_fac_rec("keep", school="testu", pi_name=name, dept="Physics",
+                         email="asample@testu.edu", url="https://testu.edu/people/avery-sample",
+                         keywords=["optics", "lasers"]),
+                _fac_rec("drop", school="testu", pi_name=name, dept="Applied Physics",
+                         url="https://testu.edu/people/avery-sample/", keywords=["optics"]))
+    if collapse_pass == "syndicated_slug":
+        return (_fac_rec("keep", school="testu", pi_name=name, dept="Electrical Engineering",
+                         url="https://ee.testu.edu/people/asample", keywords=["optics", "lasers"]),
+                _fac_rec("drop", school="testu", pi_name=name, dept="Computing",
+                         url="https://cs.testu.edu/people/asample", keywords=["optics"]))
+    if collapse_pass == "same_email":
+        return (_fac_rec("keep", school="testu", pi_name=name, dept="Chemistry",
+                         email="asample@testu.edu", url="https://chem.testu.edu/p/1",
+                         keywords=["catalysis", "kinetics"]),
+                _fac_rec("drop", school="testu", pi_name="A. Sample", dept="Chemical Engineering",
+                         email="asample@testu.edu", url="https://cheme.testu.edu/q/2",
+                         keywords=["catalysis"]))
+    if collapse_pass == "medical_seed":
+        return (_fac_rec("keep", school="jhu", pi_name=name, dept="Department of Biomedical Engineering",
+                         email="asample@testu.edu", url="https://bme.testu.edu/people/x2",
+                         keywords=["imaging", "ultrasound"]),
+                _fac_rec("drop", school="jhu", pi_name=name,
+                         dept="School of Medicine — Biomedical Engineering",
+                         email="asample@med.testu.edu", url="https://med.testu.edu/profiles/x1",
+                         keywords=["imaging"]))
+    assert collapse_pass == "umbrella"
+    return (_fac_rec("keep", school="gatech", pi_name=name, dept="School of Interactive Computing",
+                     url="https://ic.testu.edu/people/avery-sample", keywords=["vision", "robotics"]),
+            _fac_rec("drop", school="gatech", pi_name=name, dept="College of Computing",
+                     url="https://cc.testu.edu/people/1001", keywords=["vision"]))
+
+
+_COLLAPSE_PASSES = ["url_and_name", "syndicated_slug", "same_email", "medical_seed", "umbrella"]
+
+
+class TestCollapseKeepsPublishedIds:
+    """A row the collapse drops is deleted only when this run minted it. A
+    published id (in the corpus before the run) may sit in a student's saved
+    list, so it stays, inactive, naming the row that was kept."""
+
+    @pytest.mark.parametrize("collapse_pass", _COLLAPSE_PASSES)
+    def test_a_published_duplicate_is_kept_inactive_naming_the_kept_row(self, collapse_pass):
+        keep, drop = _same_person_pair(collapse_pass)
+        res = fg.collapse_same_person_faculty(
+            [keep, drop], published_ids=frozenset({"keep", "drop"}), today=date(2026, 11, 6))
+        assert [o["id"] for o in res["kept"]] == ["keep", "drop"]
+        assert res["removed_by_school"] == {}
+        assert res["archived_by_school"] == {keep["school"]: 1}
+        assert keep["metadata"]["is_active"] is True
+        assert drop["metadata"] == {
+            "is_active": False, "deactivated_at": "2026-11-06",
+            "deactivation_reason": fg.DUPLICATE_REASON, "duplicate_of": "keep",
+        }
+
+    @pytest.mark.parametrize("collapse_pass", _COLLAPSE_PASSES)
+    def test_a_duplicate_minted_this_run_is_still_deleted(self, collapse_pass):
+        keep, drop = _same_person_pair(collapse_pass)
+        res = fg.collapse_same_person_faculty([keep, drop], published_ids=frozenset({"keep"}))
+        assert [o["id"] for o in res["kept"]] == ["keep"]
+        assert res["removed_by_school"] == {keep["school"]: 1}
+        assert res["archived_by_school"] == {}
+
+    def test_a_published_tombstone_keeps_its_own_retirement_and_names_the_live_row(self):
+        live = _fac_rec("live", school="testu", pi_name="Avery Sample", dept="Biology",
+                        email="asample@testu.edu", url="https://bio.testu.edu/asample")
+        tomb = _fac_rec("tomb", school="testu", pi_name="Avery Sample", dept="Ecology",
+                        email="asample@testu.edu", url="https://eco.testu.edu/asample",
+                        is_active=False)
+        tomb["metadata"].update(deactivated_at="2026-10-01",
+                                deactivation_reason="absent_from_directory_rescrape")
+        res = fg.collapse_same_person_faculty(
+            [live, tomb], published_ids=frozenset({"live", "tomb"}), today=date(2026, 11, 6))
+        assert [o["id"] for o in res["kept"]] == ["live", "tomb"]
+        assert res["archived_by_school"] == {"testu": 1}
+        assert tomb["metadata"] == {
+            "is_active": False, "deactivated_at": "2026-10-01",
+            "deactivation_reason": "absent_from_directory_rescrape", "duplicate_of": "live",
+        }
+
+    def test_a_tombstone_names_the_live_row_not_one_archived_beside_it(self):
+        keep, drop = _same_person_pair("same_email")
+        tomb = _fac_rec("tomb", school="testu", pi_name="Avery Sample", dept="Biochemistry",
+                        email="asample@testu.edu", url="https://biochem.testu.edu/r/3",
+                        is_active=False)
+        fg.collapse_same_person_faculty(
+            [keep, drop, tomb], published_ids=frozenset({"keep", "drop", "tomb"}))
+        assert (drop["metadata"]["duplicate_of"], tomb["metadata"]["duplicate_of"]) == ("keep", "keep")
+
+    def test_an_archived_row_keeps_its_date_on_the_next_run(self):
+        keep, drop = _same_person_pair("same_email")
+        published = frozenset({"keep", "drop"})
+        fg.collapse_same_person_faculty([keep, drop], published_ids=published, today=date(2026, 11, 6))
+        res = fg.collapse_same_person_faculty([keep, drop], published_ids=published, today=date(2026, 11, 13))
+        assert [o["id"] for o in res["kept"]] == ["keep", "drop"]
+        assert res["archived_by_school"] == {}
+        assert drop["metadata"]["deactivated_at"] == "2026-11-06"
+        assert drop["metadata"]["duplicate_of"] == "keep"
+
+    def test_a_row_its_unit_lists_again_keeps_its_date_through_the_merge(self, tmp_path, monkeypatch):
+        """The merge replaces the metadata of a row its unit lists again, so an
+        archived row comes back active without its stamps. Archived again under
+        the same kept row, it keeps the run-start date and is not counted."""
+        import json as _json
+
+        def listed():  # what the two department pages give on every run
+            rows = _same_person_pair("syndicated_slug")
+            for o in rows:
+                o["metadata"]["first_seen_at"] = "2026-09-01"
+            return list(rows)
+
+        work = tmp_path / "opportunities.json"
+        work.write_text(_json.dumps(listed()), encoding="utf-8")
+        monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", work)
+        counts = []
+        for today in (date(2026, 11, 6), date(2026, 11, 13), date(2026, 11, 20)):
+            start = _json.loads(work.read_text(encoding="utf-8"))
+            fg.merge_into_processed(listed())
+            res = fg.collapse_same_person_faculty(
+                _json.loads(work.read_text(encoding="utf-8")),
+                published_ids=frozenset(o["id"] for o in start), today=today,
+                archived=fg.duplicate_archive_stamps(start))
+            work.write_text(_json.dumps(res["kept"]), encoding="utf-8")
+            counts.append(res["archived_by_school"])
+        drop = {o["id"]: o for o in res["kept"]}["drop"]
+        assert counts == [{"testu": 1}, {}, {}]
+        assert {k: drop["metadata"][k] for k in ("is_active", "deactivated_at", "duplicate_of")} == {
+            "is_active": False, "deactivated_at": "2026-11-06", "duplicate_of": "keep"}
+
+    def test_a_row_archived_under_another_kept_row_is_dated_and_counted_anew(self):
+        keep, drop = _same_person_pair("same_email")
+        res = fg.collapse_same_person_faculty(
+            [keep, drop], published_ids=frozenset({"keep", "drop"}), today=date(2026, 11, 13),
+            archived={"drop": {"deactivated_at": "2026-11-06", "duplicate_of": "gone"}})
+        assert res["archived_by_school"] == {"testu": 1}
+        assert (drop["metadata"]["deactivated_at"], drop["metadata"]["duplicate_of"]) == ("2026-11-13", "keep")
+
+    @pytest.mark.parametrize("middle_published", [False, True], ids=["minted", "published"])
+    def test_every_pointer_names_the_row_the_person_is_kept_under(self, middle_published):
+        """A later pass can drop the row an earlier pass kept (same page and name,
+        then same profile slug, then same address): each pointer skips such rows,
+        deleted or archived, to the row kept at the end."""
+        def row(rid, dept, url, keywords, email=None):
+            return _fac_rec(rid, school="testu", pi_name="Avery Sample", dept=dept, email=email,
+                            url=url, keywords=keywords)
+
+        rows = [row("first", "Physics", "https://testu.edu/people/asample", ["optics"]),
+                row("second", "Applied Physics", "https://testu.edu/people/asample/", ["optics", "lasers"]),
+                row("third", "Electrical Engineering", "https://ee.testu.edu/people/asample",
+                    ["optics", "lasers", "imaging"], email="asample@testu.edu"),
+                row("last", "Computing", "https://cs.testu.edu/p/1",
+                    ["optics", "lasers", "imaging", "sensing"], email="asample@testu.edu")]
+        published = {"first", "last"} | ({"second", "third"} if middle_published else set())
+        res = fg.collapse_same_person_faculty(rows, published_ids=frozenset(published))
+        kept = {o["id"]: o for o in res["kept"]}
+        assert sorted(kept) == sorted(published)
+        assert {i: kept[i]["metadata"]["duplicate_of"] for i in sorted(published - {"last"})} == {
+            i: "last" for i in sorted(published - {"last"})}
+        assert res["archived_by_school"] == {"testu": len(published) - 1}
+
+    def test_the_run_start_stamps_are_those_of_archived_duplicates(self):
+        def meta(rid, **m):
+            return {"id": rid, "metadata": m}
+
+        rows = [meta("archived", is_active=False, deactivated_at="2026-11-06",
+                     deactivation_reason=fg.DUPLICATE_REASON, duplicate_of="keep"),
+                meta("tomb", is_active=False, deactivated_at="2026-10-01",
+                     deactivation_reason="absent_from_directory_rescrape", duplicate_of="keep"),
+                meta("live", is_active=True, deactivation_reason=fg.DUPLICATE_REASON, duplicate_of="keep")]
+        assert fg.duplicate_archive_stamps(rows) == {
+            "archived": {"deactivated_at": "2026-11-06", "duplicate_of": "keep"}}
+
+    def test_a_published_row_with_no_active_flag_is_archived(self):
+        keep, drop = _same_person_pair("same_email")
+        del drop["metadata"]["is_active"]
+        fg.collapse_same_person_faculty(
+            [keep, drop], published_ids=frozenset({"keep", "drop"}), today=date(2026, 11, 6))
+        assert drop["metadata"] == {
+            "is_active": False, "deactivated_at": "2026-11-06",
+            "deactivation_reason": fg.DUPLICATE_REASON, "duplicate_of": "keep",
+        }
+
+    def test_a_tombstone_is_matched_only_against_rows_kept_live(self):
+        """A tombstone whose address only a row dropped this run carries is left
+        as it is: the kept row's own address and page are the evidence."""
+        kept = _fac_rec("kept", school="testu", pi_name="Avery Sample", dept="Physics",
+                        email="asample@testu.edu", url="https://testu.edu/people/asample",
+                        keywords=["optics", "lasers"])
+        dropped = _fac_rec("dropped", school="testu", pi_name="Avery Sample", dept="Applied Physics",
+                           email="avery.sample@testu.edu", url="https://testu.edu/people/asample/",
+                           keywords=["optics"])
+        tomb = _fac_rec("tomb", school="testu", pi_name="Avery Sample", dept="Optics",
+                        email="avery.sample@testu.edu", url="https://optics.testu.edu/p/4",
+                        is_active=False)
+        res = fg.collapse_same_person_faculty(
+            [kept, dropped, tomb], published_ids=frozenset({"kept", "dropped", "tomb"}))
+        assert res["archived_by_school"] == {"testu": 1}
+        assert tomb["metadata"] == {"is_active": False}
+
+    def test_a_tombstone_names_the_row_on_its_page_over_one_on_its_address(self):
+        """An inbox can be shared; a profile page and name are the person's."""
+        own = _fac_rec("own", school="testu", pi_name="Avery Sample", dept="Biology",
+                       url="https://bio.testu.edu/asample", keywords=["ecology"])
+        other = _fac_rec("other", school="testu", pi_name="Jordan Example", dept="Biology",
+                         email="biolab@testu.edu", url="https://bio.testu.edu/jexample",
+                         keywords=["genomics"])
+        tomb = _fac_rec("tomb", school="testu", pi_name="Avery Sample", dept="Biology",
+                        email="biolab@testu.edu", url="https://bio.testu.edu/asample/",
+                        is_active=False)
+        fg.collapse_same_person_faculty(
+            [own, other, tomb], published_ids=frozenset({"own", "other", "tomb"}))
+        assert tomb["metadata"]["duplicate_of"] == "own"
+
+
 # --- WordPress-REST api source (UCLA-style, no network in tests) -------------
 
 class TestWordPressApiSource:
@@ -3274,6 +3491,27 @@ class TestMergePreservesRecentWorks:
         saved = _json.loads(pf.read_text())[0]
         assert saved["keywords"] == ["soft robotics", "grippers", "haptics"]
         assert saved["metadata"]["recent_works"] == works
+
+
+def test_a_unit_listing_an_archived_row_again_brings_it_back_live_without_its_pointer(tmp_path, monkeypatch):
+    # Guard (holds before the pointer rule too): the merge replaces the stored
+    # metadata of a row its unit lists again, the inactive state with it.
+    import json as _json
+
+    stored = _fac_rec("drop", school="testu", pi_name="Avery Sample", dept="Computing",
+                      url="https://cs.testu.edu/people/asample", keywords=["optics"], is_active=False)
+    stored["metadata"].update(first_seen_at="2026-09-01", deactivated_at="2026-11-06",
+                              deactivation_reason=fg.DUPLICATE_REASON, duplicate_of="keep")
+    fresh = _fac_rec("drop", school="testu", pi_name="Avery Sample", dept="Computing",
+                     url="https://cs.testu.edu/people/asample", keywords=["optics"])
+    fresh["metadata"]["first_seen_at"] = "2026-11-13"
+    pf = tmp_path / "opportunities.json"
+    pf.write_text(_json.dumps([stored]))
+    monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", pf)
+
+    fg.merge_into_processed([fresh])
+    (saved,) = _json.loads(pf.read_text())
+    assert saved["metadata"] == {"is_active": True, "first_seen_at": "2026-09-01"}
 
 
 class TestFreshmanNotLockedOut:

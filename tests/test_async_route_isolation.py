@@ -1,14 +1,13 @@
 """Async AI routes must not starve process liveness.
 
-Each fake blocking model call waits on a gate for up to 400ms.  With correct
-executor isolation, ``/api/health`` responds promptly while the gate is held;
-if a route calls the fake directly on the event loop, the probe is delayed for
-the full 400ms and the regression fails.
+Each fake blocking call records its thread. A worker holds the gate until the
+probe releases it. Health must answer within 250ms while the gate is held.
 """
 
 from __future__ import annotations
 
 import asyncio
+import gc
 import threading
 import time
 from collections.abc import Callable
@@ -66,6 +65,7 @@ def opportunity_id() -> str:
 
 class _Gate:
     def __init__(self):
+        self.thread_id: int | None = None
         self.started = threading.Event()
         self.release = threading.Event()
         self.finished = threading.Event()
@@ -73,10 +73,15 @@ class _Gate:
 
 def _gated(callback: Callable):
     gate = _Gate()
+    probe_thread = threading.get_ident()
 
     def wrapped(*args, **kwargs):
+        gate.thread_id = threading.get_ident()
         gate.started.set()
-        gate.release.wait(0.4)
+        # An inline call cannot be released by its own event loop. The
+        # thread assertion reports it directly instead of waiting on itself.
+        if gate.thread_id != probe_thread:
+            gate.release.wait(10)  # Cleanup watchdog, independent of the latency budget.
         gate.finished.set()
         return callback(*args, **kwargs)
 
@@ -90,13 +95,22 @@ async def _probe_health(client: httpx.AsyncClient, gate: _Gate, path: str) -> No
     while not gate.started.is_set() and time.perf_counter() < deadline:
         await asyncio.sleep(0.005)
     assert gate.started.is_set(), f"blocking call was not reached for {path}"
-    probe_began = time.perf_counter()
-    live = await client.get("/api/health")
-    probe_elapsed = time.perf_counter() - probe_began
+    assert gate.thread_id != threading.get_ident(), f"{path}: blocking call ran on the event loop"
+    # ASGITransport does not run the startup freeze. Objects retained by
+    # unrelated tests can trigger a process-wide cyclic collection inside
+    # this small probe. Measure the HTTP path with the original wall budget.
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        probe_began = time.perf_counter()
+        live = await client.get("/api/health")
+        probe_elapsed = time.perf_counter() - probe_began
+    finally:
+        if was_enabled:
+            gc.enable()
     assert live.status_code == 200
     assert probe_elapsed < 0.25, f"{path} blocked the event loop for {probe_elapsed:.3f}s"
-    # The gate is held for 400ms: a health response that only got through after
-    # the gated call ended means the event loop was blocked the whole time.
+    # Health must have made progress before the worker was allowed to leave.
     assert not gate.finished.is_set(), (
         f"{path}: /api/health only answered after the blocking call finished"
     )
@@ -294,13 +308,10 @@ def test_match_cache_hit_does_not_block_live_while_scorer_holds_generation_lock(
                 client.post("/api/matches", json=second_profile)
             )
             await asyncio.sleep(0.01)
-            began = time.perf_counter()
-            live = await client.get("/api/health")
-            elapsed = time.perf_counter() - began
-            assert live.status_code == 200
-            assert elapsed < 0.25
-            assert not gate.finished.is_set()
-            gate.release.set()
+            try:
+                await _probe_health(client, gate, "/api/matches (two requests)")
+            finally:
+                gate.release.set()
             first_response, second_response = await asyncio.gather(first, second)
             assert first_response.status_code == 200
             assert second_response.status_code == 200

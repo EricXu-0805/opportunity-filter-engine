@@ -344,24 +344,27 @@ def test_a_parameter_holding_a_newline_is_keyed_by_its_own_template():
 
 
 @pytest.mark.parametrize("source", [None, "uiuc_sro"])
-def test_a_long_interest_chip_with_a_newline_is_keyed_quickly_or_shown_in_english(source):
-    """The review's repro: the chip is echoed whole in "Matches your interests",
-    with our ending when the record's keywords are ours (M155)."""
+def test_long_interest_chips_with_a_newline_are_keyed_quickly_or_shown_in_english(source):
+    """The review's repro: the chips are echoed in "Matches your interests",
+    with our ending when the record's keywords are ours (M155). No line names a
+    chip of more than 300 characters (M172), so the long line here names
+    several long chips."""
     record = {"id": "r1", "title": "ML lab", "opportunity_type": "research",
               "keywords": ["machine learning"], "description_clean": "We study machine learning.",
               "eligibility": {}}
     if source:
         record.update(source=source, source_type="summer_program")
-    for repeats, keyed in ((100, True), (4000, False)):
-        chip = "machine learning" + " also works on" * repeats + "\nx"
-        profile = {"year": "junior", "major": "Computer Science", "desired_fields": [chip],
+    for count, keyed in ((5, True), (8, False)):
+        chips = [f"machine learning{' also works on' * 19}\nx{i}" for i in range(count)]
+        profile = {"year": "junior", "major": "Computer Science", "desired_fields": chips,
                    "seeking_type": ["research"], "experience_level": "some"}
         result = rank_opportunity(profile, record)
-        line = f"Matches your interests: {chip}{'' if source else _OUR_TOPICS}"
+        terms = ", ".join(sorted(chips))
+        line = f"Matches your interests: {terms}{'' if source else _OUR_TOPICS}"
         assert line in result.reasons_fit
         keys = rk.reason_keys(result.reasons_fit, "fit", record=record)
         key = "interests_match" if source else "interests_match_ours"
-        expected = {"key": key, "params": {"terms": chip}} if keyed else None
+        expected = {"key": key, "params": {"terms": terms}} if keyed else None
         assert keys[result.reasons_fit.index(line)] == expected
         seconds, _ = _slowest_keying(result.reasons_fit, "fit")
         assert seconds < _PER_LINE_SECONDS, f"{seconds:.3f}s"

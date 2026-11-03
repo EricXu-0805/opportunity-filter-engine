@@ -308,6 +308,7 @@ def target_shards(shard: str) -> tuple[str, ...]:
 # cancels a manual one already in progress, and a manual run defers to any.
 PRODUCTION_EVENT = "schedule"
 _REFRESH_BRANCH = re.compile(r"auto/refresh-data-([0-9]+)(?:-r[0-9]+)?")
+_SHARD_DIR = "data/processed/shards/"
 
 
 @dataclass(frozen=True)
@@ -427,20 +428,35 @@ def alert_decision(event_name: str, run_id: int, job_status: str, guard_outcome:
     return AlertDecision(True)
 
 
-def superseded_refresh_prs(prs: list, run_id: int) -> list[int]:
-    """Open data-refresh PRs that runs older than ``run_id`` left behind.
+def superseded_refresh_prs(prs: list, run_id: int, published: set[str]) -> list[int]:
+    """Open data-refresh PRs from runs older than ``run_id`` that this run supersedes.
 
-    ``prs`` is ``gh pr list --json number,headRefName`` output. A refresh
-    closes these before opening its own PR. It used to close every open
+    ``prs`` is ``gh pr list --json number,headRefName,files,changedFiles``
+    output and ``published`` the shards this run publishes. A refresh closes
+    these before opening its own PR. It used to close every open
     auto/refresh-data-* PR, newer runs' included; a branch names the run that
     opened it, and a run's id grows with the time it was created.
+
+    Comparing run ids was safe only while every run rewrote every school's
+    shard. --only-shards (#722) broke that premise: a run writes only the
+    shards it publishes, and on 2026-10-31 a run that published 22 schools
+    closed #1174, which held 15 other schools' scrape. So a PR closes only
+    when every shard file it changes is one of ``published``; the shared
+    ledgers do not count. A PR whose file list is incomplete stays open: gh
+    lists at most 100 files, and an unlisted one could be a shard.
     """
     if not isinstance(prs, list):
         raise ValueError("expected a list of pull requests")
+    replaced = {f"{_SHARD_DIR}{shard}.json" for shard in published}
     stale = []
     for pr in prs:
         match = _REFRESH_BRANCH.fullmatch(str(pr.get("headRefName", "")))
-        if match and int(match.group(1)) < run_id:
+        if not match or int(match.group(1)) >= run_id:
+            continue
+        files = pr.get("files")
+        if not isinstance(files, list) or pr.get("changedFiles") != len(files):
+            continue
+        if all(entry["path"] in replaced for entry in files if entry["path"].startswith(_SHARD_DIR)):
             stale.append(int(pr["number"]))
     return sorted(stale)
 
@@ -497,7 +513,8 @@ def main() -> int:
     group.add_argument(
         "--superseded-prs",
         action="store_true",
-        help="Print the open refresh PRs older runs left, from gh pr list JSON on stdin (needs --run-id)",
+        help="Print the open refresh PRs older runs left whose shards this run publishes, "
+             "from gh pr list JSON on stdin (needs --run-id, --published and --retained-file)",
     )
     parser.add_argument("--event", help="This run's github.event_name")
     parser.add_argument("--run-id", type=int, help="This run's github.run_id")
@@ -507,6 +524,11 @@ def main() -> int:
     )
     parser.add_argument("--job-status", help="This run's job.status: success, failure or cancelled")
     parser.add_argument("--guard", help="The overlap guard step's outcome output; empty when it wrote none")
+    parser.add_argument("--published", help="Comma-separated shards this run publishes")
+    parser.add_argument(
+        "--retained-file",
+        help="File holding the comma-separated shards whose committed copy the split kept (shrink guard)",
+    )
     parser.add_argument(
         "--allow-full",
         action="store_true",
@@ -543,10 +565,16 @@ def main() -> int:
             parser.error("--alert needs --event, --run-id, --job-status and --runs")
         return _alert_cli(args.event, args.run_id, args.job_status, args.guard or "", args.runs)
     if args.superseded_prs:
-        if args.run_id is None:
-            parser.error("--superseded-prs needs --run-id")
+        if args.run_id is None or args.published is None or args.retained_file is None:
+            parser.error("--superseded-prs needs --run-id, --published and --retained-file")
         try:
-            stale = superseded_refresh_prs(json.load(sys.stdin), args.run_id)
+            kept = set(Path(args.retained_file).read_text(encoding="utf-8").strip().split(","))
+        except OSError as exc:
+            parser.error(f"unreadable list of retained shards: {exc}")
+        # A shard the split kept from main is not published, though $TARGETS names it.
+        published = {shard for shard in args.published.split(",") if shard} - kept
+        try:
+            stale = superseded_refresh_prs(json.load(sys.stdin), args.run_id, published)
         except (ValueError, TypeError, KeyError, AttributeError) as exc:
             parser.error(f"unreadable pull request list: {exc}")
         for number in stale:

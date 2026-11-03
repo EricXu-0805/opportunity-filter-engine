@@ -154,6 +154,26 @@ def test_illinois_experts_concepts_are_not_their_work_in_the_email():
     assert "porcine sperm" not in _email_surfaces(served)
 
 
+def test_directory_keywords_are_not_their_work_in_the_email(monkeypatch):
+    """M166: the UIUC WIGG directory's keyword list was the opener's "your work
+    on ..." for 223 rows, as the stated research text and as stated keywords;
+    the email no longer says it is what the professor works on."""
+    import src.collectors.uiuc_json_faculty as wigg
+    from backend.data_loader import _sanitize_opportunity
+
+    person = {"fullName": "Avery Example", "email": "person1@example.edu", "primaryTitle": "Professor",
+              "profileUrl": "https://ahs.example.edu/directory/profile/person1",
+              "primaryOffice": "Speech and Hearing Science", "keywords": ["Vocal Fatigue", "Room Acoustics"],
+              "jobProfiles": [{"jobType": "Faculty"}]}
+    monkeypatch.setattr(wigg, "_fetch_json", lambda url: {"people": [person]})
+    [row] = wigg.fetch_ahs()
+    served = _sanitize_opportunity(row)
+    assert _stated_keywords(served) == []
+    assert _brief_keywords(project_public_detail(served)) == []
+    surfaces = _email_surfaces(served)
+    assert "vocal fatigue" not in surfaces and "room acoustics" not in surfaces
+
+
 @pytest.mark.parametrize("opp", [
     *(_record(*value) for value in OUR_TAGS.values()),
     _record("illinois_research_programs", "campus_program", discovered=True),

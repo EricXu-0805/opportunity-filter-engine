@@ -14,6 +14,7 @@ an empty one passes vacuously — see TestAssembleFloor.
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import sys
@@ -200,6 +201,23 @@ def test_target_only_shrink_retains_one_shard_without_blocking_the_others(tmp_pa
     assert counts["alpha"] == 180
 
 
+@pytest.mark.parametrize(("rescraped", "kept"), [(10, "beta,gamma"), (190, "")])
+def test_split_cli_records_the_shards_the_guard_kept(tmp_path, monkeypatch, rescraped, kept):
+    """The refresh reads this record so it does not count a kept shard as published."""
+    import shard_corpus
+
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    for slug in ("beta", "gamma"):
+        (sd / f"{slug}.json").write_text(json.dumps(_recs(slug, 200)), encoding="utf-8")
+    _write(wf, _recs("alpha", 180) + _recs("beta", rescraped) + _recs("gamma", rescraped))
+    monkeypatch.setattr(shard_corpus, "split", functools.partial(shard_corpus.split, wf, sd))
+    record = tmp_path / "retained-shards"
+
+    assert shard_corpus.main(["split", "--only-shards", "alpha,beta,gamma", "--retained-file", str(record)]) == 0
+    assert record.read_text(encoding="utf-8") == kept
+
+
 def test_retained_shard_gets_no_publish_timestamp(tmp_path, monkeypatch):
     """A retained shard is NOT a publish. Stamping one would let a
     permanently broken school look freshly published every week."""
@@ -233,6 +251,114 @@ def test_record_school_slug_cannot_escape_shards_directory(tmp_path):
         split(wf, sd)
 
     assert not (tmp_path / "escape.json").exists()
+
+
+_OPENALEX = {"keywords": "derived:openalex_topics"}
+_TOPICS = ["coral reef ecology", "ocean acidification"]
+
+
+def _faculty(rid: str, keywords: list[str], stamps: dict | None = None) -> dict:
+    row = {"school": "alpha", "id": rid, "source_type": "faculty_research",
+           "keywords": keywords, "metadata": {"is_active": True}}
+    if stamps:
+        row["metadata"]["inferred_fields"] = dict(stamps)
+    return row
+
+
+def _split_alpha(tmp_path: Path, committed: list[dict], fresh: list[dict]) -> dict[str, dict]:
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    (sd / "alpha.json").write_text(json.dumps(committed), encoding="utf-8")
+    _write(wf, fresh)
+    split(wf, sd, only_shards={"alpha"})
+    return {r["id"]: r for r in json.loads((sd / "alpha.json").read_text(encoding="utf-8"))}
+
+
+def test_split_keeps_a_keyword_stamp_the_merge_dropped(tmp_path, capsys):
+    """A refresh that carries a faculty row's keywords and drops their stamp
+    turns a topic we inferred into one the professor states: every reader takes
+    an unstamped faculty keyword as the page's own words. The 2026-08-19
+    refresh did this to 100 Bowdoin rows with the keywords byte-identical, and
+    the 2026-08-28 one to a row whose only change was a trailing period."""
+    committed = [
+        _faculty("alpha-1", _TOPICS, _OPENALEX),
+        _faculty("alpha-2", ["Coral reef ecology.", "waves, tides, and currents"], _OPENALEX),
+        _faculty("alpha-3", _TOPICS, _OPENALEX),
+    ]
+    fresh = [
+        _faculty("alpha-1", list(reversed(_TOPICS))),
+        _faculty("alpha-2", ["coral reef ecology", "Waves / tides / and currents"]),
+        {"school": "alpha", "id": "alpha-3", "source_type": "faculty_research",
+         "keywords": list(_TOPICS)},
+    ]
+    rows = _split_alpha(tmp_path, committed, fresh)
+
+    for rid in ("alpha-1", "alpha-2", "alpha-3"):
+        assert rows[rid]["metadata"]["inferred_fields"] == _OPENALEX, rid
+    assert rows["alpha-2"]["keywords"] == ["coral reef ecology", "Waves / tides / and currents"]
+    assert ("kept the committed keyword stamp on 3 alpha faculty row(s)"
+            in capsys.readouterr().err)
+
+
+@pytest.mark.parametrize("fresh_keywords", [
+    ["coral reef ecology", "sediment transport"],
+    ["coral reef ecology"],
+    _TOPICS + ["sediment transport"],
+    [],
+])
+def test_split_lets_the_stamp_go_when_a_keyword_changed(tmp_path, capsys, fresh_keywords):
+    """New keywords came from somewhere else (a page the scrape now reads, or
+    a remediation that emptied them): the old stamp does not describe them."""
+    rows = _split_alpha(tmp_path, [_faculty("alpha-1", _TOPICS, _OPENALEX)],
+                        [_faculty("alpha-1", list(fresh_keywords))])
+
+    assert "inferred_fields" not in rows["alpha-1"]["metadata"]
+    assert "keyword stamp" not in capsys.readouterr().err
+
+
+def test_split_never_stamps_a_row_whose_committed_version_had_none(tmp_path, capsys):
+    committed = [
+        _faculty("alpha-1", _TOPICS),
+        _faculty("alpha-2", _TOPICS, _OPENALEX),
+        _faculty("alpha-4", ["sediment transport"], _OPENALEX),
+    ]
+    fresh = [
+        _faculty("alpha-1", list(_TOPICS)),
+        # Same keywords as a stamped row, but its own committed row has none.
+        _faculty("alpha-3", list(_TOPICS)),
+        # A committed stamp whose keywords no longer match leaves the row as written.
+        {"school": "alpha", "id": "alpha-4", "source_type": "faculty_research",
+         "keywords": list(_TOPICS)},
+    ]
+    rows = _split_alpha(tmp_path, committed, fresh)
+
+    assert "inferred_fields" not in rows["alpha-1"]["metadata"]
+    assert "inferred_fields" not in rows["alpha-3"]["metadata"]
+    assert "metadata" not in rows["alpha-4"]
+    assert "keyword stamp" not in capsys.readouterr().err
+
+
+def test_split_restores_only_the_keyword_stamp_of_faculty_rows(tmp_path):
+    """Keywords only, faculty only, and a stamp the new row carries wins."""
+    committed = [
+        _faculty("alpha-1", _TOPICS, {**_OPENALEX, "paid": "rule:stipend_phrase"}),
+        _faculty("alpha-2", _TOPICS, _OPENALEX),
+        {"school": "alpha", "id": "alpha-3", "source_type": "campus_program",
+         "keywords": list(_TOPICS),
+         "metadata": {"inferred_fields": {"keywords": "rule:keyword_bank"}}},
+    ]
+    fresh = [
+        _faculty("alpha-1", list(_TOPICS)),
+        _faculty("alpha-2", list(_TOPICS), {"keywords": "derived:illinois_experts_concepts"}),
+        {"school": "alpha", "id": "alpha-3", "source_type": "campus_program",
+         "keywords": list(_TOPICS), "metadata": {}},
+    ]
+    rows = _split_alpha(tmp_path, committed, fresh)
+
+    assert rows["alpha-1"]["metadata"]["inferred_fields"] == _OPENALEX
+    assert rows["alpha-2"]["metadata"]["inferred_fields"] == {
+        "keywords": "derived:illinois_experts_concepts"}
+    assert rows["alpha-3"]["metadata"] == {}
 
 
 class TestAssembleFloor:

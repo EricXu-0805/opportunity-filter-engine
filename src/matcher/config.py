@@ -362,7 +362,22 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # against topics we inferred, and when they carry an inference stamp the
 # similarity line no longer gives the row a "focus area" (checklist M155).
 # Sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "29"
+# 30: a "Matches your interests" line, plain or ending "based on topics we
+# inferred", names at most eight of the chips it matched (`_LINE_TERMS`), the
+# first in alphabetical order; the score still counts every match (checklist
+# M172). Sentences no hashed knob sees.
+# 31: a chip of more than 300 characters (`_TERM_MAX`) is a passage: it counts
+# toward the score as before, but no "Matches your interests" line names it
+# (checklist M172). Sentences no hashed knob sees.
+# 32: when a row's keywords are ours by the rule of 29 and unstamped (a
+# listing's tags), no line names them as the row's work or focus: the
+# similarity line and the research-summary headline that would list them are
+# not written (checklist M171). Sentences no hashed knob sees.
+# 33: a pi_name the detail page removes (an inference stamp, or a page scan on
+# a campus program row) names no one in a line: the lab label falls back to the
+# lab or department, and the headline neither names it nor is gated on it
+# (checklist M171). Sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "33"
 
 
 def _matcher_fingerprint() -> str:

@@ -436,6 +436,16 @@ _BASE_SHA_RE = re.compile(r"[0-9a-f]{40}")
 _RUN_NUMBER_RE = re.compile(r"[1-9][0-9]*")
 
 
+def _run_start_corpus(path: Path) -> tuple[frozenset[str], dict[str, dict]]:
+    """Every record id in the corpus file at ``path``, and the archive stamps of
+    the duplicates the same-person collapse keeps there; none when it is absent."""
+    if not path.exists():
+        return frozenset(), {}
+    with open(path, encoding="utf-8") as f:
+        rows = [o for o in json.load(f) if isinstance(o, dict) and o.get("id")]
+    return frozenset(o["id"] for o in rows), faculty_graph.duplicate_archive_stamps(rows)
+
+
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
     """Drop the oldest entries when the JSONL grows past ``max_entries``.
 
@@ -637,6 +647,10 @@ def refresh_all(
     sharded = national or schools is not None
     # A certificate rejected in an earlier call is not this run's evidence.
     reset_certificate_circuit()
+    # Ids a student may already hold (saved, linked, emailed): the corpus before
+    # any collector merges into it. The same-person collapse archives these, and
+    # needs the stamps of the rows it archived before: a merge replaces them.
+    published_ids, archive_stamps = _run_start_corpus(PROCESSED_FILE)
 
     def selected(school: str | None) -> bool:
         if not sharded:
@@ -1927,23 +1941,28 @@ def refresh_all(
         # A kept row takes another unit's sighting only through a profile page
         # the retirement pass above counted as observed.
         collapse = collapse_same_person_faculty(
-            all_opps, person_pages=observed_profile_pages(faculty_fetched))
+            all_opps, person_pages=observed_profile_pages(faculty_fetched),
+            published_ids=published_ids, archived=archive_stamps)
         all_opps = collapse["kept"]
         removed_dupes = sum(collapse["removed_by_school"].values())
+        archived_dupes = sum(collapse["archived_by_school"].values())
         final_uiuc_dq = enforce_final_shared_keyword_invariant(all_opps)
         summary["sources"]["faculty_hygiene"] = {
             "keywords_cleaned": kw_cleaned,
             "duplicates_removed": removed_dupes,
             "removed_by_school": collapse["removed_by_school"],
+            "archived_by_school": collapse["archived_by_school"],
             "shared_inbox_nulled": collapse["nulled_by_school"],
             **final_uiuc_dq,
             "status": "ok",
         }
         logger.info(
             "faculty_hygiene: %d keyword list(s) cleaned, %d duplicate person(s) "
-            "removed, %d post-cleanup shared set(s) demoted",
+            "removed, %d published duplicate(s) newly archived, %d post-cleanup "
+            "shared set(s) demoted",
             kw_cleaned,
             removed_dupes,
+            archived_dupes,
             final_uiuc_dq["shared_keyword_demoted"],
         )
 

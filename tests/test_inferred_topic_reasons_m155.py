@@ -21,7 +21,8 @@ from src.matcher.config import MATCHER_VERSION
 from src.matcher.ranker import _OUR_TOPICS, _named_re, _repeat_re, rank_opportunity, score_upside
 from src.matcher.reason_keys import reason_key
 
-STAMPS = ["derived:openalex_topics", "derived:illinois_experts_concepts", "tag:department_field"]
+STAMPS = ["derived:openalex_topics", "derived:illinois_experts_concepts", "derived:illinois_directory_keywords",
+          "tag:department_field"]
 
 
 def _faculty(keywords, *, stamp=None, stated=""):
@@ -276,37 +277,49 @@ def test_words_no_test_reads_leave_an_ending_that_still_holds(chip, keyword, tit
     assert _OUR_TOPICS == " \u2014 based on topics we inferred"
 
 
-@pytest.mark.parametrize(("chip", "plain"), [
-    ("robotics " + "y" * 291, True),
-    ("robotics " + "y" * 292, False),
-    (" ".join(["robotics"] + ["lab"] * 19), True),
-    (" ".join(["robotics"] + ["lab"] * 20), False),
-    (" " + " ".join(["robotics"] + ["lab"] * 19) + " ", True),
-    ("\u3000".join(["robotics"] + ["lab"] * 20), False),
-    (" ".join(["robotics"] + ["lab"] * 16 + ["end-to-end"]), True),
-    (" ".join(["robotics"] + ["lab"] * 17 + ["end-to-end"]), False),
+def _interest_lines(fit):
+    return [reason for reason in fit if reason.startswith("Matches your interests")]
+
+
+@pytest.mark.parametrize(("chip", "ending"), [
+    ("robotics " + "y" * 291, ""),
+    ("robotics " + "y" * 292, None),
+    (" ".join(["robotics"] + ["lab"] * 19), ""),
+    (" ".join(["robotics"] + ["lab"] * 20), _OUR_TOPICS),
+    (" " + " ".join(["robotics"] + ["lab"] * 19) + " ", ""),
+    ("\u3000".join(["robotics"] + ["lab"] * 20), _OUR_TOPICS),
+    (" ".join(["robotics"] + ["lab"] * 16 + ["end-to-end"]), ""),
+    (" ".join(["robotics"] + ["lab"] * 17 + ["end-to-end"]), _OUR_TOPICS),
 ], ids=["300 characters", "301 characters", "20 words", "21 words", "20 words between spaces",
         "21 words joined by ideographic spaces", "20 pieces with a hyphen", "21 pieces with a hyphen"])
-def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, plain):
-    """Words are counted after the split on spaces and hyphens."""
+def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, ending):
+    """Words are counted after the split on spaces and hyphens. A chip past
+    20 words keeps the ending. One past 300 characters is a passage, which no
+    line names, with the ending or without (M172)."""
     _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": [chip]},
                              _row("robotics", "", " ".join(chip.replace("\u3000", " ").split())), precomputed_sim=0.0)
-    assert (f"Matches your interests: {chip}" in fit) is plain
-    assert (f"Matches your interests: {chip}{_OUR_TOPICS}" in fit) is not plain
+    assert _interest_lines(fit) == ([] if ending is None else [f"Matches your interests: {chip}{ending}"])
 
 
-@pytest.mark.parametrize(("chip", "kept"), [("robotics " + "y" * 291, False), ("robotics " + "y" * 292, True)],
+@pytest.mark.parametrize(("chip", "named"), [("robotics " + "y" * 291, True), ("robotics " + "y" * 292, False)],
                          ids=["300 characters", "301 characters"])
-def test_a_chip_past_300_characters_is_never_a_repeat(chip, kept):
+def test_a_chip_past_300_characters_is_never_a_repeat(chip, named):
+    """A chip of 300 characters is named, and dropped as a repeat of the lab
+    line; one past 300 has no line to repeat (M172)."""
     profile = {"research_interests_text": chip, "desired_fields": [chip]}
-    _, fit, _ = score_upside(profile, _faculty([chip, "robotics"]), precomputed_sim=0.5)
+    row = _faculty([chip, "robotics"])
+    _, fit, _ = score_upside(profile, row, precomputed_sim=0.0)
+    assert _interest_lines(fit) == ([f"Matches your interests: {chip}"] if named else [])
+    _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
     assert "closely matches" in fit[-1]
-    assert (f"Matches your interests: {chip}" in fit) is kept
+    assert _interest_lines(fit) == []
 
 
 def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
     """_named_re and _repeat_re keep one pattern per chip, and a chip can run
-    to 60,000 characters; neither cache holds one past _TERM_MAX."""
+    to 60,000 characters; no line names one past _TERM_MAX (M172), so
+    neither cache holds one. The faculty row writes the similarity line: a
+    listing's tags write none (M171)."""
     chip = " ".join(["robotics"] * 40)
     row = _listing("simplify_internships", "internship", title="Summer Intern", keywords=("robotics",))
     row["research_areas"] = chip
@@ -314,7 +327,8 @@ def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
     _repeat_re.cache_clear()
     profile = {"research_interests_text": "robotics", "desired_fields": [chip]}
     _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
-    assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
+    assert _interest_lines(fit) == []
+    _, fit, _ = score_upside(profile, _faculty(["robotics"]), precomputed_sim=0.5)
     assert "closely matches" in fit[-1]
     assert _named_re.cache_info().currsize == _repeat_re.cache_info().currsize == 0
 
@@ -322,34 +336,30 @@ def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
 ROBOTICS_AND_CV = {"research_interests_text": "perception for drones", "desired_fields": ["robotics", "computer vision"]}
 
 
-@pytest.mark.parametrize(("keywords", "kept", "dropped"), [
-    (("robotics", "embedded systems", "aircraft", "computer vision"),
-     f"Matches your interests: computer vision{_OUR_TOPICS}", "Matches your interests: robotics"),
-    (("computer vision", "embedded systems", "aircraft", "robotics"),
-     "Matches your interests: robotics", f"Matches your interests: computer vision{_OUR_TOPICS}"),
+@pytest.mark.parametrize("keywords", [
+    ("robotics", "embedded systems", "aircraft", "computer vision"),
+    ("computer vision", "embedded systems", "aircraft", "robotics"),
 ])
-def test_each_interest_line_is_dropped_only_as_a_repeat_of_its_own_chips(keywords, kept, dropped):
-    """"…also works on" names the first three tags: the line whose chips it
-    names goes, and the other stays."""
+def test_a_listings_tags_drop_neither_interest_line(keywords):
+    """"…also works on" named the first three tags and the line whose chips
+    it named went. The tags are ours, so no line names them (M171), and both
+    interest lines stay."""
     row = _listing("simplify_internships", "internship", title="Robotics Software Intern", keywords=keywords)
     _, fit, _ = score_upside(ROBOTICS_AND_CV, row, precomputed_sim=0.5)
-    assert "Prof. Pat Lee also works on" in fit[-1]
-    assert kept in fit and dropped not in fit
+    assert fit[-2:] == ["Matches your interests: robotics", f"Matches your interests: computer vision{_OUR_TOPICS}"]
 
 
-@pytest.mark.parametrize(("chip", "title", "keywords"), [
-    ("ai", "AI Engineer Intern", ("robotics", "aircraft", "embedded systems", "ai", "computer vision")),
-    ("art", "Art Studio Intern", ("smart grid", "embedded systems", "robotics", "art", "computer vision")),
+@pytest.mark.parametrize(("chip", "keywords"), [
+    ("ai", ("robotics", "aircraft", "embedded systems", "ai")),
+    ("art", ("smart grid", "embedded systems", "robotics", "art")),
 ])
-def test_a_chip_inside_another_word_of_the_similarity_line_keeps_its_line(chip, title, keywords):
+def test_a_chip_inside_another_word_of_the_similarity_line_keeps_its_line(chip, keywords):
     """Review round 2: "ai" is inside "aircraft", which the line names, and
     "art" inside "smart"."""
-    row = _listing("simplify_internships", "internship", title=title, keywords=keywords)
-    profile = {"research_interests_text": "perception for drones", "desired_fields": [chip, "computer vision"]}
-    _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
+    profile = {"research_interests_text": "perception for drones", "desired_fields": [chip]}
+    _, fit, _ = score_upside(profile, _faculty(keywords), precomputed_sim=0.5)
     assert "also works on" in fit[-1]
     assert f"Matches your interests: {chip}" in fit
-    assert f"Matches your interests: computer vision{_OUR_TOPICS}" in fit
 
 
 @pytest.mark.parametrize(("chip", "keywords", "kept"), [
@@ -369,38 +379,42 @@ def test_the_bare_line_repeats_the_chip_or_its_plural_only(chip, keywords, kept)
     assert (f"Matches your interests: {chip}" in fit) is kept
 
 
+def _faculty_lab(keywords, *, stamp=None, stated=""):
+    """A faculty row with a lab, whose summary heads its card: a listing's
+    tags write no summary (M171)."""
+    row = _faculty(keywords, stamp=stamp, stated=stated)
+    row["lab_or_program"] = "Field Robotics Lab"
+    return row
+
+
 @pytest.mark.parametrize("fields", [["robotics", "computer vision"], ["robotics"]])
 def test_the_lab_summary_follows_the_interest_lines_and_precedes_the_rest(fields):
     """Not between the two interest lines, and right after a single one."""
-    row = _listing("nsf_reu", "summer_program", title="Robotics REU",
-                   keywords=("embedded systems", "aircraft", "sensors", "robotics", "computer vision"))
-    row["lab_or_program"] = "Field Robotics Lab"
+    row = _faculty_lab(("embedded systems", "aircraft", "sensors", "robotics", "computer vision"),
+                       stamp="derived:openalex_topics", stated="Robotics")
     profile = {"desired_fields": fields, "research_interests_text": "perception for drones"}
     fit = rank_opportunity(profile, row, precomputed_sim=0.5).reasons_fit
     interest = ["Matches your interests: robotics", f"Matches your interests: computer vision{_OUR_TOPICS}"]
     assert fit[:len(fields) + 2] == [
         *interest[:len(fields)],
-        "Pat Lee's Field Robotics Lab — embedded systems, aircraft, sensors",
-        "Prof. Pat Lee also works on embedded systems, aircraft, sensors",
+        "Pat Lee's Field Robotics Lab (Department of Physics)",
+        "Your research interests align with topics we inferred for Pat Lee",
     ]
 
 
 def test_the_lab_summary_follows_two_interest_lines_and_nothing_else():
-    row = _listing("nsf_reu", "summer_program", title="Robotics REU", keywords=("robotics", "computer vision"))
-    row["lab_or_program"] = "Field Robotics Lab"
+    row = _faculty_lab(("robotics", "computer vision"), stamp="derived:openalex_topics", stated="Robotics")
     fit = rank_opportunity({"desired_fields": ["robotics", "computer vision"]}, row).reasons_fit
     assert fit[:3] == [
         "Matches your interests: robotics",
         f"Matches your interests: computer vision{_OUR_TOPICS}",
-        "Pat Lee's Field Robotics Lab — robotics, computer vision",
+        "Pat Lee's Field Robotics Lab (Department of Physics)",
     ]
 
 
 def test_a_type_match_line_is_not_an_interest_line():
     """"Matches your interest in research" does not hold the summary back."""
-    row = _listing("nsf_reu", "summer_program", title="Robotics REU",
-                   keywords=("embedded systems", "aircraft", "sensors", "robotics", "computer vision"))
-    row["lab_or_program"] = "Field Robotics Lab"
+    row = _faculty_lab(("embedded systems", "aircraft", "sensors", "robotics", "computer vision"))
     fit = rank_opportunity({"desired_fields": ["robotics"], "seeking_type": ["research"]}, row).reasons_fit
     assert fit[:3] == [
         "Matches your interests: robotics",
@@ -440,7 +454,9 @@ def test_a_chip_inside_the_focus_area_line_keeps_its_own_line():
     """"research" is inside "Your research interests align with ...'s focus area",
     which names no topic."""
     profile = {"research_interests_text": "research", "desired_fields": ["research"]}
-    row = _listing("illinois_research_programs", "campus_program", keywords=("research",))
+    # An NSF award states its PI; a campus program's pi_name names no one in a
+    # line (M171).
+    row = _listing("nsf_reu", "summer_program", keywords=("research",))
     _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
     assert "Matches your interests: research" in fit
     assert "Your research interests align with Prof. Pat Lee's focus area" in fit
@@ -451,7 +467,7 @@ def test_a_chip_inside_the_focus_area_line_keeps_its_own_line():
 def test_unstamped_keywords_that_name_no_topic_keep_the_focus_area(keywords):
     """display_kw is empty without a stamp: the similarity rests on the
     listing's own description."""
-    row = _listing("illinois_research_programs", "campus_program", keywords=keywords)
+    row = _listing("nsf_reu", "summer_program", keywords=keywords)
     _, fit, _ = score_upside({"research_interests_text": "neural decoding"}, row, precomputed_sim=0.6)
     assert _keyed(fit, "Your research interests") == (
         "Your research interests align with Prof. Pat Lee's focus area", "interests_lab_focus")

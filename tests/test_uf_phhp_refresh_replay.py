@@ -103,8 +103,8 @@ def test_the_next_refresh_lists_every_phhp_person_once(monkeypatch, tmp_path):
     counts = {s: (sum(1 for r in phhp if _short(r) == s and _active(r)),
                   sum(1 for r in phhp if _short(r) == s and not _active(r)))
               for s in SHORTS}
-    # (active, retired) per short.
-    assert counts == {"phhp": (79, 12), "phhp2": (72, 9), "phhp3": (11, 5),
+    # (active, inactive) per short.
+    assert counts == {"phhp": (79, 20), "phhp2": (72, 21), "phhp3": (11, 9),
                       "phhp4": (31, 0), "phhp5": (26, 0)}
 
     active = [r for r in phhp if _active(r)]
@@ -125,13 +125,15 @@ def test_the_next_refresh_lists_every_phhp_person_once(monkeypatch, tmp_path):
     kept = [i for i in stored if i in by_id and _active(by_id[i])]
     assert len(kept) == 82
     # The 24 listed again under a new id with the same address: retired, then
-    # dropped as a tombstone of the live row that carries the address now.
-    gone = [r for i, r in stored.items() if i not in by_id]
-    assert len(gone) == 24
-    assert all(emails[r["contact_email"]] == 1 for r in gone)
-    retired = sorted(r["pi_name"] for r in phhp if not _active(r))
+    # kept as a tombstone naming the live row that carries the address now.
+    assert [i for i in stored if i not in by_id] == []
+    tombs = [by_id[i] for i in stored if not _active(by_id[i]) and by_id[i]["metadata"].get("duplicate_of")]
+    assert len(tombs) == 24
+    assert all(emails[r["contact_email"]] == 1 for r in tombs)
+    assert all(_active(by_id[r["metadata"]["duplicate_of"]]) for r in tombs)
+    retired = sorted(r["pi_name"] for r in phhp if not _active(r) and not r["metadata"].get("duplicate_of"))
     assert len(retired) == 26
-    assert len(kept) + len(gone) + len(retired) == len(stored) == 132
+    assert len(kept) + len(tombs) + len(retired) == len(stored) == 132
     assert {"Marie N Séraphin", "J. Glenn Morris"} <= set(retired)
     assert all(r["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
                for r in phhp if not _active(r))
@@ -182,7 +184,11 @@ def test_a_college_page_that_does_not_load_retires_nobody(monkeypatch, tmp_path)
         assert ledger[unit]["coverage"]["partial_render_rows"] == 480
         assert unit_retirement_authority(ledger[unit], 0) == (
             False, "blocked_partial_render_rows")
-    assert all(_active(r) for r in corpus if _short(r) in SHORTS)
+    # Retired: nobody. A stored row the run lists again under a new id with its
+    # address is kept inactive, naming that row.
+    inactive = [r for r in corpus if _short(r) in SHORTS and not _active(r)]
+    assert len(inactive) == 23
+    assert {r["metadata"]["deactivation_reason"] for r in inactive} == {faculty_graph.DUPLICATE_REASON}
     assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
 
 

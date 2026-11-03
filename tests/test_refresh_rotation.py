@@ -445,6 +445,29 @@ class TestAlertCli:
         assert out.returncode != 0
 
 
+# #1174 as gh lists it: the Friday run's 15 school files and the five files
+# every refresh rewrites. The Saturday run that closed it published 22 others.
+_SHARED_FILES = (
+    "data/processed/collector_status.json", "data/processed/collector_status_history.jsonl",
+    "data/processed/professor_tracking.json", "data/processed/source_health.json",
+    "frontend/src/lib/school-stats.json",
+)
+_FRIDAY = ("cincinnati", "clemson", "cmu", "columbia", "jhu", "miami", "northwestern", "princeton",
+           "stanford", "ucf", "ucsc", "ucsd", "uf", "unl", "washu")
+_SATURDAY = ("barnard", "bates", "brynmawr", "caltech", "casewestern", "colby", "colostate", "gatech",
+             "lsu", "neu", "osu", "pomona", "sbu", "swarthmore", "uchicago", "uci", "ucsb", "umass",
+             "umich", "upenn", "utdallas", "utk")
+_FRIDAY_RUN, _SATURDAY_RUN, _NEXT_FRIDAY_RUN = 41057155449, 41199920663, 41500000000
+
+
+def _data_pr(number, run_id, shards, *, changed=None, listed=None):
+    """A data PR as gh pr list --json number,headRefName,files,changedFiles answers it."""
+    paths = [*_SHARED_FILES, *(f"data/processed/shards/{shard}.json" for shard in shards)]
+    files = [{"path": path, "additions": 1, "deletions": 1} for path in paths]
+    return {"number": number, "headRefName": f"auto/refresh-data-{run_id}",
+            "files": files[:listed], "changedFiles": len(files) if changed is None else changed}
+
+
 class TestSupersededRefreshPrs:
     def test_only_older_runs_prs_are_superseded(self):
         prs = [
@@ -458,14 +481,78 @@ class TestSupersededRefreshPrs:
             {"number": 18, "headRefName": "feature/auto/refresh-data-1"},
             {"number": 19, "headRefName": "fix/refresh-guards"},
         ]
-        assert superseded_refresh_prs(prs, 200) == [11, 12]
+        files = _data_pr(0, 0, _FRIDAY)["files"]
+        prs = [{**pr, "files": files, "changedFiles": len(files)} for pr in prs]
+        assert superseded_refresh_prs(prs, 200, set(_FRIDAY)) == [11, 12]
 
-    def test_cli_reads_gh_pr_list_output(self):
-        prs = json.dumps([{"number": 7, "headRefName": "auto/refresh-data-5"},
-                          {"number": 8, "headRefName": "auto/refresh-data-9"}])
-        out = _cli("--superseded-prs", "--run-id", "6", stdin=prs)
+    def test_a_run_that_publishes_other_schools_keeps_an_older_pr(self):
+        # 2026-10-31: the Saturday run closed #1174 because its run was older.
+        pr = _data_pr(1174, _FRIDAY_RUN, _FRIDAY)
+        assert superseded_refresh_prs([pr], _SATURDAY_RUN, set(_SATURDAY)) == []
+
+    def test_a_run_that_publishes_every_shard_of_an_older_pr_closes_it(self):
+        pr = _data_pr(1174, _FRIDAY_RUN, _FRIDAY)
+        assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, set(_FRIDAY)) == [1174]
+        assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, {*_FRIDAY, *_SATURDAY}) == [1174]
+
+    def test_a_shard_this_run_withholds_keeps_it(self):
+        pr = _data_pr(1174, _FRIDAY_RUN, _FRIDAY)
+        assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, set(_FRIDAY) - {"cmu"}) == []
+
+    @pytest.mark.parametrize("pr", [
+        _data_pr(1174, _FRIDAY_RUN, _FRIDAY, changed=21),
+        # gh lists at most 100 files (#1076: 151 changed, 100 listed), so a
+        # full refresh's PR never shows them all.
+        _data_pr(1174, _FRIDAY_RUN, [*_FRIDAY, *_SATURDAY, *(f"s{n}" for n in range(80))], listed=100),
+        {key: value for key, value in _data_pr(1174, _FRIDAY_RUN, _FRIDAY).items() if key != "files"},
+        {key: value for key, value in _data_pr(1174, _FRIDAY_RUN, _FRIDAY).items() if key != "changedFiles"},
+    ], ids=["fewer-files-than-changed", "100-file-page", "no-file-list", "no-changed-count"])
+    def test_an_incomplete_file_list_keeps_it(self, pr):
+        published = {*_FRIDAY, *_SATURDAY, *(f"s{n}" for n in range(80))}
+        assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, published) == []
+
+    def test_a_file_entry_without_a_path_closes_nothing(self, tmp_path):
+        # It could be a shard this run does not publish, so the whole list is refused.
+        pr = _data_pr(1174, _FRIDAY_RUN, _FRIDAY)
+        pr["files"][0] = {"additions": 1, "deletions": 1}
+        record = tmp_path / "retained-shards"
+        record.write_text("")
+        out = _cli("--superseded-prs", "--run-id", str(_NEXT_FRIDAY_RUN), "--published", ",".join(_FRIDAY),
+                   "--retained-file", str(record), stdin=json.dumps([pr]))
+        assert (out.returncode != 0, out.stdout) == (True, "")
+
+    def test_a_pr_that_changes_only_shared_files_is_closed(self):
+        pr = _data_pr(1174, _FRIDAY_RUN, ())
+        assert superseded_refresh_prs([pr], _SATURDAY_RUN, set(_SATURDAY)) == [1174]
+
+    def test_any_other_file_under_the_shard_directory_keeps_it(self):
+        pr = _data_pr(1174, _FRIDAY_RUN, ["cmu/extra", "cmu.json"])
+        assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, set(_FRIDAY)) == []
+
+    def test_cli_reads_gh_pr_list_output(self, tmp_path):
+        prs = json.dumps([_data_pr(7, 5, ["uw", "wisc"]), _data_pr(8, 9, ["uw"]), _data_pr(9, 4, ["yale"])])
+        record = tmp_path / "retained-shards"
+        record.write_text("")
+        out = _cli("--superseded-prs", "--run-id", "6", "--published", "uw,wisc", "--retained-file", str(record),
+                   stdin=prs)
         assert (out.returncode, out.stdout) == (0, "7\n"), out.stderr
-        assert _cli("--superseded-prs", "--run-id", "6", stdin="not json").returncode != 0
+        assert _cli("--superseded-prs", "--run-id", "6", "--published", "uw", "--retained-file", str(record),
+                    stdin="not json").returncode != 0
+        # Without the shards it publishes, it cannot tell what this run supersedes.
+        assert _cli("--superseded-prs", "--run-id", "6", "--retained-file", str(record), stdin=prs).returncode != 0
+
+    def test_cli_leaves_out_the_shards_the_split_kept(self, tmp_path):
+        # The shrink guard kept main's wisc.json and yale.json, so this run publishes only uw.
+        prs = json.dumps([_data_pr(7, 5, ["uw", "wisc"]), _data_pr(8, 5, ["uw"]), _data_pr(9, 5, ["yale"])])
+        record = tmp_path / "retained-shards"
+        record.write_text("wisc,yale")
+        args = ("--superseded-prs", "--run-id", "6", "--published", "uw,wisc,yale")
+        out = _cli(*args, "--retained-file", str(record), stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "8\n"), out.stderr
+        # Without the split's record it cannot tell what was kept, so it closes nothing.
+        for missing in ((), ("--retained-file", str(tmp_path / "absent"))):
+            out = _cli(*args, *missing, stdin=prs)
+            assert (out.returncode != 0, out.stdout) == (True, "")
 
 
 # --- The workflow steps themselves ------------------------------------------
@@ -485,16 +572,26 @@ with open(log_path, "a") as handle:
 if args[:2] == ["pr", "list"]:
     if scenario.get("pr_list_fails"):
         sys.exit(1)
+    if scenario.get("pr_list_hangs"):
+        import time
+        time.sleep(scenario["pr_list_hangs"])
+    # Open PRs unless --state says otherwise, as gh lists them.
+    state = args[args.index("--state") + 1] if "--state" in args else "open"
+    prs = [pr for pr in scenario["prs"] if state == "all" or pr.get("state", "OPEN").lower() == state]
+    if "--json" in args:
+        # Only the fields asked for, as gh answers.
+        fields = args[args.index("--json") + 1].split(",")
+        prs = [{key: pr[key] for key in fields if key in pr} for pr in prs]
     if "--jq" in args:
         import subprocess
-        jq = subprocess.run(["jq", "-r", args[args.index("--jq") + 1]], input=json.dumps(scenario["prs"]),
+        jq = subprocess.run(["jq", "-r", args[args.index("--jq") + 1]], input=json.dumps(prs),
                             capture_output=True, text=True)
         sys.stdout.write(jq.stdout)
         sys.exit(jq.returncode)
-    json.dump(scenario["prs"], sys.stdout)
+    json.dump(prs, sys.stdout)
     sys.exit(0)
 if args[:2] == ["pr", "close"]:
-    sys.exit(0)
+    sys.exit(1 if scenario.get("pr_close_fails") else 0)
 path = next(arg for arg in args if arg.startswith("repos/"))
 if "/contents/scripts/refresh_rotation.py" in path:
     if scenario.get("fetch_fails"):
@@ -797,23 +894,114 @@ class TestAlertStep:
         assert len(mails) == 1
 
 
-def _stale_close_snippet() -> str:
+def _stale_close_snippet(run_id: int = 200, timeout: int | None = None) -> str:
+    """The close of earlier runs' PRs, under the publish step's shell options."""
     script = str(_workflow_step("merge once required checks pass")["run"])
     start = script.index("STALE=$(")
     end = script.index("done\n", start) + len("done\n")
-    return script[start:end].replace("${{ github.run_id }}", "200")
+    snippet = script[start:end].replace("${{ github.run_id }}", str(run_id))
+    if timeout is not None:
+        # A listing that hangs is cut off sooner here than on the runner.
+        snippet, bounded = re.subn(r"\btimeout \d+ gh pr list ", f"timeout {timeout} gh pr list ", snippet)
+        assert bounded == 1, "the listing has no timeout"
+    return "set -euo pipefail\n" + snippet
 
 
 class TestSupersededPrStep:
-    def test_only_older_runs_prs_are_closed(self, fake_gh):
-        prs = [{"number": 11, "headRefName": "auto/refresh-data-100"},
-               {"number": 12, "headRefName": "auto/refresh-data-300"},
-               {"number": 13, "headRefName": "fix/other"}]
-        result, calls = fake_gh(_stale_close_snippet(), {"prs": prs}, cwd=_REPO)
-        assert result.returncode == 0, result.stderr
-        assert [call[2] for call in calls if call[:2] == ["pr", "close"]] == ["11"]
+    @pytest.fixture(autouse=True)
+    def _split_record(self, tmp_path):
+        # What the split writes under $RUNNER_TEMP: the shards whose committed copy it kept.
+        self.record = tmp_path / "retained-shards"
+        self.record.write_text("")
 
-    def test_a_failed_listing_closes_nothing(self, fake_gh):
-        result, calls = fake_gh(_stale_close_snippet(), {"prs": [], "pr_list_fails": True}, cwd=_REPO)
+    def _closed(self, fake_gh, prs, run_id, targets, authorized=None, timeout=None, **scenario):
+        result, calls = fake_gh(_stale_close_snippet(run_id, timeout), {"prs": prs, **scenario}, cwd=_REPO,
+                                AUTHORIZED=",".join(authorized or targets), TARGETS=",".join(targets))
         assert result.returncode == 0, result.stderr
-        assert [call for call in calls if call[:2] == ["pr", "close"]] == []
+        self.calls = calls
+        self.warnings = [line for line in result.stdout.splitlines() if line.startswith("::warning::")]
+        return [int(call[2]) for call in calls if call[:2] == ["pr", "close"]]
+
+    def test_only_older_runs_prs_are_closed(self, fake_gh):
+        prs = [_data_pr(11, 100, ["uw"]), _data_pr(12, 300, ["uw"]),
+               {**_data_pr(13, 100, ["uw"]), "headRefName": "fix/other"}]
+        assert self._closed(fake_gh, prs, 200, ["uw"]) == [11]
+
+    def test_a_run_that_publishes_other_schools_keeps_an_older_pr(self, fake_gh):
+        # 2026-10-31: the Saturday run closed #1174, the Friday run's 15 schools.
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        assert self._closed(fake_gh, prs, _SATURDAY_RUN, _SATURDAY) == []
+
+    def test_a_later_run_of_the_same_shards_closes_it(self, fake_gh):
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == [1174]
+        # Its branch goes with it, and a close that worked adds no warning.
+        assert [call for call in self.calls if call[:2] == ["pr", "close"]] == [
+            ["pr", "close", "1174", "--comment", "Superseded by a newer data-refresh run.", "--delete-branch"]]
+        assert self.warnings == []
+
+    def test_a_shard_withheld_in_this_run_keeps_it(self, fake_gh):
+        # The run was authorized for all 15, but the release verdict withheld cmu.
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        published = [shard for shard in _FRIDAY if shard != "cmu"]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, published, authorized=_FRIDAY) == []
+
+    def test_a_shard_the_split_kept_from_main_keeps_it(self, fake_gh):
+        # $TARGETS names all 15, but the shrink guard kept main's cmu.json.
+        self.record.write_text("cmu")
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+
+    def test_an_incomplete_file_list_keeps_it(self, fake_gh):
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY, changed=21)]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+
+    def test_a_pr_that_changes_only_shared_files_is_closed(self, fake_gh):
+        prs = [_data_pr(1174, _FRIDAY_RUN, ())]
+        assert self._closed(fake_gh, prs, _SATURDAY_RUN, _SATURDAY) == [1174]
+
+    def test_only_open_prs_are_listed(self, fake_gh):
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY), {**_data_pr(1100, _FRIDAY_RUN - 1, _FRIDAY), "state": "MERGED"}]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == [1174]
+        [listing] = [call for call in self.calls if call[:2] == ["pr", "list"]]
+        assert listing[listing.index("--state") + 1] == "open"
+
+    def test_a_close_that_fails_stops_neither_the_others_nor_the_step(self, fake_gh):
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY), _data_pr(1180, _FRIDAY_RUN + 1, _FRIDAY)]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, pr_close_fails=True) == [1174, 1180]
+
+    @pytest.mark.parametrize("failure", [{"pr_list_fails": True}, {"pr_list_hangs": 20, "timeout": 1}],
+                             ids=["listing-fails", "listing-hangs"])
+    def test_a_listing_that_fails_or_hangs_closes_nothing_and_says_so(self, fake_gh, failure):
+        # Answered in time, this listing would close #1174.
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY, **failure) == []
+        assert self.warnings == ["::warning::The open data PRs could not be listed or read; "
+                                 "no older data PR was closed this run."]
+
+    def test_without_the_splits_record_nothing_is_closed(self, fake_gh):
+        self.record.unlink()
+        prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+        assert len(self.warnings) == 1
+
+    def test_the_close_runs_once_after_the_shards_this_run_publishes_are_known(self):
+        script = str(_workflow_step("merge once required checks pass")["run"])
+        close = script.index("STALE=$(")
+        assert script.index("TARGETS=$(python3 scripts/publishable_shards.py") < close
+        # After the rest of what this run commits is staged, so a run that fails
+        # before its commit closes nothing.
+        assert script.index("python3 scripts/gen_school_stats.py") < close
+        assert script.index("git add data/processed/shards") < close
+        # Still before the run can stop with nothing to ship, and before its own PR.
+        assert close < script.index("if git diff --cached --quiet; then") < script.index("gh pr create")
+        # Inside the attempt loop, on its first pass only, as it ran once before the loop.
+        first_attempt = script.rindex('if [ "$ATTEMPT" -eq 1 ]; then', 0, close)
+        assert "fi\n" not in script[first_attempt:close]
+
+    def test_the_close_reads_the_record_this_attempts_split_writes(self):
+        script = str(_workflow_step("merge once required checks pass")["run"])
+        record = '--retained-file "$RUNNER_TEMP/retained-shards"'
+        split = script.index(f'python3 scripts/shard_corpus.py split --only-shards "$TARGETS" {record}\n')
+        assert script.count(record) == 2
+        assert split < script.index("STALE=$(") < script.rindex(record)
