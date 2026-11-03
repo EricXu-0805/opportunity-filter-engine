@@ -3335,6 +3335,9 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None,
         logger.info(f"Faculty dedups: {sum(deleted.values())} duplicate(s) deleted, "
                     f"{sum(newly_archived.values())} published duplicate(s) newly archived")
     all_opps = [o for o in rows if id(o) not in remove]
+    for opp in all_opps:
+        # The mark is this run's; an archived duplicate must not carry it into a later merge.
+        (opp.get("metadata") or {}).pop(_LISTED_CURRENT, None)
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)

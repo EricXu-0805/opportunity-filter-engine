@@ -2975,6 +2975,39 @@ def test_a_row_dropped_into_one_a_later_dedup_drops_names_the_row_finally_kept(t
     assert [saved[r["id"]]["metadata"].get("duplicate_of") for r in rows] == [richer["id"], richer["id"], None]
 
 
+def test_an_archived_row_is_written_without_the_merges_run_mark_and_never_lifts_an_emeritus_row(tmp_path):
+    # A stored psych row nobody read this run wins the profile-link dedup over
+    # this run's poorer card (taking its "listed now" mark), then loses to the
+    # same person's richer comm row. Archived, it must be written without the
+    # mark, or a later run that finds the comm row only under an emeritus
+    # heading would carry the stale mark over and show the professor as active.
+    from src.collectors.uiuc_faculty import EMERITUS_REASON
+
+    def card(dept, name, keywords, seen="2026-10-05T14:18:05", **meta):
+        d = DEPARTMENTS[dept]
+        row = normalize_faculty({"name": name, "email": "person1@example.edu",
+                                 "url": f"{d['base']}/directory/profile/person1"}, d, keywords=keywords)
+        row["metadata"].update(last_seen_at=seen, last_verified=seen,
+                               first_seen_at="2026-01-10T00:00:00", **meta)
+        return row
+
+    stored_psych = card("psych", "Avery Sample", ["memory"])
+    comm = card("comm", "Avery Sample", ["memory", "attention", "persuasion"])
+    fresh_psych = card("psych", "Avery Q. Sample", [], seen="2026-11-09T10:00:00")
+    run1 = _merge_rows(tmp_path, [stored_psych, comm], [fresh_psych],
+                       published_ids=frozenset({stored_psych["id"], comm["id"]}))
+    assert {r["id"]: r["metadata"]["is_active"] for r in run1} == {stored_psych["id"]: False, comm["id"]: True}
+    assert not any("_listed_current" in r["metadata"] for r in run1)
+
+    emeritus = card("comm", "Avery Sample", ["memory", "attention", "persuasion"], seen="2026-11-16T10:00:00",
+                    is_active=False, deactivation_reason=EMERITUS_REASON, deactivated_at="2026-11-16",
+                    faculty_title="Professor Emeritus")
+    run2 = {r["id"]: r for r in _merge_rows(tmp_path, run1, [emeritus],
+                                            published_ids=frozenset(r["id"] for r in run1))}
+    assert run2[comm["id"]]["metadata"]["is_active"] is False
+    assert run2[comm["id"]]["metadata"]["deactivation_reason"] == EMERITUS_REASON
+
+
 def test_a_published_duplicate_its_unit_lists_again_keeps_the_day_it_was_first_archived(tmp_path):
     # The merge replaces the stored row with the card read this run, stamps
     # included; the run-start stamps keep its date when it is archived again
