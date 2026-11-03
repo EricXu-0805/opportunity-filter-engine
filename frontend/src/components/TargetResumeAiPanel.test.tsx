@@ -376,6 +376,67 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
     expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === unit.unit_id)!.text).toBe(plain);
     expect(provenance!.annotations!.find(annotation => annotation.line_id === unit.unit_id)!.reason).toBe(plainReason);
   });
+  it.each([true, false])('requires a fresh wording choice after regenerating (new alternative: %s)', async (hasAlternative) => {
+    const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
+    const nextRewrite = 'With my teammates, I built a Python parser 😀. I did not lead the team.';
+    const nextPlain = 'With my teammates, I built a parser in Python 😀. I did not lead the team.';
+    withExperience(item => { Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: plain, alternative_reason: 'First alternative reason.' }); });
+    const p = props(); const baseline = JSON.stringify(p.draft);
+    render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    const unit = experience();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use without the posting’s terms' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use suggested section and block order' }));
+    withExperience(item => {
+      Object.assign(item.suggestion!, { proposed_text: nextRewrite, reason: 'New suggestion reason.',
+        ops: hasAlternative ? ['relabel', 'lead_with'] : ['lead_with'],
+        alternative_text: hasAlternative ? nextPlain : null });
+      if (hasAlternative) item.suggestion!.alternative_reason = 'New alternative reason.';
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
+    await waitFor(() => expect(mocked.generate).toHaveBeenCalledTimes(2)); await reviewReady();
+    const card = screen.getByRole('article', { name: `AI rewrite ${unit.unit_id}` });
+    expect(card).toHaveTextContent(nextRewrite); expect(card).toHaveTextContent('New suggestion reason.');
+    expect(card).not.toHaveTextContent(nextPlain);
+    if (hasAlternative) expect(within(card).getByRole('checkbox', { name: 'Use without the posting’s terms' })).not.toBeChecked();
+    else expect(within(card).queryByRole('checkbox', { name: 'Use without the posting’s terms' })).toBeNull();
+    expect(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Use suggested section and block order' })).not.toBeChecked();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(p.draft)).toBe(baseline);
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); });
+    expect(p.onApply).toHaveBeenCalledTimes(1);
+    const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
+    expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === unit.unit_id)!.text).toBe(nextRewrite);
+    expect(provenance!.annotations![0].reason).toBe('New suggestion reason.');
+  });
+  it('keeps a reviewed wording choice while continuing only the unfinished items', async () => {
+    const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
+    const unfinished = prepared.units.find(unit => unit.evidence.kind === 'fact')!.unit_id;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload);
+      for (const item of result.receipts) {
+        if (item.evidence.kind === 'experience') Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: plain, alternative_reason: 'Chosen alternative reason.' });
+        if (mocked.generate.mock.calls.length === 1 && item.unit_id === unfinished) {
+          Object.assign(item, { status: 'skipped', reason_code: 'model_unavailable', suggestion: null }); result.method = 'partial';
+        }
+      }
+      return result;
+    });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    const alternative = await screen.findByRole('checkbox', { name: 'Use without the posting’s terms' });
+    await waitFor(() => expect(alternative).toBeEnabled());
+    fireEvent.click(alternative);
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${experience().unit_id}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    await waitFor(() => expect(mocked.generate).toHaveBeenCalledTimes(2)); await reviewReady();
+    expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([unfinished]);
+    expect(alternative).toBeChecked(); expect(screen.getByRole('checkbox', { name: `Use rewrite: ${experience().unit_id}` })).toBeChecked();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); });
+    const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
+    expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === experience().unit_id)!.text).toBe(plain);
+    expect(provenance!.annotations![0].reason).toBe('Chosen alternative reason.');
+  });
   it('stops on a target with no quotable text and names the cause once', async () => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
       const result = response(payload);

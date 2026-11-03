@@ -159,7 +159,9 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         if (!live(generation, expected)) return;
         if (!prepared.ok) { setError(prepared.code); return; }
         working = { prepared: prepared.value, responses: [] };
-        setSelected(new Set()); setDismissed(new Set()); setOrder(false);
+        // Wording choices belong to these suggestions, even when unit IDs repeat.
+        // Continue keeps them; a fresh generation requires a fresh choice.
+        setSelected(new Set()); setPlain(new Set()); setDismissed(new Set()); setOrder(false);
       }
       setRun(working); runRef.current = working;
       const blocked = working.prepared.skipped.find((item) => stopping.has(item.reason_code ?? ''));
