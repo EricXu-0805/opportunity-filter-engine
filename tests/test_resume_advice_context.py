@@ -102,3 +102,22 @@ def test_duplicate_links_quote_a_long_original_once_and_whole():
     reason = kept[0]['suggestion']['reason']
     assert reason.count('Student original: ') == 1
     assert f'Student original: {json.dumps(original)}' in reason
+
+
+@pytest.mark.parametrize('locale,phrase', [('en', 'your words'), ('zh', '你的原文')])
+def test_a_confirmed_link_adds_no_row_quoting_only_its_phrase(locale, phrase):
+    original = 'I did not write Python scripts for the lab.'
+    doc, units = selected(original)
+    outcome = em.check_rewrite(ai._em_unit(units[0]), model_unit(units[0], links=[LINK]),
+                               {anchor.id: anchor for anchor in anchors(doc)}, output_language='en',
+                               extra_keys=ai.ROW_EXTRA_KEYS)
+    outcome.links[0].entailed = True  # As an accepting review marks it.
+    result = ai._suggestion(units[0], outcome, 'normal', 'review_sources', locale, proposed=original,
+                            alternative=original)
+    label = 'Student original' if locale == 'en' else '学生原文'
+    for field in ('reason', 'alternative_reason'):
+        rows = [row for row in result[field].splitlines() if 'Python' in row]
+        # The whole line, then the opportunity's own words; no row of the linked phrase alone.
+        assert rows[0] == f'{label}: {json.dumps(original)}' and len(rows) == 2
+        assert phrase not in result[field]
+    assert result['links'][0]['entailed'] is True
