@@ -3892,3 +3892,46 @@ def test_a_title_a_later_card_states_is_never_replaced_by_an_earlier_cards(tmp_p
     rows = _merge(tmp_path, [], [card("Research Professor", "Research Faculty"), card("Associate Professor", "Faculty")])
     md = rows["Avery Example"]["metadata"]
     assert (md["faculty_title"], md["directory_section"]) == ("Associate Professor", "Faculty")
+
+
+# --- M163: on a Grainger profile the publication list follows the research
+# areas, and the eight lines the marker read takes ran on into it: "Articles in
+# Conference Proceedings", then co-authors and a paper title, stored as the
+# professor's research areas, and the co-authors became keywords ("your work on
+# <three co-authors>"). The headings are the five the stored pages carried on
+# 2026-11-02, and the edited-books heading without its edition note.
+# Synthetic people and titles. ---
+
+@pytest.mark.parametrize("heading", [
+    "Articles in Conference Proceedings", "Monographs", "Journal Editorships",
+    "Books Edited or Co-Edited (Original Editions)", "Books Edited or Co-Edited", "Patents",
+])
+def test_research_text_ends_at_a_publication_list_heading(heading):
+    from src.collectors.uiuc_faculty import _trim_research_areas
+
+    text = (f"Example Systems, Placeholder Theory, {heading}, Avery Example, Blair Sample, "
+            '"A Placeholder Paper Title"')
+    assert _trim_research_areas(text) == "Example Systems, Placeholder Theory"
+
+
+def test_a_profiles_publication_list_is_not_read_as_its_research_areas():
+    page = BeautifulSoup("""<html><body><main><h1>Profile</h1>
+      <h2>Research Areas</h2><p>Artificial Intelligence</p>
+      <h2>Articles in Conference Proceedings</h2>
+      <p>Avery Example, Blair Sample, Casey Placeholder, "A Placeholder Paper Title"</p>
+      </main></body></html>""", "html.parser")
+    assert _research_areas_from_soup(page) == "Artificial Intelligence"
+
+
+def test_a_fresh_run_keeps_co_authors_out_of_the_research_text_and_keywords(tmp_path, monkeypatch):
+    profile = ("<h2>Research Areas</h2><p>Artificial Intelligence</p>"
+               "<h2>Articles in Conference Proceedings</h2>"
+               '<p>Blair Sample, Casey Placeholder, Devon Example, "A Placeholder Paper Title"</p>')
+    stored = [_stored_unit_row("cs", "Avery Example", "person1", "Artificial Intelligence",
+                               ["artificial intelligence"])]
+    fresh = _fetch_unit(monkeypatch, "cs", _SECTION_MENU, [("person1", "Avery Example")],
+                        profiles={"person1": profile})
+    row = _merge(tmp_path, stored, fresh)["Avery Example"]
+    assert row["metadata"]["research_areas_raw"] == "Artificial Intelligence"
+    assert row["keywords"] == ["artificial intelligence"]
+    assert "sample" not in row["title"].lower() + row["description_clean"].lower()

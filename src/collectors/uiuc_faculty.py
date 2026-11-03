@@ -2859,6 +2859,12 @@ _AREA_STOP_HEADINGS = (
     "graduate students", "edit your profile", "selected articles in journals",
     "additional campus affiliations", "books authored or co-authored",
     "books authored", "affiliations", "courses", "service", "grants",
+    # The rest of a Grainger profile's publication list, as the stored pages
+    # carried it on 2026-11-02: what followed these headings was co-authors,
+    # titles and venues, shown as the professor's research areas, and the
+    # co-authors became keywords (M163).
+    "articles in conference proceedings", "books edited or co-edited",
+    "monographs", "journal editorships", "patents",
 )
 
 
