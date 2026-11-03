@@ -336,8 +336,8 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
     const kept = await screen.findByRole('region', { name: locale === 'zh' ? '保留原文的条目' : 'Lines kept as written' });
     const keptItems = within(kept).getAllByRole('listitem'); expect(keptItems).toHaveLength(2);
     const expectedReasons = locale === 'zh'
-      ? ['建议保留原文：找到了相关表述，但没有能通过核对的改法。', '建议保留原文：这一条与机会列出的内容没有对应。']
-      : ['No change recommended: related wording found, but no change the checks could verify.', 'No change recommended: nothing in this line matches what the opportunity lists.'];
+      ? ['AI 关联了这条经历与机会，但没有建议改写。', 'AI 没有给出可以核对的与机会的关联。']
+      : ['AI linked this line to the opportunity but did not suggest a rewrite.', 'AI gave no link to the opportunity that we could check.'];
     keptItems.forEach((item, index) => {
       expect(item.querySelector('blockquote')?.textContent).toBe(current[index]);
       expect(item).toHaveTextContent(expectedReasons[index]);

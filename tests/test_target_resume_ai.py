@@ -262,6 +262,33 @@ def test_a_reviewed_rewrite_is_suggested_with_its_ops_and_reason(endpoint, monke
     assert body["logical_calls"] == 2 and body["provider_attempts_upper_bound"] == 4
 
 
+@pytest.mark.parametrize("locale", ["en", "zh"])
+@pytest.mark.parametrize(("links", "linked"), [
+    ([], False),
+    # The model links the line, but its source is not in the line, so the literal check drops it.
+    ([{**PYTHON, "source": "Python programs"}], False),
+    ([PYTHON], True),
+])
+def test_model_keep_does_not_claim_a_failed_review_or_proven_irrelevance(locale, links, linked):
+    doc = make_doc("I recorded the results with my teammates and then wrote Python scripts.")
+    unit = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
+    raw = json.dumps({"units": [row(unit["unit_id"], links=links)]})
+    receipts, pending = engine.parse_output(raw, [unit], anchors_of(doc), locale)
+    assert not pending  # A model keep never reached the rewrite review.
+    assert len(receipts) == 1
+    receipt = receipts[0]
+    assert (receipt["status"], receipt["reason_code"]) == ("unchanged", "no_safe_change" if linked else "no_link")
+    suggestion = receipt["suggestion"]
+    assert suggestion["proposed_text"] is None and suggestion["ops"] == []
+    assert len(suggestion["links"]) == len(links) if linked else suggestion["links"] == []
+    assert all(link["entailed"] is False for link in suggestion["links"])
+    expected = {
+        "en": ("AI gave no link to the opportunity that we could check.", "AI linked this line to the opportunity but did not suggest a rewrite."),
+        "zh": ("AI 没有给出可以核对的与机会的关联。", "AI 关联了这条经历与机会，但没有建议改写。"),
+    }[locale][linked]
+    assert suggestion["reason"].splitlines()[-1] == expected
+
+
 @pytest.mark.parametrize(("locale", "relabel_line", "lead_line"), [
     ("en", "Uses the opportunity's term.", "Leads with the matching part."), ("zh", "改用机会中的术语。", "把相关内容放在最前。"),
 ])

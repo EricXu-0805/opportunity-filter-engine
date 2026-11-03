@@ -4459,9 +4459,9 @@ export const en = {
     keptNoChange: 'No change recommended',
     keptYourWording: 'Kept your wording',
     keep: {
-      no_link: 'Nothing in this bullet matches what the opportunity lists.',
+      no_link: 'AI gave no link to the opportunity that we could check.',
       already_aligned: 'This bullet already uses the opportunity\'s wording.',
-      no_safe_change: 'Related wording found, but no change the checks could verify.',
+      no_safe_change: 'AI linked this bullet to the opportunity but did not suggest a rewrite.',
       cosmetic_only: 'The only possible edits were cosmetic.',
       target_has_no_text: 'The opportunity lists no research topics or requirements to adapt to.',
       no_change: 'The suggestion matched your current wording.',
@@ -9816,9 +9816,9 @@ export const zh = {
     keptNoChange: '建议保留原文',
     keptYourWording: '保留你的表述',
     keep: {
-      no_link: '这一条与机会列出的内容没有对应。',
+      no_link: 'AI 没有给出可以核对的与机会的关联。',
       already_aligned: '这一条已使用机会中的表述。',
-      no_safe_change: '找到了相关表述，但没有能通过核对的改法。',
+      no_safe_change: 'AI 关联了这一条与机会，但没有建议改写。',
       cosmetic_only: '可做的修改只是措辞上的。',
       target_has_no_text: '这个机会没有列出可对照的研究方向或要求。',
       no_change: '建议与当前表述相同。',

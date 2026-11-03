@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { translate, resolvePath, interpolate, normalizeLocale, isLocale } from './translate';
 import { dictionaries, en, zh } from './dictionaries';
 import { sourceLabel } from '@/app/results/types';
+import { keptExplanation } from '@/components/RewriteWhy';
 
 describe('resolvePath', () => {
   it('resolves nested paths to strings', () => {
@@ -269,6 +270,20 @@ describe('composed source labels read as names in both locales', () => {
         expect(label).not.toContain('results.filters.');
       }
     }
+  });
+});
+
+// Legacy Tailor and Renovate show a model keep through keptExplanation, and their
+// component tests echo the key. A keep is the model's decision, not a failed
+// check or a finding that nothing in the bullet matches.
+describe('legacy keep reasons name the AI decision in both locales', () => {
+  it.each([
+    ['en', 'no_link', 'No change recommended', 'AI gave no link to the opportunity that we could check.'],
+    ['en', 'no_safe_change', 'No change recommended', 'AI linked this bullet to the opportunity but did not suggest a rewrite.'],
+    ['zh', 'no_link', '建议保留原文', 'AI 没有给出可以核对的与机会的关联。'],
+    ['zh', 'no_safe_change', '建议保留原文', 'AI 关联了这一条与机会，但没有建议改写。'],
+  ] as const)('%s %s', (locale, code, label, reason) => {
+    expect(keptExplanation(code, (path, vars) => translate(locale, path, vars))).toEqual({ label, reason, neutral: true });
   });
 });
 
