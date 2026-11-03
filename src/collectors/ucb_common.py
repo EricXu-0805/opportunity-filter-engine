@@ -36,7 +36,7 @@ import re
 import ssl
 import time
 import unicodedata
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urljoin, urlsplit
 
@@ -2106,7 +2106,10 @@ def _null_unit_mailbox_emails(opps: list[dict]) -> int:
     return nulled
 
 
-def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
+def collapse_ucb_joint_appointments(opps: list[dict],
+                                    published_ids: frozenset[str] = frozenset(),
+                                    today: date | None = None,
+                                    archived: dict[str, dict] | None = None) -> dict:
     """Deterministically collapse SAME-person joint-appointment duplicates among
     ucb_* faculty, so no two ``faculty_research`` records share a non-null
     contact_email or a normalized pi_name — regardless of the order collectors
@@ -2144,21 +2147,29 @@ def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
 
     Distinct from ``_null_shared_contact_emails`` (different people on one
     mailbox -> null) — this handles same-person joint appointments (-> drop).
-    Mutates ``opps`` (merges survivor fields) and returns
-    ``{"kept": [...], "removed": int}``; reassign the caller's list to ``kept``.
+    A dropped row whose id is in ``published_ids`` (the corpus before the run
+    merged anything) is kept inactive naming the row kept, as the same-person
+    collapse keeps one (``faculty_graph.settle_dropped_rows``, with ``today``
+    and the run-start ``archived`` stamps); only a row this run minted is
+    deleted. Mutates ``opps`` (merges survivor fields, archives published
+    duplicates) and returns ``{"kept": [...], "removed": int, "archived": int}``
+    (``archived`` counts rows newly archived); reassign the caller's list to
+    ``kept``.
     """
     from .faculty_graph import (
         _join_slug,
         _merge_faculty_fields,
         _norm_person_name,
         _pick_richer,
+        settle_dropped_rows,
     )
 
     fac = [o for o in opps if _is_ucb_faculty(o)]
-    remove: set[int] = set()
+    # id(row) -> (row, the row it was dropped into, school).
+    dropped: dict[int, tuple[dict, dict, str]] = {}
 
     def _collapse(group: list[dict]) -> None:
-        group = [o for o in group if id(o) not in remove]
+        group = [o for o in group if id(o) not in dropped]
         # Require >= 2 records from DIFFERENT sources: a same-source duplicate is
         # a within-directory listing dup handled at scrape time (dedup_by_profile_url).
         if len(group) < 2 or len({o.get("source") for o in group}) < 2:
@@ -2171,7 +2182,7 @@ def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
             if o is survivor:
                 continue
             _merge_faculty_fields(survivor, o)  # carry email/profile link forward
-            remove.add(id(o))
+            dropped[id(o)] = (o, survivor, o.get("school"))
             logger.info(
                 f"  Collapsing ucb joint-appointment duplicate {o.get('pi_name')!r} "
                 f"({o.get('source')}) into {survivor.get('source')} — same person"
@@ -2192,12 +2203,12 @@ def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
     # _null_shared_contact_emails rather than drop a real professor.
     by_email: dict[str, list[dict]] = {}
     for o in fac:
-        if id(o) in remove:
+        if id(o) in dropped:
             continue
         if em := _dedup_email(o):
             by_email.setdefault(em, []).append(o)
     for group in by_email.values():
-        group = [o for o in group if id(o) not in remove]
+        group = [o for o in group if id(o) not in dropped]
         if len(group) < 2 or len({o.get("source") for o in group}) < 2:
             continue
         slugs = {_join_slug(o.get("url") or o.get("source_url") or "") for o in group}
@@ -2205,8 +2216,9 @@ def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
         if len(slugs) == 1:
             _collapse(group)
 
+    remove, _, archived_by_school = settle_dropped_rows(dropped, published_ids, today, archived)
     kept = [o for o in opps if id(o) not in remove]
-    return {"kept": kept, "removed": len(remove)}
+    return {"kept": kept, "removed": len(remove), "archived": sum(archived_by_school.values())}
 
 
 _SHARED_PHRASE_NAV_THRESHOLD = 3

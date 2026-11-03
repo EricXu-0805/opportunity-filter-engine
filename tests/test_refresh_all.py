@@ -686,6 +686,51 @@ def test_the_uiuc_merge_keeps_the_date_of_a_duplicate_its_page_lists_again(monke
         "is_active": False, "deactivated_at": "2026-10-26", "duplicate_of": card["id"]}
 
 
+def _ucb_row(rid, source, dept, keywords):
+    seeded = _seed_faculty(source, rid, 0)
+    seeded.update(school="ucb", department=dept, pi_name="Toni Varga", keywords=keywords,
+                  url=f"https://{source[4:8]}.testu.edu/people/toni-varga")
+    return seeded
+
+
+def test_the_berkeley_collapse_keeps_a_published_duplicate_inactive(monkeypatch, tmp_path):
+    """The Berkeley joint-appointment collapse is handed the run-start ids and
+    stamps too: a published row it drops stays, inactive and naming the row
+    kept; the run summary counts it."""
+    kept = _ucb_row("faculty-ucb-bioe-0000aaaa", "ucb_bioe_faculty", "Bioengineering", ["biomechanics", "bone"])
+    dup = _ucb_row("faculty-ucb-me-0000bbbb", "ucb_me_faculty", "Mechanical Engineering", [])
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [kept, dup])
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    saved = {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert saved[kept["id"]]["is_active"] is True
+    assert {k: saved[dup["id"]].get(k) for k in ("is_active", "deactivation_reason", "duplicate_of")} == {
+        "is_active": False, "deactivation_reason": "duplicate_of_live_record", "duplicate_of": kept["id"]}
+    collapse = summary["sources"]["faculty_joint_collapse"]
+    assert (collapse["duplicates_removed"], collapse["duplicates_archived"]) == (0, 1)
+
+
+def test_the_berkeley_collapse_keeps_the_date_of_a_duplicate_listed_again(monkeypatch, tmp_path):
+    kept = _ucb_row("faculty-ucb-bioe-0000aaaa", "ucb_bioe_faculty", "Bioengineering", ["biomechanics", "bone"])
+    listed_again = _ucb_row("faculty-ucb-me-0000bbbb", "ucb_me_faculty", "Mechanical Engineering", [])
+    archived = json.loads(json.dumps(listed_again))
+    archived["metadata"].update(is_active=False, deactivated_at="2026-10-30",
+                                deactivation_reason="duplicate_of_live_record", duplicate_of=kept["id"])
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [kept, archived])
+
+    def merge(opps):
+        corpus = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([listed_again if r["id"] == archived["id"] else r for r in corpus]),
+                             encoding="utf-8")
+        return (0, 1)
+
+    monkeypatch.setattr(refresh_all, "merge_umich_faculty", merge)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    saved = {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert {k: saved[archived["id"]].get(k) for k in ("is_active", "deactivated_at", "duplicate_of")} == {
+        "is_active": False, "deactivated_at": "2026-10-30", "duplicate_of": kept["id"]}
+    assert summary["sources"]["faculty_joint_collapse"]["duplicates_archived"] == 0
+
+
 def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     monkeypatch, tmp_path,
 ):

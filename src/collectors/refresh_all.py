@@ -1603,17 +1603,20 @@ def refresh_all(
         # shared by 2 DIFFERENT people. Order-independent — guarantees the R70A
         # ucb invariant (no two ucb_* faculty share a non-null email or normalized
         # name) regardless of merge/enrichment order.
-        ucb_collapse = collapse_ucb_joint_appointments(all_opps)
+        ucb_collapse = collapse_ucb_joint_appointments(
+            all_opps, published_ids=published_ids, archived=archive_stamps)
         all_opps = ucb_collapse["kept"]
         ucb_shared_nulled = _null_ucb_shared_contact_emails(all_opps)
-        if ucb_collapse["removed"] or ucb_shared_nulled:
+        if ucb_collapse["removed"] or ucb_collapse["archived"] or ucb_shared_nulled:
             logger.info(
                 "UCB joint-appointment collapse: %d same-person duplicate(s) "
-                "dropped, %d shared-mailbox email(s) nulled",
-                ucb_collapse["removed"], ucb_shared_nulled,
+                "deleted, %d published duplicate(s) newly archived, %d "
+                "shared-mailbox email(s) nulled",
+                ucb_collapse["removed"], ucb_collapse["archived"], ucb_shared_nulled,
             )
         summary["sources"]["faculty_joint_collapse"] = {
             "duplicates_removed": ucb_collapse["removed"],
+            "duplicates_archived": ucb_collapse["archived"],
             "shared_mailbox_nulled": ucb_shared_nulled,
             "status": "ok",
         }
