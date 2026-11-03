@@ -546,9 +546,98 @@ def test_a_kept_row_takes_another_units_date_only_through_an_observed_page(
     refresh_all.refresh_all(deep=True, schools={"umich"})
 
     saved = json.loads(processed.read_text(encoding="utf-8"))
-    assert [r["id"] for r in saved] == [stale["id"]]
+    assert [(r["id"], r["metadata"]["is_active"]) for r in saved] == [
+        (stale["id"], True), (fresh["id"], False)]
     expected = fresh if carried else stale
     assert saved[0]["metadata"]["last_seen_at"] == expected["metadata"]["last_seen_at"]
+
+
+def _umich_row(rid, dept, keywords, email="person7@testu.edu"):
+    """One umich faculty row of one person, seen today."""
+    seeded = _seed_faculty("umich_faculty", rid, 0)
+    seeded.update(school="umich", department=dept, pi_name="Avery Sample",
+                  url=f"https://{dept.lower()}.testu.edu/people/{rid[-4:]}",
+                  contact_email=email, keywords=keywords)
+    return seeded
+
+
+def test_a_published_duplicate_is_archived_and_one_minted_this_run_is_deleted(
+    monkeypatch, tmp_path,
+):
+    """The collapse is handed the ids the corpus held when the run started: a
+    duplicate it drops among those stays, inactive and naming the kept row (a
+    student may have saved it); a duplicate this run's merge minted is deleted."""
+    kept = _umich_row("faculty-umich-cse-0000cccc", "CSE", ["optics", "lasers", "imaging"])
+    published = _umich_row("faculty-umich-ece-0000dddd", "ECE", ["optics"])
+    minted = _umich_row("faculty-umich-math-0000eeee", "Math", ["optics", "lasers"])
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [kept, published])
+
+    def merge(opps):
+        corpus = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps(corpus + [minted]), encoding="utf-8")
+        return (1, 0)
+
+    monkeypatch.setattr(refresh_all, "merge_umich_faculty", merge)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    saved = {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert sorted(saved) == [kept["id"], published["id"]]
+    assert saved[kept["id"]]["is_active"] is True
+    assert {k: saved[published["id"]][k] for k in ("is_active", "deactivation_reason", "duplicate_of")} == {
+        "is_active": False, "deactivation_reason": "duplicate_of_live_record", "duplicate_of": kept["id"]}
+    hygiene = summary["sources"]["faculty_hygiene"]
+    assert (hygiene["removed_by_school"], hygiene["archived_by_school"]) == ({"umich": 1}, {"umich": 1})
+
+
+def test_a_row_archived_before_keeps_its_date_when_its_unit_lists_it_again(
+    monkeypatch, tmp_path,
+):
+    """The merge replaces the metadata of a row its unit lists again, so a row
+    archived on an earlier run comes back active. Archived again under the same
+    kept row, it keeps that run's date, and this run archives nothing new."""
+    kept = _umich_row("faculty-umich-cse-0000cccc", "CSE", ["optics", "lasers", "imaging"])
+    archived = _umich_row("faculty-umich-ece-0000dddd", "ECE", ["optics"])
+    listed_again = json.loads(json.dumps(archived))
+    archived["metadata"].update(is_active=False, deactivated_at="2026-10-30",
+                                deactivation_reason="duplicate_of_live_record", duplicate_of=kept["id"])
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [kept, archived])
+
+    def merge(opps):
+        corpus = json.loads(processed.read_text(encoding="utf-8"))
+        corpus = [listed_again if r["id"] == listed_again["id"] else r for r in corpus]
+        processed.write_text(json.dumps(corpus), encoding="utf-8")
+        return (0, 1)
+
+    monkeypatch.setattr(refresh_all, "merge_umich_faculty", merge)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    saved = {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert {k: saved[archived["id"]].get(k) for k in (
+        "is_active", "deactivated_at", "deactivation_reason", "duplicate_of")} == {
+        "is_active": False, "deactivated_at": "2026-10-30",
+        "deactivation_reason": "duplicate_of_live_record", "duplicate_of": kept["id"]}
+    assert summary["sources"]["faculty_hygiene"]["archived_by_school"] == {}
+
+
+def test_a_published_tombstone_of_a_live_row_is_kept_naming_it(monkeypatch, tmp_path, caplog):
+    """The run-start ids include inactive rows: a published tombstone of a live
+    row stays, with its own retirement, naming the live row; the run log
+    counts it."""
+    live = _umich_row("faculty-umich-cse-0000cccc", "CSE", ["optics", "lasers"])
+    tomb = _umich_row("faculty-umich-ece-0000dddd", "ECE", ["optics"])
+    tomb["metadata"].update(is_active=False, deactivated_at="2026-10-01",
+                            deactivation_reason="absent_from_directory_rescrape")
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [live, tomb])
+
+    with caplog.at_level(logging.INFO, logger=refresh_all.logger.name):
+        refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    saved = {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert {k: saved[tomb["id"]].get(k) for k in (
+        "is_active", "deactivated_at", "deactivation_reason", "duplicate_of")} == {
+        "is_active": False, "deactivated_at": "2026-10-01",
+        "deactivation_reason": "absent_from_directory_rescrape", "duplicate_of": live["id"]}
+    assert "0 duplicate person(s) removed, 1 published duplicate(s) newly archived" in caplog.text
 
 
 def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(

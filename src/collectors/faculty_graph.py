@@ -65,7 +65,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
 from backend.lib.contact_visibility import carries_contact_evidence
@@ -3953,8 +3953,27 @@ def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
     return best
 
 
+# Why a published row the collapse dropped is inactive; ``duplicate_of`` beside
+# it names the row that was kept.
+DUPLICATE_REASON = "duplicate_of_live_record"
+
+
+def duplicate_archive_stamps(rows: list[dict]) -> dict[str, dict]:
+    """The ``deactivated_at`` and ``duplicate_of`` of each row the collapse
+    keeps inactive as a duplicate, by id."""
+    stamps = {}
+    for o in rows:
+        meta = o.get("metadata") or {}
+        if meta.get("is_active") is False and meta.get("deactivation_reason") == DUPLICATE_REASON:
+            stamps[o.get("id")] = {k: meta.get(k) for k in ("deactivated_at", "duplicate_of")}
+    return stamps
+
+
 def collapse_same_person_faculty(opps: list[dict],
-                                 person_pages: frozenset[str] = frozenset()) -> dict:
+                                 person_pages: frozenset[str] = frozenset(),
+                                 published_ids: frozenset[str] = frozenset(),
+                                 today: date | None = None,
+                                 archived: dict[str, dict] | None = None) -> dict:
     """Collapse duplicate ACTIVE faculty for the same person at one school and
     prevent recreation on the next merge.
 
@@ -3979,13 +3998,32 @@ def collapse_same_person_faculty(opps: list[dict],
     observed as a person's identity (``observed_profile_pages``); without them
     no sighting crosses units.
 
-    Mutates ``opps`` in place (nulls shared inboxes) and returns
-    ``{"kept": [...], "removed_by_school": {...}, "nulled_by_school": {...}}``."""
+    A dropped row whose id is in ``published_ids`` (the corpus before this
+    run merged anything) is kept inactive with ``duplicate_of`` naming the
+    row the person is kept under once every pass has run, instead of being
+    deleted: a student may have saved that id. Only a row this run minted is
+    deleted. ``archived`` holds that corpus's ``duplicate_archive_stamps``:
+    a unit listing an archived row again brings it back active from the
+    merge, and archiving it again under the same kept row keeps its date.
+
+    Mutates ``opps`` in place (nulls shared inboxes, archives published
+    duplicates) and returns ``{"kept": [...], "removed_by_school": {...},
+    "archived_by_school": {...}, "nulled_by_school": {...}}``;
+    ``archived_by_school`` counts rows given a new pointer this run, not a
+    row that already pointed at the same kept row."""
     pages = _one_person_pages(opps, frozenset(person_pages))
     active = [o for o in opps if _is_active_faculty(o)]
+    stamp = (today or date.today()).isoformat()
+    archived = archived or {}
     remove: set[int] = set()
+    # id(row) -> (row, the row it was dropped into, school), in drop order.
+    dropped: dict[int, tuple[dict, dict, str]] = {}
     removed_by_school: Counter = Counter()
+    archived_by_school: Counter = Counter()
     nulled_by_school: Counter = Counter()
+
+    def drop(survivor: dict, o: dict, school) -> None:
+        dropped[id(o)] = (o, survivor, school)
 
     # Pass 0 — same school + same profile URL + same name is ONE person,
     # regardless of email. A cross-listed professor emitted by two department
@@ -4011,8 +4049,7 @@ def collapse_same_person_faculty(opps: list[dict],
             if o is survivor:
                 continue
             _merge_faculty_fields(survivor, o, pages)
-            remove.add(id(o))
-            removed_by_school[school] += 1
+            drop(survivor, o, school)
 
     # Same profile SLUG syndicated across two department sites (Caltech CMS +
     # EE both serve /people/<slug> for a cross-listed professor with the same
@@ -4027,7 +4064,7 @@ def collapse_same_person_faculty(opps: list[dict],
     # no evidence and stay.
     by_tail: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
     for o in active:
-        if id(o) in remove:
+        if id(o) in dropped:
             continue
         tail = _norm_faculty_url(o).rsplit("/", 1)[-1]
         nn = _norm_person_name(o.get("pi_name"))
@@ -4049,12 +4086,11 @@ def collapse_same_person_faculty(opps: list[dict],
             # stubs) carry no evidence either way and stay.
             if skw and okw <= skw:
                 _merge_faculty_fields(survivor, o, pages)
-                remove.add(id(o))
-                removed_by_school[school] += 1
+                drop(survivor, o, school)
 
     by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
-        if id(o) in remove:
+        if id(o) in dropped:
             continue
         em = (o.get("contact_email") or "").strip().lower()
         if em:
@@ -4069,8 +4105,7 @@ def collapse_same_person_faculty(opps: list[dict],
                 if o is survivor:
                     continue
                 _merge_faculty_fields(survivor, o, pages)
-                remove.add(id(o))
-                removed_by_school[school] += 1
+                drop(survivor, o, school)
         else:
             for o in group:
                 clear_contact_claim(o)
@@ -4087,7 +4122,7 @@ def collapse_same_person_faculty(opps: list[dict],
     rosters: dict[tuple, dict] = {}
     for o in active:
         prefix = _MEDICAL_SEED_PREFIXES.get(o.get("school"))
-        if not prefix or id(o) in remove:
+        if not prefix or id(o) in dropped:
             continue
         dept = (o.get("department") or "").strip()
         nn = _norm_person_name(o.get("pi_name"))
@@ -4108,12 +4143,11 @@ def collapse_same_person_faculty(opps: list[dict],
             if label not in labels:
                 labels.append(label)
         survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
-        remove.add(id(loser))
-        removed_by_school[key[0]] += 1
+        drop(survivor, loser, key[0])
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
-        if id(o) in remove or (o.get("contact_email") or "").strip():
+        if id(o) in dropped or (o.get("contact_email") or "").strip():
             continue
         nn = _norm_person_name(o.get("pi_name"))
         if nn:
@@ -4143,9 +4177,8 @@ def collapse_same_person_faculty(opps: list[dict],
                 if o is survivor:
                     continue
                 _merge_faculty_fields(survivor, o, pages)
-                remove.add(id(o))
-                removed_by_school[school] += 1
-        group = [o for o in group if id(o) not in remove]
+                drop(survivor, o, school)
+        group = [o for o in group if id(o) not in dropped]
         if len(group) < 2:
             continue
         umbrella = _UMBRELLA_DEPTS.get(school, frozenset())
@@ -4162,8 +4195,7 @@ def collapse_same_person_faculty(opps: list[dict],
         survivor = _pick_richer(specific_recs, umbrella)
         for o in umbrella_recs:
             _merge_faculty_fields(survivor, o, pages)
-            remove.add(id(o))
-            removed_by_school[school] += 1
+            drop(survivor, o, school)
 
     # Drop inactive tombstones that duplicate a surviving ACTIVE record. The
     # passes above only dedupe active faculty, but the DQ gate counts inactive
@@ -4171,9 +4203,9 @@ def collapse_same_person_faculty(opps: list[dict],
     # partial re-scrape deactivates one department's listing while the same
     # professor stays active under another, the stale tombstone and the live
     # record collide on the gate's (school, email) / (school, url, name) keys.
-    # The tombstone is superseded — the person is live elsewhere — so it is pure
-    # cruft; dropping it never removes a shown record.
-    kept_active = [o for o in active if id(o) not in remove]
+    # The tombstone is superseded — the person is live elsewhere — so dropping
+    # it never removes a shown record; a published one stays, pointing at it.
+    kept_active = [o for o in active if id(o) not in dropped]
     live_email_keys = {
         (o.get("school"), (o.get("contact_email") or "").strip().lower()): o
         for o in kept_active if (o.get("contact_email") or "").strip()
@@ -4183,7 +4215,7 @@ def collapse_same_person_faculty(opps: list[dict],
         for o in kept_active if _norm_faculty_url(o) and _norm_person_name(o.get("pi_name"))
     }
     for o in opps:
-        if id(o) in remove or _is_active_faculty(o) or o.get("source_type") != "faculty_research":
+        if id(o) in dropped or _is_active_faculty(o) or o.get("source_type") != "faculty_research":
             continue
         school = o.get("school")
         em = (o.get("contact_email") or "").strip().lower()
@@ -4194,13 +4226,35 @@ def collapse_same_person_faculty(opps: list[dict],
             # A tombstone's sighting is still the person's, its retirement is
             # not; _carry_sighting refuses another person's row on a shared inbox.
             _carry_sighting(by_url_name or by_email, o, pages)
+            drop(by_url_name or by_email, o, school)
+
+    for o, survivor, school in dropped.values():
+        # A later pass can drop the row this one was dropped into.
+        while id(survivor) in dropped:
+            survivor = dropped[id(survivor)][1]
+        if o.get("id") not in published_ids:
             remove.add(id(o))
             removed_by_school[school] += 1
+            continue
+        meta = o.setdefault("metadata", {})
+        if meta.get("is_active") is not False:
+            # A row archived before this run is active here when its unit lists
+            # it again: the merge replaced its metadata, stamps included.
+            before = archived.get(o.get("id")) or {}
+            again = before.get("duplicate_of") == survivor.get("id")
+            meta.update(is_active=False, deactivation_reason=DUPLICATE_REASON,
+                        deactivated_at=before.get("deactivated_at") if again else stamp)
+        else:
+            again = meta.get("duplicate_of") == survivor.get("id")
+        if not again:
+            archived_by_school[school] += 1
+        meta["duplicate_of"] = survivor.get("id")
 
     kept = [o for o in opps if id(o) not in remove]
     return {
         "kept": kept,
         "removed_by_school": dict(removed_by_school),
+        "archived_by_school": dict(archived_by_school),
         "nulled_by_school": dict(nulled_by_school),
     }
 
