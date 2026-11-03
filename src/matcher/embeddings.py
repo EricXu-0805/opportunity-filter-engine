@@ -14,10 +14,13 @@ import hashlib
 import json
 import logging
 import os
-from collections import OrderedDict
+from collections import Counter, OrderedDict
+from heapq import nlargest
 from pathlib import Path
 
 import numpy as np
+
+from src.matcher.config import TFIDF_MAX_FEATURES
 
 logger = logging.getLogger(__name__)
 
@@ -243,9 +246,42 @@ def semantic_similarity_batch(
     return _tfidf_similarity_batch(query_text, candidate_texts)
 
 
+def _fit_tfidf(documents):
+    """Keep the most frequent terms; terms tied at the cutoff are kept or left out together.
+
+    Fit in one pass without retaining training documents or a full sparse matrix.
+    The same analyzer and transform are used on both sides of the fit.
+    """
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), sublinear_tf=True)
+    analyze = vectorizer.build_analyzer()
+    frequencies = Counter()
+    document_frequencies = Counter()
+    n_docs = 0
+    for document in documents:
+        terms = analyze(document)
+        frequencies.update(terms)
+        document_frequencies.update(set(terms))
+        n_docs += 1
+
+    counts = nlargest(TFIDF_MAX_FEATURES + 1, frequencies.values())
+    # Only terms more frequent than the most frequent one that does not fit are kept, so a
+    # tie that straddles the cap is left out whole rather than split by some order.
+    floor = counts[TFIDF_MAX_FEATURES] if len(counts) > TFIDF_MAX_FEATURES else 0
+    # Retain canonical column order even when frequencies change between fits.
+    vocabulary = sorted(term for term, count in frequencies.items() if count > floor)
+    if not vocabulary:
+        raise ValueError("empty TF-IDF vocabulary")
+    vectorizer.set_params(vocabulary=vocabulary)
+    df = np.array([document_frequencies[term] for term in vocabulary], dtype=np.float64)
+    # sklearn's default smoothed IDF. Term counts are sublinear only at transform time.
+    vectorizer.idf_ = np.log((n_docs + 1) / (df + 1)) + 1
+    return vectorizer, n_docs
+
+
 def _tfidf_similarity_batch(query_text: str, candidate_texts: list[str]) -> list[float]:
     try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
     except ImportError:
         return [0.0] * len(candidate_texts)
@@ -261,13 +297,9 @@ def _tfidf_similarity_batch(query_text: str, candidate_texts: list[str]) -> list
 
     valid = [c if c and c.strip() else " " for c in candidate_texts]
     try:
-        tv = TfidfVectorizer(
-            stop_words="english",
-            max_features=5000,
-            ngram_range=(1, 2),
-            sublinear_tf=True,
-        )
-        vectors = tv.fit_transform([query_text, *valid])
+        documents = [query_text, *valid]
+        tv, _ = _fit_tfidf(documents)
+        vectors = tv.transform(documents)
         sims = sklearn_cosine(vectors[0:1], vectors[1:])[0]
         return [float(max(0.0, s)) for s in sims]
     except ValueError:
@@ -292,27 +324,8 @@ def fit_tfidf_corpus(corpus_texts) -> bool:
     """
     global _tfidf_vectorizer, _tfidf_fitted
     try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
-    except ImportError:
-        return False
-    n_docs = 0
-
-    def _valid_docs():
-        nonlocal n_docs
-        for t in corpus_texts:
-            if t and t.strip():
-                n_docs += 1
-                yield t
-
-    tv = TfidfVectorizer(
-        stop_words="english",
-        max_features=5000,
-        ngram_range=(1, 2),
-        sublinear_tf=True,
-    )
-    try:
-        tv.fit(_valid_docs())
-    except ValueError:  # empty / all-stopword corpus
+        tv, n_docs = _fit_tfidf(text for text in corpus_texts if text and text.strip())
+    except (ImportError, ValueError):  # optional dependency or empty/all-stopword corpus
         return False
     if n_docs < 2:  # degenerate corpus, same guard as before
         return False

@@ -148,6 +148,8 @@ SEASONAL_BOOST_MONTHS: frozenset[int] = frozenset(
 # which blends cosine*100 directly and does not use this scale.)
 SIMILARITY_SCALE_TFIDF = _env_float("OFE_SIM_SCALE_TFIDF", 400.0)
 
+TFIDF_MAX_FEATURES = 5000
+
 # Major→topic implicit keyword bridge. A student who hasn't written explicit
 # research interests still steers ranking through field-typical keywords derived
 # from their major. CAPPED well below an explicit-interest match (which reaches
@@ -377,7 +379,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # a campus program row) names no one in a line: the lab label falls back to the
 # lab or department, and the headline neither names it nor is gated on it
 # (checklist M171). Sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "33"
+# 34: the TF-IDF vocabulary keeps at most its 5,000 most frequent terms, and
+# terms tied at that cutoff are kept or left out together: when they do not all
+# fit, none of them is kept (checklist M162). sklearn's max_features cut the
+# tie with an unstable sort, so one unrelated word added to one record could
+# swap tied terms in and out: 191 of 200 simulated one-word edits did on the
+# 2026-11-02 corpus. A selection rule no hashed knob sees.
+_MATCHER_VERSION_BASE = "34"
 
 
 def _matcher_fingerprint() -> str:
@@ -398,6 +406,7 @@ def _matcher_fingerprint() -> str:
         "stretch": (STRETCH_SIGMOID_K, STRETCH_MIDPOINT, STRETCH_BLEND),
         "seasonal": (SEASONAL_BOOST_ENABLED, SEASONAL_BOOST_FACTOR, sorted(SEASONAL_BOOST_MONTHS)),
         "sim_scale": SIMILARITY_SCALE_TFIDF,
+        "tfidf_max_features": TFIDF_MAX_FEATURES,
         "implicit_major": (IMPLICIT_MAJOR_KEYWORD_CEILING, IMPLICIT_MAJOR_PER_HIT),
         "elig_major_w": ELIG_MAJOR_WEIGHT,
         "llm_rerank": (LLM_RERANK_MODEL, LLM_RERANK_TOPK, LLM_RERANK_WEIGHT),
