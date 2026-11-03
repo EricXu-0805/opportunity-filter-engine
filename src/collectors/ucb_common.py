@@ -2072,17 +2072,20 @@ def _null_shared_contact_emails(opps: list[dict]) -> int:
     (tdps@, tdpsboxoffice@, psychadmin@, ...) by catching unknown mailboxes
     automatically. Same-person joint appointments are already collapsed by
     drop_joint_appointment_duplicates, so a remaining shared email is a mailbox.
+    Only rows shown as live count, and only they are nulled: a row kept inactive
+    so a saved id still resolves keeps its address and its own spelling of the
+    name, which would otherwise count as another professor.
     Mutates in place; returns the count nulled."""
+    live = [opp for opp in opps
+            if _is_ucb_faculty(opp) and (opp.get("metadata") or {}).get("is_active") is not False]
     names_by_email: dict[str, set[str]] = {}
-    for opp in opps:
-        if not _is_ucb_faculty(opp):
-            continue
+    for opp in live:
         if email := _dedup_email(opp):
             names_by_email.setdefault(email, set()).add(_dedup_name(opp))
     shared = {e for e, names in names_by_email.items() if len(names) >= 2}
     nulled = 0
-    for opp in opps:
-        if _is_ucb_faculty(opp) and _dedup_email(opp) in shared:
+    for opp in live:
+        if _dedup_email(opp) in shared:
             clear_contact_claim(opp)
             nulled += 1
     return nulled

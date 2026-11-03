@@ -346,15 +346,15 @@ class TestR70ADataQuality:
     def test_no_shared_admin_contact_emails(self):
         """D3: a scraped department/advising inbox (amwhit@ on 123 profs, nslack@
         on 116) attached as many professors' contact_email misfires cold emails to
-        the wrong person. After the null-pass no faculty contact_email may be
-        shared by the collector's threshold of distinct professors."""
+        the wrong person. After the null-pass no live faculty contact_email may
+        be shared by the collector's threshold of distinct professors."""
         from collections import defaultdict
 
         from src.collectors.uiuc_faculty import _SHARED_ADMIN_EMAIL_THRESHOLD
 
         names_by_email: dict[str, set[str]] = defaultdict(set)
         for o in _load_data():
-            if not _is_faculty(o):
+            if not _is_faculty(o) or not _shown_as_live(o):
                 continue
             email = (o.get("contact_email") or "").strip().lower()
             if email:
@@ -688,6 +688,51 @@ class TestDuplicateGatesJudgeLiveRows:
         monkeypatch.setattr(f"{__name__}._load_data", lambda: _one_person_twice(second_metadata))
         with pytest.raises(AssertionError):
             getattr(TestR70ADataQuality(), gate)()
+
+
+def _row_on_one_address(rid, dept, name, url, keywords, email="asample@testu.edu"):
+    return {"id": rid, "source": "testu_faculty", "source_type": "faculty_research",
+            "school": "testu", "department": dept, "pi_name": name, "contact_email": email,
+            "url": url, "title": f"Research with Prof. {name} — {dept}", "keywords": keywords,
+            "metadata": {"is_active": True}}
+
+
+class TestSharedInboxGateJudgesLiveRows:
+    """test_no_shared_admin_contact_emails counts the professors a student can
+    be shown on one address. Rows kept inactive under their old spellings of
+    one person's name are not more professors; three live ones still fail."""
+
+    def test_one_person_archived_under_two_old_spellings_passes(self, monkeypatch):
+        from src.collectors.faculty_graph import collapse_same_person_faculty
+        from src.collectors.uiuc_faculty import _null_shared_admin_emails
+
+        def run(rows):
+            _null_shared_admin_emails(rows)
+            return collapse_same_person_faculty(rows, published_ids=frozenset(o["id"] for o in rows))["kept"]
+
+        rows = run([
+            _row_on_one_address("faculty-testu-cs-0000bbbb", "CS", "Avery B. Sample",
+                                "https://cs.testu.edu/people/asample", ["optics", "lasers"]),
+            _row_on_one_address("faculty-testu-bio-0000cccc", "BIO", "Sample, Avery",
+                                "https://bio.testu.edu/p/1", ["optics"]),
+        ])
+        # A new unit lists the person under the same profile slug, its card without an address.
+        rows = run(rows + [_row_on_one_address("faculty-testu-ee-0000aaaa", "EE", "Avery Sample",
+                                               "https://ee.testu.edu/people/asample",
+                                               ["optics", "lasers", "imaging"], email=None)])
+        assert [(o["id"][-4:], o["metadata"]["is_active"], o["contact_email"]) for o in rows] == [
+            ("bbbb", False, "asample@testu.edu"), ("cccc", False, "asample@testu.edu"),
+            ("aaaa", True, "asample@testu.edu")]
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        TestR70ADataQuality().test_no_shared_admin_contact_emails()
+
+    def test_three_live_professors_on_one_address_still_fail(self, monkeypatch):
+        rows = [_row_on_one_address(f"faculty-testu-ece-0000000{i}", "ECE", name,
+                                    f"https://ece.testu.edu/p/{i}", ["optics"])
+                for i, name in enumerate(["Avery Sample", "Blair Example", "Casey Placeholder"])]
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        with pytest.raises(AssertionError):
+            TestR70ADataQuality().test_no_shared_admin_contact_emails()
 
 
 class TestDeactivatePastLogic:

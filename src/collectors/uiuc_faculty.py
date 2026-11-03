@@ -2646,11 +2646,14 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     X' cold email sent to a shared coordinator inbox misfires; an empty recipient
     (the modal then disables send) is safer than a confidently wrong one. Covers
     every school's faculty (emails are domain-unique, so cross-school counting
-    never conflates). Mutates ``opps`` in place; returns the count nulled."""
+    never conflates). Only rows shown as live count, and only they are nulled:
+    a row kept inactive so a saved id still resolves keeps its address and its
+    own spelling of the name, which would otherwise count as another professor.
+    Mutates ``opps`` in place; returns the count nulled."""
+    live = [opp for opp in opps
+            if _is_faculty_record(opp) and (opp.get("metadata") or {}).get("is_active") is not False]
     names_by_email: dict[str, set[str]] = defaultdict(set)
-    for opp in opps:
-        if not _is_faculty_record(opp):
-            continue
+    for opp in live:
         email = (opp.get("contact_email") or "").strip().lower()
         if email:
             names_by_email[email].add((opp.get("pi_name") or "").strip().lower())
@@ -2660,9 +2663,7 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
         if len(names) >= _SHARED_ADMIN_EMAIL_THRESHOLD
     }
     nulled = 0
-    for opp in opps:
-        if not _is_faculty_record(opp):
-            continue
+    for opp in live:
         if (opp.get("contact_email") or "").strip().lower() in shared:
             clear_contact_claim(opp)
             nulled += 1

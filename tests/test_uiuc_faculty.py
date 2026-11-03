@@ -1409,6 +1409,41 @@ def test_joint_appointment_personal_email_is_not_nulled():
     assert all(r["contact_email"] == "daf@illinois.edu" for r in rows)
 
 
+def _one_person_row(rid, dept, name, keywords, published=True):
+    return {"id": rid, "source": "testu_faculty", "source_type": "faculty_research",
+            "school": "testu", "department": dept, "pi_name": name,
+            "contact_email": "asample@testu.edu", "url": f"https://{dept.lower()}.testu.edu/p/{rid[-4:]}",
+            "title": f"Research with Prof. {name} — {dept}", "keywords": keywords,
+            "metadata": {"is_active": True}}
+
+
+def test_an_archived_spelling_never_takes_a_live_professors_address():
+    """Consolidation keeps a published duplicate inactive with its address and
+    its own spelling of the name. On a later run a third spelling of the same
+    person must not make the address look like a shared inbox."""
+    from src.collectors.faculty_graph import collapse_same_person_faculty
+
+    rows = [_one_person_row("faculty-testu-chem-0000aaaa", "CHEM", "Avery Sample", ["catalysis", "kinetics"]),
+            _one_person_row("faculty-testu-che-0000bbbb", "CHE", "A. Sample", ["catalysis"])]
+    assert _null_shared_admin_emails(rows) == 0
+    rows = collapse_same_person_faculty(rows, published_ids=frozenset(o["id"] for o in rows))["kept"]
+    published = frozenset(o["id"] for o in rows)
+    rows.append(_one_person_row("faculty-testu-bio-0000cccc", "BIO", "Avery B. Sample", ["catalysis"]))
+
+    assert _null_shared_admin_emails(rows) == 0
+    rows = collapse_same_person_faculty(rows, published_ids=published)["kept"]
+    assert [(o["id"][-4:], o["metadata"]["is_active"], o["contact_email"]) for o in rows] == [
+        ("aaaa", True, "asample@testu.edu"), ("bbbb", False, "asample@testu.edu")]
+
+
+def test_three_live_professors_on_one_inbox_lose_it_and_an_inactive_row_keeps_it():
+    rows = [_one_person_row(f"faculty-testu-ece-0000000{i}", "ECE", name, ["optics"])
+            for i, name in enumerate(["Avery Sample", "Blair Example", "Casey Placeholder", "Devon Example"])]
+    rows[3]["metadata"]["is_active"] = False
+    assert _null_shared_admin_emails(rows) == 3
+    assert [o["contact_email"] for o in rows] == [None, None, None, "asample@testu.edu"]
+
+
 def test_rebuild_title_drops_navmenu_for_broad_only_prof():
     rows = [{
         "source": "uiuc_faculty", "pi_name": "Sasa Misailovic",

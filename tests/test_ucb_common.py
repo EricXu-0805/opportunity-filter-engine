@@ -124,6 +124,48 @@ def test_null_shared_and_unit_mailbox_emails():
     assert [o["contact_email"] for o in opps] == [None, None, None, "dan@berkeley.edu"]
 
 
+def _ib_row(rid, name, url, keywords, email="asample@testu.edu"):
+    return {"id": rid, "source": "ucb_ib_faculty", "source_type": "faculty_research", "school": "ucb",
+            "department": "Integrative Biology", "pi_name": name, "contact_email": email, "url": url,
+            "keywords": keywords, "title": f"Research with Prof. {name} — IB", "metadata": {"is_active": True}}
+
+
+def test_an_archived_spelling_never_takes_a_live_ucb_professors_address():
+    """Consolidation keeps a published duplicate inactive with its address and
+    its own spelling of the name; on the next run that spelling is not a second
+    professor on the live row's address."""
+    from src.collectors.faculty_graph import collapse_same_person_faculty
+    from src.collectors.ucb_common import _null_shared_contact_emails
+
+    # One person's two cards on one profile page; the richer card has no address.
+    rows = [_ib_row("ucb-ib-0001", "Avery Sample", "https://ib.testu.edu/people/asample",
+                    ["ecology", "evolution"], email=None),
+            _ib_row("ucb-ib-0002", "Avery Sample, Ph.D.", "https://ib.testu.edu/people/asample/", ["ecology"])]
+    assert _null_shared_contact_emails(rows) == 0
+    rows = collapse_same_person_faculty(rows, published_ids=frozenset(o["id"] for o in rows))["kept"]
+
+    assert _null_shared_contact_emails(rows) == 0
+    assert [(o["id"], o["metadata"]["is_active"], o["contact_email"]) for o in rows] == [
+        ("ucb-ib-0001", True, "asample@testu.edu"), ("ucb-ib-0002", False, "asample@testu.edu")]
+
+
+def test_two_live_ucb_professors_on_one_inbox_lose_it_and_an_inactive_row_keeps_it():
+    from src.collectors.ucb_common import _null_shared_contact_emails
+
+    rows = [_ib_row(f"ucb-ib-000{i}", name, f"https://ib.testu.edu/people/{i}", ["ecology"])
+            for i, name in enumerate(["Avery Sample", "Blair Example", "Casey Placeholder"])]
+    rows[2]["metadata"]["is_active"] = False
+    assert _null_shared_contact_emails(rows) == 2
+    assert [o["contact_email"] for o in rows] == [None, None, "asample@testu.edu"]
+
+    # Another school's row on the address is neither counted nor nulled here.
+    other = {**_ib_row("faculty-testu-bio-0000aaaa", "Devon Example", "https://bio.testu.edu/p/1", ["ecology"]),
+             "source": "testu_faculty", "school": "testu"}
+    rows = [_ib_row("ucb-ib-0009", "Avery Sample", "https://ib.testu.edu/people/9", ["ecology"]), other]
+    assert _null_shared_contact_emails(rows) == 0
+    assert [o["contact_email"] for o in rows] == ["asample@testu.edu", "asample@testu.edu"]
+
+
 def test_derive_keywords_from_raw_enriches_broad_only():
     """UCB analog of UIUC's Experts enrichment: a broad-only ucb_* faculty record
     with stored research_areas_raw gets specific keywords mined from that text,
