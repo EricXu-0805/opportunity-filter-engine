@@ -104,6 +104,17 @@ describe('full target résumé modal', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeDisabled();
   });
+  it('gives the title its own row on a narrow screen, with Close beside it and the supplement action below', () => {
+    renderModal();
+    const header = screen.getByRole('heading', { level: 2, name: 'Target résumé' }).closest('header')!;
+    const close = within(header).getByRole('button', { name: 'Close target résumé' });
+    const supplement = within(header).getByRole('button', { name: 'Add experience details' });
+    // jsdom has no layout: this pins the grid placement that was measured in Chromium at 320 and 390 px.
+    expect(header).toHaveClass('grid', 'grid-cols-[minmax(0,1fr)_auto]', 'sm:flex');
+    expect(close).toHaveClass('col-start-2', 'row-start-1');
+    expect(supplement).toHaveClass('col-start-1', 'row-start-2');
+    expect(supplement.parentElement).toHaveClass('contents', 'sm:flex');
+  });
   it('creates a complete independent draft from confirmed linked items, preserving exact dates and selection boundaries', async () => {
     const p = profile(); await createUI(p);
     expect(screen.getByText(/Uses only confirmed items/)).toBeVisible();
