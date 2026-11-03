@@ -58,6 +58,12 @@ def _is_faculty(o: dict) -> bool:
     return o.get("source_type") == "faculty_research"
 
 
+def _shown_as_live(o: dict) -> bool:
+    """A row a student can be shown as live. An inactive row is never offered,
+    so a duplicate kept inactive for a saved id cannot show a person twice."""
+    return (o.get("metadata") or {}).get("is_active") is not False
+
+
 def _parse_iso(d):
     if not d or not isinstance(d, str):
         return None
@@ -593,7 +599,8 @@ class TestR70ADataQuality:
         counts = Counter(
             (o.get("school"), o.get("url") or o.get("source_url"), o.get("pi_name"))
             for o in _load_data()
-            if _is_faculty(o) and o.get("pi_name") and (o.get("url") or o.get("source_url"))
+            if _is_faculty(o) and _shown_as_live(o)
+            and o.get("pi_name") and (o.get("url") or o.get("source_url"))
         )
         dups = [k for k, n in counts.items() if n > 1]
         assert not dups, f"{len(dups)} faculty appear >1× at the same URL: {dups[:3]}"
@@ -610,7 +617,7 @@ class TestR70ADataQuality:
         by_email: dict[str, list[str]] = defaultdict(list)
         by_name: dict[str, list[str]] = defaultdict(list)
         for o in _load_data():
-            if not (o.get("source") or "").startswith("ucb_"):
+            if not (o.get("source") or "").startswith("ucb_") or not _shown_as_live(o):
                 continue
             email = (o.get("contact_email") or "").strip().lower()
             if email:
@@ -643,6 +650,44 @@ class TestR70ADataQuality:
             f"{len(offenders)} ucb_* records have an institution/place pi_name "
             f"(scrape mis-selected a non-person element). First: {offenders[:5]}"
         )
+
+
+def _one_person_twice(second_metadata: dict) -> list[dict]:
+    """One person's two ucb rows on one profile URL, name and address."""
+    first = {
+        "id": "faculty-ucb-physics-00000001", "source": "ucb_physics_faculty",
+        "source_type": "faculty_research", "school": "ucb", "pi_name": "Avery Sample",
+        "url": "https://physics.testu.edu/people/avery-sample",
+        "contact_email": "asample@testu.edu", "metadata": {"is_active": True},
+    }
+    second = {**first, "id": "faculty-ucb-astro-00000002", "source": "ucb_astro_faculty",
+              "metadata": second_metadata}
+    return [first, second]
+
+
+_DUPLICATE_GATES = (
+    "test_no_same_school_same_email_faculty_duplicates",
+    "test_no_duplicate_faculty_at_same_url",
+    "test_no_ucb_joint_appointment_duplicates",
+)
+
+
+class TestDuplicateGatesJudgeLiveRows:
+    """The duplicate gates count what a student can be shown as live. A
+    duplicate kept inactive (so a saved id still resolves) passes them; two
+    live rows for one person still fail every one of them."""
+
+    @pytest.mark.parametrize("gate", _DUPLICATE_GATES)
+    def test_an_inactive_duplicate_passes(self, monkeypatch, gate):
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: _one_person_twice({"is_active": False}))
+        getattr(TestR70ADataQuality(), gate)()
+
+    @pytest.mark.parametrize("second_metadata", [{"is_active": True}, {}], ids=["active", "unstated"])
+    @pytest.mark.parametrize("gate", _DUPLICATE_GATES)
+    def test_two_live_rows_still_fail(self, monkeypatch, gate, second_metadata):
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: _one_person_twice(second_metadata))
+        with pytest.raises(AssertionError):
+            getattr(TestR70ADataQuality(), gate)()
 
 
 class TestDeactivatePastLogic:
