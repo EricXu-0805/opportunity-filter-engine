@@ -165,9 +165,8 @@ async def full_target_suggestions(http_request: Request):
         results = [receipt(unit, reason[unit["unit_id"]] if isinstance(reason, dict) else reason) for unit in processable]
     elif processable:
         deadline = started + GENERATION_DEADLINE_SECONDS
-        experiences = sum(unit["evidence"]["kind"] == "experience" for unit in processable)
         try:
-            raw, reason, calls = await run_blocking(dispatch, messages, experiences, len(processable) - experiences,
+            raw, reason, calls = await run_blocking(dispatch, messages, processable,
                                                     deadline, timeout_seconds=max(0.001, deadline - time.monotonic()))
         except BlockingWorkOverloaded:
             reason, calls, raw = "timeout", 0, None

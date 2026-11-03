@@ -40,6 +40,7 @@ from backend.lib.target_resume_ai_validation import (
     units_for,
 )
 from backend.lib.target_resume_context import target_context_character_count
+from backend.lib.target_resume_output_budget import output_budget_fits, suggestion_output_tokens
 from backend.lib.target_resume_rationale import REASON_PROMPT, render_reason
 from backend.lib.target_resume_support import (
     complete_source_quotes,
@@ -386,12 +387,14 @@ def plan_dispatch(messages):
     return raw, None if raw else "model_unavailable", 1
 
 
-def dispatch(messages, n_experience=0, n_fact=0, deadline=None):
+def dispatch(messages, units=(), deadline=None):
     """One suggestions call sized to its units; the plan endpoint has plan_dispatch."""
     # Recheck at the actual worker boundary; a queued batch may outlive admission.
     if llm_budget.exhausted():
         return None, "budget_exhausted", 0
-    raw = chat_completion(messages, max_tokens=350 + 320 * n_experience + 120 * n_fact, temperature=0.2,
+    if not output_budget_fits(units):
+        return None, "batch_context_too_large", 0
+    raw = chat_completion(messages, max_tokens=suggestion_output_tokens(units), temperature=0.2,
                           reasoning_effort="low", require_complete=True, safe_error_logging=True,
                           request_timeout=GENERATION_DEADLINE_SECONDS, deadline=deadline, **model_for("tailor"))
     return raw, None if raw else "model_unavailable", 1
@@ -412,13 +415,13 @@ def batch_preflight(doc, processable, locale, anchors):
     if not anchors:
         return None, "target_has_no_text"
     messages = build_prompt(doc, processable, locale, anchors)
-    if not prompt_too_large(messages):
+    if not prompt_too_large(messages) and output_budget_fits(processable):
         return messages, None
     if prompt_too_large(build_prompt(doc, [], locale, anchors)):
         return None, "target_too_large"
     if len(processable) == 1:
         return None, "context_too_large"
-    # Only a unit whose own prompt overflows is permanently too large; the rest
-    # are retryable in a smaller request.
-    return None, {unit["unit_id"]: "context_too_large" if prompt_too_large(build_prompt(doc, [unit], locale, anchors))
+    # Only a unit whose own prompt or output reservation overflows is too large;
+    # the rest are retryable in a smaller request, with every source intact.
+    return None, {unit["unit_id"]: "context_too_large" if prompt_too_large(build_prompt(doc, [unit], locale, anchors)) or not output_budget_fits([unit])
                   else "batch_context_too_large" for unit in processable}
