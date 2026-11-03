@@ -134,10 +134,12 @@ _MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARAC
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-# w14.3: a skill list with no inference stamp outside hand-curated rows is
-# no longer a requirement anchor or "Required skills" in the renovation plan
-# (M22).
-TAILOR_PIPELINE_VERSION = "w14.3"
+# w14.4: the legacy renovation plan reads each accepted bullet, section
+# heading and kind and every public target field whole, adds an
+# "- Organization:" line and labels the description "- Description:" (was
+# "- Description excerpt:"); a plan over TAILOR_PROMPT_MAX_CHARACTERS is
+# refused with 413 before model usage (M40).
+TAILOR_PIPELINE_VERSION = "w14.4"
 
 TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 # The renovation plan is ID-only and must leave the rewrite and its review
@@ -1159,57 +1161,78 @@ async def structure_resume(request: StructureResumeRequest, http_request: Reques
     )
 
 
-def _ai_renovation_plan(
-    sections: list[ResumeSection], opp: dict, *, locale: str = "en", deadline: float | None = None,
-) -> dict | None:
-    """Ask the model for an ID-only reorder+action plan. Returns a mapping
-    ``{section_id: [(bullet_id, action)]}`` restricted to input IDs, or None."""
-    valid_sections = {s.id: {b.id for b in s.bullets} for s in sections}
+def _renovation_plan_messages(sections: list[ResumeSection], opp: dict) -> list[dict[str, str]]:
+    """Read accepted material whole; reject an oversized plan before metering.
 
+    Later clauses can contain the student's contribution or its limits. Taking
+    only a prefix changes the information used to decide which bullets to lead
+    with, even if the assembled result still retains the original wording.
+    """
     sec_lines: list[str] = []
     for s in sections:
         # ids are schema-guaranteed whitespace-free ≤64 chars; kind is capped
         # too but still goes through _sanitize_field for defense in depth.
         sec_lines.append(
-            f"[section {s.id}] {_sanitize_field(s.heading, max_len=80)} "
-            f"({_sanitize_field(s.kind, max_len=24)})"
+            f"[section {s.id}] {_sanitize_field(s.heading, max_len=None)} "
+            f"({_sanitize_field(s.kind, max_len=None)})"
         )
         for b in s.bullets:
-            sec_lines.append(f"  - [{b.id}] {_sanitize_field(b.text, max_len=200)}")
+            sec_lines.append(f"  - [{b.id}] {_sanitize_field(b.text, max_len=None)}")
     resume_block = "\n".join(sec_lines) or "(no sections)"
 
     eligibility = opp.get("eligibility") or {}
     required = _sanitize_field(
-        ", ".join(str(s) for s in (eligibility.get("skills_required") or [])[:8]), max_len=300
+        ", ".join(str(s) for s in (eligibility.get("skills_required") or [])), max_len=None
     ) or "(none specified)"
     keywords = _sanitize_field(
-        ", ".join(str(k) for k in (opp.get("keywords") or [])[:10]), max_len=300
+        ", ".join(str(k) for k in (opp.get("keywords") or [])), max_len=None
     ) or "(none)"
-    pi = _sanitize_field(opp.get("pi_name", ""), max_len=100) or "(unspecified)"
-    # The plan decides WHAT to foreground, so it needs at least the same
-    # opportunity context the rewrite stage sees — not a thinner slice.
+    pi = _sanitize_field(opp.get("pi_name", ""), max_len=None) or "(unspecified)"
+    # The plan decides what to foreground from the public description. Keep
+    # its later clauses, which can change a topic's scope or requirements.
     opp_desc = _sanitize_field(
-        opp.get("description_clean") or opp.get("description_raw") or "", max_len=800,
+        opp.get("description_clean") or opp.get("description_raw") or "", max_len=None,
     )
 
     user_prompt = (
         f"OPPORTUNITY:\n"
-        f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
+        f"- Title: {_sanitize_field(opp.get('title', ''), max_len=None)}\n"
+        f"- Organization: {_sanitize_field(opp.get('organization', ''), max_len=None)}\n"
         f"- Professor / lab: {pi}\n"
         + _skills_line(opp, required)
         + _keywords_line(opp, keywords)
-        + f"- Description excerpt: {opp_desc or '(no description)'}\n"
-        f"\n"
-        f"STUDENT RÉSUMÉ (IDs are authoritative — use only these):\n"
+        + f"- Description: {opp_desc or '(no description)'}\n\n"
+        + f"STUDENT RÉSUMÉ (IDs are authoritative — use only these):\n"
         f"{resume_block}\n"
         f"\n"
         f"Return the reorder+action plan JSON now."
     )
+    messages = [
+        {"role": "system", "content": _MACRO_SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
+    check_prompt_size(
+        messages, limit=TAILOR_PROMPT_MAX_CHARACTERS, code="TAILOR_INPUT_TOO_LARGE",
+        message="The combined resume input is too long. Reduce the selected material and try again.",
+    )
+    return messages
+
+
+def _ai_renovation_plan(
+    sections: list[ResumeSection], opp: dict, *, locale: str = "en", deadline: float | None = None,
+    messages: list[dict[str, str]] | None = None,
+) -> dict | None:
+    """Ask the model for an ID-only reorder+action plan. Returns a mapping
+    ``{section_id: [(bullet_id, action)]}`` restricted to input IDs, or None.
+
+    The HTTP route supplies the complete messages it checked before metering;
+    direct callers use the same bounded builder.
+    """
+    valid_sections = {s.id: {b.id for b in s.bullets} for s in sections}
+    if messages is None:
+        messages = _renovation_plan_messages(sections, opp)
     raw = chat_completion(
-        [
-            {"role": "system", "content": _MACRO_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
+        messages,
         # 2000 tokens covers a full 100-bullet plan (~40 chars/entry); at 1200 a
         # large résumé's plan JSON truncated → parse fail → guaranteed fallback
         # after paying the full input cost.
@@ -1350,6 +1373,7 @@ async def _renovate_resume_snapshot(
     if not is_configured():
         return _passthrough(["llm_not_configured"])
 
+    messages = _renovation_plan_messages(sections, opp)
     _schedule_usage(authorization, "renovation")
     try:
         plan = await run_blocking(
@@ -1357,6 +1381,7 @@ async def _renovate_resume_snapshot(
             sections,
             opp,
             locale=request.locale,
+            messages=messages,
             deadline=started + _PLAN_DEADLINE_SECONDS,
             timeout_seconds=max(0.001, started + _PLAN_DEADLINE_SECONDS - time.monotonic()),
         )

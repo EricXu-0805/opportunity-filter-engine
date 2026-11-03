@@ -923,15 +923,22 @@ describe('M43 complete profile content owns asynchronous work', () => {
     expect(mockLoadRenovation).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['rejected request', 'no sections'] as const)('a %s rerun restores the previous document and unsaved edit', async (failure) => {
+  it.each(['rejected request', 'oversized plan', 'no sections'] as const)('a %s rerun restores the previous document and unsaved edit', async (failure) => {
     mockLoadRenovation.mockResolvedValue(savedDoc());
     if (failure === 'no sections') mockStructureResume.mockResolvedValue({ sections: [], method: 'heuristic', warnings: [] });
-    else { mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockRejectedValue(new Error('Generation unavailable')); }
+    else {
+      mockStructureResume.mockResolvedValue(structuredResume);
+      const error = failure === 'oversized plan'
+        ? Object.assign(new Error('The combined resume input is too long.'), { code: 'TAILOR_INPUT_TOO_LARGE', status: 413 })
+        : new Error('Generation unavailable');
+      mockRenovateResume.mockRejectedValue(error);
+    }
     renderModal(); await screen.findByText('renovate.restored');
     editFirstBullet('My pending manual wording');
     fireEvent.click(screen.getByText('renovate.rerun'));
     expect(await screen.findByRole('textbox')).toHaveValue('My pending manual wording');
-    expect(screen.getByRole('alert')).toHaveTextContent(failure === 'no sections' ? 'renovate.noSections' : 'Generation unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent(failure === 'no sections' ? 'renovate.noSections'
+      : failure === 'oversized plan' ? 'profileInput.tailorTooLarge' : 'Generation unavailable');
     expect(screen.getByText('renovate.copyAll')).toBeInTheDocument();
     expect(mockSaveRenovation).not.toHaveBeenCalled();
   });
