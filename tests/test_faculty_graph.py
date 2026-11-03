@@ -41,6 +41,36 @@ class TestValidator:
         bad = {**SCHOOL, "departments": [{"short": "X", "name": "X Dept"}]}
         assert any("no curated faculty" in e for e in fg.validate(bad))
 
+    @staticmethod
+    def _walk_units(*units):
+        return {**SCHOOL, "departments": [
+            {"short": short, "name": "College of X", "id_names": id_names,
+             "json_dir": {"url": "https://x.example.edu/api", "id_namespaces": shorts}}
+            for short, shorts, id_names in units]}
+
+    @pytest.mark.parametrize("id_names", [
+        [{"Ada M. Example": "Ada Example"}] * 2, [None, {}]])
+    def test_units_that_split_one_walk_alike_are_valid(self, id_names):
+        assert fg.validate(self._walk_units(("X", ["X", "X2"], id_names[0]),
+                                            ("X2", ["X", "X2"], id_names[1]))) == []
+
+    def test_a_unit_left_out_of_its_own_id_namespaces_is_flagged(self):
+        errors = fg.validate(self._walk_units(("X", ["X", "X2"], None),
+                                              ("X2", ["X", "X3"], None)))
+        assert errors == ["X2: json_dir id_namespaces leaves out X2"]
+
+    @pytest.mark.parametrize("id_names", [
+        [{"Ada M. Example": "Ada Example"}, None, None],
+        [{"Ada M. Example": "Ada Example"}, {"Ada M. Example": "Ada M Example"},
+         {"Ada M. Example": "Ada Example"}],
+        [None, None, {"Ada M. Example": "Ada Example"}],
+    ])
+    def test_units_of_one_walk_with_different_id_names_are_flagged(self, id_names):
+        shorts = ["X", "X2", "X3"]
+        errors = fg.validate(self._walk_units(
+            *[(short, shorts, names) for short, names in zip(shorts, id_names, strict=True)]))
+        assert errors == ["X, X2, X3: the units of one json_dir walk need the same id_names"]
+
     def test_fetch_rejects_invalid_config(self):
         with pytest.raises(ValueError):
             fg.fetch_and_normalize({"school_slug": "x", "departments": []})

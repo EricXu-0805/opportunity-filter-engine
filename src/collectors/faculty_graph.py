@@ -225,6 +225,7 @@ def validate(school: dict) -> list[str]:
         if not school.get(field):
             errors.append(f"missing {field}")
     seen_short: set[str] = set()
+    walks: dict[tuple, list[dict]] = {}
     for dept in school.get("departments", []):
         short = dept.get("short")
         if not short:
@@ -249,6 +250,16 @@ def validate(school: dict) -> list[str]:
                 errors.append(f"{short}: json_dir total_key needs paginate")
             if not jd.get("total_distinct_key"):
                 errors.append(f"{short}: json_dir total_key needs total_distinct_key")
+        if isinstance(jd, dict) and jd.get("id_namespaces"):
+            # A unit left out of its own list keeps no one; units that map names
+            # differently would each keep a person, or none would.
+            if short not in jd["id_namespaces"]:
+                errors.append(f"{short}: json_dir id_namespaces leaves out {short}")
+            walks.setdefault(tuple(jd["id_namespaces"]), []).append(dept)
+    for shorts, depts in walks.items():
+        if any((d.get("id_names") or {}) != (depts[0].get("id_names") or {}) for d in depts):
+            errors.append(f"{', '.join(shorts)}: the units of one json_dir walk need "
+                          "the same id_names")
     return errors
 
 
