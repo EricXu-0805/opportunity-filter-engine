@@ -1118,6 +1118,7 @@ def merge_into_processed(
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
             )
+            same_page = _same_page_url(existing_opp.get("url"), opp.get("url"))
             if existing_metadata.get("reference_only") is True and unverified_seed:
                 # A config edit alone does not make reference material an
                 # application: that waits for a run that reads the page.
@@ -1133,6 +1134,10 @@ def merge_into_processed(
                     # The stored word and title read the page as a listing,
                     # which reference material is not.
                     carried = ()
+                elif unverified_seed and not same_page and stored_status == "open":
+                    # The old page's "open" says nothing about the page the
+                    # program moved to; only a stored retirement survives.
+                    carried = ("is_active",) if existing_metadata.get("is_active") is False else ()
                 elif not unverified_seed and stored_status in {"open", "closed"}:
                     # A page that loaded and no longer says applications are
                     # open, or closed, ends the stored word: it was the page's,
@@ -1144,7 +1149,7 @@ def merge_into_processed(
                 for key in carried:
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
-                if unverified_seed:
+                if unverified_seed and same_page:
                     if "last_verified" in existing_metadata:
                         opp["metadata"]["last_verified"] = existing_metadata[
                             "last_verified"

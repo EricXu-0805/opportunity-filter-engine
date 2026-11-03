@@ -912,6 +912,47 @@ def test_a_moved_reference_row_stays_reference_until_its_new_page_is_read(proces
     assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
 
 
+@pytest.mark.parametrize(("stored_status", "kept_status"), [("open", "unknown"), ("closed", "closed")])
+def test_a_moved_program_borrows_no_reading_from_its_old_page(processed, stored_status, kept_status):
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old = cg._normalize_program(school, source, spec, status=stored_status, seed_page_verified=True)
+    processed.write_text(json.dumps([old]))
+    spec["url"] = "https://example.edu/award-2027/"
+    _refresh_school(school, national=False)
+    row = _stored(processed)[old["id"]]
+    assert row["url"] == spec["url"] and row["metadata"]["last_verified"] is None
+    # An open word does not move with the program; a closure still holds until a read.
+    assert row["metadata"]["status"] == kept_status
+    assert ("applications open" in row["title"]) is False
+
+
+def test_an_upgrade_to_https_is_the_same_page_not_a_move(processed):
+    school = _listing_school("award", urls={"award": "http://example.edu/award/"})
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    processed.write_text(json.dumps([old]))
+    spec["url"] = "https://example.edu/award/"
+    _refresh_school(school, national=False)
+    row = _stored(processed)[old["id"]]
+    assert row["metadata"]["last_verified"] == old["metadata"]["last_verified"]
+    assert row["metadata"]["status"] == "open"
+
+
+def test_a_moved_program_does_not_revive_a_row_retired_while_open(processed):
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    old["metadata"].update(is_active=False, deactivation_reason="school_unsupported")
+    processed.write_text(json.dumps([old]))
+    spec["url"] = "https://example.edu/award-2027/"
+    _refresh_school(school, national=False)
+    assert _stored(processed)[old["id"]]["metadata"]["is_active"] is False
+
+
 class TestDroppedProgramRetirement:
     """Merge only upserts, so a program dropped from a school config used to
     keep its stored row active for good. Duke's Program II and Macalester's
