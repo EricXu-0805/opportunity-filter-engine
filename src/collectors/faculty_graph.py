@@ -3969,6 +3969,45 @@ def duplicate_archive_stamps(rows: list[dict]) -> dict[str, dict]:
     return stamps
 
 
+def settle_dropped_rows(dropped: dict[int, tuple[dict, dict, str]],
+                        published_ids: frozenset[str] = frozenset(),
+                        today: date | None = None,
+                        archived: dict[str, dict] | None = None) -> tuple[set[int], Counter, Counter]:
+    """Delete each row a dedup dropped that this run minted, and keep each one
+    whose id is in ``published_ids`` inactive with ``duplicate_of`` naming the
+    row its drops end at. ``dropped`` maps ``id(row)`` to (row, the row it was
+    dropped into, school); ``archived`` holds the run-start
+    ``duplicate_archive_stamps``. Returns the ``id()`` of each row to delete,
+    and the rows deleted and newly archived by school."""
+    stamp = (today or date.today()).isoformat()
+    archived = archived or {}
+    remove: set[int] = set()
+    removed_by_school: Counter = Counter()
+    archived_by_school: Counter = Counter()
+    for o, survivor, school in dropped.values():
+        # A later pass can drop the row this one was dropped into.
+        while id(survivor) in dropped:
+            survivor = dropped[id(survivor)][1]
+        if o.get("id") not in published_ids:
+            remove.add(id(o))
+            removed_by_school[school] += 1
+            continue
+        meta = o.setdefault("metadata", {})
+        if meta.get("is_active") is not False:
+            # A row archived before this run is active here when its unit lists
+            # it again: the merge replaced its metadata, stamps included.
+            before = archived.get(o.get("id")) or {}
+            again = before.get("duplicate_of") == survivor.get("id")
+            meta.update(is_active=False, deactivation_reason=DUPLICATE_REASON,
+                        deactivated_at=before.get("deactivated_at") if again else stamp)
+        else:
+            again = meta.get("duplicate_of") == survivor.get("id")
+        if not again:
+            archived_by_school[school] += 1
+        meta["duplicate_of"] = survivor.get("id")
+    return remove, removed_by_school, archived_by_school
+
+
 def collapse_same_person_faculty(opps: list[dict],
                                  person_pages: frozenset[str] = frozenset(),
                                  published_ids: frozenset[str] = frozenset(),
@@ -4013,13 +4052,8 @@ def collapse_same_person_faculty(opps: list[dict],
     row that already pointed at the same kept row."""
     pages = _one_person_pages(opps, frozenset(person_pages))
     active = [o for o in opps if _is_active_faculty(o)]
-    stamp = (today or date.today()).isoformat()
-    archived = archived or {}
-    remove: set[int] = set()
     # id(row) -> (row, the row it was dropped into, school), in drop order.
     dropped: dict[int, tuple[dict, dict, str]] = {}
-    removed_by_school: Counter = Counter()
-    archived_by_school: Counter = Counter()
     nulled_by_school: Counter = Counter()
 
     def drop(survivor: dict, o: dict, school) -> None:
@@ -4228,28 +4262,8 @@ def collapse_same_person_faculty(opps: list[dict],
             _carry_sighting(by_url_name or by_email, o, pages)
             drop(by_url_name or by_email, o, school)
 
-    for o, survivor, school in dropped.values():
-        # A later pass can drop the row this one was dropped into.
-        while id(survivor) in dropped:
-            survivor = dropped[id(survivor)][1]
-        if o.get("id") not in published_ids:
-            remove.add(id(o))
-            removed_by_school[school] += 1
-            continue
-        meta = o.setdefault("metadata", {})
-        if meta.get("is_active") is not False:
-            # A row archived before this run is active here when its unit lists
-            # it again: the merge replaced its metadata, stamps included.
-            before = archived.get(o.get("id")) or {}
-            again = before.get("duplicate_of") == survivor.get("id")
-            meta.update(is_active=False, deactivation_reason=DUPLICATE_REASON,
-                        deactivated_at=before.get("deactivated_at") if again else stamp)
-        else:
-            again = meta.get("duplicate_of") == survivor.get("id")
-        if not again:
-            archived_by_school[school] += 1
-        meta["duplicate_of"] = survivor.get("id")
-
+    remove, removed_by_school, archived_by_school = settle_dropped_rows(
+        dropped, published_ids, today, archived)
     kept = [o for o in opps if id(o) not in remove]
     return {
         "kept": kept,

@@ -640,6 +640,52 @@ def test_a_published_tombstone_of_a_live_row_is_kept_naming_it(monkeypatch, tmp_
     assert "0 duplicate person(s) removed, 1 published duplicate(s) newly archived" in caplog.text
 
 
+def _uiuc_card(name, keywords):
+    from src.collectors.uiuc_faculty import DEPARTMENTS, normalize_faculty
+
+    psych = DEPARTMENTS["psych"]
+    return normalize_faculty({"name": name, "email": "person1@illinois.edu",
+                              "url": f"{psych['base']}/directory/profile/person1"}, psych, keywords=keywords)
+
+
+def _run_the_uiuc_merge(monkeypatch, tmp_path, stored, fresh):
+    """A quick uiuc run whose static fetch reads ``fresh``, merged by the real
+    uiuc merge into the work file seeded with ``stored``."""
+    from src.collectors import uiuc_faculty
+
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, stored)
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda *a, **k: json.loads(json.dumps(fresh)))
+    monkeypatch.setattr(refresh_all, "merge_faculty", lambda opps, **kwargs: uiuc_faculty.merge_into_processed(
+        opps, str(processed), **kwargs))
+    refresh_all.refresh_all(deep=False, schools={"uiuc"})
+    return {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+
+
+def test_the_uiuc_merge_keeps_a_published_duplicate_inactive(monkeypatch, tmp_path):
+    """The uiuc merge's dedups are handed the run-start ids too: a published row
+    they drop for a card read this run stays, inactive and naming that card."""
+    published = _uiuc_card("Avery Q. Sample", ["psychology"])
+    card = _uiuc_card("Avery Sample", ["memory", "attention"])
+    saved = _run_the_uiuc_merge(monkeypatch, tmp_path, [published], [card])
+    assert saved[card["id"]]["is_active"] is True
+    assert {k: saved[published["id"]].get(k) for k in ("is_active", "deactivation_reason", "duplicate_of")} == {
+        "is_active": False, "deactivation_reason": "duplicate_of_live_record", "duplicate_of": card["id"]}
+
+
+def test_the_uiuc_merge_keeps_the_date_of_a_duplicate_its_page_lists_again(monkeypatch, tmp_path):
+    """And the run-start stamps: a published duplicate the page lists again comes
+    back active from the merge and is archived again under the same card on the
+    day it was first archived."""
+    card = _uiuc_card("Avery Sample", ["memory", "attention"])
+    listed_again = _uiuc_card("Avery Q. Sample", ["psychology"])
+    archived = json.loads(json.dumps(listed_again))
+    archived["metadata"].update(is_active=False, deactivated_at="2026-10-26",
+                                deactivation_reason="duplicate_of_live_record", duplicate_of=card["id"])
+    saved = _run_the_uiuc_merge(monkeypatch, tmp_path, [card, archived], [card, listed_again])
+    assert {k: saved[archived["id"]].get(k) for k in ("is_active", "deactivated_at", "duplicate_of")} == {
+        "is_active": False, "deactivated_at": "2026-10-26", "duplicate_of": card["id"]}
+
+
 def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     monkeypatch, tmp_path,
 ):

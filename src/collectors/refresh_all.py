@@ -648,8 +648,9 @@ def refresh_all(
     # A certificate rejected in an earlier call is not this run's evidence.
     reset_certificate_circuit()
     # Ids a student may already hold (saved, linked, emailed): the corpus before
-    # any collector merges into it. The same-person collapse archives these, and
-    # needs the stamps of the rows it archived before: a merge replaces them.
+    # any collector merges into it. The uiuc merge's dedups and the same-person
+    # collapse archive these, and need the stamps of the rows archived before: a
+    # merge replaces them.
     published_ids, archive_stamps = _run_start_corpus(PROCESSED_FILE)
 
     def selected(school: str | None) -> bool:
@@ -857,7 +858,8 @@ def refresh_all(
                     fetch_html_faculty,
                 )
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
-            added, updated = merge_faculty(all_faculty)
+            added, updated = merge_faculty(all_faculty, published_ids=published_ids,
+                                           archived=archive_stamps)
             # Surface the silent-scrape-failure class (a declared department whose
             # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
             # bare warning is invisible in the run log, so list empties in the

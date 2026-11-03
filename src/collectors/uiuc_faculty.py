@@ -22,7 +22,7 @@ import re
 import time
 import unicodedata
 from collections import Counter, defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from functools import cache
 from pathlib import Path
 from urllib.parse import urljoin
@@ -44,6 +44,7 @@ from ..evidence import (
     record_kind,
     stamp_inferred,
 )
+from .faculty_graph import DUPLICATE_REASON, settle_dropped_rows
 from .ucb_common import (
     _RETIRED_TITLE_RE,
     KEYWORD_BANK,
@@ -1372,6 +1373,19 @@ def _faculty_name_key(opp: dict) -> tuple[str, str] | None:
     return (url, tokens[-1].lower())
 
 
+def _archived_duplicate(opp: dict) -> bool:
+    """A row kept inactive because it duplicates a live one (``duplicate_of``)."""
+    meta = opp.get("metadata") or {}
+    return meta.get("is_active") is False and meta.get("deactivation_reason") == DUPLICATE_REASON
+
+
+def _keys_with_a_live_row(opps: list[dict], key_of) -> set:
+    """The dedup keys some row shown as live holds: a row archived as a
+    duplicate is never kept in their groups."""
+    return {key for opp in opps if (key := key_of(opp)) is not None
+            and (opp.get("metadata") or {}).get("is_active") is not False}
+
+
 def _faculty_is_richer(a: dict, b: dict) -> bool:
     """True if faculty record ``a`` is more complete than ``b``. A record with
     more *specific* research keywords wins first: a cross-appointed professor's
@@ -1908,9 +1922,11 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
         meta.pop("duplicate_of", None)
 
 
-def _dedup_decredentialed_faculty(opps: list[dict]) -> tuple[list[dict], int]:
+def _dedup_decredentialed_faculty(opps: list[dict], dropped: dict | None = None) -> tuple[list[dict], int]:
     """Drop faculty rows that duplicate another row at the same school and URL
-    under the same full name, keeping the richer one.
+    under the same full name, keeping the richer one, never a row archived as a
+    duplicate beside a live one. ``dropped``, when given, records each row
+    dropped for ``faculty_graph.settle_dropped_rows``.
 
     This runs after ``_strip_pi_name_credentials``, which is what exposes them:
     UCLA listed Smadar Naoz twice, the two rows distinguishable only by a "PhD"
@@ -1928,43 +1944,48 @@ def _dedup_decredentialed_faculty(opps: list[dict]) -> tuple[list[dict], int]:
             return ae
         return _faculty_is_richer(a, b)
 
-    best: dict[tuple, int] = {}
-    for i, opp in enumerate(opps):
-        if not _is_faculty_record(opp):
-            continue
+    def key_of(opp: dict) -> tuple | None:
         url = (opp.get("source_url") or "").strip()
         name = " ".join((opp.get("pi_name") or "").split()).lower()
-        if not url or not name:
+        if not _is_faculty_record(opp) or not url or not name:
+            return None
+        return (opp.get("school"), url, name)
+
+    live = _keys_with_a_live_row(opps, key_of)
+    best: dict[tuple, int] = {}
+    for i, opp in enumerate(opps):
+        key = key_of(opp)
+        if key is None or (key in live and _archived_duplicate(opp)):
             continue
-        key = (opp.get("school"), url, name)
         if key not in best or _is_better_copy(opp, opps[best[key]]):
             best[key] = i
 
     def keep(i: int, opp: dict) -> bool:
-        if not _is_faculty_record(opp):
-            return True
-        url = (opp.get("source_url") or "").strip()
-        name = " ".join((opp.get("pi_name") or "").split()).lower()
-        if not url or not name:
-            return True
-        return best[(opp.get("school"), url, name)] == i
+        key = key_of(opp)
+        return key is None or best[key] == i
 
     for i, opp in enumerate(opps):
         if not keep(i, opp):
-            _carry_newest_liveness(opps[best[(opp.get("school"), (opp.get("source_url") or "").strip(), " ".join((opp.get("pi_name") or "").split()).lower())]], opp)
+            survivor = opps[best[key_of(opp)]]
+            _carry_newest_liveness(survivor, opp)
+            if dropped is not None:
+                dropped[id(opp)] = (opp, survivor, opp.get("school"))
     kept = [opp for i, opp in enumerate(opps) if keep(i, opp)]
     return kept, len(opps) - len(kept)
 
 
-def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
+def _dedup_faculty_records(opps: list[dict], dropped: dict | None = None) -> list[dict]:
     """Collapse same-professor duplicate faculty rows (same profile URL + last
-    name), keeping the richer record at its original position. Non-faculty rows
-    and records without a safe key always pass through untouched. Survivors keep
-    their original order so a re-write only removes the duplicate rows."""
+    name), keeping the richer record at its original position, never a row
+    archived as a duplicate beside a live one. Non-faculty rows and records
+    without a safe key always pass through untouched. Survivors keep their
+    original order so a re-write only removes the duplicate rows. ``dropped``,
+    when given, records each row dropped for ``faculty_graph.settle_dropped_rows``."""
+    live = _keys_with_a_live_row(opps, _faculty_name_key)
     best_idx: dict[tuple[str, str], int] = {}
     for i, opp in enumerate(opps):
         key = _faculty_name_key(opp)
-        if key is None:
+        if key is None or (key in live and _archived_duplicate(opp)):
             continue
         if key not in best_idx or _faculty_is_richer(opp, opps[best_idx[key]]):
             best_idx[key] = i
@@ -1972,6 +1993,8 @@ def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
         key = _faculty_name_key(opp)
         if key is not None and best_idx[key] != i:
             _carry_newest_liveness(opps[best_idx[key]], opp)
+            if dropped is not None:
+                dropped[id(opp)] = (opp, opps[best_idx[key]], opp.get("school"))
     return [
         opp
         for i, opp in enumerate(opps)
@@ -2617,14 +2640,17 @@ def _faculty_email_key(opp: dict) -> tuple[str, str, str] | None:
     return (email, tokens[0].lower().strip("."), tokens[-1].lower())
 
 
-def _dedup_faculty_by_email(opps: list[dict]) -> list[dict]:
+def _dedup_faculty_by_email(opps: list[dict], dropped: dict | None = None) -> list[dict]:
     """Collapse same-professor faculty rows that share a contact_email + last
     name across departments (different profile URLs), keeping the richer record
-    at its original position. Rows without a safe email key pass through."""
+    at its original position, never a row archived as a duplicate beside a live
+    one. Rows without a safe email key pass through. ``dropped``, when given,
+    records each row dropped for ``faculty_graph.settle_dropped_rows``."""
+    live = _keys_with_a_live_row(opps, _faculty_email_key)
     best_idx: dict[tuple[str, str, str], int] = {}
     for i, opp in enumerate(opps):
         key = _faculty_email_key(opp)
-        if key is None:
+        if key is None or (key in live and _archived_duplicate(opp)):
             continue
         if key not in best_idx or _faculty_is_richer(opp, opps[best_idx[key]]):
             best_idx[key] = i
@@ -2632,6 +2658,8 @@ def _dedup_faculty_by_email(opps: list[dict]) -> list[dict]:
         key = _faculty_email_key(opp)
         if key is not None and best_idx[key] != i:
             _carry_newest_liveness(opps[best_idx[key]], opp)
+            if dropped is not None:
+                dropped[id(opp)] = (opp, opps[best_idx[key]], opp.get("school"))
     return [
         opp
         for i, opp in enumerate(opps)
@@ -3177,8 +3205,17 @@ def _run_faculty_dq(opps: list[dict]) -> None:
         logger.info(f"Rebuilt {retitled} faculty title/description(s) from cleaned keywords (dropped nav-menu pollution)")
 
 
-def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
-    """Merge new faculty opportunities into the processed data file."""
+def merge_into_processed(new_opps: list[dict], filepath: str = None,
+                         published_ids: frozenset[str] = frozenset(),
+                         today: date | None = None,
+                         archived: dict[str, dict] | None = None) -> tuple[int, int]:
+    """Merge new faculty opportunities into the processed data file.
+
+    A row the dedups drop whose id is in ``published_ids`` (the corpus before
+    the run merged anything) is kept inactive naming the row kept, as the
+    same-person collapse keeps one (``faculty_graph.settle_dropped_rows``, with
+    ``today`` and the run-start ``archived`` stamps); only a row this run minted
+    is deleted."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
 
     existing = []
@@ -3260,22 +3297,28 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     if dropped_nonperson:
         logger.info(f"Dropped {dropped_nonperson} non-person faculty record(s) (section/award/program headings)")
 
+    rows = all_opps
+    dropped: dict[int, tuple[dict, dict, str]] = {}
     before = len(all_opps)
-    all_opps = _dedup_faculty_records(all_opps)
+    all_opps = _dedup_faculty_records(all_opps, dropped)
     removed = before - len(all_opps)
     if removed:
-        logger.info(f"Removed {removed} duplicate faculty record(s) sharing a profile URL")
+        logger.info(f"Dropped {removed} duplicate faculty record(s) sharing a profile URL")
 
     before_email = len(all_opps)
-    all_opps = _dedup_faculty_by_email(all_opps)
+    all_opps = _dedup_faculty_by_email(all_opps, dropped)
     removed_email = before_email - len(all_opps)
     if removed_email:
-        logger.info(f"Removed {removed_email} cross-department duplicate faculty record(s) sharing a contact email")
+        logger.info(f"Dropped {removed_email} cross-department duplicate faculty record(s) sharing a contact email")
 
     _run_faculty_dq(all_opps)
-    all_opps, dropped_decred = _dedup_decredentialed_faculty(all_opps)
+    # A published duplicate stays in the file, so it is cleaned too, but apart:
+    # it is still marked live here, and beside the live rows its spelling would
+    # count as another professor on their address.
+    _run_faculty_dq([o for o in rows if id(o) in dropped and o.get("id") in published_ids])
+    all_opps, dropped_decred = _dedup_decredentialed_faculty(all_opps, dropped)
     if dropped_decred:
-        logger.info(f"Removed {dropped_decred} faculty record(s) duplicated under one name after credential stripping")
+        logger.info(f"Dropped {dropped_decred} faculty record(s) duplicated under one name after credential stripping")
     for opp in all_opps:
         md = opp.get("metadata") or {}
         current = md.pop(_LISTED_CURRENT, None)
@@ -3287,6 +3330,11 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             md["deactivated_at"] = min(md.get("deactivated_at") or "9999", emeritus_since[opp["id"]])
     for opp in new_opps:
         (opp.get("metadata") or {}).pop(_LISTED_CURRENT, None)
+    remove, deleted, newly_archived = settle_dropped_rows(dropped, published_ids, today, archived)
+    if dropped:
+        logger.info(f"Faculty dedups: {sum(deleted.values())} duplicate(s) deleted, "
+                    f"{sum(newly_archived.values())} published duplicate(s) newly archived")
+    all_opps = [o for o in rows if id(o) not in remove]
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)

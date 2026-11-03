@@ -235,6 +235,7 @@ def refresh(path: str = "data/processed/opportunities.json",
     import json
 
     from ..normalizers.school_audience import apply_school_audience
+    from .faculty_graph import duplicate_archive_stamps
     from .uiuc_faculty import merge_into_processed
 
     deadline = (time.monotonic() + time_budget_minutes * 60
@@ -243,7 +244,11 @@ def refresh(path: str = "data/processed/opportunities.json",
     enriched = enrich(corpus, set(TARGET_DEPARTMENTS), deadline=deadline,
                       order_key=datetime.now(UTC).strftime("%Y-%m"))
     if enriched:
-        merge_into_processed(enriched, path)
+        # The pass merges into the file the refresh wrote, which this run
+        # publishes: every id in it counts as published, so a row the merge's
+        # dedups drop again is kept inactive, not deleted.
+        merge_into_processed(enriched, path, published_ids=frozenset(o.get("id") for o in corpus),
+                             archived=duplicate_archive_stamps(corpus))
         corpus = json.load(open(path))
         apply_school_audience(corpus)
         with open(path, "w", encoding="utf-8") as f:
