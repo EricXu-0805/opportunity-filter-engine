@@ -174,17 +174,40 @@ describe('dictionary parity', () => {
   it('says inferred topics are ours, by record kind, neutrally, in both locales', () => {
     // A faculty row's inferred topics come from a matched publication record or
     // are its department's field, so its note names neither; a listing's come
-    // from our tags, which no publication record produced.
+    // from our tags, which no publication record produced. Topics from a
+    // matched record are not on the profile page, so the note does not send
+    // the student to a source page to check them.
     for (const prefix of ['favorites', 'detail']) {
       for (const locale of ['en', 'zh'] as const) {
         const faculty = translate(locale, `${prefix}.keywordsInferred`);
         const listing = translate(locale, `${prefix}.keywordsInferredListing`);
-        expect(faculty).toMatch(locale === 'en' ? /our system, not stated on their page/ : /我们的系统推断.*不是对方主页上写的/);
+        expect(faculty).toMatch(locale === 'en' ? /our system/ : /系统推断/);
         expect(faculty).not.toMatch(/publication|论文/);
+        expect(faculty).not.toMatch(/source|page|来源|页面/i);
         expect(listing).not.toMatch(/publication|论文/);
-        expect(listing).toMatch(locale === 'en' ? /our system/ : /我们的系统/);
+        expect(listing).toMatch(locale === 'en' ? /our system/ : /系统标注/);
         expect(`${faculty}${listing}`).not.toMatch(/他|她/);
       }
+    }
+  });
+
+  it('says how an inferred or configured value was obtained, never what the program page lacks', () => {
+    // We never checked that the page omits the value, so a hint names only
+    // how we got it (M173). The absence words cover negation in general, not
+    // only the verbs the old copy used.
+    for (const key of [
+      'detail.facts.basis.configured',
+      'detail.keywordsInferred', 'detail.keywordsInferredListing', 'detail.skillsInferred',
+      'detail.majorsInferred', 'detail.yearInferred', 'detail.majorsConfigured', 'detail.yearConfigured',
+      'detail.eligibilityInferred', 'detail.rollingInferred',
+      'favorites.keywordsInferred', 'favorites.keywordsInferredListing',
+      'compare.rollingFromListing', 'compare.inferredNote',
+    ]) {
+      expect(translate('en', key), key).toMatch(/our system|our listing|the posting text/);
+      expect(translate('en', key), key).not.toMatch(
+        /\bnot\b|n['’]t\b|\bnever\b|\bno\b|\bwithout\b|\babsent\b|\bmissing\b|\black(?:s|ing)?\b|\bpublished\b/i);
+      expect(translate('zh', key), key).toMatch(/系统|本站整理/);
+      expect(translate('zh', key), key).not.toMatch(/不是|并非|未|没|无/);
     }
   });
 

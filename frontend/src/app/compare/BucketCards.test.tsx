@@ -190,7 +190,7 @@ describe('BucketCards — canonical match truth', () => {
 
     // The qualifier sits in its own element: the one-line summary above is
     // truncated, which would cut it off in a narrow compare column.
-    const note = screen.getByText('From our listing’s deadline note, not confirmed on the program page.');
+    const note = screen.getByText('From our listing’s deadline note. Check the program’s current dates.');
     expect(note).toBe(screen.getByTestId('rolling-from-listing'));
     expect(note.className).not.toMatch(/truncate|line-clamp/);
     expect(note.closest('.truncate')).toBeNull();

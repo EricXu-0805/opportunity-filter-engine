@@ -144,9 +144,9 @@ describe('DetailFactsSection', () => {
   // lists, from our config, read "A default we apply to this source" — a
   // constant on every row, which they are not.
   it.each([
-    ['en', 'System inference', 'From our listing’s major list, not confirmed on the program page.',
-      'These come from our listing’s own list, not confirmed on the program page.', 'A default we apply to this source'],
-    ['zh', '系统推断', '来自我们列表里的专业清单，项目页面未确认。', '这些来自我们列表里的年级清单，项目页面未确认。',
+    ['en', 'System inference', 'From our listing’s major list. Check the program’s eligibility requirements.',
+      'From our listing’s class-year list. Check the program’s eligibility requirements.', 'A default we apply to this source'],
+    ['zh', '系统推断', '来自本站整理的专业清单，申请资格请核对项目要求。', '来自本站整理的年级清单，申请资格请核对项目要求。',
       '我们对该来源使用的默认值'],
   ] as const)('says a configured major or class-year list is our listing\'s (%s)', (locale, inferred, majorsNote, yearNote, sourceDefault) => {
     const fields = readDetailFields({
@@ -179,9 +179,9 @@ describe('DetailFactsSection', () => {
   // citizenship rule and deadline note, from our config, read "A default we
   // apply to this source" like the stipend Simplify writes on every row.
   it.each([
-    ['en', 'From our listing’s entry for this program, not confirmed on the program page.',
-      'From our listing’s deadline note, not confirmed on the program page.', 'A default we apply to this source'],
-    ['zh', '来自我们列表里这个项目的条目，项目页面未确认。', '来自我们列表里的截止说明，项目页面未确认。',
+    ['en', 'From our listing’s entry for this program. Check the program’s current information.',
+      'From our listing’s deadline note. Check the program’s current dates.', 'A default we apply to this source'],
+    ['zh', '来自本站整理的项目信息，当前情况请核对项目页面。', '来自本站整理的截止说明，当前日期请核对项目页面。',
       '我们对该来源使用的默认值'],
   ] as const)('says a configured pay, intl, citizenship or deadline note is our listing\'s (%s)', (locale, entryNote, noteNote, sourceDefault) => {
     const translateKey = (key: string) => translate(locale, key);
