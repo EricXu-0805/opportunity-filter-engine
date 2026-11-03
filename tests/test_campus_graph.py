@@ -134,6 +134,15 @@ class TestValidator:
         }}
         assert "more than one emit bucket stamps no school" in cg.validate(bad)
 
+    @pytest.mark.parametrize("value", ["yes", 1, 0])
+    def test_reference_only_must_be_a_boolean(self, value):
+        spec = cg.program("k", "T", "http://x", "d")
+        spec["reference_only"] = value
+        bad = {"school_slug": "x", "emit": {"campus": ("s", "x", "campus")},
+               "sources": [{"source_name": "n", "source_type": cg.PROGRAM, "emit": "campus",
+                            "crawl": cg.STATIC, "seeds": ["http://x"], "programs": [spec]}]}
+        assert "k: reference_only must be a boolean" in cg.validate(bad)
+
 
 def test_splitting_a_config_by_shard_changes_no_record():
     """refresh_all collects the sources that publish in national.json on the
@@ -803,6 +812,40 @@ def processed(monkeypatch, tmp_path):
     path.write_text("[]", encoding="utf-8")
     monkeypatch.setattr(cg, "PROCESSED_FILE", path)
     return path
+
+
+def test_a_reference_page_stays_readable_but_offers_no_application():
+    from src.evidence import target_truth
+
+    school = _listing_school("guide")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    spec["reference_only"] = True
+    row = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    assert row["url"] == spec["url"] and row["metadata"]["last_verified"]
+    assert row["metadata"]["status"] == "unknown" and row["title"] == spec["title"]
+    assert row["application"]["application_url"] is None
+    truth = target_truth(row)
+    assert truth.reference_only and not truth.actionable and truth.reason_code == "reference_only"
+
+
+@pytest.mark.parametrize("stored_status", ["open", "closed"])
+def test_a_page_made_reference_keeps_none_of_its_listing_state(processed, stored_status):
+    from src.evidence import target_truth
+
+    school = _listing_school("guide")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    listing = cg._normalize_program(school, source, spec, status=stored_status, seed_page_verified=True)
+    processed.write_text(json.dumps([listing]))
+    spec["reference_only"] = True
+    _refresh_school(school, national=False)
+    row = _stored(processed)[listing["id"]]
+    assert row["title"] == spec["title"] and row["metadata"]["status"] == "unknown"
+    # A closed listing's inactivity was the page's closure, which reference material has none of.
+    assert row["metadata"]["is_active"] is True
+    assert row["metadata"]["last_verified"] == listing["metadata"]["last_verified"]
+    assert target_truth(row).reason_code == "reference_only"
 
 
 class TestDroppedProgramRetirement:

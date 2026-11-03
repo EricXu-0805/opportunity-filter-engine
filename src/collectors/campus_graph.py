@@ -108,7 +108,7 @@ def program(
     opportunity_type: str = "research", paid: str = "unknown", compensation: str = "",
     eligibility_majors: list[str] | None = None, preferred_year: list[str] | None = None,
     international_friendly: str = "unknown", deadline_note: str = "",
-    keywords: list[str] | None = None,
+    keywords: list[str] | None = None, reference_only: bool = False,
 ) -> dict:
     """Build one curated opportunity spec (school-agnostic)."""
     return {
@@ -119,7 +119,7 @@ def program(
         "eligibility_majors": eligibility_majors or [],
         "preferred_year": preferred_year or ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
-        "keywords": keywords or [],
+        "keywords": keywords or [], "reference_only": reference_only,
     }
 
 
@@ -187,6 +187,8 @@ def validate(school: dict) -> list[str]:
                 errors.append(
                     f"{p['key']}: bad paid {p.get('paid')!r} (use yes/no/stipend/unknown)"
                 )
+            if type(p.get("reference_only", False)) is not bool:
+                errors.append(f"{p['key']}: reference_only must be a boolean")
     return errors
 
 
@@ -213,6 +215,11 @@ def _normalize_program(
         description = f"{description}\n\nFrom the program page: {extra_desc}"
     description = description[:_DESC_CAP]
     title = program_spec["title"]
+    # A directory, guide or invitation-only page stays readable, but an
+    # application status read off it would describe some other program.
+    reference_only = program_spec.get("reference_only") is True
+    if reference_only:
+        status = "unknown"
     if status == "open":
         title = f"{title} (applications open)"
     elif status == "closed":
@@ -270,7 +277,7 @@ def _normalize_program(
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
             "application_effort": "medium",
-            "application_url": program_spec["url"],
+            "application_url": None if reference_only else program_spec["url"],
         },
         "description": description,
         "description_raw": description,
@@ -284,6 +291,7 @@ def _normalize_program(
             "first_seen_at": now,
             "last_seen_at": now,
             "is_active": status != "closed",
+            **({"reference_only": True} if reference_only else {}),
             "manually_reviewed": False,
             "notes": f"Auto-imported from {source['source_name']} ({source['source_type']})",
             "collector_key": program_spec["key"],
@@ -1116,7 +1124,11 @@ def merge_into_processed(
                 # the page last said.
                 carried = ("status", "is_active")
                 stored_status = existing_metadata.get("status")
-                if not unverified_seed and stored_status in {"open", "closed"}:
+                if opp["metadata"].get("reference_only") is True:
+                    # The stored word and title read the page as a listing,
+                    # which reference material is not.
+                    carried = ()
+                elif not unverified_seed and stored_status in {"open", "closed"}:
                     # A page that loaded and no longer says applications are
                     # open, or closed, ends the stored word: it was the page's,
                     # and the page has stopped saying it. A closure's
