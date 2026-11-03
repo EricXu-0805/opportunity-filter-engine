@@ -256,6 +256,34 @@ class TestJsonDirStatedTotal:
             assert [unit_identity_completeness(ledger[u]) for u in ("a", "c")] == [
                 (True, "identity_complete")] * 2
 
+    def test_a_required_title_keeps_a_row_without_one_out_and_withholds_the_unit(
+            self, monkeypatch):
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        sam = dict(_SAM, title="")
+        pages = {1: {"count": 3, "rows": [_ADA, sam]}, 2: {"count": 3, "rows": [_CY]},
+                 3: {"count": 3, "rows": []}}
+
+        def people(**json_dir):
+            unit = self._unit(monkeypatch, pages, total_key="count", **json_dir)
+            return unit, sorted(p.split("-")[2] for p in unit["observed_entity_ids"])
+
+        unit, kept = people(require_title=True)
+        assert len(kept) == 2
+        assert unit["coverage"]["unparsed_rows"] == 1
+        assert unit_identity_completeness(unit) == (False, "blocked_unparsed_rows")
+        # The title it requires is the one a title_map leaves: a code the map
+        # does not know is no title.
+        unit, kept = people(require_title=True, title_map={"Professor": "Professor"})
+        assert len(kept) == 1
+        assert unit["coverage"]["unparsed_rows"] == 2
+        # And a row with no title that the map gives one is kept.
+        unit, kept = people(require_title=True, title_map={"_default": "Professor"})
+        assert len(kept) == 3
+        # Without it, a row with no title passes the ladder gate as before.
+        unit, kept = people()
+        assert len(kept) == 3
+        assert unit_identity_completeness(unit) == (True, "identity_complete")
+
     @pytest.mark.parametrize("json_dir, error", [
         ({"paginate": None}, "X: json_dir total_key needs paginate"),
         ({"total_distinct_key": None}, "X: json_dir total_key needs total_distinct_key"),
@@ -1041,6 +1069,23 @@ class TestUfApolloWalk:
         finalize_unit_ledger(ledger, people, "uf_faculty")
         assert not any(ledger[u]["retirement_authorized"] for u in self.SHORTS)
         assert all(ledger[u]["coverage"]["partial_render_rows"] > 0 for u in self.SHORTS)
+
+    @pytest.mark.parametrize("title", ["", None])
+    @pytest.mark.parametrize("name, unit", [("Bo Sample", "cop"), ("Cy Fixture", "cop2")])
+    def test_a_row_without_a_title_is_not_published_and_holds_its_unit(
+            self, monkeypatch, tmp_path, title, name, unit):
+        # The feeds mix staff and students with faculty; a row with no title
+        # cannot be called either. Bo is stored under COP, Cy under COP2.
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        rows = [dict(r, title=title) if r["full_name"] == name else r
+                for r in _APOLLO_ROWS]
+        people, ledger, _ = self._run(monkeypatch, tmp_path, rows)
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert name not in {p["pi_name"] for p in people}
+        assert {u: ledger[u]["coverage"]["unparsed_rows"] for u in self.SHORTS[:3]} == {
+            u: int(u == unit) for u in self.SHORTS[:3]}
+        assert {u: ledger[u]["retirement_authorized"] for u in self.SHORTS[:3]} == {
+            u: u != unit for u in self.SHORTS[:3]}
 
     def test_a_row_that_reads_as_no_one_holds_every_unit_of_the_college(
             self, monkeypatch, tmp_path):

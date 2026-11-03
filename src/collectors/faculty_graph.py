@@ -3187,6 +3187,7 @@ def _fetch_cola(dept: dict) -> list[dict]:
 # together, as UF's Apollo colleges do: each unit keeps the people whose id the
 # corpus already holds under it, and a person it holds under none of them goes
 # to the first. Ids then hold whatever page the feed puts a person on.
+# ``require_title`` keeps a row with no title out (see _json_dir_records).
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3566,6 +3567,12 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False,
             # Feeds that carry a rank CODE, not a rank (HR job codes) — map it;
             # unmapped codes fall back to the map's "_default" (or "Professor").
             title = tm.get(title, tm.get("_default", ""))
+        if cfg.get("require_title") and not title:
+            # A feed that mixes staff and students with faculty cannot tell
+            # whether a row with no title is faculty: not published, and it
+            # keeps its unit from retiring anyone this run.
+            cover("unparsed_rows")
+            continue
         # An ABSENT rank passes the require/drop gates (W11): pre-W11 these
         # rows carried the "Professor" default and passed; a missing rank now
         # stays "" and the lenient absent-field-passes convention keeps the

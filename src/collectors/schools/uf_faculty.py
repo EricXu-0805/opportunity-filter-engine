@@ -72,7 +72,8 @@ across seven markup families, verified live 2026-07-17:
   (+1 empty headroom page), and ids still carry those units; the units now
   read the college in one walk and split it by the ids the corpus holds
   (see ``_apollo``). The feeds
-  include staff and grad assistants ("GRADUATE AST-R") — strict title gate.
+  include staff and grad assistants ("GRADUATE AST-R") — strict title gate,
+  and a row with no title is not published (``require_title``).
   The feeds' ``link`` field points at internal staging hosts
   (cop-main-a2-new.sites.medinfo.ufl.edu …); ``link_rewrite`` moves its
   ``/profile/<slug>/`` path to the college's public host (see ``_apollo``).
@@ -317,6 +318,7 @@ def _apollo(short: str, college: str, majors: list[str], host: str,
              "id_namespaces": units,
              "name_fields": ["full_name"],
              "title_field": "title",
+             "require_title": True,
              "email_field": "email",
              **link,
              "ladder_filter": _LADDER,
