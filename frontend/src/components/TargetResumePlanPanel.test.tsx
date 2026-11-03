@@ -58,6 +58,79 @@ beforeEach(async () => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('whole draft content planning', () => {
+  it.each(['en', 'zh'])('(%s) shows the uncut source around excerpts, including negation and qualifiers', async locale => {
+    mocked.locale = locale;
+    const p = props();
+    const t = p.draft.target_snapshot as TargetResumeContextV4;
+    t.description = '😀 We do not require Python parsers; students can learn them here.\r\nVisitors may tour the lab.';
+    p.draft.base.target_signature = await targetResumeContextSignature(t);
+    p.currentContext = { ...p.currentContext!, target_signature: p.draft.base.target_signature };
+    const targetQuote = 'Python parsers';
+    const targetStart = Array.from(t.description.slice(0, t.description.indexOf(targetQuote))).length;
+    const source = project(p.draft).lines[1];
+    const sourceQuote = 'lead the team';
+    const sourceStart = Array.from(source.original.slice(0, source.original.indexOf(sourceQuote))).length;
+    const targetEvidence = { field: 'description' as const, requirement_index: null, start: targetStart, end: targetStart + targetQuote.length, quote: targetQuote };
+    const sourceEvidence = { unit_id: source.id, start: sourceStart, end: sourceStart + sourceQuote.length, quote: sourceQuote };
+    mocked.generate.mockImplementation(async payload => {
+      const value = await response(payload);
+      const row = value.items.find(item => item.block_id === 'project-one')!;
+      row.target_evidence = [targetEvidence]; row.source_evidence = [sourceEvidence];
+      return value;
+    });
+    const before = JSON.stringify(p.draft);
+    render(<TargetResumePlanPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '生成选材建议' : 'Generate content plan' }));
+    await screen.findByRole('checkbox', { name: 'Use content choice: project-one' });
+    const card = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
+    fireEvent.click(within(card).getByText(locale === 'zh' ? '查看理由和引用原文' : 'Review reason and quoted text'));
+    const contexts = [
+      [locale === 'zh' ? '查看更多机会介绍' : 'Read more of the opportunity description', t.description, targetQuote],
+      [locale === 'zh' ? '查看本行完整原文' : 'Read full source line', source.original, sourceQuote],
+    ];
+    for (const [label, fullSource, quote] of contexts) {
+      const control = within(card).getByText(label);
+      const context = control.closest('details')!;
+      expect(context.querySelector('mark')).toBeNull(); fireEvent.click(control);
+      await waitFor(() => expect(context.querySelector('mark')).toBeVisible());
+      const marked = context.querySelector('mark')!;
+      expect(marked).toBeVisible(); expect(marked.textContent).toBe(quote);
+      expect(marked.parentElement!.textContent).toBe(fullSource);
+      fireEvent.click(control);
+      await waitFor(() => expect(context.querySelector('mark')).toBeNull());
+    }
+    expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(p.draft)).toBe(before);
+    expect(mocked.generate).toHaveBeenCalledOnce();
+    expect(targetEvidence.quote).toBe(targetQuote); expect(sourceEvidence.quote).toBe(sourceQuote);
+  });
+
+  it.each(['en', 'zh'])('(%s) offers a source field only when it holds more than the excerpt, under that field\'s label', async locale => {
+    mocked.locale = locale;
+    const p = props();
+    const requirement = (p.draft.target_snapshot as TargetResumeContextV4).requirements[1];
+    const part = { field: 'requirement' as const, requirement_index: 1, start: 1, end: 3, quote: Array.from(requirement).slice(1, 3).join('') };
+    mocked.generate.mockImplementation(async payload => {
+      const value = await response(payload);
+      const row = value.items.find(item => item.block_id === 'project-one')!;
+      row.target_evidence = [...row.target_evidence, part];
+      return value;
+    });
+    render(<TargetResumePlanPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '生成选材建议' : 'Generate content plan' }));
+    await screen.findByRole('checkbox', { name: 'Use content choice: project-one' });
+    const card = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
+    fireEvent.click(within(card).getByText(locale === 'zh' ? '查看理由和引用原文' : 'Review reason and quoted text'));
+    // The whole requirement "Python" and the whole source line are already shown in full.
+    expect(card.querySelectorAll('details details')).toHaveLength(1);
+    const control = within(card).getByText(locale === 'zh' ? '查看完整要求' : 'Read full requirement');
+    fireEvent.click(control);
+    const context = control.closest('details')!;
+    await waitFor(() => expect(context.querySelector('mark')).toBeVisible());
+    expect(context.querySelector('mark')!.textContent).toBe(part.quote);
+    expect(context.querySelector('mark')!.parentElement!.textContent).toBe(requirement);
+    expect(within(context).getByText(locale === 'zh' ? '高亮部分是 AI 实际引用的文字。' : 'Highlighted text is the AI’s exact excerpt.')).toBeVisible();
+  });
+
   it('shows a complete unselected plan, original/current wording, citations and honest length/scope labels', async () => {
     const p = props(), before = JSON.stringify(p.draft); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
     expect(mocked.generate.mock.calls[0][0].draft).toEqual(p.draft);
