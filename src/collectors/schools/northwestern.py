@@ -616,8 +616,8 @@ SCHOOL: dict = {
                     "nu_urap",
                     "Northwestern Undergraduate Research Assistant Program (URAP)",
                     "https://undergradresearch.northwestern.edu/urap/",
-                    "Paid academic-year research assistantships ($16.60/hour, typically up to "
-                    "100 hours / $1,660) pairing students who are new to research with "
+                    "Paid academic-year research assistantships ($17.05/hour, typically up to "
+                    "100 hours / $1,705) pairing students who are new to research with "
                     "faculty mentors. Students apply either as faculty pre-selected "
                     "candidates or through an open job search via the Student Opportunities "
                     "Application Portal with a resume and four short essays. Great entry "
@@ -627,7 +627,7 @@ SCHOOL: dict = {
                     department="Office of Undergraduate Research",
                     lab_or_program="URAP",
                     paid="yes",
-                    compensation="$16.60/hour, up to ~100 hours ($1,660)",
+                    compensation="$17.05/hour, typically earning up to $1,705 (100 hours of work)",
                     eligibility_majors=["all"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",

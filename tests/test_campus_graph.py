@@ -23,6 +23,7 @@ from src.collectors import campus_graph as cg
 from src.collectors.import_document import MAX_DEPTH, MAX_NODES
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.collectors.schools.boulder import SCHOOL as BOULDER
+from src.collectors.schools.northwestern import SCHOOL as NORTHWESTERN
 from src.collectors.schools.princeton import SCHOOL as PRINCETON
 from src.collectors.schools.uci import SCHOOL as UCI
 from src.collectors.schools.ucsb import SCHOOL as UCSB
@@ -2038,6 +2039,20 @@ class TestBoulder:
         bd = cg.source_breakdown(recs)
         assert bd["total"] == len(recs)
         assert sum(bd["by_source_type"].values()) == len(recs)
+
+
+class TestNorthwesternConfiguredFacts:
+    """Configured values checked against each row's own page on 2026-11-02."""
+
+    @pytest.fixture(scope="class")
+    def by_key(self):
+        return {o["metadata"]["collector_key"]: o for o in cg.fetch_and_normalize(NORTHWESTERN)}
+
+    def test_urap_pay_is_the_rate_its_page_states(self, by_key):
+        urap = by_key["nu_urap"]
+        # "Students in the program are paid $17.05/hour, typically earning up to $1,705 (100 hours of work)."
+        assert urap["compensation_details"] == "$17.05/hour, typically earning up to $1,705 (100 hours of work)"
+        assert "$17.05/hour" in urap["description"] and "$16.60" not in urap["description"]
 
 
 def test_seed_fetch_completes_the_incommon_chain(monkeypatch):
