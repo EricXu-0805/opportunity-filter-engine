@@ -9,7 +9,7 @@ import json
 import re
 from copy import deepcopy
 
-from backend.lib.evidence_map import tokens
+from backend.lib.evidence_map import strip_json_fence, tokens
 from backend.lib.target_resume_ai import plan_dispatch as dispatch
 from backend.lib.target_resume_ai import target_character_count, valid_quotes, valid_source_quotes
 from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION
@@ -192,7 +192,8 @@ def parse_plan_output(raw, blocks, target, locale="en"):
     A complete plan is advice, not proof of AI quality, and carries no rewrite text.
     """
     try:
-        parsed = json.loads(raw)
+        # A code fence is formatting; any other text outside the JSON still refuses the plan.
+        parsed = json.loads(strip_json_fence(raw))
         shape(parsed, ("items",))
         rows = parsed["items"]
         if type(rows) is not list or len(rows) != len(blocks):
