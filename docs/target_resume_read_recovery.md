@@ -22,6 +22,10 @@ Local tests cover held identity/storage/signature reads, cancellation, late resu
 
 This change does not prove the quality of a generated résumé, cloud deployment or Word editing fidelity.
 
+## AI review results
+
+Kept and unprocessed lines show the complete current draft wording beside their reason, including manual edits and hidden lines. They do not substitute the source original or change the draft.
+
 ## Unsubmitted supplement answers
 
 Unsubmitted answers in the full résumé panel, with the chosen activity and the selected answers, are kept in this browser's user-scoped storage, one copy per owner uid and opportunity. They are written as they are typed, with the id of the editor that wrote them. Closing the editor, leaving the page or unmounting the editor marks the copy closed. Reopening the editor for the same owner and opportunity opens the panel with a closed copy restored and says so. A copy whose editor is still open in another tab is not offered: each open editor keeps its own round and entry id, so two tabs can each confirm their own answers. After a crash or a killed tab the copy was never marked closed; it is restored only if the browser reports, through the Web Locks API, that the lock its editor held is gone. Where that API is unavailable, such a copy is not restored and the next answers typed for that opportunity replace it. The truth confirmation is not restored, and restoring submits nothing. Another opportunity or owner starts empty.

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
@@ -305,6 +305,55 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
     expect(kept).toHaveTextContent('Kept your wording: the suggested edit went beyond the allowed changes.');
     expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
     expect(screen.getByText(/0 rewrites · 8 advice-only · 1 no change/)).toBeVisible();
+  });
+  it.each(['en', 'zh'])('identifies each kept or unprocessed line by its complete current wording in %s', async (locale) => {
+    mocked.locale = locale;
+    const originals = ['Built a Python parser.', 'Measured robot trials.', 'Recorded the observations.'];
+    // The first and last lines run past 80 characters, so a shortened quote fails.
+    const current = ['My current parser wording 😀, edited by hand after the lab meeting to name the calibration step.\nI did not lead the team.',
+      '本稿的实验记录：只负责测量。', 'Current <script> literal text, still waiting for review after the second calibration run of the week.'];
+    const master = createEmptyResumeMaster('review-master');
+    master.activities = originals.map((_, index) => ({ id: `project-${index}`, kind: 'project', details: [{ id: `entry-${index}`, revision: 1 }] }));
+    const profile: ProfileData = { ...DEFAULT_PROFILE, resume_master: master,
+      experience_entries: originals.map((text, index) => ({ id: `entry-${index}`, text, revision: 1, status: 'confirmed', source: { kind: 'manual' } })) };
+    const draft = await createTargetResume(profile, clone(golden.draft.target_snapshot) as TargetResumeContext, 'review-draft');
+    draft.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).forEach((line, index) => {
+      line.text = current[index];
+      if (index === 1) line.included = false;
+    });
+    const result = await prepareTargetResumeAI(draft); if (!result.ok) throw new Error(result.code); prepared = result.value;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload, true); result.method = 'partial';
+      result.receipts.forEach((item, index) => {
+        item.reason_code = index === 0 ? 'no_safe_change' : index === 1 ? 'no_link' : 'model_unavailable';
+        if (index === 2) { item.status = 'skipped'; item.suggestion = null; }
+      });
+      return result;
+    });
+    const p = { ...props(), draft, profile, currentContext: draft.base }; const before = JSON.stringify(draft);
+    render(<TargetResumeAiPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '生成 AI 建议' : 'Generate AI suggestions' }));
+    const kept = await screen.findByRole('region', { name: locale === 'zh' ? '保留原文的条目' : 'Lines kept as written' });
+    const keptItems = within(kept).getAllByRole('listitem'); expect(keptItems).toHaveLength(2);
+    const expectedReasons = locale === 'zh'
+      ? ['建议保留原文：找到了相关表述，但没有能通过核对的改法。', '建议保留原文：这一条与机会列出的内容没有对应。']
+      : ['No change recommended: related wording found, but no change the checks could verify.', 'No change recommended: nothing in this line matches what the opportunity lists.'];
+    keptItems.forEach((item, index) => {
+      expect(item.querySelector('blockquote')?.textContent).toBe(current[index]);
+      expect(item).toHaveTextContent(expectedReasons[index]);
+      expect(item).not.toHaveTextContent(originals[index]);
+    });
+    const skipped = screen.getByRole('region', { name: locale === 'zh' ? '未完成的条目' : 'Unprocessed lines' });
+    expect(within(skipped).getAllByRole('listitem')).toHaveLength(1);
+    expect(skipped.querySelector('blockquote')?.textContent).toBe(current[2]);
+    expect(skipped.querySelector('script')).toBeNull();
+    expect(skipped).not.toHaveTextContent(current[0]);
+    for (const item of [...keptItems, ...within(skipped).getAllByRole('listitem')]) {
+      expect(item.querySelector('p')?.textContent).toBe(locale === 'zh' ? '经历' : 'Experience');
+    }
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
+    expect(screen.getByRole('button', { name: locale === 'zh' ? '应用所选建议' : 'Apply selected suggestions' })).toBeDisabled();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(draft)).toBe(before);
   });
   it('shows what changed and applies the rewrite without the posting terms when the student asks', async () => {
     const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
