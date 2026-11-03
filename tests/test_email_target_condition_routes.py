@@ -337,6 +337,35 @@ def test_local_refinement_condition_failure_preserves_original(writing_client, m
     assert set(out['condition_issues']) == {'unsupported_eligibility_claim', 'unsupported_attachment_claim'}
 
 
+@pytest.mark.parametrize('configured', [False, True])
+@pytest.mark.parametrize('subject,issue', [BAD[0], BAD[4], BAD[5]])
+def test_whole_refinement_checks_subject_only_claims_and_keeps_body(writing_client, monkeypatch, configured, subject, issue):  # noqa: F811
+    client, opp = writing_client; conditions_record(opp); calls = []
+    original = body('Could we discuss this work?')
+    monkeypatch.setattr(ce, 'is_configured', lambda: configured)
+
+    def provider(messages, **_kwargs):
+        calls.append(deepcopy(messages))
+        return body('Would you be available to discuss this work?')
+
+    monkeypatch.setattr(ce, 'chat_completion', provider)
+    response = client.post('/api/cold-email/refine', json={
+        'profile': PROFILE, 'opportunity_id': opp['id'], 'subject': subject,
+        'current_body': original, 'instruction': 'Make the body clearer.', 'contact_context': FIRST,
+    })
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert out['outcome'] == 'no_change' and out['reason'] == 'target_conditions'
+    assert out['body'] == original and issue in out['condition_issues']
+    assert 'subject' not in out  # Body editing does not silently replace the subject.
+    if configured:
+        evidence, inputs = calls[0][1]['content'].split('Editing inputs (not evidence):\n', 1)
+        assert json.loads(inputs)['subject'] == subject
+        assert subject not in evidence  # A typed claim is not source evidence.
+    else:
+        assert calls == []
+
+
 def test_legacy_skill_and_application_fields_are_not_labeled_source_confirmed_requirements(writing_client, monkeypatch):  # noqa: F811
     client, opp = writing_client; conditions_record(opp, verified=False); captured = []
     # A hand-curated row, whose list the email records (any other row's is ours).

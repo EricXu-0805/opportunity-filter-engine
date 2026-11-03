@@ -1139,7 +1139,9 @@ export async function refineEmail(
     method: 'POST',
     body: JSON.stringify({
       current_body: currentBody,
-      ...(options.selection ? { selection: options.selection, subject: options.subject ?? '' } : {}),
+      ...(options.selection ? { selection: options.selection } : {}),
+      // Whole-email edits need the subject for the same context and condition checks.
+      subject: options.subject ?? (options.selection ? '' : undefined),
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId,

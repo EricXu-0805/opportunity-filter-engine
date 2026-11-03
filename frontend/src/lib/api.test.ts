@@ -690,6 +690,23 @@ describe('cold-email endpoints', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it.each(['  Research inquiry 王😀\r\n完整主题  ', 'I meet all eligibility requirements.', ''])(
+    'sends the supplied subject for a whole-email edit without altering the draft (%j)', async (subject) => {
+      const currentBody = 'Dear Pat Lee,\r\n\r\nCould we discuss parser research?\r\n\r\nBest,\r\nAlex';
+      const instruction = '  Make the body clearer.\n保留原意。  ';
+      const result = { body: currentBody, method: 'local', outcome: 'no_change', reason: 'target_conditions',
+        condition_issues: ['unsupported_eligibility_claim'] };
+      fetchMock.mockResolvedValue(okJson(result));
+      expect(await refineEmail(currentBody, instruction, makeProfile(), 'opp-1', { subject })).toEqual(result);
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.subject).toBe(subject);
+      expect(body.current_body).toBe(currentBody);
+      expect(body.instruction).toBe(instruction);
+      expect(body).not.toHaveProperty('selection');
+      expect(body.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
   describe('refineEmail selected-text HTTP contract', () => {
     const targetVersion = `wt1:${'a'.repeat(64)}`;
     const contactContext = { version: 1, purpose: 'first_contact' } as const;
@@ -743,15 +760,15 @@ describe('cold-email endpoints', () => {
       },
     );
 
-    it('does not add selection-only subject to legacy whole-body requests and preserves legacy receipts', async () => {
+    it('includes the supplied subject in whole-body requests and preserves legacy receipts', async () => {
       const response = { ...receipts, body: 'Legacy revised body.', method: 'local' };
       fetchMock.mockResolvedValue(okJson(response));
       expect(await refineEmail(currentBody, 'Make it shorter', undefined, 'opp-1', {
-        subject: 'Not a selection request', expectedTargetVersion: targetVersion, contactContext,
+        subject: 'Research inquiry', expectedTargetVersion: targetVersion, contactContext,
       })).toEqual(response);
       const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
       expect(sent).not.toHaveProperty('selection');
-      expect(sent).not.toHaveProperty('subject');
+      expect(sent.subject).toBe('Research inquiry');
       expect(sent.current_body).toBe(currentBody);
       expect(sent.profile).toBeNull();
       expect(sent.expected_target_version).toBe(targetVersion);
