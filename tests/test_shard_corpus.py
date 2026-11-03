@@ -14,6 +14,7 @@ an empty one passes vacuously — see TestAssembleFloor.
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import sys
@@ -198,6 +199,23 @@ def test_target_only_shrink_retains_one_shard_without_blocking_the_others(tmp_pa
     assert (sd / "alpha.json").read_text(encoding="utf-8") != alpha_before
     assert _shard_count(sd, "alpha") == 180
     assert counts["alpha"] == 180
+
+
+@pytest.mark.parametrize(("rescraped", "kept"), [(10, "beta,gamma"), (190, "")])
+def test_split_cli_records_the_shards_the_guard_kept(tmp_path, monkeypatch, rescraped, kept):
+    """The refresh reads this record so it does not count a kept shard as published."""
+    import shard_corpus
+
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    for slug in ("beta", "gamma"):
+        (sd / f"{slug}.json").write_text(json.dumps(_recs(slug, 200)), encoding="utf-8")
+    _write(wf, _recs("alpha", 180) + _recs("beta", rescraped) + _recs("gamma", rescraped))
+    monkeypatch.setattr(shard_corpus, "split", functools.partial(shard_corpus.split, wf, sd))
+    record = tmp_path / "retained-shards"
+
+    assert shard_corpus.main(["split", "--only-shards", "alpha,beta,gamma", "--retained-file", str(record)]) == 0
+    assert record.read_text(encoding="utf-8") == kept
 
 
 def test_retained_shard_gets_no_publish_timestamp(tmp_path, monkeypatch):

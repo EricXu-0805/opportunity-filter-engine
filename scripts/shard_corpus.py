@@ -279,6 +279,10 @@ def main(argv: list[str] | None = None) -> int:
         "--only-shards",
         help="Comma-separated committed shard slugs authorized for this release",
     )
+    split_parser.add_argument(
+        "--retained-file",
+        help="Write the comma-separated shards the shrink guard kept to this file",
+    )
     assemble_parser = subparsers.add_parser("assemble")
     assemble_parser.add_argument("--force", action="store_true")
     assemble_parser.add_argument(
@@ -304,6 +308,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         except ValueError as exc:
             parser.error(str(exc))
+        if args.retained_file:
+            Path(args.retained_file).write_text(",".join(sorted(retained)), encoding="utf-8")
         total = sum(counts.values())
         mode = " --prune" if args.prune else (
             " --only-shards" if only_shards is not None else ""
