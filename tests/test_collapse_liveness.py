@@ -415,6 +415,22 @@ def test_ucb_collapse_still_deletes_a_duplicate_minted_this_run(shared):
     assert (out["removed"], out["archived"]) == (1, 0)
 
 
+def test_ucb_collapse_leaves_a_row_already_archived_as_a_duplicate_alone(caplog):
+    """An archived duplicate keeps the address it had. Merged again on the next
+    run, it would put back an address the shared-mailbox passes cleared from the
+    live row, and log the person's name again, every run."""
+    kept, dup = _berkeley_twice("name")
+    published = frozenset({kept["id"], dup["id"]})
+    collapse_ucb_joint_appointments([kept, dup], published_ids=published, today=date(2026, 11, 9))
+    kept["contact_email"] = None
+    with caplog.at_level("INFO", logger="src.collectors.ucb_common"):
+        out = collapse_ucb_joint_appointments([kept, dup], published_ids=published, today=date(2026, 11, 16))
+    assert (out["removed"], out["archived"]) == (0, 0)
+    assert kept["contact_email"] is None
+    assert (dup["metadata"]["deactivated_at"], dup["metadata"]["duplicate_of"]) == ("2026-11-09", kept["id"])
+    assert "Collapsing" not in caplog.text
+
+
 def test_ucb_collapse_keeps_a_published_retired_row_with_its_own_retirement():
     retired = _row("faculty-ucb-me-0000aaaa", "Toni M. Varga", school="ucb",
                    source="ucb_me_faculty", dept="Mechanical Engineering",

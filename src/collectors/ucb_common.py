@@ -2157,6 +2157,7 @@ def collapse_ucb_joint_appointments(opps: list[dict],
     ``kept``.
     """
     from .faculty_graph import (
+        DUPLICATE_REASON,
         _join_slug,
         _merge_faculty_fields,
         _norm_person_name,
@@ -2164,7 +2165,11 @@ def collapse_ucb_joint_appointments(opps: list[dict],
         settle_dropped_rows,
     )
 
-    fac = [o for o in opps if _is_ucb_faculty(o)]
+    # A row already archived as a duplicate sits out: merged again, it would put
+    # back an address the shared-mailbox passes cleared from the live row.
+    fac = [o for o in opps if _is_ucb_faculty(o)
+           and not ((o.get("metadata") or {}).get("is_active") is False
+                    and (o.get("metadata") or {}).get("deactivation_reason") == DUPLICATE_REASON)]
     # id(row) -> (row, the row it was dropped into, school).
     dropped: dict[int, tuple[dict, dict, str]] = {}
 
