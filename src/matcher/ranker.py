@@ -2429,12 +2429,11 @@ def score_upside(
         )
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
-            terms = sorted(interest_overlap)
+            # A passage (see _TERM_MAX) counts toward the score, but no line names it.
+            terms = sorted(t for t in interest_overlap if len(t) <= _TERM_MAX)
             ours = [
                 t for t in terms
-                if st.topics_ours and (
-                    len(t) > _TERM_MAX or not any(_named_re(t).search(text) for text in st.own_words)
-                )
+                if st.topics_ours and not any(_named_re(t).search(text) for text in st.own_words)
             ]
             hedged = set(ours)
             stated = [t for t in terms if t not in hedged][:_LINE_TERMS]
@@ -2521,7 +2520,7 @@ def score_upside(
             # nor is one inside another word ("ai" in "aircraft").
             if interest_lines and display_kw and len(reasons_fit) > pre_sim_len:
                 for line, terms in interest_lines:
-                    if all(len(kw) <= _TERM_MAX and _repeat_re(kw).search(reasons_fit[-1]) for kw in terms):
+                    if all(_repeat_re(kw).search(reasons_fit[-1]) for kw in terms):
                         reasons_fit.remove(line)
 
     has_skill_signal = st.has_skill_signal
@@ -3187,11 +3186,12 @@ _GAP_FOLD = str.maketrans(
 _TERM_GAP = r"[ \-]+"
 # _named_re and _repeat_re keep one pattern per chip, and a chip is user input
 # of up to 60,000 characters (backend/schemas.py). A chip of more than
-# _TERM_MAX characters is a passage, not a topic: the row's words never name
-# it and no line repeats it. Today's longest keyword is 231 characters. The
-# row's words never name a chip of more than _TERM_WORDS words either, counted
-# after splitting on spaces and hyphens ("end-to-end" is three); each word
-# adds a gap to its pattern. A kept pattern is then at most about 7 KB.
+# _TERM_MAX characters is a passage, not a topic: it still counts toward the
+# score, but no line names it, so neither pattern is made for it. Today's
+# longest keyword is 231 characters. The row's words never name a chip of
+# more than _TERM_WORDS words either, counted after splitting on spaces and
+# hyphens ("end-to-end" is three); each word adds a gap to its pattern. A
+# kept pattern is then at most about 7 KB.
 _TERM_MAX = 300
 _TERM_WORDS = 20
 # An interest line names at most _LINE_TERMS of the chips it matched, the

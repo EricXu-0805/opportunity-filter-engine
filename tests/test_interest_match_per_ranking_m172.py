@@ -9,7 +9,8 @@ contains it. These tests hold the new path to the rule as the ranking ran it
 before, and count the work instead of timing it.
 
 An interest line names at most eight of the chips it matched, the first in
-alphabetical order; the score still counts every match.
+alphabetical order; the score still counts every match. A chip of more than
+300 characters is a passage: it counts toward the score, but no line names it.
 """
 from __future__ import annotations
 
@@ -442,5 +443,36 @@ def test_a_line_is_a_repeat_when_the_lab_line_names_every_chip_it_names(fields, 
     assert _interest_lines(fit) == []
 
 
+_PASSAGE = "robotics " + "y" * 292
+
+
+def test_a_passage_counts_toward_the_score_but_no_line_names_it():
+    row = _row(23, ["robotics", "machine learning"])
+
+    def upside(chips):
+        return rk.score_upside(_profile(desired_fields=chips), row, precomputed_sim=0.0)
+
+    nothing, topic, passage, both = upside([]), upside(["machine learning"]), upside([_PASSAGE]), upside(
+        [_PASSAGE, "machine learning"])
+    assert _interest_lines(passage[1]) == []
+    assert passage[0] == topic[0] > nothing[0]
+    assert _interest_lines(both[1]) == ["Matches your interests: machine learning"]
+    assert both[0] > topic[0]
+    assert rk.rank_opportunity(_profile(desired_fields=[_PASSAGE]), row).field_relevant
+
+
+def test_a_passage_takes_no_place_among_the_eight_named():
+    chips = _STATED + ["alpha " + "a" * 295]
+    _, fit, _ = rk.score_upside(_profile(desired_fields=chips), _row(24, _STATED), precomputed_sim=0.0)
+    assert _interest_lines(fit) == [f"Matches your interests: {', '.join(_STATED[:8])}"]
+
+
+def test_a_passage_is_measured_as_written():
+    """Spaces at a chip's ends count toward its length, as a line would quote them."""
+    chip = " robotics " + "y" * 291
+    _, fit, _ = rk.score_upside(_profile(desired_fields=[chip]), _row(25, ["robotics"]), precomputed_sim=0.0)
+    assert _interest_lines(fit) == []
+
+
 def test_the_matcher_version_moved_for_the_sentences():
-    assert int(MATCHER_VERSION.split(".")[0]) >= 30
+    assert int(MATCHER_VERSION.split(".")[0]) >= 31

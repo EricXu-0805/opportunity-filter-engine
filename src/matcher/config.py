@@ -366,7 +366,10 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # inferred", names at most eight of the chips it matched (`_LINE_TERMS`), the
 # first in alphabetical order; the score still counts every match (checklist
 # M172). Sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "30"
+# 31: a chip of more than 300 characters (`_TERM_MAX`) is a passage: it counts
+# toward the score as before, but no "Matches your interests" line names it
+# (checklist M172). Sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "31"
 
 
 def _matcher_fingerprint() -> str:

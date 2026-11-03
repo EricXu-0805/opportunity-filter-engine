@@ -276,37 +276,48 @@ def test_words_no_test_reads_leave_an_ending_that_still_holds(chip, keyword, tit
     assert _OUR_TOPICS == " \u2014 based on topics we inferred"
 
 
-@pytest.mark.parametrize(("chip", "plain"), [
-    ("robotics " + "y" * 291, True),
-    ("robotics " + "y" * 292, False),
-    (" ".join(["robotics"] + ["lab"] * 19), True),
-    (" ".join(["robotics"] + ["lab"] * 20), False),
-    (" " + " ".join(["robotics"] + ["lab"] * 19) + " ", True),
-    ("\u3000".join(["robotics"] + ["lab"] * 20), False),
-    (" ".join(["robotics"] + ["lab"] * 16 + ["end-to-end"]), True),
-    (" ".join(["robotics"] + ["lab"] * 17 + ["end-to-end"]), False),
+def _interest_lines(fit):
+    return [reason for reason in fit if reason.startswith("Matches your interests")]
+
+
+@pytest.mark.parametrize(("chip", "ending"), [
+    ("robotics " + "y" * 291, ""),
+    ("robotics " + "y" * 292, None),
+    (" ".join(["robotics"] + ["lab"] * 19), ""),
+    (" ".join(["robotics"] + ["lab"] * 20), _OUR_TOPICS),
+    (" " + " ".join(["robotics"] + ["lab"] * 19) + " ", ""),
+    ("\u3000".join(["robotics"] + ["lab"] * 20), _OUR_TOPICS),
+    (" ".join(["robotics"] + ["lab"] * 16 + ["end-to-end"]), ""),
+    (" ".join(["robotics"] + ["lab"] * 17 + ["end-to-end"]), _OUR_TOPICS),
 ], ids=["300 characters", "301 characters", "20 words", "21 words", "20 words between spaces",
         "21 words joined by ideographic spaces", "20 pieces with a hyphen", "21 pieces with a hyphen"])
-def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, plain):
-    """Words are counted after the split on spaces and hyphens."""
+def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, ending):
+    """Words are counted after the split on spaces and hyphens. A chip past
+    20 words keeps the ending. One past 300 characters is a passage, which no
+    line names, with the ending or without (M172)."""
     _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": [chip]},
                              _row("robotics", "", " ".join(chip.replace("\u3000", " ").split())), precomputed_sim=0.0)
-    assert (f"Matches your interests: {chip}" in fit) is plain
-    assert (f"Matches your interests: {chip}{_OUR_TOPICS}" in fit) is not plain
+    assert _interest_lines(fit) == ([] if ending is None else [f"Matches your interests: {chip}{ending}"])
 
 
-@pytest.mark.parametrize(("chip", "kept"), [("robotics " + "y" * 291, False), ("robotics " + "y" * 292, True)],
+@pytest.mark.parametrize(("chip", "named"), [("robotics " + "y" * 291, True), ("robotics " + "y" * 292, False)],
                          ids=["300 characters", "301 characters"])
-def test_a_chip_past_300_characters_is_never_a_repeat(chip, kept):
+def test_a_chip_past_300_characters_is_never_a_repeat(chip, named):
+    """A chip of 300 characters is named, and dropped as a repeat of the lab
+    line; one past 300 has no line to repeat (M172)."""
     profile = {"research_interests_text": chip, "desired_fields": [chip]}
-    _, fit, _ = score_upside(profile, _faculty([chip, "robotics"]), precomputed_sim=0.5)
+    row = _faculty([chip, "robotics"])
+    _, fit, _ = score_upside(profile, row, precomputed_sim=0.0)
+    assert _interest_lines(fit) == ([f"Matches your interests: {chip}"] if named else [])
+    _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
     assert "closely matches" in fit[-1]
-    assert (f"Matches your interests: {chip}" in fit) is kept
+    assert _interest_lines(fit) == []
 
 
 def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
     """_named_re and _repeat_re keep one pattern per chip, and a chip can run
-    to 60,000 characters; neither cache holds one past _TERM_MAX."""
+    to 60,000 characters; no line names one past _TERM_MAX (M172), so
+    neither cache holds one."""
     chip = " ".join(["robotics"] * 40)
     row = _listing("simplify_internships", "internship", title="Summer Intern", keywords=("robotics",))
     row["research_areas"] = chip
@@ -314,7 +325,7 @@ def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
     _repeat_re.cache_clear()
     profile = {"research_interests_text": "robotics", "desired_fields": [chip]}
     _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
-    assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
+    assert _interest_lines(fit) == []
     assert "closely matches" in fit[-1]
     assert _named_re.cache_info().currsize == _repeat_re.cache_info().currsize == 0
 
