@@ -719,6 +719,8 @@ def fetch_and_normalize_with_evidence(
         "condition_capture_counts": {key: 0 for key in ("captured", "empty", "unsupported", "failed")},
         "condition_capture_complete": False,
         "condition_capture_updates": [],
+        "program_page_checks": {},
+        "reference_page_checks": {},
         "normalization_failed": 0,
         "crawl_sources_expected": len(sources) if deep else 0,
         "crawl_sources_loaded": 0,
@@ -737,6 +739,7 @@ def fetch_and_normalize_with_evidence(
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
         captures: dict[str, dict] = {}
+        missing_outcome = "not_attempted"
         if deep:
             try:
                 status_by_url, discovered, crawl_evidence = _crawl_source(
@@ -781,12 +784,20 @@ def fetch_and_normalize_with_evidence(
                     )
             except Exception as e:  # noqa: BLE001
                 logger.warning("crawl failed for %s: %s", source["source_name"], e)
+                missing_outcome = "unconfirmed"
                 source_seed_count = len(set(source.get("seeds", [])))
                 evidence["seed_pages_expected"] += source_seed_count
                 evidence["seed_pages_failed"] += source_seed_count
                 evidence["crawl_errors"].append(
                     f"{source['source_name']}: crawl failed"
                 )
+        # Each configured URL once per source and kind: a directory read in
+        # full says nothing about whether its programs' own pages were read.
+        for reference, field in ((False, "program_page_checks"), (True, "reference_page_checks")):
+            for url in {spec["url"] for spec in source.get("programs", [])
+                        if (spec.get("reference_only") is True) is reference}:
+                outcome = captures[url]["status"] if url in captures else missing_outcome
+                evidence[field][outcome] = evidence[field].get(outcome, 0) + 1
         for spec in source.get("programs", []):
             refine = status_by_url.get(spec["url"], {})
             try:

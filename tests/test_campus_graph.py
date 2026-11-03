@@ -912,6 +912,44 @@ def test_a_moved_reference_row_stays_reference_until_its_new_page_is_read(proces
     assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
 
 
+def test_the_report_counts_program_and_reference_pages_by_how_they_were_read(monkeypatch):
+    school = _listing_school("award", "guide", "unread")
+    source = school["sources"][0]
+    award, guide, _unread = source["programs"]
+    guide["reference_only"] = True
+    source["seeds"] = [award["url"], guide["url"]]
+    conditions = "<main><h2>Eligibility</h2><p>Applicants must submit a transcript.</p></main>"
+
+    def fetch(url, **kwargs):
+        if url == award["url"]:
+            return _observed(BeautifulSoup(conditions, "html.parser"), url)
+        return _StaticSoup(url)
+
+    monkeypatch.setattr(cg, "_fetch", fetch)
+    _, deep = cg.fetch_and_normalize_with_evidence(school, national=False, deep=True)
+    assert deep["program_page_checks"] == {"captured": 1, "not_attempted": 1}
+    assert deep["reference_page_checks"] == {"empty": 1}
+    _, quick = cg.fetch_and_normalize_with_evidence(school, national=False)
+    assert quick["program_page_checks"] == {"not_attempted": 2}
+    assert quick["reference_page_checks"] == {"not_attempted": 1}
+
+
+def test_the_report_does_not_invent_an_attempt_after_a_source_exception(monkeypatch):
+    def interrupted(*args):
+        raise RuntimeError("crawl stopped")
+
+    monkeypatch.setattr(cg, "_crawl_source", interrupted)
+    _, deep = cg.fetch_and_normalize_with_evidence(_listing_school("award"), national=False, deep=True)
+    assert deep["program_page_checks"] == {"unconfirmed": 1} and deep["reference_page_checks"] == {}
+
+
+def test_the_report_counts_a_page_two_programs_share_once():
+    page = "https://example.edu/awards/"
+    school = _listing_school("first", "second", urls={"first": page, "second": page})
+    _, quick = cg.fetch_and_normalize_with_evidence(school, national=False)
+    assert quick["program_page_checks"] == {"not_attempted": 1}
+
+
 @pytest.mark.parametrize(("stored_status", "kept_status"), [("open", "unknown"), ("closed", "closed")])
 def test_a_moved_program_borrows_no_reading_from_its_old_page(processed, stored_status, kept_status):
     school = _listing_school("award")
