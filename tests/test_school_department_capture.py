@@ -19,7 +19,9 @@ of the live pages and feeds (2026-10-09), with names and addresses replaced.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -858,6 +860,173 @@ class TestFeedProfileLinks:
             "Ada Example": "https://profiles.faculty.utah.edu/u0000001",
             "Bo Sample": "",
         }
+
+
+# --- UF Apollo: one walk per college, each id in the namespace it is stored in
+
+_APOLLO_NAMES = ["Ada Example", "Bo Sample", "Cy Fixture", "Di Placeholder",
+                 "Ed Testcase", "Flo Mockup", "Gus Newcomer"]
+_APOLLO_ROWS = [
+    {"profile_id": 100 + i, "full_name": name, "title": "Professor",
+     "email": f"{name.split()[0].lower()}@example.edu",
+     "link": ("http://cop-main-a2-new.sites.medinfo.ufl.edu/blog/profile/"
+              f"{name.lower().replace(' ', '-')}/")}
+    for i, name in enumerate(_APOLLO_NAMES)]
+# The record shows, and the id hashes, the name without its credential.
+_APOLLO_ROWS[3]["full_name"] = "Di Placeholder, PharmD"
+
+
+def _uf_id(short, name):
+    # faculty_graph mints faculty-{id_prefix}-{short}-{md5("SHORT-name")[:8]}.
+    return f"faculty-uf-{short.lower()}-{hashlib.md5(f'{short}-{name}'.encode()).hexdigest()[:8]}"
+
+
+class TestUfApolloWalk:
+    """The Apollo feeds serve at most 100 rows a page, and each college used to
+    be one unit per page, so a person's id hashed the page the feed put them on:
+    when the feed reordered, people already stored were minted again under
+    another page's unit. Each college is now read in one walk, and each of its
+    units keeps the people whose id the corpus holds under that unit; a person
+    new to the corpus goes to the college's first unit."""
+
+    # Stored two to a page, as the page units minted them. Ed's row has been
+    # retired since; it is still his id if he is listed again.
+    STORED = {"COP": _APOLLO_NAMES[0:2], "COP2": _APOLLO_NAMES[2:4],
+              "COP3": _APOLLO_NAMES[4:6]}
+    SHORTS = ("cop", "cop2", "cop3", "cop4", "cop5")
+
+    @classmethod
+    def _run(cls, monkeypatch, tmp_path, rows=_APOLLO_ROWS, fault=None, stored=True,
+             id_names=None, also_stored=()):
+        from src.collectors import ucb_common
+        from src.collectors.schools import uf_faculty
+        corpus = tmp_path / "opportunities.json"
+        if stored:
+            corpus.write_text(json.dumps([
+                {"id": _uf_id(short, name),
+                 "metadata": {"is_active": name != "Ed Testcase"}}
+                for short, names in [*cls.STORED.items(), *also_stored]
+                for name in names]))
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", corpus)
+        # Warrington stands for the school's units that split no walk.
+        monkeypatch.setattr(uf_faculty, "SCHOOL", {**uf_faculty.SCHOOL, "departments": [
+            {**d, "id_names": id_names} if id_names else d
+            for d in uf_faculty.SCHOOL["departments"]
+            if d["short"].lower() in cls.SHORTS + ("wcb",)]})
+        pages = [rows[i:i + 2] for i in range(0, len(rows), 2)]
+        requested = []
+
+        def get(url, **_kw):
+            if "pharmacy.ufl.edu" not in url:
+                raise ConnectionError(url)
+            n = int(re.search(r"[?&]page=(\d+)", url)[1])
+            requested.append(n)
+            if fault == "failed_page" and n == 2:
+                raise ConnectionError("reset")
+            page = pages[n - 1] if n <= len(pages) else []
+            total = len(rows) + (fault == "changed_total" and n == 2)
+            if fault == "repeated_page" and n == 2:
+                page = pages[0]
+            elif fault == "early_empty" and n == 2:
+                page = []
+            return _Page({"profiles": page,
+                          "pagination": {"total": total, "total_pages": len(pages)}})
+
+        def post(url, **_kw):
+            raise ConnectionError(url)
+
+        monkeypatch.setattr("requests.get", get)
+        monkeypatch.setattr("requests.post", post)
+        ledger: dict = {}
+        people = uf_faculty.fetch_and_normalize(unit_ledger=ledger)
+        return people, ledger, requested
+
+    def test_ids_do_not_depend_on_where_the_feed_puts_a_person(self, monkeypatch, tmp_path):
+        stored = {_uf_id(s, n) for s, names in self.STORED.items() for n in names}
+        runs = [self._run(monkeypatch, tmp_path, rows) for rows in
+                (_APOLLO_ROWS, _APOLLO_ROWS[::-1])]
+        ids = [{p["pi_name"]: p["id"] for p in people} for people, _, _ in runs]
+        assert ids[0] == ids[1]
+        assert set(ids[0].values()) == stored | {_uf_id("COP", "Gus Newcomer")}
+        # One walk of the college serves its five units: four pages, once each.
+        assert [requested for _, _, requested in runs] == [[1, 2, 3, 4]] * 2
+
+    def test_a_corpus_without_the_college_mints_everyone_in_its_first_unit(
+            self, monkeypatch, tmp_path):
+        people, ledger, _ = self._run(monkeypatch, tmp_path, stored=False)
+        assert {p["id"] for p in people} == {_uf_id("COP", n) for n in _APOLLO_NAMES}
+        assert [ledger[u]["coverage"]["parsed_faculty_rows"] for u in self.SHORTS] == [
+            7, 0, 0, 0, 0]
+
+    @pytest.mark.parametrize("listed", [
+        "Cy Fixture*", "Cy Fixture (he/him)", "Cy Fixtur&#101;"])
+    def test_the_split_reads_the_name_as_the_id_hashes_it(
+            self, monkeypatch, tmp_path, listed):
+        # A footnote mark, pronouns or an HTML entity on the feed's name do
+        # not move a person stored under a later unit to the first.
+        rows = [dict(r, full_name=listed) if r["full_name"] == "Cy Fixture" else r
+                for r in _APOLLO_ROWS[::-1]]
+        people, _, _ = self._run(monkeypatch, tmp_path, rows)
+        assert {p["pi_name"]: p["id"] for p in people}["Cy Fixture"] == _uf_id(
+            "COP2", "Cy Fixture")
+
+    def test_a_person_held_under_two_units_stays_with_the_first_of_them(
+            self, monkeypatch, tmp_path):
+        people, _, _ = self._run(monkeypatch, tmp_path, _APOLLO_ROWS[::-1],
+                                 also_stored=[("COP3", ["Bo Sample"])])
+        assert [p["id"] for p in people if p["pi_name"] == "Bo Sample"] == [
+            _uf_id("COP", "Bo Sample")]
+
+    def test_two_rows_that_share_a_name_still_count_as_two_rows_read(
+            self, monkeypatch, tmp_path):
+        # Two people with one name are two rows of the feed (two profile_ids),
+        # not one row served twice.
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        rows = [*_APOLLO_ROWS, dict(_APOLLO_ROWS[6], profile_id=200,
+                                    email="gus.other@example.edu")]
+        people, ledger, _ = self._run(monkeypatch, tmp_path, rows)
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert {u: ledger[u]["retirement_authorized"] for u in self.SHORTS[:3]} == {
+            "cop": True, "cop2": True, "cop3": True}
+
+    def test_a_name_the_units_map_keeps_the_unit_that_holds_the_mapped_name(
+            self, monkeypatch, tmp_path):
+        rows = [dict(r, full_name="Flo M. Mockup") if r["full_name"] == "Flo Mockup" else r
+                for r in _APOLLO_ROWS[::-1]]
+        people, _, _ = self._run(monkeypatch, tmp_path, rows,
+                                 id_names={"Flo M. Mockup": "Flo Mockup"})
+        assert {p["pi_name"]: p["id"] for p in people}["Flo M. Mockup"] == _uf_id(
+            "COP3", "Flo Mockup")
+
+    def test_a_complete_walk_lets_the_units_that_read_their_people_retire(
+            self, monkeypatch, tmp_path):
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        people, ledger, _ = self._run(monkeypatch, tmp_path)
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert {u: ledger[u]["retirement_authorized"] for u in self.SHORTS} == {
+            "cop": True, "cop2": True, "cop3": True, "cop4": False, "cop5": False}
+        assert {u: ledger[u]["observed_count"] for u in self.SHORTS} == {
+            "cop": 3, "cop2": 2, "cop3": 2, "cop4": 0, "cop5": 0}
+
+    @pytest.mark.parametrize("fault", ["failed_page", "repeated_page", "early_empty",
+                                       "changed_total"])
+    def test_a_walk_that_missed_rows_retires_no_one_in_the_college(
+            self, monkeypatch, tmp_path, fault):
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        people, ledger, _ = self._run(monkeypatch, tmp_path, fault=fault)
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert not any(ledger[u]["retirement_authorized"] for u in self.SHORTS)
+        assert all(ledger[u]["coverage"]["partial_render_rows"] > 0 for u in self.SHORTS)
+
+    def test_a_row_that_reads_as_no_one_holds_every_unit_of_the_college(
+            self, monkeypatch, tmp_path):
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        rows = list(_APOLLO_ROWS)
+        rows[3] = dict(rows[3], full_name="Faculty")
+        people, ledger, _ = self._run(monkeypatch, tmp_path, rows)
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert [ledger[u]["coverage"]["unparsed_rows"] for u in self.SHORTS] == [1] * 5
+        assert not any(ledger[u]["retirement_authorized"] for u in self.SHORTS)
 
 
 # --- collector configs on saved pages: per-person link selectors -------------

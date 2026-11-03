@@ -500,18 +500,29 @@ def _strip_credentials(name: str) -> str:
 _IN_MEMORIAM_RE = re.compile(r"\(\s*\d{4}\s*[-–—]\s*\d{4}\s*\)")
 
 
+def _clean_name(raw: str | None) -> str:
+    """A spec's name as its record shows it and its id hashes it (the
+    cleanup ``_normalize`` describes)."""
+    name = _strip_credentials(_strip_pronouns(html.unescape((raw or "").strip())))
+    return re.sub(r"[\s*†‡]+$", "", name)
+
+
+def _id_tail(short: str, id_name: str) -> str:
+    """A faculty id after its ``faculty-{id_prefix}-``: the unit, then a hash
+    of the unit and the name."""
+    return f"{short.lower()}-{hashlib.md5(f'{short}-{id_name}'.encode()).hexdigest()[:8]}"
+
+
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
     # JSON/API feeds (e.g. Texas A&M) deliver HTML-entity-encoded names
     # ("Daniel A. Jim&eacute;nez", "Anxiao &quot;Andrew&quot; Jiang"); card
     # names are already unescaped upstream, but unescaping here is idempotent
     # and covers every ingest path.
-    name = _strip_credentials(_strip_pronouns(
-        html.unescape((person.get("name") or "").strip())))
     # Directory footnote markers ("David Barner*", "Jane Doe†" — accepting-
     # students / area-head legends) ride the name anchor on some listings; a
     # marked and unmarked crawl of the same person must hash to the same id.
-    name = re.sub(r"[\s*†‡]+$", "", name)
+    name = _clean_name(person.get("name"))
     if not _is_person_name(name):
         return None
     if _IN_MEMORIAM_RE.search(name):
@@ -572,8 +583,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # ``id_names``, so the record keeps its id rather than being retired and
     # minted again.
     id_name = (dept.get("id_names") or {}).get(name, name)
-    name_hash = hashlib.md5(f"{short}-{id_name}".encode()).hexdigest()[:8]
-    opp_id = f"faculty-{school['id_prefix']}-{short.lower()}-{name_hash}"
+    opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
 
     # Rank-neutral prose when the source stated no rank or a non-professor
     # rank. Only a source-stated professor rank earns the honorific in the
@@ -3162,6 +3172,10 @@ def _fetch_cola(dept: dict) -> list[dict]:
 # link and name, whatever the title gate makes of the row, so the retirement
 # pass keeps a stored person the directory still lists (see
 # ``listed_identities``).
+# ``id_namespaces`` (paginated feeds) lists the units that read one walk
+# together, as UF's Apollo colleges do: each unit keeps the people whose id the
+# corpus already holds under it, and a person it holds under none of them goes
+# to the first. Ids then hold whatever page the feed puts a person on.
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3202,7 +3216,8 @@ def _dig(record: dict, path: str):
     return cur
 
 
-def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
+def _fetch_json_dir(dept: dict, walks: dict | None = None,
+                    held: frozenset[str] | None = None) -> list[dict]:
     """Best-effort faculty fetch from an authoritative JSON directory (opt-in).
 
     Field-name options (``name_fields``, ``title_field``, ``email_field``,
@@ -3211,6 +3226,8 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
 
     ``walks`` (one school run's) lets units that page the same ``total_key``
     feed share one walk of it (UF PHHP splits one college tree into three).
+    ``held`` is the school's stored ids (``_stored_id_tails``), which split a
+    walk between its ``id_namespaces`` units; without it no unit splits.
     """
     cfg = dept.get("json_dir")
     if not cfg:
@@ -3296,7 +3313,7 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
         if total_key:
             _json_roster_unread(dept, stated, len(recs_all),
                                 _distinct_rows(recs_all, cfg.get("total_distinct_key")))
-        return _json_dir_records(dept, cfg, recs_all, roster=bool(total_key))
+        return _json_dir_records(dept, cfg, recs_all, roster=bool(total_key), held=held)
     try:
         if str(cfg.get("method", "get")).lower() == "post":
             # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
@@ -3412,14 +3429,16 @@ def _json_roster_unread(dept: dict, stated: list, read: int, distinct: int) -> N
                        dept.get("short"), stated, read, distinct)
 
 
-def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> list[dict]:
+def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False,
+                      held: frozenset[str] | None = None) -> list[dict]:
     """Map a JSON directory payload (from a live endpoint or a committed file)
     into faculty specs, honouring the field-name / filter / title-map options.
 
     ``roster`` counts every row into the unit's roster coverage; only a live
     walk that matched the feed's stated total passes it (see ``total_key``),
     and a rendered page's attribute JSON, which parses whole or not at all
-    (the units reading one such page are weighed together)."""
+    (the units reading one such page are weighed together). ``held`` splits
+    the rows between ``id_namespaces`` units (see ``_id_namespace``)."""
     def cover(bucket: str) -> None:
         if roster:
             _cover(bucket)
@@ -3478,6 +3497,11 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
         if not _is_person_name(name):
             # A row that does not read as a person is loss, not a classification.
             cover("unparsed_rows")
+            continue
+        if (held is not None and cfg.get("id_namespaces")
+                and _id_namespace(cfg["id_namespaces"], dept, name, held) != dept.get("short")):
+            # Another unit reading this walk keeps this person.
+            cover("classified_nonfaculty_rows")
             continue
         tfl = cfg.get("title_from_list")
         if tfl:
@@ -3621,6 +3645,31 @@ def _json_name(record: dict, cfg: dict) -> str:
         # its ids when the feed later sends WordPress's &#8217; (Colby).
         name = html.unescape(name).replace("\u2019", "'")
     return name
+
+
+def _id_namespace(shorts: list[str], dept: dict, name: str, held: frozenset[str]) -> str:
+    """Which of the units splitting one walk keeps this person: the first
+    under which the corpus holds their id, else the first."""
+    clean = _clean_name(name)
+    id_name = (dept.get("id_names") or {}).get(clean, clean)
+    return next((s for s in shorts if _id_tail(s, id_name) in held), shorts[0])
+
+
+def _stored_id_tails(school: dict) -> frozenset[str]:
+    """The school's faculty ids the corpus holds, active or retired, after
+    their ``faculty-{id_prefix}-`` (see ``_id_tail``). A retired person listed
+    again keeps their id."""
+    import json
+
+    from .ucb_common import PROCESSED_FILE
+
+    if not PROCESSED_FILE.exists():
+        return frozenset()
+    with PROCESSED_FILE.open("r", encoding="utf-8") as f:
+        corpus = json.load(f)
+    prefix = f"faculty-{school['id_prefix']}-"
+    return frozenset(i[len(prefix):] for o in corpus
+                     if isinstance(i := o.get("id"), str) and i.startswith(prefix))
 
 
 def _json_link_template(record: dict, template: str) -> str:
@@ -5080,6 +5129,9 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     json_walks: dict = {}
+    held = (_stored_id_tails(school) if deep and any(
+        (d.get("json_dir") or {}).get("id_namespaces") for d in school.get("departments", []))
+        else frozenset())
     for dept in school.get("departments", []):
         _unit_short = str(dept.get("short") or "").lower()
         _unit_started = datetime.now(UTC).isoformat()
@@ -5111,7 +5163,7 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept, json_walks)
+                               + _fetch_json_dir(dept, json_walks, held)
                                + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)

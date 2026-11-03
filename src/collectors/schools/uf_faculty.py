@@ -68,14 +68,14 @@ across seven markup families, verified live 2026-07-17:
 
 * UF Health "Apollo" colleges (Pharmacy, Nursing, PHHP, Vet Med): the
   ``/wp-json/ufhealth/directory/v1/profiles/search`` API pages at a hard
-  per_page=100 cap, and the engine's json_dir source is single-call — so
-  each college is wired as one json_dir entry PER PAGE (+1 empty headroom
-  page each; overshoot returns ``profiles: []``, which is safe). The feeds
+  per_page=100 cap. Each college was wired as one json_dir entry per page
+  (+1 empty headroom page), and ids still carry those units; the units now
+  read the college in one walk and split it by the ids the corpus holds
+  (see ``_apollo``). The feeds
   include staff and grad assistants ("GRADUATE AST-R") — strict title gate.
   The feeds' ``link`` field points at internal staging hosts
   (cop-main-a2-new.sites.medinfo.ufl.edu …); ``link_rewrite`` moves its
   ``/profile/<slug>/`` path to the college's public host (see ``_apollo``).
-  Cross-page duplicates collapse via the engine's school-wide email dedupe.
   PHHP is the exception: its Apollo feed has answered ``total: 0`` since
   2026-10-09 (the college page now embeds its roster as a JS array, only 10
   rows are server-rendered), so it reads the UF Health Directory's public
@@ -278,9 +278,18 @@ _GLY_ENRICH = {"research_re": r"Areas of Interest:?\s*([^.]{4,220})",
 def _apollo(short: str, college: str, majors: list[str], host: str,
             pages: int, directory_url: str,
             profile_base: str | None = None) -> list[dict]:
-    """One json_dir entry per API page (the feed caps per_page at 100 and
-    json_dir is single-call). Last page is empty headroom — overshoot returns
-    ``profiles: []``, which parses to zero records safely.
+    """``pages`` units that read the college's feed in one walk.
+
+    The units were once one per API page (the feed caps per_page at 100), so
+    each stored id carries the page its person was first read from. Each unit
+    now keeps the people the corpus holds under it, whatever page the feed puts
+    them on today; a person new to the corpus goes to the first unit
+    (``id_namespaces``). The feed states its row total and page count on every
+    page and gives each row a ``profile_id``, so only a walk that read every
+    row once lets a unit retire anyone. A unit that keeps none of the walk's
+    rows, because every person stored under it has left (Pharmacy's fourth
+    unit on 2026-11-02), reports no rows, and a unit with no rows retires no
+    one: those people stay active until another rule retires them.
 
     The feed's ``link`` points at an internal staging host
     (``http://cop-main-a2-new.sites.medinfo.ufl.edu/blog/profile/<slug>/``);
@@ -293,20 +302,26 @@ def _apollo(short: str, college: str, majors: list[str], host: str,
         link = {"link_field": "link",
                 "link_rewrite": [r"^https?://[^/]+(?:/blog)?/profile/([^/?#]+)/?$",
                                  profile_base + r"/profile/\1/"]}
+    units = [short if n == 1 else f"{short}{n}" for n in range(1, pages + 1)]
     return [
-        {"short": short if n == 1 else f"{short}{n}", "name": college,
+        {"short": unit, "name": college,
          "majors": majors, "directory_url": directory_url,
          "json_dir": {
              "url": (f"https://{host}/wp-json/ufhealth/directory/v1/profiles/"
-                     f"search?q=&page={n}&per_page=100"),
+                     "search?q=&per_page=100"),
+             "paginate": {"param": "page", "max": 20,
+                          "count_key": "pagination.total_pages"},
              "records_key": "profiles",
+             "total_key": "pagination.total",
+             "total_distinct_key": "profile_id",
+             "id_namespaces": units,
              "name_fields": ["full_name"],
              "title_field": "title",
              "email_field": "email",
              **link,
              "ladder_filter": _LADDER,
          }}
-        for n in range(1, pages + 1)
+        for unit in units
     ]
 
 
