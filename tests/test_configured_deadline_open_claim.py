@@ -366,7 +366,7 @@ class TestEveryConfiguredNoteTheRuleReads:
         "jhu/jhu_ustar": "2025 cohort applications were due January 24, 2025; no later dates are posted",
         "northwestern/nu_iin_nanotech_reu": "Summer 2026 deadline was Feb 9, 2026; Summer 2027 deadline not posted yet",
         "northwestern/nu_lurie_cancer_summer_internship":
-            "Summer 2026 deadline was Feb 16, 2026; Summer 2027 dates not posted yet",
+            "Your completed application must be received by midnight on Sunday, February 14, 2027.",
         "northwestern/nu_mccormick_summer_award":
             "2026 deadline was 5:00 PM Monday, April 6, 2026; 2027 deadline not posted yet",
         "northwestern/nu_mrsec_reu": "Deadline Feb 12, 2027 for Summer 2027",

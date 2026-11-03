@@ -2054,6 +2054,13 @@ class TestNorthwesternConfiguredFacts:
         assert urap["compensation_details"] == "$17.05/hour, typically earning up to $1,705 (100 hours of work)"
         assert "$17.05/hour" in urap["description"] and "$16.60" not in urap["description"]
 
+    def test_lyric_gives_its_2027_program_dates_and_deadline(self, by_key):
+        lyric = by_key["nu_lurie_cancer_summer_internship"]
+        # "Program dates: June 14 - August 6, 2027"
+        assert "(June 14 - Aug 6, 2027;" in lyric["description"] and "2026" not in lyric["description"]
+        assert lyric["metadata"]["deadline_note"] == (
+            "Your completed application must be received by midnight on Sunday, February 14, 2027.")
+
 
 def test_seed_fetch_completes_the_incommon_chain(monkeypatch):
     """Three seeds fail verification on certifi alone and load with the bundle.

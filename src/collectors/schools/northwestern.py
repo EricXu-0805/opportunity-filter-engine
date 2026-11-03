@@ -440,7 +440,7 @@ SCHOOL: dict = {
                     "nu_lurie_cancer_summer_internship",
                     "Northwestern Lurie Cancer Center Undergraduate Summer Research Internship",
                     "https://www.cancer.northwestern.edu/research/education-training/summer-research/lyric.html",
-                    "Eight-week full-time summer internship (June 15 - Aug 7, 2026; 35-40 "
+                    "Eight-week full-time summer internship (June 14 - Aug 6, 2027; 35-40 "
                     "hrs/week) in cancer research labs at the Robert H. Lurie Comprehensive "
                     "Cancer Center, spanning cell/molecular biology, immunology, genomics, "
                     "bioinformatics, population science, and health disparities. Interns "
@@ -457,7 +457,7 @@ SCHOOL: dict = {
                     eligibility_majors=["biology", "chemistry", "biomedical engineering", "neuroscience", "health sciences"],
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Summer 2026 deadline was Feb 16, 2026; Summer 2027 dates not posted yet",
+                    deadline_note="Your completed application must be received by midnight on Sunday, February 14, 2027.",
                     keywords=["cancer research", "biomedical", "Feinberg", "summer internship", "wet lab"],
                 ),
             ],
