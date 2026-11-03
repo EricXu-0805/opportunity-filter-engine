@@ -181,6 +181,15 @@ _REFERENCE_PAGES = {
 }
 
 
+# Configured rows the ranker reads as graduate-only, so every undergraduate
+# sees them at GRAD_LEVEL_PENALTY with a "Targets graduate / PhD students"
+# concern. A configured text newly read that way fails here.
+_GRADUATE_ONLY_ROWS = {
+    ("stanford", "ssrp_amgen_scholars"), ("ucsb", "cal_bridge"), ("ucsd", "mcnair"),
+    ("umich", "sure"), ("upenn", "hillman_scholars"),
+}
+
+
 @pytest.fixture(scope="module")
 def all_records():
     out = []
@@ -229,6 +238,13 @@ class TestSeedNormalization:
         for o in all_records:
             assert o.get("deadline") is None
             assert o.get("is_rolling") is True
+
+    def test_the_configured_rows_read_as_graduate_only_are_the_listed_ones(self, all_records):
+        from src.matcher.ranker import _requires_graduate_standing
+
+        flagged = {(o["metadata"]["collector_school"], o["metadata"]["collector_key"])
+                   for o in all_records if _requires_graduate_standing(o)}
+        assert flagged == _GRADUATE_ONLY_ROWS
 
     def test_the_configured_reference_pages_are_the_listed_ones(self, all_records):
         from src.evidence import target_truth
@@ -2060,6 +2076,21 @@ class TestNorthwesternConfiguredFacts:
         assert "(June 14 - Aug 6, 2027;" in lyric["description"] and "2026" not in lyric["description"]
         assert lyric["metadata"]["deadline_note"] == (
             "Your completed application must be received by midnight on Sunday, February 14, 2027.")
+
+    def test_srop_gives_its_2027_cycle_without_a_configured_gpa_field(self, by_key):
+        from src.matcher.ranker import _requires_graduate_standing
+
+        srop = by_key["nu_tgs_srop"]
+        # The page's heading "June 14-August 6, 2027" and its "SROP 2027 Application" paragraph.
+        assert "June 14 - August 6, 2027" in srop["description"] and "2026)" not in srop["description"]
+        assert srop["compensation_details"] == "$6,500 stipend (before tax) that includes partial meal stipend"
+        assert srop["metadata"]["deadline_note"] == (
+            "Applications for SROP 2027 will open November 1, 2026. Early submissions are strongly encouraged.")
+        # The 3.5 GPA stays in the page's words in the description, not in a structured field.
+        assert "cumulative GPA of at least 3.5" in srop["description"] and srop["eligibility"]["min_gpa"] is None
+        # The page's "an interest in pursuing a doctoral degree (PhD)" is left out: the ranker
+        # reads "pursuing a doctoral" as a graduate-only program, and SROP is for sophomores and juniors.
+        assert not _requires_graduate_standing(srop)
 
 
 def test_ucf_surf_pay_is_the_course_scholarship_its_page_states():

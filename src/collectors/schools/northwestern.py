@@ -102,23 +102,27 @@ SCHOOL: dict = {
                     "nu_tgs_srop",
                     "Northwestern Summer Research Opportunity Program (SROP)",
                     "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/",
-                    "Eight-week summer research program (June 15 - Aug 7, 2026) run by The "
-                    "Graduate School for sophomores and juniors from colleges across the U.S. "
-                    "who intend to pursue a PhD. Provides a $6,500 stipend, round-trip "
-                    "transportation, on-campus housing, a graduate mentor, professional "
-                    "development workshops, and a Northwestern graduate application fee "
-                    "waiver; all research fields are open. Requires U.S. citizenship or "
-                    "permanent residency and a 3.5+ GPA.",
+                    "An eight-week competitive research experience hosted by Northwestern "
+                    "University for sophomores and juniors from colleges and universities across "
+                    "the United States, June 14 - August 6, 2027, with the first week immersive "
+                    "and virtual. All research fields at Northwestern are open. Applicants must be "
+                    "a current sophomore or junior, have a cumulative GPA of at least 3.5 on a 4.0 "
+                    "scale, and be a U.S. citizen or permanent resident. Participants "
+                    "receive a $6,500 stipend (before tax) that includes partial meal stipend, "
+                    "round-trip transportation, on-campus housing in Evanston, a current graduate "
+                    "student mentor, professional development workshops and a graduate "
+                    "application fee waiver.",
                     organization="Northwestern University",
                     department="The Graduate School",
                     lab_or_program="SROP",
                     opportunity_type="summer_program",
                     paid="stipend",
-                    compensation="$6,500 stipend + housing + transportation + fee waiver",
+                    compensation="$6,500 stipend (before tax) that includes partial meal stipend",
                     eligibility_majors=["all"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="Applications open November 1 annually; early submission encouraged",
+                    deadline_note="Applications for SROP 2027 will open November 1, 2026. Early submissions are "
+                                  "strongly encouraged.",
                     keywords=["PhD pipeline", "visiting students", "summer research", "graduate school", "all fields"],
                 ),
             ],
