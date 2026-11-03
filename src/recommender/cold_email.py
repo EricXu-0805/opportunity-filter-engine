@@ -1060,6 +1060,11 @@ def _subject(p: dict, style: str = "") -> str:
     area = p["research_area"]
     lab_type = p.get("lab_type", "dry")
 
+    # _common_parts already excludes inferred areas and lab names. Do not
+    # replace missing context with a person's name or a department label.
+    if p.get("is_faculty") and not (area or lab):
+        return "Subject: Research inquiry"
+
     # AcadeLink's contact-tips pages use distinct subject conventions per
     # lab type — wet labs say "Inquiry", dry labs say "Interest" (skills
     # framing), humanities say "Assistant Interest" (the role is RA, not
