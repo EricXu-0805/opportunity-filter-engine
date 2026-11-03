@@ -686,6 +686,26 @@ def test_the_uiuc_merge_keeps_the_date_of_a_duplicate_its_page_lists_again(monke
         "is_active": False, "deactivated_at": "2026-10-26", "duplicate_of": card["id"]}
 
 
+def test_a_faculty_graph_fetch_reads_the_run_start_ids(monkeypatch, tmp_path):
+    """The school-wide dedup inside a faculty_graph fetch keeps a stored
+    person's row over one it would mint, so the fetch is handed the ids the
+    corpus held before anything merged; none outside it."""
+    from src.collectors import faculty_graph
+
+    stored = _umich_row("faculty-umich-ece-0000dddd", "ECE", ["optics"])
+    _stub_with_processed_file(monkeypatch, tmp_path, [stored])
+    seen = []
+
+    def fetch(unit_ledger=None):
+        seen.append(faculty_graph._RUN_START_IDS)
+        return []
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    refresh_all.refresh_all(deep=True, schools={"umich"})
+    assert seen == [frozenset({stored["id"]})]
+    assert faculty_graph._RUN_START_IDS == frozenset()
+
+
 def _ucb_row(rid, source, dept, keywords):
     seeded = _seed_faculty(source, rid, 0)
     seeded.update(school="ucb", department=dept, pi_name="Toni Varga", keywords=keywords,

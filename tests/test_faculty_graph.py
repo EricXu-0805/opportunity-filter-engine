@@ -3863,6 +3863,103 @@ class TestRenderBudget:
         assert len(calls) == 3
 
 
+class TestInRunDedupKeepsAStoredPersonsRow:
+    """The school-wide dedup emits one row per address and profile link, the
+    first unit's. When that row would be minted this run and a later unit reads
+    a row whose id the corpus already holds, the stored row is emitted with
+    this run's read instead: otherwise it reads as absent from its own unit and
+    is retired though its page still lists the person. The row left out still
+    counts as observed by its unit, but not toward its unit's row count."""
+
+    _SCHOOL = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+               "id_prefix": "x", "location": "Somewhere"}
+    _CC = fg.faculty("Casey Placeholder", title="Professor", url="https://x.edu/cc/casey")
+
+    def _run(self, aa, bb, stored=()):
+        depts = [{"short": short, "name": f"Department of {short}", "majors": [], "faculty": people}
+                 for short, people in (("AA", [aa]), ("BB", [bb]), ("CC", [self._CC]))]
+        school = {**self._SCHOOL, "departments": depts}
+        ids = {short.lower(): fg._normalize(school, dept, dict(dept["faculty"][0]))["id"]
+               for short, dept in zip(("AA", "BB", "CC"), depts, strict=True)}
+        ledger: dict = {}
+        with fg.run_start_ids(frozenset(ids[u] for u in stored)):
+            rows = fg.fetch_and_normalize(school, unit_ledger=ledger)
+        return rows, ledger, ids
+
+    @staticmethod
+    def _pair(shared):
+        aa = fg.faculty("Avery Sample", title="Professor", url="https://x.edu/aa/avery-sample",
+                        email="asample@x.edu")
+        bb = fg.faculty("Avery Sample", title="Professor",
+                        url="https://x.edu/" + ("bb" if shared == "email" else "aa") + "/avery-sample",
+                        email="asample@x.edu" if shared == "email" else None)
+        return aa, bb
+
+    @pytest.mark.parametrize("shared", ["email", "profile_link"])
+    def test_a_stored_row_read_later_is_emitted_over_one_minted_earlier(self, shared):
+        rows, ledger, ids = self._run(*self._pair(shared), stored=("bb", "cc"))
+        assert [r["id"] for r in rows] == [ids["bb"], ids["cc"]]
+        assert rows[0]["department"] == "Department of BB"
+        assert (ledger["bb"]["observed_entity_ids"], ledger["bb"]["observed_count"]) == ([ids["bb"]], 1)
+        # The left-out row: still observed by its unit, no longer counted.
+        assert (ledger["aa"]["observed_entity_ids"], ledger["aa"]["observed_count"]) == ([ids["aa"]], 0)
+        assert ledger["aa"]["observed_identities"] == [["url", "x.edu/aa/avery-sample"]]
+
+    @pytest.mark.parametrize("shared", ["email", "profile_link"])
+    def test_a_row_minted_later_is_observed_by_its_unit_but_not_counted(self, shared):
+        rows, ledger, ids = self._run(*self._pair(shared), stored=("aa", "cc"))
+        assert [r["id"] for r in rows] == [ids["aa"], ids["cc"]]
+        bb = ledger["bb"]
+        assert (bb["observed_entity_ids"], bb["observed_count"], bb["parse_status"]) == (
+            [ids["bb"]], 0, "zero_rows")
+        expected = "x.edu/bb/avery-sample" if shared == "email" else "x.edu/aa/avery-sample"
+        assert bb["observed_identities"] == [["url", expected]]
+
+    @pytest.mark.parametrize("stored", [("aa", "bb", "cc"), ()], ids=["both_stored", "neither_stored"])
+    def test_otherwise_the_first_units_row_is_emitted_and_the_other_unobserved(self, stored):
+        # Guard: as before this rule.
+        rows, ledger, ids = self._run(*self._pair("email"), stored=stored)
+        assert [r["id"] for r in rows] == [ids["aa"], ids["cc"]]
+        assert (ledger["bb"]["observed_entity_ids"], ledger["bb"]["observed_count"]) == ([], 0)
+        assert (ledger["aa"]["observed_entity_ids"], ledger["aa"]["observed_count"]) == ([ids["aa"]], 1)
+
+    def test_the_replacing_row_takes_over_the_link_of_the_row_it_replaced(self):
+        # A third unit links the person's first profile only: its row is left
+        # to the stored row now holding that link, and observed by its unit.
+        aa, bb = self._pair("email")
+        cc = fg.faculty("Avery Sample", title="Professor", url="https://x.edu/aa/avery-sample")
+        depts = [{"short": s, "name": f"Department of {s}", "majors": [], "faculty": [p]}
+                 for s, p in (("AA", aa), ("BB", bb), ("CC", cc))]
+        school = {**self._SCHOOL, "departments": depts}
+        ids = {d["short"].lower(): fg._normalize(school, d, dict(d["faculty"][0]))["id"] for d in depts}
+        ledger: dict = {}
+        with fg.run_start_ids(frozenset({ids["bb"]})):
+            rows = fg.fetch_and_normalize(school, unit_ledger=ledger)
+        assert [r["id"] for r in rows] == [ids["bb"]]
+        assert (ledger["cc"]["observed_entity_ids"], ledger["cc"]["observed_count"]) == ([ids["cc"]], 0)
+
+    def test_a_row_replaced_on_its_own_page_is_observed_once(self):
+        # One page lists the person under two links with one address: the
+        # stored card read second takes the place of the one read first.
+        school = {**self._SCHOOL, "departments": [{"short": "AA", "name": "Department of AA", "majors": [],
+                                                   "faculty": [
+            fg.faculty("Avery Sample", title="Professor", url="https://x.edu/aa/a-sample", email="asample@x.edu"),
+            fg.faculty("Avery Q. Sample", title="Professor", url="https://x.edu/aa/avery-sample",
+                       email="asample@x.edu")]}]}
+        dept = school["departments"][0]
+        first, second = (fg._normalize(school, dept, dict(p))["id"] for p in dept["faculty"])
+        ledger: dict = {}
+        with fg.run_start_ids(frozenset({second})):
+            rows = fg.fetch_and_normalize(school, unit_ledger=ledger)
+        assert [r["id"] for r in rows] == [second]
+        assert (ledger["aa"]["observed_entity_ids"], ledger["aa"]["observed_count"]) == ([second, first], 1)
+
+    def test_outside_the_window_no_id_is_stored(self):
+        with fg.run_start_ids(frozenset({"faculty-x-bb-0000aaaa"})):
+            assert fg._RUN_START_IDS == frozenset({"faculty-x-bb-0000aaaa"})
+        assert fg._RUN_START_IDS == frozenset()
+
+
 class TestSourceBudget:
     """Cooperative per-source wall-clock budget. #712's run budget only stops
     STARTING sources — a source that started just under the deadline still ran

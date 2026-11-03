@@ -1367,7 +1367,7 @@ def refresh_all(
                     fetch_fn).parameters
                 with faculty_graph.source_budget(
                     budget_seconds_remaining()
-                ) as source_clock:
+                ) as source_clock, faculty_graph.run_start_ids(published_ids):
                     new_opps = (fetch_fn(unit_ledger=unit_ledger)
                                 if accepts_ledger else fetch_fn())
                 added, updated = merge_fn(new_opps)

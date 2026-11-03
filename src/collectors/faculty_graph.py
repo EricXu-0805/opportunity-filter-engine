@@ -157,6 +157,23 @@ def source_budget(seconds: float | None):
         _ACTIVE_BUDGET = prev
 
 
+# The ids the corpus held when this refresh started, set by refresh_all around
+# each source's fetch (``run_start_ids``): the school-wide dedup in
+# _fetch_and_normalize keeps a stored person's row over one this run would mint.
+_RUN_START_IDS: frozenset[str] = frozenset()
+
+
+@contextmanager
+def run_start_ids(ids: frozenset[str]):
+    """Hand the fetches inside this window the corpus's run-start ids."""
+    global _RUN_START_IDS
+    prev, _RUN_START_IDS = _RUN_START_IDS, frozenset(ids)
+    try:
+        yield
+    finally:
+        _RUN_START_IDS = prev
+
+
 def _source_budget_spent() -> bool:
     budget = _ACTIVE_BUDGET
     if budget.deadline is None or time.monotonic() < budget.deadline:
@@ -4873,7 +4890,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
                       parse_status: str | None = None,
                       failure_reason: str | None = None,
                       coverage: dict | None = None,
-                      listing_urls=None) -> dict:
+                      listing_urls=None, read_not_emitted: list[dict] = ()) -> dict:
     """One unit's observation record for the per-unit collection ledger.
 
     Reports only what this collector can attest: the stable identities it
@@ -4885,6 +4902,11 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     ``coverage`` is reported only by the families that can count their roster
     rows. Leaving it absent is deliberate and safe: the consumer treats
     unreported coverage as unknown, which authorises nothing.
+
+    ``read_not_emitted`` are rows the unit read that the school-wide dedup
+    left to another row: their ids and identities count as observed, but not
+    toward ``observed_count`` or the parse status, which stay those of the
+    rows emitted.
     """
     ids = [r["id"] for r in produced if r.get("id")]
     identities, unresolved = [], 0
@@ -4902,6 +4924,14 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
             continue
         seen_identity.add(key)
         identities.append(list(key))
+    observed_ids = list(ids)
+    for r in read_not_emitted:
+        if r.get("id") and r["id"] not in observed_ids:
+            observed_ids.append(r["id"])
+        key = identity_key(r, listing)
+        if key is not None and key not in seen_identity:
+            seen_identity.add(key)
+            identities.append(list(key))
     if parse_status is None:
         # A unit configured to produce rows that produced none is a failure,
         # not an empty department: fail closed and let the consumer preserve.
@@ -4962,7 +4992,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "collector_version": _unit_collector_version(dept),
         "ledger_version": UNIT_LEDGER_VERSION,
         "observed_count": len(ids),
-        "observed_entity_ids": ids,
+        "observed_entity_ids": observed_ids,
         "observed_identities": identities,
         # This unit's own listing pages, reduced: a row whose url is one of
         # them is judged by name and address (identity_key), here and at the
@@ -5038,8 +5068,13 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         raise ValueError(f"{school.get('school_slug')} faculty config invalid: " + "; ".join(errors))
 
     records: list[dict] = []
-    seen_emails: set[str] = set()
-    seen_urls: set[str] = set()
+    # The emitted row holding each address and profile link, and each emitted
+    # row's unit and keys; rows a stored person's row read later replaced.
+    by_email: dict[str, dict] = {}
+    by_url: dict[str, dict] = {}
+    unit_of: dict[int, str] = {}
+    keys_of: dict[int, tuple[str, str]] = {}
+    displaced: set[int] = set()
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     json_walks: dict = {}
@@ -5091,6 +5126,9 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
             # json_dir roster (UCSD Physics) has no scrape block to hang the
             # pass on, but its people still have profile endpoints to follow.
             specs = _apply_profile_enrich(specs, dept.get("profile_enrich"))
+        # Rows this unit read that are left to another row with their address
+        # or link: still observed by this unit (ids and identities only).
+        read_not_emitted: list[dict] = []
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:
@@ -5100,23 +5138,44 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 uk = ""
             if rec["id"] in seen_ids:
                 continue
-            if ek and ek in seen_emails:
-                continue
-            if uk and uk in seen_urls:
-                continue
+            held = {id(r): r for r in (by_email.get(ek) if ek else None,
+                                       by_url.get(uk) if uk else None) if r is not None}
+            if held:
+                stored = rec["id"] in _RUN_START_IDS
+                held_stored = any(r["id"] in _RUN_START_IDS for r in held.values())
+                if not stored or held_stored:
+                    if held_stored and not stored:
+                        read_not_emitted.append(rec)
+                    continue
+                # A stored person's row, read on its own unit's page, takes the
+                # place of the row this run would mint for them from another.
+                for r in held.values():
+                    displaced.add(id(r))
+                    if unit_of[id(r)] == _unit_short:
+                        read_not_emitted.append(r)
+                    elif unit_ledger is not None and unit_of[id(r)] in unit_ledger:
+                        unit_ledger[unit_of[id(r)]]["observed_count"] -= 1
+                    r_ek, r_uk = keys_of[id(r)]
+                    if r_ek:
+                        by_email[r_ek] = rec
+                    if r_uk:
+                        by_url[r_uk] = rec
             seen_ids.add(rec["id"])
             if ek:
-                seen_emails.add(ek)
+                by_email[ek] = rec
             if uk:
-                seen_urls.add(uk)
+                by_url[uk] = rec
+            unit_of[id(rec)] = _unit_short
+            keys_of[id(rec)] = (ek, uk)
             records.append(rec)
         if unit_ledger is not None and _unit_short:
             unit_ledger[_unit_short] = _unit_observation(
-                school, dept, records[_mark:], _unit_started,
+                school, dept, [r for r in records[_mark:] if id(r) not in displaced], _unit_started,
                 coverage=_ACTIVE_COVERAGE, listing_urls=listing_urls,
+                read_not_emitted=read_not_emitted,
             )
         _ACTIVE_COVERAGE = None
-    return records
+    return [r for r in records if id(r) not in displaced]
 
 
 def merge_into_processed(new_opps: list[dict]):
