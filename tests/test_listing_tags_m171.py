@@ -10,14 +10,19 @@ config. The similarity line ("<lab>'s work on <tags>", "<lab> also works on
 program's own, and where they repeated a chip the dedupe dropped the interest
 line M155 hedges. Neither line is written now; the interest lines carry the
 match. Scores do not change.
+
+A pi_name the detail page removes (`pi_name_basis`: an inference stamp, or a
+page scan on a campus program row) names no one in a line either: the lab
+labels the row, and the summary neither names it nor is let in by it.
 """
 from __future__ import annotations
 
 import pytest
 
+from backend.lib.opportunity_detail import pi_name_basis
 from src.evidence import stamp_inferred
 from src.matcher.config import MATCHER_VERSION
-from src.matcher.ranker import _OUR_TOPICS, _summarize_research, rank_opportunity, score_upside
+from src.matcher.ranker import _OUR_TOPICS, _line_pi, _summarize_research, rank_opportunity, score_upside
 from src.matcher.reason_keys import reason_keys
 
 # (source, source_type, opportunity_type). A row with no source_type is of no
@@ -118,9 +123,12 @@ def test_a_stamped_listing_keeps_the_line_that_says_its_tags_are_ours():
                          ids=["role-only", "generic-only"])
 @pytest.mark.parametrize("kind", LISTINGS)
 def test_a_listing_whose_tags_name_no_topic_keeps_the_focus_area(kind, keywords):
-    """No tag is named, so the similarity rests on the listing's description."""
+    """No tag is named, so the similarity rests on the listing's description.
+    A campus program's pi_name is a page scan the detail page removes, so the
+    program labels its line."""
+    label = "Field Robotics Program" if kind == "campus_program" else "Prof. Pat Lee"
     _, fit, _ = score_upside(_profile(TEXTS["no overlap"]), _listing(kind, keywords=keywords), precomputed_sim=0.5)
-    assert "Your research interests align with Prof. Pat Lee's focus area" in fit
+    assert f"Your research interests align with {label}'s focus area" in fit
 
 
 @pytest.mark.parametrize(("lab", "pi"), [
@@ -226,5 +234,84 @@ def test_a_pi_name_derived_from_the_company_heads_no_line_about_the_tags():
     assert "Matches your interests: data science" in fit
 
 
+def _pi_stamped(row, method):
+    stamp_inferred(row["metadata"], "pi_name", method)
+    return row
+
+
+ROLE_ONLY = ["undergraduate research"]
+# pi_name the detail page removes (`pi_name_basis`), and the label a line gives
+# the row instead: the word before "Group" in a company, the words before
+# "Laboratory" in an SRO lab, a heading a page scan took for a name, and any
+# name on a campus program row.
+REMOVED_PI = {
+    "company word": (_pi_stamped(_listing("simplify", keywords=ROLE_ONLY, lab="Example Analytics Group", pi="Example"),
+                                 "rule:lab_title_surname"), "Example Analytics Group"),
+    "sro lab words": (_pi_stamped(_sro_twin(_listing("nsf_reu", keywords=ROLE_ONLY, lab="Example Nuclear Laboratory",
+                                                     pi="Example Nuclear")), "rule:lab_title_surname"),
+                      "Example Nuclear Laboratory"),
+    "page scan": (_pi_stamped(_listing("campus_program", keywords=ROLE_ONLY, pi="Team Projects"), "rule:page_scan_name"),
+                  "Field Robotics Program"),
+    "campus row": (_listing("campus_program", keywords=ROLE_ONLY, pi="Team Projects"), "Field Robotics Program"),
+}
+
+
+@pytest.mark.parametrize("case", REMOVED_PI)
+def test_a_pi_name_the_page_removes_gives_the_line_to_the_lab(case):
+    row, lab = REMOVED_PI[case]
+    fit = rank_opportunity(_profile(TEXTS["no overlap"]), row, precomputed_sim=0.5).reasons_fit
+    assert f"Your research interests align with {lab}'s focus area" in fit
+    assert not [line for line in fit if f"Prof. {row['pi_name']}" in line or line.startswith(f"{row['pi_name']}'s")]
+
+
+@pytest.mark.parametrize(("case", "headline"), [
+    ("company word", None),
+    ("sro lab words", None),
+    ("page scan", "This lab focuses on Field Robotics Program"),
+    ("campus row", "This lab focuses on Field Robotics Program"),
+])
+def test_a_pi_name_the_page_removes_neither_heads_nor_lets_in_the_summary(case, headline):
+    """The summary named the PI ("Team Projects's Field Robotics Program: …"),
+    or was let in as one that does because the derived word is in the lab."""
+    row, lab = REMOVED_PI[case]
+    fit = rank_opportunity(_profile(TEXTS["no overlap"]), row, precomputed_sim=0.5).reasons_fit
+    assert [line for line in fit if line.startswith((lab, "This lab focuses on", row["pi_name"]))] == (
+        [headline] if headline else [])
+
+
+@pytest.mark.parametrize("text", TEXTS.values(), ids=TEXTS.keys())
+def test_the_sros_work_line_names_its_lab_and_not_the_word_taken_from_it(text):
+    row = _pi_stamped(_sro_twin(_listing("nsf_reu", lab="Example Nuclear Laboratory", pi="Example Nuclear")),
+                      "rule:lab_title_surname")
+    work = "robotics, computer vision, embedded systems"
+    _, fit, _ = score_upside(_profile(text), row, precomputed_sim=0.5)
+    assert (
+        f"Your interest in robotics closely matches Example Nuclear Laboratory's work on {work}"
+        if text == TEXTS["overlap"] else f"Example Nuclear Laboratory also works on {work}"
+    ) in fit
+
+
+@pytest.mark.parametrize(("row", "named"), [
+    *((row, "") for row, _ in REMOVED_PI.values()),
+    *(({**_listing("campus_program", pi="Team Projects"), "source": source}, "")
+      for source in ("duke_labs", "duke_external_research")),
+    (_pi_stamped(_listing("manual"), "llm:contact_extraction"), ""),
+    (_listing("nsf_reu"), "Pat Lee"),
+    (_sro_twin(_listing("nsf_reu")), "Pat Lee"),
+    (_faculty(), "Pat Lee"),
+], ids=[*REMOVED_PI, "lab suffix", "external suffix", "any stamp", "nsf award", "sro", "faculty"])
+def test_a_line_names_the_pi_the_detail_page_shows_and_no_other(row, named):
+    assert _line_pi(row) == named
+    assert (pi_name_basis(row) is None) == bool(named)
+
+
+@pytest.mark.parametrize("placeholder", ["N/A", "Unknown", "Learn More"])
+def test_a_placeholder_pi_name_names_no_one(placeholder):
+    row = _listing("nsf_reu", keywords=ROLE_ONLY, pi=placeholder)
+    fit = rank_opportunity(_profile(TEXTS["no overlap"]), row, precomputed_sim=0.5).reasons_fit
+    assert "Your research interests align with Field Robotics Program's focus area" in fit
+    assert not [line for line in fit if placeholder in line]
+
+
 def test_the_matcher_version_moved_for_the_sentences():
-    assert int(MATCHER_VERSION.split(".")[0]) >= 32
+    assert int(MATCHER_VERSION.split(".")[0]) >= 33

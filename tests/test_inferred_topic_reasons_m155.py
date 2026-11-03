@@ -453,7 +453,9 @@ def test_a_chip_inside_the_focus_area_line_keeps_its_own_line():
     """"research" is inside "Your research interests align with ...'s focus area",
     which names no topic."""
     profile = {"research_interests_text": "research", "desired_fields": ["research"]}
-    row = _listing("illinois_research_programs", "campus_program", keywords=("research",))
+    # An NSF award states its PI; a campus program's pi_name names no one in a
+    # line (M171).
+    row = _listing("nsf_reu", "summer_program", keywords=("research",))
     _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
     assert "Matches your interests: research" in fit
     assert "Your research interests align with Prof. Pat Lee's focus area" in fit
@@ -464,7 +466,7 @@ def test_a_chip_inside_the_focus_area_line_keeps_its_own_line():
 def test_unstamped_keywords_that_name_no_topic_keep_the_focus_area(keywords):
     """display_kw is empty without a stamp: the similarity rests on the
     listing's own description."""
-    row = _listing("illinois_research_programs", "campus_program", keywords=keywords)
+    row = _listing("nsf_reu", "summer_program", keywords=keywords)
     _, fit, _ = score_upside({"research_interests_text": "neural decoding"}, row, precomputed_sim=0.6)
     assert _keyed(fit, "Your research interests") == (
         "Your research interests align with Prof. Pat Lee's focus area", "interests_lab_focus")

@@ -26,6 +26,7 @@ from backend.lib.opportunity_detail import (
 )
 
 from ..evidence import (
+    CAMPUS_PROGRAM_SUFFIXES,
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
     configured_fact,
@@ -2795,10 +2796,23 @@ def _extract_research_focus_from_desc(desc: str) -> str:
 _BAD_PI_NAMES = frozenset({"learn more", "none", "n/a", "and robotics", "unknown", ""})
 
 
-def _summarize_research(opportunity: dict) -> str:
+def _line_pi(opportunity: dict) -> str:
+    """The pi_name a line may name: none for a placeholder, or for a name the
+    detail page removes (backend.lib.opportunity_detail.pi_name_basis). That
+    is one an inference stamp marks, like the word before "Group" in a
+    company's name, or one a page scan put on a campus program row (M171)."""
     pi = opportunity.get("pi_name") or ""
-    if pi.lower().strip() in _BAD_PI_NAMES:
-        pi = ""
+    if (
+        pi.lower().strip() in _BAD_PI_NAMES
+        or is_inferred(opportunity, "pi_name")
+        or str(opportunity.get("source") or "").endswith(CAMPUS_PROGRAM_SUFFIXES)
+    ):
+        return ""
+    return pi
+
+
+def _summarize_research(opportunity: dict) -> str:
+    pi = _line_pi(opportunity)
     metadata = opportunity.get("metadata") or {}
     stated_rank = metadata.get("faculty_title") or opportunity.get("faculty_title") or ""
     # "Prof." is an academic-rank claim, not a generic synonym for anyone in
@@ -3322,8 +3336,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     )
 
     lab = faculty_safe_lab_or_program(opp)
-    pi_name = opp.get("pi_name", "")
-    clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
+    clean_pi = _line_pi(opp)
     stated_rank = (
         (opp.get("metadata") or {}).get("faculty_title")
         or opp.get("faculty_title")
@@ -3976,7 +3989,7 @@ def _rank_opportunity_unlocked(
 
     research_summary = st.research_summary
     if research_summary:
-        pi = opportunity.get("pi_name", "")
+        pi = _line_pi(opportunity)
         # The lab's focus-areas headline reads as context, not personal fit —
         # it slots AFTER a student-specific topical tie when one exists.
         at = 1 if all_fit and _reason_priority(all_fit[0]) == 0 else 0

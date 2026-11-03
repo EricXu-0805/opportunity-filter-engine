@@ -373,7 +373,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # listing's tags), no line names them as the row's work or focus: the
 # similarity line and the research-summary headline that would list them are
 # not written (checklist M171). Sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "32"
+# 33: a pi_name the detail page removes (an inference stamp, or a page scan on
+# a campus program row) names no one in a line: the lab label falls back to the
+# lab or department, and the headline neither names it nor is gated on it
+# (checklist M171). Sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "33"
 
 
 def _matcher_fingerprint() -> str:
