@@ -5,6 +5,7 @@ domain(s) — the machinery was UIUC-gated (illinois.edu hardcoded), leaving the
 other schools with zero recovery. The network (_fetch_soup) is monkeypatched.
 """
 
+import pytest
 from bs4 import BeautifulSoup
 
 from src.collectors import pi_enricher
@@ -220,3 +221,18 @@ def test_enrich_never_readdresses_a_professor_listed_in_memoriam(monkeypatch):
     assert opp["contact_email"] is None
     assert "email_source" not in opp["metadata"]
     assert (stats["scraped"], stats["skipped_in_memoriam"], stats["failed"]) == (0, 1, 0)
+
+
+@pytest.mark.parametrize("reason", ["duplicate_of_live_record", "absent_from_directory_rescrape"])
+def test_enrich_spends_no_scrape_on_a_row_no_longer_active(monkeypatch, reason):
+    """No student is offered an inactive row, so its page never takes a slot
+    of the scrape budget from a live row still missing an address."""
+    fetched = _stub_page(monkeypatch, "<p>no email here</p>")
+    gone = _fac("uw_faculty", "https://ece.uw.edu/people/a")
+    gone["metadata"] = {"is_active": False, "deactivated_at": "2026-11-06", "deactivation_reason": reason}
+    live = _fac("uw_faculty", "https://ece.uw.edu/people/b")
+    stats = enrich_opportunities([gone, live], max_scrapes=1)
+    assert fetched == ["https://ece.uw.edu/people/b"]
+    assert (stats["skipped_inactive"], stats["skipped_budget"], stats["scraped"]) == (1, 0, 1)
+    assert gone.get("contact_email") is None
+

@@ -1514,6 +1514,17 @@ def test_run_summary_reports_tombstoned_contacts_the_enricher_skipped(monkeypatc
     assert summary["sources"]["pi_enricher"]["skipped_tombstoned"] == 3
 
 
+def test_run_summary_reports_inactive_rows_the_enricher_skipped(monkeypatch, tmp_path):
+    _stub_with_processed_file(monkeypatch, tmp_path, _shard_seeds())
+    monkeypatch.setattr(
+        refresh_all, "enrich_pi",
+        lambda opps, save=True, max_scrapes=None, deadline=None: {
+            "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0,
+            "skipped_inactive": 4})
+    summary = refresh_all.refresh_all(deep=True)
+    assert summary["sources"]["pi_enricher"]["skipped_inactive"] == 4
+
+
 def test_pi_enrichment_pool_scoped_to_shard_and_never_truncates(monkeypatch, tmp_path):
     """Sharded runs must call enrich_pi with save=False: enrich_pi(save=True)
     writes its INPUT list to PROCESSED_FILE, so a shard-scoped subset would
