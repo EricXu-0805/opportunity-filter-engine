@@ -154,6 +154,11 @@ There is **no `external_id` field** — the stable identity is `id`:
   `unsupported`, `failed`, `not_attempted` (the run did not fetch the page) or
   `unconfirmed` (the source's crawl failed). A directory read in full says
   nothing about whether its programs' own pages were read.
+- `condition_gaps_by_source` counts each campus source's unread or
+  unparsed pages by reason. A page that failed to load says why:
+  `http_<status>`, `timeout` or `render_unresolved`; a connection, TLS or
+  other error stays `fetch_failed`. A refusal, a missing page and a render
+  that never resolved call for different fixes.
 
 ## H. refresh_all wiring
 

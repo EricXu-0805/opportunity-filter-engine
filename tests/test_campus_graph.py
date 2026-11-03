@@ -395,6 +395,55 @@ class TestSeedNormalization:
         assert by_key["ok"]["metadata"]["seed_page_verified"] is True
         assert by_key["missing"]["metadata"]["seed_page_verified"] is False
 
+    def test_school_report_keeps_failure_reasons_separate_from_readable_pages(self, monkeypatch):
+        import requests
+
+        urls = [f"https://example.edu/{part}" for part in ("denied", "gone", "timeout", "unparsed", "ok")]
+        source = dict(source_name="our", source_type=cg.PROGRAM, emit="campus", crawl=cg.STATIC,
+                      seeds=urls, programs=[cg.program("award", "Award", urls[-1], "Student award")])
+        school = dict(PRINCETON, sources=[source])
+
+        def reply(url, **kwargs):
+            if url == urls[2]:
+                raise requests.Timeout("private diagnostic")
+            response = requests.Response()
+            response.status_code = {urls[0]: 403, urls[1]: 404}.get(url, 200)
+            response.url = url
+            # A page that loads but keeps its conditions outside parsed blocks.
+            block = "div" if url == urls[3] else "p"
+            response._content = f"<html><body><main><{block}>Applicants must submit a CV.</{block}></main></body></html>".encode()
+            return response
+
+        monkeypatch.setattr(requests, "get", reply)
+        records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=True)
+        assert evidence["condition_gaps_by_source"] == {
+            "our": {"http_403": 1, "http_404": 1, "timeout": 1, "unparsed_relevant_content": 1}}
+        assert {u["requested_url"]: u["capture"]["reason"] for u in evidence["condition_capture_updates"]} == {
+            urls[0]: "http_403", urls[1]: "http_404", urls[2]: "timeout", urls[3]: "unparsed_relevant_content"}
+        assert evidence["seed_pages_loaded"] == 2 and evidence["seed_pages_failed"] == 3
+        assert records[0]["metadata"]["seed_page_verified"]
+        assert "private diagnostic" not in json.dumps(evidence)
+
+    def test_school_report_leaves_out_a_source_whose_pages_all_loaded(self, monkeypatch):
+        monkeypatch.setattr(cg, "_fetch", lambda url, **kwargs: _StaticSoup(url))
+        url = "https://example.edu/award"
+        source = dict(source_name="our", source_type=cg.PROGRAM, emit="campus", crawl=cg.STATIC,
+                      seeds=[url], programs=[cg.program("award", "Award", url, "Student award")])
+        _, evidence = cg.fetch_and_normalize_with_evidence(dict(PRINCETON, sources=[source]), deep=True)
+        assert evidence["seed_pages_loaded"] == 1
+        assert evidence["condition_gaps_by_source"] == {}
+
+    def test_an_unresolved_render_is_reported_as_such(self, monkeypatch):
+        from src.collectors import faculty_graph
+
+        monkeypatch.setattr(faculty_graph, "_render_soup", lambda url, **kwargs: None)
+        url = "https://example.edu/walled"
+        source = dict(source_name="walled", source_type=cg.PROGRAM, emit="campus", crawl=cg.STATIC, render=True,
+                      seeds=[url], programs=[cg.program("award", "Award", url, "Student award")])
+        _, evidence = cg.fetch_and_normalize_with_evidence(dict(PRINCETON, sources=[source]), deep=True)
+        assert evidence["condition_gaps_by_source"] == {"walled": {"render_unresolved": 1}}
+        assert evidence["seed_pages_failed"] == 1
+
     def test_quick_unverified_seed_does_not_reactivate_old_closed_record(
         self,
         monkeypatch,

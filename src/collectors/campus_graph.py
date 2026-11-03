@@ -370,6 +370,10 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
 
 # --- Crawl layer (lazy HTTP deps) ------------------------------------------
 
+class _CampusFetchError(Exception):
+    """A fetch failure whose short reason can be published in a school report."""
+
+
 def _fetch(url: str, *, render: bool = False):
     """Fetch one crawl page, optionally through headless Chromium.
 
@@ -388,8 +392,8 @@ def _fetch(url: str, *, render: bool = False):
     shell. The renderer is faculty_graph's rather than a second copy, so its
     challenge detection and retry budget are shared.
 
-    Playwright is imported lazily there, so a run without Chromium installed
-    returns None and degrades exactly like an unreachable page. That is why
+    Playwright is imported lazily there. A missing browser or an unresolved
+    render is recorded as render_unresolved. That is why
     ``scripts/refresh_rotation.browser_schools`` reads campus sources too — a
     render source in a shard whose install step skipped Chromium goes quiet
     with no signal, which is the failure the workflow's own comment describes.
@@ -406,7 +410,7 @@ def _fetch(url: str, *, render: bool = False):
         # The four measured renders all returned well inside it.
         soup = _render_soup(url, total_budget_s=60.0, bounded=True)
         if soup is None:
-            logger.warning("campus_graph: render fetch failed for %s", url)
+            raise _CampusFetchError("render_unresolved")
         return soup
     try:
         import requests
@@ -432,6 +436,12 @@ def _fetch(url: str, *, render: bool = False):
         return soup
     except ImportDocumentError:
         raise
+    except requests.HTTPError as exc:
+        if exc.response is not None:
+            raise _CampusFetchError(f"http_{exc.response.status_code}") from exc
+        raise _CampusFetchError("fetch_failed") from exc
+    except requests.Timeout as exc:
+        raise _CampusFetchError("timeout") from exc
     except Exception as e:  # noqa: BLE001
         logger.warning("campus_graph: fetch failed for %s: %s", url, e)
         return None
@@ -596,6 +606,9 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         except ImportDocumentError as error:
             # The page alone fails; the rest of the source is still crawled.
             soup, reason = None, error.reason
+        except _CampusFetchError as error:
+            soup, reason = None, str(error)
+            logger.warning("campus_graph: %s for %s", reason, url)
         if soup is None:
             captures[url] = capture_failure(source_url=url, reason=reason)
             if url in seed_urls:
@@ -719,6 +732,7 @@ def fetch_and_normalize_with_evidence(
         "condition_capture_counts": {key: 0 for key in ("captured", "empty", "unsupported", "failed")},
         "condition_capture_complete": False,
         "condition_capture_updates": [],
+        "condition_gaps_by_source": {},
         "program_page_checks": {},
         "reference_page_checks": {},
         "normalization_failed": 0,
@@ -747,6 +761,9 @@ def fetch_and_normalize_with_evidence(
                     source,
                 )
                 captures = crawl_evidence["condition_captures"]
+                gaps = Counter(c["reason"] for c in captures.values() if c["status"] in {"unsupported", "failed"})
+                if gaps:
+                    evidence["condition_gaps_by_source"][source["source_name"]] = dict(gaps)
                 evidence["condition_capture_updates"].extend(crawl_evidence["condition_capture_updates"])
                 for key, count in crawl_evidence["condition_capture_counts"].items():
                     evidence["condition_capture_counts"][key] += count
