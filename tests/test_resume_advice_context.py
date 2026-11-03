@@ -121,3 +121,21 @@ def test_a_confirmed_link_adds_no_row_quoting_only_its_phrase(locale, phrase):
         assert rows[0] == f'{label}: {json.dumps(original)}' and len(rows) == 2
         assert phrase not in result[field]
     assert result['links'][0]['entailed'] is True
+
+
+@pytest.mark.parametrize('locale,label,old', [
+    ('en', 'AI-linked text from the opportunity', 'Target original'),
+    ('zh', 'AI 关联的机会原文', '目标原文'),
+])
+def test_advice_names_the_opportunity_quote_as_text_the_ai_linked(locale, label, old):
+    original = 'I did not write Python scripts for the lab.'
+    doc, units = selected(original)
+    row = model_unit(units[0], links=[LINK], reason='method_relevance')
+    kept, _ = ai.parse_output(json.dumps({'units': [row]}), units, anchors(doc), locale)
+    outcome = em.check_rewrite(ai._em_unit(units[0]), row, {anchor.id: anchor for anchor in anchors(doc)},
+                               output_language='en', extra_keys=ai.ROW_EXTRA_KEYS)
+    rewrite = ai._suggestion(units[0], outcome, 'normal', 'review_sources', locale, proposed=original,
+                             alternative=original)
+    for reason in (kept[0]['suggestion']['reason'], rewrite['reason'], rewrite['alternative_reason']):
+        assert f'{label}: "Python"' in reason
+        assert f'{old}: ' not in reason

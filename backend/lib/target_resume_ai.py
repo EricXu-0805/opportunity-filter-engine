@@ -271,14 +271,14 @@ def _suggestion(unit, outcome, priority, category, locale, *, proposed=None, kee
     sources = complete_source_quotes(unit)
     ops = outcome.ops if proposed is not None else []
     suggestion = {"priority": priority, "reason": render_reason(category, priority, sources, targets, locale,
-                                                                ops=ops, keep_code=keep_code),
+                                                                ops=ops, keep_code=keep_code, ai_linked=True),
                   "target_evidence": targets, "proposed_text": proposed, "links": links, "ops": ops,
                   "alternative_text": alternative}
     if alternative is not None:
         # The wording without the posting's terms relabels nothing; its reason must not say it does.
         suggestion["alternative_reason"] = render_reason(
             category, priority, sources, targets, locale, ops=[op for op in ops if op != "relabel"],
-            keep_code=keep_code)
+            keep_code=keep_code, ai_linked=True)
     if unit.get("support_sources"):
         suggestion["source_evidence"] = complete_source_quotes(unit)
     return suggestion
