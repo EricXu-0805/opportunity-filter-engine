@@ -3339,7 +3339,8 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
 
     Paginated REST directory (MSU College of Natural Science:
     ``?page=1..pageCount``, 100 records/page). Follow pages until the feed's own
-    ``count_key`` (pageCount) is reached, a page yields no records, or the
+    ``count_key`` (pageCount; a dotted path for a nested count, UF Apollo's
+    ``pagination.total_pages``) is reached, a page yields no records, or the
     ``max`` guard trips. Records accumulate across pages.
     """
     param = pag.get("param", "page")
@@ -3368,7 +3369,8 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
             break
         recs_all.extend(page_recs)
         cnt = pag.get("count_key")
-        if cnt and isinstance(data, dict) and data.get(cnt) and page >= data[cnt]:
+        count = _dig(data, cnt) if cnt and isinstance(data, dict) else None
+        if count and page >= count:
             break
     return recs_all, stated
 

@@ -2456,6 +2456,41 @@ class TestJsonDirSource:
         assert names["Ada Prof"]["title"] == "Professor"
         assert names["Lee Chair"]["title"] == "Associate Chair and Professor"
 
+    @staticmethod
+    def _walk_two_pages(monkeypatch, count_key, stated):
+        """Names read and pages requested from a two-page feed that states
+        ``stated`` on every page; page 3 is empty."""
+        rows = {1: [{"name": "Ada Example", "title": "Professor"}],
+                2: [{"name": "Bo Sample", "title": "Professor"}]}
+        requested = []
+
+        def _get(url, **k):
+            page = int(url.rsplit("page=", 1)[1])
+            requested.append(page)
+
+            class _R:
+                def raise_for_status(self): pass
+                def json(self): return {"profiles": rows.get(page, []), **stated}
+            return _R()
+
+        monkeypatch.setattr("requests.get", _get)
+        dept = {"short": "X", "json_dir": {
+            "url": "https://x.example.edu/api/search?q=",
+            "records_key": "profiles",
+            "paginate": {"param": "page", "count_key": count_key, "max": 5},
+            "name_fields": ["name"]}}
+        return [p["name"] for p in fg._fetch_json_dir(dept)], requested
+
+    @pytest.mark.parametrize("count_key, stated", [
+        # UF Apollo states its page count under "pagination".
+        ("pagination.total_pages", {"pagination": {"total_pages": 2}}),
+        ("pageCount", {"pageCount": 2}),
+    ])
+    def test_json_dir_walk_ends_at_the_page_count_the_feed_states(
+            self, monkeypatch, count_key, stated):
+        assert self._walk_two_pages(monkeypatch, count_key, stated) == (
+            ["Ada Example", "Bo Sample"], [1, 2])
+
     def test_json_dir_research_field_list_and_array_segment(self, monkeypatch):
         """UCSD-Biology shape: sections[].title area tags win, prose fallback."""
         payload = [
