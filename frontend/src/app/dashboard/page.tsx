@@ -944,6 +944,7 @@ function DeadlineContent({
             <li key={item.id}>
               <Link
                 href={item.browserImport ? '/favorites' : `/opportunities/${encodeURIComponent(item.id)}`}
+                prefetch={false}
                 className="flex min-w-0 items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
               >
                 <div className={`w-20 shrink-0 text-right ${urgent ? 'text-red-600' : 'text-amber-700'}`}>
@@ -1038,6 +1039,7 @@ function ReminderContent({
           <li key={item.opportunityId}>
             <Link
               href={`/opportunities/${encodeURIComponent(item.opportunityId)}`}
+              prefetch={false}
               className="flex min-w-0 items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
             >
               <div className={`w-20 shrink-0 text-right ${reminderColor(item)}`}>
@@ -1121,6 +1123,7 @@ function TrackerContent({
             <Link
               key={item.id}
               href={`/opportunities/${encodeURIComponent(item.id)}`}
+              prefetch={false}
               className="flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-gray-50/50 focus:outline-none focus-visible:bg-gray-50"
             >
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}>

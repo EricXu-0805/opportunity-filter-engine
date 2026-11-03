@@ -39,6 +39,7 @@ export function SimilarOpportunities({
           return <li key={s.id}>
             <Link
               href={`/opportunities/${encodeURIComponent(s.id)}`}
+              prefetch={false}
               className="group block bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               <div className="flex items-start gap-2 mb-2">

@@ -135,6 +135,7 @@ export function TrackerCard({
       {lab && <p className="mt-1 text-xs text-gray-500">{lab}</p>}
       {isPrivateImportId(opp.id) && <p className="mt-1 text-xs text-amber-800">{t('privateImport.unverified')}</p>}
       <Link href={(isPrivateImportId(opp.id) ? '/private-imports/' : '/opportunities/') + encodeURIComponent(opp.id) + '#tracker-records'}
+        prefetch={false}
         className="mt-2 inline-flex min-h-9 items-center rounded text-xs font-medium text-indigo-700 underline focus-visible:ring-2 focus-visible:ring-indigo-500">
         {t('applicationRecord.viewRecords')}
       </Link>

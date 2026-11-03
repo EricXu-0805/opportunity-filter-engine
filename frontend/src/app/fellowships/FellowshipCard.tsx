@@ -56,7 +56,7 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
               {opp.title}
             </a>
           ) : (
-            <Link href={linkHref} className="hover:text-indigo-600 transition-colors">
+            <Link href={linkHref} prefetch={false} className="hover:text-indigo-600 transition-colors">
               {opp.title}
             </Link>
           )}

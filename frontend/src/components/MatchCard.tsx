@@ -310,6 +310,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
                 <Link
                   href={detailHref ?? `/opportunities/${encodeURIComponent(opp.id)}`}
+                  prefetch={false}
                   onClick={e => { e.stopPropagation(); onViewOpportunity?.(opp.id); }}
                   onAuxClick={e => { if (e.button === 1) onViewOpportunity?.(opp.id); }}
                   className="hover:text-indigo-600 focus:outline-none focus-visible:underline decoration-indigo-500 underline-offset-4 transition-colors"

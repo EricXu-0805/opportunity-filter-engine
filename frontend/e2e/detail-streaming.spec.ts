@@ -38,6 +38,10 @@ const records = new Map([
   [A, opportunity(A, 'Streaming target A')],
   [B, opportunity(B, 'Streaming target B')],
   [ENCODED, opportunity(ENCODED, 'Encoded target')],
+  ...['c', 'd', 'e', 'f'].map((suffix): [string, Opportunity] => {
+    const id = `stream-fixture-${suffix}`;
+    return [id, opportunity(id, `Streaming target ${suffix.toUpperCase()}`)];
+  }),
 ]);
 type Reply = { status: number; body: unknown };
 const pending = new Map<string, Set<ServerResponse>>();
@@ -186,6 +190,31 @@ test.describe('Production detail requests and streaming', () => {
   });
   test.afterEach(async () => {
     for (const id of pending.keys()) release(id, { status: 503, body: {} });
+  });
+
+  test('reads the target once and waits for a click before fetching any recommended detail', async ({ page }) => {
+    const suggestions = [B, 'stream-fixture-c', 'stream-fixture-d', 'stream-fixture-e', 'stream-fixture-f'];
+    release(A, recommendations(...suggestions.map(id => records.get(id)!)));
+    release(B, recommendations());
+    await page.goto(`${origin}/opportunities/${A}`);
+    await expectHealthyMain(page, A);
+    await expect(page).toHaveTitle(/Streaming target A/);
+    const rail = page.getByRole('region', { name: 'Similar opportunities', exact: true });
+    for (const id of suggestions) {
+      const link = rail.getByRole('link', { name: new RegExp(records.get(id)!.title) });
+      await link.scrollIntoViewIfNeeded();
+      await link.hover();
+    }
+    // Give production viewport/hover prefetch a chance to run. This bounded
+    // negative observation counts real upstream GETs, not Link props or mocks.
+    await page.waitForTimeout(750);
+    expect.soft(Object.fromEntries(detailRequests)).toEqual({ [A]: 1 });
+    expect.soft(Object.fromEntries(requests)).toEqual({ [A]: 1 });
+    await rail.getByRole('link', { name: /Streaming target B/ }).click();
+    await expectHealthyMain(page, B);
+    await expect(page).toHaveTitle(/Streaming target B/);
+    expect(Object.fromEntries(detailRequests)).toEqual({ [A]: 1, [B]: 1 });
+    expect(Object.fromEntries(requests)).toEqual({ [A]: 1, [B]: 1 });
   });
 
   test('a fresh request sees a newly closed listing in both content and metadata', async ({ page }) => {
