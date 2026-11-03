@@ -42,7 +42,6 @@ SCHOOL: dict = {
             "seeds": [
                 "https://hour.jhu.edu/",
                 "https://hour.jhu.edu/present/real/",
-                "https://hour.jhu.edu/opportunities/aplinternships/",
                 "https://krieger.jhu.edu/ursca/national-programs/",
             ],
             "crawl": STATIC,
@@ -92,27 +91,6 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     deadline_note="Registration each fall and spring semester via Symposium platform",
                     keywords=["research symposium", "DREAMS", "poster session", "presentation", "showcase"],
-                ),
-                program(
-                    "hour_apl_research_internships",
-                    "Research Internships @APL (HOUR gateway) \u2014 Johns Hopkins University",
-                    "https://hour.jhu.edu/opportunities/aplinternships/",
-                    "HOUR's gateway page connecting Hopkins undergraduates to paid "
-                    "internships at the Johns Hopkins Applied Physics Laboratory, with "
-                    "Hopkins undergraduates receiving first consideration for many roles. "
-                    "Fields include engineering and analysis, AI/ML, and cybersecurity; all "
-                    "college interns receive competitive pay and paid holidays. HOUR does not "
-                    "administer the programs \u2014 applications go through APL directly.",
-                    organization="Johns Hopkins University",
-                    department="Hopkins Office for Undergraduate Research",
-                    lab_or_program="Research Internships @APL",
-                    opportunity_type="internship",
-                    paid="yes",
-                    compensation="Competitive hourly pay plus paid holidays",
-                    eligibility_majors=["engineering", "computer science", "physics", "mathematics", "data science"],
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    deadline_note="Rolling via APL careers portal",
-                    keywords=["APL", "applied physics laboratory", "paid internship", "defense research", "AI"],
                 ),
                 program(
                     "ursca_national_programs",

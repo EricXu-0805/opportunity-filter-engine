@@ -1666,6 +1666,72 @@ def test_uf_newcastle_row_is_kept_but_never_served():
         assert hard_exclusion(row, _filter_context(profile)) == "inactive"
 
 
+def test_the_apl_internships_are_configured_from_apls_own_page_only(processed):
+    """HOUR's APL gateway row said HOUR does not administer the APL
+    internships and that applications go through APL directly, and
+    apl_college_internships lists them from APL's own careers page. The
+    gateway page sits behind a bot check (robots.txt answered 403 on
+    2026-11-02), so its spec leaves the config and its stored row retires."""
+    from copy import deepcopy
+
+    from src.collectors.schools.jhu import SCHOOL as JHU
+    from src.evidence import target_truth
+
+    gateway = "https://hour.jhu.edu/opportunities/aplinternships/"
+    specs = [spec for source in JHU["sources"] for spec in source.get("programs", [])]
+    assert not any(spec["key"] == "hour_apl_research_internships" or spec["url"] == gateway for spec in specs)
+    assert not any(gateway in source.get("seeds", []) for source in JHU["sources"])
+    [apl] = [spec for spec in specs if spec["url"] == "https://www.jhuapl.edu/careers/internships"]
+    assert apl["key"] == "apl_college_internships"
+
+    before = deepcopy(JHU)
+    source = next(s for s in before["sources"] if s["source_name"] == "jhu_announcement_campus")
+    source["programs"].append(cg.program("hour_apl_research_internships", "Research Internships @APL", gateway, "Gateway"))
+    stored = cg._normalize_program(before, source, source["programs"][-1])
+    assert stored["id"] == "jhu-cd4d240839a2"
+    processed.write_text(json.dumps([stored]), encoding="utf-8")
+    _refresh_school(JHU, national=False)
+    row = _stored(processed)[stored["id"]]
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
+    assert target_truth(row).reason_code == "inactive"
+
+
+# Configured program pages that more than one spec cites, as the keys that
+# share each page. Such a page describes none of them alone
+# (shared_program_page), so a spec pointed at another spec's page fails here.
+_SHARED_PROGRAM_PAGES = {
+    "bc": [{"bc_advanced_study_grants", "bc_asg_arts", "bc_asg_language", "bc_asg_summer_research",
+            "bc_asg_thesis_research"},
+           {"bc_conference_travel_grants", "bc_undergrad_research_opportunities"}],
+    "hamilton": [{"hamilton_intl_summer", "hamilton_kirkland"}, {"hamilton_smallen", "hamilton_support_projects"}],
+    "haverford": [{"haverford_cpgc_engaged_research", "haverford_cpgc_summer_internships"},
+                  {"haverford_hcah_student_fellowships", "haverford_hcah_summer_scholars"},
+                  {"haverford_kinsc_interdisciplinary", "haverford_kinsc_summer_research"},
+                  {"haverford_mellon_mays", "haverford_provost_student_faculty_research"}],
+    "northwestern": [{"nu_mrsec_reu", "nu_mrsec_uri"}],
+    "princeton": [{"our_funding", "senior_thesis_funding", "ufac"}],
+    "sbu": [{"explorations_in_stem", "ureca_summer", "velay_fellowship"}],
+    "smith": [{"smith_aemes", "smith_mckinley"}],
+    "wellesley": [{"wellesley_beckman_scholars", "wellesley_first_year_apprentice", "wellesley_knapp_social_science",
+                   "wellesley_mcnair", "wellesley_mellon_mays", "wellesley_science_center_summer",
+                   "wellesley_sophomore_early_research", "wellesley_summer_research",
+                   "wellesley_wintersession_research"}],
+}
+
+
+def test_the_program_pages_shared_by_several_specs_are_the_listed_ones():
+    shared: dict[str, set[frozenset[str]]] = {}
+    for school in SCHOOL_CONFIGS:
+        specs = [spec for source in school.get("sources", []) for spec in source.get("programs", [])]
+        for spec in specs:
+            if cg._ambiguous_program_url(school, spec["url"]):
+                keys = {other["key"] for other in specs if cg._same_page_url(other["url"], spec["url"])
+                        or cg._same_page_url(spec["url"], other["url"])}
+                shared.setdefault(school["school_slug"], set()).add(frozenset(keys))
+    assert shared == {slug: {frozenset(keys) for keys in pages} for slug, pages in _SHARED_PROGRAM_PAGES.items()}
+
+
 # --- Per-school: Princeton (the reference config) ---------------------------
 
 class TestPrinceton:
