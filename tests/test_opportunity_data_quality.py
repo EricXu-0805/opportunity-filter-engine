@@ -625,6 +625,35 @@ class TestR70ADataQuality:
         assert not text, f"{len(text)} WIGG directory rows hold research text: {text[:5]}"
         assert not unstamped, f"{len(unstamped)} WIGG directory rows hold unstamped keywords: {unstamped[:5]}"
 
+    def test_active_uiuc_research_text_is_what_the_collector_keeps(self):
+        """A UIUC profile's research text ends at a publication-list heading
+        (M163). Stored past it, "Articles in Conference Proceedings" and the
+        co-authors after it were the detail page's research areas, the merge
+        made co-author names keywords, and the template email said "your work
+        on" three of them. So every active UIUC row's stored research text is
+        what _trim_research_areas keeps of it; a data PR that writes the
+        earlier rows back, or a stop heading added without a repair, fails
+        here. The message counts the keywords found only in the dropped part
+        and names rows by id alone: that part names people."""
+        from src.collectors.uiuc_faculty import _trim_research_areas
+
+        offenders, keywords = [], 0
+        for o in _load_data():
+            md = o.get("metadata") or {}
+            raw = md.get("research_areas_raw")
+            if o.get("source") != "uiuc_faculty" or md.get("is_active") is False or not isinstance(raw, str):
+                continue
+            kept = _trim_research_areas(raw)
+            if kept == raw:
+                continue
+            offenders.append(o.get("id"))
+            low, cut = raw.lower(), len(kept)
+            keywords += sum(1 for k in o.get("keywords") or [] if isinstance(k, str)
+                            and low.find(k.lower(), 0, cut) == -1 and low.find(k.lower(), cut) != -1)
+        assert not offenders, (
+            f"{len(offenders)} active UIUC research texts run past what the collector keeps, and "
+            f"{keywords} of their keywords are read only off the dropped part: {offenders[:5]}")
+
     def test_no_duplicate_faculty_at_same_url(self):
         """A cross-appointed professor scraped from two department pages shares
         one profile URL — those must be collapsed to a single record so the
