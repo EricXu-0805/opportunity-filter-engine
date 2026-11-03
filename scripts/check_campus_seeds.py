@@ -15,6 +15,11 @@ record pointed at a 404 that nothing probed, because its page was never a
 seed. Program pages that are not seeds are now probed too, once per URL,
 through the same pool with the same timeout.
 
+A successful response that ends on a different page is listed for review.
+same_source_page treats these as the same page: an http-to-https upgrade, a
+trailing slash, the host's letter case, an explicit default port and a
+fragment.
+
 A dead page is deterministic and worth waking someone for. A bot challenge,
 a timeout or a rate-limit is not: those recur, recover, and would train the
 reader to ignore this check. So only ``gone`` fails the run.
@@ -38,6 +43,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 GONE = "gone"
 BLOCKED = "blocked"
+REDIRECTED = "redirected"
 UNREACHABLE = "unreachable"
 OK = "ok"
 
@@ -58,8 +64,12 @@ def classify(status: object) -> str:
     """Map one probe result to the class that decides whether we alert."""
 
     if isinstance(status, int) and not isinstance(status, bool):
-        if 200 <= status < 400:
+        if 200 <= status < 300:
             return OK
+        if 300 <= status < 400:
+            # Requests normally follows redirects. A terminal 3xx never
+            # returned the configured page (for example, a missing Location).
+            return REDIRECTED
         if status in _GONE_STATUSES:
             return GONE
         if status in _BLOCKED_STATUSES:
@@ -105,6 +115,7 @@ def _probe(item: tuple[str, str, str], kind: str = "seed") -> dict:
 
     from src.collectors.campus_graph import HEADERS
     from src.collectors.ucb_common import _ca_bundle
+    from src.contact_instructions import same_source_page
 
     slug, source, url = item
     try:
@@ -112,15 +123,21 @@ def _probe(item: tuple[str, str, str], kind: str = "seed") -> dict:
             url, headers=HEADERS, timeout=PROBE_TIMEOUT_S, verify=_ca_bundle()
         )
         status: object = resp.status_code
+        page_class = classify(status)
+        if page_class == OK and not same_source_page(url, resp.url):
+            # A 200 on some other page cannot verify the configured program.
+            # Keep the original URL for review; login redirects may carry tokens.
+            page_class = REDIRECTED
     except Exception as exc:  # noqa: BLE001 — every failure is data here
         status = type(exc).__name__
+        page_class = UNREACHABLE
     return {
         "school": slug,
         "source": source,
         "kind": kind,
         "url": url,
         "status": status,
-        "class": classify(status),
+        "class": page_class,
     }
 
 
@@ -141,6 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     gone = [r for r in results if r["class"] == GONE]
     blocked = [r for r in results if r["class"] == BLOCKED]
     unreachable = [r for r in results if r["class"] == UNREACHABLE]
+    redirected = [r for r in results if r["class"] == REDIRECTED]
 
     if args.json:
         print(json.dumps({"probed": len(results), "results": results}, indent=1))
@@ -148,14 +166,15 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"probed {len(results)} configured pages ({len(seeds)} seeds, "
             f"{len(pages)} program pages that are not seeds): "
-            f"{len(results) - len(gone) - len(blocked) - len(unreachable)} ok, "
+            f"{sum(r['class'] == OK for r in results)} ok, "
             f"{len(gone)} gone, {len(blocked)} blocked, "
-            f"{len(unreachable)} unreachable"
+            f"{len(unreachable)} unreachable, {len(redirected)} redirected for review"
         )
         for label, rows in (
             ("GONE", gone),
             ("blocked", blocked),
             ("unreachable", unreachable),
+            ("redirected", redirected),
         ):
             for row in sorted(rows, key=lambda r: (r["school"], r["url"])):
                 print(

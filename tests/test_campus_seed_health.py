@@ -60,7 +60,9 @@ def _run(monkeypatch, capsys, registry, outcomes, *argv):
         outcome = outcomes.get(url, 200)
         if isinstance(outcome, Exception):
             raise outcome
-        return SimpleNamespace(status_code=outcome)
+        if isinstance(outcome, tuple):
+            return SimpleNamespace(status_code=outcome[0], url=outcome[1])
+        return SimpleNamespace(status_code=outcome, url=url)
 
     monkeypatch.setattr(schools, "SCHOOL_CONFIGS", registry)
     monkeypatch.setattr(requests, "get", get)
@@ -82,9 +84,11 @@ class TestClassify:
         for status in (401, 403, 406, 429, 451):
             assert _checker.classify(status) == _checker.BLOCKED
 
-    def test_any_success_or_redirect_is_ok(self):
-        for status in (200, 202, 301, 302, 308):
+    def test_http_success_and_unresolved_redirect_are_distinct(self):
+        for status in (200, 202):
             assert _checker.classify(status) == _checker.OK
+        for status in (301, 302, 308):
+            assert _checker.classify(status) == _checker.REDIRECTED
 
     def test_a_transport_failure_is_neither_ok_nor_rot(self):
         assert _checker.classify("SSLError") == _checker.UNREACHABLE
@@ -271,6 +275,28 @@ class TestProgramPages:
         assert line.split()[:4] == ["GONE", "example", "program", "404"]
         assert out.splitlines()[-1].startswith("::error::1 configured campus page(s) no longer exist;")
 
+    @pytest.mark.parametrize(("final", "expected"), [
+        ("https://example.edu/grant/", _checker.OK),
+        ("https://example.edu/funding/grant/", _checker.REDIRECTED),
+        ("https://example.edu/", _checker.REDIRECTED),
+        ("https://login.example.edu/form?ticket=private", _checker.REDIRECTED),
+    ])
+    def test_final_page_is_checked_without_logging_redirect_credentials(
+        self, monkeypatch, capsys, final, expected
+    ):
+        url = "http://example.edu/grant"
+        code, out, calls = _run(monkeypatch, capsys, [_school("example", [], [url])],
+                                {url: (200, final)}, "--json")
+        assert code == 0 and len(calls) == 1
+        assert json.loads(out)["results"][0]["class"] == expected
+        assert "ticket=" not in out
+
+    def test_a_404_reached_through_a_redirect_is_still_gone(self, monkeypatch, capsys):
+        url = "http://example.edu/grant"
+        code, out, _ = _run(monkeypatch, capsys, [_school("example", [], [url])],
+                            {url: (404, "https://example.edu/elsewhere")}, "--json")
+        assert code == 1 and json.loads(out)["results"][0]["class"] == _checker.GONE
+
     def test_a_walled_or_unreachable_program_page_does_not_fail_the_run(
         self, monkeypatch, capsys
     ):
@@ -354,6 +380,24 @@ class TestProgramPages:
         assert not (set(pages) & seeds)
         assert configured <= seeds | set(pages)
         assert len(pages) > 100, "most program pages are not seeds"
+
+
+class TestTextReport:
+    """campus-seed-health.yml runs the checker without --json: this is what the owner reads."""
+
+    def test_a_moved_page_is_counted_and_listed_for_review_not_as_ok(self, monkeypatch, capsys):
+        moved, dead, fine = "https://example.edu/grant", "https://example.edu/old", "https://example.edu/ok"
+        code, out, _ = _run(monkeypatch, capsys, [_school("example", [moved, dead, fine], [])],
+                            {moved: (200, "https://example.edu/"), dead: 404})
+
+        assert code == 1
+        summary, *rows, annotation = out.splitlines()
+        assert summary == ("probed 3 configured pages (3 seeds, 0 program pages that are not seeds): "
+                           "1 ok, 1 gone, 0 blocked, 0 unreachable, 1 redirected for review")
+        # The configured URL, never the page it moved to.
+        assert [row.split() for row in rows] == [["GONE", "example", "seed", "404", dead],
+                                                 ["redirected", "example", "seed", "200", moved]]
+        assert annotation.startswith("::error::1 configured campus page(s) no longer exist;")
 
 
 def _workflow_step(name_fragment: str) -> dict:
