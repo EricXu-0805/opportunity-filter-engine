@@ -369,7 +369,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # 31: a chip of more than 300 characters (`_TERM_MAX`) is a passage: it counts
 # toward the score as before, but no "Matches your interests" line names it
 # (checklist M172). Sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "31"
+# 32: when a row's keywords are ours by the rule of 29 and unstamped (a
+# listing's tags), no line names them as the row's work or focus: the
+# similarity line and the research-summary headline that would list them are
+# not written (checklist M171). Sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "32"
 
 
 def _matcher_fingerprint() -> str:

@@ -1290,11 +1290,14 @@ class TestUpsideReasonHook:
     for `research_text[:50]` producing '...computer vision a closely matches')."""
 
     def _opp(self):
+        # A faculty row: a listing's tags are ours and write no similarity
+        # line (M171).
         return {
             "id": "opp-hook",
             "title": "Research with Prof. Schwing — ECE",
             "lab_or_program": "Prof. Alexander Schwing's Research Group",
             "pi_name": "Alexander Schwing",
+            "source_type": "faculty_research",
             "opportunity_type": "research",
             "keywords": ["machine learning", "computer vision", "robotics"],
             "description_raw": "Computer vision and machine learning research group.",
@@ -1386,11 +1389,14 @@ class TestInterestReasonDedup:
     dropped; partial or disjoint coverage keeps both reasons."""
 
     def _opp(self, keywords):
+        # A faculty row: a listing's tags are ours and write no similarity
+        # line (M171).
         return {
             "id": "opp-dedup",
             "title": "Research with Prof. Doe",
             "pi_name": "Jane Doe",
             "lab_or_program": "Prof. Jane Doe's Group",
+            "source_type": "faculty_research",
             "opportunity_type": "research",
             "keywords": keywords,
             "description_raw": "Lab working across several areas.",
@@ -1418,9 +1424,7 @@ class TestInterestReasonDedup:
             self._opp(["computer vision", "deep learning", "graphics", "robotics"]),
             precomputed_sim=0.5,
         )
-        # A record of no known kind: its keywords are ours, so the line ends
-        # with our note (M155); the dedupe is what this pins.
-        assert any(r.startswith("Matches your interests: robotics") for r in fit)
+        assert "Matches your interests: robotics" in fit
         assert any("closely matches" in r for r in fit)
 
     def test_no_literal_overlap_does_not_put_the_alignment_in_the_students_mouth(self):
@@ -1464,9 +1468,11 @@ class TestReasonQualityOptimizations:
         assert _topical_keywords(kws) == ["computer vision", "deep learning"]
 
     def test_summary_does_not_show_role_token_as_topic(self):
+        # A faculty row: a listing's tags are ours and write no summary (M171).
         opp = {
             "pi_name": "Jane Doe",
             "lab_or_program": "Prof. Jane Doe's Research Group",
+            "source_type": "faculty_research",
             "opportunity_type": "research",
             "keywords": ["computer vision", "research assistant", "deep learning"],
         }

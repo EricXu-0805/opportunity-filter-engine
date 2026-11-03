@@ -2470,7 +2470,12 @@ def score_upside(
             else _text_similarity(research_text, _similarity_corpus(opportunity))
         )
         keyword_score = max(keyword_score, min(100.0, 15.0 + sim * SIMILARITY_SCALE_TFIDF))
-        if sim > 0.15:
+        # The lines below name display_kw as the row's work. On a row whose
+        # keywords are ours (the detail page's rule), those are a category we
+        # mapped or a tag we typed, so no line is written and the interest
+        # lines carry the match (M171). Stamped keywords never reach
+        # display_kw and keep the "topics we inferred" line.
+        if sim > 0.15 and not (st.topics_ours and st.display_kw):
             pre_sim_len = len(reasons_fit)
             # Display only genuine research areas — drop role/format tokens so a
             # job title never reads as a topic ("...work on CV, research assistant").
@@ -2824,6 +2829,12 @@ def _summarize_research(opportunity: dict) -> str:
         [] if is_inferred(opportunity, "keywords")
         else _topical_keywords(_extract_specific_keywords(opportunity))
     )
+    # Every branch that has specific_kw lists them as the row's own focus.
+    # Unstamped keywords can still be ours: a listing's tags are, but for the
+    # SRO's (the detail page's rule). Falling through would quote an abstract
+    # cut mid-sentence or our own template, so there is no headline (M171).
+    if specific_kw and not keywords_are_source_topics(opportunity):
+        return ""
     desc_focus = _extract_research_focus_from_desc(desc)
 
     lab_has_pi = pi and pi.split()[-1].lower() in lab.lower()

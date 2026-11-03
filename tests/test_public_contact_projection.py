@@ -447,8 +447,11 @@ def test_view_search_reads_ranked_reasons_as_the_response_serves_them(contact: s
     from backend.schemas import MatchViewState
     from src.matcher.ranker import rank_opportunity
 
+    # An SRO row: its research areas are its own words, so the reasons quote
+    # them; no line names a listing's tags, which are ours (M171).
     record = {
         "id": "contact-in-reason-field",
+        "source": "uiuc_sro",
         "title": "ML Research",
         "organization": "Example University",
         "opportunity_type": "research",

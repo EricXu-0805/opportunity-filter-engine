@@ -307,8 +307,9 @@ def test_the_bonus_counts_a_whole_word_and_a_word_beginning_from_the_rows_side()
 
 def test_the_upside_layer_names_what_the_text_holds_as_written():
     """The lab's words the research text holds, read off the text as given:
-    lower-cased, not stripped."""
-    row = _row(11, ["Neuroscience", "memory ", "zoology", "Sleep"], title="Memory Lab", source_type="job_board")
+    lower-cased, not stripped. A faculty row: no line names a listing's tags
+    as its work (M171)."""
+    row = _row(11, ["Neuroscience", "memory ", "zoology", "Sleep"], title="Memory Lab")
     profile = _profile(research_interests_text="Neuroscience of Memory ")
     interests = rk._ProfileInterests(profile)
     for given in (None, interests):
@@ -427,20 +428,23 @@ def test_the_plain_and_the_inferred_line_each_name_at_most_eight():
     ]
 
 
-@pytest.mark.parametrize(("fields", "ending"), [
-    ({}, ""),
-    ({"source": "simplify_internships", "source_type": "internship"}, rk._OUR_TOPICS),
+@pytest.mark.parametrize(("fields", "ending", "repeated"), [
+    ({}, "", True),
+    ({"source": "simplify_internships", "source_type": "internship"}, rk._OUR_TOPICS, False),
 ], ids=["the page's topics", "a listing's tags"])
-def test_a_line_is_a_repeat_when_the_lab_line_names_every_chip_it_names(fields, ending):
-    """The ninth chip, which the line does not name, keeps no line."""
+def test_a_line_is_a_repeat_when_the_lab_line_names_every_chip_it_names(fields, ending, repeated):
+    """The ninth chip, which the line does not name, keeps no line. No lab
+    line names a listing's tags (M171), so its line is no repeat."""
     keywords = ["alpha bravo charlie", "delta echo foxtrot", "golf hotel zulu", "india"]
     profile = _profile(desired_fields=_STATED, research_interests_text="field work")
     row = _row(22, keywords, department="Department of Physics", **fields)
+    line = f"Matches your interests: {', '.join(_STATED[:8])}{ending}"
     _, fit, _ = rk.score_upside(profile, row, precomputed_sim=0.0)
-    assert _interest_lines(fit) == [f"Matches your interests: {', '.join(_STATED[:8])}{ending}"]
+    assert _interest_lines(fit) == [line]
     _, fit, _ = rk.score_upside(profile, row, precomputed_sim=0.5)
-    assert fit[-1] == "Department of Physics also works on alpha bravo charlie, delta echo foxtrot, golf hotel zulu"
-    assert _interest_lines(fit) == []
+    lab_line = "Department of Physics also works on alpha bravo charlie, delta echo foxtrot, golf hotel zulu"
+    assert fit[-1] == (lab_line if repeated else line)
+    assert _interest_lines(fit) == ([] if repeated else [line])
 
 
 _PASSAGE = "robotics " + "y" * 292
