@@ -105,13 +105,11 @@ SCHOOL: dict = {
                     "An eight-week competitive research experience hosted by Northwestern "
                     "University for sophomores and juniors from colleges and universities across "
                     "the United States, June 14 - August 6, 2027, with the first week immersive "
-                    "and virtual. All research fields at Northwestern are open. Applicants must be "
-                    "a current sophomore or junior, have a cumulative GPA of at least 3.5 on a 4.0 "
-                    "scale, and be a U.S. citizen or permanent resident. Participants "
-                    "receive a $6,500 stipend (before tax) that includes partial meal stipend, "
-                    "round-trip transportation, on-campus housing in Evanston, a current graduate "
-                    "student mentor, professional development workshops and a graduate "
-                    "application fee waiver.",
+                    "and virtual. All research fields at Northwestern are open. All SROP "
+                    "participants will receive: $6,500 stipend (before tax) that includes partial "
+                    "meal stipend; round-trip transportation to Northwestern University; on campus "
+                    "housing in Evanston, IL; a current graduate student mentor; professional "
+                    "development workshops; graduate application fee waiver.",
                     organization="Northwestern University",
                     department="The Graduate School",
                     lab_or_program="SROP",

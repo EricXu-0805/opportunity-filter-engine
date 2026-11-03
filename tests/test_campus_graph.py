@@ -2152,11 +2152,13 @@ class TestNorthwesternConfiguredFacts:
         assert srop["compensation_details"] == "$6,500 stipend (before tax) that includes partial meal stipend"
         assert srop["metadata"]["deadline_note"] == (
             "Applications for SROP 2027 will open November 1, 2026. Early submissions are strongly encouraged.")
-        # The 3.5 GPA stays in the page's words in the description, not in a structured field.
-        assert "cumulative GPA of at least 3.5" in srop["description"] and srop["eligibility"]["min_gpa"] is None
-        # The page's "an interest in pursuing a doctoral degree (PhD)" is left out: the ranker
-        # reads "pursuing a doctoral" as a graduate-only program, and SROP is for sophomores and juniors.
+        # The page lists four things applicants "must" do. Quoting only some of them reads as the
+        # whole list, and the fourth ("an interest in pursuing a doctoral degree") would make the
+        # ranker treat SROP as graduate-only, so the description quotes none of them.
+        assert "must" not in srop["description"] and srop["eligibility"]["min_gpa"] is None
         assert not _requires_graduate_standing(srop)
+        # The page's benefit bullets stay separate items: the stipend does not include the rest.
+        assert "partial meal stipend; round-trip transportation" in srop["description"]
 
     def test_ayurg_advanced_cites_the_page_its_old_address_redirects_to(self, by_key):
         moved = "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/"
