@@ -509,20 +509,18 @@ SCHOOL: dict = {
                 ),
                 program(
                     "nu_feinberg_lurie_summer",
-                    "Feinberg / Lurie Cancer Center Summer Research Program",
+                    "Feinberg / Lurie Cancer Center Summer Research Programs Directory",
                     "https://www.cancer.northwestern.edu/research/education-training/summer-research/index.html",
-                    "Mentored summer cancer-research experience at Northwestern's Robert H. "
-                    "Lurie Comprehensive Cancer Center (Feinberg School of Medicine), pairing "
-                    "undergraduates with cancer-biology, oncology, and translational-research "
-                    "labs. Full-time bench or clinical/translational research over the summer "
-                    "with professional-development programming for students considering "
-                    "biomedical PhD or MD/PhD paths.",
+                    "Lists the Lurie Cancer Center's summer research programs: LYRIC, for "
+                    "undergraduate students interested in biomedical and health sciences, and "
+                    "ChicagoCHEC Research Fellows, for undergraduate and post-baccalaureate "
+                    "students from Northeastern Illinois University, University of Illinois at "
+                    "Chicago, Northwestern University, the City Colleges of Chicago and other "
+                    "Community/Junior Colleges in the Chicago metropolitan area.",
                     organization="Northwestern University",
                     department="Feinberg School of Medicine — Lurie Cancer Center",
                     lab_or_program="Lurie Cancer Center Summer Research",
                     reference_only=True,
-                    paid="stipend",
-                    compensation="Summer stipend",
                     eligibility_majors=["Biology", "Biochemistry", "Neuroscience",
                                         "Chemistry", "Cancer Biology", "Molecular Biosciences"],
                     preferred_year=["sophomore", "junior"],

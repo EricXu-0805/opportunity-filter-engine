@@ -1724,6 +1724,26 @@ def test_the_jhu_internship_guide_is_cited_at_its_readable_page_in_its_words():
     assert row["metadata"]["deadline_note"] == ""
 
 
+def test_the_lurie_summer_research_directory_is_described_in_its_pages_words():
+    """Checked against the page on 2026-11-02."""
+    from src.collectors.schools.northwestern import SCHOOL as NU
+
+    [row] = [o for o in cg.fetch_and_normalize(NU) if o["metadata"]["collector_key"] == "nu_feinberg_lurie_summer"]
+    # Page heading: "Summer Research Programs".
+    assert row["title"] == "Feinberg / Lurie Cancer Center Summer Research Programs Directory"
+    # "LYRIC Undergraduate students interested in biomedical and health sciences are invited to apply" and
+    # "ChicagoCHEC Research Fellows A comprehensive learning experience for undergraduate and
+    # post-baccalaureate students from Northeastern Illinois University, ... in the Chicago metropolitan area."
+    assert row["description"] == (
+        "Lists the Lurie Cancer Center's summer research programs: LYRIC, for undergraduate students "
+        "interested in biomedical and health sciences, and ChicagoCHEC Research Fellows, for undergraduate "
+        "and post-baccalaureate students from Northeastern Illinois University, University of Illinois at "
+        "Chicago, Northwestern University, the City Colleges of Chicago and other Community/Junior Colleges "
+        "in the Chicago metropolitan area.")
+    # The page states no stipend or pay.
+    assert (row["paid"], row["compensation_details"]) == ("unknown", "")
+
+
 # Configured program pages that more than one spec cites, as the keys that
 # share each page. Such a page describes none of them alone
 # (shared_program_page), so a spec pointed at another spec's page fails here.
