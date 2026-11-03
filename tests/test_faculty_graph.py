@@ -2704,6 +2704,104 @@ class TestDepartmentField:
         assert fg._normalize(school, dept, spec2)["department"] == "College of Liberal Arts"
 
 
+class TestColumbiaHistoryCrossListing:
+    """Columbia History's directory lists faculty other departments hold, each
+    with a letter after the name; the page's legend reads them as East Asian
+    Languages and Cultures (E), Barnard History (B) and other schools or
+    departments (O). The letter is not part of the name and the person is not
+    History's, but the id hashes the name as listed, so it stays."""
+
+    _HTML = """<ul>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/example-ada"><b>Example, Ada</b></a></p>
+        <span class="cmed_list_view_position">Professor of History</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/sample-bo"><b>Sample, Bo (E)</b></a></p>
+        <span class="cmed_list_view_position">Professor, East Asian Languages and Cultures</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/fixture-cy"><b>Fixture, Cy (O)</b></a></p>
+        <span class="cmed_list_view_position">Professor of Economics</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/mockup-di"><b>Mockup, Di (B)</b></a></p>
+        <span class="cmed_list_view_position">Professor of History</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/testcase-ed"><b>Testcase, Ed (Eddie)</b></a></p>
+        <span class="cmed_list_view_position">Associate Professor of History</span></li>
+    </ul>"""
+
+    @classmethod
+    def _records(cls):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools import columbia_faculty
+        dept = next(d for d in columbia_faculty.SCHOOL["departments"] if d["short"] == "HIST")
+        cfg = dept["scrape"]
+        people = fg._parse_cards(BeautifulSoup(cls._HTML, "html.parser"), cfg["selectors"],
+                                 cfg["url"], cfg.get("ladder_filter"), cfg.get("name_flip"))
+        return {r["pi_name"]: r for p in people
+                if (r := fg._normalize(columbia_faculty.SCHOOL, dept, p))}
+
+    @staticmethod
+    def _id(listed_name):
+        import hashlib
+        return "faculty-columbia-hist-" + hashlib.md5(
+            f"HIST-{listed_name}".encode()).hexdigest()[:8]
+
+    def test_a_marked_name_shows_without_its_letter_and_keeps_its_id(self):
+        recs = self._records()
+        assert set(recs) == {"Ada Example", "Bo Sample", "Cy Fixture", "Di Mockup",
+                             "Ed (Eddie) Testcase"}
+        assert {n: r["id"] for n, r in recs.items()} == {
+            "Ada Example": self._id("Ada Example"),
+            "Bo Sample": self._id("Bo (E) Sample"),
+            "Cy Fixture": self._id("Cy (O) Fixture"),
+            "Di Mockup": self._id("Di (B) Mockup"),
+            "Ed (Eddie) Testcase": self._id("Ed (Eddie) Testcase"),
+        }
+
+    def test_a_marked_row_names_no_department(self):
+        from src.evidence import faculty_profile_summary_fields, render_faculty_profile_summary
+        recs = self._records()
+        assert {n: r["department"] for n, r in recs.items()} == {
+            "Ada Example": "Department of History", "Bo Sample": "", "Cy Fixture": "",
+            "Di Mockup": "", "Ed (Eddie) Testcase": "Department of History"}
+        bo = recs["Bo Sample"]
+        # The page's own fact: the History faculty page lists the person.
+        assert bo["description_raw"].startswith(
+            "Faculty research profile for Professor, East Asian Languages and Cultures "
+            "Bo Sample, listed on the Department of History's faculty page at "
+            "Columbia University.")
+        assert "History" not in bo["title"]
+        assert "HIST" not in bo["title"]
+        assert recs["Ada Example"]["description_raw"].startswith(
+            "Faculty research profile for Professor of History Ada Example in the "
+            "Department of History at Columbia University.")
+        assert render_faculty_profile_summary(faculty_profile_summary_fields(bo)).startswith(
+            "Faculty research profile for Bo Sample at Columbia University.")
+        # Where the row was read is still the History directory.
+        assert bo["metadata"]["notes"] == (
+            "Curated from Department of History faculty directory (Columbia University)")
+        assert recs["Ada Example"]["title"] == "Prof. Ada Example — HIST"
+
+    def test_a_marked_row_gets_no_lab_type(self):
+        # Nothing on a marked row says what field the person works in: no
+        # department, no research text. An unmarked History row is humanities.
+        from backend.data_loader import _sanitize_opportunity
+        from src.recommender.cold_email import _detect_lab_type
+        recs = self._records()
+        assert {n: _detect_lab_type(_sanitize_opportunity(r)) for n, r in recs.items()} == {
+            "Ada Example": "humanities", "Bo Sample": None, "Cy Fixture": None,
+            "Di Mockup": None, "Ed (Eddie) Testcase": "humanities"}
+
+    def test_notes_name_the_department_a_card_gives(self):
+        dept = {"short": "SCI", "name": "College of Science", "majors": []}
+        rec = fg._normalize(SCHOOL, dept, {"name": "Ada Example", "title": "Professor",
+                                           "department": "Department of Chemistry"})
+        assert rec["department"] == "Department of Chemistry"
+        assert rec["metadata"]["notes"] == (
+            f"Curated from Department of Chemistry faculty directory ({SCHOOL['organization']})")
+
+
 class TestProfileCoreFieldEnrich:
     """Link-list directories (UCSD Literature/Theatre): title/email/ladder all
     live on the profile page; the ``always`` flag runs the pass without the

@@ -595,13 +595,24 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # minted again.
     id_name = (dept.get("id_names") or {}).get(name, name)
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
+    marker = dept.get("cross_listing_marker")
+    listing = ""
+    if marker and re.search(marker, name):
+        # The directory's legend marks a person another department holds: the
+        # record shows the name without the mark and names no department
+        # rather than this one, only the page that lists them. The id keeps
+        # the name as listed.
+        name = re.sub(marker, "", name)
+        dept_name = ""
+        listing = f", listed on the {dept['name']}'s faculty page"
 
     # Rank-neutral prose when the source stated no rank or a non-professor
     # rank. Only a source-stated professor rank earns the honorific in the
     # display title; the profile summary never asserts a current opening.
     professor_rank = is_professor_rank(title)
+    in_dept = f" in the {dept_name}" if dept_name else listing
     desc_parts = [
-        f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} "
+        f"Faculty research profile for {title + ' ' if title else ''}{name}{in_dept} "
         f"at {school['organization']}."
     ]
     if research_areas:
@@ -622,7 +633,8 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # professor rank (truthfulness W11). Unknown/non-professor ranks get the
     # bare name; the actual rank ships in metadata.faculty_title.
     honorific = "Prof. " if professor_rank else ""
-    opp_title = f"{honorific}{name} — {short}{research_summary}"
+    unit = f" — {short}" if dept_name else ""
+    opp_title = f"{honorific}{name}{unit}{research_summary}"
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
         "last_verified": now,
@@ -630,7 +642,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "last_seen_at": now,
         "is_active": True,
         "manually_reviewed": False,
-        "notes": f"Curated from {dept_name} faculty directory ({school['organization']})",
+        "notes": f"Curated from {dept_name or dept['name']} faculty directory ({school['organization']})",
         "faculty_title": title,
         "research_areas_raw": research_areas[:300] if research_areas else "",
         "curated": True,
