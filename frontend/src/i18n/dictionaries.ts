@@ -3459,6 +3459,7 @@ export const en = {
         // collector maps from the source's category: read off no page.
         system_tag: 'Tagged by our system',
       },
+      externalSource: 'Topics inferred from a matched {source} record',
       sourceLink: 'Source page',
       observed: 'Observed {date}',
       fields: {
@@ -8851,6 +8852,7 @@ export const zh = {
         derived_from_source: '由相关来源信息转述',
         system_tag: '由我们的系统标注',
       },
+      externalSource: '根据匹配到的 {source} 记录推断的研究方向',
       sourceLink: '来源页面',
       observed: '采集于 {date}',
       fields: {

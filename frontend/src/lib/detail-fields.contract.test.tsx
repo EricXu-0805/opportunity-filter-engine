@@ -21,7 +21,7 @@ const t = (key: string) => key;
 interface ContractField {
   state: string;
   explicit: Record<string, unknown>;
-  inferred: Record<string, { value: unknown; basis: string }>;
+  inferred: Record<string, { value: unknown; basis: string; source_name?: string }>;
   unknown: string[];
   quotes: Record<string, { text: string; source_url: string | null; observed_at: string | null }>;
 }
@@ -63,7 +63,8 @@ describe('detail-fields contract', () => {
         if (facet in apiField.inferred) {
           expect(within(inferredRow!).getByText('detail.facts.state.inferred')).toBeInTheDocument();
           expect(
-            within(inferredRow!).getByText(basisKey(facet, apiField.inferred[facet].basis)),
+            within(inferredRow!).getByText(apiField.inferred[facet].source_name
+              ? 'detail.facts.externalSource' : basisKey(facet, apiField.inferred[facet].basis)),
           ).toBeInTheDocument();
         }
         const sourceRow = rows.find((r) => r.getAttribute('data-state') === 'source');
