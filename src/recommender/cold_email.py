@@ -950,6 +950,8 @@ def _common_parts(
 
     return dict(
         name=name, year=year, major=major, school=school,
+        # False is also the form/API default, not proof of domestic status.
+        international_student=True if profile.get("international_student") is True else None,
         skills=skills, skill_levels=skill_levels,
         research_interests=research_interests,
         research_interests_verbatim=profile.get("research_interests_text", ""),
