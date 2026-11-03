@@ -3370,7 +3370,7 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
         recs_all.extend(page_recs)
         cnt = pag.get("count_key")
         count = _dig(data, cnt) if cnt and isinstance(data, dict) else None
-        if count and page >= count:
+        if isinstance(count, int) and count > 0 and page >= count:
             break
     return recs_all, stated
 

@@ -2491,6 +2491,24 @@ class TestJsonDirSource:
         assert self._walk_two_pages(monkeypatch, count_key, stated) == (
             ["Ada Example", "Bo Sample"], [1, 2])
 
+    @pytest.mark.parametrize("count_key, stated", [
+        ("pageCount", {"pageCount": "2"}),
+        ("pagination.total_pages", {"pagination": {"total_pages": "2"}}),
+        ("pageCount", {"pageCount": 2.0}),
+        ("pageCount", {"pageCount": -1}),
+        ("pageCount", {"pageCount": 0}),
+    ])
+    def test_json_dir_walk_reads_on_past_a_count_that_is_not_a_positive_integer(
+            self, monkeypatch, count_key, stated):
+        # A value that is no page count neither ends the walk nor breaks it:
+        # the walk runs on to the first empty page.
+        assert self._walk_two_pages(monkeypatch, count_key, stated) == (
+            ["Ada Example", "Bo Sample"], [1, 2, 3])
+
+    def test_json_dir_walk_ends_after_the_first_page_on_a_count_of_one(self, monkeypatch):
+        assert self._walk_two_pages(monkeypatch, "pageCount", {"pageCount": 1}) == (
+            ["Ada Example"], [1])
+
     def test_json_dir_research_field_list_and_array_segment(self, monkeypatch):
         """UCSD-Biology shape: sections[].title area tags win, prose fallback."""
         payload = [
