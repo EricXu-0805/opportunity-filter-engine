@@ -472,7 +472,7 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": [
                 "https://undergradresearch.northwestern.edu/funding/ayurg/",
-                "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/",
+                "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/funding/surg/",
                 "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/urap/",
@@ -556,7 +556,7 @@ SCHOOL: dict = {
                 program(
                     "nu_ayurg_advanced",
                     "Northwestern Academic Year URG Advanced",
-                    "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/",
+                    "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/",
                     "Follow-on grant of up to $1,000 for students who have already received "
                     "an Academic Year URG, funding continued or new research expenses. "
                     "Requires enrollment in an independent study or honors thesis course "

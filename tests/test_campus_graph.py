@@ -2092,6 +2092,12 @@ class TestNorthwesternConfiguredFacts:
         # reads "pursuing a doctoral" as a graduate-only program, and SROP is for sophomores and juniors.
         assert not _requires_graduate_standing(srop)
 
+    def test_ayurg_advanced_cites_the_page_its_old_address_redirects_to(self, by_key):
+        moved = "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/"
+        assert by_key["nu_ayurg_advanced"]["url"] == moved
+        seeds = {seed for source in NORTHWESTERN["sources"] for seed in source["seeds"]}
+        assert moved in seeds and "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/" not in seeds
+
 
 def test_ucf_surf_pay_is_the_course_scholarship_its_page_states():
     from src.collectors.schools.ucf import SCHOOL as UCF
