@@ -1698,6 +1698,30 @@ def test_the_apl_internships_are_configured_from_apls_own_page_only(processed):
     assert target_truth(row).reason_code == "inactive"
 
 
+def test_the_jhu_internship_guide_is_cited_at_its_readable_page_in_its_words():
+    """Checked against the page on 2026-11-02. The Imagine Center page it
+    replaces answered with a bot check, robots.txt included."""
+    from src.collectors.schools.jhu import SCHOOL as JHU
+
+    guide = "https://apply.jhu.edu/academics/learning-at-hopkins/undergraduate-internships/"
+    [row] = [o for o in cg.fetch_and_normalize(JHU) if o["metadata"]["collector_key"] == "imagine_internship_programs"]
+    assert row["url"] == guide
+    assert next(s for s in JHU["sources"] if s["source_name"] == "jhu_career_campus")["seeds"] == [guide]
+    # Page title: "Undergraduate Internships | Johns Hopkins University Admissions".
+    assert row["title"] == "Undergraduate Internships (Johns Hopkins University Admissions)"
+    # Its opening paragraph, verbatim.
+    assert row["description"] == (
+        "Internships allow you to put your learning into practice, open your mind to new possibilities, "
+        "and expand your understanding of the world around you. Through our Life Design Lab, you\u2019ll have "
+        "access to valuable services, including networking events, r\u00e9sum\u00e9 workshops, and mock "
+        "interviews, so you\u2019re ready to pursue your goals.")
+    # Site header: "Johns Hopkins University | Undergraduate Admissions".
+    assert row["department"] == "Undergraduate Admissions"
+    # The page states no pay, majors or deadline for the internships it describes.
+    assert (row["paid"], row["compensation_details"], row["eligibility"]["majors"]) == ("unknown", "", [])
+    assert row["metadata"]["deadline_note"] == ""
+
+
 # Configured program pages that more than one spec cites, as the keys that
 # share each page. Such a page describes none of them alone
 # (shared_program_page), so a spec pointed at another spec's page fails here.
