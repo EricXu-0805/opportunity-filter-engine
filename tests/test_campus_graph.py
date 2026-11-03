@@ -2062,6 +2062,15 @@ class TestNorthwesternConfiguredFacts:
             "Your completed application must be received by midnight on Sunday, February 14, 2027.")
 
 
+def test_ucf_surf_pay_is_the_course_scholarship_its_page_states():
+    from src.collectors.schools.ucf import SCHOOL as UCF
+
+    surf, = (o for o in cg.fetch_and_normalize(UCF) if o["metadata"]["collector_key"] == "ucf_surf")
+    # Program Benefits: "$2,000 academic scholarship for summer courses (Summer A or C only)"
+    assert surf["compensation_details"] == "$2,000 academic scholarship for summer courses (Summer A or C only)"
+    assert "stipend" not in surf["description"] and "stipend" not in surf["keywords"]
+
+
 def test_seed_fetch_completes_the_incommon_chain(monkeypatch):
     """Three seeds fail verification on certifi alone and load with the bundle.
 

@@ -60,17 +60,18 @@ SCHOOL: dict = {
                     "Summer Undergraduate Research Fellowship — SURF (UCF)",
                     "https://academicsuccess.ucf.edu/our/summer-undergraduate-research-fellowship/",
                     "SURF is UCF's Summer Undergraduate Research Fellowship: a "
-                    "competitive award that funds students to work full-time on a "
+                    "competitive award that supports students working on a "
                     "faculty-mentored research or creative project over the summer, "
-                    "with a stipend and structured cohort support. Open to "
+                    "with a summer-course scholarship and structured cohort support. Open to "
                     "continuing UCF undergraduates across disciplines who have "
                     "identified a faculty mentor.",
                     lab_or_program="Summer Undergraduate Research Fellowship",
                     opportunity_type="summer_program",
                     paid="stipend",
+                    compensation="$2,000 academic scholarship for summer courses (Summer A or C only)",
                     preferred_year=["sophomore", "junior", "senior"],
                     keywords=["summer research", "research fellowship",
-                              "stipend", "faculty-mentored"],
+                              "summer-course scholarship", "faculty-mentored"],
                 ),
                 program(
                     "ucf_ramp_scholar_programs",
