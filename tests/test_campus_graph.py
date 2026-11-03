@@ -983,6 +983,18 @@ def test_a_moved_reference_row_stays_reference_until_its_new_page_is_read(proces
     assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
 
 
+def test_a_reference_page_dropped_from_its_config_reads_no_longer_active(processed):
+    from src.evidence import target_truth
+
+    school = _listing_school("kept", "guide")
+    school["sources"][0]["programs"][1]["reference_only"] = True
+    _refresh_school(school, national=False)
+    _refresh_school(_listing_school("kept"), national=False)
+    row = _stored(processed)[_program_id(school, "campus", "guide")]
+    assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
+    assert target_truth(row).reason_code == "inactive"
+
+
 def test_the_report_counts_program_and_reference_pages_by_how_they_were_read(monkeypatch):
     school = _listing_school("award", "guide", "unread")
     source = school["sources"][0]

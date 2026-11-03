@@ -353,6 +353,34 @@ class TestReferenceOnlyIsASeparateDimension:
         assert truth.reason_code == "reference_only"
         assert truth.listing_state == "unknown"
 
+    @pytest.mark.parametrize("deactivation_reason", ["no_longer_listed", "school_unsupported", None])
+    def test_a_retired_reference_record_reads_no_longer_active(self, deactivation_reason):
+        """A reference page dropped from its config retires as no longer
+        listed. It is then not published at all, so it reads "no longer
+        active", and in the one envelope shape frontend/src/lib/target-truth.ts
+        accepts for `inactive`: reference_only false."""
+        record = {
+            "id": "campus-retired-guide",
+            "source": "example_programs",
+            "source_type": "campus_program",
+            "title": "Research guide",
+            "metadata": {"reference_only": True, "is_active": False, "deactivation_reason": deactivation_reason},
+        }
+        assert target_truth(record).reason_code == "inactive"
+        assert public_target_truth(record) == {
+            "listing_state": "unknown",
+            "reference_only": False,
+            "actionable": False,
+            "accepting_state": "unknown",
+            "reason_code": "inactive",
+            "verified_at": None,
+            "expires_at": None,
+        }
+
+    def test_a_reference_record_that_states_no_activity_stays_reference(self):
+        record = {"id": "campus-guide", "source_type": "campus_program", "metadata": {"reference_only": True}}
+        assert target_truth(record).reason_code == "reference_only"
+
     @pytest.mark.parametrize("status", ["closed", "past", "archived", "expired"])
     def test_a_closed_listing_is_not_reference_material_by_default(self, status):
         """Closed means "you cannot apply", not "we publish this as a reference".
