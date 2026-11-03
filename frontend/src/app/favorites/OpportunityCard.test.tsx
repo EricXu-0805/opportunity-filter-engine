@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { en, zh } from '@/i18n/dictionaries';
 import { OpportunityCard } from './OpportunityCard';
 import type { Opp, TFunc } from './types';
 
@@ -555,6 +556,40 @@ describe('OpportunityCard — a saved target we can no longer vouch for', () => 
     expect(
       screen.getByRole('button', { name: 'favorites.removeCustomAria' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('OpportunityCard — a saved profile kept inactive as a duplicate', () => {
+  // Consolidation keeps a published id it would have dropped, inactive, and
+  // names the live record it judged to be the same person. The person may
+  // still be listed, so the card must not say the catalog dropped them.
+  const FACULTY = { source_type: 'faculty_research', record_kind: 'faculty_contact', pi_name: 'Avery Sample' };
+  const INACTIVE = SAVED_DEAD.find(([label]) => label === 'inactive')![2];
+
+  it('states our inference instead of "no longer carried"', () => {
+    renderCard({ ...FACULTY, target_truth: INACTIVE, metadata: { duplicate_of: 'faculty-x-aa-00000001' } });
+    expect(screen.getByText('compare.status.inactiveDuplicate')).toBeInTheDocument();
+    expect(screen.queryByText('compare.status.inactive')).toBeNull();
+  });
+
+  it.each([
+    ['no pointer', INACTIVE, {}, 'compare.status.inactive'],
+    ['a null pointer', INACTIVE, { duplicate_of: null }, 'compare.status.inactive'],
+    ['an empty pointer', INACTIVE, { duplicate_of: '' }, 'compare.status.inactive'],
+    ['a pointer on a closed listing', {
+      listing_state: 'closed', reference_only: false, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      verified_at: null, expires_at: null,
+    }, { duplicate_of: 'faculty-x-aa-00000001' }, 'compare.status.closed'],
+  ])('keeps its own label with %s', (_label, truth, metadata, key) => {
+    renderCard({ ...FACULTY, target_truth: truth, metadata });
+    expect(screen.getByText(key)).toBeInTheDocument();
+    expect(screen.queryByText('compare.status.inactiveDuplicate')).toBeNull();
+  });
+
+  it('says so in both languages without claiming the record left the catalog', () => {
+    expect(en.compare.status.inactiveDuplicate).toBe('Inactive — our system inferred this duplicates another record');
+    expect(zh.compare.status.inactiveDuplicate).toBe('已失效，系统推断这条与另一条记录重复');
   });
 });
 

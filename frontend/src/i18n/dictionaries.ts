@@ -3812,6 +3812,9 @@ export const en = {
       reference: 'Reference record — not an open listing',
       notAccepting: 'Source profile states this faculty member is not currently accepting undergraduate students',
       inactive: 'Inactive — no longer carried in the catalog',
+      // Kept only so a saved id still opens. The person may be live under the
+      // other record, so "no longer carried" would be false; the match is ours.
+      inactiveDuplicate: 'Inactive — our system inferred this duplicates another record',
       kindUnverified: 'Record type is unverified; not presented as an open listing',
       unverified: 'Status unconfirmed — check the source',
       // Scored, and scored as outside this profile's results — another
@@ -9183,6 +9186,7 @@ export const zh = {
       reference: '参考资料，不是开放中的招募',
       notAccepting: '该教师主页写明目前不招收本科生',
       inactive: '已失效，不再收录',
+      inactiveDuplicate: '已失效，系统推断这条与另一条记录重复',
       kindUnverified: '记录类型未确认，未按开放招募呈现',
       unverified: '状态未确认，请查看来源页',
       notInResults: '不在你当前的匹配结果内——仅供参考',

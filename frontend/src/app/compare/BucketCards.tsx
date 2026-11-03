@@ -7,6 +7,7 @@ import { localizeMatchReasons } from '@/lib/match-reasons';
 import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 import type { Opportunity } from '@/lib/types';
 import {
+  inactiveAsDuplicate,
   opportunityApplicationUrl,
   opportunitySourceUrl,
   targetPosture,
@@ -50,7 +51,8 @@ export function ReferenceOnlyCard(
         {opp.title}
       </a>
       <p className="mt-1.5 text-[12px] text-amber-900">
-        {statusOverride ?? t(STATUS_LABEL_KEY[reason])}
+        {statusOverride
+          ?? t(inactiveAsDuplicate(opp) ? 'compare.status.inactiveDuplicate' : STATUS_LABEL_KEY[reason])}
       </p>
       {sourceUrl && (
         <a

@@ -347,6 +347,10 @@ export interface OpportunityMetadata {
   // Scraped faculty rank ("Senior Lecturer", "Assistant Professor", …).
   // Empty/absent = unknown; legacy records commonly carry "Professor".
   faculty_title?: string;
+  // On an inactive record kept for saved lists: the id of the live record
+  // consolidation judged to be the same person. Read it through
+  // `inactiveAsDuplicate`.
+  duplicate_of?: string | null;
 }
 
 // Multi-university discovery scope (PR #187 / #189). `school` is the

@@ -1,5 +1,5 @@
 import { opportunityRecordKind } from './record-kind';
-import type { Opportunity, PublicTargetTruth } from './types';
+import type { Opportunity, OpportunityMetadata, PublicTargetTruth } from './types';
 
 /**
  * What this client may offer for a target.
@@ -218,6 +218,18 @@ export function targetStatusReason(opp: TruthSubject): TargetStatusReason | null
   if (truth === null) return 'status_unverified';
   if (truth.actionable) return null;
   return truth.reason_code ?? 'status_unverified';
+}
+
+/**
+ * An inactive record kept only so a saved id still resolves: consolidation
+ * judged it the same person as the live record `metadata.duplicate_of` names.
+ * "No longer carried in the catalog" would be false for it.
+ */
+export function inactiveAsDuplicate(
+  opp: TruthSubject & { metadata?: Pick<OpportunityMetadata, 'duplicate_of'> | null },
+): boolean {
+  const pointer = opp.metadata?.duplicate_of;
+  return targetStatusReason(opp) === 'inactive' && typeof pointer === 'string' && pointer !== '';
 }
 
 /**
