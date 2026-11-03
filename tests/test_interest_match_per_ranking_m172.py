@@ -7,6 +7,9 @@ A ranking now prepares the profile once (_ProfileInterests), decides each
 distinct keyword once, and makes a chip a pattern only when a keyword
 contains it. These tests hold the new path to the rule as the ranking ran it
 before, and count the work instead of timing it.
+
+An interest line names at most eight of the chips it matched, the first in
+alphabetical order; the score still counts every match.
 """
 from __future__ import annotations
 
@@ -14,8 +17,16 @@ import random
 
 import pytest
 
+from src.evidence import stamp_inferred
 from src.matcher import ranker as rk
-from src.matcher.config import INTEREST_BONUS_CAP, INTEREST_BONUS_PER_HIT, TOPIC_MISMATCH_PENALTY, TOPIC_UNKNOWN_PENALTY
+from src.matcher.config import (
+    INTEREST_BONUS_CAP,
+    INTEREST_BONUS_PER_HIT,
+    MATCHER_VERSION,
+    TOPIC_MISMATCH_PENALTY,
+    TOPIC_UNKNOWN_PENALTY,
+)
+from src.matcher.reason_keys import reason_key
 
 
 def _overlap_before(desired, keywords, reverse_re):
@@ -382,3 +393,54 @@ def test_the_served_line_cache_keeps_no_long_line():
     assert matches._served_fit_reason(short_line) == short_line
     assert matches._served_short_fit_reason.cache_info().currsize == 1
     assert matches._served_fit_reason("Write to x@example.edu" + " " * 1_000) == "[email redacted]"
+
+
+_STATED = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india"]
+_INFERRED = ["juliett", "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo"]
+
+
+def _interest_lines(fit):
+    return [reason for reason in fit if reason.startswith("Matches your interests")]
+
+
+def test_an_interest_line_names_the_first_eight_chips_it_matched():
+    profile = _profile(desired_fields=list(reversed(_STATED)))
+    _, fit, _ = rk.score_upside(profile, _row(20, _STATED), precomputed_sim=0.0)
+    terms = ", ".join(_STATED[:8])
+    assert _interest_lines(fit) == [f"Matches your interests: {terms}"]
+    assert reason_key(_interest_lines(fit)[0], "fit") == {"key": "interests_match", "params": {"terms": terms}}
+
+
+def test_the_plain_and_the_inferred_line_each_name_at_most_eight():
+    row = _row(21, _STATED + _INFERRED, research_areas=", ".join(_STATED))
+    stamp_inferred(row["metadata"], "keywords", "derived:openalex_topics")
+    _, fit, _ = rk.score_upside(_profile(desired_fields=_INFERRED + _STATED), row, precomputed_sim=0.0)
+    stated, inferred = ", ".join(_STATED[:8]), ", ".join(_INFERRED[:8])
+    assert _interest_lines(fit) == [
+        f"Matches your interests: {stated}",
+        f"Matches your interests: {inferred}{rk._OUR_TOPICS}",
+    ]
+    assert [reason_key(line, "fit") for line in _interest_lines(fit)] == [
+        {"key": "interests_match", "params": {"terms": stated}},
+        {"key": "interests_match_ours", "params": {"terms": inferred}},
+    ]
+
+
+@pytest.mark.parametrize(("fields", "ending"), [
+    ({}, ""),
+    ({"source": "simplify_internships", "source_type": "internship"}, rk._OUR_TOPICS),
+], ids=["the page's topics", "a listing's tags"])
+def test_a_line_is_a_repeat_when_the_lab_line_names_every_chip_it_names(fields, ending):
+    """The ninth chip, which the line does not name, keeps no line."""
+    keywords = ["alpha bravo charlie", "delta echo foxtrot", "golf hotel zulu", "india"]
+    profile = _profile(desired_fields=_STATED, research_interests_text="field work")
+    row = _row(22, keywords, department="Department of Physics", **fields)
+    _, fit, _ = rk.score_upside(profile, row, precomputed_sim=0.0)
+    assert _interest_lines(fit) == [f"Matches your interests: {', '.join(_STATED[:8])}{ending}"]
+    _, fit, _ = rk.score_upside(profile, row, precomputed_sim=0.5)
+    assert fit[-1] == "Department of Physics also works on alpha bravo charlie, delta echo foxtrot, golf hotel zulu"
+    assert _interest_lines(fit) == []
+
+
+def test_the_matcher_version_moved_for_the_sentences():
+    assert int(MATCHER_VERSION.split(".")[0]) >= 30

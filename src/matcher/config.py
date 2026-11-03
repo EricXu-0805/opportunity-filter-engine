@@ -362,7 +362,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # against topics we inferred, and when they carry an inference stamp the
 # similarity line no longer gives the row a "focus area" (checklist M155).
 # Sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "29"
+# 30: a "Matches your interests" line, plain or ending "based on topics we
+# inferred", names at most eight of the chips it matched (`_LINE_TERMS`), the
+# first in alphabetical order; the score still counts every match (checklist
+# M172). Sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "30"
 
 
 def _matcher_fingerprint() -> str:

@@ -2437,7 +2437,8 @@ def score_upside(
                 )
             ]
             hedged = set(ours)
-            stated = [t for t in terms if t not in hedged]
+            stated = [t for t in terms if t not in hedged][:_LINE_TERMS]
+            ours = ours[:_LINE_TERMS]
             if stated:
                 interest_lines.append((f"Matches your interests: {', '.join(stated)}", stated))
             if ours:
@@ -3193,6 +3194,10 @@ _TERM_GAP = r"[ \-]+"
 # adds a gap to its pattern. A kept pattern is then at most about 7 KB.
 _TERM_MAX = 300
 _TERM_WORDS = 20
+# An interest line names at most _LINE_TERMS of the chips it matched, the
+# first in alphabetical order: a card has room for a few, and the score
+# already counts every one. The repeat test reads the chips the line names.
+_LINE_TERMS = 8
 
 
 def _number_forms(word: str) -> set[str]:
