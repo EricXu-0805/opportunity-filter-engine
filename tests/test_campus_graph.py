@@ -327,6 +327,11 @@ class TestSeedNormalization:
             ("Archived notice: Applications open.", "unknown"),
             ("Historical record: Applications open.", "unknown"),
             ("Program information only.", "unknown"),
+            ("Apply now. Applications for SROP 2027 will open November 1, 2026.", "unknown"),
+            ("Apply now. The application for Summer 2027 will go live in December.", "unknown"),
+            ("Apply now. Applications for the Summer Research Program 2027 will open in December.", "unknown"),
+            ("Apply now. The 2027 lab will open in June.", "open"),
+            ("Apply now. Applications for this program will be open until filled.", "open"),
         ],
     )
     def test_status_detection_is_fail_closed(self, text, expected):
