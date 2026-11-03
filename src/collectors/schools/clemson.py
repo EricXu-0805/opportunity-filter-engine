@@ -84,6 +84,7 @@ SCHOOL: dict = {
                     "experiences, mentors, and hands-on projects with real-world "
                     "impact.",
                     lab_or_program="Division of Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["student research", "getting started",
@@ -100,6 +101,7 @@ SCHOOL: dict = {
                     "faculty mentors and enrichment programs that deepen "
                     "independent inquiry beyond the classroom.",
                     lab_or_program="Scholar Programs",
+                    reference_only=True,
                     opportunity_type="fellowship",
                     preferred_year=["freshman", "sophomore", "junior"],
                     keywords=["scholar programs", "national fellowships",

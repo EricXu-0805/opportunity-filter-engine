@@ -163,6 +163,20 @@ def test_splitting_a_config_by_shard_changes_no_record():
 
 # --- Seed normalization (driven over the whole registry) --------------------
 
+# Configured pages read on 2026-11-02 as a directory, a guide or an
+# invitation-only program rather than an application. A spec newly marked
+# reference_only fails TestSeedNormalization until it is listed here.
+_REFERENCE_PAGES = {
+    "cincinnati": {"cincinnati_office_of_research", "cincinnati_undergraduate_research_guide"},
+    "clemson": {"clemson_student_research", "clemson_scholar_programs"},
+    "miami": {"miami_office_of_undergraduate_research", "miami_open_research_positions"},
+    "ucf": {"ucf_office_of_undergraduate_research", "ucf_ramp_scholar_programs", "ucf_looking_for_research"},
+    "uf": {"cur_hub", "ursp"},
+    "unl": {"unl_office_undergraduate_research_fellowships", "unl_research_fellowships"},
+    "washu": {"our_hub"},
+}
+
+
 @pytest.fixture(scope="module")
 def all_records():
     out = []
@@ -211,6 +225,15 @@ class TestSeedNormalization:
         for o in all_records:
             assert o.get("deadline") is None
             assert o.get("is_rolling") is True
+
+    def test_the_configured_reference_pages_are_the_listed_ones(self, all_records):
+        from src.evidence import target_truth
+
+        reference: dict[str, set[str]] = {}
+        for o in all_records:
+            if target_truth(o).reason_code == "reference_only":
+                reference.setdefault(o["metadata"]["collector_school"], set()).add(o["metadata"]["collector_key"])
+        assert reference == _REFERENCE_PAGES
 
     def test_source_type_never_faculty(self, all_records):
         """campus_* source_type must never read as faculty_research (that triggers

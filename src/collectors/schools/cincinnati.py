@@ -48,6 +48,7 @@ SCHOOL: dict = {
                     "opportunities university-wide, from the sciences and "
                     "engineering to medicine and the humanities.",
                     lab_or_program="Office of Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["undergraduate research", "faculty mentorship",
@@ -66,6 +67,7 @@ SCHOOL: dict = {
                     "— and points students toward mentored projects across every "
                     "discipline.",
                     lab_or_program="Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior"],
                     keywords=["finding a mentor", "research directory",

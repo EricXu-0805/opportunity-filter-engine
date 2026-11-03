@@ -46,6 +46,7 @@ SCHOOL: dict = {
                     "fellowships — the starting point for finding an opportunity, "
                     "learning how to begin, and applying for research support.",
                     lab_or_program="Office of Undergraduate Research & Fellowships",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["undergraduate research", "faculty mentorship",
@@ -114,6 +115,7 @@ SCHOOL: dict = {
                     "endorsement for students building toward research careers and "
                     "graduate study.",
                     lab_or_program="Research Fellowships",
+                    reference_only=True,
                     opportunity_type="fellowship",
                     preferred_year=["junior", "senior"],
                     keywords=["research fellowships", "Goldwater", "NSF GRFP",

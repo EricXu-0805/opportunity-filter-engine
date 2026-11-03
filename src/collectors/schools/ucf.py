@@ -49,6 +49,7 @@ SCHOOL: dict = {
                     "opportunities, learning how to get started, and finding "
                     "support for undergraduate research and creative projects.",
                     lab_or_program="Office of Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["undergraduate research", "faculty mentorship",
@@ -83,6 +84,7 @@ SCHOOL: dict = {
                     "cohort programs pair students with faculty mentors and provide "
                     "training, community, and funding toward graduate school.",
                     lab_or_program="Research and Mentoring Program",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior"],
                     keywords=["RAMP", "McNair Scholars", "first-year research",
@@ -114,6 +116,7 @@ SCHOOL: dict = {
                     "through finding on-campus opportunities and preparing to reach "
                     "out to potential research advisors across every college.",
                     lab_or_program="Office of Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore"],
                     keywords=["getting started", "finding a mentor",

@@ -45,6 +45,7 @@ SCHOOL: dict = {
                     "Research Ambassador Program, and the undergraduate "
                     "research symposia. Contact: undergradresearch@wustl.edu.",
                     lab_or_program="Office of Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["undergraduate research", "faculty mentorship",
