@@ -170,6 +170,32 @@ def test_docx_date_with_wide_characters_gets_no_indent(page_size, date):
         (WD_TAB_ALIGNMENT.RIGHT, width.twips)]
 
 
+@pytest.mark.parametrize('page_size', ['letter', 'a4'])
+@pytest.mark.parametrize('detail', ['Recorded the observed outputs.', '逐项记录观察结果和仍需核实的问题。'])
+def test_docx_report_details_and_link_stay_with_their_own_entry(page_size, detail):
+    # Only the title row kept with the next row, so a page could end after a
+    # report's status and carry its details and link to the next page.
+    from docx import Document
+    value = sample('Student')
+    value['page_size'] = page_size
+    value['sections'].append({'kind': 'publications', 'heading': '', 'blocks': [
+        {'lines': [{'role': role, 'label': '', 'text': text} for role, text in [
+            ('title', f'Report {index}'), ('date', '2026-01'),
+            ('publication_status', 'Draft only; not submitted or accepted.'),
+            ('experience', detail), ('url', f'https://example.invalid/reports/{index}'),
+        ]]} for index in range(2)
+    ]})
+    before = deepcopy(value)
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    assert document.paragraphs[1].text == 'Publications'
+    assert document.paragraphs[1].paragraph_format.keep_with_next
+    for start in (2, 6):
+        group = document.paragraphs[start:start + 4]
+        assert [p.paragraph_format.keep_with_next for p in group] == [True, True, True, False]
+        assert all(p.paragraph_format.keep_together is False for p in group)
+    assert value == before
+
+
 @pytest.mark.parametrize('locale', ['en', 'zh'])
 def test_docx_section_titles_are_level_one_headings_that_look_unchanged(locale):
     # They were Normal paragraphs: the file had no outline, and LibreOffice's PDF export of it no bookmarks.
@@ -188,6 +214,77 @@ def test_docx_section_titles_are_level_one_headings_that_look_unchanged(locale):
     # The template's Heading 1 is a 14 pt bold blue theme font: the titles keep the body font and color at 12 pt.
     assert [etree.QName(child).localname for child in style.element.rPr] == ['sz']
     assert style.font.size == Pt(12)
+
+
+@pytest.mark.parametrize('case', ['long_title', 'long_paragraph', 'many_paragraphs'])
+def test_docx_oversized_entries_do_not_form_one_keep_chain(case):
+    from docx import Document
+    title = 'Long title 项目记录 ' * 100 if case == 'long_title' else 'Research notes'
+    detail = 'Recorded the observed output.\n' * 70 if case == 'long_paragraph' else 'Recorded the observed output.'
+    details = [detail] * (50 if case == 'many_paragraphs' else 2)
+    value = sample('Student')
+    value['sections'].append({'kind': 'activities', 'heading': '', 'blocks': [
+        {'lines': [{'role': role, 'label': '', 'text': text}
+                   for role, text in [('title', title), *[('experience', d) for d in details]]]},
+    ]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    assert document.paragraphs[2].paragraph_format.keep_with_next
+    assert all(p.paragraph_format.keep_with_next is False for p in document.paragraphs[3:])
+    assert all(p.paragraph_format.keep_together is False for p in document.paragraphs[2:])
+
+
+@pytest.mark.parametrize('details,kept', [
+    # Each paragraph counts its rows of 72 half-em columns, plus one: the title row 2, a full row 2.
+    (['x' * 72] * 9, True), (['x' * 72] * 8 + ['x' * 73], False),
+    (['记' * 36] * 9, True), (['记' * 36] * 8 + ['记' * 37], False),
+    (['\t' * 9] * 9, True), (['\t' * 9] * 8 + ['\t' * 9 + 'x'], False),
+    (['x\r\nx'] * 2 + ['x'] * 6, True), (['x\r\nx'] * 3 + ['x'] * 5, False),
+    (['x\rx'] * 2 + ['x'] * 6, True), (['x\rx'] * 3 + ['x'] * 5, False),  # A lone CR breaks too.
+    (['记，' * 18] * 9, True), (['记，' * 18] * 8 + ['记，' * 18 + '记'], False),  # Fullwidth "，" is wide.
+    (['x\n\nx', 'x\r\nx'] + ['x'] * 6, False),  # A blank row is a row.
+])
+def test_docx_entry_of_up_to_twenty_estimated_lines_keeps_together(details, kept):
+    from docx import Document
+    value = sample('Student')
+    value['sections'].append({'kind': 'activities', 'heading': '', 'blocks': [
+        {'lines': [{'role': 'title', 'label': '', 'text': 'First entry'}]},  # The section title counts with this one.
+        {'lines': [{'role': 'title', 'label': '', 'text': 'Notes'}, *[
+            {'role': 'experience', 'label': '', 'text': detail} for detail in details]]},
+        {'lines': [{'role': 'title', 'label': '', 'text': 'Next entry'}]},
+    ]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    entry = document.paragraphs[3:3 + 1 + len(details)]
+    assert entry[0].text == 'Notes' and document.paragraphs[4 + len(details)].text == 'Next entry'
+    assert [p.paragraph_format.keep_with_next for p in entry] == [True] + [kept] * (len(details) - 1) + [False]
+
+
+def test_docx_keep_estimate_counts_a_section_title_at_its_size():
+    # 70 characters fill less than one 10.5 pt row but wrap at 12 pt. With
+    # the title's two rows, this first entry is estimated at 21 lines.
+    from docx import Document
+    value = sample('Student')
+    value['sections'][0]['blocks'][0]['lines'].append({'role': 'location', 'label': '', 'text': 'Urbana, IL'})
+    heading = 'Research, teaching and course projects in data systems and measurement'
+    value['sections'].append({'kind': 'activities', 'heading': heading, 'blocks': [{'lines': [
+        {'role': 'title', 'label': '', 'text': 'Notes'},
+        *[{'role': 'experience', 'label': '', 'text': 'x' * 72} for _ in range(8)]]}]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    assert document.paragraphs[2].text == heading
+    assert [p.paragraph_format.keep_with_next for p in document.paragraphs[2:]] == [True, True] + [False] * 8
+
+
+@pytest.mark.parametrize('contact', [[], [{'role': 'location', 'label': '', 'text': 'Urbana, IL'}]])
+def test_docx_name_keeps_with_the_row_after_it(contact):
+    # The name counts with the row or entry after it, so it now keeps with it.
+    from docx import Document
+    value = sample('Student')
+    value['sections'][0]['blocks'][0]['lines'] += contact
+    value['sections'].append({'kind': 'activities', 'heading': '', 'blocks': [{'lines': [
+        {'role': 'title', 'label': '', 'text': 'Notes'},
+        {'role': 'experience', 'label': '', 'text': 'Recorded the observed outputs.'}]}]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    assert document.paragraphs[0].text == 'Student'
+    assert document.paragraphs[0].paragraph_format.keep_with_next
 
 
 def contact_projection(contact, page_size='letter'):
