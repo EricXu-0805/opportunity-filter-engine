@@ -3313,6 +3313,15 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
         if total_key:
             _json_roster_unread(dept, stated, len(recs_all),
                                 _distinct_rows(recs_all, cfg.get("total_distinct_key")))
+        units = {s.lower() for s in cfg.get("id_namespaces") or ()}
+        if held is not None and units and not units & {t.rsplit("-", 1)[0] for t in held}:
+            # No stored id names a unit of this walk (the work file is missing or
+            # holds none of them): every row goes to the first unit, and since a
+            # stored person cannot be told from a new one, no unit retires anyone.
+            _cover("identity_match_failures", len(recs_all))
+            logger.warning("faculty_graph: no stored id names a unit of %s's walk "
+                           "(%s); the unit retires nobody this run",
+                           dept.get("short"), ", ".join(cfg["id_namespaces"]))
         return _json_dir_records(dept, cfg, recs_all, roster=bool(total_key), held=held)
     try:
         if str(cfg.get("method", "get")).lower() == "post":

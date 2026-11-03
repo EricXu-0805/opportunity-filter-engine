@@ -901,7 +901,9 @@ class TestUfApolloWalk:
         from src.collectors import ucb_common
         from src.collectors.schools import uf_faculty
         corpus = tmp_path / "opportunities.json"
-        if stored:
+        if isinstance(stored, list):
+            corpus.write_text(json.dumps([{"id": i, "metadata": {}} for i in stored]))
+        elif stored:
             corpus.write_text(json.dumps([
                 {"id": _uf_id(short, name),
                  "metadata": {"is_active": name != "Ed Testcase"}}
@@ -957,6 +959,28 @@ class TestUfApolloWalk:
         assert {p["id"] for p in people} == {_uf_id("COP", n) for n in _APOLLO_NAMES}
         assert [ledger[u]["coverage"]["parsed_faculty_rows"] for u in self.SHORTS] == [
             7, 0, 0, 0, 0]
+
+    # No work file; a work file that holds the school but none of the college.
+    @pytest.mark.parametrize("stored", [False, [_uf_id("WCB", "Ada Example")]])
+    def test_a_corpus_that_holds_none_of_the_college_retires_no_one_in_it(
+            self, monkeypatch, tmp_path, stored):
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        people, ledger, _ = self._run(monkeypatch, tmp_path, stored=stored)
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert {p["id"] for p in people} == {_uf_id("COP", n) for n in _APOLLO_NAMES}
+        assert not any(ledger[u]["retirement_authorized"] for u in self.SHORTS)
+        assert ledger["cop"]["coverage"]["identity_match_failures"] == 7
+
+    def test_a_stored_id_under_any_unit_of_the_college_lets_the_walk_split(
+            self, monkeypatch, tmp_path):
+        from src.normalizers.deactivate_stale_faculty import finalize_unit_ledger
+        people, ledger, _ = self._run(monkeypatch, tmp_path,
+                                      stored=[_uf_id("COP2", "Cy Fixture")])
+        finalize_unit_ledger(ledger, people, "uf_faculty")
+        assert {p["pi_name"]: p["id"] for p in people}["Cy Fixture"] == _uf_id(
+            "COP2", "Cy Fixture")
+        assert {u: ledger[u]["retirement_authorized"] for u in self.SHORTS[:2]} == {
+            "cop": True, "cop2": True}
 
     @pytest.mark.parametrize("listed", [
         "Cy Fixture*", "Cy Fixture (he/him)", "Cy Fixtur&#101;"])
