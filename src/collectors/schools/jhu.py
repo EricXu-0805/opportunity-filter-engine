@@ -142,6 +142,7 @@ SCHOOL: dict = {
                     organization="Johns Hopkins University",
                     department="Imagine Center / Life Design Lab",
                     lab_or_program="Internship Programs",
+                    reference_only=True,
                     opportunity_type="internship",
                     paid="yes",
                     compensation="Varies; several programs are paid or sponsored",

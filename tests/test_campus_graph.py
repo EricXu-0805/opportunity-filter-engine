@@ -169,6 +169,7 @@ def test_splitting_a_config_by_shard_changes_no_record():
 _REFERENCE_PAGES = {
     "cincinnati": {"cincinnati_office_of_research", "cincinnati_undergraduate_research_guide"},
     "clemson": {"clemson_student_research", "clemson_scholar_programs"},
+    "jhu": {"imagine_internship_programs"},
     "miami": {"miami_office_of_undergraduate_research", "miami_open_research_positions"},
     "ucf": {"ucf_office_of_undergraduate_research", "ucf_ramp_scholar_programs", "ucf_looking_for_research"},
     "uf": {"cur_hub", "ursp"},
