@@ -11,6 +11,7 @@ import math
 import re
 import threading
 from collections import Counter, OrderedDict, defaultdict
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
@@ -1462,7 +1463,9 @@ def _empty_interest_major_bonus(profile: dict, opportunity: dict) -> float:
     return 0.0
 
 
-def _interest_bonus(profile: dict, opportunity: dict) -> float:
+def _interest_bonus(
+    profile: dict, opportunity: dict, interests: "_ProfileInterests | None" = None
+) -> float:
     """Bonus up to +8 points when stated research_interests_text
     tokens show strong literal overlap with opportunity title+keywords.
 
@@ -1471,23 +1474,28 @@ def _interest_bonus(profile: dict, opportunity: dict) -> float:
     even when the eligibility/major score is weak. Capped at +8 so it
     refines ordering without overriding hard eligibility signals.
     """
-    interests = str(profile.get("research_interests_text") or "").strip()
-    if len(interests) < 4:
+    if interests is None:
+        interests = _ProfileInterests(profile)
+    # Empty when the text is under four characters.
+    tokens = interests.bonus_tokens
+    if not tokens:
         return 0.0
 
     signal_text = _opp_static(opportunity).signal_text
     if not signal_text:
         return 0.0
 
-    tokens = _interest_bonus_tokens(interests)
-    if not tokens:
-        return 0.0
-
     # signal_text is space-padded normalized words; requiring the space before
     # each token = word-boundary at the hit's start. Prefix matches stay
     # ("gene" still hits "genetics"), mid-word ones don't ("gene" no longer
     # hits "eugene" — name-luck put a political scientist in a premed's top-8).
-    hits = sum(1 for t in tokens if f" {t}" in signal_text)
+    if len(tokens) <= 64:
+        hits = sum(1 for t in tokens if f" {t}" in signal_text)
+    else:
+        # The same count from the row's side, whose cost follows the row's
+        # words rather than the text's: a token (letters only) hits exactly
+        # when it begins one of the row's single-space-separated words.
+        hits = len(tokens & {w[:i] for w in signal_text.split() for i in range(2, len(w) + 1)})
     if hits == 0:
         return 0.0
     return min(INTEREST_BONUS_CAP, hits * INTEREST_BONUS_PER_HIT)
@@ -2345,14 +2353,18 @@ def score_upside(
     precomputed_sim: float | None = None,
     implicit_keywords: set[str] | None = None,
     desired_overlap: set[str] | None = None,
+    interests: "_ProfileInterests | None" = None,
 ) -> tuple[float, list[str], list[str]]:
     """Score upside (0-100). ``precomputed_sim`` lets rank_all supply a batched
     research-interest similarity (identical to the per-pair value) instead of
     recomputing it here per opportunity. ``implicit_keywords`` is the student's
     major-derived field steer (see ``_profile_implicit_keywords``).
-    ``desired_overlap`` is the caller-precomputed ``_desired_field_overlap``
-    result (rank_opportunity computes it once for both this layer and
-    field_relevant); None means compute it here."""
+    ``desired_overlap`` is the caller-precomputed chip overlap (rank_opportunity
+    computes it once for both this layer and field_relevant); None means
+    compute it here. ``interests`` is the profile's _ProfileInterests; None
+    prepares it here."""
+    if interests is None:
+        interests = _ProfileInterests(profile)
     st = _opp_static(opportunity)
     is_faculty_contact = faculty_contact_claims_unverified(opportunity)
     reasons_fit = []
@@ -2405,7 +2417,7 @@ def score_upside(
 
     keyword_score = 25.0
     opp_keywords = st.kw_set
-    desired = set(f.lower() for f in profile.get("desired_fields", []))
+    desired = interests.desired
     # (line, the chips it names): the chips the row's own words name, then
     # the ones that rest only on keywords that are ours (M155).
     interest_lines: list[tuple[str, list[str]]] = []
@@ -2413,7 +2425,7 @@ def score_upside(
     if opp_keywords and desired:
         interest_overlap = (
             desired_overlap if desired_overlap is not None
-            else _desired_field_overlap(desired, list(st.kw_lower), static=st)
+            else interests.chips.overlap(st.ov_kws)
         )
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
@@ -2445,7 +2457,7 @@ def score_upside(
                 min(IMPLICIT_MAJOR_KEYWORD_CEILING, 25.0 + imp_hits * IMPLICIT_MAJOR_PER_HIT),
             )
 
-    research_text = (profile.get("research_interests_text") or "").lower()
+    research_text = interests.research_text
 
     specific_kw = st.specific_kw
     lab_label = st.lab_label
@@ -2466,7 +2478,7 @@ def score_upside(
             work = ", ".join(display_kw[:3])
             # Name the interest terms that actually overlap the lab's areas rather
             # than echoing a mid-word slice of the student's free-text interests.
-            overlap = [kw for kw in display_kw if kw in research_text]
+            overlap = [kw for kw in display_kw if interests.in_research_text[kw]]
             interest_phrase = ", ".join(overlap[:3])
             if display_kw and lab_label:
                 reasons_fit.append(
@@ -2634,9 +2646,7 @@ def _topical_keywords(keywords: list[str]) -> list[str]:
     return [kw for kw in keywords if kw.lower() not in _ROLE_PROCESS_TOKENS]
 
 
-def _desired_field_overlap(
-    desired: set[str], opp_keywords: list[str], static: "_OppStatic | None" = None
-) -> set[str]:
+def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[str]:
     """Which of the student's desired-field chips align with an opportunity's
     keywords. Exact set intersection (the prior logic) is 100% blind to the
     OpenAlex enrichment: a 'machine learning' chip never matched an enriched
@@ -2647,41 +2657,80 @@ def _desired_field_overlap(
     (len>=4, word-boundary) bidirectional containment adds the long-phrase
     matches. A low-signal single-token chip ('data', 'systems') only counts on
     exact equality, so it can't blanket-match via containment. Returns the CHIP
-    labels (what the student asked for) for the reason text."""
+    labels (what the student asked for) for the reason text.
+
+    A ranking matches through _ProfileInterests, which finds a keyword inside
+    a chip with _kw_word_re; here _word_re finds it, as it finds a chip inside
+    a keyword."""
     if not desired or not opp_keywords:
         return set()
-    if static is not None:
-        kws: list[str] | tuple[str, ...] = static.ov_kws
-        kw_set: set[str] | frozenset[str] = static.ov_set
-        kw_canon: set[str] | frozenset[str] = static.ov_canon
-        containment_res: list[re.Pattern[str]] | tuple[re.Pattern[str], ...] = static.containment_res
-    else:
-        kws = [k.lower().strip() for k in opp_keywords if k and k.strip()]
-        kw_set = set(kws)
-        kw_canon = {_canonicalize_skill(k) for k in kws}
-        containment_res = [
-            _word_re(k) for k in kws
-            if len(k) >= 4 and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
-        ]
-    matched: set[str] = set()
-    for d in desired:
-        dl = d.lower().strip()
-        if not dl:
-            continue
-        dc = _canonicalize_skill(dl)
-        if dl in kw_set or dc in kw_canon or dc in kw_set:
-            matched.add(d)
-            continue
-        # A bare low-signal token ("data", "systems") matches only exactly
-        # (handled above) — never by containment, which would float it in on
-        # any "data visualization"/"distributed systems" keyword.
-        if " " not in dl and dl in _LOW_SIGNAL_ALIGN_TOKENS:
-            continue
-        if len(dl) >= 4:
-            dl_re = _word_re(dl)
-            if any(dl_re.search(k) for k in kws):
-                matched.add(d)
-                continue
+    return _ChipMatch(desired, _word_re).overlap(
+        [k.lower().strip() for k in opp_keywords if k and k.strip()]
+    )
+
+
+_NO_CHIPS: frozenset[str] = frozenset()
+
+
+class _ChipMatch:
+    """_desired_field_overlap's test, one keyword at a time.
+
+    Whether a chip aligns depends only on the chip and each keyword, so one
+    ranking decides each distinct keyword once and a row takes the union over
+    its keywords. A term becomes a pattern only once it is a plain substring,
+    which every match of the pattern is: a chip longer than every keyword is
+    never compiled. ``reverse_re`` builds the pattern for a keyword found
+    inside a chip.
+    """
+
+    __slots__ = ("_labels", "_canonical", "_forward", "_reverse", "_reverse_re", "_decided")
+
+    def __init__(self, desired: set[str], reverse_re: Callable[[str], "re.Pattern[str]"]) -> None:
+        # Stripped chip -> the chips as the student wrote them, which the
+        # reason text names.
+        labels: dict[str, set[str]] = {}
+        for d in desired:
+            dl = d.lower().strip()
+            if dl:
+                labels.setdefault(dl, set()).add(d)
+        canonical: dict[str, list[str]] = {}
+        for dl in labels:
+            canonical.setdefault(_canonicalize_skill(dl), []).append(dl)
+        # A bare low-signal token ("data", "systems") matches only exactly —
+        # never by containment, which would float it in on any "data
+        # visualization"/"distributed systems" keyword.
+        contained = [dl for dl in labels if " " in dl or dl not in _LOW_SIGNAL_ALIGN_TOKENS]
+        self._labels = labels
+        self._canonical = canonical
+        self._forward = sorted((dl for dl in contained if len(dl) >= 4), key=len)
+        self._reverse = sorted(contained, key=len, reverse=True)
+        self._reverse_re = reverse_re
+        self._decided: dict[str, frozenset[str]] = {}
+
+    def overlap(self, keywords: list[str] | tuple[str, ...]) -> set[str]:
+        """The chips aligned with any of ``keywords`` (lower-cased, stripped, non-empty)."""
+        matched: set[str] = set()
+        if not self._labels:
+            return matched
+        decided = self._decided
+        for k in keywords:
+            chips = decided.get(k)
+            if chips is None:
+                chips = decided[k] = self._keyword_chips(k)
+            matched |= chips
+        return matched
+
+    def _keyword_chips(self, k: str) -> frozenset[str]:
+        # Equal canonical forms, which equal terms have, or a chip whose
+        # canonical form is the keyword itself.
+        canonical = self._canonical
+        terms = set(canonical.get(_canonicalize_skill(k), ()))
+        terms.update(canonical.get(k, ()))
+        for dl in self._forward:
+            if len(dl) > len(k):
+                break
+            if dl not in terms and dl in k and _word_re(dl).search(k):
+                terms.add(dl)
         # Reverse containment (opp keyword inside the chip) needs the SAME
         # low-signal guard as the chip side above: without it a faculty whose
         # only keyword is a broad department token ("engineering", "science",
@@ -2689,9 +2738,15 @@ def _desired_field_overlap(
         # "computer science") and blanket-credits it into the strong-interest
         # tier. A distinctive keyword ("physics" ⊂ "quantum physics") still
         # counts — only lone broad tokens are suppressed.
-        if any(p.search(dl) for p in containment_res):
-            matched.add(d)
-    return matched
+        if len(k) >= 4 and (" " in k or k not in _LOW_SIGNAL_ALIGN_TOKENS):
+            for dl in self._reverse:
+                if len(dl) < len(k):
+                    break
+                if dl not in terms and k in dl and self._reverse_re(k).search(dl):
+                    terms.add(dl)
+        if not terms:
+            return _NO_CHIPS
+        return frozenset(chip for dl in terms for chip in self._labels[dl])
 
 
 def _extract_specific_keywords(opportunity: dict) -> list[str]:
@@ -2870,7 +2925,9 @@ def _stem_align_token(t: str) -> str:
     return t
 
 
-def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
+def _topic_alignment_penalty(
+    profile: dict, opportunity: dict, interests: "_ProfileInterests | None" = None
+) -> float:
     """Demote research postings whose area contradicts a student's stated
     interests. Returns a multiplier in (0, 1].
 
@@ -2897,8 +2954,9 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     if profile.get("exploring"):
         return 1.0
 
-    interest = (profile.get("research_interests_text") or "").strip().lower()
-    interest_tokens, interest_canon = _topic_interest_sets(interest)
+    if interests is None:
+        interests = _ProfileInterests(profile)
+    interest_tokens, interest_canon = interests.topic_tokens, interests.topic_canon
     if len(interest_tokens) < 2:
         return 1.0
 
@@ -2915,10 +2973,8 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     # signal ("machine learning") had been stripped (RANK-9 false demote). The
     # `specific` gate above still decides whether the lab has ANY topic signal at
     # all, so this does not start penalizing broad-field-only labs.
-    interest_meaningful = interest_tokens - _LOW_SIGNAL_ALIGN_TOKENS
-    # Stemmed comparison folds singular/plural topic variants (#443); the
-    # keyword side is pre-stemmed into topic_candidates at corpus load.
-    interest_stems = frozenset(_stem_align_token(t) for t in interest_meaningful)
+    interest_stems = interests.topic_stems
+    in_interest = interests.in_topic_text
     for kw, canon, keyword_stems in st.topic_candidates:
         # Whole-token / canonical equality aligns regardless of length, so a
         # short acronym keyword ("nlp") or a short canonicalized interest still
@@ -2929,8 +2985,8 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
             or canon in interest_canon
             or canon in interest_tokens
         )
-        substring = (len(kw) >= 4 and kw in interest) or (
-            canon != kw and len(canon) >= 4 and canon in interest
+        substring = (len(kw) >= 4 and in_interest[kw]) or (
+            canon != kw and len(canon) >= 4 and in_interest[canon]
         )
         # Token overlap must share a MEANINGFUL (non-broad, non-filler) token.
         # The prior check fired on any shared non-stopword token, so a lone
@@ -3031,9 +3087,6 @@ class _OppStatic:
     # When topics_ours: the row's own words (see _own_words); else ().
     own_words: tuple[str, ...]
     ov_kws: tuple[str, ...]
-    ov_set: frozenset[str]
-    ov_canon: frozenset[str]
-    containment_res: "tuple[re.Pattern[str], ...]"
     course_signals: tuple[frozenset[str], ...]
     first_exp: bool
     brand_score: float
@@ -3216,16 +3269,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     )
     topics_ours = not keywords_are_source_topics(opp)
 
-    # _desired_field_overlap's view of the keywords (stripped, non-empty).
+    # The interest match's view of the keywords (stripped, non-empty).
     ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
-    ov_canon = frozenset(_canonicalize_skill(k) for k in ov_kws)
-    # Patterns pre-compiled through the corpus-scoped intern dict: keyword
-    # vocabulary cycles far past any per-request LRU, so a bounded cache
-    # thrashed to 100% miss and re-compiling was the top warm-path cost.
-    containment_res = tuple(
-        _kw_word_re(k) for k in ov_kws
-        if len(k) >= 4 and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
-    )
 
     dept_lower = (opp.get("department") or "").lower()
     elig = faculty_safe_eligibility(opp)
@@ -3287,9 +3332,6 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         topics_ours=topics_ours,
         own_words=_own_words(opp) if topics_ours else (),
         ov_kws=ov_kws,
-        ov_set=frozenset(ov_kws),
-        ov_canon=ov_canon,
-        containment_res=containment_res,
         course_signals=course_signals,
         first_exp=(
             not is_faculty_contact
@@ -3501,7 +3543,13 @@ def _build_sim_matrix(opportunities: list[dict]):
     return vstack(blocks, format="csr")
 
 
-def _corpus_sims_precomputed(research_text: str, opportunities: list[dict]) -> list[float] | None:
+def _corpus_sims_precomputed(
+    research_text: str,
+    opportunities: list[dict],
+    interests: "_ProfileInterests | None" = None,
+) -> list[float] | None:
+    """``interests``, when given, is the profile whose research_text this is:
+    its query vector is made once and kept for the ranking's later chunks."""
     if _sim_matrix is None:
         return None
     rows: list[int] = []
@@ -3513,7 +3561,11 @@ def _corpus_sims_precomputed(research_text: str, opportunities: list[dict]) -> l
     from sklearn.metrics.pairwise import cosine_similarity
 
     from . import embeddings as _emb
-    q = _emb._tfidf_vectorizer.transform([research_text])
+    q = interests.tfidf_query if interests is not None else None
+    if q is None:
+        q = _emb._tfidf_vectorizer.transform([research_text])
+        if interests is not None:
+            interests.tfidf_query = q
     sims = cosine_similarity(q, _sim_matrix[rows])[0]
     return [float(max(0.0, s)) for s in sims]
 
@@ -3625,7 +3677,6 @@ def _kw_word_re(term: str) -> "re.Pattern[str]":
     return pat
 
 
-@lru_cache(maxsize=512)
 def _interest_bonus_tokens(interests: str) -> frozenset[str]:
     """Tokens from the free-text interests that may earn the literal-overlap
     bonus. Filters the low-signal align set as well as generic words: a lone
@@ -3648,7 +3699,6 @@ def _interest_bonus_tokens(interests: str) -> frozenset[str]:
     return specific or tokens
 
 
-@lru_cache(maxsize=512)
 def _topic_interest_sets(interest: str) -> tuple[frozenset[str], frozenset[str]]:
     """(tokens, canonicalized tokens) for _topic_alignment_penalty. Canonicalize
     the interest tokens too (not just the keyword) so a student who types an
@@ -3657,6 +3707,52 @@ def _topic_interest_sets(interest: str) -> tuple[frozenset[str], frozenset[str]]
     match got the MISMATCH penalty (RANK-2)."""
     tokens = frozenset(t for t in _tokenize(interest) if t not in _GENERIC_INTEREST_WORDS)
     return tokens, frozenset(_canonicalize_skill(t) for t in tokens)
+
+
+class _InText(dict):
+    """``phrase in text``, remembered per phrase: a ranking tests the same
+    keywords against the same research text on many rows."""
+
+    __slots__ = ("text",)
+
+    def __init__(self, text: str) -> None:
+        super().__init__()
+        self.text = text
+
+    def __missing__(self, phrase: str) -> bool:
+        found = self[phrase] = phrase in self.text
+        return found
+
+
+class _ProfileInterests:
+    """What interest matching reads from the profile alone, in the forms the
+    per-row code compares, prepared once per ranking instead of on every
+    scored row (rank_all passes one down; a single-record call makes its own).
+    """
+
+    __slots__ = (
+        "desired", "chips", "research_text", "in_research_text", "bonus_tokens",
+        "topic_tokens", "topic_canon", "topic_stems", "in_topic_text", "tfidf_query",
+    )
+
+    def __init__(self, profile: dict) -> None:
+        self.desired = {f.lower() for f in profile.get("desired_fields", [])}
+        self.chips = _ChipMatch(self.desired, _kw_word_re)
+        text = profile.get("research_interests_text")
+        self.research_text = (text or "").lower()
+        self.in_research_text = _InText(self.research_text)
+        bonus_text = str(text or "").strip()
+        self.bonus_tokens = _interest_bonus_tokens(bonus_text) if len(bonus_text) >= 4 else frozenset()
+        topic_text = (text or "").strip().lower()
+        self.topic_tokens, self.topic_canon = _topic_interest_sets(topic_text)
+        # Stemmed comparison folds singular/plural topic variants (#443); the
+        # keyword side is pre-stemmed into topic_candidates at corpus load.
+        self.topic_stems = frozenset(
+            _stem_align_token(t) for t in self.topic_tokens - _LOW_SIGNAL_ALIGN_TOKENS
+        )
+        self.in_topic_text = _InText(topic_text)
+        # The TF-IDF vector of research_text, made by the first chunk that needs it.
+        self.tfidf_query = None
 
 
 @lru_cache(maxsize=512)
@@ -3741,6 +3837,7 @@ def _rank_opportunity_unlocked(
     responsiveness: dict[str, dict] | None = None,
     contact_checked_at: datetime | None = None,
     course_sets: tuple[frozenset[str], frozenset[str]] | None = None,
+    interests: "_ProfileInterests | None" = None,
 ) -> MatchResult:
     st = _opp_static(opportunity)
 
@@ -3759,11 +3856,10 @@ def _rank_opportunity_unlocked(
         contact_checked_at = _contact_checked_at(date.today())
     if course_sets is None:
         course_sets = _student_course_sets(profile)
+    if interests is None:
+        interests = _ProfileInterests(profile)
 
-    desired_lc = {f.lower() for f in profile.get("desired_fields", [])}
-    desired_overlap = _desired_field_overlap(
-        desired_lc, opportunity.get("keywords", []), static=st
-    )
+    desired_overlap = interests.chips.overlap(st.ov_kws)
 
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
@@ -3775,6 +3871,7 @@ def _rank_opportunity_unlocked(
         precomputed_sim=precomputed_sim,
         implicit_keywords=implicit_keywords,
         desired_overlap=desired_overlap,
+        interests=interests,
     )
 
     w = weights
@@ -3784,7 +3881,7 @@ def _rank_opportunity_unlocked(
         w["upside"] * up_score
     )
 
-    interest_bonus = _interest_bonus(profile, opportunity)
+    interest_bonus = _interest_bonus(profile, opportunity, interests)
     major_bonus = _empty_interest_major_bonus(profile, opportunity)
     college_bonus = _college_affinity(profile, opportunity)
     home_bonus = _home_school_affinity(profile, opportunity)
@@ -3808,7 +3905,7 @@ def _rank_opportunity_unlocked(
     # sigmoid. Now the order is uniform.
     final = _stretch_score(raw)
 
-    topic_penalty = _topic_alignment_penalty(profile, opportunity)
+    topic_penalty = _topic_alignment_penalty(profile, opportunity, interests)
     if topic_penalty < 1.0:
         final *= topic_penalty
         if topic_penalty <= TOPIC_MISMATCH_PENALTY:
@@ -4393,6 +4490,7 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
 def _chunk_similarities(
     research_text: str,
     opportunities: list[dict],
+    interests: "_ProfileInterests | None" = None,
 ) -> list[float | None]:
     """Exact corpus-fitted TF-IDF similarities for one bounded candidate chunk.
 
@@ -4410,7 +4508,7 @@ def _chunk_similarities(
 
         if not _emb._tfidf_fitted:
             return [None] * len(opportunities)
-        sims = _corpus_sims_precomputed(research_text, opportunities)
+        sims = _corpus_sims_precomputed(research_text, opportunities, interests)
         if sims is None:
             sims = _emb.semantic_similarity_batch(
                 research_text,
@@ -4443,14 +4541,14 @@ def _iter_scored_results_unlocked(
     profile_skill_map = _parse_skills(profile.get("hard_skills", []))
     implicit_kw = _implicit_steer(profile)
     course_sets = _student_course_sets(profile)
-    research_text = (profile.get("research_interests_text") or "").lower()
+    interests = _ProfileInterests(profile)
     min_threshold = (profile.get("preferences") or {}).get("min_match_threshold", 0)
     contact_checked_at = _contact_checked_at(date.today())
     pending: list[tuple[dict, tuple[float, list[str], list[str]]]] = []
 
     def flush_pending():
         chunk_opportunities = [opp for opp, _ in pending]
-        sims = _chunk_similarities(research_text, chunk_opportunities)
+        sims = _chunk_similarities(interests.research_text, chunk_opportunities, interests)
         for (opp, elig_triple), sim in zip(pending, sims, strict=True):
             # The public wrapper acquires ``corpus_generation_lock`` for
             # standalone callers. This complete traversal already holds that
@@ -4466,6 +4564,7 @@ def _iter_scored_results_unlocked(
                 responsiveness=responsiveness,
                 contact_checked_at=contact_checked_at,
                 course_sets=course_sets,
+                interests=interests,
             )
             if result.final_score >= min_threshold:
                 yield result

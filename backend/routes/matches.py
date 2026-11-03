@@ -1726,9 +1726,16 @@ def _search_matcher(term: str) -> Callable[[str], bool]:
 # A snapshot keeps fit reasons as the ranker wrote them, and they quote record
 # fields (keywords, lab, department); a response redacts each line on the way
 # out. The search reads the served line. Lines repeat heavily across rows and
-# profiles, so each distinct one is checked once.
-@lru_cache(maxsize=1 << 16)
+# profiles, so each distinct one is checked once. A long line, which can quote
+# a student's own interests at length, is checked again rather than kept.
 def _served_fit_reason(reason: str) -> str:
+    if len(reason) > 1_000:
+        return redact_embedded_emails(reason)
+    return _served_short_fit_reason(reason)
+
+
+@lru_cache(maxsize=1 << 16)
+def _served_short_fit_reason(reason: str) -> str:
     return redact_embedded_emails(reason)
 
 

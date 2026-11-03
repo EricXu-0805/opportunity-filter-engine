@@ -2456,7 +2456,7 @@ class TestCorpusPrecomputeEquivalence:
         }
         seen: list[str] = []
 
-        def fake_sims(_query, opportunities):
+        def fake_sims(_query, opportunities, _interests=None):
             seen.extend(o["id"] for o in opportunities)
             return [0.0] * len(opportunities)
 
@@ -2488,7 +2488,7 @@ class TestCorpusPrecomputeEquivalence:
         monkeypatch.setattr(
             rk,
             "_chunk_similarities",
-            lambda _query, opportunities: [0.0] * len(opportunities),
+            lambda _query, opportunities, _interests=None: [0.0] * len(opportunities),
         )
 
         def complete_score(*_args, **_kwargs):
