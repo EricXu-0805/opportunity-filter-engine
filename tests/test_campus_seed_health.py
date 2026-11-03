@@ -7,7 +7,9 @@ refresh log.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import re
@@ -267,6 +269,7 @@ class TestProgramPages:
         assert code == 1
         [line] = [line for line in out.splitlines() if dead in line]
         assert line.split()[:4] == ["GONE", "example", "program", "404"]
+        assert out.splitlines()[-1].startswith("::error::1 configured campus page(s) no longer exist;")
 
     def test_a_walled_or_unreachable_program_page_does_not_fail_the_run(
         self, monkeypatch, capsys
@@ -285,6 +288,14 @@ class TestProgramPages:
         assert code == 0
         classes = {row["url"]: row["class"] for row in json.loads(out)["results"]}
         assert classes == {walled: _checker.BLOCKED, flaky: _checker.UNREACHABLE}
+
+    def test_json_report_is_readable_even_when_a_page_is_gone(self, monkeypatch, capsys):
+        url = "https://example.edu/retired"
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, out, _ = _run(monkeypatch, capsys, [_school("example", [url], [])], {url: 410}, "--json")
+        assert code == 1 and json.loads(out)["results"][0]["class"] == _checker.GONE
+        # The annotation still reaches the run log, on stderr.
+        assert err.getvalue().startswith("::error::1 configured campus page(s) no longer exist;")
 
     def test_each_url_is_requested_once_even_when_programs_share_it(
         self, monkeypatch, capsys

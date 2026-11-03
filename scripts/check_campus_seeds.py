@@ -167,7 +167,8 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"::error::{len(gone)} configured campus page(s) no longer exist; "
             "a dead seed loses the crawl whatever it linked to, and a dead "
-            "program page is where Match sends students"
+            "program page is where Match sends students",
+            file=sys.stderr if args.json else sys.stdout,
         )
         return 1
     return 0
