@@ -263,6 +263,7 @@ describe('copy feedback follows the current draft and attempt', () => {
     expect(screen.getByRole('textbox')).toHaveValue('Keep this unfinished wording');
     expect(screen.queryByText('renovate.copied')).toBeNull();
     expect(screen.queryByText(copyFailure)).toBeNull();
+    expect(screen.getByText('renovate.copyAll').closest('button')).toBeDisabled();
     expect(mockSaveRenovation).not.toHaveBeenCalled();
   });
 
@@ -307,6 +308,37 @@ describe('copy feedback follows the current draft and attempt', () => {
     await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
     expect(await screen.findByText('renovate.copyAll')).toBeInTheDocument();
     expect(screen.queryByText(copyFailure)).toBeNull();
+  });
+
+  it('copies the saved wording only after an open bullet edit is saved', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    await screen.findByText('renovate.copyAll');
+    editFirstBullet('Wording still being edited');
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toHaveAttribute('title', 'Save or cancel your edit before copying.');
+    fireEvent.click(screen.getByRole('button', { name: 'renovate.copyAll' }));
+    expect(writeText).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('renovate.save'));
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).not.toHaveAttribute('title');
+    fireEvent.click(screen.getByRole('button', { name: 'renovate.copyAll' }));
+    await screen.findByText('renovate.copied');
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0][0]).toContain('• Wording still being edited');
+  });
+
+  it('greys the locked copy button like the other edit-locked buttons and gives its reason in Chinese', async () => {
+    i18nMock.locale = 'zh';
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    await screen.findByText('renovate.copyAll');
+    editFirstBullet('Wording still being edited');
+    const copy = screen.getByRole('button', { name: 'renovate.copyAll' });
+    expect(copy).toBeDisabled();
+    expect(copy).toHaveAttribute('title', '请先保存或取消当前编辑。');
+    expect(copy.className.split(/\s+/)).toContain('disabled:text-gray-400');
   });
 
   it('ignores a late copy failure after an owner switch', async () => {
@@ -1641,6 +1673,8 @@ describe('persisted full target provenance', () => {
     expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
     editFirstBullet('Keep editing the old target draft');
     expect(screen.getByRole('textbox')).toHaveValue('Keep editing the old target draft');
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeDisabled();
+    fireEvent.click(screen.getByText('renovate.cancel'));
     expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeEnabled();
     expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
   });

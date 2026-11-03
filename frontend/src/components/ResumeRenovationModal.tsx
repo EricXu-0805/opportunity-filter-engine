@@ -1323,7 +1323,9 @@ export default function ResumeRenovationModal({
             <button
               type="button"
               onClick={handleCopyAll}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              disabled={!!editingId}
+              title={editingId ? (locale === 'zh' ? '请先保存或取消当前编辑。' : 'Save or cancel your edit before copying.') : undefined}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:text-gray-400"
             >
               {copied ? (
                 <>
