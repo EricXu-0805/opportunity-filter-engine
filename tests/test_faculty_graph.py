@@ -3493,6 +3493,27 @@ class TestMergePreservesRecentWorks:
         assert saved["metadata"]["recent_works"] == works
 
 
+def test_a_unit_listing_an_archived_row_again_brings_it_back_live_without_its_pointer(tmp_path, monkeypatch):
+    # Guard (holds before the pointer rule too): the merge replaces the stored
+    # metadata of a row its unit lists again, the inactive state with it.
+    import json as _json
+
+    stored = _fac_rec("drop", school="testu", pi_name="Avery Sample", dept="Computing",
+                      url="https://cs.testu.edu/people/asample", keywords=["optics"], is_active=False)
+    stored["metadata"].update(first_seen_at="2026-09-01", deactivated_at="2026-11-06",
+                              deactivation_reason=fg.DUPLICATE_REASON, duplicate_of="keep")
+    fresh = _fac_rec("drop", school="testu", pi_name="Avery Sample", dept="Computing",
+                     url="https://cs.testu.edu/people/asample", keywords=["optics"])
+    fresh["metadata"]["first_seen_at"] = "2026-11-13"
+    pf = tmp_path / "opportunities.json"
+    pf.write_text(_json.dumps([stored]))
+    monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", pf)
+
+    fg.merge_into_processed([fresh])
+    (saved,) = _json.loads(pf.read_text())
+    assert saved["metadata"] == {"is_active": True, "first_seen_at": "2026-09-01"}
+
+
 class TestFreshmanNotLockedOut:
     def test_directory_contact_does_not_invent_year_eligibility(self):
         """A directory proves who a faculty member is, not which class years

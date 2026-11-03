@@ -1791,6 +1791,7 @@ def _lift_emeritus(metadata: dict) -> None:
     metadata["is_active"] = True
     metadata.pop("deactivated_at", None)
     metadata.pop("deactivation_reason", None)
+    metadata.pop("duplicate_of", None)
 
 
 def _current_role(opp: dict) -> dict:
@@ -1891,11 +1892,13 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
             and (dropped.get("source_url") or "") != (survivor.get("source_url") or "")
             and not _listed_with_active_lab(dropped["metadata"])):
         # Observed after the retirement that removed it: absence is disproven,
-        # so the retirement stamp goes with the timestamp it contradicted. An
+        # so the retirement stamp goes with the timestamp it contradicted, and
+        # the duplicate_of an archived duplicate carries goes with it. An
         # emeritus listing is lifted only by the same card or an active lab.
         meta["is_active"] = True
         meta.pop("deactivated_at", None)
         meta.pop("deactivation_reason", None)
+        meta.pop("duplicate_of", None)
 
 
 def _dedup_decredentialed_faculty(opps: list[dict]) -> tuple[list[dict], int]:

@@ -2046,6 +2046,53 @@ def test_dedup_lifts_a_retirement_the_new_sighting_disproves():
     assert "deactivation_reason" not in meta
 
 
+# What consolidation leaves on a published row it keeps inactive as a duplicate.
+_ARCHIVED_DUPLICATE = {"is_active": False, "deactivated_at": "2026-11-06",
+                       "deactivation_reason": "duplicate_of_live_record",
+                       "duplicate_of": "faculty-test-kept"}
+_INACTIVE_STATE = {"deactivated_at", "deactivation_reason", "duplicate_of"}
+_ROW_DEDUPS = pytest.mark.parametrize("dedup", [
+    _dedup_faculty_records,
+    _dedup_faculty_by_email,
+    lambda rows: _dedup_decredentialed_faculty(rows)[0],
+], ids=["url_and_surname", "address_and_name", "url_and_full_name"])
+
+
+def _archived_and_seen_again(archived_metadata: dict, seen_metadata: dict) -> list[dict]:
+    """One person's archived row and a newer sighting of them on the same card."""
+    url = "https://physics.testu.edu/people/directory/profile/asample"
+    archived = _seen("Avery Sample", url, "2026-10-30T00:00:00", keywords=["optics", "lasers"],
+                     metadata_extra=archived_metadata)
+    fresh = _seen("Avery Sample", url, "2026-11-13T00:00:00", metadata_extra=seen_metadata)
+    archived["contact_email"] = fresh["contact_email"] = "asample@testu.edu"
+    return [archived, fresh]
+
+
+@pytest.mark.parametrize("reason", ["duplicate_of_live_record", "absent_from_directory_rescrape"])
+@_ROW_DEDUPS
+def test_a_newer_sighting_puts_an_archived_duplicate_back_live_without_its_pointer(dedup, reason):
+    """The pointer is part of the inactive state: a row put back live drops it
+    with the retirement stamps, whatever retired the row."""
+    (row,) = dedup(_archived_and_seen_again({**_ARCHIVED_DUPLICATE, "deactivation_reason": reason}, {}))
+    assert row["metadata"]["is_active"] is True
+    assert _INACTIVE_STATE.isdisjoint(row["metadata"])
+
+
+@_ROW_DEDUPS
+def test_an_archived_duplicate_seen_again_only_as_inactive_keeps_its_pointer(dedup):
+    # Guard: a row that stays inactive keeps the state it was archived with.
+    (row,) = dedup(_archived_and_seen_again(dict(_ARCHIVED_DUPLICATE), {"is_active": False}))
+    assert {k: row["metadata"][k] for k in ("is_active", *_INACTIVE_STATE)} == _ARCHIVED_DUPLICATE
+
+
+def test_lifting_an_emeritus_retirement_drops_a_duplicate_pointer_too():
+    from src.collectors.uiuc_faculty import _lift_emeritus
+
+    metadata = {**_ARCHIVED_DUPLICATE, "deactivation_reason": "listed_as_emeritus"}
+    _lift_emeritus(metadata)
+    assert metadata == {"is_active": True}
+
+
 def test_dedup_keeps_a_retirement_the_dropped_row_agrees_with():
     retired = _seen(
         "Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
@@ -2750,6 +2797,18 @@ def _merge(tmp_path, stored: list[dict], fresh: list[dict]) -> dict[str, dict]:
     path.write_text(json.dumps(stored), encoding="utf-8")
     merge_into_processed(fresh, str(path))
     return {r["pi_name"]: r for r in json.loads(path.read_text(encoding="utf-8"))}
+
+
+def test_a_card_listed_again_brings_an_archived_duplicate_back_live_without_its_pointer(tmp_path):
+    # Guard (holds before the pointer rule too): the merge replaces the stored
+    # metadata of a card the page lists again, the inactive state with it.
+    stored = _stored_psych_row("Avery Example", "person1")
+    stored["metadata"].update(_ARCHIVED_DUPLICATE)
+    fresh = _stored_psych_row("Avery Example", "person1")
+    fresh["metadata"]["last_seen_at"] = "2026-11-13T00:00:00"
+    row = _merge(tmp_path, [stored], [fresh])["Avery Example"]
+    assert row["metadata"]["is_active"] is True
+    assert _INACTIVE_STATE.isdisjoint(row["metadata"])
 
 
 def test_a_card_under_in_memoriam_retires_the_stored_row_and_drops_its_address(tmp_path, monkeypatch):

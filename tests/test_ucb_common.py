@@ -200,6 +200,30 @@ class TestMergeCarriesForwardEnrichment:
         assert saved["keywords"] == ["genomics", "genetics", "evolution"]
 
 
+def test_a_listing_again_brings_an_archived_duplicate_back_live_without_its_pointer(tmp_path, monkeypatch):
+    # Guard: the merge replaces the stored metadata of a row its directory
+    # lists again, the inactive state of a consolidation archive with it.
+    import json as _json
+
+    from src.collectors import ucb_common as uc
+
+    def row(metadata):
+        return {"id": "ucb-ib-0001", "source": "ucb_ib_faculty", "source_type": "faculty_research",
+                "pi_name": "Avery Sample", "department": "Integrative Biology", "keywords": ["ecology"],
+                "title": "Research with Prof. Avery Sample — IB (ecology)", "contact_email": None,
+                "metadata": metadata}
+
+    pf = tmp_path / "opportunities.json"
+    pf.write_text(_json.dumps([row({
+        "first_seen_at": "2026-09-01", "is_active": False, "deactivated_at": "2026-11-06",
+        "deactivation_reason": "duplicate_of_live_record", "duplicate_of": "ucb-ib-0002"})]))
+    monkeypatch.setattr(uc, "PROCESSED_FILE", pf)
+
+    uc.merge_into_processed([row({"first_seen_at": "2026-11-13", "is_active": True})])
+    (saved,) = _json.loads(pf.read_text())
+    assert saved["metadata"] == {"first_seen_at": "2026-09-01", "is_active": True}
+
+
 def test_incommon_ca_bundle_appends_intermediates_to_certifi():
     """The CA bundle fetch_soup uses must include certifi's roots AND the bundled
     InCommon intermediates, so an incomplete-chain .edu host verifies without
