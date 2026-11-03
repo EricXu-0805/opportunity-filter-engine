@@ -285,15 +285,15 @@
     },
     "mit": {
       "listing_count": 6,
-      "faculty_contact_count": 1447,
+      "faculty_contact_count": 1440,
       "unreviewed_count": 0,
-      "total_count": 1453
+      "total_count": 1446
     },
     "msu": {
       "listing_count": 6,
-      "faculty_contact_count": 1033,
+      "faculty_contact_count": 1034,
       "unreviewed_count": 0,
-      "total_count": 1039
+      "total_count": 1040
     },
     "ncsu": {
       "listing_count": 5,
@@ -363,9 +363,9 @@
     },
     "psu": {
       "listing_count": 9,
-      "faculty_contact_count": 2790,
+      "faculty_contact_count": 2791,
       "unreviewed_count": 0,
-      "total_count": 2799
+      "total_count": 2800
     },
     "purdue": {
       "listing_count": 60,
@@ -446,10 +446,10 @@
       "total_count": 2122
     },
     "ucb": {
-      "listing_count": 70,
+      "listing_count": 71,
       "faculty_contact_count": 2153,
       "unreviewed_count": 0,
-      "total_count": 2223
+      "total_count": 2224
     },
     "ucf": {
       "listing_count": 4,
@@ -561,9 +561,9 @@
     },
     "umn": {
       "listing_count": 7,
-      "faculty_contact_count": 1444,
+      "faculty_contact_count": 1446,
       "unreviewed_count": 0,
-      "total_count": 1451
+      "total_count": 1453
     },
     "unc": {
       "listing_count": 0,
@@ -585,9 +585,9 @@
     },
     "usc": {
       "listing_count": 6,
-      "faculty_contact_count": 1562,
+      "faculty_contact_count": 1548,
       "unreviewed_count": 0,
-      "total_count": 1568
+      "total_count": 1554
     },
     "usf": {
       "listing_count": 5,
@@ -597,9 +597,9 @@
     },
     "utah": {
       "listing_count": 4,
-      "faculty_contact_count": 1127,
+      "faculty_contact_count": 1128,
       "unreviewed_count": 0,
-      "total_count": 1131
+      "total_count": 1132
     },
     "utdallas": {
       "listing_count": 3,
@@ -681,9 +681,9 @@
     },
     "wpi": {
       "listing_count": 4,
-      "faculty_contact_count": 471,
+      "faculty_contact_count": 470,
       "unreviewed_count": 0,
-      "total_count": 475
+      "total_count": 474
     },
     "yale": {
       "listing_count": 5,
