@@ -1118,6 +1118,11 @@ def merge_into_processed(
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
             )
+            if existing_metadata.get("reference_only") is True and unverified_seed:
+                # A config edit alone does not make reference material an
+                # application: that waits for a run that reads the page.
+                opp["metadata"].update(reference_only=True, status="unknown")
+                opp["application"]["application_url"] = None
             ambiguous_status = opp["metadata"].get("status") == "unknown"
             if unverified_seed or ambiguous_status:
                 # A quick or failed fetch read nothing, so the row keeps what

@@ -874,6 +874,44 @@ def test_a_page_made_reference_keeps_none_of_its_listing_state(processed, stored
     assert target_truth(row).reason_code == "reference_only"
 
 
+def test_a_reference_row_becomes_a_listing_only_after_its_page_is_read(processed, monkeypatch):
+    from src.evidence import target_truth
+
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    source["seeds"] = [spec["url"]]
+    stored = cg._normalize_program(school, source, spec, seed_page_verified=True)
+    stored["metadata"]["reference_only"] = True
+    stored["application"]["application_url"] = None
+    assert target_truth(stored).reason_code == "reference_only"
+    processed.write_text(json.dumps([stored]))
+    _refresh_school(school, national=False)
+    row = _stored(processed)[stored["id"]]
+    assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
+    monkeypatch.setattr(cg, "_fetch", lambda url, **kwargs: _StaticSoup(url))
+    _refresh_school(school, national=False, deep=True)
+    row = _stored(processed)[stored["id"]]
+    assert target_truth(row).actionable and row["application"]["application_url"] == spec["url"]
+
+
+def test_a_moved_reference_row_stays_reference_until_its_new_page_is_read(processed):
+    from src.evidence import target_truth
+
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    stored = cg._normalize_program(school, source, spec, seed_page_verified=True)
+    stored["metadata"]["reference_only"] = True
+    stored["application"]["application_url"] = None
+    processed.write_text(json.dumps([stored]))
+    spec["url"] = "https://example.edu/award-2027/"
+    _refresh_school(school, national=False)
+    row = _stored(processed)[stored["id"]]
+    assert row["url"] == spec["url"]
+    assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
+
+
 class TestDroppedProgramRetirement:
     """Merge only upserts, so a program dropped from a school config used to
     keep its stored row active for good. Duke's Program II and Macalester's
