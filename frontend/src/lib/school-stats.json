@@ -63,9 +63,9 @@
     },
     "bu": {
       "listing_count": 6,
-      "faculty_contact_count": 1943,
+      "faculty_contact_count": 1886,
       "unreviewed_count": 0,
-      "total_count": 1949
+      "total_count": 1892
     },
     "buffalo": {
       "listing_count": 5,
@@ -153,9 +153,9 @@
     },
     "dartmouth": {
       "listing_count": 7,
-      "faculty_contact_count": 932,
+      "faculty_contact_count": 930,
       "unreviewed_count": 0,
-      "total_count": 939
+      "total_count": 937
     },
     "davidson": {
       "listing_count": 5,
@@ -171,9 +171,9 @@
     },
     "duke": {
       "listing_count": 55,
-      "faculty_contact_count": 1192,
+      "faculty_contact_count": 1208,
       "unreviewed_count": 0,
-      "total_count": 1247
+      "total_count": 1263
     },
     "emory": {
       "listing_count": 5,
@@ -213,9 +213,9 @@
     },
     "harvard": {
       "listing_count": 8,
-      "faculty_contact_count": 455,
+      "faculty_contact_count": 449,
       "unreviewed_count": 0,
-      "total_count": 463
+      "total_count": 457
     },
     "haverford": {
       "listing_count": 7,
@@ -237,9 +237,9 @@
     },
     "indiana": {
       "listing_count": 3,
-      "faculty_contact_count": 1676,
+      "faculty_contact_count": 1679,
       "unreviewed_count": 0,
-      "total_count": 1679
+      "total_count": 1682
     },
     "jhu": {
       "listing_count": 27,
@@ -369,9 +369,9 @@
     },
     "purdue": {
       "listing_count": 60,
-      "faculty_contact_count": 2181,
+      "faculty_contact_count": 2183,
       "unreviewed_count": 0,
-      "total_count": 2241
+      "total_count": 2243
     },
     "rice": {
       "listing_count": 5,
@@ -405,9 +405,9 @@
     },
     "smith": {
       "listing_count": 5,
-      "faculty_contact_count": 313,
+      "faculty_contact_count": 314,
       "unreviewed_count": 0,
-      "total_count": 318
+      "total_count": 319
     },
     "stanford": {
       "listing_count": 22,
@@ -549,9 +549,9 @@
     },
     "umd": {
       "listing_count": 7,
-      "faculty_contact_count": 1415,
+      "faculty_contact_count": 1411,
       "unreviewed_count": 0,
-      "total_count": 1422
+      "total_count": 1418
     },
     "umich": {
       "listing_count": 7,
@@ -627,9 +627,9 @@
     },
     "uw": {
       "listing_count": 28,
-      "faculty_contact_count": 2244,
+      "faculty_contact_count": 2246,
       "unreviewed_count": 0,
-      "total_count": 2272
+      "total_count": 2274
     },
     "vanderbilt": {
       "listing_count": 3,
@@ -639,9 +639,9 @@
     },
     "vassar": {
       "listing_count": 6,
-      "faculty_contact_count": 262,
+      "faculty_contact_count": 259,
       "unreviewed_count": 0,
-      "total_count": 268
+      "total_count": 265
     },
     "vt": {
       "listing_count": 7,
@@ -669,9 +669,9 @@
     },
     "wisc": {
       "listing_count": 20,
-      "faculty_contact_count": 1957,
+      "faculty_contact_count": 1958,
       "unreviewed_count": 0,
-      "total_count": 1977
+      "total_count": 1978
     },
     "wlu": {
       "listing_count": 6,
@@ -687,9 +687,9 @@
     },
     "yale": {
       "listing_count": 5,
-      "faculty_contact_count": 1245,
+      "faculty_contact_count": 1251,
       "unreviewed_count": 0,
-      "total_count": 1250
+      "total_count": 1256
     }
   },
   "national_count": 5642
