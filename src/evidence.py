@@ -1763,7 +1763,9 @@ def target_truth(record: dict) -> TargetTruth:
         and source.strip().lower() in _REFERENCE_CONTRACT_SOURCES
         and listing_state == "closed"
     )
-    reference_marker = metadata.get("reference_only") is True
+    # A row that is no longer active is not published as anything, reference
+    # material included, so it reads `inactive` like any other.
+    reference_marker = metadata.get("reference_only") is True and metadata.get("is_active") is not False
     reference_only = reference_marker or source_publishes_reference
 
     def _truth(

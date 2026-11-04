@@ -157,6 +157,23 @@ def source_budget(seconds: float | None):
         _ACTIVE_BUDGET = prev
 
 
+# The ids the corpus held when this refresh started, set by refresh_all around
+# each source's fetch (``run_start_ids``): the school-wide dedup in
+# _fetch_and_normalize keeps a stored person's row over one this run would mint.
+_RUN_START_IDS: frozenset[str] = frozenset()
+
+
+@contextmanager
+def run_start_ids(ids: frozenset[str]):
+    """Hand the fetches inside this window the corpus's run-start ids."""
+    global _RUN_START_IDS
+    prev, _RUN_START_IDS = _RUN_START_IDS, frozenset(ids)
+    try:
+        yield
+    finally:
+        _RUN_START_IDS = prev
+
+
 def _source_budget_spent() -> bool:
     budget = _ACTIVE_BUDGET
     if budget.deadline is None or time.monotonic() < budget.deadline:
@@ -208,6 +225,7 @@ def validate(school: dict) -> list[str]:
         if not school.get(field):
             errors.append(f"missing {field}")
     seen_short: set[str] = set()
+    walks: dict[tuple, list[dict]] = {}
     for dept in school.get("departments", []):
         short = dept.get("short")
         if not short:
@@ -232,6 +250,16 @@ def validate(school: dict) -> list[str]:
                 errors.append(f"{short}: json_dir total_key needs paginate")
             if not jd.get("total_distinct_key"):
                 errors.append(f"{short}: json_dir total_key needs total_distinct_key")
+        if isinstance(jd, dict) and jd.get("id_namespaces"):
+            # A unit left out of its own list keeps no one; units that map names
+            # differently would each keep a person, or none would.
+            if short not in jd["id_namespaces"]:
+                errors.append(f"{short}: json_dir id_namespaces leaves out {short}")
+            walks.setdefault(tuple(jd["id_namespaces"]), []).append(dept)
+    for shorts, depts in walks.items():
+        if any((d.get("id_names") or {}) != (depts[0].get("id_names") or {}) for d in depts):
+            errors.append(f"{', '.join(shorts)}: the units of one json_dir walk need "
+                          "the same id_names")
     return errors
 
 
@@ -483,18 +511,29 @@ def _strip_credentials(name: str) -> str:
 _IN_MEMORIAM_RE = re.compile(r"\(\s*\d{4}\s*[-–—]\s*\d{4}\s*\)")
 
 
+def _clean_name(raw: str | None) -> str:
+    """A spec's name as its record shows it and its id hashes it (the
+    cleanup ``_normalize`` describes)."""
+    name = _strip_credentials(_strip_pronouns(html.unescape((raw or "").strip())))
+    return re.sub(r"[\s*†‡]+$", "", name)
+
+
+def _id_tail(short: str, id_name: str) -> str:
+    """A faculty id after its ``faculty-{id_prefix}-``: the unit, then a hash
+    of the unit and the name."""
+    return f"{short.lower()}-{hashlib.md5(f'{short}-{id_name}'.encode()).hexdigest()[:8]}"
+
+
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
     # JSON/API feeds (e.g. Texas A&M) deliver HTML-entity-encoded names
     # ("Daniel A. Jim&eacute;nez", "Anxiao &quot;Andrew&quot; Jiang"); card
     # names are already unescaped upstream, but unescaping here is idempotent
     # and covers every ingest path.
-    name = _strip_credentials(_strip_pronouns(
-        html.unescape((person.get("name") or "").strip())))
     # Directory footnote markers ("David Barner*", "Jane Doe†" — accepting-
     # students / area-head legends) ride the name anchor on some listings; a
     # marked and unmarked crawl of the same person must hash to the same id.
-    name = re.sub(r"[\s*†‡]+$", "", name)
+    name = _clean_name(person.get("name"))
     if not _is_person_name(name):
         return None
     if _IN_MEMORIAM_RE.search(name):
@@ -555,15 +594,25 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # ``id_names``, so the record keeps its id rather than being retired and
     # minted again.
     id_name = (dept.get("id_names") or {}).get(name, name)
-    name_hash = hashlib.md5(f"{short}-{id_name}".encode()).hexdigest()[:8]
-    opp_id = f"faculty-{school['id_prefix']}-{short.lower()}-{name_hash}"
+    opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
+    marker = dept.get("cross_listing_marker")
+    listing = ""
+    if marker and re.search(marker, name):
+        # The directory's legend marks a person another department holds: the
+        # record shows the name without the mark and names no department
+        # rather than this one, only the page that lists them. The id keeps
+        # the name as listed.
+        name = re.sub(marker, "", name)
+        dept_name = ""
+        listing = f", listed on the {dept['name']}'s faculty page"
 
     # Rank-neutral prose when the source stated no rank or a non-professor
     # rank. Only a source-stated professor rank earns the honorific in the
     # display title; the profile summary never asserts a current opening.
     professor_rank = is_professor_rank(title)
+    in_dept = f" in the {dept_name}" if dept_name else listing
     desc_parts = [
-        f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} "
+        f"Faculty research profile for {title + ' ' if title else ''}{name}{in_dept} "
         f"at {school['organization']}."
     ]
     if research_areas:
@@ -584,7 +633,8 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # professor rank (truthfulness W11). Unknown/non-professor ranks get the
     # bare name; the actual rank ships in metadata.faculty_title.
     honorific = "Prof. " if professor_rank else ""
-    opp_title = f"{honorific}{name} — {short}{research_summary}"
+    unit = f" — {short}" if dept_name else ""
+    opp_title = f"{honorific}{name}{unit}{research_summary}"
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
         "last_verified": now,
@@ -592,7 +642,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "last_seen_at": now,
         "is_active": True,
         "manually_reviewed": False,
-        "notes": f"Curated from {dept_name} faculty directory ({school['organization']})",
+        "notes": f"Curated from {dept_name or dept['name']} faculty directory ({school['organization']})",
         "faculty_title": title,
         "research_areas_raw": research_areas[:300] if research_areas else "",
         "curated": True,
@@ -3145,6 +3195,11 @@ def _fetch_cola(dept: dict) -> list[dict]:
 # link and name, whatever the title gate makes of the row, so the retirement
 # pass keeps a stored person the directory still lists (see
 # ``listed_identities``).
+# ``id_namespaces`` (paginated feeds) lists the units that read one walk
+# together, as UF's Apollo colleges do: each unit keeps the people whose id the
+# corpus already holds under it, and a person it holds under none of them goes
+# to the first. Ids then hold whatever page the feed puts a person on.
+# ``require_title`` keeps a row with no title out (see _json_dir_records).
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3185,7 +3240,8 @@ def _dig(record: dict, path: str):
     return cur
 
 
-def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
+def _fetch_json_dir(dept: dict, walks: dict | None = None,
+                    held: frozenset[str] | None = None) -> list[dict]:
     """Best-effort faculty fetch from an authoritative JSON directory (opt-in).
 
     Field-name options (``name_fields``, ``title_field``, ``email_field``,
@@ -3194,6 +3250,8 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
 
     ``walks`` (one school run's) lets units that page the same ``total_key``
     feed share one walk of it (UF PHHP splits one college tree into three).
+    ``held`` is the school's stored ids (``_stored_id_tails``), which split a
+    walk between its ``id_namespaces`` units; without it no unit splits.
     """
     cfg = dept.get("json_dir")
     if not cfg:
@@ -3279,7 +3337,16 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
         if total_key:
             _json_roster_unread(dept, stated, len(recs_all),
                                 _distinct_rows(recs_all, cfg.get("total_distinct_key")))
-        return _json_dir_records(dept, cfg, recs_all, roster=bool(total_key))
+        units = {s.lower() for s in cfg.get("id_namespaces") or ()}
+        if held is not None and units and not units & {t.rsplit("-", 1)[0] for t in held}:
+            # No stored id names a unit of this walk (the work file is missing or
+            # holds none of them): every row goes to the first unit, and since a
+            # stored person cannot be told from a new one, no unit retires anyone.
+            _cover("identity_match_failures", len(recs_all))
+            logger.warning("faculty_graph: no stored id names a unit of %s's walk "
+                           "(%s); the unit retires nobody this run",
+                           dept.get("short"), ", ".join(cfg["id_namespaces"]))
+        return _json_dir_records(dept, cfg, recs_all, roster=bool(total_key), held=held)
     try:
         if str(cfg.get("method", "get")).lower() == "post":
             # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
@@ -3322,7 +3389,8 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
 
     Paginated REST directory (MSU College of Natural Science:
     ``?page=1..pageCount``, 100 records/page). Follow pages until the feed's own
-    ``count_key`` (pageCount) is reached, a page yields no records, or the
+    ``count_key`` (pageCount; a dotted path for a nested count, UF Apollo's
+    ``pagination.total_pages``) is reached, a page yields no records, or the
     ``max`` guard trips. Records accumulate across pages.
     """
     param = pag.get("param", "page")
@@ -3351,7 +3419,8 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
             break
         recs_all.extend(page_recs)
         cnt = pag.get("count_key")
-        if cnt and isinstance(data, dict) and data.get(cnt) and page >= data[cnt]:
+        count = _dig(data, cnt) if cnt and isinstance(data, dict) else None
+        if isinstance(count, int) and count > 0 and page >= count:
             break
     return recs_all, stated
 
@@ -3393,14 +3462,16 @@ def _json_roster_unread(dept: dict, stated: list, read: int, distinct: int) -> N
                        dept.get("short"), stated, read, distinct)
 
 
-def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> list[dict]:
+def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False,
+                      held: frozenset[str] | None = None) -> list[dict]:
     """Map a JSON directory payload (from a live endpoint or a committed file)
     into faculty specs, honouring the field-name / filter / title-map options.
 
     ``roster`` counts every row into the unit's roster coverage; only a live
     walk that matched the feed's stated total passes it (see ``total_key``),
     and a rendered page's attribute JSON, which parses whole or not at all
-    (the units reading one such page are weighed together)."""
+    (the units reading one such page are weighed together). ``held`` splits
+    the rows between ``id_namespaces`` units (see ``_id_namespace``)."""
     def cover(bucket: str) -> None:
         if roster:
             _cover(bucket)
@@ -3460,6 +3531,11 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
             # A row that does not read as a person is loss, not a classification.
             cover("unparsed_rows")
             continue
+        if (held is not None and cfg.get("id_namespaces")
+                and _id_namespace(cfg["id_namespaces"], dept, name, held) != dept.get("short")):
+            # Another unit reading this walk keeps this person.
+            cover("classified_nonfaculty_rows")
+            continue
         tfl = cfg.get("title_from_list")
         if tfl:
             # The rank lives inside a list of appointment objects, one per
@@ -3503,6 +3579,12 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
             # Feeds that carry a rank CODE, not a rank (HR job codes) — map it;
             # unmapped codes fall back to the map's "_default" (or "Professor").
             title = tm.get(title, tm.get("_default", ""))
+        if cfg.get("require_title") and not title:
+            # A feed that mixes staff and students with faculty cannot tell
+            # whether a row with no title is faculty: not published, and it
+            # keeps its unit from retiring anyone this run.
+            cover("unparsed_rows")
+            continue
         # An ABSENT rank passes the require/drop gates (W11): pre-W11 these
         # rows carried the "Professor" default and passed; a missing rank now
         # stays "" and the lenient absent-field-passes convention keeps the
@@ -3602,6 +3684,31 @@ def _json_name(record: dict, cfg: dict) -> str:
         # its ids when the feed later sends WordPress's &#8217; (Colby).
         name = html.unescape(name).replace("\u2019", "'")
     return name
+
+
+def _id_namespace(shorts: list[str], dept: dict, name: str, held: frozenset[str]) -> str:
+    """Which of the units splitting one walk keeps this person: the first
+    under which the corpus holds their id, else the first."""
+    clean = _clean_name(name)
+    id_name = (dept.get("id_names") or {}).get(clean, clean)
+    return next((s for s in shorts if _id_tail(s, id_name) in held), shorts[0])
+
+
+def _stored_id_tails(school: dict) -> frozenset[str]:
+    """The school's faculty ids the corpus holds, active or retired, after
+    their ``faculty-{id_prefix}-`` (see ``_id_tail``). A retired person listed
+    again keeps their id."""
+    import json
+
+    from .ucb_common import PROCESSED_FILE
+
+    if not PROCESSED_FILE.exists():
+        return frozenset()
+    with PROCESSED_FILE.open("r", encoding="utf-8") as f:
+        corpus = json.load(f)
+    prefix = f"faculty-{school['id_prefix']}-"
+    return frozenset(i[len(prefix):] for o in corpus
+                     if isinstance(i := o.get("id"), str) and i.startswith(prefix))
 
 
 def _json_link_template(record: dict, template: str) -> str:
@@ -3969,6 +4076,45 @@ def duplicate_archive_stamps(rows: list[dict]) -> dict[str, dict]:
     return stamps
 
 
+def settle_dropped_rows(dropped: dict[int, tuple[dict, dict, str]],
+                        published_ids: frozenset[str] = frozenset(),
+                        today: date | None = None,
+                        archived: dict[str, dict] | None = None) -> tuple[set[int], Counter, Counter]:
+    """Delete each row a dedup dropped that this run minted, and keep each one
+    whose id is in ``published_ids`` inactive with ``duplicate_of`` naming the
+    row its drops end at. ``dropped`` maps ``id(row)`` to (row, the row it was
+    dropped into, school); ``archived`` holds the run-start
+    ``duplicate_archive_stamps``. Returns the ``id()`` of each row to delete,
+    and the rows deleted and newly archived by school."""
+    stamp = (today or date.today()).isoformat()
+    archived = archived or {}
+    remove: set[int] = set()
+    removed_by_school: Counter = Counter()
+    archived_by_school: Counter = Counter()
+    for o, survivor, school in dropped.values():
+        # A later pass can drop the row this one was dropped into.
+        while id(survivor) in dropped:
+            survivor = dropped[id(survivor)][1]
+        if o.get("id") not in published_ids:
+            remove.add(id(o))
+            removed_by_school[school] += 1
+            continue
+        meta = o.setdefault("metadata", {})
+        if meta.get("is_active") is not False:
+            # A row archived before this run is active here when its unit lists
+            # it again: the merge replaced its metadata, stamps included.
+            before = archived.get(o.get("id")) or {}
+            again = before.get("duplicate_of") == survivor.get("id")
+            meta.update(is_active=False, deactivation_reason=DUPLICATE_REASON,
+                        deactivated_at=before.get("deactivated_at") if again else stamp)
+        else:
+            again = meta.get("duplicate_of") == survivor.get("id")
+        if not again:
+            archived_by_school[school] += 1
+        meta["duplicate_of"] = survivor.get("id")
+    return remove, removed_by_school, archived_by_school
+
+
 def collapse_same_person_faculty(opps: list[dict],
                                  person_pages: frozenset[str] = frozenset(),
                                  published_ids: frozenset[str] = frozenset(),
@@ -4013,13 +4159,8 @@ def collapse_same_person_faculty(opps: list[dict],
     row that already pointed at the same kept row."""
     pages = _one_person_pages(opps, frozenset(person_pages))
     active = [o for o in opps if _is_active_faculty(o)]
-    stamp = (today or date.today()).isoformat()
-    archived = archived or {}
-    remove: set[int] = set()
     # id(row) -> (row, the row it was dropped into, school), in drop order.
     dropped: dict[int, tuple[dict, dict, str]] = {}
-    removed_by_school: Counter = Counter()
-    archived_by_school: Counter = Counter()
     nulled_by_school: Counter = Counter()
 
     def drop(survivor: dict, o: dict, school) -> None:
@@ -4228,28 +4369,8 @@ def collapse_same_person_faculty(opps: list[dict],
             _carry_sighting(by_url_name or by_email, o, pages)
             drop(by_url_name or by_email, o, school)
 
-    for o, survivor, school in dropped.values():
-        # A later pass can drop the row this one was dropped into.
-        while id(survivor) in dropped:
-            survivor = dropped[id(survivor)][1]
-        if o.get("id") not in published_ids:
-            remove.add(id(o))
-            removed_by_school[school] += 1
-            continue
-        meta = o.setdefault("metadata", {})
-        if meta.get("is_active") is not False:
-            # A row archived before this run is active here when its unit lists
-            # it again: the merge replaced its metadata, stamps included.
-            before = archived.get(o.get("id")) or {}
-            again = before.get("duplicate_of") == survivor.get("id")
-            meta.update(is_active=False, deactivation_reason=DUPLICATE_REASON,
-                        deactivated_at=before.get("deactivated_at") if again else stamp)
-        else:
-            again = meta.get("duplicate_of") == survivor.get("id")
-        if not again:
-            archived_by_school[school] += 1
-        meta["duplicate_of"] = survivor.get("id")
-
+    remove, removed_by_school, archived_by_school = settle_dropped_rows(
+        dropped, published_ids, today, archived)
     kept = [o for o in opps if id(o) not in remove]
     return {
         "kept": kept,
@@ -4859,7 +4980,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
                       parse_status: str | None = None,
                       failure_reason: str | None = None,
                       coverage: dict | None = None,
-                      listing_urls=None) -> dict:
+                      listing_urls=None, read_not_emitted: list[dict] = ()) -> dict:
     """One unit's observation record for the per-unit collection ledger.
 
     Reports only what this collector can attest: the stable identities it
@@ -4871,6 +4992,11 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     ``coverage`` is reported only by the families that can count their roster
     rows. Leaving it absent is deliberate and safe: the consumer treats
     unreported coverage as unknown, which authorises nothing.
+
+    ``read_not_emitted`` are rows the unit read that the school-wide dedup
+    left to another row: their ids and identities count as observed, but not
+    toward ``observed_count`` or the parse status, which stay those of the
+    rows emitted.
     """
     ids = [r["id"] for r in produced if r.get("id")]
     identities, unresolved = [], 0
@@ -4888,6 +5014,14 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
             continue
         seen_identity.add(key)
         identities.append(list(key))
+    observed_ids = list(ids)
+    for r in read_not_emitted:
+        if r.get("id") and r["id"] not in observed_ids:
+            observed_ids.append(r["id"])
+        key = identity_key(r, listing)
+        if key is not None and key not in seen_identity:
+            seen_identity.add(key)
+            identities.append(list(key))
     if parse_status is None:
         # A unit configured to produce rows that produced none is a failure,
         # not an empty department: fail closed and let the consumer preserve.
@@ -4948,7 +5082,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "collector_version": _unit_collector_version(dept),
         "ledger_version": UNIT_LEDGER_VERSION,
         "observed_count": len(ids),
-        "observed_entity_ids": ids,
+        "observed_entity_ids": observed_ids,
         "observed_identities": identities,
         # This unit's own listing pages, reduced: a row whose url is one of
         # them is judged by name and address (identity_key), here and at the
@@ -5024,11 +5158,19 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         raise ValueError(f"{school.get('school_slug')} faculty config invalid: " + "; ".join(errors))
 
     records: list[dict] = []
-    seen_emails: set[str] = set()
-    seen_urls: set[str] = set()
+    # The emitted row holding each address and profile link, and each emitted
+    # row's unit and keys; rows a stored person's row read later replaced.
+    by_email: dict[str, dict] = {}
+    by_url: dict[str, dict] = {}
+    unit_of: dict[int, str] = {}
+    keys_of: dict[int, tuple[str, str]] = {}
+    displaced: set[int] = set()
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     json_walks: dict = {}
+    held = (_stored_id_tails(school) if deep and any(
+        (d.get("json_dir") or {}).get("id_namespaces") for d in school.get("departments", []))
+        else frozenset())
     for dept in school.get("departments", []):
         _unit_short = str(dept.get("short") or "").lower()
         _unit_started = datetime.now(UTC).isoformat()
@@ -5060,7 +5202,7 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept, json_walks)
+                               + _fetch_json_dir(dept, json_walks, held)
                                + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)
@@ -5077,6 +5219,9 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
             # json_dir roster (UCSD Physics) has no scrape block to hang the
             # pass on, but its people still have profile endpoints to follow.
             specs = _apply_profile_enrich(specs, dept.get("profile_enrich"))
+        # Rows this unit read that are left to another row with their address
+        # or link: still observed by this unit (ids and identities only).
+        read_not_emitted: list[dict] = []
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:
@@ -5086,23 +5231,44 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 uk = ""
             if rec["id"] in seen_ids:
                 continue
-            if ek and ek in seen_emails:
-                continue
-            if uk and uk in seen_urls:
-                continue
+            holders = {id(r): r for r in (by_email.get(ek) if ek else None,
+                                       by_url.get(uk) if uk else None) if r is not None}
+            if holders:
+                stored = rec["id"] in _RUN_START_IDS
+                holder_stored = any(r["id"] in _RUN_START_IDS for r in holders.values())
+                if not stored or holder_stored:
+                    if holder_stored and not stored:
+                        read_not_emitted.append(rec)
+                    continue
+                # A stored person's row, read on its own unit's page, takes the
+                # place of the row this run would mint for them from another.
+                for r in holders.values():
+                    displaced.add(id(r))
+                    if unit_of[id(r)] == _unit_short:
+                        read_not_emitted.append(r)
+                    elif unit_ledger is not None and unit_of[id(r)] in unit_ledger:
+                        unit_ledger[unit_of[id(r)]]["observed_count"] -= 1
+                    r_ek, r_uk = keys_of[id(r)]
+                    if r_ek:
+                        by_email[r_ek] = rec
+                    if r_uk:
+                        by_url[r_uk] = rec
             seen_ids.add(rec["id"])
             if ek:
-                seen_emails.add(ek)
+                by_email[ek] = rec
             if uk:
-                seen_urls.add(uk)
+                by_url[uk] = rec
+            unit_of[id(rec)] = _unit_short
+            keys_of[id(rec)] = (ek, uk)
             records.append(rec)
         if unit_ledger is not None and _unit_short:
             unit_ledger[_unit_short] = _unit_observation(
-                school, dept, records[_mark:], _unit_started,
+                school, dept, [r for r in records[_mark:] if id(r) not in displaced], _unit_started,
                 coverage=_ACTIVE_COVERAGE, listing_urls=listing_urls,
+                read_not_emitted=read_not_emitted,
             )
         _ACTIVE_COVERAGE = None
-    return records
+    return [r for r in records if id(r) not in displaced]
 
 
 def merge_into_processed(new_opps: list[dict]):

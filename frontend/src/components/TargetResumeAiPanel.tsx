@@ -121,9 +121,9 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     batch_context_too_large: translate(locale, 'tailor.fullTarget.batchContextTooLarge'),
     target_has_no_text: copy('This opportunity lists no research topics or requirements to adapt to. Your draft is unchanged.', '这个机会没有列出可对照的研究方向或要求，文稿未改动。'),
     rewrite_unchecked: copy('The fact check did not finish for this line. Your wording is kept; continue to check it again.', '这一条的事实核对没有完成，保留原表述；可继续处理再核对一次。'),
-    no_link: copy('No change recommended: nothing in this line matches what the opportunity lists.', '建议保留原文：这一条与机会列出的内容没有对应。'),
+    no_link: copy('AI gave no link to the opportunity that we could check.', 'AI 没有给出可以核对的与机会的关联。'),
     already_aligned: copy('No change recommended: this line already uses the opportunity’s wording.', '建议保留原文：这一条已使用机会中的表述。'),
-    no_safe_change: copy('No change recommended: related wording found, but no change the checks could verify.', '建议保留原文：找到了相关表述，但没有能通过核对的改法。'),
+    no_safe_change: copy('AI linked this line to the opportunity but did not suggest a rewrite.', 'AI 关联了这条经历与机会，但没有建议改写。'),
     cosmetic_only: copy('No change recommended: the only possible edits were cosmetic.', '建议保留原文：可做的修改只是措辞上的。'),
     beyond_allowed_edit: copy('Kept your wording: the suggested edit went beyond the allowed changes.', '保留你的表述：建议的修改超出了允许的范围。'),
     rewrite_rejected: copy('Kept your wording: the suggestion did not pass the fact check.', '保留你的表述：建议未通过事实核对。'),
@@ -159,7 +159,9 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         if (!live(generation, expected)) return;
         if (!prepared.ok) { setError(prepared.code); return; }
         working = { prepared: prepared.value, responses: [] };
-        setSelected(new Set()); setDismissed(new Set()); setOrder(false);
+        // Wording choices belong to these suggestions, even when unit IDs repeat.
+        // Continue keeps them; a fresh generation requires a fresh choice.
+        setSelected(new Set()); setPlain(new Set()); setDismissed(new Set()); setOrder(false);
       }
       setRun(working); runRef.current = working;
       const blocked = working.prepared.skipped.find((item) => stopping.has(item.reason_code ?? ''));
@@ -263,11 +265,19 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     tighten: copy('Drops a repeated word', '删去重复的词'),
   })[op];
   const kept = review?.receipts.filter((item) => item.status === 'unchanged') ?? [];
+  const skipped = review?.receipts.filter((item) => item.status === 'skipped') ?? [];
   const canContinue = !!run && (review?.coverage.pending || review?.receipts.some((item) => item.status === 'skipped' && !permanent.has(item.reason_code ?? '')));
   const unitLabel = (id: string) => {
     const unit = run?.prepared.units.find((item) => item.unit_id === id);
     return unit?.label || (unit?.role === 'experience' ? copy('Experience', '经历') : unit?.role ?? id);
   };
+  const receiptList = (items: TargetResumeAiReceipt[]) => <ul className="mt-2 space-y-3">
+    {items.map((item) => <li key={item.unit_id} className="min-w-0 break-words">
+      <p className="text-xs font-medium">{unitLabel(item.unit_id)}</p>
+      <blockquote className="mt-1 whitespace-pre-wrap break-words border-l-2 pl-2 text-gray-900">{item.before_text}</blockquote>
+      <p className="mt-1">{reasonText(item.reason_code)}</p>
+    </li>)}
+  </ul>;
   const fullPreview = (value: TargetResumeV1, title: string) => <section aria-label={title} className="min-w-0 rounded-lg border p-3">
     <h4 className="font-medium">{title}</h4>
     {value.document.sections.filter((section) => section.included).map((section) => <div key={section.id} className="mt-3">
@@ -302,10 +312,13 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     {review && <>
       <p role="status" className="mt-3 text-sm">{copy(`Suggested ${review.coverage.rewrites} rewrites · ${review.coverage.advice} advice-only · ${review.coverage.unchanged} no change · ${review.coverage.pending} pending · ${review.coverage.skipped} unprocessed`,
         `建议改写 ${review.coverage.rewrites} 条 · 仅供参考 ${review.coverage.advice} 条 · 保留原文 ${review.coverage.unchanged} 条 · 待处理 ${review.coverage.pending} 条 · 未完成 ${review.coverage.skipped} 条`)}</p>
-      {review.receipts.filter((item) => item.status === 'skipped').map((item) => <p key={item.unit_id} className="mt-2 break-words text-sm text-amber-800">{unitLabel(item.unit_id)}: {reasonText(item.reason_code)}</p>)}
+      {skipped.length > 0 && <section aria-label={copy('Unprocessed lines', '未完成的条目')} className="mt-3 text-sm text-amber-800">
+        <h4 className="text-xs font-medium">{copy('Unprocessed', '未完成')}</h4>
+        {receiptList(skipped)}
+      </section>}
       {kept.length > 0 && <section aria-label={copy('Lines kept as written', '保留原文的条目')} className="mt-3 text-sm">
         <h4 className="text-xs font-medium text-gray-500">{copy('Kept as written', '保留原文')}</h4>
-        {kept.map((item) => <p key={item.unit_id} className="mt-1 break-words text-gray-600">{unitLabel(item.unit_id)}: {reasonText(item.reason_code)}</p>)}
+        {receiptList(kept)}
       </section>}
       <details className="mt-3 rounded-lg border p-3"><summary className="cursor-pointer text-sm font-medium">{copy('Content priorities and target evidence', '内容优先级与目标依据')}</summary>
         {review.receipts.filter((item) => item.status !== 'skipped').map((item) => <div key={item.unit_id} className="mt-3 min-w-0 border-t pt-3 text-sm">

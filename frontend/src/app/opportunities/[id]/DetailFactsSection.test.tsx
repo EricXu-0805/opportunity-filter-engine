@@ -22,6 +22,78 @@ function row(field: string, facet: string, state?: string) {
 }
 
 describe('DetailFactsSection', () => {
+  it.each(['en', 'zh'] as const)('keeps profile evidence under stated research only (%s)', (locale) => {
+    const c = contract.cases.find((x) => x.name === 'faculty_profile')!;
+    const fields = readDetailFields({ detail_fields: c.detail_fields })!;
+    render(<DetailFactsSection fields={fields} isFaculty t={(key, vars) => translate(locale, key, vars)} />);
+    const stated = row('research_content', 'research_areas', 'source');
+    const inferred = row('research_content', 'research_areas', 'inferred');
+    expect(within(stated).getByRole('link')).toHaveAttribute('href', 'https://example.edu/people/ada');
+    expect(stated).toHaveTextContent('2026-09-01');
+    expect(within(inferred).queryByRole('link')).not.toBeInTheDocument();
+    expect(inferred).not.toHaveTextContent('2026-09-01');
+    // No second, shared footer below both rows.
+    expect(within(screen.getByTestId('fact-field-research_content')).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it.each(['OpenAlex', 'Illinois Experts', 'unrecognized provider', undefined])(
+    'does not cite the personal page for external-only topics (%s)', (sourceName) => {
+      const fields = readDetailFields({ detail_fields: {
+        version: DETAIL_FIELDS_VERSION,
+        fields: { research_content: {
+          inferred: { research_areas: { value: ['Genomics'], basis: 'external_enrichment', source_name: sourceName } },
+          // An older API can still send the misleading field-level footer.
+          provenance: { source_url: 'https://example.edu/people/ada', observed_at: '2026-10-26' },
+        } },
+      } })!;
+      render(<DetailFactsSection fields={fields} isFaculty t={(key, vars) => translate('en', key, vars)} />);
+      const group = screen.getByTestId('fact-field-research_content');
+      expect(within(group).queryByRole('link')).not.toBeInTheDocument();
+      expect(group).not.toHaveTextContent('2026-10-26');
+      expect(group).toHaveTextContent('System inference');
+      expect(group).toHaveTextContent(sourceName === 'OpenAlex' || sourceName === 'Illinois Experts'
+        ? `Topics inferred from a matched ${sourceName} record` : 'From a matched external record');
+      expect(group).not.toHaveTextContent('unrecognized provider');
+    },
+  );
+
+  it('keeps a research quote on its own URL and date beside external topics', () => {
+    const fields = readDetailFields({ detail_fields: {
+      version: DETAIL_FIELDS_VERSION,
+      fields: { research_content: {
+        explicit: { research_areas: 'Genomics' },
+        inferred: { research_areas: { value: ['Genetics'], basis: 'external_enrichment', source_name: 'Illinois Experts' } },
+        quotes: { research_areas: { text: 'Our group studies genomics.', source_url: 'https://example.edu/lab', observed_at: '2026-10-20' } },
+        provenance: { source_url: 'https://example.edu/people/ada', observed_at: '2026-10-26' },
+      } },
+    } })!;
+    render(<DetailFactsSection fields={fields} isFaculty t={(key, vars) => translate('zh', key, vars)} />);
+    const stated = row('research_content', 'research_areas', 'source');
+    expect(within(stated).getByRole('link')).toHaveAttribute('href', 'https://example.edu/lab');
+    expect(stated).toHaveTextContent('2026-10-20');
+    expect(row('research_content', 'research_areas', 'inferred')).toHaveTextContent('根据匹配到的 Illinois Experts 记录推断的研究方向');
+    const group = screen.getByTestId('fact-field-research_content');
+    expect(group).not.toHaveTextContent('2026-10-26');
+    expect(within(group).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('keeps the observed date under stated research beside external topics when there is no page link', () => {
+    const fields = readDetailFields({ detail_fields: {
+      version: DETAIL_FIELDS_VERSION,
+      fields: { research_content: {
+        explicit: { research_areas: 'Genomics' },
+        inferred: { research_areas: { value: ['Genetics'], basis: 'external_enrichment', source_name: 'OpenAlex' } },
+        provenance: { source_url: null, observed_at: '2026-10-26' },
+      } },
+    } })!;
+    render(<DetailFactsSection fields={fields} isFaculty t={(key, vars) => translate('en', key, vars)} />);
+    expect(row('research_content', 'research_areas', 'source')).toHaveTextContent('Observed 2026-10-26');
+    expect(row('research_content', 'research_areas', 'inferred')).not.toHaveTextContent('2026-10-26');
+    const group = screen.getByTestId('fact-field-research_content');
+    expect(within(group).getAllByText(/2026-10-26/)).toHaveLength(1);
+    expect(within(group).queryByRole('link')).not.toBeInTheDocument();
+  });
+
   it('shows a source-confirmed field as "Source says"', () => {
     renderCase('sro_structured_listing');
     const citizenship = row('eligibility', 'citizenship', 'source');
@@ -72,9 +144,9 @@ describe('DetailFactsSection', () => {
   // lists, from our config, read "A default we apply to this source" — a
   // constant on every row, which they are not.
   it.each([
-    ['en', 'System inference', 'From our listing’s major list, not confirmed on the program page.',
-      'These come from our listing’s own list, not confirmed on the program page.', 'A default we apply to this source'],
-    ['zh', '系统推断', '来自我们列表里的专业清单，项目页面未确认。', '这些来自我们列表里的年级清单，项目页面未确认。',
+    ['en', 'System inference', 'From our listing’s major list. Check the program’s eligibility requirements.',
+      'From our listing’s class-year list. Check the program’s eligibility requirements.', 'A default we apply to this source'],
+    ['zh', '系统推断', '来自本站整理的专业清单，申请资格请核对项目要求。', '来自本站整理的年级清单，申请资格请核对项目要求。',
       '我们对该来源使用的默认值'],
   ] as const)('says a configured major or class-year list is our listing\'s (%s)', (locale, inferred, majorsNote, yearNote, sourceDefault) => {
     const fields = readDetailFields({
@@ -107,9 +179,9 @@ describe('DetailFactsSection', () => {
   // citizenship rule and deadline note, from our config, read "A default we
   // apply to this source" like the stipend Simplify writes on every row.
   it.each([
-    ['en', 'From our listing’s entry for this program, not confirmed on the program page.',
-      'From our listing’s deadline note, not confirmed on the program page.', 'A default we apply to this source'],
-    ['zh', '来自我们列表里这个项目的条目，项目页面未确认。', '来自我们列表里的截止说明，项目页面未确认。',
+    ['en', 'From our listing’s entry for this program. Check the program’s current information.',
+      'From our listing’s deadline note. Check the program’s current dates.', 'A default we apply to this source'],
+    ['zh', '来自本站整理的项目信息，当前情况请核对项目页面。', '来自本站整理的截止说明，当前日期请核对项目页面。',
       '我们对该来源使用的默认值'],
   ] as const)('says a configured pay, intl, citizenship or deadline note is our listing\'s (%s)', (locale, entryNote, noteNote, sourceDefault) => {
     const translateKey = (key: string) => translate(locale, key);
@@ -256,7 +328,7 @@ describe('DetailFactsSection', () => {
   it('shows a stated research summary and our derived topics as two rows', () => {
     renderCase('faculty_profile', true);
     expect(within(row('research_content', 'research_areas', 'source')).getByText('Analytical engines; number theory')).toBeInTheDocument();
-    expect(within(row('research_content', 'research_areas', 'inferred')).getByText('detail.facts.basis.external_enrichment')).toBeInTheDocument();
+    expect(within(row('research_content', 'research_areas', 'inferred')).getByText('detail.facts.externalSource')).toBeInTheDocument();
     expect(screen.getByTestId('facts-faculty-note')).toBeInTheDocument();
   });
 

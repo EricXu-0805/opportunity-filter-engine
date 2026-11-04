@@ -95,7 +95,7 @@ function FellowshipPreviewCard({
     );
   }
   return (
-    <Link href={href} className={cardClasses}>
+    <Link href={href} prefetch={false} className={cardClasses}>
       {body}
     </Link>
   );

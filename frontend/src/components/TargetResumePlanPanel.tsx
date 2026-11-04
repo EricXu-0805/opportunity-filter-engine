@@ -1,6 +1,6 @@
 'use client';
 
-import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
+import { targetResumeEvidenceLabel, targetResumeEvidenceSource } from '@/lib/target-resume-evidence';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
@@ -13,6 +13,7 @@ import { FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS } from '@/lib/target-resume-ai-
 import type { PreparedTargetResumePlan, TargetResumePlanRequest, TargetResumePlanResponse } from '@/lib/target-resume-plan-protocol';
 import type { TargetResumeProvenanceAnnotation } from '@/lib/target-resume-provenance';
 import type { TargetResumeV1 } from '@/lib/target-resume';
+import type { TargetResumeAiEvidence } from '@/lib/target-resume-ai-protocol';
 import type { TargetResumeAiPanelProps } from './TargetResumeAiPanel';
 
 export type TargetResumePlanPanelProps = TargetResumeAiPanelProps;
@@ -22,6 +23,37 @@ const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opa
 const toggle = (values: Set<string>, id: string, checked: boolean) => {
   const next = new Set(values); if (checked) next.add(id); else next.delete(id); return next;
 };
+
+/** Keep the model's exact excerpt distinct from the complete source. */
+function PlanSourceQuote({ evidence, source, label, expandLabel, locale, border }: {
+  evidence: { start: number; end: number; quote: string }; source: string | null;
+  label?: string; expandLabel: string; locale: string; border: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const characters = expanded && source !== null ? Array.from(source) : null;
+  return <div>
+    <blockquote className={`whitespace-pre-wrap break-words border-l-2 ${border} pl-2`}>{label && `${label}: `}{evidence.quote}</blockquote>
+    {source !== null && source !== evidence.quote && <details className="mt-1" onToggle={event => setExpanded(event.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm text-indigo-700">{expandLabel}</summary>
+      {characters && <>
+        <p className="mt-2 text-xs text-gray-500">{locale === 'zh' ? '高亮部分是 AI 实际引用的文字。' : 'Highlighted text is the AI’s exact excerpt.'}</p>
+        <p className="mt-1 whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-2 text-sm">{characters.slice(0, evidence.start).join('')}<mark>{evidence.quote}</mark>{characters.slice(evidence.end).join('')}</p>
+      </>}
+    </details>}
+  </div>;
+}
+function sourceContextLabel(evidence: TargetResumeAiEvidence, locale: string): string {
+  const labels = {
+    // A description can be stored cut at 1,500 characters, so its label never says "full".
+    description: ['Read more of the opportunity description', '查看更多机会介绍'],
+    requirement: ['Read full requirement', '查看完整要求'],
+    paper_title: ['Read full paper title', '查看完整论文标题'],
+    paper_abstract: ['Read full abstract', '查看完整摘要'],
+    lab_heading: ['Read full section heading', '查看完整小节标题'],
+    lab_text: ['Read full website section', '查看完整官网小节'],
+  };
+  return labels[evidence.field][locale === 'zh' ? 1 : 0];
+}
 
 export default function TargetResumePlanPanel({ supportGroups, draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumePlanPanelProps) {
   const locale = useLocale();
@@ -208,9 +240,13 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
           <div className="mt-2 space-y-2 text-sm">
             {/* Only its presence in the opportunity's text is checked, so the quote is not shown as support for the reason (M133). */}
             {item.target_evidence.length > 0 && <p className="font-medium">{copy('AI-linked text from the opportunity', 'AI 关联的机会原文')}</p>}
-            {item.target_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
+            {item.target_evidence.map((evidence, index) => <PlanSourceQuote key={index} evidence={evidence}
+              source={targetResumeEvidenceSource(review.prepared.draft.target_snapshot, evidence)}
+              label={targetResumeEvidenceLabel(evidence, locale)} expandLabel={sourceContextLabel(evidence, locale)} locale={locale} border="border-indigo-200" />)}
             <p className="font-medium">{copy('Source evidence', '原文依据')}</p>
-            {item.source_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-gray-200 pl-2">{evidence.quote}</blockquote>)}
+            {item.source_evidence.map((evidence, index) => <PlanSourceQuote key={index} evidence={evidence}
+              source={block.lines.find(line => line.id === evidence.unit_id)?.original ?? null}
+              expandLabel={copy('Read full source line', '查看本行完整原文')} locale={locale} border="border-gray-200" />)}
           </div>
           </details>
           <details className="mt-3"><summary className="cursor-pointer text-sm">{copy('Read complete original and current text', '查看完整原文与当前稿')}</summary>

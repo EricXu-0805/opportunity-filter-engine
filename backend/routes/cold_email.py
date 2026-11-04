@@ -1241,6 +1241,7 @@ def _render_student_brief(p: dict) -> str:
         ("Today's date (for tense only)", datetime.now(UTC).date().isoformat()),
         ("Name", p["name"]),
         ("Year & major", {"year": p["year"], "major": p["major"], "school": p["school"]}),
+        ("International student (self-reported)", p.get("international_student")),
         ("Skills (self-reported level)", skills),
         ("Coursework by status (each status states the only way its courses may be stated)",
          course_brief(p.get("courses") or [])),
@@ -1261,6 +1262,8 @@ def _render_student_brief(p: dict) -> str:
         "An experience context belongs only to its own excerpt. Null means no activity was assigned. "
         "Never transfer names, organizations, dates or contributions between entries; "
         "kind is a record category, not evidence of a student title or responsibilities.\n"
+        "International student: true is a self-report; null means not supplied, not domestic. "
+        "Mention it only when relevant to the request. It establishes no citizenship, visa, work authorization or eligibility.\n"
         + "".join(f"- {label}: {json.dumps(value, ensure_ascii=False)}\n" for label, value in fields)
         + contact_context_brief(p)
     )
@@ -2175,7 +2178,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.22"
+COLD_EMAIL_PIPELINE_VERSION = "w12.23"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a

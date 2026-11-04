@@ -543,10 +543,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   return <div role="dialog" aria-modal="true" aria-labelledby={`${domId}-title`} className="fixed inset-0 z-[55] flex sm:items-center sm:justify-center">
     <div className="absolute inset-0 bg-gray-900/60" aria-hidden="true" onClick={() => askLeave('close')} />
     <div ref={panelRef} className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-xl sm:mx-4 sm:h-auto sm:max-h-[92vh] sm:max-w-6xl sm:rounded-2xl">
-      <header className="flex items-start justify-between gap-3 border-b p-4 sm:px-6">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b p-4 sm:flex sm:justify-between sm:px-6">
         <div className="min-w-0"><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{opportunity.title}</p></div>
-        <div className="ml-3 flex shrink-0 items-start gap-2">
-          <button type="button" className={button} disabled={!ownerReady || (!profileAvailable && !supplementMounted)} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
+        <div className="contents sm:ml-3 sm:flex sm:shrink-0 sm:items-start sm:gap-2">
+          <button type="button" className={`${button} col-start-1 row-start-2 justify-self-start`} disabled={!ownerReady || (!profileAvailable && !supplementMounted)} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
             onClick={() => {
               if (!supplementMounted) {
                 supplementInputRef.current = incomingProfileKey;
@@ -557,7 +557,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             }}>
             {copy('Add experience details', '补充经历')}
           </button>
-          <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
+          <button type="button" className={`${button} col-start-2 row-start-1`} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
         </div>
       </header>
       <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />

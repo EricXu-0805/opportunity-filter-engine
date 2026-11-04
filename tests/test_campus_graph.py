@@ -23,6 +23,7 @@ from src.collectors import campus_graph as cg
 from src.collectors.import_document import MAX_DEPTH, MAX_NODES
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.collectors.schools.boulder import SCHOOL as BOULDER
+from src.collectors.schools.northwestern import SCHOOL as NORTHWESTERN
 from src.collectors.schools.princeton import SCHOOL as PRINCETON
 from src.collectors.schools.uci import SCHOOL as UCI
 from src.collectors.schools.ucsb import SCHOOL as UCSB
@@ -134,6 +135,15 @@ class TestValidator:
         }}
         assert "more than one emit bucket stamps no school" in cg.validate(bad)
 
+    @pytest.mark.parametrize("value", ["yes", 1, 0])
+    def test_reference_only_must_be_a_boolean(self, value):
+        spec = cg.program("k", "T", "http://x", "d")
+        spec["reference_only"] = value
+        bad = {"school_slug": "x", "emit": {"campus": ("s", "x", "campus")},
+               "sources": [{"source_name": "n", "source_type": cg.PROGRAM, "emit": "campus",
+                            "crawl": cg.STATIC, "seeds": ["http://x"], "programs": [spec]}]}
+        assert "k: reference_only must be a boolean" in cg.validate(bad)
+
 
 def test_splitting_a_config_by_shard_changes_no_record():
     """refresh_all collects the sources that publish in national.json on the
@@ -153,6 +163,32 @@ def test_splitting_a_config_by_shard_changes_no_record():
 
 
 # --- Seed normalization (driven over the whole registry) --------------------
+
+# Configured pages read on 2026-11-02 as a directory, a guide or an
+# invitation-only program rather than an application. A spec newly marked
+# reference_only fails TestSeedNormalization until it is listed here.
+_REFERENCE_PAGES = {
+    "cincinnati": {"cincinnati_office_of_research", "cincinnati_undergraduate_research_guide"},
+    "clemson": {"clemson_student_research", "clemson_scholar_programs"},
+    "jhu": {"imagine_internship_programs"},
+    "miami": {"miami_office_of_undergraduate_research", "miami_open_research_positions"},
+    "northwestern": {"nu_our_hub", "nu_mccormick_summer_programs", "nu_mccormick_research_hub",
+                     "nu_baker_program_hub", "nu_naise_undergrad", "nu_feinberg_lurie_summer"},
+    "ucf": {"ucf_office_of_undergraduate_research", "ucf_ramp_scholar_programs", "ucf_looking_for_research"},
+    "uf": {"cur_hub", "ursp"},
+    "unl": {"unl_office_undergraduate_research_fellowships", "unl_research_fellowships"},
+    "washu": {"our_hub"},
+}
+
+
+# Configured rows the ranker reads as graduate-only, so every undergraduate
+# sees them at GRAD_LEVEL_PENALTY with a "Targets graduate / PhD students"
+# concern. A configured text newly read that way fails here.
+_GRADUATE_ONLY_ROWS = {
+    ("stanford", "ssrp_amgen_scholars"), ("ucsb", "cal_bridge"), ("ucsd", "mcnair"),
+    ("umich", "sure"), ("upenn", "hillman_scholars"),
+}
+
 
 @pytest.fixture(scope="module")
 def all_records():
@@ -202,6 +238,22 @@ class TestSeedNormalization:
         for o in all_records:
             assert o.get("deadline") is None
             assert o.get("is_rolling") is True
+
+    def test_the_configured_rows_read_as_graduate_only_are_the_listed_ones(self, all_records):
+        from src.matcher.ranker import _requires_graduate_standing
+
+        flagged = {(o["metadata"]["collector_school"], o["metadata"]["collector_key"])
+                   for o in all_records if _requires_graduate_standing(o)}
+        assert flagged == _GRADUATE_ONLY_ROWS
+
+    def test_the_configured_reference_pages_are_the_listed_ones(self, all_records):
+        from src.evidence import target_truth
+
+        reference: dict[str, set[str]] = {}
+        for o in all_records:
+            if target_truth(o).reason_code == "reference_only":
+                reference.setdefault(o["metadata"]["collector_school"], set()).add(o["metadata"]["collector_key"])
+        assert reference == _REFERENCE_PAGES
 
     def test_source_type_never_faculty(self, all_records):
         """campus_* source_type must never read as faculty_research (that triggers
@@ -275,6 +327,11 @@ class TestSeedNormalization:
             ("Archived notice: Applications open.", "unknown"),
             ("Historical record: Applications open.", "unknown"),
             ("Program information only.", "unknown"),
+            ("Apply now. Applications for SROP 2027 will open November 1, 2026.", "unknown"),
+            ("Apply now. The application for Summer 2027 will go live in December.", "unknown"),
+            ("Apply now. Applications for the Summer Research Program 2027 will open in December.", "unknown"),
+            ("Apply now. The 2027 lab will open in June.", "open"),
+            ("Apply now. Applications for this program will be open until filled.", "open"),
         ],
     )
     def test_status_detection_is_fail_closed(self, text, expected):
@@ -337,6 +394,55 @@ class TestSeedNormalization:
         by_key = {record["metadata"]["collector_key"]: record for record in records}
         assert by_key["ok"]["metadata"]["seed_page_verified"] is True
         assert by_key["missing"]["metadata"]["seed_page_verified"] is False
+
+    def test_school_report_keeps_failure_reasons_separate_from_readable_pages(self, monkeypatch):
+        import requests
+
+        urls = [f"https://example.edu/{part}" for part in ("denied", "gone", "timeout", "unparsed", "ok")]
+        source = dict(source_name="our", source_type=cg.PROGRAM, emit="campus", crawl=cg.STATIC,
+                      seeds=urls, programs=[cg.program("award", "Award", urls[-1], "Student award")])
+        school = dict(PRINCETON, sources=[source])
+
+        def reply(url, **kwargs):
+            if url == urls[2]:
+                raise requests.Timeout("private diagnostic")
+            response = requests.Response()
+            response.status_code = {urls[0]: 403, urls[1]: 404}.get(url, 200)
+            response.url = url
+            # A page that loads but keeps its conditions outside parsed blocks.
+            block = "div" if url == urls[3] else "p"
+            response._content = f"<html><body><main><{block}>Applicants must submit a CV.</{block}></main></body></html>".encode()
+            return response
+
+        monkeypatch.setattr(requests, "get", reply)
+        records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=True)
+        assert evidence["condition_gaps_by_source"] == {
+            "our": {"http_403": 1, "http_404": 1, "timeout": 1, "unparsed_relevant_content": 1}}
+        assert {u["requested_url"]: u["capture"]["reason"] for u in evidence["condition_capture_updates"]} == {
+            urls[0]: "http_403", urls[1]: "http_404", urls[2]: "timeout", urls[3]: "unparsed_relevant_content"}
+        assert evidence["seed_pages_loaded"] == 2 and evidence["seed_pages_failed"] == 3
+        assert records[0]["metadata"]["seed_page_verified"]
+        assert "private diagnostic" not in json.dumps(evidence)
+
+    def test_school_report_leaves_out_a_source_whose_pages_all_loaded(self, monkeypatch):
+        monkeypatch.setattr(cg, "_fetch", lambda url, **kwargs: _StaticSoup(url))
+        url = "https://example.edu/award"
+        source = dict(source_name="our", source_type=cg.PROGRAM, emit="campus", crawl=cg.STATIC,
+                      seeds=[url], programs=[cg.program("award", "Award", url, "Student award")])
+        _, evidence = cg.fetch_and_normalize_with_evidence(dict(PRINCETON, sources=[source]), deep=True)
+        assert evidence["seed_pages_loaded"] == 1
+        assert evidence["condition_gaps_by_source"] == {}
+
+    def test_an_unresolved_render_is_reported_as_such(self, monkeypatch):
+        from src.collectors import faculty_graph
+
+        monkeypatch.setattr(faculty_graph, "_render_soup", lambda url, **kwargs: None)
+        url = "https://example.edu/walled"
+        source = dict(source_name="walled", source_type=cg.PROGRAM, emit="campus", crawl=cg.STATIC, render=True,
+                      seeds=[url], programs=[cg.program("award", "Award", url, "Student award")])
+        _, evidence = cg.fetch_and_normalize_with_evidence(dict(PRINCETON, sources=[source]), deep=True)
+        assert evidence["condition_gaps_by_source"] == {"walled": {"render_unresolved": 1}}
+        assert evidence["seed_pages_failed"] == 1
 
     def test_quick_unverified_seed_does_not_reactivate_old_closed_record(
         self,
@@ -803,6 +909,169 @@ def processed(monkeypatch, tmp_path):
     path.write_text("[]", encoding="utf-8")
     monkeypatch.setattr(cg, "PROCESSED_FILE", path)
     return path
+
+
+def test_a_reference_page_stays_readable_but_offers_no_application():
+    from src.evidence import target_truth
+
+    school = _listing_school("guide")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    spec["reference_only"] = True
+    row = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    assert row["url"] == spec["url"] and row["metadata"]["last_verified"]
+    assert row["metadata"]["status"] == "unknown" and row["title"] == spec["title"]
+    assert row["application"]["application_url"] is None
+    truth = target_truth(row)
+    assert truth.reference_only and not truth.actionable and truth.reason_code == "reference_only"
+
+
+@pytest.mark.parametrize("stored_status", ["open", "closed"])
+def test_a_page_made_reference_keeps_none_of_its_listing_state(processed, stored_status):
+    from src.evidence import target_truth
+
+    school = _listing_school("guide")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    listing = cg._normalize_program(school, source, spec, status=stored_status, seed_page_verified=True)
+    processed.write_text(json.dumps([listing]))
+    spec["reference_only"] = True
+    _refresh_school(school, national=False)
+    row = _stored(processed)[listing["id"]]
+    assert row["title"] == spec["title"] and row["metadata"]["status"] == "unknown"
+    # A closed listing's inactivity was the page's closure, which reference material has none of.
+    assert row["metadata"]["is_active"] is True
+    assert row["metadata"]["last_verified"] == listing["metadata"]["last_verified"]
+    assert target_truth(row).reason_code == "reference_only"
+
+
+def test_a_reference_row_becomes_a_listing_only_after_its_page_is_read(processed, monkeypatch):
+    from src.evidence import target_truth
+
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    source["seeds"] = [spec["url"]]
+    stored = cg._normalize_program(school, source, spec, seed_page_verified=True)
+    stored["metadata"]["reference_only"] = True
+    stored["application"]["application_url"] = None
+    assert target_truth(stored).reason_code == "reference_only"
+    processed.write_text(json.dumps([stored]))
+    _refresh_school(school, national=False)
+    row = _stored(processed)[stored["id"]]
+    assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
+    monkeypatch.setattr(cg, "_fetch", lambda url, **kwargs: _StaticSoup(url))
+    _refresh_school(school, national=False, deep=True)
+    row = _stored(processed)[stored["id"]]
+    assert target_truth(row).actionable and row["application"]["application_url"] == spec["url"]
+
+
+def test_a_moved_reference_row_stays_reference_until_its_new_page_is_read(processed):
+    from src.evidence import target_truth
+
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    stored = cg._normalize_program(school, source, spec, seed_page_verified=True)
+    stored["metadata"]["reference_only"] = True
+    stored["application"]["application_url"] = None
+    processed.write_text(json.dumps([stored]))
+    spec["url"] = "https://example.edu/award-2027/"
+    _refresh_school(school, national=False)
+    row = _stored(processed)[stored["id"]]
+    assert row["url"] == spec["url"]
+    assert target_truth(row).reason_code == "reference_only" and row["application"]["application_url"] is None
+
+
+def test_a_reference_page_dropped_from_its_config_reads_no_longer_active(processed):
+    from src.evidence import target_truth
+
+    school = _listing_school("kept", "guide")
+    school["sources"][0]["programs"][1]["reference_only"] = True
+    _refresh_school(school, national=False)
+    _refresh_school(_listing_school("kept"), national=False)
+    row = _stored(processed)[_program_id(school, "campus", "guide")]
+    assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
+    assert target_truth(row).reason_code == "inactive"
+
+
+def test_the_report_counts_program_and_reference_pages_by_how_they_were_read(monkeypatch):
+    school = _listing_school("award", "guide", "unread")
+    source = school["sources"][0]
+    award, guide, _unread = source["programs"]
+    guide["reference_only"] = True
+    source["seeds"] = [award["url"], guide["url"]]
+    conditions = "<main><h2>Eligibility</h2><p>Applicants must submit a transcript.</p></main>"
+
+    def fetch(url, **kwargs):
+        if url == award["url"]:
+            return _observed(BeautifulSoup(conditions, "html.parser"), url)
+        return _StaticSoup(url)
+
+    monkeypatch.setattr(cg, "_fetch", fetch)
+    _, deep = cg.fetch_and_normalize_with_evidence(school, national=False, deep=True)
+    assert deep["program_page_checks"] == {"captured": 1, "not_attempted": 1}
+    assert deep["reference_page_checks"] == {"empty": 1}
+    _, quick = cg.fetch_and_normalize_with_evidence(school, national=False)
+    assert quick["program_page_checks"] == {"not_attempted": 2}
+    assert quick["reference_page_checks"] == {"not_attempted": 1}
+
+
+def test_the_report_does_not_invent_an_attempt_after_a_source_exception(monkeypatch):
+    def interrupted(*args):
+        raise RuntimeError("crawl stopped")
+
+    monkeypatch.setattr(cg, "_crawl_source", interrupted)
+    _, deep = cg.fetch_and_normalize_with_evidence(_listing_school("award"), national=False, deep=True)
+    assert deep["program_page_checks"] == {"unconfirmed": 1} and deep["reference_page_checks"] == {}
+
+
+def test_the_report_counts_a_page_two_programs_share_once():
+    page = "https://example.edu/awards/"
+    school = _listing_school("first", "second", urls={"first": page, "second": page})
+    _, quick = cg.fetch_and_normalize_with_evidence(school, national=False)
+    assert quick["program_page_checks"] == {"not_attempted": 1}
+
+
+@pytest.mark.parametrize(("stored_status", "kept_status"), [("open", "unknown"), ("closed", "closed")])
+def test_a_moved_program_borrows_no_reading_from_its_old_page(processed, stored_status, kept_status):
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old = cg._normalize_program(school, source, spec, status=stored_status, seed_page_verified=True)
+    processed.write_text(json.dumps([old]))
+    spec["url"] = "https://example.edu/award-2027/"
+    _refresh_school(school, national=False)
+    row = _stored(processed)[old["id"]]
+    assert row["url"] == spec["url"] and row["metadata"]["last_verified"] is None
+    # An open word does not move with the program; a closure still holds until a read.
+    assert row["metadata"]["status"] == kept_status
+    assert ("applications open" in row["title"]) is False
+
+
+def test_an_upgrade_to_https_is_the_same_page_not_a_move(processed):
+    school = _listing_school("award", urls={"award": "http://example.edu/award/"})
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    processed.write_text(json.dumps([old]))
+    spec["url"] = "https://example.edu/award/"
+    _refresh_school(school, national=False)
+    row = _stored(processed)[old["id"]]
+    assert row["metadata"]["last_verified"] == old["metadata"]["last_verified"]
+    assert row["metadata"]["status"] == "open"
+
+
+def test_a_moved_program_does_not_revive_a_row_retired_while_open(processed):
+    school = _listing_school("award")
+    source = school["sources"][0]
+    spec = source["programs"][0]
+    old = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    old["metadata"].update(is_active=False, deactivation_reason="school_unsupported")
+    processed.write_text(json.dumps([old]))
+    spec["url"] = "https://example.edu/award-2027/"
+    _refresh_school(school, national=False)
+    assert _stored(processed)[old["id"]]["metadata"]["is_active"] is False
 
 
 class TestDroppedProgramRetirement:
@@ -1600,6 +1869,116 @@ def test_uf_newcastle_row_is_kept_but_never_served():
         assert hard_exclusion(row, _filter_context(profile)) == "inactive"
 
 
+def test_the_apl_internships_are_configured_from_apls_own_page_only(processed):
+    """HOUR's APL gateway row said HOUR does not administer the APL
+    internships and that applications go through APL directly, and
+    apl_college_internships lists them from APL's own careers page. The
+    gateway page sits behind a bot check (robots.txt answered 403 on
+    2026-11-02), so its spec leaves the config and its stored row retires."""
+    from copy import deepcopy
+
+    from src.collectors.schools.jhu import SCHOOL as JHU
+    from src.evidence import target_truth
+
+    gateway = "https://hour.jhu.edu/opportunities/aplinternships/"
+    specs = [spec for source in JHU["sources"] for spec in source.get("programs", [])]
+    assert not any(spec["key"] == "hour_apl_research_internships" or spec["url"] == gateway for spec in specs)
+    assert not any(gateway in source.get("seeds", []) for source in JHU["sources"])
+    [apl] = [spec for spec in specs if spec["url"] == "https://www.jhuapl.edu/careers/internships"]
+    assert apl["key"] == "apl_college_internships"
+
+    before = deepcopy(JHU)
+    source = next(s for s in before["sources"] if s["source_name"] == "jhu_announcement_campus")
+    source["programs"].append(cg.program("hour_apl_research_internships", "Research Internships @APL", gateway, "Gateway"))
+    stored = cg._normalize_program(before, source, source["programs"][-1])
+    assert stored["id"] == "jhu-cd4d240839a2"
+    processed.write_text(json.dumps([stored]), encoding="utf-8")
+    _refresh_school(JHU, national=False)
+    row = _stored(processed)[stored["id"]]
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
+    assert target_truth(row).reason_code == "inactive"
+
+
+def test_the_jhu_internship_guide_is_cited_at_its_readable_page_in_its_words():
+    """Checked against the page on 2026-11-02. The Imagine Center page it
+    replaces answered with a bot check, robots.txt included."""
+    from src.collectors.schools.jhu import SCHOOL as JHU
+
+    guide = "https://apply.jhu.edu/academics/learning-at-hopkins/undergraduate-internships/"
+    [row] = [o for o in cg.fetch_and_normalize(JHU) if o["metadata"]["collector_key"] == "imagine_internship_programs"]
+    assert row["url"] == guide
+    assert next(s for s in JHU["sources"] if s["source_name"] == "jhu_career_campus")["seeds"] == [guide]
+    # Page title: "Undergraduate Internships | Johns Hopkins University Admissions".
+    assert row["title"] == "Undergraduate Internships (Johns Hopkins University Admissions)"
+    # Its opening paragraph, verbatim.
+    assert row["description"] == (
+        "Internships allow you to put your learning into practice, open your mind to new possibilities, "
+        "and expand your understanding of the world around you. Through our Life Design Lab, you\u2019ll have "
+        "access to valuable services, including networking events, r\u00e9sum\u00e9 workshops, and mock "
+        "interviews, so you\u2019re ready to pursue your goals.")
+    # Site header: "Johns Hopkins University | Undergraduate Admissions".
+    assert row["department"] == "Undergraduate Admissions"
+    # The page states no pay, majors or deadline for the internships it describes.
+    assert (row["paid"], row["compensation_details"], row["eligibility"]["majors"]) == ("unknown", "", [])
+    assert row["metadata"]["deadline_note"] == ""
+
+
+def test_the_lurie_summer_research_directory_is_described_in_its_pages_words():
+    """Checked against the page on 2026-11-02."""
+    from src.collectors.schools.northwestern import SCHOOL as NU
+
+    [row] = [o for o in cg.fetch_and_normalize(NU) if o["metadata"]["collector_key"] == "nu_feinberg_lurie_summer"]
+    # Page heading: "Summer Research Programs".
+    assert row["title"] == "Feinberg / Lurie Cancer Center Summer Research Programs Directory"
+    # "LYRIC Undergraduate students interested in biomedical and health sciences are invited to apply" and
+    # "ChicagoCHEC Research Fellows A comprehensive learning experience for undergraduate and
+    # post-baccalaureate students from Northeastern Illinois University, ... in the Chicago metropolitan area."
+    assert row["description"] == (
+        "Lists the Lurie Cancer Center's summer research programs: LYRIC, for undergraduate students "
+        "interested in biomedical and health sciences, and ChicagoCHEC Research Fellows, for undergraduate "
+        "and post-baccalaureate students from Northeastern Illinois University, University of Illinois at "
+        "Chicago, Northwestern University, the City Colleges of Chicago and other Community/Junior Colleges "
+        "in the Chicago metropolitan area.")
+    # The page states no stipend or pay.
+    assert (row["paid"], row["compensation_details"]) == ("unknown", "")
+
+
+# Configured program pages that more than one spec cites, as the keys that
+# share each page. Such a page describes none of them alone
+# (shared_program_page), so a spec pointed at another spec's page fails here.
+_SHARED_PROGRAM_PAGES = {
+    "bc": [{"bc_advanced_study_grants", "bc_asg_arts", "bc_asg_language", "bc_asg_summer_research",
+            "bc_asg_thesis_research"},
+           {"bc_conference_travel_grants", "bc_undergrad_research_opportunities"}],
+    "hamilton": [{"hamilton_intl_summer", "hamilton_kirkland"}, {"hamilton_smallen", "hamilton_support_projects"}],
+    "haverford": [{"haverford_cpgc_engaged_research", "haverford_cpgc_summer_internships"},
+                  {"haverford_hcah_student_fellowships", "haverford_hcah_summer_scholars"},
+                  {"haverford_kinsc_interdisciplinary", "haverford_kinsc_summer_research"},
+                  {"haverford_mellon_mays", "haverford_provost_student_faculty_research"}],
+    "northwestern": [{"nu_mrsec_reu", "nu_mrsec_uri"}],
+    "princeton": [{"our_funding", "senior_thesis_funding", "ufac"}],
+    "sbu": [{"explorations_in_stem", "ureca_summer", "velay_fellowship"}],
+    "smith": [{"smith_aemes", "smith_mckinley"}],
+    "wellesley": [{"wellesley_beckman_scholars", "wellesley_first_year_apprentice", "wellesley_knapp_social_science",
+                   "wellesley_mcnair", "wellesley_mellon_mays", "wellesley_science_center_summer",
+                   "wellesley_sophomore_early_research", "wellesley_summer_research",
+                   "wellesley_wintersession_research"}],
+}
+
+
+def test_the_program_pages_shared_by_several_specs_are_the_listed_ones():
+    shared: dict[str, set[frozenset[str]]] = {}
+    for school in SCHOOL_CONFIGS:
+        specs = [spec for source in school.get("sources", []) for spec in source.get("programs", [])]
+        for spec in specs:
+            if cg._ambiguous_program_url(school, spec["url"]):
+                keys = {other["key"] for other in specs if cg._same_page_url(other["url"], spec["url"])
+                        or cg._same_page_url(spec["url"], other["url"])}
+                shared.setdefault(school["school_slug"], set()).add(frozenset(keys))
+    assert shared == {slug: {frozenset(keys) for keys in pages} for slug, pages in _SHARED_PROGRAM_PAGES.items()}
+
+
 # --- Per-school: Princeton (the reference config) ---------------------------
 
 class TestPrinceton:
@@ -1742,6 +2121,59 @@ class TestBoulder:
         bd = cg.source_breakdown(recs)
         assert bd["total"] == len(recs)
         assert sum(bd["by_source_type"].values()) == len(recs)
+
+
+class TestNorthwesternConfiguredFacts:
+    """Configured values checked against each row's own page on 2026-11-02."""
+
+    @pytest.fixture(scope="class")
+    def by_key(self):
+        return {o["metadata"]["collector_key"]: o for o in cg.fetch_and_normalize(NORTHWESTERN)}
+
+    def test_urap_pay_is_the_rate_its_page_states(self, by_key):
+        urap = by_key["nu_urap"]
+        # "Students in the program are paid $17.05/hour, typically earning up to $1,705 (100 hours of work)."
+        assert urap["compensation_details"] == "$17.05/hour, typically earning up to $1,705 (100 hours of work)"
+        assert "$17.05/hour" in urap["description"] and "$16.60" not in urap["description"]
+
+    def test_lyric_gives_its_2027_program_dates_and_deadline(self, by_key):
+        lyric = by_key["nu_lurie_cancer_summer_internship"]
+        # "Program dates: June 14 - August 6, 2027"
+        assert "(June 14 - Aug 6, 2027;" in lyric["description"] and "2026" not in lyric["description"]
+        assert lyric["metadata"]["deadline_note"] == (
+            "Your completed application must be received by midnight on Sunday, February 14, 2027.")
+
+    def test_srop_gives_its_2027_cycle_without_a_configured_gpa_field(self, by_key):
+        from src.matcher.ranker import _requires_graduate_standing
+
+        srop = by_key["nu_tgs_srop"]
+        # The page's heading "June 14-August 6, 2027" and its "SROP 2027 Application" paragraph.
+        assert "June 14 - August 6, 2027" in srop["description"] and "2026)" not in srop["description"]
+        assert srop["compensation_details"] == "$6,500 stipend (before tax) that includes partial meal stipend"
+        assert srop["metadata"]["deadline_note"] == (
+            "Applications for SROP 2027 will open November 1, 2026. Early submissions are strongly encouraged.")
+        # The page lists four things applicants "must" do. Quoting only some of them reads as the
+        # whole list, and the fourth ("an interest in pursuing a doctoral degree") would make the
+        # ranker treat SROP as graduate-only, so the description quotes none of them.
+        assert "must" not in srop["description"] and srop["eligibility"]["min_gpa"] is None
+        assert not _requires_graduate_standing(srop)
+        # The page's benefit bullets stay separate items: the stipend does not include the rest.
+        assert "partial meal stipend; round-trip transportation" in srop["description"]
+
+    def test_ayurg_advanced_cites_the_page_its_old_address_redirects_to(self, by_key):
+        moved = "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/"
+        assert by_key["nu_ayurg_advanced"]["url"] == moved
+        seeds = {seed for source in NORTHWESTERN["sources"] for seed in source["seeds"]}
+        assert moved in seeds and "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/" not in seeds
+
+
+def test_ucf_surf_pay_is_the_course_scholarship_its_page_states():
+    from src.collectors.schools.ucf import SCHOOL as UCF
+
+    surf, = (o for o in cg.fetch_and_normalize(UCF) if o["metadata"]["collector_key"] == "ucf_surf")
+    # Program Benefits: "$2,000 academic scholarship for summer courses (Summer A or C only)"
+    assert surf["compensation_details"] == "$2,000 academic scholarship for summer courses (Summer A or C only)"
+    assert "stipend" not in surf["description"] and "stipend" not in surf["keywords"]
 
 
 def test_seed_fetch_completes_the_incommon_chain(monkeypatch):

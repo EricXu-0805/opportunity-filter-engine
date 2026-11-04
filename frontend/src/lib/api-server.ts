@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { PUBLIC_RELEASE_CACHE_VERSION } from './release-scope';
 import type { Opportunity } from './types';
 
@@ -85,7 +86,10 @@ export function decodeRouteId(raw: string): string {
   }
 }
 
-export async function fetchOpportunityDetail(id: string): Promise<OpportunityDetailOutcome> {
+// Metadata and the page share this read within one server render. The abort
+// signal opts out of fetch's automatic deduplication, so use React's
+// request-scoped cache; no-store still fetches current truth on the next request.
+export const fetchOpportunityDetail = cache(async (id: string): Promise<OpportunityDetailOutcome> => {
   const base = serverApiBase();
   const url = releaseScopedUrl(
     `${base.replace(/\/$/, '')}/api/opportunities/${encodeURIComponent(id)}`,
@@ -116,7 +120,7 @@ export async function fetchOpportunityDetail(id: string): Promise<OpportunityDet
   } finally {
     clearTimeout(timer);
   }
-}
+});
 
 const SIMILAR_TIMEOUT_MS = 8000;
 

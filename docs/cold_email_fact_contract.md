@@ -210,3 +210,15 @@ First contact, referral and follow-up use a separate confirmed input contract.
 See [email_contact_context.md](email_contact_context.md) for the four-route
 receipt, manual-edit retention and contact-history evidence boundary. Prior
 messages, replies and introductions do not authenticate resume claims.
+
+## Subject context during refinement (M32)
+
+Whole-email and selected-text refinement both send the current subject to the
+server. The subject is draft context, not evidence of eligibility, a deadline or
+an attached file. Existing condition checks inspect it alongside the proposed
+body; a rejected edit preserves the original body. Refinement returns body edits
+and does not rewrite the subject.
+
+The client preserves supplied subject text exactly, including an empty string.
+Older whole-email callers that omit a subject continue to omit that field;
+selected-text requests without one still send an empty string.

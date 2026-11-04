@@ -44,7 +44,10 @@ _CLOSED_RE = re.compile(
 # Apply Now button and was served as "(applications open)" (2026-08-31).
 _FUTURE_OPEN_RE = re.compile(
     r"""
-    \bapplications?\s+(?:for\s+(?:the\s+)?\d{4}\s+)?(?:will|would|should)\s+(?:be\s+)?open(?:ing)?\b
+    # A named cycle can intervene: "Applications for SROP 2027 will open".
+    # Keep the optional label within this phrase and require its four-digit year.
+    \bapplications?\s+(?:for\s+(?:[\w-]+\s+){0,5}\d{4}\s+)?
+        (?:will|would|should)\s+(?:(?:be\s+)?open(?:ing)?|go\s+live)\b
     |
     \b(?:the\s+)?application(?:s)?\s+(?:site|portal|window|period|form|cycle)\s+
         (?:will\s+)?(?:be\s+)?open(?:s|ing)?\s+

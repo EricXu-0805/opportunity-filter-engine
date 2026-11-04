@@ -190,6 +190,40 @@ def test_any_invalid_structure_or_quote_invalidates_the_whole_plan(endpoint, kin
     assert len(endpoint.calls) == 1 and len(body["manifest"]) == 2
 
 
+@pytest.mark.parametrize("wrapper", ["```json\n{}\n```", "```\n{}\n```", "  ```json\n{}\n```\n"])
+def test_fenced_plan_keeps_the_same_complete_sources(endpoint, monkeypatch, wrapper):
+    model = endpoint.model
+    monkeypatch.setattr(ai, "chat_completion", lambda messages, **kwargs: wrapper.format(model(messages, **kwargs)))
+    doc = endpoint.doc()
+    body = completed(endpoint, endpoint.submit(doc), doc)
+    assert body["items"][0]["source_evidence"][0]["quote"] == doc["document"]["sections"][1]["blocks"][0]["lines"][0]["original"]
+
+
+@pytest.mark.parametrize("failure,reason", [
+    ("missing_section", "invalid_model_response"),
+    ("missing_end", "no_source_evidence"),
+    ("editable_quote", "no_source_evidence"),
+    ("commentary", "invalid_model_response"),
+])
+def test_fence_support_does_not_fill_missing_fields_or_trust_editable_text(endpoint, monkeypatch, failure, reason):
+    model = endpoint.model
+    def response(messages, **kwargs):
+        data = json.loads(model(messages, **kwargs))
+        row = data["items"][0]
+        if failure == "missing_section":
+            row.pop("section_id")
+        elif failure == "missing_end":
+            row["source_evidence"][0].pop("end")
+        elif failure == "editable_quote":
+            row["source_evidence"][0].update(start=0, end=12, quote="Led the team")
+        raw = "```json\n" + json.dumps(data) + "\n```"
+        return raw + ("\nThis is the plan." if failure == "commentary" else "")
+    monkeypatch.setattr(ai, "chat_completion", response)
+    doc = endpoint.doc()
+    doc["document"]["sections"][1]["blocks"][0]["lines"][0]["text"] = "Led the team"
+    unavailable(endpoint.submit(doc), reason)
+
+
 @pytest.mark.parametrize("original,proposed,locale", [
     # Shorter and faithful: still not shown, because no review checks the plan's wording.
     (ORIGINAL, "I wrote parser tests.", "en"),

@@ -44,6 +44,7 @@ SCHOOL: dict = {
                     "and is the gateway to the University Scholars, Emerging "
                     "Scholars, URSP, and SUIRP programs.",
                     lab_or_program="Center for Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["undergraduate research", "research opportunities",
@@ -93,6 +94,7 @@ SCHOOL: dict = {
                     "research positions, and provides networking with "
                     "distinguished faculty plus leadership experience.",
                     lab_or_program="University Research Scholars Program",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman"],
                     deadline_note="Invitation-only; extended at admission.",

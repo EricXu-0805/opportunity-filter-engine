@@ -187,6 +187,7 @@ class TestThreeStates:
         assert research["inferred"]["research_areas"] == {
             "value": ["analytical engines", "number theory"],
             "basis": "external_enrichment",
+            "source_name": "OpenAlex",
         }
         assert research["unknown"] == []
 
@@ -196,6 +197,42 @@ class TestThreeStates:
 # ---------------------------------------------------------------------------
 
 class TestNoCollapse:
+    @pytest.mark.parametrize(("method", "source_name"), [
+        ("derived:openalex_topics", "OpenAlex"),
+        ("derived:illinois_experts_concepts", "Illinois Experts"),
+        ("derived:unrecognized_provider", None),
+    ])
+    @pytest.mark.parametrize("has_stated_research", [False, True])
+    def test_external_topics_do_not_borrow_profile_provenance(self, method, source_name, has_stated_research):
+        record = copy.deepcopy(_CASES["faculty_profile"])
+        record["metadata"]["inferred_fields"]["keywords"] = method
+        if not has_stated_research:
+            record["metadata"].pop("research_areas_raw")
+        research = _fields(record)["research_content"]
+        inferred = research["inferred"]["research_areas"]
+        assert inferred["basis"] == "external_enrichment"
+        assert inferred.get("source_name") == source_name
+        # The profile's URL/date describe only its own text. The collectors
+        # did not retain an external-topic URL or observation date.
+        assert "source_url" not in inferred and "observed_at" not in inferred
+        assert research["provenance"] == (
+            {"source_url": record["url"], "observed_at": record["metadata"]["last_verified"]}
+            if has_stated_research else {"source_url": None, "observed_at": None}
+        )
+
+    def test_only_research_drops_the_page_provenance_for_external_topics(self):
+        # Only research topics stop citing the page: another field whose only
+        # values come from a matched external record keeps its link and date.
+        record = copy.deepcopy(_CASES["stamped_listing"])
+        record["metadata"]["inferred_fields"]["paid"] = "derived:unrecognized_provider"
+        fields = _fields(record)
+        funding = fields["funding"]
+        assert funding["explicit"] == {}
+        assert funding["inferred"] == {"paid": {"value": "yes", "basis": "external_enrichment"}}
+        assert funding["provenance"] == fields["school"]["provenance"]
+        assert funding["provenance"]["source_url"] == record["url"]
+        assert funding["provenance"]["observed_at"]
+
     def test_unknown_eligibility_is_not_ineligible(self):
         # The template most collectors write when the page is silent:
         # citizenship_required False beside international_friendly unknown.
@@ -627,7 +664,8 @@ class TestApiAndFrontendAgree:
         research = build_detail_fields(payload, canonical)["fields"]["research_content"]
         assert research["explicit"] == {}
         assert research["inferred"]["research_areas"] == {"value": ["Oviduct", "Porcine Sperm"],
-                                                          "basis": "external_enrichment"}
+                                                          "basis": "external_enrichment",
+                                                          "source_name": "Illinois Experts"}
         assert payload["keywords_attribution"] == "inferred"
 
     def test_directory_keywords_are_an_external_inference(self, monkeypatch):

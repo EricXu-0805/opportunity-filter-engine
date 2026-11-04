@@ -113,12 +113,12 @@ def test_direction_is_complete_bound_to_document_and_never_student_fact():
 def test_untrusted_reason_cannot_claim_accomplishments_beside_real_quotes():
     doc = document()
     _, _, selected, _ = ai.prepare_batch(request(doc), doc)
-    # With a link the reason quotes the linked words; without one, the whole original.
-    for links, quoted in (([LINK], 'Python'), ([], ORIGINAL)):
+    # With or without a link the reason quotes the whole original, never only the linked words.
+    for links in ([LINK], []):
         result, _ = outcome(doc, selected, model_unit(selected[0], links=links))
         reason = result[0]['suggestion']['reason']
         assert result[0]['status'] == 'unchanged' and ATTACK not in reason
-        assert json.dumps(quoted) in reason
+        assert f'Student original: {json.dumps(ORIGINAL)}' in reason
     blocks, _, _ = plan.prepare_plan(request(doc, planning=True), doc)
     line = blocks[0]['lines'][-1]
     row = {'section_id': blocks[0]['section_id'], 'block_id': blocks[0]['block_id'], 'action': 'keep', 'reason': ATTACK,

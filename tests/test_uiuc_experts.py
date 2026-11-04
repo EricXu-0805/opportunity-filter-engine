@@ -299,6 +299,34 @@ def test_enrich_takes_targets_in_a_new_order_each_month():
     assert sorted(order("2026-10")) == sorted(order("2026-11"))
 
 
+def test_refresh_keeps_a_duplicate_the_data_refresh_archived(monkeypatch, tmp_path):
+    """The pass merges into the file the refresh wrote, and the merge runs the
+    uiuc dedups again: a row the refresh kept inactive as a duplicate (a saved
+    id) stays as it was, beside the row it names."""
+    import json
+
+    from src.collectors.uiuc_faculty import DEPARTMENTS, normalize_faculty
+
+    def card(name, keywords):
+        return normalize_faculty({"name": name, "email": "person1@illinois.edu",
+                                  "url": f"{DEPARTMENTS['psych']['base']}/directory/profile/person1"},
+                                 DEPARTMENTS["psych"], keywords=keywords)
+
+    kept = card("Avery Sample", ["psychology"])
+    archived = card("Avery Q. Sample", ["memory", "attention"])
+    state = {"is_active": False, "deactivated_at": "2026-11-02",
+             "deactivation_reason": "duplicate_of_live_record", "duplicate_of": kept["id"]}
+    archived["metadata"].update(state)
+    p = tmp_path / "opps.json"
+    p.write_text(json.dumps([kept, archived]))
+    monkeypatch.setattr(e, "enrich", lambda records, departments, **kw: [
+        {**r, "keywords": ["memory", "learning"]} for r in records if r["id"] == kept["id"]])
+    e.refresh(str(p))
+    saved = {r["id"]: r["metadata"] for r in json.loads(p.read_text())}
+    assert saved[kept["id"]]["is_active"] is True
+    assert {k: saved[archived["id"]].get(k) for k in state} == state
+
+
 def test_refresh_passes_its_budget_and_the_month(monkeypatch, tmp_path):
     import json
     import time

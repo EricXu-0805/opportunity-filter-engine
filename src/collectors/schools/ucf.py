@@ -49,6 +49,7 @@ SCHOOL: dict = {
                     "opportunities, learning how to get started, and finding "
                     "support for undergraduate research and creative projects.",
                     lab_or_program="Office of Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     keywords=["undergraduate research", "faculty mentorship",
@@ -59,17 +60,18 @@ SCHOOL: dict = {
                     "Summer Undergraduate Research Fellowship — SURF (UCF)",
                     "https://academicsuccess.ucf.edu/our/summer-undergraduate-research-fellowship/",
                     "SURF is UCF's Summer Undergraduate Research Fellowship: a "
-                    "competitive award that funds students to work full-time on a "
+                    "competitive award that supports students working on a "
                     "faculty-mentored research or creative project over the summer, "
-                    "with a stipend and structured cohort support. Open to "
+                    "with a summer-course scholarship and structured cohort support. Open to "
                     "continuing UCF undergraduates across disciplines who have "
                     "identified a faculty mentor.",
                     lab_or_program="Summer Undergraduate Research Fellowship",
                     opportunity_type="summer_program",
                     paid="stipend",
+                    compensation="$2,000 academic scholarship for summer courses (Summer A or C only)",
                     preferred_year=["sophomore", "junior", "senior"],
                     keywords=["summer research", "research fellowship",
-                              "stipend", "faculty-mentored"],
+                              "summer-course scholarship", "faculty-mentored"],
                 ),
                 program(
                     "ucf_ramp_scholar_programs",
@@ -83,6 +85,7 @@ SCHOOL: dict = {
                     "cohort programs pair students with faculty mentors and provide "
                     "training, community, and funding toward graduate school.",
                     lab_or_program="Research and Mentoring Program",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior"],
                     keywords=["RAMP", "McNair Scholars", "first-year research",
@@ -114,6 +117,7 @@ SCHOOL: dict = {
                     "through finding on-campus opportunities and preparing to reach "
                     "out to potential research advisors across every college.",
                     lab_or_program="Office of Undergraduate Research",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore"],
                     keywords=["getting started", "finding a mentor",

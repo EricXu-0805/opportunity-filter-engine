@@ -2965,6 +2965,44 @@ class TestBusinessFacultyGetNoLabType:
         assert "IRB" in _lab_type_tone("humanities")
 
 
+class TestFacultyWithNoDepartmentGetNoLabType:
+    """A faculty row that names no department and carries no field signal
+    says nothing about the kind of work, so it gets no lab type, as a business
+    department does: the dry default would tell a historian listed on another
+    department's page to link a GitHub project."""
+
+    @staticmethod
+    def _faculty(department, keywords=(), source_type="faculty_research"):
+        from backend.data_loader import _sanitize_opportunity
+
+        opp = {
+            "id": "faculty-test-nodept", "source_type": source_type,
+            "pi_name": "Ada Example", "department": department,
+            "organization": "Example University", "title": "Prof. Ada Example",
+            "description_raw": "", "description_clean": "",
+            "keywords": list(keywords), "eligibility": {}, "application": {}, "metadata": {},
+        }
+        _sanitize_opportunity(opp)
+        return opp
+
+    def test_no_department_and_no_signal_gets_no_claim(self):
+        from src.recommender.cold_email import _detect_lab_type
+
+        assert _detect_lab_type(self._faculty("")) is None
+
+    def test_a_field_signal_still_decides_without_a_department(self):
+        from src.recommender.cold_email import _detect_lab_type
+
+        assert _detect_lab_type(self._faculty("", ["archival research"])) == "humanities"
+        assert _detect_lab_type(self._faculty("", ["machine learning"])) == "dry"
+
+    def test_a_department_or_a_listing_without_a_signal_still_reads_dry(self):
+        from src.recommender.cold_email import _detect_lab_type
+
+        assert _detect_lab_type(self._faculty("General Studies")) == "dry"
+        assert _detect_lab_type(self._faculty("", source_type="research_program")) == "dry"
+
+
 class TestTheModuleAppliesItsOwnEvidenceRuleEverywhere:
     """#826 taught `_stated_keywords` that a keyword stamped
     ``derived:openalex_topics`` came from an author entity matched by surname

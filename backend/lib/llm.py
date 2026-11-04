@@ -251,6 +251,12 @@ def model_for(task: str) -> dict:
 # newer Claude, GPT and Gemini generations cannot turn thinking off at all,
 # so "none" is sent as the lowest effort they accept.
 _REASONING_HEADROOM = {"low": 3072, "medium": 6144, "high": 12288, "xhigh": 16384, "max": 24576}
+# Gemini 2.5 maps an effort to a fixed thinking budget (page below). The page
+# does not say whether that budget shares max_tokens with the answer; local
+# runs that stopped at finish_reason=length suggest it does, so it goes on top
+# of the caller's visible allowance.
+# https://aistudio.google.com/docs/openai
+_GEMINI_25_THINKING_TOKENS = {"minimal": 1024, "low": 1024, "medium": 8192, "high": 24576}
 
 
 def _provider_request_options(
@@ -258,7 +264,9 @@ def _provider_request_options(
 ) -> tuple[dict | None, int]:
     """(extra_body, max_tokens) for one request."""
     if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
-        return {"reasoning_effort": reasoning_effort}, max_tokens
+        family = effective_model.removeprefix("google/")
+        reserve = _GEMINI_25_THINKING_TOKENS.get(reasoning_effort, 0) if family.startswith("gemini-2.5-") else 0
+        return {"reasoning_effort": reasoning_effort}, max_tokens + reserve
     if provider_pid != "openrouter":
         return None, max_tokens
     effort = reasoning_effort if reasoning_effort in _REASONING_HEADROOM else "low"

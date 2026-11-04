@@ -85,6 +85,15 @@ describe('readDetailFields', () => {
     expect(fields.research_content.facets.map((f) => f.truth.state)).toEqual(['source', 'inferred']);
   });
 
+  it('accepts a named provider only for an external inference', () => {
+    const fields = readDetailFields(envelope({
+      research_content: {
+        inferred: { research_areas: { value: ['Genomics'], basis: 'text_scan', source_name: 'OpenAlex' } },
+      },
+    }))!;
+    expect(fields.research_content.facets[0].truth).toEqual({ state: 'inferred', value: ['Genomics'], basis: 'text_scan' });
+  });
+
   it('fails closed: malformed values and unknown bases become unknown, never source', () => {
     const fields = readDetailFields(envelope({
       funding: {

@@ -41,6 +41,36 @@ class TestValidator:
         bad = {**SCHOOL, "departments": [{"short": "X", "name": "X Dept"}]}
         assert any("no curated faculty" in e for e in fg.validate(bad))
 
+    @staticmethod
+    def _walk_units(*units):
+        return {**SCHOOL, "departments": [
+            {"short": short, "name": "College of X", "id_names": id_names,
+             "json_dir": {"url": "https://x.example.edu/api", "id_namespaces": shorts}}
+            for short, shorts, id_names in units]}
+
+    @pytest.mark.parametrize("id_names", [
+        [{"Ada M. Example": "Ada Example"}] * 2, [None, {}]])
+    def test_units_that_split_one_walk_alike_are_valid(self, id_names):
+        assert fg.validate(self._walk_units(("X", ["X", "X2"], id_names[0]),
+                                            ("X2", ["X", "X2"], id_names[1]))) == []
+
+    def test_a_unit_left_out_of_its_own_id_namespaces_is_flagged(self):
+        errors = fg.validate(self._walk_units(("X", ["X", "X2"], None),
+                                              ("X2", ["X", "X3"], None)))
+        assert errors == ["X2: json_dir id_namespaces leaves out X2"]
+
+    @pytest.mark.parametrize("id_names", [
+        [{"Ada M. Example": "Ada Example"}, None, None],
+        [{"Ada M. Example": "Ada Example"}, {"Ada M. Example": "Ada M Example"},
+         {"Ada M. Example": "Ada Example"}],
+        [None, None, {"Ada M. Example": "Ada Example"}],
+    ])
+    def test_units_of_one_walk_with_different_id_names_are_flagged(self, id_names):
+        shorts = ["X", "X2", "X3"]
+        errors = fg.validate(self._walk_units(
+            *[(short, shorts, names) for short, names in zip(shorts, id_names, strict=True)]))
+        assert errors == ["X, X2, X3: the units of one json_dir walk need the same id_names"]
+
     def test_fetch_rejects_invalid_config(self):
         with pytest.raises(ValueError):
             fg.fetch_and_normalize({"school_slug": "x", "departments": []})
@@ -2456,6 +2486,59 @@ class TestJsonDirSource:
         assert names["Ada Prof"]["title"] == "Professor"
         assert names["Lee Chair"]["title"] == "Associate Chair and Professor"
 
+    @staticmethod
+    def _walk_two_pages(monkeypatch, count_key, stated):
+        """Names read and pages requested from a two-page feed that states
+        ``stated`` on every page; page 3 is empty."""
+        rows = {1: [{"name": "Ada Example", "title": "Professor"}],
+                2: [{"name": "Bo Sample", "title": "Professor"}]}
+        requested = []
+
+        def _get(url, **k):
+            page = int(url.rsplit("page=", 1)[1])
+            requested.append(page)
+
+            class _R:
+                def raise_for_status(self): pass
+                def json(self): return {"profiles": rows.get(page, []), **stated}
+            return _R()
+
+        monkeypatch.setattr("requests.get", _get)
+        dept = {"short": "X", "json_dir": {
+            "url": "https://x.example.edu/api/search?q=",
+            "records_key": "profiles",
+            "paginate": {"param": "page", "count_key": count_key, "max": 5},
+            "name_fields": ["name"]}}
+        return [p["name"] for p in fg._fetch_json_dir(dept)], requested
+
+    @pytest.mark.parametrize("count_key, stated", [
+        # UF Apollo states its page count under "pagination".
+        ("pagination.total_pages", {"pagination": {"total_pages": 2}}),
+        ("pageCount", {"pageCount": 2}),
+    ])
+    def test_json_dir_walk_ends_at_the_page_count_the_feed_states(
+            self, monkeypatch, count_key, stated):
+        assert self._walk_two_pages(monkeypatch, count_key, stated) == (
+            ["Ada Example", "Bo Sample"], [1, 2])
+
+    @pytest.mark.parametrize("count_key, stated", [
+        ("pageCount", {"pageCount": "2"}),
+        ("pagination.total_pages", {"pagination": {"total_pages": "2"}}),
+        ("pageCount", {"pageCount": 2.0}),
+        ("pageCount", {"pageCount": -1}),
+        ("pageCount", {"pageCount": 0}),
+    ])
+    def test_json_dir_walk_reads_on_past_a_count_that_is_not_a_positive_integer(
+            self, monkeypatch, count_key, stated):
+        # A value that is no page count neither ends the walk nor breaks it:
+        # the walk runs on to the first empty page.
+        assert self._walk_two_pages(monkeypatch, count_key, stated) == (
+            ["Ada Example", "Bo Sample"], [1, 2, 3])
+
+    def test_json_dir_walk_ends_after_the_first_page_on_a_count_of_one(self, monkeypatch):
+        assert self._walk_two_pages(monkeypatch, "pageCount", {"pageCount": 1}) == (
+            ["Ada Example"], [1])
+
     def test_json_dir_research_field_list_and_array_segment(self, monkeypatch):
         """UCSD-Biology shape: sections[].title area tags win, prose fallback."""
         payload = [
@@ -2619,6 +2702,104 @@ class TestDepartmentField:
         # An unmapped raw value falls back to the umbrella name.
         spec2 = fg.faculty("Lee Prof", url="https://x.edu/l", department="Unknown Unit")
         assert fg._normalize(school, dept, spec2)["department"] == "College of Liberal Arts"
+
+
+class TestColumbiaHistoryCrossListing:
+    """Columbia History's directory lists faculty other departments hold, each
+    with a letter after the name; the page's legend reads them as East Asian
+    Languages and Cultures (E), Barnard History (B) and other schools or
+    departments (O). The letter is not part of the name and the person is not
+    History's, but the id hashes the name as listed, so it stays."""
+
+    _HTML = """<ul>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/example-ada"><b>Example, Ada</b></a></p>
+        <span class="cmed_list_view_position">Professor of History</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/sample-bo"><b>Sample, Bo (E)</b></a></p>
+        <span class="cmed_list_view_position">Professor, East Asian Languages and Cultures</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/fixture-cy"><b>Fixture, Cy (O)</b></a></p>
+        <span class="cmed_list_view_position">Professor of Economics</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/mockup-di"><b>Mockup, Di (B)</b></a></p>
+        <span class="cmed_list_view_position">Professor of History</span></li>
+      <li class="cmed_list_view_item"><p class="cmed_list_view_title">
+        <a href="/person/testcase-ed"><b>Testcase, Ed (Eddie)</b></a></p>
+        <span class="cmed_list_view_position">Associate Professor of History</span></li>
+    </ul>"""
+
+    @classmethod
+    def _records(cls):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools import columbia_faculty
+        dept = next(d for d in columbia_faculty.SCHOOL["departments"] if d["short"] == "HIST")
+        cfg = dept["scrape"]
+        people = fg._parse_cards(BeautifulSoup(cls._HTML, "html.parser"), cfg["selectors"],
+                                 cfg["url"], cfg.get("ladder_filter"), cfg.get("name_flip"))
+        return {r["pi_name"]: r for p in people
+                if (r := fg._normalize(columbia_faculty.SCHOOL, dept, p))}
+
+    @staticmethod
+    def _id(listed_name):
+        import hashlib
+        return "faculty-columbia-hist-" + hashlib.md5(
+            f"HIST-{listed_name}".encode()).hexdigest()[:8]
+
+    def test_a_marked_name_shows_without_its_letter_and_keeps_its_id(self):
+        recs = self._records()
+        assert set(recs) == {"Ada Example", "Bo Sample", "Cy Fixture", "Di Mockup",
+                             "Ed (Eddie) Testcase"}
+        assert {n: r["id"] for n, r in recs.items()} == {
+            "Ada Example": self._id("Ada Example"),
+            "Bo Sample": self._id("Bo (E) Sample"),
+            "Cy Fixture": self._id("Cy (O) Fixture"),
+            "Di Mockup": self._id("Di (B) Mockup"),
+            "Ed (Eddie) Testcase": self._id("Ed (Eddie) Testcase"),
+        }
+
+    def test_a_marked_row_names_no_department(self):
+        from src.evidence import faculty_profile_summary_fields, render_faculty_profile_summary
+        recs = self._records()
+        assert {n: r["department"] for n, r in recs.items()} == {
+            "Ada Example": "Department of History", "Bo Sample": "", "Cy Fixture": "",
+            "Di Mockup": "", "Ed (Eddie) Testcase": "Department of History"}
+        bo = recs["Bo Sample"]
+        # The page's own fact: the History faculty page lists the person.
+        assert bo["description_raw"].startswith(
+            "Faculty research profile for Professor, East Asian Languages and Cultures "
+            "Bo Sample, listed on the Department of History's faculty page at "
+            "Columbia University.")
+        assert "History" not in bo["title"]
+        assert "HIST" not in bo["title"]
+        assert recs["Ada Example"]["description_raw"].startswith(
+            "Faculty research profile for Professor of History Ada Example in the "
+            "Department of History at Columbia University.")
+        assert render_faculty_profile_summary(faculty_profile_summary_fields(bo)).startswith(
+            "Faculty research profile for Bo Sample at Columbia University.")
+        # Where the row was read is still the History directory.
+        assert bo["metadata"]["notes"] == (
+            "Curated from Department of History faculty directory (Columbia University)")
+        assert recs["Ada Example"]["title"] == "Prof. Ada Example — HIST"
+
+    def test_a_marked_row_gets_no_lab_type(self):
+        # Nothing on a marked row says what field the person works in: no
+        # department, no research text. An unmarked History row is humanities.
+        from backend.data_loader import _sanitize_opportunity
+        from src.recommender.cold_email import _detect_lab_type
+        recs = self._records()
+        assert {n: _detect_lab_type(_sanitize_opportunity(r)) for n, r in recs.items()} == {
+            "Ada Example": "humanities", "Bo Sample": None, "Cy Fixture": None,
+            "Di Mockup": None, "Ed (Eddie) Testcase": "humanities"}
+
+    def test_notes_name_the_department_a_card_gives(self):
+        dept = {"short": "SCI", "name": "College of Science", "majors": []}
+        rec = fg._normalize(SCHOOL, dept, {"name": "Ada Example", "title": "Professor",
+                                           "department": "Department of Chemistry"})
+        assert rec["department"] == "Department of Chemistry"
+        assert rec["metadata"]["notes"] == (
+            f"Curated from Department of Chemistry faculty directory ({SCHOOL['organization']})")
 
 
 class TestProfileCoreFieldEnrich:
@@ -3861,6 +4042,103 @@ class TestRenderBudget:
         soup = _render_soup("https://example.edu/dir", expect_selector=".card")
         assert soup is None
         assert len(calls) == 3
+
+
+class TestInRunDedupKeepsAStoredPersonsRow:
+    """The school-wide dedup emits one row per address and profile link, the
+    first unit's. When that row would be minted this run and a later unit reads
+    a row whose id the corpus already holds, the stored row is emitted with
+    this run's read instead: otherwise it reads as absent from its own unit and
+    is retired though its page still lists the person. The row left out still
+    counts as observed by its unit, but not toward its unit's row count."""
+
+    _SCHOOL = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+               "id_prefix": "x", "location": "Somewhere"}
+    _CC = fg.faculty("Casey Placeholder", title="Professor", url="https://x.edu/cc/casey")
+
+    def _run(self, aa, bb, stored=()):
+        depts = [{"short": short, "name": f"Department of {short}", "majors": [], "faculty": people}
+                 for short, people in (("AA", [aa]), ("BB", [bb]), ("CC", [self._CC]))]
+        school = {**self._SCHOOL, "departments": depts}
+        ids = {short.lower(): fg._normalize(school, dept, dict(dept["faculty"][0]))["id"]
+               for short, dept in zip(("AA", "BB", "CC"), depts, strict=True)}
+        ledger: dict = {}
+        with fg.run_start_ids(frozenset(ids[u] for u in stored)):
+            rows = fg.fetch_and_normalize(school, unit_ledger=ledger)
+        return rows, ledger, ids
+
+    @staticmethod
+    def _pair(shared):
+        aa = fg.faculty("Avery Sample", title="Professor", url="https://x.edu/aa/avery-sample",
+                        email="asample@x.edu")
+        bb = fg.faculty("Avery Sample", title="Professor",
+                        url="https://x.edu/" + ("bb" if shared == "email" else "aa") + "/avery-sample",
+                        email="asample@x.edu" if shared == "email" else None)
+        return aa, bb
+
+    @pytest.mark.parametrize("shared", ["email", "profile_link"])
+    def test_a_stored_row_read_later_is_emitted_over_one_minted_earlier(self, shared):
+        rows, ledger, ids = self._run(*self._pair(shared), stored=("bb", "cc"))
+        assert [r["id"] for r in rows] == [ids["bb"], ids["cc"]]
+        assert rows[0]["department"] == "Department of BB"
+        assert (ledger["bb"]["observed_entity_ids"], ledger["bb"]["observed_count"]) == ([ids["bb"]], 1)
+        # The left-out row: still observed by its unit, no longer counted.
+        assert (ledger["aa"]["observed_entity_ids"], ledger["aa"]["observed_count"]) == ([ids["aa"]], 0)
+        assert ledger["aa"]["observed_identities"] == [["url", "x.edu/aa/avery-sample"]]
+
+    @pytest.mark.parametrize("shared", ["email", "profile_link"])
+    def test_a_row_minted_later_is_observed_by_its_unit_but_not_counted(self, shared):
+        rows, ledger, ids = self._run(*self._pair(shared), stored=("aa", "cc"))
+        assert [r["id"] for r in rows] == [ids["aa"], ids["cc"]]
+        bb = ledger["bb"]
+        assert (bb["observed_entity_ids"], bb["observed_count"], bb["parse_status"]) == (
+            [ids["bb"]], 0, "zero_rows")
+        expected = "x.edu/bb/avery-sample" if shared == "email" else "x.edu/aa/avery-sample"
+        assert bb["observed_identities"] == [["url", expected]]
+
+    @pytest.mark.parametrize("stored", [("aa", "bb", "cc"), ()], ids=["both_stored", "neither_stored"])
+    def test_otherwise_the_first_units_row_is_emitted_and_the_other_unobserved(self, stored):
+        # Guard: as before this rule.
+        rows, ledger, ids = self._run(*self._pair("email"), stored=stored)
+        assert [r["id"] for r in rows] == [ids["aa"], ids["cc"]]
+        assert (ledger["bb"]["observed_entity_ids"], ledger["bb"]["observed_count"]) == ([], 0)
+        assert (ledger["aa"]["observed_entity_ids"], ledger["aa"]["observed_count"]) == ([ids["aa"]], 1)
+
+    def test_the_replacing_row_takes_over_the_link_of_the_row_it_replaced(self):
+        # A third unit links the person's first profile only: its row is left
+        # to the stored row now holding that link, and observed by its unit.
+        aa, bb = self._pair("email")
+        cc = fg.faculty("Avery Sample", title="Professor", url="https://x.edu/aa/avery-sample")
+        depts = [{"short": s, "name": f"Department of {s}", "majors": [], "faculty": [p]}
+                 for s, p in (("AA", aa), ("BB", bb), ("CC", cc))]
+        school = {**self._SCHOOL, "departments": depts}
+        ids = {d["short"].lower(): fg._normalize(school, d, dict(d["faculty"][0]))["id"] for d in depts}
+        ledger: dict = {}
+        with fg.run_start_ids(frozenset({ids["bb"]})):
+            rows = fg.fetch_and_normalize(school, unit_ledger=ledger)
+        assert [r["id"] for r in rows] == [ids["bb"]]
+        assert (ledger["cc"]["observed_entity_ids"], ledger["cc"]["observed_count"]) == ([ids["cc"]], 0)
+
+    def test_a_row_replaced_on_its_own_page_is_observed_once(self):
+        # One page lists the person under two links with one address: the
+        # stored card read second takes the place of the one read first.
+        school = {**self._SCHOOL, "departments": [{"short": "AA", "name": "Department of AA", "majors": [],
+                                                   "faculty": [
+            fg.faculty("Avery Sample", title="Professor", url="https://x.edu/aa/a-sample", email="asample@x.edu"),
+            fg.faculty("Avery Q. Sample", title="Professor", url="https://x.edu/aa/avery-sample",
+                       email="asample@x.edu")]}]}
+        dept = school["departments"][0]
+        first, second = (fg._normalize(school, dept, dict(p))["id"] for p in dept["faculty"])
+        ledger: dict = {}
+        with fg.run_start_ids(frozenset({second})):
+            rows = fg.fetch_and_normalize(school, unit_ledger=ledger)
+        assert [r["id"] for r in rows] == [second]
+        assert (ledger["aa"]["observed_entity_ids"], ledger["aa"]["observed_count"]) == ([second, first], 1)
+
+    def test_outside_the_window_no_id_is_stored(self):
+        with fg.run_start_ids(frozenset({"faculty-x-bb-0000aaaa"})):
+            assert fg._RUN_START_IDS == frozenset({"faculty-x-bb-0000aaaa"})
+        assert fg._RUN_START_IDS == frozenset()
 
 
 class TestSourceBudget:

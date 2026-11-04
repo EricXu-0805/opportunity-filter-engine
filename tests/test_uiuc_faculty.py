@@ -2891,6 +2891,161 @@ def test_a_card_listed_again_brings_an_archived_duplicate_back_live_without_its_
     assert _INACTIVE_STATE.isdisjoint(row["metadata"])
 
 
+# --- A row the merge's dedups drop is deleted only when this run minted it. A
+# published id may sit in a student's saved list, so it stays, inactive,
+# naming the row kept, as the same-person collapse keeps one; a row archived
+# that way never wins its group back from a live row. Synthetic people. ---
+
+@_ROW_DEDUPS
+def test_a_row_archived_as_a_duplicate_is_never_kept_beside_a_live_row(dedup):
+    # The archived row is the richer one: kept on richness, a newer sighting
+    # would put it back live and drop the row the person is shown under.
+    for order in ((0, 1), (1, 0)):
+        rows = _archived_and_seen_again(dict(_ARCHIVED_DUPLICATE), {})
+        fresh = rows[1]
+        assert dedup([rows[i] for i in order]) == [fresh], order
+
+
+def _one_person_twice(kind: str) -> tuple[dict, dict]:
+    """The row the merge's dedup of ``kind`` keeps and the one it drops."""
+    if kind == "url_and_full_name":
+        def row(rid: str, **extra) -> dict:
+            return {"id": rid, "school": "testu", "source": "testu_faculty",
+                    "source_type": "faculty_research", "source_url": "https://bio.testu.edu/people",
+                    "pi_name": "Avery Sample", "metadata": {"is_active": True}, **extra}
+        return row("faculty-testu-bio-0000aaaa", contact_email="asample@testu.edu"), row("faculty-testu-bio-0000bbbb")
+    kept = _stored_psych_row("Avery Sample", "person1", keywords=["memory", "attention"])
+    if kind == "url_and_surname":
+        return kept, _stored_psych_row("Avery Q. Sample", "person1")
+    return kept, normalize_faculty({"name": "Avery Sample", "email": "person1@illinois.edu",
+                                    "url": f"{DEPARTMENTS['comm']['base']}/directory/profile/person1"},
+                                   DEPARTMENTS["comm"], keywords=["communication"])
+
+
+def _merge_rows(tmp_path, stored: list[dict], fresh: list[dict], **kwargs) -> list[dict]:
+    from src.collectors.uiuc_faculty import merge_into_processed
+
+    path = tmp_path / "corpus.json"
+    path.write_text(json.dumps(stored), encoding="utf-8")
+    merge_into_processed(fresh, str(path), **kwargs)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _archive_state(row: dict) -> dict:
+    return {k: row["metadata"].get(k) for k in ("is_active", *sorted(_INACTIVE_STATE))}
+
+
+_MERGE_DEDUPS = pytest.mark.parametrize("kind", ["url_and_surname", "address_and_name", "url_and_full_name"])
+
+
+@_MERGE_DEDUPS
+def test_the_merge_keeps_a_published_duplicate_inactive_naming_the_row_kept(tmp_path, kind, caplog):
+    from datetime import date
+
+    kept, dup = _one_person_twice(kind)
+    with caplog.at_level("INFO", logger="src.collectors.uiuc_faculty"):
+        saved = _merge_rows(tmp_path, [kept, dup], [], published_ids=frozenset({kept["id"], dup["id"]}),
+                            today=date(2026, 11, 9))
+    assert [r["id"] for r in saved] == [kept["id"], dup["id"]]
+    assert saved[0]["metadata"]["is_active"] is True
+    assert _archive_state(saved[1]) == {"is_active": False, "deactivated_at": "2026-11-09",
+                                        "deactivation_reason": "duplicate_of_live_record",
+                                        "duplicate_of": kept["id"]}
+    assert "0 duplicate(s) deleted, 1 published duplicate(s) newly archived" in caplog.text
+
+
+@_MERGE_DEDUPS
+def test_the_merge_still_deletes_a_duplicate_minted_this_run(tmp_path, kind):
+    kept, dup = _one_person_twice(kind)
+    saved = _merge_rows(tmp_path, [kept], [dup], published_ids=frozenset({kept["id"]}))
+    assert [r["id"] for r in saved] == [kept["id"]]
+    assert saved[0]["metadata"]["is_active"] is True
+
+
+def test_a_row_dropped_into_one_a_later_dedup_drops_names_the_row_finally_kept(tmp_path):
+    # The profile-link dedup drops the variant spelling into the plain row; once
+    # the credential comes off, the credential dedup drops that row into the
+    # richer one.
+    richer = _stored_psych_row("Avery Sample PhD", "person1", keywords=["memory", "attention"])
+    plain = _stored_psych_row("Avery Sample", "person1", keywords=["memory"])
+    variant = _stored_psych_row("Avery Q. Sample", "person1")
+    rows = [variant, plain, richer]
+    saved = {r["id"]: r for r in _merge_rows(tmp_path, rows, [], published_ids=frozenset(r["id"] for r in rows))}
+    assert [saved[r["id"]]["metadata"]["is_active"] for r in rows] == [False, False, True]
+    assert [saved[r["id"]]["metadata"].get("duplicate_of") for r in rows] == [richer["id"], richer["id"], None]
+
+
+def test_an_archived_row_is_written_without_the_merges_run_mark_and_never_lifts_an_emeritus_row(tmp_path):
+    # A stored psych row nobody read this run wins the profile-link dedup over
+    # this run's poorer card (taking its "listed now" mark), then loses to the
+    # same person's richer comm row. Archived, it must be written without the
+    # mark, or a later run that finds the comm row only under an emeritus
+    # heading would carry the stale mark over and show the professor as active.
+    from src.collectors.uiuc_faculty import EMERITUS_REASON
+
+    def card(dept, name, keywords, seen="2026-10-05T14:18:05", **meta):
+        d = DEPARTMENTS[dept]
+        row = normalize_faculty({"name": name, "email": "person1@example.edu",
+                                 "url": f"{d['base']}/directory/profile/person1"}, d, keywords=keywords)
+        row["metadata"].update(last_seen_at=seen, last_verified=seen,
+                               first_seen_at="2026-01-10T00:00:00", **meta)
+        return row
+
+    stored_psych = card("psych", "Avery Sample", ["memory"])
+    comm = card("comm", "Avery Sample", ["memory", "attention", "persuasion"])
+    fresh_psych = card("psych", "Avery Q. Sample", [], seen="2026-11-09T10:00:00")
+    run1 = _merge_rows(tmp_path, [stored_psych, comm], [fresh_psych],
+                       published_ids=frozenset({stored_psych["id"], comm["id"]}))
+    assert {r["id"]: r["metadata"]["is_active"] for r in run1} == {stored_psych["id"]: False, comm["id"]: True}
+    assert not any("_listed_current" in r["metadata"] for r in run1)
+
+    emeritus = card("comm", "Avery Sample", ["memory", "attention", "persuasion"], seen="2026-11-16T10:00:00",
+                    is_active=False, deactivation_reason=EMERITUS_REASON, deactivated_at="2026-11-16",
+                    faculty_title="Professor Emeritus")
+    run2 = {r["id"]: r for r in _merge_rows(tmp_path, run1, [emeritus],
+                                            published_ids=frozenset(r["id"] for r in run1))}
+    assert run2[comm["id"]]["metadata"]["is_active"] is False
+    assert run2[comm["id"]]["metadata"]["deactivation_reason"] == EMERITUS_REASON
+
+
+def test_a_published_duplicate_its_unit_lists_again_keeps_the_day_it_was_first_archived(tmp_path):
+    # The merge replaces the stored row with the card read this run, stamps
+    # included; the run-start stamps keep its date when it is archived again
+    # under the same kept row.
+    from datetime import date
+
+    from src.collectors.faculty_graph import duplicate_archive_stamps
+
+    kept, dup = _one_person_twice("url_and_surname")
+    stored = json.loads(json.dumps(dup))
+    stored["metadata"].update(_ARCHIVED_DUPLICATE, deactivated_at="2026-10-30", duplicate_of=kept["id"])
+    saved = _merge_rows(tmp_path, [kept, stored], [dup], published_ids=frozenset({kept["id"], dup["id"]}),
+                        today=date(2026, 11, 9), archived=duplicate_archive_stamps([kept, stored]))
+    assert _archive_state(saved[1]) == {"is_active": False, "deactivated_at": "2026-10-30",
+                                        "deactivation_reason": "duplicate_of_live_record",
+                                        "duplicate_of": kept["id"]}
+
+
+def test_a_published_duplicate_is_cleaned_like_the_rows_kept(tmp_path):
+    # It stays in the file, which the data gates read inactive rows and all.
+    kept, dup = _one_person_twice("url_and_surname")
+    dup["keywords"] = ["such as speech"]
+    saved = _merge_rows(tmp_path, [kept, dup], [], published_ids=frozenset({kept["id"], dup["id"]}))
+    assert (saved[1]["metadata"]["is_active"], saved[1]["keywords"]) == (False, ["speech"])
+
+
+def test_a_published_duplicate_is_not_another_professor_on_its_address(tmp_path):
+    # Guard: the shared-inbox pass counts the dropped row's spelling only once it
+    # is inactive, so two people on one address keep it.
+    kept, dup = _one_person_twice("address_and_name")
+    dup["pi_name"] = "Avery Q. Sample"
+    other = _stored_psych_row("Blair Example", "person2", contact_email=kept["contact_email"])
+    rows = [kept, dup, other]
+    saved = _merge_rows(tmp_path, rows, [], published_ids=frozenset(r["id"] for r in rows))
+    assert [(r["metadata"]["is_active"], r["contact_email"]) for r in saved] == [
+        (True, kept["contact_email"]), (False, kept["contact_email"]), (True, kept["contact_email"])]
+
+
 def test_a_card_under_in_memoriam_retires_the_stored_row_and_drops_its_address(tmp_path, monkeypatch):
     fresh = _fetch_psych(monkeypatch, MEMORIAL_PAGE)
     rows = _merge(tmp_path, [_stored_psych_row("Morgan Example", "person5")], fresh)

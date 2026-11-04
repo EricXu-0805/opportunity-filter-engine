@@ -82,7 +82,7 @@ export interface FacetQuote {
 
 export type FacetTruth =
   | { state: 'source'; value: FacetValue; quote?: FacetQuote }
-  | { state: 'inferred'; value: FacetValue; basis: InferenceBasis }
+  | { state: 'inferred'; value: FacetValue; basis: InferenceBasis; sourceName?: 'OpenAlex' | 'Illinois Experts' }
   | { state: 'unknown' };
 
 export interface FieldTruth {
@@ -155,7 +155,11 @@ function readFacet(raw: Record<string, unknown>, facet: string): FacetTruth[] {
       const value = asFacetValue(entry.value);
       const basis = entry.basis;
       if (value !== null && INFERENCE_BASES.includes(basis as InferenceBasis)) {
-        out.push({ state: 'inferred', value, basis: basis as InferenceBasis });
+        const sourceName = basis === 'external_enrichment'
+          && (entry.source_name === 'OpenAlex' || entry.source_name === 'Illinois Experts')
+          ? entry.source_name : undefined;
+        out.push({ state: 'inferred', value, basis: basis as InferenceBasis,
+          ...(sourceName ? { sourceName } : {}) });
       }
     }
   }

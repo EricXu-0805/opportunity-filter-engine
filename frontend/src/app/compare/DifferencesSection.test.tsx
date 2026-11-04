@@ -86,16 +86,16 @@ describe('DifferencesSection source notes', () => {
     render(<DifferencesSection rows={[{ opp: configured }, { opp: banked }, { opp: stated }]} profile={null} />);
 
     expect(screen.getByTestId('compare-source-note-majors-configured')).toHaveTextContent(
-      'From our listing’s major list, not confirmed on the program page.',
+      'From our listing’s major list. Check the program’s eligibility requirements.',
     );
     expect(screen.getByTestId('compare-source-note-preferredYear-configured')).toHaveTextContent(
-      'These come from our listing’s own list, not confirmed on the program page.',
+      'From our listing’s class-year list. Check the program’s eligibility requirements.',
     );
     expect(screen.getByTestId('compare-source-note-deadline-configured')).toHaveTextContent(
-      'From our listing’s deadline note, not confirmed on the program page.',
+      'From our listing’s deadline note. Check the program’s current dates.',
     );
     expect(screen.getByTestId('compare-source-note-majors-banked')).toHaveTextContent(
-      'Tagged by our system, not an eligibility list the program published.',
+      'Majors tagged by our system. Check the program’s eligibility requirements.',
     );
     expect(screen.queryByTestId('compare-source-note-majors-stated')).toBeNull();
     expect(screen.queryByTestId('compare-source-note-preferredYear-stated')).toBeNull();
@@ -129,12 +129,12 @@ describe('DifferencesSection marks pay, eligibility, skills and location we infe
     render(<DifferencesSection rows={[{ opp: inferred }, { opp: stated }]} profile={null} />);
     for (const key of ['compensation', 'paid', 'international', 'citizenship', 'location']) {
       expect(screen.getByTestId(`compare-source-note-${key}-inferred`), key).toHaveTextContent(
-        'Inferred by us, not stated on the program page.',
+        'Inferred by our system. Check the program’s current information.',
       );
       expect(screen.queryByTestId(`compare-source-note-${key}-stated`), key).toBeNull();
     }
     expect(screen.getByTestId('compare-source-note-skills-inferred')).toHaveTextContent(
-      'Read from the posting text by our pipeline',
+      'Skills inferred from the posting text',
     );
     expect(screen.queryByTestId('compare-source-note-skills-stated')).toBeNull();
   });
@@ -180,7 +180,7 @@ describe('DifferencesSection compensation prose from our listing', () => {
     } as unknown as Opportunity;
     render(<DifferencesSection rows={[{ opp: configured }, { opp: stated }]} profile={null} />);
     expect(screen.getByTestId('compare-source-note-compensation-configured')).toHaveTextContent(
-      'From our listing’s entry for this program, not confirmed on the program page.',
+      'From our listing’s entry for this program. Check the program’s current information.',
     );
     expect(screen.queryByTestId('compare-source-note-compensation-stated')).toBeNull();
   });

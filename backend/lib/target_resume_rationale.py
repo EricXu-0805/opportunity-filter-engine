@@ -17,18 +17,17 @@ recommendation using this category and exact student/target quotations. This is 
 '''
 
 
-# Why-lines for an evidence-mapped suggestion. A link reads as a match only when
-# the faithfulness review confirmed it; otherwise the target quote above it is
-# shown as the opportunity's own words, with no claim about the student's line.
+# Why-lines for an evidence-mapped suggestion: the operations used and the keep
+# reason. No row restates a link as a match; a linked phrase alone can drop the
+# negation or limit its line states, and the reason already quotes that line.
 _WHY = {
     'en': {
-        'match': 'Matches the opportunity\'s {term} (your words: {source}).',
         'lead_with': 'Leads with the matching part.', 'relabel': 'Uses the opportunity\'s term.',
         'verb_first': 'Starts with your own verb.', 'personal_first': 'Puts your own part first.',
         'tighten': 'Drops a repeated word.',
-        'no_link': 'No change recommended: nothing in this line matches what the opportunity lists.',
+        'no_link': 'AI gave no link to the opportunity that we could check.',
         'already_aligned': 'No change recommended: this line already uses the opportunity\'s wording.',
-        'no_safe_change': 'No change recommended: related wording found, but no change the checks could verify.',
+        'no_safe_change': 'AI linked this line to the opportunity but did not suggest a rewrite.',
         'cosmetic_only': 'No change recommended: the only possible edits were cosmetic.',
         'beyond_allowed_edit': 'Kept your wording: the suggested edit went beyond the allowed changes.',
         'rewrite_rejected': 'Kept your wording: the suggestion did not pass the fact check.',
@@ -36,13 +35,12 @@ _WHY = {
         'no_change': 'No change suggested.',
     },
     'zh': {
-        'match': '与机会中的{term}对应（你的原文：{source}）。',
         'lead_with': '把相关内容放在最前。', 'relabel': '改用机会中的术语。',
         'verb_first': '以你原有的动词开头。', 'personal_first': '先写你本人负责的部分。',
         'tighten': '删去重复的词。',
-        'no_link': '建议保留原文：这一条与机会列出的内容没有对应。',
+        'no_link': 'AI 没有给出可以核对的与机会的关联。',
         'already_aligned': '建议保留原文：这一条已使用机会中的表述。',
-        'no_safe_change': '建议保留原文：找到了相关表述，但没有能通过核对的改法。',
+        'no_safe_change': 'AI 关联了这条经历与机会，但没有建议改写。',
         'cosmetic_only': '建议保留原文：可做的修改只是措辞上的。',
         'beyond_allowed_edit': '保留你的表述：建议的修改超出了允许的范围。',
         'rewrite_rejected': '保留你的表述：建议未通过事实核对。',
@@ -52,20 +50,17 @@ _WHY = {
 }
 
 
-def why_lines(links=(), ops=(), keep_code=None, locale='en'):
-    """Server-rendered why-lines: confirmed matches, the operations used, the keep reason."""
+def why_lines(ops=(), keep_code=None, locale='en'):
+    """Server-rendered why-lines: the operations used, the keep reason."""
     table = _WHY['zh' if locale == 'zh' else 'en']
-    rows = [table['match'].format(term=json.dumps(link['target_evidence']['quote'], ensure_ascii=False),
-                                  source=json.dumps(link['source_evidence']['quote'], ensure_ascii=False))
-            for link in links if link.get('entailed') is True]
-    rows += [table[op] for op in ops if op in table]
+    rows = [table[op] for op in ops if op in table]
     if keep_code in table:
         rows.append(table[keep_code])
     return rows
 
 
-def render_reason(value, recommendation, source_quotes, target_quotes, locale='en', *, links=(), ops=(),
-                  keep_code=None, ai_linked=False):
+def render_reason(value, recommendation, source_quotes, target_quotes, locale='en', *, ops=(), keep_code=None,
+                  ai_linked=False):
     # The selection plan's target quotes are checked to be in the opportunity's text (description, requirements,
     # papers or lab pages), not to bear on the block (M133: a tour sentence beside an FFT project), so ai_linked
     # names them as text the AI linked, not as support for the reason, and names no one source.
@@ -99,5 +94,5 @@ def render_reason(value, recommendation, source_quotes, target_quotes, locale='e
     rows = [f'{action}: {motive}']
     for label, quotes in zip(labels, (source_quotes, target_quotes), strict=True):
         rows.extend(f'{label}: {json.dumps(quote["quote"], ensure_ascii=False)}' for quote in quotes)
-    rows += why_lines(links, ops, keep_code, locale)
+    rows += why_lines(ops, keep_code, locale)
     return '\n'.join(rows)

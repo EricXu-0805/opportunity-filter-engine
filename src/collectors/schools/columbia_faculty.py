@@ -140,6 +140,10 @@ SCHOOL: dict = {
         {
             "short": "HIST", "name": "Department of History", "majors": ["History"],
             "directory_url": "https://history.columbia.edu/faculty/",
+            # The page's legend: "East Asian Languages and Cultures (E),
+            # Barnard Department of History (B), and other schools or
+            # departments (O)", written after the listed name.
+            "cross_listing_marker": r"\s\((?:E|O|B)\)(?=\s|$)",
             "scrape": {
                 "url": "https://history.columbia.edu/faculty/",
                 "selectors": {"card": "li.cmed_list_view_item",

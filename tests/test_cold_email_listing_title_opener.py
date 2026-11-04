@@ -98,8 +98,10 @@ FACULTY = {
 
 def test_a_faculty_row_without_topics_keeps_todays_email_exactly():
     public = project_public_detail(FACULTY)
+    # The row names no department and no field, so it gets no lab type and the
+    # subject the template gives that (cold_email._detect_lab_type).
     assert generate_cold_email(PROFILE, public) == (
-        "Subject: Undergraduate Research Interest — Lee Lab\n\n"
+        "Subject: Research Inquiry — Lee Lab\n\n"
         "Dear Professor Pat Lee,\n\n"
         "My name is Eric, and I am a sophomore studying Biology at UIUC. I am interested in "
         "developmental biology. I would like to learn more about the work in the Lee Lab.\n\n"

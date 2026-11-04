@@ -41,7 +41,7 @@ The wire shape is deliberately boring so a client cannot misread it::
         "<field>": {
           "state": "source" | "inferred" | "unknown",
           "explicit": {"<facet>": <value>, ...},
-          "inferred": {"<facet>": {"value": <value>, "basis": "<basis>"}, ...},
+          "inferred": {"<facet>": {"value": <value>, "basis": "<basis>", "source_name"?: str}, ...},
           "unknown": ["<facet>", ...],
           "quotes": {"<facet>": {"text": str, "source_url": str | null, "observed_at": str | null}, ...},
           "provenance": {"source_url": str | null, "observed_at": str | null}
@@ -605,6 +605,15 @@ def _research_content(payload: dict, canonical: dict) -> _Field:
         field.source("research_areas", keywords)
     if keywords and keyword_basis is not None:
         field.infer("research_areas", keywords, keyword_basis)
+        # These collectors retain the method, but no external-topic URL or
+        # observation date. Do not substitute the faculty profile's evidence
+        # (or the separate publication-enrichment record) for the topics'.
+        source_name = {
+            "derived:openalex_topics": "OpenAlex",
+            "derived:illinois_experts_concepts": "Illinois Experts",
+        }.get(inferred_method(canonical, "keywords"))
+        if source_name:
+            field.inferred["research_areas"]["source_name"] = source_name
     return field
 
 
@@ -838,8 +847,13 @@ def _provenance(payload: dict, source: str, *, observed_key: str | None = None) 
 _UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_CONFIGURED, BASIS_PROGRAM_POLICY, BASIS_SYSTEM_TAG})
 
 
-def _field_provenance(built: dict, provenance: dict) -> dict:
+def _field_provenance(name: str, built: dict, provenance: dict) -> dict:
     inferred = built["inferred"]
+    # Research topics from a matched external record: the profile page is not
+    # their source. Other fields keep their page's provenance.
+    if (name == "research_content" and not built["explicit"] and inferred
+            and all(v["basis"] == BASIS_ENRICHMENT for v in inferred.values())):
+        return {"source_url": None, "observed_at": None}
     if not built["explicit"] and inferred and all(v["basis"] in _UNOBSERVED_BASES for v in inferred.values()):
         return {**provenance, "observed_at": None}
     return provenance
@@ -871,8 +885,8 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
         _application_method(payload, source),
     )
     built = {f.name: f.build(research_provenance if f.name == "research_content" else base) for f in fields}
-    for field in built.values():
-        field["provenance"] = _field_provenance(field, field["provenance"])
+    for name, field in built.items():
+        field["provenance"] = _field_provenance(name, field, field["provenance"])
     return {"version": DETAIL_FIELDS_VERSION, "fields": built}
 
 

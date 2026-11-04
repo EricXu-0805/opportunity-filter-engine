@@ -12,6 +12,7 @@ import { createHash, webcrypto } from 'node:crypto';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+const i18nMock = vi.hoisted(() => ({ locale: 'en' as 'en' | 'zh' }));
 vi.mock('@/i18n/client', () => {
   const stableT = (key: string, vars?: Record<string, string | number>) => {
     if (!vars) return key;
@@ -20,7 +21,7 @@ vi.mock('@/i18n/client', () => {
   };
   const stableSetLocale = () => {};
   return {
-    useT: () => ({ t: stableT, locale: 'en' as const, setLocale: stableSetLocale }),
+    useT: () => ({ t: stableT, locale: i18nMock.locale, setLocale: stableSetLocale }),
   };
 });
 
@@ -135,6 +136,7 @@ function makeDoc(overrides: Partial<RenovationDoc> = {}): RenovationDoc {
 }
 
 beforeEach(async () => {
+  i18nMock.locale = 'en';
   vi.stubGlobal('crypto', webcrypto);
   localStorage.clear();
   advanceOwnerEpoch('renovation-owner-a');
@@ -163,6 +165,195 @@ function renderModal(profile = makeProfile()) {
     />,
   );
 }
+
+describe('copy feedback follows the current draft and attempt', () => {
+  const copyFailure = 'Could not copy. Your draft is unchanged. Try copying again.';
+
+  it('reports a rejected clipboard write and lets the user retry without changing or saving the draft', async () => {
+    const doc = makeDoc();
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    const writeText = vi.fn().mockRejectedValueOnce(new DOMException('denied', 'NotAllowedError')).mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(copyFailure);
+    expect(screen.queryByText('renovate.copied')).toBeNull();
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent('Projects');
+    expect(screen.getByText(fullText(doc.sections[0].bullets[0].variants[0].text))).toBeInTheDocument();
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await screen.findByText('renovate.copied');
+    expect(screen.queryByText(copyFailure)).toBeNull();
+    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(writeText.mock.calls[0]).toEqual(writeText.mock.calls[1]);
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+    expect(mockStructureResume).not.toHaveBeenCalled();
+    expect(mockRenovateResume).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['en', 'refused', copyFailure],
+    ['zh', 'refused', '复制失败，稿件未变。请重试复制。'],
+    ['en', 'unavailable', 'Copying is not available in this browser. Select the text and copy it by hand.'],
+    ['zh', 'unavailable', '此浏览器无法自动复制，请手动选中文字复制。'],
+  ] as const)('in %s, a %s copy says what the student can do, without changing the draft', async (locale, failure, notice) => {
+    i18nMock.locale = locale;
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    Object.assign(navigator, { clipboard: failure === 'refused' ? { writeText: vi.fn().mockRejectedValue(new DOMException('denied', 'NotAllowedError')) } : undefined });
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    expect((await screen.findByRole('alert')).textContent).toBe(notice);
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+
+  it('treats a clipboard without writeText as unavailable', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    Object.assign(navigator, { clipboard: {} });
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    expect((await screen.findByRole('alert')).textContent).toBe('Copying is not available in this browser. Select the text and copy it by hand.');
+  });
+
+  it("keeps a newer copy's result when the earlier copy's 2 s timer fires", async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    await screen.findByText('renovate.copyAll');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const click = async (name: string) => {
+      await act(async () => fireEvent.click(screen.getByText(name)));
+      for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve(); });
+    };
+    try {
+      await click('renovate.copyAll');
+      expect(screen.getByText('renovate.copied')).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+      await click('renovate.copied');
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(screen.getByText('renovate.copied')).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(screen.getByText('renovate.copyAll')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not let a late failure replace a newer successful copy', async () => {
+    const pending = deferred<void>();
+    const writeText = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await screen.findByText('renovate.copied');
+    await act(async () => { pending.reject(new Error('late rejection')); });
+    expect(screen.getByText('renovate.copied')).toBeInTheDocument();
+    expect(screen.queryByText(copyFailure)).toBeNull();
+  });
+
+  it.each(['resolved', 'rejected'] as const)('ignores a late %s copy after the user starts editing', async outcome => {
+    const pending = deferred<void>();
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockReturnValue(pending.promise) } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    fireEvent.click(screen.getAllByText('renovate.edit')[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Keep this unfinished wording' } });
+    await act(async () => { if (outcome === 'resolved') pending.resolve(); else pending.reject(new Error('old rejection')); });
+    expect(screen.getByRole('textbox')).toHaveValue('Keep this unfinished wording');
+    expect(screen.queryByText('renovate.copied')).toBeNull();
+    expect(screen.queryByText(copyFailure)).toBeNull();
+    expect(screen.getByText('renovate.copyAll').closest('button')).toBeDisabled();
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+
+  it('ignores a late copy once an AI rewrite has replaced the copied text', async () => {
+    const copy = deferred<void>();
+    const optimize = deferred<{ text: string; changed: boolean; source_evidence: string }>();
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockReturnValue(copy.promise) } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    mockOptimizeBullet.mockReturnValue(optimize.promise);
+    renderModal();
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await act(async () => { optimize.resolve({ text: 'A newer AI wording', changed: true, source_evidence: 'Built a data pipeline' }); });
+    expect(screen.getByText(fullText('A newer AI wording'))).toBeInTheDocument();
+    await act(async () => { copy.resolve(); });
+    expect(screen.queryByText('renovate.copied')).toBeNull();
+  });
+
+  it.each(['copied', 'failed'] as const)('clears a shown %s result when the user starts editing', async outcome => {
+    const writeText = outcome === 'copied' ? vi.fn().mockResolvedValue(undefined) : vi.fn().mockRejectedValue(new Error('denied'));
+    Object.assign(navigator, { clipboard: { writeText } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    if (outcome === 'copied') await screen.findByText('renovate.copied');
+    else expect(await screen.findByRole('alert')).toHaveTextContent(copyFailure);
+    fireEvent.click(screen.getAllByText('renovate.edit')[0]);
+    expect(screen.queryByText('renovate.copied')).toBeNull();
+    expect(screen.queryByText(copyFailure)).toBeNull();
+  });
+
+  it('clears a shown copy failure when a new document replaces the draft', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockResolvedValue(makeDoc());
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(copyFailure);
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(await screen.findByText('renovate.copyAll')).toBeInTheDocument();
+    expect(screen.queryByText(copyFailure)).toBeNull();
+  });
+
+  it('copies the saved wording only after an open bullet edit is saved', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    await screen.findByText('renovate.copyAll');
+    editFirstBullet('Wording still being edited');
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toHaveAttribute('title', 'Save or cancel your edit before copying.');
+    fireEvent.click(screen.getByRole('button', { name: 'renovate.copyAll' }));
+    expect(writeText).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('renovate.save'));
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).not.toHaveAttribute('title');
+    fireEvent.click(screen.getByRole('button', { name: 'renovate.copyAll' }));
+    await screen.findByText('renovate.copied');
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0][0]).toContain('• Wording still being edited');
+  });
+
+  it('greys the locked copy button like the other edit-locked buttons and gives its reason in Chinese', async () => {
+    i18nMock.locale = 'zh';
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    await screen.findByText('renovate.copyAll');
+    editFirstBullet('Wording still being edited');
+    const copy = screen.getByRole('button', { name: 'renovate.copyAll' });
+    expect(copy).toBeDisabled();
+    expect(copy).toHaveAttribute('title', '请先保存或取消当前编辑。');
+    expect(copy.className.split(/\s+/)).toContain('disabled:text-gray-400');
+  });
+
+  it('ignores a late copy failure after an owner switch', async () => {
+    const pending = deferred<void>();
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockReturnValue(pending.promise) } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc()));
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.copyAll'));
+    await switchRenovationOwner();
+    await act(async () => { pending.reject(new Error('old owner rejection')); });
+    expect(screen.queryByText(copyFailure)).toBeNull();
+    expect(screen.queryByText('renovate.copied')).toBeNull();
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
 
 describe('ResumeRenovationModal', () => {
   it('renders nothing when closed', () => {
@@ -923,15 +1114,22 @@ describe('M43 complete profile content owns asynchronous work', () => {
     expect(mockLoadRenovation).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['rejected request', 'no sections'] as const)('a %s rerun restores the previous document and unsaved edit', async (failure) => {
+  it.each(['rejected request', 'oversized plan', 'no sections'] as const)('a %s rerun restores the previous document and unsaved edit', async (failure) => {
     mockLoadRenovation.mockResolvedValue(savedDoc());
     if (failure === 'no sections') mockStructureResume.mockResolvedValue({ sections: [], method: 'heuristic', warnings: [] });
-    else { mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockRejectedValue(new Error('Generation unavailable')); }
+    else {
+      mockStructureResume.mockResolvedValue(structuredResume);
+      const error = failure === 'oversized plan'
+        ? Object.assign(new Error('The combined resume input is too long.'), { code: 'TAILOR_INPUT_TOO_LARGE', status: 413 })
+        : new Error('Generation unavailable');
+      mockRenovateResume.mockRejectedValue(error);
+    }
     renderModal(); await screen.findByText('renovate.restored');
     editFirstBullet('My pending manual wording');
     fireEvent.click(screen.getByText('renovate.rerun'));
     expect(await screen.findByRole('textbox')).toHaveValue('My pending manual wording');
-    expect(screen.getByRole('alert')).toHaveTextContent(failure === 'no sections' ? 'renovate.noSections' : 'Generation unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent(failure === 'no sections' ? 'renovate.noSections'
+      : failure === 'oversized plan' ? 'profileInput.tailorTooLarge' : 'Generation unavailable');
     expect(screen.getByText('renovate.copyAll')).toBeInTheDocument();
     expect(mockSaveRenovation).not.toHaveBeenCalled();
   });
@@ -1475,6 +1673,8 @@ describe('persisted full target provenance', () => {
     expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
     editFirstBullet('Keep editing the old target draft');
     expect(screen.getByRole('textbox')).toHaveValue('Keep editing the old target draft');
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeDisabled();
+    fireEvent.click(screen.getByText('renovate.cancel'));
     expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeEnabled();
     expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
   });

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
@@ -306,6 +306,55 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
     expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
     expect(screen.getByText(/0 rewrites · 8 advice-only · 1 no change/)).toBeVisible();
   });
+  it.each(['en', 'zh'])('identifies each kept or unprocessed line by its complete current wording in %s', async (locale) => {
+    mocked.locale = locale;
+    const originals = ['Built a Python parser.', 'Measured robot trials.', 'Recorded the observations.'];
+    // The first and last lines run past 80 characters, so a shortened quote fails.
+    const current = ['My current parser wording 😀, edited by hand after the lab meeting to name the calibration step.\nI did not lead the team.',
+      '本稿的实验记录：只负责测量。', 'Current <script> literal text, still waiting for review after the second calibration run of the week.'];
+    const master = createEmptyResumeMaster('review-master');
+    master.activities = originals.map((_, index) => ({ id: `project-${index}`, kind: 'project', details: [{ id: `entry-${index}`, revision: 1 }] }));
+    const profile: ProfileData = { ...DEFAULT_PROFILE, resume_master: master,
+      experience_entries: originals.map((text, index) => ({ id: `entry-${index}`, text, revision: 1, status: 'confirmed', source: { kind: 'manual' } })) };
+    const draft = await createTargetResume(profile, clone(golden.draft.target_snapshot) as TargetResumeContext, 'review-draft');
+    draft.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).forEach((line, index) => {
+      line.text = current[index];
+      if (index === 1) line.included = false;
+    });
+    const result = await prepareTargetResumeAI(draft); if (!result.ok) throw new Error(result.code); prepared = result.value;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload, true); result.method = 'partial';
+      result.receipts.forEach((item, index) => {
+        item.reason_code = index === 0 ? 'no_safe_change' : index === 1 ? 'no_link' : 'model_unavailable';
+        if (index === 2) { item.status = 'skipped'; item.suggestion = null; }
+      });
+      return result;
+    });
+    const p = { ...props(), draft, profile, currentContext: draft.base }; const before = JSON.stringify(draft);
+    render(<TargetResumeAiPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '生成 AI 建议' : 'Generate AI suggestions' }));
+    const kept = await screen.findByRole('region', { name: locale === 'zh' ? '保留原文的条目' : 'Lines kept as written' });
+    const keptItems = within(kept).getAllByRole('listitem'); expect(keptItems).toHaveLength(2);
+    const expectedReasons = locale === 'zh'
+      ? ['AI 关联了这条经历与机会，但没有建议改写。', 'AI 没有给出可以核对的与机会的关联。']
+      : ['AI linked this line to the opportunity but did not suggest a rewrite.', 'AI gave no link to the opportunity that we could check.'];
+    keptItems.forEach((item, index) => {
+      expect(item.querySelector('blockquote')?.textContent).toBe(current[index]);
+      expect(item).toHaveTextContent(expectedReasons[index]);
+      expect(item).not.toHaveTextContent(originals[index]);
+    });
+    const skipped = screen.getByRole('region', { name: locale === 'zh' ? '未完成的条目' : 'Unprocessed lines' });
+    expect(within(skipped).getAllByRole('listitem')).toHaveLength(1);
+    expect(skipped.querySelector('blockquote')?.textContent).toBe(current[2]);
+    expect(skipped.querySelector('script')).toBeNull();
+    expect(skipped).not.toHaveTextContent(current[0]);
+    for (const item of [...keptItems, ...within(skipped).getAllByRole('listitem')]) {
+      expect(item.querySelector('p')?.textContent).toBe(locale === 'zh' ? '经历' : 'Experience');
+    }
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
+    expect(screen.getByRole('button', { name: locale === 'zh' ? '应用所选建议' : 'Apply selected suggestions' })).toBeDisabled();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(draft)).toBe(before);
+  });
   it('shows what changed and applies the rewrite without the posting terms when the student asks', async () => {
     const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
     const reason = "Higher-priority suggestion: Compare the stated methods with the target requirements.\nUses the opportunity's term.\nLeads with the matching part.";
@@ -326,6 +375,67 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
     const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
     expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === unit.unit_id)!.text).toBe(plain);
     expect(provenance!.annotations!.find(annotation => annotation.line_id === unit.unit_id)!.reason).toBe(plainReason);
+  });
+  it.each([true, false])('requires a fresh wording choice after regenerating (new alternative: %s)', async (hasAlternative) => {
+    const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
+    const nextRewrite = 'With my teammates, I built a Python parser 😀. I did not lead the team.';
+    const nextPlain = 'With my teammates, I built a parser in Python 😀. I did not lead the team.';
+    withExperience(item => { Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: plain, alternative_reason: 'First alternative reason.' }); });
+    const p = props(); const baseline = JSON.stringify(p.draft);
+    render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    const unit = experience();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use without the posting’s terms' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use suggested section and block order' }));
+    withExperience(item => {
+      Object.assign(item.suggestion!, { proposed_text: nextRewrite, reason: 'New suggestion reason.',
+        ops: hasAlternative ? ['relabel', 'lead_with'] : ['lead_with'],
+        alternative_text: hasAlternative ? nextPlain : null });
+      if (hasAlternative) item.suggestion!.alternative_reason = 'New alternative reason.';
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
+    await waitFor(() => expect(mocked.generate).toHaveBeenCalledTimes(2)); await reviewReady();
+    const card = screen.getByRole('article', { name: `AI rewrite ${unit.unit_id}` });
+    expect(card).toHaveTextContent(nextRewrite); expect(card).toHaveTextContent('New suggestion reason.');
+    expect(card).not.toHaveTextContent(nextPlain);
+    if (hasAlternative) expect(within(card).getByRole('checkbox', { name: 'Use without the posting’s terms' })).not.toBeChecked();
+    else expect(within(card).queryByRole('checkbox', { name: 'Use without the posting’s terms' })).toBeNull();
+    expect(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Use suggested section and block order' })).not.toBeChecked();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(p.draft)).toBe(baseline);
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); });
+    expect(p.onApply).toHaveBeenCalledTimes(1);
+    const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
+    expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === unit.unit_id)!.text).toBe(nextRewrite);
+    expect(provenance!.annotations![0].reason).toBe('New suggestion reason.');
+  });
+  it('keeps a reviewed wording choice while continuing only the unfinished items', async () => {
+    const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
+    const unfinished = prepared.units.find(unit => unit.evidence.kind === 'fact')!.unit_id;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload);
+      for (const item of result.receipts) {
+        if (item.evidence.kind === 'experience') Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: plain, alternative_reason: 'Chosen alternative reason.' });
+        if (mocked.generate.mock.calls.length === 1 && item.unit_id === unfinished) {
+          Object.assign(item, { status: 'skipped', reason_code: 'model_unavailable', suggestion: null }); result.method = 'partial';
+        }
+      }
+      return result;
+    });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    const alternative = await screen.findByRole('checkbox', { name: 'Use without the posting’s terms' });
+    await waitFor(() => expect(alternative).toBeEnabled());
+    fireEvent.click(alternative);
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${experience().unit_id}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    await waitFor(() => expect(mocked.generate).toHaveBeenCalledTimes(2)); await reviewReady();
+    expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([unfinished]);
+    expect(alternative).toBeChecked(); expect(screen.getByRole('checkbox', { name: `Use rewrite: ${experience().unit_id}` })).toBeChecked();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); });
+    const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
+    expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === experience().unit_id)!.text).toBe(plain);
+    expect(provenance!.annotations![0].reason).toBe('Chosen alternative reason.');
   });
   it('stops on a target with no quotable text and names the cause once', async () => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {

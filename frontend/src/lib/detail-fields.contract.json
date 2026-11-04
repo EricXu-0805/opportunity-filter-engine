@@ -1110,6 +1110,7 @@
             "inferred": {
               "research_areas": {
                 "basis": "external_enrichment",
+                "source_name": "OpenAlex",
                 "value": [
                   "analytical engines",
                   "number theory"

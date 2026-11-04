@@ -2,6 +2,11 @@
 
 Scope: `/api/tailor`, `/api/tailor/renovate`, and `/api/tailor/bullet`. This supplements the historical `tailor_boundary_report.md`; that report describes an earlier implementation, not the current storage/export system.
 
+## Legacy renovation plan input (tailor w14.4)
+
+- The renovation plan reads each accepted bullet, section heading and public target field (title, organization, professor, every listed skill and keyword, description) whole. Before w14.4 it read the first 200 characters of a bullet, 80 of a heading and 800 of the description, at most eight skills and ten keywords, and no organization.
+- The serialized plan messages must fit `TAILOR_PROMPT_MAX_CHARACTERS` (120,000). An oversized plan returns `413 TAILOR_INPUT_TOO_LARGE` before the plan's provider call and before renovation usage is recorded. This is an application character bound, not a statement about model context. The modal keeps the previous document and any unfinished manual edit.
+
 ## w14.1: evidence-mapped rewrites, each in its own language
 
 `backend/lib/evidence_map.py` holds the contract these routes and full-target v6 share.

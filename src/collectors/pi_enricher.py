@@ -395,7 +395,7 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
              "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0,
-             "skipped_certificate": 0, "skipped_in_memoriam": 0}
+             "skipped_certificate": 0, "skipped_in_memoriam": 0, "skipped_inactive": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -428,6 +428,11 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         # shows it, so scraping it would put it back after every refresh.
         if (opp.get("metadata") or {}).get("deactivation_reason") == IN_MEMORIAM_REASON:
             stats["skipped_in_memoriam"] += 1
+            continue
+        # A row shown as no longer active is offered to no student, and its
+        # page would take a slot of the scrape budget on every run.
+        if (opp.get("metadata") or {}).get("is_active") is False:
+            stats["skipped_inactive"] += 1
             continue
 
         enriched = False

@@ -648,8 +648,9 @@ def refresh_all(
     # A certificate rejected in an earlier call is not this run's evidence.
     reset_certificate_circuit()
     # Ids a student may already hold (saved, linked, emailed): the corpus before
-    # any collector merges into it. The same-person collapse archives these, and
-    # needs the stamps of the rows it archived before: a merge replaces them.
+    # any collector merges into it. The uiuc merge's dedups and the same-person
+    # collapse archive these, and need the stamps of the rows archived before: a
+    # merge replaces them.
     published_ids, archive_stamps = _run_start_corpus(PROCESSED_FILE)
 
     def selected(school: str | None) -> bool:
@@ -857,7 +858,8 @@ def refresh_all(
                     fetch_html_faculty,
                 )
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
-            added, updated = merge_faculty(all_faculty)
+            added, updated = merge_faculty(all_faculty, published_ids=published_ids,
+                                           archived=archive_stamps)
             # Surface the silent-scrape-failure class (a declared department whose
             # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
             # bare warning is invisible in the run log, so list empties in the
@@ -1365,7 +1367,7 @@ def refresh_all(
                     fetch_fn).parameters
                 with faculty_graph.source_budget(
                     budget_seconds_remaining()
-                ) as source_clock:
+                ) as source_clock, faculty_graph.run_start_ids(published_ids):
                     new_opps = (fetch_fn(unit_ledger=unit_ledger)
                                 if accepts_ledger else fetch_fn())
                 added, updated = merge_fn(new_opps)
@@ -1580,6 +1582,7 @@ def refresh_all(
             "skipped_deadline": pi_stats.get("skipped_deadline", 0),
             "skipped_tombstoned": pi_stats.get("skipped_tombstoned", 0),
             "skipped_certificate": pi_stats.get("skipped_certificate", 0),
+            "skipped_inactive": pi_stats.get("skipped_inactive", 0),
             "status": "ok",
         }
         logger.info(
@@ -1601,17 +1604,20 @@ def refresh_all(
         # shared by 2 DIFFERENT people. Order-independent — guarantees the R70A
         # ucb invariant (no two ucb_* faculty share a non-null email or normalized
         # name) regardless of merge/enrichment order.
-        ucb_collapse = collapse_ucb_joint_appointments(all_opps)
+        ucb_collapse = collapse_ucb_joint_appointments(
+            all_opps, published_ids=published_ids, archived=archive_stamps)
         all_opps = ucb_collapse["kept"]
         ucb_shared_nulled = _null_ucb_shared_contact_emails(all_opps)
-        if ucb_collapse["removed"] or ucb_shared_nulled:
+        if ucb_collapse["removed"] or ucb_collapse["archived"] or ucb_shared_nulled:
             logger.info(
                 "UCB joint-appointment collapse: %d same-person duplicate(s) "
-                "dropped, %d shared-mailbox email(s) nulled",
-                ucb_collapse["removed"], ucb_shared_nulled,
+                "deleted, %d published duplicate(s) newly archived, %d "
+                "shared-mailbox email(s) nulled",
+                ucb_collapse["removed"], ucb_collapse["archived"], ucb_shared_nulled,
             )
         summary["sources"]["faculty_joint_collapse"] = {
             "duplicates_removed": ucb_collapse["removed"],
+            "duplicates_archived": ucb_collapse["archived"],
             "shared_mailbox_nulled": ucb_shared_nulled,
             "status": "ok",
         }

@@ -138,7 +138,7 @@ def _canonicalize_corpus(raw: list[dict]) -> list[dict]:
 def _opportunity_corpus_text(opp: dict) -> str:
     # Must include the same fields the ranker's _similarity_corpus scores, so
     # every term that can appear in a scored record is in the fitted TF-IDF
-    # vocabulary (max_features caps it; OOV terms are dropped at transform).
+    # vocabulary (TFIDF_MAX_FEATURES caps it; OOV terms are dropped at transform).
     # research_areas_raw carries the professor's stated areas verbatim — the
     # only topical signal for faculty whose keywords stayed generic. The
     # keywords a faculty description leaves out for being ours are counted

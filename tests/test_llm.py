@@ -155,6 +155,45 @@ class TestOpenRouterReasoningBudget:
         assert _CAPTURED["extra_body"] == {"reasoning_effort": "none"} and _CAPTURED["max_tokens"] == 300
 
 
+class TestGeminiThinkingBudget:
+    """Gemini 2.5 turns each effort into a fixed thinking budget. If that comes
+    out of max_tokens, a short answer allowance ends at finish_reason=length
+    and require_complete discards the response."""
+
+    @pytest.mark.parametrize("provider,model", [
+        ("GEMINI_API_KEY", "gemini-2.5-flash"),
+        ("OPENROUTER_API_KEY", "google/gemini-2.5-flash"),
+        ("OPENROUTER_API_KEY", "google/gemini-2.5-flash-lite"),
+    ])
+    @pytest.mark.parametrize("effort,thinking", [
+        ("none", 0), ("minimal", 1024), ("low", 1024), ("medium", 8192), ("high", 24576),
+    ])
+    def test_thinking_budget_is_added_to_the_visible_allowance(self, monkeypatch, provider, model, effort, thinking):
+        _use_provider(monkeypatch, provider)
+        llm.chat_completion([{"role": "user", "content": "hi"}], model=model, max_tokens=790,
+                            reasoning_effort=effort, require_complete=True)
+        assert _CAPTURED["extra_body"] == {"reasoning_effort": effort}
+        assert _CAPTURED["max_tokens"] == 790 + thinking
+
+    def test_stream_path_gets_the_same_budget(self, monkeypatch):
+        _use_provider(monkeypatch, "GEMINI_API_KEY")
+        assert list(llm.chat_completion_stream([{"role": "user", "content": "hi"}], model="gemini-2.5-flash",
+                                               max_tokens=790, reasoning_effort="low")) == ["ok"]
+        assert _CAPTURED["max_tokens"] == 790 + 1024
+
+    def test_2_5_pro_gets_the_same_budget(self, monkeypatch):
+        _use_provider(monkeypatch, "GEMINI_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], model="gemini-2.5-pro", max_tokens=790,
+                            reasoning_effort="medium")
+        assert _CAPTURED["max_tokens"] == 790 + 8192
+
+    def test_other_gemini_generations_get_no_2_5_budget(self, monkeypatch):
+        _use_provider(monkeypatch, "GEMINI_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], model="gemini-3.8-flash", max_tokens=790,
+                            reasoning_effort="low")
+        assert _CAPTURED["max_tokens"] == 790
+
+
 class TestProviderTargeting:
     def test_provider_id_targets_openrouter(self, monkeypatch):
         # GEMINI is first in the chain, but provider_id="openrouter" must route

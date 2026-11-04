@@ -315,11 +315,13 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
     # All-zero (no signal) -> default to dry. A record whose only signal was
     # the field its work serves ("Medical Ethics", "clinical trial
     # transparency") gets no claim instead: the dry default would tell a
-    # theologian or a nurse to link a GitHub project.
+    # theologian or a nurse to link a GitHub project. So does a faculty row
+    # that names no department (a directory that lists a person another
+    # department holds): nothing on it says what kind of work it is.
     if wet == 0 and dry == 0 and hum == 0:
         applied = any(word in text for word in _APPLICATION_DOMAIN_WORDS
                       for text in (title, lab, keywords_text, desc))
-        return None if applied else "dry"
+        return None if applied or (is_faculty and not department) else "dry"
 
     # Pick the leader. Ties resolve in order: wet > humanities > dry,
     # which prevents a wet-lab posting with one "machine learning"
@@ -948,6 +950,8 @@ def _common_parts(
 
     return dict(
         name=name, year=year, major=major, school=school,
+        # False is also the form/API default, not proof of domestic status.
+        international_student=True if profile.get("international_student") is True else None,
         skills=skills, skill_levels=skill_levels,
         research_interests=research_interests,
         research_interests_verbatim=profile.get("research_interests_text", ""),
@@ -1057,6 +1061,11 @@ def _subject(p: dict, style: str = "") -> str:
     lab = p["lab"]
     area = p["research_area"]
     lab_type = p.get("lab_type", "dry")
+
+    # _common_parts already excludes inferred areas and lab names. Do not
+    # replace missing context with a person's name or a department label.
+    if p.get("is_faculty") and not (area or lab):
+        return "Subject: Research inquiry"
 
     # AcadeLink's contact-tips pages use distinct subject conventions per
     # lab type — wet labs say "Inquiry", dry labs say "Interest" (skills

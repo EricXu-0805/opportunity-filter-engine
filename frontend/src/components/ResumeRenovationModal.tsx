@@ -313,6 +313,8 @@ export default function ResumeRenovationModal({
     doc.resume_sig !== hashString(profile.resume_text ?? '');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState<'refused' | 'unavailable' | null>(null);
+  const copyAttemptRef = useRef(0);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -331,6 +333,8 @@ export default function ResumeRenovationModal({
     userEditRef.current += 1;
     setUserEditRevision(userEditRef.current);
     setOptimizingId(null);
+    setCopied(false);
+    setCopyFailed(null);
   };
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -373,6 +377,8 @@ export default function ResumeRenovationModal({
   const setCurrentDoc = useCallback((next: RenovationDoc | null) => {
     docRef.current = next;
     setDoc(next);
+    setCopied(false);
+    setCopyFailed(null);
   }, []);
   const isCurrentScope = useCallback((scope: RenovationScope | null): scope is RenovationScope => (
     !!scope && scope.active && scopeRef.current === scope && isTokenOwnerStillCurrent(scope.owner)
@@ -437,6 +443,7 @@ export default function ResumeRenovationModal({
     setRestoredFromSave(false);
     setError(null);
     setCopied(false);
+    setCopyFailed(null);
     setSaving(false);
     setSavedFlash(false);
     setSaveFailed(false);
@@ -870,7 +877,18 @@ export default function ResumeRenovationModal({
   async function handleCopyAll() {
     const scope = scopeRef.current;
     if (!doc || !isCurrentScope(scope)) return;
+    const attempt = ++copyAttemptRef.current;
+    setCopied(false);
+    setCopyFailed(null);
     const workRevision = scope.workRevision;
+    const editRevision = userEditRef.current;
+    const current = () => isCurrentWork(scope, workRevision) && copyAttemptRef.current === attempt
+      && userEditRef.current === editRevision && docRef.current === doc;
+    // Without the Clipboard API (an insecure page or an older browser) a retry cannot succeed.
+    if (!navigator.clipboard?.writeText) {
+      setCopyFailed('unavailable');
+      return;
+    }
     const lines: string[] = [];
     for (const s of doc.sections) {
       // A section with no bullets has nothing to paste under its heading.
@@ -888,10 +906,15 @@ export default function ResumeRenovationModal({
       }
       lines.push('');
     }
-    await navigator.clipboard.writeText(lines.join('\n').trim());
-    if (!isCurrentWork(scope, workRevision)) return;
+    try {
+      await navigator.clipboard.writeText(lines.join('\n').trim());
+    } catch {
+      if (current()) setCopyFailed('refused');
+      return;
+    }
+    if (!current()) return;
     setCopied(true);
-    setTimeout(() => { if (isCurrentWork(scope, workRevision)) setCopied(false); }, 2000);
+    setTimeout(() => { if (current()) setCopied(false); }, 2000);
   }
 
   if (!isOpen) return null;
@@ -1281,7 +1304,13 @@ export default function ResumeRenovationModal({
 
         {/* Footer */}
         {phase === 'doc' && doc && (
-          <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
+          <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0 space-y-2">
+            {copyFailed && <p role="alert" className="text-xs text-red-700">
+              {copyFailed === 'unavailable'
+                ? (locale === 'zh' ? '此浏览器无法自动复制，请手动选中文字复制。' : 'Copying is not available in this browser. Select the text and copy it by hand.')
+                : (locale === 'zh' ? '复制失败，稿件未变。请重试复制。' : 'Could not copy. Your draft is unchanged. Try copying again.')}
+            </p>}
+            <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               disabled={!sourceReady || targetBindingUnavailable || profileAction.busy}
@@ -1294,7 +1323,9 @@ export default function ResumeRenovationModal({
             <button
               type="button"
               onClick={handleCopyAll}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              disabled={!!editingId}
+              title={editingId ? (locale === 'zh' ? '请先保存或取消当前编辑。' : 'Save or cancel your edit before copying.') : undefined}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:text-gray-400"
             >
               {copied ? (
                 <>
@@ -1308,6 +1339,7 @@ export default function ResumeRenovationModal({
                 </>
               )}
             </button>
+            </div>
           </div>
         )}
       </div>

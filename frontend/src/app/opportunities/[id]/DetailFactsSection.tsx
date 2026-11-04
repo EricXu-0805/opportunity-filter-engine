@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react';
 import {
   DETAIL_FIELD_NAMES,
   type DetailFields,
+  type FieldTruth,
   type FacetTruth,
   type FacetValue,
   safeHttpUrl,
@@ -92,11 +93,12 @@ const UNKNOWN_HINT_FACETS = new Set([
   'location',
 ]);
 
-function FacetRow({ field, facet, truth, noSponsorship, t }: {
+function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, t }: {
   field: string;
   facet: string;
   truth: FacetTruth;
   noSponsorship: boolean;
+  sourceProvenance?: Pick<FieldTruth, 'sourceUrl' | 'observedAt'>;
   t: TFunc;
 }) {
   const label = t(`detail.facts.facets.${facet}`);
@@ -105,6 +107,8 @@ function FacetRow({ field, facet, truth, noSponsorship, t }: {
   const text = truth.state === 'unknown' ? null : formatValue(facet, truth.value, t, noSponsorship);
   const quote = truth.state === 'source' ? truth.quote : undefined;
   const quoteHref = quote?.sourceUrl ? safeHttpUrl(quote.sourceUrl) : null;
+  const provenance = truth.state === 'source' && !quote ? sourceProvenance : undefined;
+  const sourceHref = safeHttpUrl(provenance?.sourceUrl);
   return (
     <div
       className="flex flex-col gap-1 py-2 border-b border-gray-50 last:border-b-0"
@@ -154,7 +158,19 @@ function FacetRow({ field, facet, truth, noSponsorship, t }: {
       )}
       {truth.state === 'inferred' && (
         <dd className="text-[11px] text-amber-700" data-testid={`fact-${field}-${facet}-basis`}>
-          {t(basisKey(facet, truth.basis))}
+          {truth.basis === 'external_enrichment' && truth.sourceName
+            ? t('detail.facts.externalSource', { source: truth.sourceName })
+            : t(basisKey(facet, truth.basis))}
+        </dd>
+      )}
+      {(sourceHref || provenance?.observedAt) && (
+        <dd className="text-[11px] text-gray-500 flex flex-wrap gap-x-3">
+          {sourceHref && (
+            <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              {t('detail.facts.sourceLink')}
+            </a>
+          )}
+          {provenance?.observedAt && <span>{t('detail.facts.observed', { date: provenance.observedAt })}</span>}
         </dd>
       )}
     </div>
@@ -192,6 +208,11 @@ export function DetailFactsSection({
         {DETAIL_FIELD_NAMES.map((name) => {
           const field = fields[name];
           const sourceHref = field.sourceUrl ? safeHttpUrl(field.sourceUrl) : null;
+          // External topics and profile text can share this field. Its
+          // profile URL/date belong only to the source row, never to both.
+          // Also protects cached responses from before the API correction.
+          const hasExternalResearch = name === 'research_content' && field.facets.some(({ truth }) =>
+            truth.state === 'inferred' && truth.basis === 'external_enrichment');
           return (
             <div key={name} data-testid={`fact-field-${name}`} data-state={field.state}>
               <h3 className="text-[12px] font-semibold text-gray-700 mb-1">
@@ -205,11 +226,12 @@ export function DetailFactsSection({
                     facet={facet}
                     truth={truth}
                     noSponsorship={noSponsorship}
+                    sourceProvenance={hasExternalResearch ? field : undefined}
                     t={t}
                   />
                 ))}
               </dl>
-              {field.state !== 'unknown' && (sourceHref || field.observedAt) && (
+              {!hasExternalResearch && field.state !== 'unknown' && (sourceHref || field.observedAt) && (
                 <p className="mt-1 text-[11px] text-gray-500 flex flex-wrap gap-x-3">
                   {sourceHref && (
                     <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="hover:underline">

@@ -58,6 +58,7 @@ SCHOOL: dict = {
                     organization="Northwestern University",
                     department="Office of Undergraduate Research",
                     lab_or_program="Office of Undergraduate Research",
+                    reference_only=True,
                     compensation="Varies by program",
                     eligibility_majors=["all"],
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
@@ -78,6 +79,7 @@ SCHOOL: dict = {
                     organization="Northwestern University",
                     department="McCormick School of Engineering",
                     lab_or_program="Summer Research Programs",
+                    reference_only=True,
                     opportunity_type="summer_program",
                     compensation="Varies by program",
                     eligibility_majors=["engineering", "computer science", "physical sciences"],
@@ -100,23 +102,25 @@ SCHOOL: dict = {
                     "nu_tgs_srop",
                     "Northwestern Summer Research Opportunity Program (SROP)",
                     "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/",
-                    "Eight-week summer research program (June 15 - Aug 7, 2026) run by The "
-                    "Graduate School for sophomores and juniors from colleges across the U.S. "
-                    "who intend to pursue a PhD. Provides a $6,500 stipend, round-trip "
-                    "transportation, on-campus housing, a graduate mentor, professional "
-                    "development workshops, and a Northwestern graduate application fee "
-                    "waiver; all research fields are open. Requires U.S. citizenship or "
-                    "permanent residency and a 3.5+ GPA.",
+                    "An eight-week competitive research experience hosted by Northwestern "
+                    "University for sophomores and juniors from colleges and universities across "
+                    "the United States, June 14 - August 6, 2027, with the first week immersive "
+                    "and virtual. All research fields at Northwestern are open. All SROP "
+                    "participants will receive: $6,500 stipend (before tax) that includes partial "
+                    "meal stipend; round-trip transportation to Northwestern University; on campus "
+                    "housing in Evanston, IL; a current graduate student mentor; professional "
+                    "development workshops; graduate application fee waiver.",
                     organization="Northwestern University",
                     department="The Graduate School",
                     lab_or_program="SROP",
                     opportunity_type="summer_program",
                     paid="stipend",
-                    compensation="$6,500 stipend + housing + transportation + fee waiver",
+                    compensation="$6,500 stipend (before tax) that includes partial meal stipend",
                     eligibility_majors=["all"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="Applications open November 1 annually; early submission encouraged",
+                    deadline_note="Applications for SROP 2027 will open November 1, 2026. Early submissions are "
+                                  "strongly encouraged.",
                     keywords=["PhD pipeline", "visiting students", "summer research", "graduate school", "all fields"],
                 ),
             ],
@@ -143,6 +147,7 @@ SCHOOL: dict = {
                     organization="Northwestern University",
                     department="McCormick School of Engineering",
                     lab_or_program="Office of Undergraduate Engineering",
+                    reference_only=True,
                     compensation="Varies by program",
                     eligibility_majors=["engineering", "computer science", "applied math", "materials science", "biomedical engineering", "chemical engineering"],
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
@@ -161,6 +166,7 @@ SCHOOL: dict = {
                     organization="Northwestern University",
                     department="Weinberg College of Arts and Sciences",
                     lab_or_program="Baker Program in Undergraduate Research",
+                    reference_only=True,
                     compensation="Varies by grant",
                     eligibility_majors=["arts and sciences", "humanities", "social sciences", "natural sciences"],
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
@@ -422,6 +428,7 @@ SCHOOL: dict = {
                     organization="Northwestern University",
                     department="Northwestern-Argonne Institute of Science and Engineering (N",
                     lab_or_program="NAISE Summer Research Experience",
+                    reference_only=True,
                     opportunity_type="summer_program",
                     paid="stipend",
                     compensation="Stipend (amount varies by program; REU-style support reported ~$5,750 + housing/",
@@ -435,7 +442,7 @@ SCHOOL: dict = {
                     "nu_lurie_cancer_summer_internship",
                     "Northwestern Lurie Cancer Center Undergraduate Summer Research Internship",
                     "https://www.cancer.northwestern.edu/research/education-training/summer-research/lyric.html",
-                    "Eight-week full-time summer internship (June 15 - Aug 7, 2026; 35-40 "
+                    "Eight-week full-time summer internship (June 14 - Aug 6, 2027; 35-40 "
                     "hrs/week) in cancer research labs at the Robert H. Lurie Comprehensive "
                     "Cancer Center, spanning cell/molecular biology, immunology, genomics, "
                     "bioinformatics, population science, and health disparities. Interns "
@@ -452,7 +459,7 @@ SCHOOL: dict = {
                     eligibility_majors=["biology", "chemistry", "biomedical engineering", "neuroscience", "health sciences"],
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Summer 2026 deadline was Feb 16, 2026; Summer 2027 dates not posted yet",
+                    deadline_note="Your completed application must be received by midnight on Sunday, February 14, 2027.",
                     keywords=["cancer research", "biomedical", "Feinberg", "summer internship", "wet lab"],
                 ),
             ],
@@ -463,7 +470,7 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": [
                 "https://undergradresearch.northwestern.edu/funding/ayurg/",
-                "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/",
+                "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/funding/surg/",
                 "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/urap/",
@@ -504,19 +511,18 @@ SCHOOL: dict = {
                 ),
                 program(
                     "nu_feinberg_lurie_summer",
-                    "Feinberg / Lurie Cancer Center Summer Research Program",
+                    "Feinberg / Lurie Cancer Center Summer Research Programs Directory",
                     "https://www.cancer.northwestern.edu/research/education-training/summer-research/index.html",
-                    "Mentored summer cancer-research experience at Northwestern's Robert H. "
-                    "Lurie Comprehensive Cancer Center (Feinberg School of Medicine), pairing "
-                    "undergraduates with cancer-biology, oncology, and translational-research "
-                    "labs. Full-time bench or clinical/translational research over the summer "
-                    "with professional-development programming for students considering "
-                    "biomedical PhD or MD/PhD paths.",
+                    "Lists the Lurie Cancer Center's summer research programs: LYRIC, for "
+                    "undergraduate students interested in biomedical and health sciences, and "
+                    "ChicagoCHEC Research Fellows, for undergraduate and post-baccalaureate "
+                    "students from Northeastern Illinois University, University of Illinois at "
+                    "Chicago, Northwestern University, the City Colleges of Chicago and other "
+                    "Community/Junior Colleges in the Chicago metropolitan area.",
                     organization="Northwestern University",
                     department="Feinberg School of Medicine — Lurie Cancer Center",
                     lab_or_program="Lurie Cancer Center Summer Research",
-                    paid="stipend",
-                    compensation="Summer stipend",
+                    reference_only=True,
                     eligibility_majors=["Biology", "Biochemistry", "Neuroscience",
                                         "Chemistry", "Cancer Biology", "Molecular Biosciences"],
                     preferred_year=["sophomore", "junior"],
@@ -548,7 +554,7 @@ SCHOOL: dict = {
                 program(
                     "nu_ayurg_advanced",
                     "Northwestern Academic Year URG Advanced",
-                    "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/",
+                    "https://undergradresearch.northwestern.edu/funding/academic-year-urg-advanced/",
                     "Follow-on grant of up to $1,000 for students who have already received "
                     "an Academic Year URG, funding continued or new research expenses. "
                     "Requires enrollment in an independent study or honors thesis course "
@@ -612,8 +618,8 @@ SCHOOL: dict = {
                     "nu_urap",
                     "Northwestern Undergraduate Research Assistant Program (URAP)",
                     "https://undergradresearch.northwestern.edu/urap/",
-                    "Paid academic-year research assistantships ($16.60/hour, typically up to "
-                    "100 hours / $1,660) pairing students who are new to research with "
+                    "Paid academic-year research assistantships ($17.05/hour, typically up to "
+                    "100 hours / $1,705) pairing students who are new to research with "
                     "faculty mentors. Students apply either as faculty pre-selected "
                     "candidates or through an open job search via the Student Opportunities "
                     "Application Portal with a resume and four short essays. Great entry "
@@ -623,7 +629,7 @@ SCHOOL: dict = {
                     department="Office of Undergraduate Research",
                     lab_or_program="URAP",
                     paid="yes",
-                    compensation="$16.60/hour, up to ~100 hours ($1,660)",
+                    compensation="$17.05/hour, typically earning up to $1,705 (100 hours of work)",
                     eligibility_majors=["all"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",

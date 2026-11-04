@@ -9,6 +9,7 @@ and single skills each share one row. Field roles are layout, not printed labels
 from __future__ import annotations
 
 import io
+import math
 import re
 import unicodedata
 from dataclasses import dataclass, replace
@@ -550,7 +551,33 @@ def embed_docx_fonts(document, programs, deadline=None):
         node.set(qn('w:val'), value)
 
 
+def docx_entry_keeps(paragraphs):
+    """Keep short entries together; don't push oversized entries to a new page.
+
+    A conservative line estimate limits the chain to about half a page, leaving
+    room for differences between Word and LibreOffice fonts/line breaking.
+    This is only a grouping limit: the office app still lays out the text.
+    """
+    result, group, lines = [], [], 0
+    for item in paragraphs:
+        # 72 half-em columns is narrower than the body area on Letter or A4.
+        # Explicit breaks and tabs consume room even when text is short.
+        rows = item.text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+        for row in rows:
+            columns = sum(8 if char == '\t' else 2 if unicodedata.east_asian_width(char) in 'WF' else 1 for char in row)
+            lines += max(1, math.ceil(columns * DOCX_SIZES[item.style] / 10.5 / 72))
+        lines += 1  # Paragraph spacing and wrapping allowance.
+        group.append(item)
+        if item.end:
+            short = lines <= 20
+            result.extend(p.keep or (short and not p.end) for p in group)
+            group, lines = [], 0
+    result.extend(p.keep for p in group)
+    return result
+
+
 def render_docx(projection, assets, deadline=None):
+    import uharfbuzz as hb
     from docx import Document
     from docx.enum.text import WD_TAB_ALIGNMENT
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -589,6 +616,26 @@ def render_docx(projection, assets, deadline=None):
             setattr(document.core_properties, key, '')
     document.core_properties.title = 'Resume'
 
+    date_fonts = {}
+
+    def date_space(text, size):
+        # The right tab is outside this indent. Reserve the date's width so a
+        # long title wraps before it rather than splitting "2026-02" across
+        # opposite margins. One em separates them and allows for the template
+        # font used by Latin-only files; CJK files use these exact local fonts.
+        width = 0.0
+        for index, run in font_runs(text, assets, deadline):
+            if index not in date_fonts:
+                date_fonts[index] = hb.Font(hb.Face(assets[index].data))
+            font = date_fonts[index]
+            buffer = hb.Buffer()
+            buffer.add_str(run)
+            buffer.guess_segment_properties()
+            hb.shape(font, buffer)
+            width += sum(abs(position.x_advance) for position in buffer.glyph_positions) * size / font.face.upem
+            check_deadline(deadline)
+        return Pt(width + size)
+
     def add_text(paragraph, text, size=10.5, link=None):
         parent = paragraph._p
         if link:
@@ -616,7 +663,7 @@ def render_docx(projection, assets, deadline=None):
         border.append(bottom)
         paragraph._p.get_or_add_pPr().append(border)
 
-    for item in paragraphs:
+    for item, keep_next in zip(paragraphs, docx_entry_keeps(paragraphs), strict=True):
         check_deadline(deadline)
         paragraph = document.add_paragraph(style=heading_style if item.style == 'heading' else None)
         layout_format = paragraph.paragraph_format
@@ -628,10 +675,15 @@ def render_docx(projection, assets, deadline=None):
             # Whole long paragraphs must remain splittable over pages.
             layout_format.keep_together = False
             layout_format.space_after = Pt(6 if item.end else 3)
-        layout_format.keep_with_next = item.keep
+        layout_format.keep_with_next = keep_next
         for text, link in item.pieces:
             add_text(paragraph, text, DOCX_SIZES[item.style], link)
         if item.right:
+            # LibreOffice wraps a date with wide (e.g. Chinese) characters at this
+            # indent rather than at the margin tab, which would split it on
+            # medium-length rows, so such a date gets no indent.
+            if not any(unicodedata.east_asian_width(char) in 'WF' for char in item.right):
+                layout_format.right_indent = date_space(item.right, DOCX_SIZES[item.style])
             layout_format.tab_stops.add_tab_stop(right_margin, WD_TAB_ALIGNMENT.RIGHT)
             add_text(paragraph, '\t' + item.right, DOCX_SIZES[item.style])
     if any(needed):

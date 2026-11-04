@@ -108,7 +108,7 @@ def program(
     opportunity_type: str = "research", paid: str = "unknown", compensation: str = "",
     eligibility_majors: list[str] | None = None, preferred_year: list[str] | None = None,
     international_friendly: str = "unknown", deadline_note: str = "",
-    keywords: list[str] | None = None,
+    keywords: list[str] | None = None, reference_only: bool = False,
 ) -> dict:
     """Build one curated opportunity spec (school-agnostic)."""
     return {
@@ -119,7 +119,7 @@ def program(
         "eligibility_majors": eligibility_majors or [],
         "preferred_year": preferred_year or ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
-        "keywords": keywords or [],
+        "keywords": keywords or [], "reference_only": reference_only,
     }
 
 
@@ -187,6 +187,8 @@ def validate(school: dict) -> list[str]:
                 errors.append(
                     f"{p['key']}: bad paid {p.get('paid')!r} (use yes/no/stipend/unknown)"
                 )
+            if type(p.get("reference_only", False)) is not bool:
+                errors.append(f"{p['key']}: reference_only must be a boolean")
     return errors
 
 
@@ -213,6 +215,11 @@ def _normalize_program(
         description = f"{description}\n\nFrom the program page: {extra_desc}"
     description = description[:_DESC_CAP]
     title = program_spec["title"]
+    # A directory, guide or invitation-only page stays readable, but an
+    # application status read off it would describe some other program.
+    reference_only = program_spec.get("reference_only") is True
+    if reference_only:
+        status = "unknown"
     if status == "open":
         title = f"{title} (applications open)"
     elif status == "closed":
@@ -270,7 +277,7 @@ def _normalize_program(
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
             "application_effort": "medium",
-            "application_url": program_spec["url"],
+            "application_url": None if reference_only else program_spec["url"],
         },
         "description": description,
         "description_raw": description,
@@ -284,6 +291,7 @@ def _normalize_program(
             "first_seen_at": now,
             "last_seen_at": now,
             "is_active": status != "closed",
+            **({"reference_only": True} if reference_only else {}),
             "manually_reviewed": False,
             "notes": f"Auto-imported from {source['source_name']} ({source['source_type']})",
             "collector_key": program_spec["key"],
@@ -362,6 +370,10 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
 
 # --- Crawl layer (lazy HTTP deps) ------------------------------------------
 
+class _CampusFetchError(Exception):
+    """A fetch failure whose short reason can be published in a school report."""
+
+
 def _fetch(url: str, *, render: bool = False):
     """Fetch one crawl page, optionally through headless Chromium.
 
@@ -380,8 +392,8 @@ def _fetch(url: str, *, render: bool = False):
     shell. The renderer is faculty_graph's rather than a second copy, so its
     challenge detection and retry budget are shared.
 
-    Playwright is imported lazily there, so a run without Chromium installed
-    returns None and degrades exactly like an unreachable page. That is why
+    Playwright is imported lazily there. A missing browser or an unresolved
+    render is recorded as render_unresolved. That is why
     ``scripts/refresh_rotation.browser_schools`` reads campus sources too — a
     render source in a shard whose install step skipped Chromium goes quiet
     with no signal, which is the failure the workflow's own comment describes.
@@ -398,7 +410,7 @@ def _fetch(url: str, *, render: bool = False):
         # The four measured renders all returned well inside it.
         soup = _render_soup(url, total_budget_s=60.0, bounded=True)
         if soup is None:
-            logger.warning("campus_graph: render fetch failed for %s", url)
+            raise _CampusFetchError("render_unresolved")
         return soup
     try:
         import requests
@@ -424,6 +436,12 @@ def _fetch(url: str, *, render: bool = False):
         return soup
     except ImportDocumentError:
         raise
+    except requests.HTTPError as exc:
+        if exc.response is not None:
+            raise _CampusFetchError(f"http_{exc.response.status_code}") from exc
+        raise _CampusFetchError("fetch_failed") from exc
+    except requests.Timeout as exc:
+        raise _CampusFetchError("timeout") from exc
     except Exception as e:  # noqa: BLE001
         logger.warning("campus_graph: fetch failed for %s: %s", url, e)
         return None
@@ -588,6 +606,9 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         except ImportDocumentError as error:
             # The page alone fails; the rest of the source is still crawled.
             soup, reason = None, error.reason
+        except _CampusFetchError as error:
+            soup, reason = None, str(error)
+            logger.warning("campus_graph: %s for %s", reason, url)
         if soup is None:
             captures[url] = capture_failure(source_url=url, reason=reason)
             if url in seed_urls:
@@ -711,6 +732,9 @@ def fetch_and_normalize_with_evidence(
         "condition_capture_counts": {key: 0 for key in ("captured", "empty", "unsupported", "failed")},
         "condition_capture_complete": False,
         "condition_capture_updates": [],
+        "condition_gaps_by_source": {},
+        "program_page_checks": {},
+        "reference_page_checks": {},
         "normalization_failed": 0,
         "crawl_sources_expected": len(sources) if deep else 0,
         "crawl_sources_loaded": 0,
@@ -729,6 +753,7 @@ def fetch_and_normalize_with_evidence(
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
         captures: dict[str, dict] = {}
+        missing_outcome = "not_attempted"
         if deep:
             try:
                 status_by_url, discovered, crawl_evidence = _crawl_source(
@@ -736,6 +761,9 @@ def fetch_and_normalize_with_evidence(
                     source,
                 )
                 captures = crawl_evidence["condition_captures"]
+                gaps = Counter(c["reason"] for c in captures.values() if c["status"] in {"unsupported", "failed"})
+                if gaps:
+                    evidence["condition_gaps_by_source"][source["source_name"]] = dict(gaps)
                 evidence["condition_capture_updates"].extend(crawl_evidence["condition_capture_updates"])
                 for key, count in crawl_evidence["condition_capture_counts"].items():
                     evidence["condition_capture_counts"][key] += count
@@ -773,12 +801,20 @@ def fetch_and_normalize_with_evidence(
                     )
             except Exception as e:  # noqa: BLE001
                 logger.warning("crawl failed for %s: %s", source["source_name"], e)
+                missing_outcome = "unconfirmed"
                 source_seed_count = len(set(source.get("seeds", [])))
                 evidence["seed_pages_expected"] += source_seed_count
                 evidence["seed_pages_failed"] += source_seed_count
                 evidence["crawl_errors"].append(
                     f"{source['source_name']}: crawl failed"
                 )
+        # Each configured URL once per source and kind: a directory read in
+        # full says nothing about whether its programs' own pages were read.
+        for reference, field in ((False, "program_page_checks"), (True, "reference_page_checks")):
+            for url in {spec["url"] for spec in source.get("programs", [])
+                        if (spec.get("reference_only") is True) is reference}:
+                outcome = captures[url]["status"] if url in captures else missing_outcome
+                evidence[field][outcome] = evidence[field].get(outcome, 0) + 1
         for spec in source.get("programs", []):
             refine = status_by_url.get(spec["url"], {})
             try:
@@ -1110,13 +1146,27 @@ def merge_into_processed(
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
             )
+            same_page = _same_page_url(existing_opp.get("url"), opp.get("url"))
+            if existing_metadata.get("reference_only") is True and unverified_seed:
+                # A config edit alone does not make reference material an
+                # application: that waits for a run that reads the page.
+                opp["metadata"].update(reference_only=True, status="unknown")
+                opp["application"]["application_url"] = None
             ambiguous_status = opp["metadata"].get("status") == "unknown"
             if unverified_seed or ambiguous_status:
                 # A quick or failed fetch read nothing, so the row keeps what
                 # the page last said.
                 carried = ("status", "is_active")
                 stored_status = existing_metadata.get("status")
-                if not unverified_seed and stored_status in {"open", "closed"}:
+                if opp["metadata"].get("reference_only") is True:
+                    # The stored word and title read the page as a listing,
+                    # which reference material is not.
+                    carried = ()
+                elif unverified_seed and not same_page and stored_status == "open":
+                    # The old page's "open" says nothing about the page the
+                    # program moved to; only a stored retirement survives.
+                    carried = ("is_active",) if existing_metadata.get("is_active") is False else ()
+                elif not unverified_seed and stored_status in {"open", "closed"}:
                     # A page that loaded and no longer says applications are
                     # open, or closed, ends the stored word: it was the page's,
                     # and the page has stopped saying it. A closure's
@@ -1127,7 +1177,7 @@ def merge_into_processed(
                 for key in carried:
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
-                if unverified_seed:
+                if unverified_seed and same_page:
                     if "last_verified" in existing_metadata:
                         opp["metadata"]["last_verified"] = existing_metadata[
                             "last_verified"

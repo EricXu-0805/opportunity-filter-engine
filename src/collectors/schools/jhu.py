@@ -42,7 +42,6 @@ SCHOOL: dict = {
             "seeds": [
                 "https://hour.jhu.edu/",
                 "https://hour.jhu.edu/present/real/",
-                "https://hour.jhu.edu/opportunities/aplinternships/",
                 "https://krieger.jhu.edu/ursca/national-programs/",
             ],
             "crawl": STATIC,
@@ -94,27 +93,6 @@ SCHOOL: dict = {
                     keywords=["research symposium", "DREAMS", "poster session", "presentation", "showcase"],
                 ),
                 program(
-                    "hour_apl_research_internships",
-                    "Research Internships @APL (HOUR gateway) \u2014 Johns Hopkins University",
-                    "https://hour.jhu.edu/opportunities/aplinternships/",
-                    "HOUR's gateway page connecting Hopkins undergraduates to paid "
-                    "internships at the Johns Hopkins Applied Physics Laboratory, with "
-                    "Hopkins undergraduates receiving first consideration for many roles. "
-                    "Fields include engineering and analysis, AI/ML, and cybersecurity; all "
-                    "college interns receive competitive pay and paid holidays. HOUR does not "
-                    "administer the programs \u2014 applications go through APL directly.",
-                    organization="Johns Hopkins University",
-                    department="Hopkins Office for Undergraduate Research",
-                    lab_or_program="Research Internships @APL",
-                    opportunity_type="internship",
-                    paid="yes",
-                    compensation="Competitive hourly pay plus paid holidays",
-                    eligibility_majors=["engineering", "computer science", "physics", "mathematics", "data science"],
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    deadline_note="Rolling via APL careers portal",
-                    keywords=["APL", "applied physics laboratory", "paid internship", "defense research", "AI"],
-                ),
-                program(
                     "ursca_national_programs",
                     "URSCA National Research Programs hub \u2014 Johns Hopkins Krieger School",
                     "https://krieger.jhu.edu/ursca/national-programs/",
@@ -144,33 +122,24 @@ SCHOOL: dict = {
             "source_type": CAREER,
             "emit": "campus",
             "seeds": [
-                "https://imagine.jhu.edu/resources/internship-programs/",
+                "https://apply.jhu.edu/academics/learning-at-hopkins/undergraduate-internships/",
             ],
             "crawl": STATIC,
             "programs": [
                 program(
                     "imagine_internship_programs",
-                    "Imagine Center Internship Programs hub (Life Design Lab) \u2014 Johns Hopkins University",
-                    "https://imagine.jhu.edu/resources/internship-programs/",
-                    "Career-pipeline hub from JHU's Imagine Center/Life Design Lab cataloging "
-                    "internship programs for Hopkins undergraduates: Community Impact "
-                    "Internships (paid nonprofit/government placements in Baltimore), CLE "
-                    "Undergraduate Business Internships (~25 sponsored per year), BME Your "
-                    "Turn to Intern, MCEH healthcare engineering internships, Host a Jay "
-                    "alumni shadowing, JUMP/Hop-In funded summer work, RISE@APL research "
-                    "internships, the JHMI Summer Internship Program, and policy and "
-                    "film/media pathways. Useful single entry point for paid experiential "
-                    "opportunities beyond the lab.",
+                    "Undergraduate Internships (Johns Hopkins University Admissions)",
+                    "https://apply.jhu.edu/academics/learning-at-hopkins/undergraduate-internships/",
+                    "Internships allow you to put your learning into practice, open your mind to "
+                    "new possibilities, and expand your understanding of the world around you. "
+                    "Through our Life Design Lab, you\u2019ll have access to valuable services, "
+                    "including networking events, r\u00e9sum\u00e9 workshops, and mock interviews, "
+                    "so you\u2019re ready to pursue your goals.",
                     organization="Johns Hopkins University",
-                    department="Imagine Center / Life Design Lab",
-                    lab_or_program="Internship Programs",
+                    department="Undergraduate Admissions",
+                    reference_only=True,
                     opportunity_type="internship",
-                    paid="yes",
-                    compensation="Varies; several programs are paid or sponsored",
-                    eligibility_majors=["all"],
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    deadline_note="Varies by program; many recruit in fall and intersession",
-                    keywords=["career pipeline", "paid internships", "Life Design Lab", "community impact", "experiential learning"],
+                    keywords=["internship guide", "Life Design Lab"],
                 ),
             ],
         },
