@@ -9,9 +9,9 @@
     },
     "arizona": {
       "listing_count": 4,
-      "faculty_contact_count": 1483,
+      "faculty_contact_count": 1482,
       "unreviewed_count": 0,
-      "total_count": 1487
+      "total_count": 1486
     },
     "asu": {
       "listing_count": 6,
@@ -51,9 +51,9 @@
     },
     "brown": {
       "listing_count": 3,
-      "faculty_contact_count": 1194,
+      "faculty_contact_count": 1191,
       "unreviewed_count": 0,
-      "total_count": 1197
+      "total_count": 1194
     },
     "brynmawr": {
       "listing_count": 5,
@@ -147,9 +147,9 @@
     },
     "cornell": {
       "listing_count": 4,
-      "faculty_contact_count": 1598,
+      "faculty_contact_count": 1633,
       "unreviewed_count": 0,
-      "total_count": 1602
+      "total_count": 1637
     },
     "dartmouth": {
       "listing_count": 7,
@@ -303,9 +303,9 @@
     },
     "nd": {
       "listing_count": 7,
-      "faculty_contact_count": 1258,
+      "faculty_contact_count": 1257,
       "unreviewed_count": 0,
-      "total_count": 1265
+      "total_count": 1264
     },
     "neu": {
       "listing_count": 7,
@@ -375,9 +375,9 @@
     },
     "rice": {
       "listing_count": 5,
-      "faculty_contact_count": 1000,
+      "faculty_contact_count": 1002,
       "unreviewed_count": 0,
-      "total_count": 1005
+      "total_count": 1007
     },
     "rochester": {
       "listing_count": 6,
@@ -470,10 +470,10 @@
       "total_count": 1318
     },
     "ucla": {
-      "listing_count": 19,
-      "faculty_contact_count": 1999,
+      "listing_count": 18,
+      "faculty_contact_count": 2007,
       "unreviewed_count": 0,
-      "total_count": 2018
+      "total_count": 2025
     },
     "uconn": {
       "listing_count": 5,
@@ -519,9 +519,9 @@
     },
     "uga": {
       "listing_count": 5,
-      "faculty_contact_count": 2158,
+      "faculty_contact_count": 2159,
       "unreviewed_count": 0,
-      "total_count": 2163
+      "total_count": 2164
     },
     "uiowa": {
       "listing_count": 3,
@@ -633,9 +633,9 @@
     },
     "vanderbilt": {
       "listing_count": 3,
-      "faculty_contact_count": 1150,
+      "faculty_contact_count": 1151,
       "unreviewed_count": 0,
-      "total_count": 1153
+      "total_count": 1154
     },
     "vassar": {
       "listing_count": 6,
@@ -645,9 +645,9 @@
     },
     "vt": {
       "listing_count": 7,
-      "faculty_contact_count": 1870,
+      "faculty_contact_count": 1864,
       "unreviewed_count": 0,
-      "total_count": 1877
+      "total_count": 1871
     },
     "washu": {
       "listing_count": 7,
