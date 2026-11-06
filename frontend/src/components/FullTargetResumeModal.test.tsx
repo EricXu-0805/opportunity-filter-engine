@@ -330,6 +330,17 @@ describe('full target résumé modal', () => {
     expect(screen.getByRole('button', { name: saveName })).toBeDisabled();
     expect(storage.save).toHaveBeenCalledTimes(1);
   });
+  it.each([
+    ['document_too_large', 'The complete résumé and opportunity text exceed the draft limit. Nothing was truncated; your existing draft is kept.'],
+    ['invalid_master', 'Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.'],
+  ] as const)('reports a public create refused with %s by its own message', async (code, message) => {
+    vi.spyOn(contract, 'createTargetResume').mockRejectedValueOnce(new contract.TargetResumeError(code));
+    renderModal();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Edit Full name' })).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+  });
   it('keeps the generic retryable save message for a failure that is not the cap', async () => {
     await createUI(); editName('Alex 王 unconfirmed'); storage.save.mockResolvedValue({ status: 'failed' });
     fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
