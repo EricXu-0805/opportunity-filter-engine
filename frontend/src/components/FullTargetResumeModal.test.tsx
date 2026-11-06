@@ -187,6 +187,11 @@ describe('private full résumé workspace', () => {
     await privateUI(target);
     expect(screen.getByText('Private import — not independently verified. Saved source version: 7')).toBeInTheDocument();
   });
+  it.each(['private', 'public'] as const)('names the organization after the snapshot title only when there is one (%s)', async kind => {
+    if (kind === 'private') await privateUI(); else await createUI();
+    const line = screen.getByText('Target requirements and original materials').nextElementSibling;
+    expect(line?.textContent).toBe(kind === 'private' ? 'Private research note' : 'Robotics research · Example Lab');
+  });
   it('does not mark a public snapshot as a private import', async () => {
     await createUI();
     expect(screen.queryByText(/Private import|not independently verified/)).toBeNull();

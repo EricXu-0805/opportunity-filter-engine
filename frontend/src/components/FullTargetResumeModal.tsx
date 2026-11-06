@@ -661,7 +661,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           {incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.', '旧稿未保存完整机会要求，仍可编辑、保存和导出。请重新创建后，再用 AI 按当前要求修改。')}</p>}
           {outdated && !incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This draft was created from different profile or target materials. Your edits and original source remain intact; they were not rebound to the current profile.', '此稿基于不同版本的资料或目标。编辑与原始来源均已保留，没有改绑到当前资料。')}</p>}
           <details className="mt-4 rounded-xl border p-3"><summary className="cursor-pointer font-medium">{copy('Target requirements and original materials', '目标要求与原始材料')}</summary>
-            <p className="mt-2 font-medium">{doc.target_snapshot.title} · {doc.target_snapshot.organization}</p>
+            <p className="mt-2 font-medium">{doc.target_snapshot.title}{doc.target_snapshot.organization && ` · ${doc.target_snapshot.organization}`}</p>
             <p className="mt-2 whitespace-pre-wrap break-words text-sm">{doc.target_snapshot.description}</p>
             <ul className="mt-2 list-inside list-disc text-sm">{doc.target_snapshot.requirements.map((requirement, index) => <li key={index} className="whitespace-pre-wrap break-words">{requirement}</li>)}</ul>
             {doc.target_snapshot.source_url && <p className="mt-2 break-all text-xs text-gray-500">{copy('Source', '来源')}: {doc.target_snapshot.source_url}</p>}
