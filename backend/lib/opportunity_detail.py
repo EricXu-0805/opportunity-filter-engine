@@ -81,6 +81,7 @@ from src.evidence import (
     is_read_off_the_page,
     keywords_are_source_topics,
 )
+from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
 
 # v2 adds the `configured` basis. A v1 client would read that basis as
@@ -646,7 +647,13 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     intl_quote = None
     if intl in {"yes", "no"}:
         basis = _basis_for(canonical, "eligibility.international_friendly") or _INTL_TEMPLATES.get(source)
-        if basis is None:
+        reviewed = reviewed_program_audience(canonical)
+        domestic_only = reviewed.domestic_only if reviewed is not None else None
+        if basis is None and domestic_only is not None and intl == "no":
+            intl_quote = {"text": domestic_only.quote,
+                          "source_url": public_projection.safe_public_http_url(domestic_only.page),
+                          "observed_at": domestic_only.read_on.isoformat()}
+        elif basis is None:
             basis, intl_quote = _configured(canonical, "international_students")
         field.put("international_students", intl, basis, intl_quote)
         intl_explicit = basis is None

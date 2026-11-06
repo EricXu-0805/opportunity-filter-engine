@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
+
+from src.evidence import INFERRED_FIELDS_KEY
 
 VALID_AUDIENCES = frozenset({"campus", "open", "unknown"})
 
@@ -540,6 +543,15 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
 
 
 @dataclass(frozen=True)
+class DomesticOnly:
+    """A page of the program's own saying international students may not apply."""
+
+    page: str
+    quote: str
+    read_on: date
+
+
+@dataclass(frozen=True)
 class ProgramAudience:
     """Who may apply to one configured program, by its own page's words."""
 
@@ -548,9 +560,16 @@ class ProgramAudience:
     audience: str
     page: str
     quote: str
+    domestic_only: DomesticOnly | None = None
 
 
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
+_UNL_DOMESTIC = DomesticOnly(
+    "https://summerprogram.unl.edu/frequently-asked-questions/",
+    "The Nebraska Summer Research Program is only open to domestic students (U.S. citizens, permanent "
+    "residents, or non-U.S. citizens with DACA status) who are attending U.S. post-secondary institutions.",
+    date(2026, 11, 5),
+)
 
 # Read 2026-11-05. Keyed by (collector school, collector key); the rest of the
 # school's bucket keeps its source's audience.
@@ -560,12 +579,18 @@ REVIEWED_PROGRAM_AUDIENCES: dict[tuple[str, str], ProgramAudience] = {
         "The Summer Research Opportunity Program (SROP) is an eight-week competitive research experience "
         "hosted by Northwestern University for sophomores and juniors from colleges and universities across "
         "the United States.",
+        DomesticOnly(
+            _SROP + "srop-faq.html",
+            "Applications from international students are not accepted for this opportunity. To be eligible, "
+            "participants must be U.S. citizens or permanent residents.",
+            date(2026, 11, 5),
+        ),
     ),
     ("unl", "unl_summer_research_program"): ProgramAudience(
         "unl_research_programs", "https://summerprogram.unl.edu/", "open",
         "https://summerprogram.unl.edu/frequently-asked-questions/",
-        "The Nebraska Summer Research Program is only open to domestic students (U.S. citizens, permanent "
-        "residents, or non-U.S. citizens with DACA status) who are attending U.S. post-secondary institutions.",
+        _UNL_DOMESTIC.quote,
+        _UNL_DOMESTIC,
     ),
     # biox.stanford.edu answered 2026-11-05 with a bot check (403), so this is
     # not re-read: it is the sentence our config took from the page when the
@@ -579,11 +604,11 @@ REVIEWED_PROGRAM_AUDIENCES: dict[tuple[str, str], ProgramAudience] = {
 }
 
 
-def apply_program_audience(opp: dict) -> None:
-    """Give a reviewed program the audience its page states, in place."""
+def reviewed_program_audience(opp: dict) -> ProgramAudience | None:
+    """The reviewed entry of the configured program ``opp`` is, at its reviewed page, or None."""
     metadata = opp.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("discovered"):
-        return
+        return None
     reviewed = REVIEWED_PROGRAM_AUDIENCES.get((metadata.get("collector_school"), metadata.get("collector_key")))
     if (
         reviewed is not None
@@ -591,7 +616,24 @@ def apply_program_audience(opp: dict) -> None:
         and opp.get("url") == reviewed.url
         and opp.get("source_url") == reviewed.url
     ):
-        opp["audience"] = reviewed.audience
+        return reviewed
+    return None
+
+
+def apply_program_audience(opp: dict) -> None:
+    """Give a reviewed program the audience, and the international answer, its pages state, in place."""
+    reviewed = reviewed_program_audience(opp)
+    if reviewed is None:
+        return
+    opp["audience"] = reviewed.audience
+    eligibility = opp.get("eligibility")
+    if reviewed.domestic_only is not None and isinstance(eligibility, dict):
+        eligibility["international_friendly"] = "no"
+        # The page's answer now, so not the configured value a load-time
+        # stamp (`stamp_collector_templates`) called ours.
+        stamps = opp["metadata"].get(INFERRED_FIELDS_KEY)
+        if isinstance(stamps, dict):
+            stamps.pop("eligibility.international_friendly", None)
 
 
 def apply_school_audience(opportunities: list[dict]) -> dict[str, int]:

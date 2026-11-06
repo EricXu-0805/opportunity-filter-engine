@@ -12,6 +12,7 @@ the sole guard before the gate.
 
 from __future__ import annotations
 
+import copy
 import os
 import sys
 
@@ -20,6 +21,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest
 
 from backend import data_loader
+from backend.lib.opportunity_detail import build_detail_fields
+from backend.lib.public_projection import project_public_opportunity_payload
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.matcher.ranker import _filter_context, hard_exclusion
@@ -224,6 +227,7 @@ def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_audience(change
     data_loader._sanitize_opportunity(row)
 
     assert row["audience"] == "campus"
+    assert row["eligibility"]["international_friendly"] == "unknown"
 
 
 def test_stanford_bio_x_summer_research_is_for_stanford_students_only():
@@ -252,3 +256,64 @@ def test_no_other_configured_program_changes_audience():
                     changed.append(row["id"])
 
     assert changed == []
+
+
+_INTL_UIUC_STUDENT = {"home_school": "uiuc", "international_student": True}
+_DOMESTIC_ONLY = {
+    ("northwestern", "nu_tgs_srop"): (
+        "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
+        "srop-faq.html",
+        "Applications from international students are not accepted for this opportunity. To be eligible, "
+        "participants must be U.S. citizens or permanent residents.",
+    ),
+    ("unl", "unl_summer_research_program"): (
+        "https://summerprogram.unl.edu/frequently-asked-questions/",
+        "The Nebraska Summer Research Program is only open to domestic students (U.S. citizens, permanent "
+        "residents, or non-U.S. citizens with DACA status) who are attending U.S. post-secondary institutions.",
+    ),
+}
+
+
+@pytest.mark.parametrize(("school", "key"), sorted(_DOMESTIC_ONLY))
+def test_a_program_its_page_keeps_to_domestic_students_is_no_match_for_an_international_student(school, key):
+    stored = _configured_row(school, key)
+
+    loaded = data_loader._sanitize_opportunity(stored)
+
+    assert loaded["eligibility"]["international_friendly"] == "no"
+    assert hard_exclusion(loaded, _filter_context(_UIUC_STUDENT)) is None
+    assert hard_exclusion(loaded, _filter_context(_INTL_UIUC_STUDENT)) == "citizenship_restricted"
+
+
+def test_a_refreshed_row_carries_its_pages_international_answer():
+    row = _configured_row("unl", "unl_summer_research_program")
+    assert row["eligibility"]["international_friendly"] == "unknown"
+
+    apply_school_audience([row])
+
+    assert row["eligibility"]["international_friendly"] == "no"
+    assert hard_exclusion(row, _filter_context(_INTL_UIUC_STUDENT)) == "citizenship_restricted"
+
+
+@pytest.mark.parametrize(("school", "key"), sorted(_DOMESTIC_ONLY))
+def test_the_international_answer_is_shown_as_the_pages_and_quoted(school, key):
+    loaded = data_loader._sanitize_opportunity(_configured_row(school, key))
+    card = project_public_opportunity_payload(copy.deepcopy(loaded), loaded)
+    eligibility = build_detail_fields(card, loaded)["fields"]["eligibility"]
+
+    assert "eligibility.international_friendly" not in loaded["metadata"].get("inferred_fields", {})
+    assert "international_attribution" not in card
+    assert eligibility["explicit"]["international_students"] == "no"
+    page, quote = _DOMESTIC_ONLY[(school, key)]
+    assert eligibility["quotes"]["international_students"] == {
+        "text": quote, "source_url": page, "observed_at": "2026-11-05",
+    }
+
+
+def test_a_program_whose_page_states_no_citizenship_rule_keeps_its_international_answer():
+    row = _configured_row("stanford", "biox_usrp")
+
+    loaded = data_loader._sanitize_opportunity(row)
+
+    assert loaded["eligibility"]["international_friendly"] == "unknown"
+    assert hard_exclusion(loaded, _filter_context({"home_school": "stanford", "international_student": True})) is None
