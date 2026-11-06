@@ -30,6 +30,7 @@ from src.collectors.schools.ucsb import SCHOOL as UCSB
 from src.collectors.schools.ucsd import SCHOOL as UCSD
 from src.contact_instructions import CAPTURE_KEY
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
+from src.program_windows import reviewed_window
 from tests.test_faculty_graph import fake_chromium
 from tests.test_import_document import CROWDED_MARKUP, _growth, crawled_page
 
@@ -234,9 +235,10 @@ class TestSeedNormalization:
             assert o.get("pi_name") is None
             assert o.get("contact_email") is None
 
-    def test_rolling_with_no_deadline(self, all_records):
+    def test_rolling_with_no_deadline_but_a_reviewed_windows_close(self, all_records):
         for o in all_records:
-            assert o.get("deadline") is None
+            window = reviewed_window(o)
+            assert o.get("deadline") == (window.closes_on.isoformat() if window else None)
             assert o.get("is_rolling") is True
 
     def test_the_configured_rows_read_as_graduate_only_are_the_listed_ones(self, all_records):

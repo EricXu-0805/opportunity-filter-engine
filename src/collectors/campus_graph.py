@@ -48,6 +48,7 @@ from src.contact_instructions import (
     same_source_page,
 )
 from src.normalizers.ucb_dedup import dedupe_against_existing
+from src.program_windows import apply_program_window
 
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
@@ -228,7 +229,7 @@ def _normalize_program(
     keywords = list(dict.fromkeys(
         [k for k in program_spec.get("keywords", []) if k] + [source["source_type"]]
     ))
-    return {
+    record = {
         "id": _hash_id(school["school_slug"], src_value, program_spec["key"]),
         "source": src_value,
         "source_type": f"campus_{source['source_type']}",
@@ -307,6 +308,8 @@ def _normalize_program(
             "seed_page_verified": seed_page_verified,
         },
     }
+    apply_program_window(record)
+    return record
 
 
 def _normalize_discovered(school: dict, source: dict, title: str, url: str, snippet: str) -> dict:
