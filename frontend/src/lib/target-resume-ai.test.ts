@@ -68,6 +68,21 @@ describe('generation version on a suggestions response', () => {
     expect(validateTargetResumeAIResponse(p, expected(plain), { ...plain, generation_version: bad })).toEqual({ ok: false, code: 'invalid_response' });
   });
 });
+
+describe('suggestion batches from different generation configurations', () => {
+  const a = 'target-resume-generation-v1:' + 'a'.repeat(64), b = 'target-resume-generation-v1:' + 'b'.repeat(64);
+  const versioned = (p: PreparedTargetResumeAi, request_id: string, version?: string) =>
+    ({ ...response(p, p.batches[0], request_id), ...(version === undefined ? {} : { generation_version: version }) });
+  it.each([[a, b], [b, a], [a, undefined], [undefined, a]])('refuses to merge %s with %s', async (first, second) => {
+    const p = await prep();
+    expect(mergeTargetResumeAIResponses(p, [versioned(p, 'one', first), versioned(p, 'two', second)]))
+      .toEqual({ ok: false, code: 'generation_config_changed' });
+  });
+  it.each([a, undefined])('merges batches that share version %s', async version => {
+    const p = await prep();
+    expect(mergeTargetResumeAIResponses(p, [versioned(p, 'one', version), versioned(p, 'two', version)]).ok).toBe(true);
+  });
+});
 const exp = (r: TargetResumeAiResponse) => r.receipts.find(x => x.evidence.kind === 'experience')!;
 const factReceipt = (r: TargetResumeAiResponse) => r.receipts.find(x => x.evidence.kind === 'fact')!;
 const context = (p: PreparedTargetResumeAi) => ({ profile_signature: p.draft.base.profile_signature, source_signature: p.draft.base.source_signature, target_signature: p.draft.base.target_signature });

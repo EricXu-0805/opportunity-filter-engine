@@ -16,7 +16,7 @@ import {
 
 export type TargetResumeAIErrorCode = 'invalid_document' | 'invalid_signature' | 'signature_unavailable'
   | 'invalid_request' | 'invalid_response' | 'invalid_selection' | 'stale_document' | 'stale_context'
-  | 'incomplete_structure' | 'document_too_large' | 'legacy_target_context';
+  | 'incomplete_structure' | 'document_too_large' | 'legacy_target_context' | 'generation_config_changed';
 export type TargetResumeAIResult<T> = { ok: true; value: T } | { ok: false; code: TargetResumeAIErrorCode };
 export interface TargetResumeAICurrentContext {
   profile_signature: string; source_signature: string; target_signature: string;
@@ -372,6 +372,8 @@ export function mergeTargetResumeAIResponses(prepared: PreparedTargetResumeAi,
       receipts.set(item.unit_id, validateReceipt(prepared, unit, item));
     }
     for (const response of responses) {
+      // A batch written by another configuration (or one that cannot say which) never joins the run.
+      if (response.generation_version !== responses[0].generation_version) fail('generation_config_changed');
       const checked = validateTargetResumeAIResponse(prepared, {
         request_id: response.request_id, selected_unit_ids: response.receipts.map((item) => item.unit_id),
         ...(prepared.support_groups === undefined ? {} : {support_groups:supportGroupsForUnits(prepared.support_groups,response.receipts.map(item=>item.unit_id))}),

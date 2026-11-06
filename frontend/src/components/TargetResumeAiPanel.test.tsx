@@ -270,6 +270,54 @@ describe('authority rejection after partial AI results', () => {
 });
 
 
+describe('a batch from another generation configuration', () => {
+  const a = 'target-resume-generation-v1:' + 'a'.repeat(64), b = 'target-resume-generation-v1:' + 'b'.repeat(64);
+  const changed = 'The AI configuration changed between batches, so these suggestions were cleared. Generate again; your draft is kept.';
+  const twoBatches = async () => {
+    const p = props(); for (let i = 0; i < 26; i += 1) p.profile.resume_master!.skills.push({ id: `extra-${i}`, revision: 1, value: `Skill ${i}`, status: 'confirmed', source: { kind: 'manual' } });
+    p.draft = await createTargetResume(p.profile, p.draft.target_snapshot); p.currentContext = clone(p.draft.base);
+    const result = await prepareTargetResumeAI(p.draft); if (!result.ok) throw new Error(result.code); prepared = result.value;
+    expect(prepared.batches).toHaveLength(2);
+    return p;
+  };
+  const versioned = (version?: string) => async (payload: TargetResumeAiRequest) =>
+    ({ ...response(payload), ...(version === undefined ? {} : { generation_version: version }) });
+  const cleared = (p: TargetResumeAiPanelProps) => {
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Use suggested section and block order' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(p.onAuthorityRefusal).not.toHaveBeenCalled();
+    expect(p.onDirtyChange).toHaveBeenLastCalledWith(false);
+  };
+  it.each([b, undefined])('clears the run when the automatic second batch carries %s', async second => {
+    const p = await twoBatches(), original = JSON.stringify(p.draft);
+    mocked.generate.mockImplementationOnce(versioned(a)).mockImplementationOnce(versioned(second));
+    render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent(changed);
+    expect(mocked.generate).toHaveBeenCalledTimes(2); cleared(p); expect(JSON.stringify(p.draft)).toBe(original);
+  });
+  it('clears the run when Continue meets another configuration', async () => {
+    const p = props(); render(<TargetResumeAiPanel {...p} />);
+    const retryId = prepared.units.find(unit => unit.evidence.kind === 'fact')!.unit_id;
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = { ...response(payload), generation_version: a }; result.method = 'partial'; const missed = result.receipts.find(item => item.unit_id === retryId)!;
+      missed.status = 'skipped'; missed.reason_code = 'missing_result'; missed.suggestion = null; return result;
+    }).mockImplementationOnce(versioned(b));
+    await generate(); fireEvent.click(await screen.findByRole('checkbox', { name: /Use rewrite:/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(changed);
+    expect(mocked.generate).toHaveBeenCalledTimes(2); cleared(p);
+  });
+  it('keeps both batches when they carry the same configuration', async () => {
+    const p = await twoBatches();
+    mocked.generate.mockImplementation(versioned(a));
+    render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(mocked.generate).toHaveBeenCalledTimes(2); expect(screen.getAllByRole('checkbox', { name: /Use rewrite:/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+
 describe('accepted wording operation records', () => {
   it.each([undefined, 'target-resume-source-checks-v1'])('captures only accepted wording and the returned check version %s', async checkVersion => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(checkVersion ? { check_version: checkVersion } : {}) }));

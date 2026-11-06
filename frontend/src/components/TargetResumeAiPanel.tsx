@@ -143,6 +143,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     TARGET_NOT_ACTIONABLE: copy('This opportunity is currently unavailable for résumé adaptation. Earlier suggestions were cleared; your draft is kept.', '此机会目前不能用于简历调整，旧建议已作废，文稿保留。'),
     document_too_large: copy('The complete draft exceeds the request limit. Its content is kept.', '完整文稿超过请求容量，内容仍保留。'),
     invalid_full_target_request: copy('The full draft could not be verified. Review your source materials before trying again.', '无法核对完整文稿，请检查来源材料后重试。'),
+    generation_config_changed: copy('The AI configuration changed between batches, so these suggestions were cleared. Generate again; your draft is kept.', 'AI 配置在分批生成期间有变，已清除这批建议。请重新生成；文稿保留。'),
   } as Record<string, string>)[code ?? ''] ?? copy('This request did not finish. Your complete draft is kept.', '本次处理未完成，完整原稿保留。');
 
   const generate = async (resume: boolean) => {
@@ -187,7 +188,13 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         if (!checked.ok) { setError(checked.code); return; }
         working = { ...working, responses: [...working.responses, checked.value] };
         const combined = mergeTargetResumeAIResponses(working.prepared, working.responses);
-        if (!combined.ok) { setError(combined.code); return; }
+        if (!combined.ok) {
+          // Continuing would only meet the new configuration again: start over instead.
+          if (combined.code === 'generation_config_changed') {
+            runRef.current = null; setRun(null); setSelected(new Set()); setDismissed(new Set()); setOrder(false); appliedKey.current = null;
+          }
+          setError(combined.code); return;
+        }
         setRun(working); runRef.current = working;
         // The server refused only the combination; each half is a smaller request.
         const split = checked.value.receipts.filter((item) => item.reason_code === 'batch_context_too_large').map((item) => item.unit_id);
