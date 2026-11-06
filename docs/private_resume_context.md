@@ -60,6 +60,17 @@ Responses are `private, no-store`. Errors carry only a fixed code:
 
 With the `resume_renovate` release switch off, the release gate answers 404 `{"detail": "Not found"}` before any auth or storage call, as it does for the public résumé routes.
 
+## Browser use
+
+The private import page offers "Prepare résumé", which opens the full target résumé editor on this source. No public opportunity is built from the import.
+
+- `getPrivateResumeContext` (`frontend/src/lib/private-resume.ts`) accepts a receipt only with exactly the five keys above, `version` 1, `target_scope` `private_import`, `verification` `unverified`, a valid context for the requested id whose owner is the signed-in account, the expected `source_version` when one was given, and a `target_signature` equal to the browser's own hash of the context. A context over the 2 MiB draft limit is reported as too large, never truncated.
+- The editor reads the source when it opens, again before creating a draft, before each save and before and after rendering an export, and every 60 seconds while visible; each read has a 15 second deadline. Offline, deleted, changed or another account's sources stop those actions; edits already on screen are kept.
+- A draft built on the source stores the context as its `target_snapshot` and `base.target_signature`. The browser accepts such a snapshot only if `source_version` matches its id, owner and revision, and accepts a `private-import:` id in no other context version. It refuses to save, load or show a draft whose snapshot names another owner.
+- Manual edits are recorded as provenance version 1, which the database validator accepts for any context version. An older draft keeps the source revision it was built on; it is not rebound to a newer import.
+- Export sends only the selected résumé wording, never the source text, owner or evidence.
+- The public full-target AI and plan tools are not offered for a version 5 draft, and the browser refuses to prepare them (`legacy_target_context`).
+
 ## Boundaries
 
 Version 5 is a separate private target. Public résumé contexts (versions 1-4) are built from the anonymous public projection; a private import is never turned into one. The public full-target AI routes do not accept a version 5 draft. A matching version or signature shows which import was read at that request, not that its content is true or current at a later action; a writer must read again at its own action boundary.

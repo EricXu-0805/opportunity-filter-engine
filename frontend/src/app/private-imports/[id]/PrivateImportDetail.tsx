@@ -6,6 +6,7 @@ import { useT } from '@/i18n/client';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { getPrivateImportTarget, getResolvedPrivateImportTarget, PrivateTargetError, type PrivateResolvedTarget } from '@/lib/private-import-target-api';
 import PrivateEmailLauncher from '@/components/PrivateEmailLauncher';
+import PrivateResumeLauncher from '@/components/PrivateResumeLauncher';
 import ContactHistory from '@/components/ContactHistory';
 import ApplicationRecordForm from '@/components/ApplicationRecordForm';
 import ApplicationHistory from '@/components/ApplicationHistory';
@@ -84,6 +85,7 @@ export default function PrivateImportDetail({ id }: { id: string }) {
     </section>}
     {!unreadyOwner && <PrivateEmailLauncher key={`${owner}:${id}`} id={id} scope={`${owner}:${id}`} title={content?.title ?? text.title}
       available={view?.status === 'ready'} onContactConfirmed={() => setHistoryEpoch(n => n + 1)} />}
+    {!unreadyOwner && <PrivateResumeLauncher key={`resume:${owner}:${id}`} id={id} scope={`${owner}:${id}`} available={view?.status === 'ready'} />}
     {history && <section key={scope} id="tracker-records" className="space-y-6 border-t pt-6">
       <h2 className="text-lg font-semibold">{text.history}</h2>
       {view?.status === 'ready' && <ApplicationRecordForm opportunityId={id} ownerReady={true} verifyTarget={verifyTarget} onConfirmed={() => setHistoryEpoch(n => n + 1)} />}

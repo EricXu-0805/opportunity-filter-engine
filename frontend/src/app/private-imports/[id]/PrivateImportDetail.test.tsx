@@ -7,6 +7,7 @@ vi.mock('@/lib/private-import-target-api', async original => {
   return { ...importedModule, getPrivateImportTarget: vi.fn(), getResolvedPrivateImportTarget: vi.fn() };
 });
 vi.mock('@/components/PrivateEmailLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private email</button> : null }));
+vi.mock('@/components/PrivateResumeLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private résumé</button> : null }));
 vi.mock('@/components/ApplicationRecordForm', async () => {
   const { useState } = await import('react'); const { captureOwnerToken } = await import('@/lib/identity-owner');
   return { default: function Form({ opportunityId, ownerReady, verifyTarget }: { opportunityId: string; ownerReady: boolean; verifyTarget?: (owner: ReturnType<typeof captureOwnerToken>) => Promise<boolean> }) {
@@ -39,6 +40,7 @@ it('opens full private source and both owner-scoped histories with private email
   expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /generate|send|apply/i })).toBeNull();
   expect(screen.getByRole('button', { name: 'Prepare private email' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Prepare private résumé' })).toBeInTheDocument();
   expect(screen.getByText('Personal application record ' + id)).toBeInTheDocument();
   expect(resolved.mock.calls[0][1].expectedVersion).toBe('pit1:' + '1'.repeat(64));
 });
