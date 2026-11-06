@@ -120,9 +120,46 @@ describe('private full résumé workspace', () => {
     storage.save.mockImplementation(async (doc, _revision, _owner, provenance) => ({ status: 'saved', value: { doc, provenance, revision: 1, updated_at: new Date().toISOString() } }));
     fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
     await waitFor(() => expect(storage.save).toHaveBeenCalledOnce());
+    expect(check).toHaveBeenCalledTimes(2);
     expect(storage.save.mock.calls[0][0].target_snapshot).toEqual(target);
     expect(storage.save.mock.calls[0][0].base_snapshot.resume_text).toBe(profile().resume_text);
     expect(storage.save.mock.calls[0][3].events[0].kind).toBe('manual');
+  });
+  it('keeps the draft when a private pre-save source read fails; retry cannot overwrite later typing', async () => {
+    const { check } = await privateUI(); editName('Keep my first edit');
+    check.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled());
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep my first edit');
+    let finish!: (value: unknown) => void;
+    storage.save.mockImplementation((doc, _revision, _owner, provenance) => new Promise(resolve => { finish = () => resolve({ status: 'saved', value: { doc, provenance, revision: 1, updated_at: new Date().toISOString() } }); }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await waitFor(() => expect(storage.save).toHaveBeenCalledOnce());
+    editName('A later edit'); await act(async () => finish(null));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('A later edit');
+    expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled();
+  });
+  it.each(['newer source', 'another account', 'page membership lost'] as const)('refuses to save on a failed pre-save source check (%s)', async fault => {
+    const { check, target, props, rerender } = await privateUI(); editName('Kept private edit');
+    const changed = { ...target, description: target.description + '\nNewer source' };
+    const owner = fault === 'another account' ? { ...captureOwnerToken(), uid: 'b1000000-0000-4000-8000-000000000001' } : captureOwnerToken();
+    const checked = fault === 'newer source' ? changed : target;
+    check.mockResolvedValueOnce({ checkId: 2, owner, target: checked, key: privateResumeKey(checked) });
+    if (fault === 'page membership lost') rerender(<FullTargetResumeModal {...props} targetMembershipReady={false} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    expect(await screen.findByText(/private source changed or could not be checked\. Your edits are kept/)).toBeInTheDocument();
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Kept private edit');
+  });
+  it('retains edits when the private source changes during a pending save check', async () => {
+    const { check, target, props, rerender } = await privateUI(); editName('Retained private edit');
+    let resolve!: (value: unknown) => void;
+    check.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    const changed = { ...target, description: target.description + '\nChanged source' };
+    rerender(<FullTargetResumeModal {...props} privateTarget={changed} privateResumeRefresh={{ ...props.privateResumeRefresh, target: changed }} />);
+    await act(async () => resolve({ owner: captureOwnerToken(), target, key: privateResumeKey(target) }));
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Retained private edit');
+    expect(screen.getByText(/Study parsers and research tools\./).textContent).toBe(target.description);
+    expect(await screen.findByText(/created from different profile or target/)).toBeInTheDocument();
   });
   it('checks the private source before an export and keeps the draft when the check fails', async () => {
     const { check } = await privateUI(); editName('Exported private edit'); const before = check.mock.calls.length;

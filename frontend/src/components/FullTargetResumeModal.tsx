@@ -50,7 +50,7 @@ type Session = {
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
   // The account cap only frees when this owner scope ends, so it outlives edits.
   quota: 'guest' | 'member' | 'unknown' | null;
-  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | null;
+  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | 'private-source' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
@@ -409,6 +409,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     const provenanceSnapshot = clone(provenance);
     update(scope, (old) => ({ ...old, saving: true, error: null }));
     try {
+      if (verifyPrivateSource && !await verifyPrivateSource(scope.owner)) {
+        update(scope, old => ({ ...old, saving: false, error: 'private-source' })); return;
+      }
+      if (!current(scope)) return;
       const result = await saveTargetResume(snapshot, revision, scope.owner, provenanceSnapshot);
       if (!current(scope)) return;
       if (result.status === 'saved' || result.status === 'unchanged') {
@@ -552,6 +556,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       </li>)}</ol>}
   </details>;
   const errors = {
+    'private-source': copy('The private source changed or could not be checked. Your edits are kept; review the source and save again.', '私有来源已变更或暂时无法核对。编辑仍保留，请核对来源后重新保存。'),
     provenance: copy('The suggestion was not applied because its change record could not be saved. Your existing draft and records are kept; you can still edit and save them.', '建议未应用：修改记录无法保存。原有文稿和记录均保留，仍可编辑和保存。'),
     checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
     create: copy('Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.', '无法从已确认材料创建文稿，请核对母版后重试。原有编辑仍保留。'),
