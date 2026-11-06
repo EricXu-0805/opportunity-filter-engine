@@ -18,7 +18,7 @@ test('null metadata remains accepted; V3 permits old and paper quote variants',(
  assert.equal(valid(doc,provenance),true);
 });
 const mutations={
- 'unknown version':p=>p.provenance.version=4,
+ 'unknown version':p=>p.provenance.version=5,
  'string version':p=>p.provenance.version='3',
  'V3 on V3 target':p=>p.doc.target_snapshot.context_version=3,
  'V2 on V4 target':p=>p.provenance.version=2,
@@ -45,4 +45,44 @@ const mutations={
 };
 for(const [name,mutate] of Object.entries(mutations)) test(`reject ${name} without mutating input`,()=>{
  const p=pair();mutate(p);const before=structuredClone(p);assert.equal(valid(p.doc,p.provenance),false);assert.deepEqual(p,before);
+});
+function generationPair() {
+ const p=pair();p.provenance.version=4;
+ p.provenance.events[0].generation={version:'target-resume-generation-v1:'+'a'.repeat(64),pipeline_version:'full-target-v6',document_signature:'v1:sha256:'+'b'.repeat(64),request_ids:['request']};
+ return p;
+}
+test('V4 wire record preserves generation metadata and legacy unknown events',()=>{
+ const p=generationPair(), before=structuredClone(p);assert.equal(valid(p.doc,p.provenance),true);assert.deepEqual(p,before);
+ const legacy=pair().provenance.events[0];legacy.id='older';p.provenance.events.unshift(legacy);
+ assert.equal(valid(p.doc,p.provenance),true);assert.equal(Object.hasOwn(legacy,'generation'),false);
+ const event=p.provenance.events[1];event.kind='plan';event.generation.pipeline_version='full-target-plan-v6';
+ event.changes[0]={...event.changes[0],field:'included',line_id:null,before:true,after:false};
+ assert.equal(valid(p.doc,p.provenance),true);
+});
+test('V4 wire refuses malformed configurations, kind/context mismatch and old-schema smuggling',()=>{
+ const good=generationPair().provenance.events[0].generation;
+ for (const generation of [null,{}, {...good,extra:true}, {...good,version:good.version+'\n'},
+   {...good,pipeline_version:'full-target-plan-v6'}, ...['\n','\r','\u2028','\u2029'].map(s=>({...good,pipeline_version:good.pipeline_version+s})),
+   {...good,document_signature:'bad'}, {...good,request_ids:[]}, {...good,request_ids:['same','same']},
+   {...good,request_ids:[' ']}, {...good,request_ids:['x'.repeat(81)]}, {...good,request_ids:Array.from({length:1025},(_,i)=>String(i))}]) {
+  const p=generationPair();p.provenance.events[0].generation=generation;assert.equal(valid(p.doc,p.provenance),false);
+ }
+ for(const mutate of [p=>p.provenance.version=3,p=>p.doc.target_snapshot.context_version=3,p=>p.provenance.events[0].kind='manual']) {
+  const p=generationPair();mutate(p);assert.equal(valid(p.doc,p.provenance),false);
+ }
+ const ordered=generationPair(), event=ordered.provenance.events[0];event.kind='target_order';
+ event.changes[0]={...event.changes[0],field:'order',line_id:null,before:['a','b'],after:['b','a'],reason:null,target_evidence:[]};
+ const plain=structuredClone(ordered);delete plain.provenance.events[0].generation;
+ assert.equal(valid(plain.doc,plain.provenance),true);assert.equal(valid(ordered.doc,ordered.provenance),false);
+});
+test('V4 wire keeps text-review request, pipeline and source signature aligned',()=>{
+ const p=generationPair(), event=p.provenance.events[0], g=event.generation;
+ event.changes[0].check={version:'target-resume-source-checks-v6',pipeline_version:g.pipeline_version,document_signature:g.document_signature,
+  request_id:'request',original:'Original',evidence:{kind:'experience',id:'experience',revision:1}};
+ assert.equal(valid(p.doc,p.provenance),true);
+ const later=structuredClone(p);later.provenance.events[0].generation.request_ids=['earlier','request'];assert.equal(valid(later.doc,later.provenance),true);
+ for(const field of ['request_id','pipeline_version','document_signature']) {
+  const changed=structuredClone(p);changed.provenance.events[0].changes[0].check[field]=field==='document_signature'?'v1:sha256:'+'c'.repeat(64):'other';
+  assert.equal(valid(changed.doc,changed.provenance),false);
+ }
 });

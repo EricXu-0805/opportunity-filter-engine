@@ -1,6 +1,6 @@
 import { isTargetResumeEvidence } from './target-resume-evidence';
 import { validateTargetResume, type TargetResumeLine, type TargetResumeV1 } from './target-resume';
-import type { TargetResumeAiEvidence } from './target-resume-ai-protocol';
+import { TARGET_RESUME_GENERATION_VERSION_PATTERN, type TargetResumeAiEvidence } from './target-resume-ai-protocol';
 import type { TargetResumePlanSourceEvidence } from './target-resume-plan-protocol';
 
 export const TARGET_RESUME_PROVENANCE_MAX_BYTES = 256 * 1024;
@@ -24,10 +24,15 @@ export interface TargetResumeProvenanceChange extends TargetResumeProvenanceAnno
 }
 export interface TargetResumeProvenanceEvent {
   id: string; kind: TargetResumeProvenanceKind; changes: TargetResumeProvenanceChange[];
+  /** V4 only, on AI rewrite and plan events. Absent means unknown, never the current configuration. */
+  generation?: TargetResumeGenerationRecord;
+}
+export interface TargetResumeGenerationRecord {
+  version: string; pipeline_version: string; document_signature: string; request_ids: string[];
 }
 /** Locally supplied operation records. They are not authenticated server receipts. */
 export interface TargetResumeProvenance {
-  version: 1 | 2 | 3; document_id: string; opportunity_id: string;
+  version: 1 | 2 | 3 | 4; document_id: string; opportunity_id: string;
   base: TargetResumeV1['base']; events: TargetResumeProvenanceEvent[];
 }
 export interface TargetResumeProvenanceAction {
@@ -122,14 +127,14 @@ function range(source: string, evidence: Record<string, unknown>): void {
     || Array.from(source).slice(evidence.start as number, evidence.end as number).join('') !== evidence.quote
     || (evidence.end as number) > Array.from(source).length) fail();
 }
-function metadata(value: Record<string, unknown>, doc: TargetResumeV1, p: TargetResumeProvenancePath, kind: TargetResumeProvenanceKind, version: 1 | 2 | 3): void {
+function metadata(value: Record<string, unknown>, doc: TargetResumeV1, p: TargetResumeProvenancePath, kind: TargetResumeProvenanceKind, version: TargetResumeProvenance['version']): void {
   const { section, block, line } = location(doc, p);
   if (value.reason !== null) text(value.reason);
   if (!Array.isArray(value.target_evidence) || !Array.isArray(value.source_evidence)) fail();
   if ((kind === 'manual' || kind === 'target_order')
     && (value.reason !== null || value.target_evidence.length || value.source_evidence.length || value.check !== null)) fail();
   for (const e of value.target_evidence) {
-    if (!isTargetResumeEvidence(doc.target_snapshot, e, version >= 2, version === 3)) fail();
+    if (!isTargetResumeEvidence(doc.target_snapshot, e, version >= 2, version >= 3)) fail();
   }
   for (const e of value.source_evidence) {
     shape(e, ['unit_id', 'start', 'end', 'quote']); id(e.unit_id);
@@ -153,6 +158,18 @@ function metadata(value: Record<string, unknown>, doc: TargetResumeV1, p: Target
   if ((kind === 'ai_rewrite' || kind === 'plan') && p.field === 'text'
     && (line?.evidence.kind !== 'experience' || section?.kind === 'basics')) fail();
 }
+function generationRecord(value: unknown, kind: TargetResumeProvenanceKind): TargetResumeGenerationRecord {
+  shape(value, ['version', 'pipeline_version', 'document_signature', 'request_ids']);
+  if (kind !== 'ai_rewrite' && kind !== 'plan') fail();
+  if (typeof value.version !== 'string' || !TARGET_RESUME_GENERATION_VERSION_PATTERN.test(value.version)) fail();
+  const pipeline = kind === 'plan' ? /^full-target-plan-v[1-9][0-9]{0,5}$/ : /^full-target-v[1-9][0-9]{0,5}$/;
+  if (typeof value.pipeline_version !== 'string' || !pipeline.test(value.pipeline_version)) fail();
+  if (typeof value.document_signature !== 'string' || !/^v1:sha256:[a-f0-9]{64}$/.test(value.document_signature)) fail();
+  if (!Array.isArray(value.request_ids) || !value.request_ids.length || value.request_ids.length > 1024
+    || new Set(value.request_ids).size !== value.request_ids.length) fail();
+  for (const request of value.request_ids) { nonblank(request); if (Array.from(request).length > 80) fail(); }
+  return value as unknown as TargetResumeGenerationRecord;
+}
 function values(change: TargetResumeProvenanceChange, doc: TargetResumeV1): void {
   if (change.field === 'text') { text(change.before); text(change.after); }
   else if (change.field === 'included') { if (typeof change.before !== 'boolean' || typeof change.after !== 'boolean') fail(); }
@@ -170,14 +187,16 @@ function parse(value: unknown, doc: TargetResumeV1): TargetResumeProvenance | nu
   if (new TextEncoder().encode(serialized).byteLength > TARGET_RESUME_PROVENANCE_MAX_BYTES) fail('too_large');
   const copy: unknown = JSON.parse(serialized);
   shape(copy, ['version', 'document_id', 'opportunity_id', 'base', 'events']);
-  if (![1, 2, 3].includes(copy.version as number) || (copy.version === 2 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 3)) || (copy.version === 3 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 4)) || copy.document_id !== doc.id || copy.opportunity_id !== doc.opportunity_id || !same(copy.base, doc.base)) fail();
+  if (![1, 2, 3, 4].includes(copy.version as number) || (copy.version === 2 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 3)) || ((copy.version === 3 || copy.version === 4) && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 4)) || copy.document_id !== doc.id || copy.opportunity_id !== doc.opportunity_id || !same(copy.base, doc.base)) fail();
   if (!Array.isArray(copy.events) || !copy.events.length) fail();
   if (copy.events.length > TARGET_RESUME_PROVENANCE_MAX_EVENTS) fail('too_large');
   const ids = new Set<string>();
   const replay = clone(doc);
   for (const event of [...copy.events].reverse()) {
-    shape(event, ['id', 'kind', 'changes']); id(event.id);
+    const hasGeneration = copy.version === 4 && object(event) && Object.hasOwn(event, 'generation');
+    shape(event, ['id', 'kind', 'changes', ...(hasGeneration ? ['generation'] : [])]); id(event.id);
     if (ids.has(event.id) || !KINDS.includes(event.kind as TargetResumeProvenanceKind)) fail(); ids.add(event.id);
+    const generation = hasGeneration ? generationRecord(event.generation, event.kind as TargetResumeProvenanceKind) : null;
     if (!Array.isArray(event.changes) || !event.changes.length) fail();
     if (event.changes.length > TARGET_RESUME_PROVENANCE_MAX_CHANGES) fail('too_large');
     const paths = new Set<string>();
@@ -185,7 +204,10 @@ function parse(value: unknown, doc: TargetResumeV1): TargetResumeProvenance | nu
       shape(raw, [...PATH_KEYS, 'before', 'after', ...META_KEYS]);
       const p = path(raw); const key = pathKey(p); if (paths.has(key)) fail(); paths.add(key);
       const change = raw as unknown as TargetResumeProvenanceChange;
-      metadata(raw, replay, p, event.kind as TargetResumeProvenanceKind, copy.version as 1 | 2 | 3); values(change, replay);
+      metadata(raw, replay, p, event.kind as TargetResumeProvenanceKind, copy.version as TargetResumeProvenance['version']); values(change, replay);
+      // A text check from one request cannot sit under another request's generation record.
+      if (generation && change.check && (change.check.document_signature !== generation.document_signature
+        || change.check.pipeline_version !== generation.pipeline_version || !generation.request_ids.includes(change.check.request_id))) fail();
       if (!same(read(replay, p), change.after)) fail();
       if (event.kind !== 'manual' && same(change.before, change.after)) fail();
       write(replay, p, change.before);
@@ -205,7 +227,9 @@ export function appendTargetResumeProvenance(previous: TargetResumeProvenance | 
   const old = document(before); const next = document(after); const prior = parse(previous, old);
   if (!KINDS.includes(action.kind)) fail();
   if (!same({ ...old, document: null }, { ...next, document: null })) fail();
-  const version = 'context_version' in next.target_snapshot ? next.target_snapshot.context_version === 4 ? 3 : next.target_snapshot.context_version === 3 ? 2 : 1 : 1;
+  // A V4 history stays V4 so its generation records survive later edits.
+  const version = prior?.version === 4 ? 4
+    : 'context_version' in next.target_snapshot ? next.target_snapshot.context_version === 4 ? 3 : next.target_snapshot.context_version === 3 ? 2 : 1 : 1;
   const annotations = new Map<string, TargetResumeProvenanceAnnotation>();
   for (const annotation of action.annotations ?? []) {
     shape(annotation, [...PATH_KEYS, ...META_KEYS]); const p = path(annotation);

@@ -3,6 +3,8 @@ import { webcrypto } from 'node:crypto';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, type TargetResumeV1 } from './target-resume';
 import type { ExperienceEntry, ResumeFact } from './types';
+import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
+import old3 from '../../../tests/fixtures/target-resume-context-v3-golden.json';
 import { appendTargetResumeProvenance as append, currentLineRecord, validateTargetResumeProvenance as validate,
   type TargetResumeProvenance, type TargetResumeProvenanceAnnotation, type TargetResumeProvenanceChange } from './target-resume-provenance';
 const copy = <T,>(v:T):T => JSON.parse(JSON.stringify(v));
@@ -18,6 +20,12 @@ function annotation(d=doc,index=0):TargetResumeProvenanceAnnotation {
  check:{version:'old-rule-v1',pipeline_version:'full-target-v2',request_id:'request',document_signature:'v1:sha256:'+'a'.repeat(64),original:line(d,index).original,evidence:copy(line(d,index).evidence)}};
 }
 function ai(d=doc) {const after=changeText(d,'Built a Python parser.');return {after,provenance:append(null,d,after,{kind:'ai_rewrite',id:'ai',annotations:[annotation(d)]})!};}
+const generation = (pipeline='full-target-v2') => ({version:'target-resume-generation-v1:'+'a'.repeat(64),pipeline_version:pipeline,
+ document_signature:'v1:sha256:'+'a'.repeat(64),request_ids:['request']});
+// This build writes no generation record, so a V4 history is one that arrives from storage.
+function v4(p:TargetResumeProvenance,index=0,record:unknown=generation()):TargetResumeProvenance {
+ const q=copy(p);q.version=4;(q.events[index] as unknown as Record<string,unknown>).generation=record;return q;
+}
 beforeEach(async()=>{
  vi.stubGlobal('crypto',webcrypto);
  const master=createEmptyResumeMaster('master');master.basics={name:fact('name','Alex 王'),links:[]};
@@ -87,6 +95,71 @@ describe('bounded provenance records',()=>{
  it('accepts redundant exact citations without treating them as stronger proof',()=>{
   const a=annotation();a.source_evidence.push(copy(a.source_evidence[0]));a.target_evidence.push(copy(a.target_evidence[0]));
   const after=changeText(doc,'Built parser tests.');expect(validate(append(null,doc,after,{kind:'plan',annotations:[a]}),after).ok).toBe(true);
+ });
+});
+describe('V4 generation records',()=>{
+ it('reads V4 histories with and without generation records exactly, and V3 as before',()=>{
+  const {after,provenance}=ai();const p=v4(provenance);
+  expect(validate(p,after)).toEqual({ok:true,value:p});expect(validate(provenance,after)).toEqual({ok:true,value:provenance});
+  const unknown=copy(provenance);unknown.version=4;expect(validate(unknown,after)).toEqual({ok:true,value:unknown});
+  const plan=copy(doc);section(plan).blocks[1].included=false;
+  const q=v4(append(null,doc,plan,{kind:'plan'})!,0,generation('full-target-plan-v6'));expect(validate(q,plan)).toEqual({ok:true,value:q});
+  const order=copy(doc);section(order).blocks.reverse();
+  const r=v4(append(null,doc,order,{kind:'ai_rewrite'})!);expect(validate(r,order)).toEqual({ok:true,value:r});
+ });
+ it('keeps a V4 history V4, with its records unchanged, through later edits that carry no record',()=>{
+  const {after,provenance}=ai();const p=v4(provenance);
+  const typed=changeText(after,'Later wording',1);const q=append(p,after,typed,{kind:'manual'})!;
+  expect(q.version).toBe(4);expect(q.events[0]).toEqual(p.events[0]);expect(q.events[1]).not.toHaveProperty('generation');
+  const rewritten=changeText(typed,'Another accepted wording');const r=append(q,typed,rewritten,{kind:'ai_rewrite',annotations:[annotation(typed)]})!;
+  expect(r.version).toBe(4);expect(r.events.slice(0,2)).toEqual(q.events);expect(r.events[2]).not.toHaveProperty('generation');
+  expect(validate(r,rewritten)).toEqual({ok:true,value:r});
+  expect(append(provenance,after,typed,{kind:'manual'})!.version).toBe(3);
+ });
+ it.each([
+  null, {}, {...generation(),extra:'unexpected'}, {...generation(),version:7}, {...generation(),version:generation().version+'\n'},
+  {...generation(),version:'target-resume-generation-v2:'+'a'.repeat(64)}, {...generation(),pipeline_version:'full-target-plan-v6'},
+  {...generation(),pipeline_version:'full-target-v2\n'}, {...generation(),pipeline_version:null}, {...generation(),document_signature:'wrong'},
+  {...generation(),document_signature:'v1:sha256:'+'a'.repeat(64)+'\n'}, {...generation(),request_ids:'request'},
+  {...generation(),request_ids:[]}, {...generation(),request_ids:['request','request']}, {...generation(),request_ids:['request','\t\n']},
+  {...generation(),request_ids:['request',7]}, {...generation(),request_ids:['request','x'.repeat(81)]},
+  {...generation(),request_ids:['request',...Array.from({length:1024},(_,i)=>String(i))]},
+ ])('rejects a malformed generation record (%j)',bad=>{
+  // An AI order change carries no text check, so only the record's own rules can refuse it.
+  const order=copy(doc);section(order).blocks.reverse();const p=append(null,doc,order,{kind:'ai_rewrite'})!;
+  expect(validate(v4(p),order).ok).toBe(true);expect(validate(v4(p,0,bad),order).ok).toBe(false);
+ });
+ it('accepts the longest request list and request ID the record allows',()=>{
+  const order=copy(doc);section(order).blocks.reverse();const p=append(null,doc,order,{kind:'ai_rewrite'})!;
+  const q=v4(p,0,{...generation(),request_ids:['😀'.repeat(80),...Array.from({length:1023},(_,i)=>String(i))]});
+  expect(validate(q,order).ok).toBe(true);
+ });
+ it('rejects a generation record outside a V4 AI rewrite or plan event',()=>{
+  const {after,provenance}=ai();const legacy=v4(provenance);legacy.version=3;expect(validate(legacy,after).ok).toBe(false);
+  const typed=changeText(after,'Typed');expect(validate(v4(append(provenance,after,typed,{kind:'manual'})!,1),typed).ok).toBe(false);
+  const order=copy(doc);section(order).blocks.reverse();expect(validate(v4(append(null,doc,order,{kind:'target_order'})!),order).ok).toBe(false);
+  const plan=copy(doc);section(plan).blocks[1].included=false;expect(validate(v4(append(null,doc,plan,{kind:'plan'})!),plan).ok).toBe(false);
+ });
+ it.each(['request_id','pipeline_version','document_signature'] as const)('rejects a text check whose %s differs from its generation record',key=>{
+  const {after,provenance}=ai();const p=v4(provenance);
+  p.events[0].changes[0].check![key]=key==='document_signature'?'v1:sha256:'+'b'.repeat(64):key==='pipeline_version'?'full-target-v3':'other';
+  expect(validate(p,after).ok).toBe(false);
+ });
+ it('accepts a text check that names a later request of its generation record',()=>{
+  const {after,provenance}=ai();const p=v4(provenance,0,{...generation(),request_ids:['earlier-request','request']});
+  expect(validate(p,after)).toEqual({ok:true,value:p});
+ });
+ it('keeps official-website quotes in V4 and binds V4 only to a V4 target',()=>{
+  const before=copy(golden.draft) as TargetResumeV1,after=copy(before);const s=after.document.sections.find(item=>item.kind==='activities')!;
+  const block=s.blocks[0],target=block.lines.find(item=>item.evidence.kind==='experience')!;target.text='I measured the sensors.';
+  const p=append(null,before,after,{kind:'ai_rewrite',annotations:[{section_id:s.id,block_id:block.id,line_id:target.id,field:'text',reason:'Website relevance',
+   target_evidence:[{field:'lab_heading',page_index:0,section_index:0,start:0,end:6,quote:'实验室😀研究'}],source_evidence:[],
+   check:{version:'target-resume-source-checks-v1',pipeline_version:'full-target-v6',request_id:'request',document_signature:golden.document_signature,original:target.original,evidence:target.evidence}}]})!;
+  const q=v4(p,0,{...generation('full-target-v6'),document_signature:golden.document_signature});
+  expect(validate(q,after)).toEqual({ok:true,value:q});
+  const mixed=copy(after);mixed.target_snapshot=copy(old3.draft.target_snapshot) as TargetResumeV1['target_snapshot'];
+  const unknown=copy(q);delete unknown.events[0].generation;unknown.events[0].changes[0].target_evidence=[];
+  expect(validate(unknown,after).ok).toBe(true);expect(validate(unknown,mixed).ok).toBe(false);expect(validate({...unknown,version:2},mixed).ok).toBe(true);
  });
 });
 describe('stale, forged and malformed records',()=>{

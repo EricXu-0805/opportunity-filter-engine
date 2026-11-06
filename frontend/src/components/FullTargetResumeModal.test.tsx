@@ -802,6 +802,66 @@ describe('saved operation records', () => {
     return { next, action, canonical: prepared.value.canonical_draft, provenance: appendTargetResumeProvenance(null, doc, next, action)! };
   }
   const saveEcho = () => storage.save.mockImplementationOnce(async (doc: TargetResumeV1, revision: number, _owner: unknown, provenance: TargetResumeProvenance | null) => ({ status: 'saved', value: recordLoaded(doc, provenance, revision + 1) }));
+  // This build writes no generation record, so a V4 history is one that arrives from storage.
+  const withGeneration = (record: TargetResumeProvenance, version: string | null) => {
+    const value = clone(record), check = value.events[0].changes[0].check!; value.version = 4;
+    if (version) value.events[0].generation = { version, pipeline_version: check.pipeline_version, document_signature: check.document_signature, request_ids: [check.request_id] };
+    return value;
+  };
+  it('shows a saved generation record in history and restores it without taking the newer one', async () => {
+    const p = profile(), original = await docFor(p), edit = await checkedEdit(original);
+    const record = withGeneration(edit.provenance, 'target-resume-generation-v1:' + 'a'.repeat(64));
+    record.events[0].generation!.request_ids.push('second-request');
+    const current = withGeneration(edit.provenance, 'target-resume-generation-v1:' + 'b'.repeat(64));
+    storage.load.mockResolvedValue(recordLoaded(edit.next, current, 4));
+    storage.history.mockResolvedValue([{ revision: 2, updated_at: 'old' }]);
+    storage.version.mockResolvedValue(recordLoaded(edit.next, record, 2));
+    renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' }); historyOpen();
+    fireEvent.click(screen.getByRole('button', { name: 'Load latest 20 versions' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'View version 2 · old' }));
+    await screen.findByRole('region', { name: 'Selected historical version preview' });
+    fireEvent.click(screen.getByText('Historical change records'));
+    const historical = screen.getByText('Historical change records').closest('details')!;
+    fireEvent.click(within(historical).getByText('Generation details'));
+    expect(within(historical).getByText('Configuration ID: target-resume-generation-v1:' + 'a'.repeat(64))).toBeVisible();
+    expect(within(historical).getByText('Pipeline version: full-target-v2')).toBeVisible();
+    expect(within(historical).getByText('Source draft signature: ' + record.events[0].generation!.document_signature)).toBeVisible();
+    expect(within(historical).getByText('Request IDs: controlled-request, second-request')).toBeVisible();
+    expect(historical.textContent).not.toContain('b'.repeat(64));
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Restore selected version as a new save' }));
+    await screen.findByText('Saved version 5'); expect(storage.save.mock.calls[0][3]).toEqual(record);
+  });
+  it('shows a plan event\'s generation record in a V4 history, after the event\'s changes', async () => {
+    const p = profile(), doc = await docFor(p), next = clone(doc);
+    next.document.sections.flatMap(s => s.blocks).find(b => b.lines.some(l => l.text === 'Art project'))!.included = false;
+    const record = clone(appendTargetResumeProvenance(null, doc, next, { kind: 'plan' })!); record.version = 4;
+    record.events[0].generation = { version: 'target-resume-generation-v1:' + 'c'.repeat(64), pipeline_version: 'full-target-plan-v6',
+      document_signature: 'v1:sha256:' + 'd'.repeat(64), request_ids: ['plan-request'] };
+    storage.load.mockResolvedValue(recordLoaded(next, record)); renderModal(p);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
+    const summary = screen.getByText('Generation details'); fireEvent.click(summary);
+    expect(screen.getByText('Pipeline version: full-target-plan-v6')).toBeVisible(); expect(screen.getByText('Request IDs: plan-request')).toBeVisible();
+    const change = screen.getByText(/^Accepted content choice · /);
+    expect(change.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it('says a V4 AI change has no generation record and keeps the history V4 through a later edit', async () => {
+    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc), record = withGeneration(edit.provenance, null);
+    storage.load.mockResolvedValue(recordLoaded(edit.next, record)); renderModal(p);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
+    expect(screen.getByText('Generation configuration was not recorded.')).toBeVisible(); expect(screen.queryByText('Generation details')).toBeNull();
+    editName('Later name'); saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    await screen.findByText('Saved version 2');
+    const saved = storage.save.mock.calls[0][3] as TargetResumeProvenance;
+    expect(saved.version).toBe(4); expect(saved.events[0]).toEqual(record.events[0]); expect(saved.events[1].kind).toBe('manual');
+    expect(screen.getAllByText('Generation configuration was not recorded.')).toHaveLength(1);
+  });
+  it('shows a V3 history without any generation line', async () => {
+    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc);
+    storage.load.mockResolvedValue(recordLoaded(edit.next, edit.provenance)); renderModal(p);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
+    expect(screen.getByText('Reason: Keep the stated contribution.')).toBeVisible();
+    expect(screen.queryByText('Generation configuration was not recorded.')).toBeNull(); expect(screen.queryByText('Generation details')).toBeNull();
+  });
   it('shows legacy unknown and keeps a manual marker when text returns to the original', async () => {
     const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
     fireEvent.click(screen.getByText('Change records')); expect(screen.getByText(/Change source unknown/)).toBeVisible();
