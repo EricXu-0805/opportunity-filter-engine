@@ -177,7 +177,9 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
       if (selections.has(item.block_id)) annotations.push({ section_id: item.section_id, block_id: item.block_id, line_id: null,
         field: 'included', reason: item.reason, target_evidence: item.target_evidence, source_evidence: item.source_evidence, check: null });
     }
-    onApply(review.prepared.canonical_draft, result.value, { kind: 'plan', annotations });
+    const generationVersion = review.response.generation_version;
+    onApply(review.prepared.canonical_draft, result.value, { kind: 'plan', annotations,
+      ...(generationVersion === undefined ? {} : { generation_version: generationVersion }) });
   };
   const sectionTitle = (section: TargetResumeV1['document']['sections'][number]) => section.heading || ({
     basics: copy('Contact', '基本信息'), education: copy('Education', '教育'), activities: copy('Experience and projects', '经历与项目'),

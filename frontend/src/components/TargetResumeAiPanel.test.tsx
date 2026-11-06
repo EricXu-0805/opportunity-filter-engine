@@ -315,10 +315,33 @@ describe('a batch from another generation configuration', () => {
     expect(mocked.generate).toHaveBeenCalledTimes(2); expect(screen.getAllByRole('checkbox', { name: /Use rewrite:/ }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('alert')).toBeNull();
   });
+  it('carries the shared configuration when applying after both batches', async () => {
+    const p = await twoBatches();
+    mocked.generate.mockImplementation(versioned(a));
+    render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(mocked.generate).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getAllByRole('checkbox', { name: /Use rewrite:/ })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    expect(vi.mocked(p.onApply).mock.calls[0][2].generation_version).toBe(a);
+  });
 });
 
 
 describe('accepted wording operation records', () => {
+  it.each([['target-resume-generation-v1:' + 'a'.repeat(64), 'rewrite'], ['target-resume-generation-v1:' + 'a'.repeat(64), 'order'], [undefined, 'rewrite']] as const)(
+    'carries generation version %s with an accepted %s', async (version, choice) => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(version ? { generation_version: version } : {}) }));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    fireEvent.click(choice === 'order' ? screen.getByRole('checkbox', { name: 'Use suggested section and block order' })
+      : screen.getAllByRole('checkbox', { name: /Use rewrite:/ })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    if (version) expect(action.generation_version).toBe(version); else expect(action).not.toHaveProperty('generation_version');
+    // The saved record format (v1-v3) has no field for it, so the record is unchanged.
+    const { generation_version: _ignored, ...withoutVersion } = action;
+    expect(appendTargetResumeProvenance(null, p.draft, next, { ...action, id: 'event' }))
+      .toEqual(appendTargetResumeProvenance(null, p.draft, next, { ...withoutVersion, id: 'event' }));
+  });
   it.each([undefined, 'target-resume-source-checks-v1'])('captures only accepted wording and the returned check version %s', async checkVersion => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(checkVersion ? { check_version: checkVersion } : {}) }));
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();

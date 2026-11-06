@@ -32,6 +32,9 @@ export interface TargetResumeProvenance {
 }
 export interface TargetResumeProvenanceAction {
   kind: TargetResumeProvenanceKind; id?: string; annotations?: TargetResumeProvenanceAnnotation[];
+  /** The server's configuration identity for accepted AI advice; absent when the answer gave none.
+   * appendTargetResumeProvenance does not store it: record versions 1-3 have no field for it. */
+  generation_version?: string;
 }
 export type TargetResumeProvenanceCode = 'invalid' | 'too_large';
 export class TargetResumeProvenanceError extends Error {

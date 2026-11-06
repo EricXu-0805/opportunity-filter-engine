@@ -262,7 +262,10 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         check: response.check_version ? { version: response.check_version, pipeline_version: response.pipeline_version,
           request_id: response.request_id, document_signature: response.document_signature, original: unit.original, evidence: unit.evidence } : null });
     }
-    onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations });
+    // Merged batches share one version (mergeTargetResumeAIResponses), so the first speaks for all.
+    const generationVersion = run.responses[0]?.generation_version;
+    onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations,
+      ...(generationVersion === undefined ? {} : { generation_version: generationVersion }) });
   };
   const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
     ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], alternativeUnitIds: alternativeUnitIds(), applyStructure: order, currentContext, supportGroups }) : null;
