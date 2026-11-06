@@ -44,6 +44,9 @@ lxml==6.1.0
 # fuzzy-but-strict mode is the only sane way to handle the MM/DD/YY,
 # season-name, and "Rolling/TBD" mix that scrapers produce.
 python-dateutil==2.9.0
+# Campus time zones for program openings (src/program_windows.py). zoneinfo
+# falls back to this package when the host has no system tz database.
+tzdata==2026.5
 
 # Complete target resume PDF/DOCX export (M41).
 # Fonts are bundled locally; rendering never fetches external content.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 from datetime import date, time
+from importlib import resources
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -268,3 +269,12 @@ def test_jhu_pura_whose_page_refused_us_keeps_its_config():
 
     assert (spec["compensation"], spec["deadline_note"]) == (
         "$3,000 fellowship", "Applications due September 1 (11:59 pm), including mentor letters")
+
+
+def test_every_window_zone_resolves_from_the_shipped_tz_database():
+    # zoneinfo reads the host's tz database first; tzdata (requirements.txt)
+    # is what it falls back to on a host without one.
+    zones = {window.zone for window in WINDOWS.values() if window.zone}
+    assert zones
+    for zone in zones:
+        assert resources.files("tzdata.zoneinfo").joinpath(*zone.split("/")).is_file(), zone
