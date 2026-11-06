@@ -7,6 +7,12 @@ vi.mock('@/lib/private-import-target-api', async original => {
   const importedModule = await original<typeof import('@/lib/private-import-target-api')>();
   return { ...importedModule, getPrivateImportTarget: vi.fn(), getResolvedPrivateImportTarget: vi.fn() };
 });
+const releaseFlags = vi.hoisted(() => ({}) as Record<string, unknown>);
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  Object.assign(releaseFlags, actual.RELEASE_SCOPE);
+  return { ...actual, RELEASE_SCOPE: releaseFlags };
+});
 vi.mock('@/components/PrivateEmailLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private email</button> : null }));
 vi.mock('@/components/PrivateResumeLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private résumé</button> : null }));
 vi.mock('@/components/ApplicationRecordForm', async () => {
@@ -32,7 +38,7 @@ beforeEach(async () => { await setupOwner(); raw.mockReset(); resolved.mockReset
   raw.mockResolvedValue({ target: { deleted_at: null, target_version: 'pit1:' + '1'.repeat(64) } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);
   resolved.mockResolvedValue(source);
 });
-afterEach(() => { vi.restoreAllMocks(); i18n.locale = 'en'; });
+afterEach(() => { vi.restoreAllMocks(); releaseFlags.resumeRenovate = true; i18n.locale = 'en'; });
 it('opens full private source and both owner-scoped histories with private email preparation and no send action', async () => {
   render(<PrivateImportDetail id={id} />);
   await screen.findByText('Private test title');
@@ -52,6 +58,13 @@ it.each([
   i18n.locale = locale;
   render(<PrivateImportDetail id={id} />);
   expect(await screen.findByText(sentence)).toBeInTheDocument();
+});
+it('offers private résumé editing only while the résumé release switch is on, like the public entries', async () => {
+  releaseFlags.resumeRenovate = false;
+  render(<PrivateImportDetail id={id} />);
+  await screen.findByText('Private test title');
+  expect(screen.getByRole('button', { name: 'Prepare private email' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Prepare private résumé' })).toBeNull();
 });
 it('retains histories for an owned tombstone without resolving old content', async () => {
   raw.mockResolvedValue({ target: { deleted_at: '2026-09-28T00:00:00Z' } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);

@@ -62,7 +62,7 @@ With the `resume_renovate` release switch off, the release gate answers 404 `{"d
 
 ## Browser use
 
-The private import page offers "Prepare résumé", which opens the full target résumé editor on this source. No public opportunity is built from the import.
+While `RELEASE_SCOPE.resumeRenovate` is on, the private import page offers "Prepare résumé", which opens the full target résumé editor on this source. No public opportunity is built from the import.
 
 - `getPrivateResumeContext` (`frontend/src/lib/private-resume.ts`) accepts a receipt only with exactly the five keys above, `version` 1, `target_scope` `private_import`, `verification` `unverified`, a valid context for the requested id whose owner is the signed-in account, the expected `source_version` when one was given, and a `target_signature` equal to the browser's own hash of the context. A context over the 2 MiB draft limit is reported as too large, never truncated.
 - The editor reads the source when it opens, again before creating a draft, before each save and before and after rendering an export, and every 60 seconds while visible; each read has a 15 second deadline. Offline, deleted, changed or another account's sources stop those actions; edits already on screen are kept.
