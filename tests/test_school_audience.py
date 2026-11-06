@@ -27,6 +27,7 @@ from src.normalizers.school_audience import (
     REVIEWED_PROGRAM_AUDIENCES,
     SOURCE_DEFAULTS,
     VALID_AUDIENCES,
+    apply_program_audience,
     apply_school_audience,
 )
 
@@ -223,3 +224,31 @@ def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_audience(change
     data_loader._sanitize_opportunity(row)
 
     assert row["audience"] == "campus"
+
+
+def test_stanford_bio_x_summer_research_is_for_stanford_students_only():
+    row = _configured_row("stanford", "biox_usrp")
+    assert (row["audience"], row["opportunity_type"]) == ("unknown", "summer_program")
+    assert hard_exclusion(row, _filter_context(_UIUC_STUDENT)) is None
+
+    loaded = data_loader._sanitize_opportunity(row)
+
+    assert loaded["audience"] == "campus"
+    assert hard_exclusion(loaded, _filter_context(_UIUC_STUDENT)) == "other_school_campus"
+    assert hard_exclusion(loaded, _filter_context({"home_school": "stanford"})) is None
+
+
+def test_no_other_configured_program_changes_audience():
+    changed = []
+    for school in SCHOOL_CONFIGS:
+        for source in school["sources"]:
+            for spec in source.get("programs", []):
+                if (school["school_slug"], spec["key"]) in REVIEWED_PROGRAM_AUDIENCES:
+                    continue
+                row = cg._normalize_program(school, source, spec)
+                before = row["audience"]
+                apply_program_audience(row)
+                if row["audience"] != before:
+                    changed.append(row["id"])
+
+    assert changed == []

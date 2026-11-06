@@ -567,6 +567,15 @@ REVIEWED_PROGRAM_AUDIENCES: dict[tuple[str, str], ProgramAudience] = {
         "The Nebraska Summer Research Program is only open to domestic students (U.S. citizens, permanent "
         "residents, or non-U.S. citizens with DACA status) who are attending U.S. post-secondary institutions.",
     ),
+    # biox.stanford.edu answered 2026-11-05 with a bot check (403), so this is
+    # not re-read: it is the sentence our config took from the page when the
+    # program was added on 2026-06-29.
+    ("stanford", "biox_usrp"): ProgramAudience(
+        "stanford_labs", "https://biox.stanford.edu/research/undergraduate-research", "campus",
+        "https://biox.stanford.edu/research/undergraduate-research",
+        "awards eligible Stanford undergraduates a summer stipend for 10 weeks of full-time interdisciplinary "
+        "biosciences research with a Bio-X affiliated faculty member",
+    ),
 }
 
 
