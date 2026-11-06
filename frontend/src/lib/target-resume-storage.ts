@@ -1,3 +1,4 @@
+import { isPrivateResumeContext } from './private-resume-context';
 import { validateTargetResumeProvenance, type TargetResumeProvenance } from './target-resume-provenance';
 import { getDeviceId, supabase } from './supabase';
 import { isOwnerTokenValid, type OwnerToken } from './identity-owner';
@@ -98,6 +99,7 @@ async function loaded(value: unknown, opportunityId: string, token: OwnerToken):
   owner(token);
   const meta = summary(value);
   const doc = snapshot((value as Record<string, unknown>).doc);
+  if (isPrivateResumeContext(doc.target_snapshot) && doc.target_snapshot.private_source.owner_id !== token.uid) throw new TargetResumeReadError('invalid');
   const provenance = provenanceSnapshot((value as Record<string, unknown>).provenance ?? null, doc);
   if (doc.opportunity_id !== opportunityId || !await verifyTargetResumeSignatures(doc)) throw new TargetResumeReadError('invalid');
   owner(token);
@@ -183,6 +185,7 @@ export async function saveTargetResume(doc: TargetResumeV1, expectedRevision: nu
     owner(token);
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) return { status: 'failed' };
     const copy = snapshot(doc);
+    if (isPrivateResumeContext(copy.target_snapshot) && copy.target_snapshot.private_source.owner_id !== token.uid) return { status: 'failed' };
     const provenanceCopy = provenanceSnapshot(provenance, copy);
     targetId(copy.opportunity_id);
     const verified = await verifyTargetResumeSignatures(copy);

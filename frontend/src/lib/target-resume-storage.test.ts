@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
+import privateGolden from '../../../tests/fixtures/private-resume-context-v5-golden.json';
 import generationGolden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
 import { appendTargetResumeProvenance, type TargetResumeProvenance } from './target-resume-provenance';
 import { createEmptyResumeMaster } from './resume-master';
@@ -242,4 +243,37 @@ describe('atomic document and provenance storage',()=>{
   advanceOwnerEpoch('other');await syncLocalIdentityOwner('other');gate.resolve({data:{status:'saved',...row(1,after),provenance},error:null});
   expect(await pending).toEqual({status:'abandoned'});
  });
+});
+
+async function privateOwner() {
+ const uid=privateGolden.receipt.context.private_source.owner_id;
+ advanceOwnerEpoch(uid); await syncLocalIdentityOwner(uid); device.mockResolvedValue(uid);
+ return captureOwnerToken();
+}
+describe('private full résumé storage',()=>{
+it('saves, reads and restores a private full resume without promoting or replacing its source',async()=>{
+ const token=await privateOwner(), original=structuredClone(privateGolden.draft) as TargetResumeV1, edited=structuredClone(original);
+ edited.document.sections[0].blocks[0].lines[0].text+=' (manual edit)';
+ const provenance=appendTargetResumeProvenance(null,original,edited,{kind:'manual',id:'private-manual'})!;
+ expect(provenance.version).toBe(1);
+ rpc.mockImplementation(async(_name,args)=>({data:{status:'saved',...row(args.p_expected_revision+1,args.p_doc),provenance:args.p_provenance},error:null}));
+ const saved=await saveTargetResume(edited,1,token,provenance);
+ expect(saved.status).toBe('saved');
+ expect(rpc.mock.calls[0][1]).toMatchObject({p_expected_owner:token.uid,p_opportunity_id:original.opportunity_id,p_expected_revision:1});
+ single.mockResolvedValue({data:{...row(2,edited),provenance},error:null});
+ const current=await loadTargetResume(original.opportunity_id,token);
+ expect(current?.doc.target_snapshot).toEqual(original.target_snapshot); expect(current?.provenance).toEqual(provenance);
+ single.mockResolvedValue({data:row(1,original),error:null});
+ const historical=await loadTargetResumeVersion(original.opportunity_id,1,token);
+ expect(historical?.doc).toEqual(original);
+ expect((await saveTargetResume(historical!.doc,2,token)).status).toBe('saved');
+});
+it('rejects private full-resume records with another embedded owner before save or display',async()=>{
+ const value=structuredClone(privateGolden.draft) as TargetResumeV1;
+ expect(await saveTargetResume(value,0,captureOwnerToken())).toEqual({status:'failed'});
+ expect(rpc).not.toHaveBeenCalled();
+ single.mockResolvedValue({data:row(1,value),error:null});
+ await expect(loadTargetResume(value.opportunity_id,captureOwnerToken())).rejects.toMatchObject({code:'invalid'});
+ await expect(loadTargetResumeVersion(value.opportunity_id,1,captureOwnerToken())).rejects.toMatchObject({code:'invalid'});
+});
 });
