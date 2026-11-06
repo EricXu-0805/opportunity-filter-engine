@@ -591,7 +591,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <button type="button" className={`${button} col-start-2 row-start-1`} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
         </div>
       </header>
-      {privateResumeRefresh && <PrivateResumeStatus state={privateResumeRefresh} available={targetMembershipReady ?? targetReady} />}
+      {privateResumeRefresh && <PrivateResumeStatus state={privateResumeRefresh} available={targetMembershipReady ?? targetReady} draft={!!doc} />}
       <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={privateTarget ? true : targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />
         {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p>{leave === 'rebuild'

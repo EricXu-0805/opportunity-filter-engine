@@ -5,8 +5,8 @@ import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner'
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import type { ProfileData } from '@/lib/types';
 import PrivateResumeLauncher from './PrivateResumeLauncher';
-const mocks = vi.hoisted(() => ({ read: vi.fn(), refresh: vi.fn(), profile: null as ProfileData | null, props: null as Record<string, unknown> | null }));
-vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: 'en' }), useLocale: () => 'en' }));
+const mocks = vi.hoisted(() => ({ read: vi.fn(), refresh: vi.fn(), profile: null as ProfileData | null, props: null as Record<string, unknown> | null, locale: 'en' as 'en' | 'zh' }));
+vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: mocks.locale }), useLocale: () => mocks.locale }));
 vi.mock('@/lib/private-resume', () => ({ getPrivateResumeContext: mocks.read }));
 vi.mock('@/lib/use-local-storage-json', () => ({ useLocalStorageJSON: () => mocks.profile }));
 vi.mock('@/lib/use-profile-refresh', () => ({ PROFILE_REFRESH_DEADLINE_MS: 15000, useProfileRefresh: mocks.refresh }));
@@ -17,7 +17,7 @@ vi.mock('./FullTargetResumeModal', () => ({ default: (props: Record<string, unkn
 const id=golden.receipt.context.opportunity_id;
 beforeEach(async () => {
   localStorage.clear(); advanceOwnerEpoch(golden.receipt.context.private_source.owner_id); await syncLocalIdentityOwner(golden.receipt.context.private_source.owner_id);
-  mocks.profile={...DEFAULT_PROFILE,...golden.draft.base_snapshot} as ProfileData; mocks.props=null;
+  mocks.profile={...DEFAULT_PROFILE,...golden.draft.base_snapshot} as ProfileData; mocks.props=null; mocks.locale='en';
   mocks.read.mockReset().mockResolvedValue(structuredClone(golden.receipt.context));
   mocks.refresh.mockReset().mockReturnValue({ status: 'local-only' });
 });
@@ -74,4 +74,18 @@ it('says a source over the draft limit is too large instead of offering the edit
   render(<PrivateResumeLauncher id={id} scope={id} available />); fireEvent.click(screen.getByRole('button',{name:'Prepare résumé'}));
   expect(await screen.findByText(/complete source exceeds the résumé draft limit/)).toBeInTheDocument();
   expect(screen.queryByRole('dialog',{name:'Private editor'})).toBeNull();
+});
+
+it.each([
+  ['a failed read', 'en', () => mocks.read.mockRejectedValue({code:'unavailable'}), 'Could not check this private source. Try again.'],
+  ['a failed read', 'zh', () => mocks.read.mockRejectedValue({code:'unavailable'}), '暂时无法核对私有来源，可重试。'],
+  ['a missing import', 'en', () => mocks.read.mockRejectedValue({code:'not_found'}), 'This private import is no longer available.'],
+  ['a missing import', 'zh', () => mocks.read.mockRejectedValue({code:'not_found'}), '这条私有导入已不可用。'],
+  ['offline', 'en', () => { vi.spyOn(navigator,'onLine','get').mockReturnValue(false); }, 'You are offline. Reconnect to check the source.'],
+  ['offline', 'zh', () => { vi.spyOn(navigator,'onLine','get').mockReturnValue(false); }, '当前离线，联网后重新核对来源。'],
+] as const)('promises no kept draft before any draft is read or created (%s, %s)', async (_case, locale, arrange, message) => {
+  mocks.locale=locale; arrange();
+  render(<PrivateResumeLauncher id={id} scope={id} available />); fireEvent.click(screen.getByRole('button',{name:locale==='zh'?'准备简历':'Prepare résumé'}));
+  expect(await screen.findByText(message)).toBeInTheDocument();
+  expect(screen.queryByText(/draft is kept|文稿仍保留/)).toBeNull();
 });

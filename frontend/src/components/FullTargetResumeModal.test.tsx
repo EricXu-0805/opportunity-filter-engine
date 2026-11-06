@@ -192,6 +192,21 @@ describe('private full résumé workspace', () => {
     await createUI();
     expect(screen.queryByText(/Private import|not independently verified/)).toBeNull();
   });
+  it('says the draft is kept only while a private draft is open', async () => {
+    const target = clone(privateGolden.receipt.context) as PrivateResumeContext;
+    advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+    const failed: PrivateResumeTargetState = { target, status: 'failed', reason: 'read_failed', refresh: async () => false, checkForAction: async () => null };
+    const props = { isOpen: true, onClose: vi.fn(), profile: profile(), privateTarget: target };
+    const view = render(<FullTargetResumeModal {...props} privateResumeRefresh={failed} />);
+    await screen.findByRole('button', { name: 'Create from confirmed master' });
+    expect(screen.getByText('Could not check this private source. Try again.')).toBeInTheDocument();
+    view.unmount();
+    const { rerender, props: open } = await privateUI(target);
+    rerender(<FullTargetResumeModal {...open} privateResumeRefresh={{ ...open.privateResumeRefresh, status: 'offline' }} />);
+    expect(screen.getByText('You are offline. Your draft is kept; reconnect to check the source.')).toBeInTheDocument();
+    rerender(<FullTargetResumeModal {...open} privateResumeRefresh={{ ...open.privateResumeRefresh, status: 'failed', reason: 'read_failed' }} />);
+    expect(screen.getByText('Could not check this private source. Your draft is kept; try again.')).toBeInTheDocument();
+  });
   it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
     const { props, rerender, close } = await privateUI();
     rerender(<FullTargetResumeModal {...props} privateResumeRefresh={{ ...props.privateResumeRefresh, status: 'missing', checkForAction: async () => null }} />);
