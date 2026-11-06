@@ -92,16 +92,16 @@
       "total_count": 730
     },
     "cincinnati": {
-      "listing_count": 4,
+      "listing_count": 2,
       "faculty_contact_count": 1053,
       "unreviewed_count": 0,
-      "total_count": 1057
+      "total_count": 1055
     },
     "clemson": {
-      "listing_count": 3,
-      "faculty_contact_count": 907,
+      "listing_count": 2,
+      "faculty_contact_count": 911,
       "unreviewed_count": 0,
-      "total_count": 910
+      "total_count": 913
     },
     "cmc": {
       "listing_count": 9,
@@ -111,9 +111,9 @@
     },
     "cmu": {
       "listing_count": 44,
-      "faculty_contact_count": 902,
+      "faculty_contact_count": 901,
       "unreviewed_count": 0,
-      "total_count": 946
+      "total_count": 945
     },
     "colby": {
       "listing_count": 4,
@@ -141,9 +141,9 @@
     },
     "columbia": {
       "listing_count": 6,
-      "faculty_contact_count": 1067,
+      "faculty_contact_count": 1066,
       "unreviewed_count": 0,
-      "total_count": 1073
+      "total_count": 1072
     },
     "cornell": {
       "listing_count": 4,
@@ -242,10 +242,10 @@
       "total_count": 1682
     },
     "jhu": {
-      "listing_count": 27,
+      "listing_count": 25,
       "faculty_contact_count": 4557,
       "unreviewed_count": 0,
-      "total_count": 4584
+      "total_count": 4582
     },
     "kenyon": {
       "listing_count": 10,
@@ -272,10 +272,10 @@
       "total_count": 208
     },
     "miami": {
-      "listing_count": 5,
+      "listing_count": 3,
       "faculty_contact_count": 478,
       "unreviewed_count": 0,
-      "total_count": 483
+      "total_count": 481
     },
     "middlebury": {
       "listing_count": 6,
@@ -320,10 +320,10 @@
       "total_count": 508
     },
     "northwestern": {
-      "listing_count": 25,
+      "listing_count": 19,
       "faculty_contact_count": 2809,
       "unreviewed_count": 0,
-      "total_count": 2834
+      "total_count": 2828
     },
     "nyu": {
       "listing_count": 9,
@@ -357,9 +357,9 @@
     },
     "princeton": {
       "listing_count": 14,
-      "faculty_contact_count": 621,
+      "faculty_contact_count": 615,
       "unreviewed_count": 0,
-      "total_count": 635
+      "total_count": 629
     },
     "psu": {
       "listing_count": 9,
@@ -411,9 +411,9 @@
     },
     "stanford": {
       "listing_count": 22,
-      "faculty_contact_count": 1363,
+      "faculty_contact_count": 1365,
       "unreviewed_count": 0,
-      "total_count": 1385
+      "total_count": 1387
     },
     "stevens": {
       "listing_count": 3,
@@ -452,10 +452,10 @@
       "total_count": 2224
     },
     "ucf": {
-      "listing_count": 4,
+      "listing_count": 1,
       "faculty_contact_count": 803,
       "unreviewed_count": 0,
-      "total_count": 807
+      "total_count": 804
     },
     "uchicago": {
       "listing_count": 11,
@@ -495,9 +495,9 @@
     },
     "ucsc": {
       "listing_count": 3,
-      "faculty_contact_count": 745,
+      "faculty_contact_count": 744,
       "unreviewed_count": 0,
-      "total_count": 748
+      "total_count": 747
     },
     "ucsd": {
       "listing_count": 32,
@@ -512,10 +512,10 @@
       "total_count": 1025
     },
     "uf": {
-      "listing_count": 7,
-      "faculty_contact_count": 2130,
+      "listing_count": 5,
+      "faculty_contact_count": 2123,
       "unreviewed_count": 0,
-      "total_count": 2137
+      "total_count": 2128
     },
     "uga": {
       "listing_count": 5,
@@ -572,10 +572,10 @@
       "total_count": 599
     },
     "unl": {
-      "listing_count": 4,
+      "listing_count": 3,
       "faculty_contact_count": 1262,
       "unreviewed_count": 0,
-      "total_count": 1266
+      "total_count": 1265
     },
     "upenn": {
       "listing_count": 18,
@@ -650,10 +650,10 @@
       "total_count": 1871
     },
     "washu": {
-      "listing_count": 7,
-      "faculty_contact_count": 1097,
+      "listing_count": 6,
+      "faculty_contact_count": 1092,
       "unreviewed_count": 0,
-      "total_count": 1104
+      "total_count": 1098
     },
     "wellesley": {
       "listing_count": 6,
