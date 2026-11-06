@@ -6,6 +6,7 @@ import {
   isCurrentTargetResumeContext, validateTargetResume, verifyTargetResumeSignatures,
   type TargetResumeV1,
 } from './target-resume';
+import { TARGET_RESUME_GENERATION_VERSION_PATTERN } from './target-resume-ai-protocol';
 import {
   TARGET_RESUME_PLAN_ACCEPTED_VERSIONS, TARGET_RESUME_PLAN_MAX_BODY_BYTES,
   type PreparedTargetResumePlan, type TargetResumePlanOptions, type TargetResumePlanManifestItem,
@@ -207,8 +208,11 @@ export function validateTargetResumePlanResponse(prepared: PreparedTargetResumeP
     if (new TextEncoder().encode(serialized).byteLength > TARGET_RESUME_PLAN_MAX_BODY_BYTES) fail('invalid_response');
     const value: unknown = JSON.parse(serialized);
     const checkKeys = object(value) && Object.hasOwn(value, 'check_version') ? ['check_version'] : [];
+    const generationKeys = object(value) && Object.hasOwn(value, 'generation_version') ? ['generation_version'] : [];
     shape(value, ['version', 'pipeline_version', 'request_id', 'document_id', 'opportunity_id', 'document_signature',
-      'base', 'options', 'manifest', 'scope', 'method', 'complete', 'reason_code', 'logical_calls', 'provider_attempts_upper_bound', 'items', ...checkKeys, ...(prepared.support_groups === undefined ? [] : ['support_groups'])]);
+      'base', 'options', 'manifest', 'scope', 'method', 'complete', 'reason_code', 'logical_calls', 'provider_attempts_upper_bound', 'items', ...checkKeys, ...generationKeys, ...(prepared.support_groups === undefined ? [] : ['support_groups'])]);
+    if (generationKeys.length && (typeof value.generation_version !== 'string'
+      || !TARGET_RESUME_GENERATION_VERSION_PATTERN.test(value.generation_version))) fail('invalid_response');
     if (!same(value.support_groups ?? null,prepared.support_groups ?? null)) fail('invalid_response');
     if (checkKeys.length && value.check_version !== null
       && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');

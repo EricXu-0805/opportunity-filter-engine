@@ -8,7 +8,7 @@ import {
   FULL_TARGET_AI_VERSION, FULL_TARGET_AI_MAX_BODY_BYTES, FULL_TARGET_AI_MAX_UNITS, FULL_TARGET_AI_MAX_EXPERIENCE_UNITS,
   FULL_TARGET_AI_MAX_UNIT_CHARACTERS, FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS,
   FULL_TARGET_AI_MAX_TARGET_CHARACTERS, FULL_TARGET_AI_MAX_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS,
-  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_ANCHORS, TARGET_RESUME_AI_OPS,
+  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_ANCHORS, TARGET_RESUME_AI_OPS, TARGET_RESUME_GENERATION_VERSION_PATTERN,
   type PreparedTargetResumeAi, type TargetResumeAiUnit, type TargetResumeAiReceipt,
   type TargetResumeAiRequest, type TargetResumeAiResponse,
   type TargetResumeAiPriority,
@@ -322,8 +322,11 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
     if (new TextEncoder().encode(serialized).byteLength > FULL_TARGET_AI_MAX_BODY_BYTES) fail('invalid_response');
     const value: unknown = JSON.parse(serialized);
     const checkKeys = object(value) && Object.hasOwn(value, 'check_version') ? ['check_version'] : [];
+    const generationKeys = object(value) && Object.hasOwn(value, 'generation_version') ? ['generation_version'] : [];
     shape(value, ['version', 'pipeline_version', 'request_id', 'document_id', 'opportunity_id', 'document_signature',
-      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys, ...(groups === undefined ? [] : ['support_groups'])]);
+      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys, ...generationKeys, ...(groups === undefined ? [] : ['support_groups'])]);
+    if (generationKeys.length && (typeof value.generation_version !== 'string'
+      || !TARGET_RESUME_GENERATION_VERSION_PATTERN.test(value.generation_version))) fail('invalid_response');
     if (!same(value.support_groups ?? null, groups ?? null)) fail('invalid_response');
     if (checkKeys.length && value.check_version !== null
       && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');
