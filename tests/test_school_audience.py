@@ -212,13 +212,15 @@ def test_the_rest_of_the_schools_campus_bucket_stays_campus():
     assert row["audience"] == "campus"
 
 
-@pytest.mark.parametrize("change", ["moved", "display_link_moved", "discovered", "other_source"])
+@pytest.mark.parametrize("change", ["moved", "display_link_moved", "source_page_moved", "discovered", "other_source"])
 def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_audience(change):
     row = _configured_row("unl", "unl_summer_research_program")
     if change == "moved":
         row["url"] = row["source_url"] = "https://summerprogram.unl.edu/2027/"
     elif change == "display_link_moved":
         row["url"] = "https://summerprogram.unl.edu/2027/"
+    elif change == "source_page_moved":
+        row["source_url"] = "https://summerprogram.unl.edu/2027/"
     elif change == "discovered":
         row["metadata"]["discovered"] = True
     else:
@@ -317,3 +319,14 @@ def test_a_program_whose_page_states_no_citizenship_rule_keeps_its_international
 
     assert loaded["eligibility"]["international_friendly"] == "unknown"
     assert hard_exclusion(loaded, _filter_context({"home_school": "stanford", "international_student": True})) is None
+
+
+def test_the_pages_sentence_is_quoted_only_under_the_answer_it_gives():
+    row = _configured_row("unl", "unl_summer_research_program")
+    row["eligibility"].update(international_friendly="yes", citizenship_required=False)
+
+    eligibility = build_detail_fields(copy.deepcopy(row), row)["fields"]["eligibility"]
+
+    assert "international_students" not in eligibility["quotes"]
+    assert eligibility["inferred"]["international_students"] == {"value": "yes", "basis": "configured"}
+

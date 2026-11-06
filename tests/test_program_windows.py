@@ -91,7 +91,8 @@ def test_the_program_is_offered_until_its_close_and_closed_after(monkeypatch):
     assert (truth.actionable, truth.reason_code, truth.evidence_key) == (False, "listing_closed", "deadline")
 
 
-@pytest.mark.parametrize("change", ["moved", "display_link_moved", "discovered", "other_school", "other_key"])
+@pytest.mark.parametrize("change", ["moved", "display_link_moved", "source_page_moved", "discovered", "other_school",
+                                    "other_key"])
 def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_window(change):
     row = _row("jhu", "summer_pura")
     row.update(deadline=None, deadline_is_estimate=None)
@@ -99,6 +100,8 @@ def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_window(change):
         row["url"] = row["source_url"] = "https://hour.jhu.edu/opportunities/summer-pura-2027/"
     elif change == "display_link_moved":
         row["url"] = "https://hour.jhu.edu/opportunities/summer-pura-2027/"
+    elif change == "source_page_moved":
+        row["source_url"] = "https://hour.jhu.edu/opportunities/summer-pura-2027/"
     elif change == "discovered":
         row["metadata"]["discovered"] = True
     elif change == "other_school":
