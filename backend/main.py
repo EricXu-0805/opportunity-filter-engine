@@ -586,6 +586,8 @@ def _release_feature_for_path(path: str) -> ReleaseFeature | None:
         "/api/resume/full-target/export",
     }:
         return "resume_renovate"
+    if path.startswith("/api/private-import-targets/") and path.endswith("/resume-context"):
+        return "resume_renovate"
     if path == "/api/chat/models":
         return "ask_ai"
     if path.startswith("/api/opportunities/") and path.endswith("/chat"):

@@ -58,6 +58,8 @@ Responses are `private, no-store`. Errors carry only a fixed code:
 | `expected_target_version` is not the current version | 409 | `private_target_changed` |
 | Malformed id, owner, version or query | 422 | `private_target_invalid_request` |
 
+With the `resume_renovate` release switch off, the release gate answers 404 `{"detail": "Not found"}` before any auth or storage call, as it does for the public résumé routes.
+
 ## Boundaries
 
 Version 5 is a separate private target. Public résumé contexts (versions 1-4) are built from the anonymous public projection; a private import is never turned into one. The public full-target AI routes do not accept a version 5 draft. A matching version or signature shows which import was read at that request, not that its content is true or current at a later action; a writer must read again at its own action boundary.

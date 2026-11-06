@@ -98,6 +98,19 @@ def test_route_refuses_invalid_owner_state(storage, case, expected):
     assert OPPORTUNITY['description_raw'] not in response.text
 
 
+def test_the_resume_release_switch_closes_the_route_before_any_read(storage, monkeypatch):
+    import backend.main as main
+    assert main._release_feature_for_path(PATH) == main._release_feature_for_path(PATH + '/') == 'resume_renovate'
+    for other in ('resolved', 'email-context', 'cold-email/variants'):
+        assert main._release_feature_for_path(f'/api/private-import-targets/{ID}/{other}') is None
+    assert main._release_feature_for_path(f'/api/opportunities/{ID}/resume-context') is None
+    monkeypatch.setattr(main, 'feature_enabled', lambda feature: feature != 'resume_renovate')
+    response = read()
+    assert response.status_code == 404 and response.json() == {'detail': 'Not found'}
+    assert storage['calls'] == []
+    assert 'no-store' in response.headers['cache-control']
+
+
 def test_a_new_revision_changes_the_version_and_signature(storage):
     first = read().json()
     old = first['context']['private_source']['source_version']
