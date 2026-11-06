@@ -94,18 +94,22 @@ const UNKNOWN_HINT_FACETS = new Set([
   'location',
 ]);
 
-function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, t }: {
+function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldText, t }: {
   field: string;
   facet: string;
   truth: FacetTruth;
   noSponsorship: boolean;
   sourceProvenance?: Pick<FieldTruth, 'sourceUrl' | 'observedAt'>;
+  // Said in place of the application link while the program's stated
+  // opening is ahead: the link waits, as Apply does.
+  heldText?: string;
   t: TFunc;
 }) {
   const label = t(`detail.facts.facets.${facet}`);
   const isLink = facet === 'application_url' && truth.state !== 'unknown';
-  const href = isLink && typeof truth.value === 'string' ? safeHttpUrl(truth.value) : null;
-  const text = truth.state === 'unknown' ? null : formatValue(facet, truth.value, t, noSponsorship);
+  const held = isLink && heldText !== undefined;
+  const href = isLink && !held && typeof truth.value === 'string' ? safeHttpUrl(truth.value) : null;
+  const text = truth.state === 'unknown' ? null : held ? heldText : formatValue(facet, truth.value, t, noSponsorship);
   const quote = truth.state === 'source' ? truth.quote : undefined;
   const quoteHref = quote?.sourceUrl ? safeHttpUrl(quote.sourceUrl) : null;
   const provenance = truth.state === 'source' && !quote ? sourceProvenance : undefined;
@@ -233,6 +237,8 @@ export function DetailFactsSection({
                     truth={truth}
                     noSponsorship={noSponsorship}
                     sourceProvenance={hasExternalResearch ? field : undefined}
+                    heldText={name === 'application_method' && opening
+                      ? t('badges.applicationsOpenOn', { date: opening.text }) : undefined}
                     t={t}
                   />
                 ))}

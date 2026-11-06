@@ -399,4 +399,26 @@ describe('a program whose page states an opening still ahead', () => {
     render(<DetailFactsSection fields={fields()} isFaculty={false} t={t} />);
     expect(screen.queryByTestId('fact-timing-application_opens')).toBeNull();
   });
+
+  it.each([
+    ['en', 'Applications open November 15', 'Open application page'],
+    ['zh', '申请开放日：November 15', '打开申请页面'],
+  ] as const)('says when applications open in place of the application link (%s)', (locale, held, offer) => {
+    render(
+      <DetailFactsSection fields={fields()} isFaculty={false} opening={OPENING}
+        t={(key, vars) => translate(locale, key, vars)} />,
+    );
+    const link = row('application_method', 'application_url', 'source');
+    expect(link).toHaveTextContent(held);
+    expect(link).not.toHaveTextContent(offer);
+    expect(link).not.toHaveTextContent('https://summerprogram.unl.edu/');
+    expect(within(link).queryByRole('link')).toBeNull();
+  });
+
+  it('offers the application link when no opening is ahead', () => {
+    render(<DetailFactsSection fields={fields()} isFaculty={false} t={(key, vars) => translate('en', key, vars)} />);
+    const link = row('application_method', 'application_url', 'source');
+    expect(within(link).getByRole('link', { name: 'Open application page' }))
+      .toHaveAttribute('href', 'https://summerprogram.unl.edu/');
+  });
 });
