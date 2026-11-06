@@ -162,6 +162,44 @@ describe('V4 generation records',()=>{
   expect(validate(unknown,after).ok).toBe(true);expect(validate(unknown,mixed).ok).toBe(false);expect(validate({...unknown,version:2},mixed).ok).toBe(true);
  });
 });
+describe('writing V4 generation records',()=>{
+ it('writes V4 when an accepted AI action carries a record, keeps its own copy, and keeps it through later edits',()=>{
+  const after=changeText(doc,'Built parser tests.');const action={kind:'ai_rewrite' as const,annotations:[annotation()],generation:generation()};
+  const p=append(null,doc,after,action)!;
+  expect(p.version).toBe(4);expect(p.events[0].generation).toEqual(generation());
+  action.generation.request_ids.push('changed-later');expect(p.events[0].generation!.request_ids).toEqual(['request']);
+  const typed=changeText(after,'My later wording');const q=append(p,after,typed,{kind:'manual'})!;
+  expect(q.version).toBe(4);expect(q.events[0]).toEqual(p.events[0]);expect(q.events[1]).not.toHaveProperty('generation');
+  expect(validate(copy(q),typed)).toEqual({ok:true,value:q});
+ });
+ it('moves a V3 history to V4 only with a new record, leaving older events without one',()=>{
+  const {after,provenance}=ai();expect(provenance.version).toBe(3);
+  const next=changeText(after,'Another accepted wording');
+  const p=append(provenance,after,next,{kind:'ai_rewrite',annotations:[annotation(after)],generation:generation()})!;
+  expect(p.version).toBe(4);expect(p.events[0]).toEqual(provenance.events[0]);expect(p.events[0]).not.toHaveProperty('generation');
+  expect(p.events[1].generation).toEqual(generation());
+  expect(append(provenance,after,after,{kind:'ai_rewrite',generation:generation()})).toEqual(provenance);
+ });
+ it('records plan choices and AI ordering with the record and no invented text check',()=>{
+  const plan=copy(doc);section(plan).blocks[0].included=false;const g=generation('full-target-plan-v6');
+  const p=append(null,doc,plan,{kind:'plan',generation:g})!;expect(p.events[0].generation).toEqual(g);expect(p.events[0].changes[0].check).toBeNull();
+  const order=copy(doc);section(order).blocks.reverse();const q=append(null,doc,order,{kind:'ai_rewrite',generation:generation()})!;
+  expect(q.events[0].generation).toEqual(generation());expect(q.events[0].changes.every(c=>c.field==='order' && c.check===null)).toBe(true);
+ });
+ it.each(['manual','target_order'] as const)('refuses a record on a %s action',kind=>{
+  const order=copy(doc);section(order).blocks.reverse();
+  expect(append(null,doc,order,{kind})).not.toBeNull();expect(()=>append(null,doc,order,{kind,generation:generation()})).toThrow();
+ });
+ it('refuses a record on manual typing that would merge into the previous manual event',()=>{
+  const a=changeText(doc,'A'),ab=changeText(doc,'AB');const typed=append(null,doc,a,{kind:'manual'})!;
+  expect(append(typed,a,ab,{kind:'manual'})!.events).toHaveLength(1);expect(()=>append(typed,a,ab,{kind:'manual',generation:generation()})).toThrow();
+ });
+ it('refuses a malformed record or one that does not match the text check',()=>{
+  const after=changeText(doc,'Built parser tests.');
+  expect(()=>append(null,doc,after,{kind:'ai_rewrite',annotations:[annotation()],generation:{...generation(),request_ids:['other']}})).toThrow();
+  expect(()=>append(null,doc,after,{kind:'ai_rewrite',annotations:[{...annotation(),check:null}],generation:{...generation(),request_ids:[]}})).toThrow();
+ });
+});
 describe('stale, forged and malformed records',()=>{
  it.each(['document_id','opportunity_id','base'] as const)('rejects mismatched %s',key=>{
   const {after,provenance}=ai();const bad=copy(provenance);if(key==='base')bad.base.target_signature='v1:sha256:'+'f'.repeat(64);else bad[key]='other';

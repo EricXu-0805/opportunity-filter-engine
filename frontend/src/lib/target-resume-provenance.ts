@@ -37,9 +37,8 @@ export interface TargetResumeProvenance {
 }
 export interface TargetResumeProvenanceAction {
   kind: TargetResumeProvenanceKind; id?: string; annotations?: TargetResumeProvenanceAnnotation[];
-  /** The server's configuration identity for accepted AI advice; absent when the answer gave none.
-   * appendTargetResumeProvenance does not store it: record versions 1-3 have no field for it. */
-  generation_version?: string;
+  /** For accepted AI advice whose answer named its generation version; absent when it did not. */
+  generation?: TargetResumeGenerationRecord;
 }
 export type TargetResumeProvenanceCode = 'invalid' | 'too_large';
 export class TargetResumeProvenanceError extends Error {
@@ -227,8 +226,9 @@ export function appendTargetResumeProvenance(previous: TargetResumeProvenance | 
   const old = document(before); const next = document(after); const prior = parse(previous, old);
   if (!KINDS.includes(action.kind)) fail();
   if (!same({ ...old, document: null }, { ...next, document: null })) fail();
+  const generation = action.generation === undefined ? undefined : generationRecord(action.generation, action.kind);
   // A V4 history stays V4 so its generation records survive later edits.
-  const version = prior?.version === 4 ? 4
+  const version = prior?.version === 4 || generation ? 4
     : 'context_version' in next.target_snapshot ? next.target_snapshot.context_version === 4 ? 3 : next.target_snapshot.context_version === 3 ? 2 : 1 : 1;
   const annotations = new Map<string, TargetResumeProvenanceAnnotation>();
   for (const annotation of action.annotations ?? []) {
@@ -264,7 +264,7 @@ export function appendTargetResumeProvenance(previous: TargetResumeProvenance | 
     last.changes[0].after = changes[0].after;
   } else {
     const eventId = action.id ?? globalThis.crypto.randomUUID(); id(eventId);
-    events.push({ id: eventId, kind: action.kind, changes });
+    events.push({ id: eventId, kind: action.kind, changes, ...(generation ? { generation } : {}) });
   }
   return parse({ version, document_id: next.id, opportunity_id: next.opportunity_id, base: clone(next.base), events }, next);
 }

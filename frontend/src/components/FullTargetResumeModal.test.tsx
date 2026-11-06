@@ -855,6 +855,18 @@ describe('saved operation records', () => {
     expect(saved.version).toBe(4); expect(saved.events[0]).toEqual(record.events[0]); expect(saved.events[1].kind).toBe('manual');
     expect(screen.getAllByText('Generation configuration: unknown')).toHaveLength(1);
   });
+  it('saves an accepted AI change with its generation record as V4', async () => {
+    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc), check = edit.action.annotations![0].check!;
+    const generation = { version: 'target-resume-generation-v1:' + 'a'.repeat(64), pipeline_version: check.pipeline_version,
+      document_signature: check.document_signature, request_ids: [check.request_id] };
+    storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true));
+    act(() => ai.props!.onApply(edit.canonical, edit.next, { ...edit.action, generation }));
+    fireEvent.click(screen.getByText('Change records')); fireEvent.click(screen.getByText('Generation details'));
+    expect(screen.getByText('Request IDs: controlled-request')).toBeVisible();
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    const saved = storage.save.mock.calls[0][3] as TargetResumeProvenance;
+    expect(saved.version).toBe(4); expect(saved.events[0].generation).toEqual(generation);
+  });
   it.each([['en', 1], ['en', 3], ['en', 4], ['zh', 1], ['zh', 3], ['zh', 4]] as const)(
     'labels every AI and plan event without a generation record as unknown, and no manual event (%s, V%s history)', async (locale, version) => {
     i18n.locale = locale;
