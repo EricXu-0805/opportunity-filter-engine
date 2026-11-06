@@ -7,6 +7,7 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
+from src.collectors.faculty_graph import drop_publication_heading_keywords
 from src.collectors.uiuc_faculty import stamp_department_field_keywords
 from src.evidence import (
     faculty_summary_inferred_keywords,
@@ -68,6 +69,8 @@ def _strip_html(text: str) -> str:
 
 
 def _sanitize_opportunity(opp: dict) -> dict:
+    # First, so the stamp below judges the keywords that are served.
+    drop_publication_heading_keywords(opp)
     # Before the faculty description is rebuilt below, which leaves keywords
     # we wrote out of it: a department's field on a profile that states no
     # research is ours, not the professor's.

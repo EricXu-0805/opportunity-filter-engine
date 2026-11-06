@@ -1444,6 +1444,23 @@ class TestCuratedKeywordHygiene:
             "Department of Chemistry", "media studies"]}
         assert fg._clean_keywords(person) == ["media studies"]
 
+    @pytest.mark.parametrize("heading", [
+        "Publications", "Selected Publications:", "SELECT PUBLICATIONS", "Recent publications",
+        "Full Publication List", "Complete list of publications", "Articles", "Book chapters",
+        "Edited Books", "Books and selected articles:", "Books Edited or Co-Edited", "Monographs",
+        "Preprints",
+    ])
+    def test_curated_drops_publication_heading(self, heading):
+        """A profile's publication-list heading is where its papers start, not
+        a research area: stored as a keyword, the template email said "your
+        work on Selected Publications" (M163 follow-up)."""
+        assert fg._clean_keywords({"keywords": [heading, "neural interfaces"]}) == ["neural interfaces"]
+
+    def test_curated_keeps_topics_that_hold_a_heading_word(self):
+        kws = ["book history", "Patents", "publication design", "Articles of Confederation",
+               "preprints and peer review"]
+        assert fg._clean_keywords({"keywords": kws}) == kws
+
 
 class TestEmailObfuscationDecoding:
     """UMass-style obfuscation: rot13 ``data-mail-to`` on teaser profiles,
@@ -1587,6 +1604,18 @@ class TestCorpusFacultyHygiene:
         }
         fg.clean_corpus_faculty_keywords([rec])
         assert rec["keywords"] == ["supply chain", "health services research"]
+
+    def test_clean_corpus_drops_publication_heading_keyword(self):
+        """A stored row keeps a publication heading until the corpus-wide
+        hygiene of its next refresh drops it, title parenthetical included."""
+        rec = {
+            "source_type": "faculty_research",
+            "title": "Prof. Test Person — ECE (neural interfaces, Selected Publications, device modeling)",
+            "keywords": ["neural interfaces", "Selected Publications", "device modeling", "biophysics"],
+        }
+        fg.clean_corpus_faculty_keywords([rec])
+        assert rec["keywords"] == ["neural interfaces", "device modeling", "biophysics"]
+        assert rec["title"] == "Prof. Test Person — ECE (neural interfaces, device modeling, biophysics)"
 
 
 def _fac_rec(id_, *, school, pi_name, dept, email=None, url="", keywords=None,

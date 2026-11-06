@@ -174,6 +174,55 @@ def test_directory_keywords_are_not_their_work_in_the_email(monkeypatch):
     assert "vocal fatigue" not in surfaces and "room acoustics" not in surfaces
 
 
+def _faculty_row(keywords, title, *, source="uf_faculty", department="Electrical & Computer Engineering"):
+    return {"id": "faculty-ece-pubheading", "source": source, "source_type": "faculty_research",
+            "opportunity_type": "research", "organization": "Test University", "department": department,
+            "pi_name": "Pat Lee", "title": title, "keywords": keywords, "eligibility": {}, "application": {},
+            "metadata": {"is_active": True}}
+
+
+@pytest.mark.parametrize(("keywords", "served_keywords"), [
+    (["neural interfaces", "Selected Publications", "device modeling"], ["neural interfaces", "device modeling"]),
+    (["Selected Publications"], []),
+])
+def test_a_publication_heading_is_not_their_work_in_the_email(keywords, served_keywords):
+    """A faculty row stored with its profile's publication heading as a keyword
+    is served without it, as the next refresh's hygiene will store it: the
+    template email said "your work on Selected Publications" (M163 follow-up)."""
+    from copy import deepcopy
+
+    from backend.data_loader import _sanitize_opportunity
+    from src.collectors.faculty_graph import clean_corpus_faculty_keywords
+
+    row = _faculty_row(keywords, f"Prof. Pat Lee — ECE ({', '.join(keywords)})")
+    refreshed = deepcopy(row)
+    clean_corpus_faculty_keywords([refreshed])
+    served = _sanitize_opportunity(row)
+    assert served["keywords"] == refreshed["keywords"] == served_keywords
+    assert "selected publications" not in _email_surfaces(served)
+
+
+def test_what_is_left_after_a_publication_heading_is_stamped_as_stored_without_it():
+    """With the heading gone a department's field stands alone, and the loader
+    stamps it ours, as it does on a row stored without the heading."""
+    from backend.data_loader import _sanitize_opportunity
+
+    row = _faculty_row(["law", "Publications"], "Pat Lee — LAW", source="uiuc_faculty", department="College of Law")
+    served = _sanitize_opportunity(row)
+    assert served["keywords"] == ["law"]
+    assert keywords_basis(served) is not None
+    assert "your work on law" not in _email_surfaces(served)
+
+
+def test_a_program_keeps_its_publications_tag():
+    """Only faculty rows: on a program the tag is ours, about what students do."""
+    from backend.data_loader import _sanitize_opportunity
+
+    row = _record("illinois_research_programs", "campus_program")
+    row["keywords"] = ["summer research", "publications"]
+    assert _sanitize_opportunity(row)["keywords"] == ["summer research", "publications"]
+
+
 @pytest.mark.parametrize("opp", [
     *(_record(*value) for value in OUR_TAGS.values()),
     _record("illinois_research_programs", "campus_program", discovered=True),
