@@ -40,6 +40,7 @@ from backend.lib.target_resume_ai import (
 from backend.lib.target_resume_ai_schema import FullTargetRequest
 from backend.lib.target_resume_ai_validation import InvalidTargetResume, canonical, fingerprint, validate_document
 from backend.lib.target_resume_context import InvalidTargetContext, public_target_context
+from backend.lib.target_resume_generation import generation_version
 from backend.lib.target_resume_plan_schema import FullTargetPlanRequest
 from backend.routes.opportunities import _redact
 
@@ -73,6 +74,13 @@ class PrivateValidationRoute(APIRoute):
 
 
 router = APIRouter(route_class=PrivateValidationRoute)
+
+
+def _with_generation_version(request, response):
+    # Opt-in, like check_version: an older browser refuses a response key it does not know.
+    if request.include_generation_version:
+        response["generation_version"] = generation_version()
+    return response
 
 
 def authoritative_target(opp):
@@ -196,7 +204,7 @@ async def full_target_suggestions(http_request: Request):
             results = [receipt(unit, reason or "model_unavailable") for unit in processable]
     by_id = {row["unit_id"]: row for row in results}
     receipts = [receipt(unit, "unit_too_large") if unit_too_large(unit) else by_id[unit["unit_id"]] for unit in selected]
-    return response_envelope(request, doc, units, protected, receipts, calls)
+    return _with_generation_version(request, response_envelope(request, doc, units, protected, receipts, calls))
 
 
 def _prepare_plan(body: bytes, content_type: str | None):
@@ -234,4 +242,5 @@ async def full_target_selection_plan(http_request: Request):
                                                    doc["target_snapshot"], request.locale)
         elif not reason:
             reason = "model_unavailable"
-    return target_resume_plan.plan_response(request, doc, manifest, scope, items, reason, calls)
+    return _with_generation_version(
+        request, target_resume_plan.plan_response(request, doc, manifest, scope, items, reason, calls))

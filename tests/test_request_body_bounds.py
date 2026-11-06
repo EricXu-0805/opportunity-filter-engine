@@ -691,6 +691,15 @@ def test_every_json_route_has_a_largest_body():
         (method, path) for method, path, _ in JSON_ROUTES}
 
 
+def test_the_largest_full_target_bodies_set_every_field():
+    from backend.lib.target_resume_ai_schema import FullTargetRequest
+    from backend.lib.target_resume_plan_schema import FullTargetPlanRequest
+
+    bodies = dict(largest.full_target_bodies())
+    assert set(bodies[largest.FULL_TARGET[0]]) == set(FullTargetRequest.model_fields)
+    assert set(bodies[largest.FULL_TARGET[1]]) == set(FullTargetPlanRequest.model_fields)
+
+
 @pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
 def test_every_json_route_reads_its_largest_valid_body_with_a_wide_margin(method, path, json_route):
     """The largest body each request schema accepts (largest_bodies: free-form JSON and lists of any

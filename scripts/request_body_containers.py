@@ -319,8 +319,8 @@ def full_target_bodies(doc: dict | None = None):
     facts = [unit["unit_id"] for unit in units if unit["evidence"]["kind"] != "experience"]
     groups = [{"unit_id": line, "support_unit_ids": [other for other in alone if other != line][:24], "confirmed": True}
               for line in alone[:24]]
-    head = {"version": 1, "request_id": "request", "locale": "en", "include_check_version": False, "draft": doc,
-            "document_signature": fingerprint(doc)}
+    head = {"version": 1, "request_id": "request", "locale": "en", "include_check_version": False,
+            "include_generation_version": False, "draft": doc, "document_signature": fingerprint(doc)}
     yield FULL_TARGET[0], {**head, "support_groups": groups[:MAX_EXPERIENCE_UNITS],
                            "selected_unit_ids": alone[:MAX_EXPERIENCE_UNITS] + facts[:MAX_UNITS - MAX_EXPERIENCE_UNITS]}
     yield FULL_TARGET[1], {**head, "support_groups": groups, "options": {"target_pages": 2}}
