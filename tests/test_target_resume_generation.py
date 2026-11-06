@@ -69,6 +69,10 @@ def test_version_comes_back_when_no_model_ran(request, monkeypatch, kind):
     result = _post(kind, request, include_generation_version=True)
     assert result.status_code == 200 and result.json()["method"] == "unavailable"
     assert result.json()["generation_version"] == generation_version()
+    # Unasked, it stays out of the answer: today's browser refuses a key it does not know.
+    unasked = _post(kind, request)
+    assert unasked.status_code == 200 and unasked.json()["method"] == "unavailable"
+    assert "generation_version" not in unasked.json()
 
 
 @pytest.mark.parametrize("kind", ["suggestions", "plan"])
