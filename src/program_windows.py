@@ -101,12 +101,14 @@ def apply_program_window(record: dict) -> None:
     """Make the window's stated close the row's deadline, in place.
 
     The deadline is then a stated one (`src.evidence.stated_listing_deadline`):
-    the row is offered until it passes and closed after.
+    the row is offered until it passes and closed after. A row with a stated
+    close is not rolling, so "No deadline listed" does not return it.
     """
     window = reviewed_window(record)
     if window is not None:
         record["deadline"] = window.closes_on.isoformat()
         record["deadline_is_estimate"] = False
+        record["is_rolling"] = False
 
 
 def read_before_opening(record: dict) -> bool:

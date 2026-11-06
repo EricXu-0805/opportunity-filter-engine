@@ -73,12 +73,29 @@ def test_a_harvested_program_carries_its_pages_stated_close_as_its_deadline():
 
 def test_a_stored_row_gets_the_deadline_when_the_corpus_loads():
     stored = _row("northwestern", "nu_tgs_srop")
-    stored.update(deadline=None, deadline_is_estimate=None)
+    stored.update(deadline=None, deadline_is_estimate=None, is_rolling=True)
 
     loaded = data_loader._sanitize_opportunity(stored)
 
     assert loaded["deadline"] == "2027-02-10"
     assert loaded["deadline_is_estimate"] is False
+    assert loaded["is_rolling"] is False
+
+
+@pytest.mark.parametrize(("school", "key"), sorted(WINDOWS))
+def test_a_program_with_a_stated_close_is_not_under_no_deadline_listed(school, key):
+    from backend.routes.matches import _match_card
+    from src.saved_searches.filter import _matches_deadline
+
+    stored = _row(school, key)
+    stored.update(deadline=None, deadline_is_estimate=None, is_rolling=True)
+    assert _matches_deadline(stored, "rolling") is True
+
+    loaded = data_loader._sanitize_opportunity(stored)
+    card = _match_card(loaded)
+
+    assert (card["deadline"], card["is_rolling"]) == (WINDOWS[(school, key)].closes_on.isoformat(), False)
+    assert _matches_deadline(loaded, "rolling") is False
 
 
 def test_the_program_is_offered_until_its_close_and_closed_after(monkeypatch):

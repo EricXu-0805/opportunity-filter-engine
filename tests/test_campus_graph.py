@@ -239,7 +239,7 @@ class TestSeedNormalization:
         for o in all_records:
             window = reviewed_window(o)
             assert o.get("deadline") == (window.closes_on.isoformat() if window else None)
-            assert o.get("is_rolling") is True
+            assert o.get("is_rolling") is (window is None)
 
     def test_the_configured_rows_read_as_graduate_only_are_the_listed_ones(self, all_records):
         from src.matcher.ranker import _requires_graduate_standing
