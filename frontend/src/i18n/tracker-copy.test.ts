@@ -236,3 +236,21 @@ describe('an outcome note names its status the way the card does', () => {
     expect(zh.tracker.outcomeNotes.dismissedHint).toBe('将保存为「不感兴趣」：卡片会离开追踪板，结果页默认隐藏它。');
   });
 });
+
+describe('the cold-email no-details notice claims only what we could not verify', () => {
+  it('says no verified specific research, which is true beside a quoted broad area or inferred topics', () => {
+    // Shown for every draft whose record has no source-backed research: a
+    // broad stored area ("Mathematics"), inferred topics, or nothing at all.
+    expect(en.coldEmail.noTargetDataTitle).toBe('This record has no verified specific research details');
+    expect(en.coldEmail.noTargetDataBody).toBe(
+      'We found no specific research topics or publications we could verify for this record, so the draft is a '
+      + 'solid general inquiry — it is not tailored to the recipient\'s work. If you can, check the original source '
+      + 'and add one specific sentence of your own.',
+    );
+    expect(zh.coldEmail.noTargetDataTitle).toBe('这条记录没有可核实的具体研究方向');
+    expect(zh.coldEmail.noTargetDataBody).toBe(
+      '我们没有找到这条记录可核实的具体研究课题或论文，所以这封草稿是一封扎实的通用询问信，并未针对收件人的具体工作定制。'
+      + '如果条件允许，建议查看原始来源，自己补一句具体的话。',
+    );
+  });
+});
