@@ -171,6 +171,46 @@ questions remain separate work. Authorized real-email review is still needed
 for usefulness and false positives; these tests make no deliverability or reply
 rate claim.
 
+## Broad faculty research labels (M167)
+
+A faculty row's research area can be a broad directory label such as “Biology”
+or “Artificial Intelligence”. The templates quote it as
+`Your profile lists “<item>” as a research area.` instead of
+`interested in your research in <area>` (concise) or
+`I would like to learn more about your work on <topic>` (balanced, skills
+focus) only when the area is a whole item of the row's stored research text
+(`research_areas_raw`, cut on commas, semicolons, vertical bars, line breaks
+and spaced slashes, as the collectors cut it) and every item of that text and
+every stated topic is broad. The quote is the stored item as written. The
+stated topics are the stated keywords that can follow “your work on” (roles,
+named institutions, the row's own location and web addresses are not topics),
+or, when there are none, the usable source research phrase. On a row with no
+specific evidence the final fact check rejected the old sentences and replaced
+the whole draft with the neutral inquiry, which has no student introduction;
+the balanced and skills-focus templates escaped that only when they left the
+research sentence out. A row with no stored research text, or with any
+specific item or stated topic (including one past the three the “your work on”
+sentence names), keeps the existing sentences. A keyword alone never supplies
+the label: an unstamped keyword can be a keyword-bank hit on the rank title, a
+degree field from an education block or a tag every row of a department
+carries, and inferred keywords and generated descriptions are not stored
+research text.
+
+The label does not change the AI personalization gate or the grounding receipt:
+a profile with no specific evidence still uses a template and reports
+`no_target_data`; an AI request reports `insufficient_evidence` without calling a
+provider. Unsupported generated claims still trigger the same finite neutral
+recovery; this change does not relax the final fact checks or rewrite an
+existing saved draft.
+
+`tests/test_cold_email_sparse_target.py` covers generation, variants, the
+no-provider AI path, retained beginner skill levels, inferred-topic exclusion,
+a specific keyword or list item after broad ones, broad keywords with no stored
+research text, department and title keywords, labels inside a degree list or a
+sentence, the stored spelling of the quote, and unchanged rejection of
+unsupported research and attachment claims. It does not establish live model
+quality or the quality of every sparse record in the corpus.
+
 ## Draft lifetime
 
 The modal binds pending work to the original owner epoch, profile, target and

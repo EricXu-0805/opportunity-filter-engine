@@ -26,6 +26,7 @@ import {
 import {
   opportunityApplicationUrl,
   opportunitySourceUrl,
+  pendingApplicationOpening,
   targetPosture,
   targetStatusReason,
   type TargetStatusReason,
@@ -124,6 +125,7 @@ export function OpportunityHeader({
   const isCurrentListing = recordKind === 'listing' && posture === 'actionable';
   const statusReason = targetStatusReason(opp);
   const applyUrl = opportunityApplicationUrl(opp);
+  const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const sourceUrl = opportunitySourceUrl(opp);
   const effectiveIntl = facultySafeInternational(opp);
   const urgency = getDeadlineUrgency(
@@ -203,6 +205,11 @@ export function OpportunityHeader({
                 : <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
             {deadlineBadge}
+            {opening && (
+              <DetailBadge tone="blue" icon={<Clock className="w-3 h-3" />}>
+                {t('badges.applicationsOpenOn', { date: opening.text })}
+              </DetailBadge>
+            )}
             {RELEASE_SCOPE.professorSignals && (
               <ResponsivenessBadge opportunityId={opp.id} size="detail" />
             )}

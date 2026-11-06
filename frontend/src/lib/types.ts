@@ -239,6 +239,15 @@ export interface ProfileRequest {
 }
 
 // ── Opportunity (backend shape) ──────────────────────────────────────
+/** A program's stated opening: `text` and `quote` are its page's words, `at` the campus midnight it begins. */
+export interface ApplicationOpening {
+  on: string;
+  at: string;
+  text: string;
+  quote: string;
+  source_url: string | null;
+}
+
 /**
  * Whether the server says this record can still be acted on, and why not.
  *
@@ -396,6 +405,9 @@ export interface Opportunity {
   keywords: string[];
   deadline?: string;
   deadline_is_estimate?: boolean | null;
+  // The opening date the program's own page states, when we read one there.
+  // An older backend sends none.
+  application_opens?: ApplicationOpening | null;
   is_rolling?: boolean;
   compensation_details?: string;
   duration?: string | null;

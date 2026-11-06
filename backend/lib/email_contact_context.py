@@ -14,6 +14,7 @@ from copy import deepcopy
 from backend.lib.public_projection import redact_embedded_emails
 from backend.lib.publication_attribution import verified_recent_works
 from src.lab_context import lab_context_for, validate_public_lab_context
+from src.recommender.cold_email import follow_up_subject
 from src.research_context import research_context_for, validate_public_research_context
 
 # Shared with the browser contact-context validator. This is intentionally a
@@ -655,6 +656,12 @@ def contact_claim_violations(text: str, parts: dict) -> list[str]:
     """
     findings = []
     remaining = text
+    if parts.get("contact_purpose") == "follow_up":
+        # The student confirmed the earlier email, which is all the template's
+        # own "Follow-up — ..." subject line says; any other subject is read.
+        subject, _newline, body = remaining.partition("\n")
+        if subject.strip() == follow_up_subject(parts).removeprefix("Subject: "):
+            remaining = body
     for key in ("contact_opening", "contact_reply_line", "contact_availability", "contact_paper_reading"):
         sentence = parts.get(key) or ""
         if not sentence:

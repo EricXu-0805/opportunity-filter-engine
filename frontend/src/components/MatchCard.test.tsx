@@ -8,6 +8,7 @@ vi.mock('@/i18n/client', () => ({
     t: (key: string, vars?: Record<string, string | number>) => {
       if (vars && 'count' in vars) return `${key}:${vars.count}`;
       if (vars && 'host' in vars) return `${key}:${vars.host}`;
+      if (vars && 'date' in vars) return `${key}:${vars.date}`;
       return key;
     },
     locale: i18n.locale,
@@ -725,6 +726,53 @@ describe('MatchCard', () => {
 
       fireEvent.click(screen.getByText('card.showDetails'));
       expect(screen.queryByText('Show preparation plan')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('a program whose page states an opening still ahead', () => {
+    const opening = (at: string) => ({
+      on: '2026-11-15', at, text: 'November 15',
+      quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+    });
+    const program = (extra: Partial<Opportunity> = {}) => makeMatch({
+      url: 'https://summerprogram.unl.edu/',
+      application: {
+        application_effort: 'medium', requires_resume: 'unknown', contact_method: 'website',
+        application_url: 'https://summerprogram.unl.edu/',
+      },
+      ...extra,
+    });
+
+    it('says when applications open, in the page\'s words, and offers the page instead of Apply', () => {
+      render(<MatchCard match={program({ application_opens: opening('2999-11-15T06:00:00+00:00') })} onDraftEmail={() => {}} />);
+      expect(screen.getByText('badges.applicationsOpenOn:November 15')).toBeInTheDocument();
+      expect(screen.queryByText(/2026-11-15/)).toBeNull();
+      expect(screen.queryByText('card.applyNow')).toBeNull();
+      expect(screen.getByText('card.viewDetails').closest('a')!.getAttribute('href')).toBe('https://summerprogram.unl.edu/');
+    });
+
+    it('drops the label and offers Apply once the opening has passed', () => {
+      render(<MatchCard match={program({ application_opens: opening('2000-11-15T06:00:00+00:00') })} onDraftEmail={() => {}} />);
+      expect(screen.queryByText(/badges\.applicationsOpenOn/)).toBeNull();
+      expect(screen.getByText('card.applyNow')).toBeInTheDocument();
+    });
+
+    it('renders an older backend payload, which states no opening, as before', () => {
+      render(<MatchCard match={program()} onDraftEmail={() => {}} />);
+      expect(screen.queryByText(/badges\.applicationsOpenOn/)).toBeNull();
+      expect(screen.getByText('card.applyNow')).toBeInTheDocument();
+    });
+
+    it('says nothing about an opening on a listing the server no longer calls actionable', () => {
+      const closed = program({
+        application_opens: opening('2999-11-15T06:00:00+00:00'),
+        target_truth: {
+          listing_state: 'closed', reference_only: false, actionable: false,
+          accepting_state: 'not_accepting', reason_code: 'listing_closed', verified_at: null, expires_at: null,
+        },
+      });
+      render(<MatchCard match={closed} onDraftEmail={() => {}} />);
+      expect(screen.queryByText(/badges\.applicationsOpenOn/)).toBeNull();
     });
   });
 

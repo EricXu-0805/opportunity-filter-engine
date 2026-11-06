@@ -959,6 +959,7 @@ def _common_parts(
         scholar_url=scholar_url,
         pi_name=pi_name, lab=lab, title=title,
         research_area=research_area, research_topic=research_topic,
+        broad_research_label=_broad_research_label(opportunity, research_area, research_topic),
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
         contact_method=(opportunity.get("application") or {}).get("contact_method"),
@@ -1036,11 +1037,19 @@ def _contact_details(p: dict) -> str:
     return f"\n\n{availability}" if availability else ""
 
 
+def follow_up_subject(p: dict) -> str:
+    """The follow-up template's subject line; the contact-claim guard reads it too."""
+    # A faculty title is the professor's name, and an area or lab would read
+    # as the topic of the earlier email, which only the student saw.
+    topic = "research inquiry" if p.get("is_faculty") else p.get("title") or "research inquiry"
+    return _cap_subject(f"Subject: Follow-up — {topic}")
+
+
 def _contact_template(email: str, p: dict) -> str:
     """Use only route-admitted context; reading stays beside research interest."""
     opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
     if p.get("contact_purpose") == "follow_up":
-        subject = _cap_subject(f"Subject: Follow-up — {p.get('title') or 'research inquiry'}")
+        subject = follow_up_subject(p)
         ask = p.get("target_conditions_template_request") or (
             "Could you let me know whether there are any current or upcoming research "
             "openings, and the best next step if so?"
@@ -1332,18 +1341,59 @@ def _skill_claims(names: list[str], levels: dict) -> str:
     return " ".join(sentences)
 
 
+def _research_list_items(raw: str) -> list[str]:
+    """research_areas_raw cut into list items on the collectors' separators."""
+    items = (" ".join(re.sub(r"^(?:and|or|&)\s+", "", part.strip(), flags=re.I).strip(" .,:;-–—•*").split())
+             for part in re.split(r"[,;|\n]|\s+/\s+", raw))
+    return [item for item in items if item]
+
+
+def _broad_research_label(opportunity: dict, research_area: str, research_topic: str) -> str:
+    """The stored research list item that is the broad research area, or "".
+
+    An unstamped keyword is not enough: it can be a keyword-bank hit on the
+    rank title, a degree field or a department-wide tag, and the sentence tells
+    the professor their profile lists it. A specific stated topic or list item
+    anywhere keeps the existing sentences (M167).
+    """
+    metadata = opportunity.get("metadata") or {}
+    raw = metadata.get("research_areas_raw") if isinstance(metadata, dict) else ""
+    items = _research_list_items(raw if isinstance(raw, str) else "")
+    topics = _topic_keywords(opportunity) or [research_topic]
+    if not research_area or any(_target_signal_is_specific(value) for value in [*topics, *items]):
+        return ""
+    wanted = " ".join(research_area.split()).casefold()
+    return next((item for item in items if item.casefold() == wanted), "")
+
+
+def _broad_research_note(p: dict) -> str:
+    """Quote a faculty row's stored research label when every topic is broad.
+
+    "Your research in Biology" claims knowledge that a directory bucket does
+    not give, and the final fact check replaces such a draft with the neutral
+    inquiry; the list item itself is the source's word, quoted as stored.
+    """
+    label = p.get("broad_research_label") or ""
+    if p.get("is_faculty") and label:
+        return f"Your profile lists “{label}” as a research area."
+    return ""
+
+
 def _build_concise(p: dict) -> str:
     subject = _subject(p, style="concise")
     greeting = _greeting(p)
 
     core = f"I am {_student_self(p, 'student')}"
-    if p["research_area"]:
+    broad_note = _broad_research_note(p)
+    if p["research_area"] and not broad_note:
         core += (
             f", interested in your research in {p['research_area']}"
             if p.get("is_faculty")
             else f", interested in {p['research_area']}"
         )
     core += "."
+    if broad_note:
+        core += f" {broad_note}"
 
     skills = p["skills"]
     matching = p["matching_skills"]
@@ -1400,7 +1450,10 @@ def _p1_research_hook(p: dict) -> str:
             sentences.append(f'My research interest is: “{interest}{ending}”')
         else:
             sentences.append(f"I am interested in {interest}.")
-    if posting:
+    broad_note = _broad_research_note(p)
+    if broad_note:
+        sentences.append(broad_note)
+    elif posting:
         sentences.append(f"I would like to learn more about “{posting}”.")
     elif target:
         where = f" in {lab_ref}" if lab_ref else ""

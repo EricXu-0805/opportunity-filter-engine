@@ -310,6 +310,25 @@ _LINK_CTA_RE = re.compile(
     re.I,
 )
 
+# The heading a profile's list of papers starts under, stored as a keyword on
+# 15 faculty rows at 9 schools on 2026-11-05, and the template email then said
+# "your work on Selected Publications". The values those rows held, plus the two
+# publication headings M163 added to uiuc's _AREA_STOP_HEADINGS that the junk
+# gate's journal/proceedings rule does not already drop. Whole keyword only:
+# "book history" is a topic, and "Patents" is an area of law at two schools.
+_PUBLICATION_HEADINGS = frozenset({
+    "publications", "selected publications", "select publications",
+    "recent publications", "full publication list", "complete list of publications",
+    "articles", "book chapters", "edited books", "books and selected articles",
+    "books edited or co edited", "monographs", "preprints",
+})
+
+
+def is_publication_heading(keyword: str) -> bool:
+    """Whether a keyword is only a publication-list heading, ignoring case and
+    punctuation."""
+    return " ".join(re.sub(r"[\W_]+", " ", (keyword or "").casefold()).split()) in _PUBLICATION_HEADINGS
+
 
 def _hygiene_keyword(k: str) -> str | None:
     """Clean one keyword (curated or derived): strip wrapping quotes and edge
@@ -341,6 +360,8 @@ def _hygiene_keyword(k: str) -> str | None:
     if _FRAGMENT_LEADIN_RE.match(c):
         return None
     if _LINK_CTA_RE.search(c):
+        return None
+    if is_publication_heading(c):
         return None
     try:
         from .uiuc_faculty import _is_junk_keyword
@@ -3899,6 +3920,19 @@ def clean_corpus_faculty_keywords(opps: list[dict]) -> int:
         if touched:
             changed += 1
     return changed
+
+
+def drop_publication_heading_keywords(record: dict) -> dict:
+    """Drop a faculty row's publication-heading keywords in place; return record.
+
+    Run at load, so rows stored before the hygiene dropped them are served
+    without them until their school's next refresh rewrites them. The stored
+    title's keyword parenthetical is left: the loader serves a faculty row's
+    name as its title."""
+    keywords = record.get("keywords")
+    if record.get("source_type") == "faculty_research" and isinstance(keywords, list):
+        record["keywords"] = [k for k in keywords if not (isinstance(k, str) and is_publication_heading(k))]
+    return record
 
 
 # Umbrella rosters that re-list people whose home is a more specific department

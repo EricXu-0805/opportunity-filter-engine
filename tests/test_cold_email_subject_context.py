@@ -3,13 +3,13 @@ from copy import deepcopy
 
 import pytest
 
-from backend.lib.email_contact_context import contact_context_parts
+from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
 from backend.lib.public_opportunity_detail import project_public_detail
 from backend.routes import cold_email as ce
 from src.evidence import stamp_inferred
-from src.recommender.cold_email import _common_parts, generate_variants
+from src.recommender.cold_email import _common_parts, generate_cold_email, generate_variants
 from tests.test_cold_email_writing_quality import PROFILE
-from tests.test_email_contact_context import FIRST, REFERRAL, result
+from tests.test_email_contact_context import FIRST, FOLLOW, REFERRAL, result
 from tests.test_email_contact_context import client as shared_client
 
 
@@ -99,6 +99,47 @@ def test_nonfaculty_listing_keeps_its_title(source_type):
                for v in generate_variants(PROFILE, public, parts_cache=parts))
 
 
+@pytest.mark.parametrize("area,lab", [
+    ("", ""), ("sparse neural networks", ""), ("", "Lee Lab"), ("sparse neural networks", "Lee Lab"),
+])
+def test_faculty_follow_up_subject_names_no_person_area_or_lab(area, lab):
+    public = project_public_detail(faculty(area=area, lab=lab))
+    parts = _common_parts(PROFILE, public)
+    parts.update(contact_context_parts(FOLLOW))
+    texts = [v["text"] for v in generate_variants(PROFILE, public, parts_cache=parts)]
+    for text in [*texts, generate_cold_email(PROFILE, public, parts_cache=parts)]:
+        subject, body = text.split("\n\n", 1)
+        assert subject == "Subject: Follow-up — research inquiry"
+        assert "I am following up on my previous email sent on 2026-09-10." in body
+
+
+LONG_TITLE = "Summer Undergraduate Research Fellowship in Complex Networks and Adaptive Learning Systems"
+
+
+@pytest.mark.parametrize("title", ["Summer Scholars Program", LONG_TITLE])
+@pytest.mark.parametrize("source_type", ["campus_program", "summer_program", "internship"])
+def test_nonfaculty_follow_up_keeps_its_title(source_type, title):
+    record = faculty()
+    record.update(source_type=source_type, source="test_listing", title=title)
+    public = project_public_detail(record)
+    parts = _common_parts(PROFILE, public)
+    parts.update(contact_context_parts(FOLLOW))
+    for variant in generate_variants(PROFILE, public, parts_cache=parts):
+        subject = variant["text"].split("\n\n", 1)[0].removeprefix("Subject: Follow-up — ")
+        assert len(subject) <= 72 - len("Follow-up — ")
+        assert subject == title or title.startswith(subject + " ")
+
+
+def test_untitled_listing_follow_up_uses_the_neutral_topic():
+    record = faculty()
+    record.update(source_type="campus_program", source="test_listing", title="")
+    public = project_public_detail(record)
+    parts = _common_parts(PROFILE, public)
+    parts.update(contact_context_parts(FOLLOW))
+    assert all(v["text"].startswith("Subject: Follow-up — research inquiry\n\n")
+               for v in generate_variants(PROFILE, public, parts_cache=parts))
+
+
 @pytest.fixture
 def client(monkeypatch):
     client = shared_client.__wrapped__(monkeypatch)
@@ -160,3 +201,108 @@ def test_explicit_source_subject_still_wins_even_when_it_contains_the_name(clien
         "profile": PROFILE, "opportunity_id": "m164-faculty", "contact_context": FIRST,
     }), path)
     assert all(v["subject"] == required for v in out.get("variants", [out]))
+
+
+@pytest.mark.parametrize("area,lab", [("", ""), ("sparse neural networks", ""), ("", "Lee Lab")])
+@pytest.mark.parametrize("path", ["", "stream", "variants"])
+def test_faculty_follow_up_template_is_served_with_its_sign_off(client, monkeypatch, area, lab, path):
+    record = faculty(area=area, lab=lab)
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {record["id"]: deepcopy(record)})
+    out = result(client.post("/api/cold-email" + (f"/{path}" if path else ""), json={
+        "profile": PROFILE, "opportunity_id": record["id"], "contact_context": FOLLOW, "engine": "template",
+    }), path)
+    for variant in out.get("variants", [out]):
+        assert variant["subject"] == "Follow-up — research inquiry"
+        assert "I am following up on my previous email sent on 2026-09-10." in variant["body"]
+        assert variant["body"].endswith("Best regards,\nAudit Student")
+    if path != "variants":
+        assert out["method"] == "template"
+        assert out["fallback_reason"] is None
+
+
+LISTING = "Summer Scholars Program"
+LONG_LISTING = "Summer Scholars Program in Complex Networks, Adaptive Control and Distributed Learning Systems"
+
+
+def listing(title=LISTING):
+    record = faculty()
+    record.update(source_type="campus_program", source="test_listing", title=title)
+    return record
+
+
+def follow_parts(record, context=FOLLOW):
+    parts = _common_parts(PROFILE, project_public_detail(record))
+    parts.update(contact_context_parts(context))
+    return parts
+
+
+def template_subject(parts):
+    public_text = generate_cold_email(PROFILE, {}, parts_cache=parts)
+    return public_text.split("\n\n", 1)[0].removeprefix("Subject: ")
+
+
+@pytest.mark.parametrize("record", [listing(), listing(LONG_LISTING), faculty(), faculty(area="sparse neural networks")])
+def test_confirmed_follow_up_accepts_the_template_subject(record):
+    parts = follow_parts(record)
+    text = f"{template_subject(parts)}\nHello,\n\n{parts['contact_opening']}\n\nCould you let me know the next step?"
+    assert contact_claim_violations(text, parts) == []
+
+
+@pytest.mark.parametrize("record,context,subject", [
+    (listing(), FIRST, f"Follow-up — {LISTING}"),
+    (listing(), REFERRAL, f"Follow-up — {LISTING}"),
+    (faculty(), FOLLOW, "Follow-up — Pat Lee"),
+    (faculty(), FOLLOW, f"Follow-up — {LISTING}"),
+    (listing(), FOLLOW, "Follow-up — Summer Scholars"),
+    (listing(), FOLLOW, f"Follow-up — {LISTING} position"),
+    (listing(), FOLLOW, "Follow-up"),
+])
+def test_every_other_subject_is_still_read_for_contact_claims(record, context, subject):
+    parts = follow_parts(record, context)
+    opening = parts["contact_opening"]
+    text = f"{subject}\nHello,\n\n{opening}\n\nCould you let me know the next step?".replace("\n\n\n\n", "\n\n")
+    assert contact_claim_violations(text, parts) == ["unsupported contact history claim"]
+
+
+def test_template_subject_is_accepted_only_as_the_subject_line():
+    parts = follow_parts(listing())
+    subject = template_subject(parts)
+    assert contact_claim_violations(
+        f"Hello,\n{subject}\n\n{parts['contact_opening']}", parts) == ["unsupported contact history claim"]
+    assert contact_claim_violations(
+        f"{subject}\nHello,\n\n{parts['contact_opening']}\n\nAs we discussed in our meeting, I am interested.",
+        parts) == ["unsupported contact history claim"]
+
+
+@pytest.mark.parametrize("title", [LISTING, LONG_LISTING])
+@pytest.mark.parametrize("path", ["", "stream", "variants"])
+def test_listing_follow_up_template_is_served_with_its_sign_off(client, monkeypatch, title, path):
+    record = listing(title)
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {record["id"]: deepcopy(record)})
+    out = result(client.post("/api/cold-email" + (f"/{path}" if path else ""), json={
+        "profile": PROFILE, "opportunity_id": record["id"], "contact_context": FOLLOW, "engine": "template",
+    }), path)
+    for variant in out.get("variants", [out]):
+        assert variant["subject"] == template_subject(follow_parts(record))
+        assert variant["body"].endswith("Best regards,\nAudit Student")
+    if path != "variants":
+        assert out["method"] == "template"
+        assert out["fallback_reason"] is None
+
+
+@pytest.mark.parametrize("subject,method", [(f"Follow-up — {LISTING}", "ai"), ("Follow-up — Summer Scholars", "template")])
+def test_ai_follow_up_is_read_against_the_template_subject(client, monkeypatch, subject, method):
+    record = listing()
+    record.update(keywords=["sparse neural networks"],
+                  description_raw="The Summer Scholars Program pairs students with mentors on sparse neural networks.")
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {record["id"]: deepcopy(record)})
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    body = ("Dear Pat Lee,\n\nI am following up on my previous email sent on 2026-09-10.\n\n"
+            "Could you let me know the best next step for this opportunity?\n\nBest regards,\nAudit Student")
+    monkeypatch.setattr(ce, "_pipeline_generate", lambda *_a, **_k: f"Subject: {subject}\n\n{body}")
+    out = result(client.post("/api/cold-email", json={
+        "profile": PROFILE, "opportunity_id": record["id"], "contact_context": FOLLOW, "engine": "ai",
+    }), "")
+    assert out["method"] == method
+    assert out["fallback_reason"] == (None if method == "ai" else "fabrication")
+    assert out["subject"] == f"Follow-up — {LISTING}"

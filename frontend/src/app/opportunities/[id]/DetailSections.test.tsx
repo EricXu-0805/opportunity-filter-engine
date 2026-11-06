@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { Opportunity } from '@/lib/types';
+import { translate } from '@/i18n/translate';
 
 import {
   ApplicationSection,
@@ -489,5 +490,46 @@ describe('AtAGlanceSection compensation from our listing', () => {
       opp={opp({}, { source_type: 'campus_program', compensation_details: '$500 stipend' })} t={tFn} />);
     expect(screen.getByText('$500 stipend')).toBeInTheDocument();
     expect(screen.queryByTestId('compensation-inferred-note')).toBeNull();
+  });
+});
+
+describe('AtAGlanceSection stated opening', () => {
+  const program = (at: string) => opp({}, {
+    source_type: 'campus_program',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null, verified_at: null, expires_at: null,
+    },
+    application_opens: {
+      on: '2026-11-15', at, text: 'November 15',
+      quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+    },
+  });
+
+  it.each([
+    ['en', 'Applications open', 'The program page: “November 15: Online application opens.”'],
+    ['zh', '申请开放日', '项目页原文：“November 15: Online application opens.”'],
+  ] as const)('gives the opening in the page’s words, with the page’s sentence (%s)', (locale, label, note) => {
+    render(<AtAGlanceSection opp={program('2999-11-15T06:00:00+00:00')} t={(key, vars) => translate(locale, key, vars)} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText('November 15')).toBeInTheDocument();
+    expect(screen.getByTestId('opening-quote').textContent).toBe(note);
+  });
+
+  it('drops the row once the opening has passed', () => {
+    render(<AtAGlanceSection opp={program('2000-11-15T06:00:00+00:00')} t={tFn} />);
+    expect(screen.queryByText('detail.fields.applicationsOpen')).toBeNull();
+  });
+
+  it('gives no opening for a program the server no longer calls actionable', () => {
+    const closed = {
+      ...program('2999-11-15T06:00:00+00:00'),
+      target_truth: {
+        listing_state: 'closed', reference_only: false, actionable: false,
+        accepting_state: 'not_accepting', reason_code: 'listing_closed', verified_at: null, expires_at: null,
+      },
+    } as Opportunity;
+    render(<AtAGlanceSection opp={closed} t={tFn} />);
+    expect(screen.queryByText('detail.fields.applicationsOpen')).toBeNull();
   });
 });

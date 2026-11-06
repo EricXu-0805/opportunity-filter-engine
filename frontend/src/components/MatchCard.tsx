@@ -48,6 +48,7 @@ import {
 import {
   opportunityApplicationUrl,
   opportunitySourceUrl,
+  pendingApplicationOpening,
   targetPosture,
   targetStatusReason,
   type TargetStatusReason,
@@ -280,6 +281,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
   // listing AND the server must still call it actionable. Faculty rows and
   // closed listings therefore fall through to the source link below.
   const applyUrl = opportunityApplicationUrl(opp);
+  const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const facultyPageUrl = isFaculty ? opportunitySourceUrl(opp) : undefined;
   const sourcePageUrl = !isFaculty && !applyUrl ? opportunitySourceUrl(opp) : undefined;
   const showApplyNow = !!applyUrl;
@@ -418,6 +420,9 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
             if (daysLeft <= 14) return <Badge variant="orange"><Clock className="w-3 h-3" />{t('badges.dueInDays', { count: daysLeft })}</Badge>;
             return <Badge variant="gray"><Clock className="w-3 h-3" />{opp.deadline}</Badge>;
           })()}
+          {opening && (
+            <Badge variant="blue"><Clock className="w-3 h-3" />{t('badges.applicationsOpenOn', { date: opening.text })}</Badge>
+          )}
         </div>
 
         {match.ai_reason && (

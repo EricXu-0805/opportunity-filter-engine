@@ -20,7 +20,7 @@ import { useT } from '@/i18n/client';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { isNoSponsorshipListing, opportunityRecordKind } from '@/lib/match-utils';
 import { canDeliverReminder } from '@/lib/reminders';
-import { targetPosture } from '@/lib/target-truth';
+import { pendingApplicationOpening, targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
 import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
 import { readDetailFields } from '@/lib/detail-fields';
@@ -283,6 +283,7 @@ export default function OpportunityDetail({
               fields={detailFields}
               isFaculty={recordKind === 'faculty_contact'}
               noSponsorship={isNoSponsorshipListing(opp)}
+              opening={isCurrentListing ? pendingApplicationOpening(opp) : null}
               t={t}
             />
           )}

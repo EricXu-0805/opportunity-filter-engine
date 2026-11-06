@@ -94,6 +94,8 @@ export const en = {
     pastDeadline: 'Past deadline',
     deadlinePassed: 'Deadline passed',
     dueInDays: 'Due in {count}d',
+    // {date} is the opening date as the program's page writes it.
+    applicationsOpenOn: 'Applications open {date}',
     // Short estimate marker appended to date badges when
     // deadline_is_estimate (NSF projected dates) — an estimated date must
     // never yield a confident "passed"/countdown assertion.
@@ -3496,6 +3498,7 @@ export const en = {
         start_date: 'Start date',
         duration: 'Duration',
         posted_date: 'Posted',
+        application_opens: 'Applications open',
         paid: 'Pay',
         compensation: 'Compensation',
         location: 'Where the work happens',
@@ -3560,6 +3563,7 @@ export const en = {
     yearConfigured: 'From our listing’s class-year list. Check the program’s eligibility requirements.',
     eligibilityInferred: 'Eligibility inferred from the posting text. Check the program’s requirements before ruling yourself out.',
     rollingInferred: 'From our listing’s deadline note. Check the program’s current dates.',
+    openingQuote: 'The program page: “{quote}”',
     concierge: {
       title: 'Want us to handle this one?',
       body: 'Tell us and we will read this lab, tailor your résumé to it, and draft the outreach for you. A person does this by hand, so it takes a day or two.',
@@ -3572,6 +3576,7 @@ export const en = {
     fields: {
       deadline: 'Deadline',
       deadlineEstimate: '(estimated)',
+      applicationsOpen: 'Applications open',
       // "Rolling" renders only with scraped rolling evidence
       // (metadata.deadline_note) — is_rolling alone is a collector default.
       rollingBasis: 'Rolling — no fixed deadline',
@@ -4212,8 +4217,8 @@ export const en = {
     sentQuestion: 'Did you send this exact email?',
     confirmSent: 'Yes — mark as contacted',
     copyFailed: 'Couldn\'t copy — select the text above and copy it manually.',
-    noTargetDataTitle: 'This record has no research details',
-    noTargetDataBody: 'We could not find research areas, topics, or publications for this record, so the draft is a solid general inquiry — it is not tailored to the recipient\'s work. If you can, check the original source and add one specific sentence of your own.',
+    noTargetDataTitle: 'This record has no verified specific research details',
+    noTargetDataBody: 'We found no specific research topics or publications we could verify for this record, so the draft is a solid general inquiry — it is not tailored to the recipient\'s work. If you can, check the original source and add one specific sentence of your own.',
     sourceInactiveTitle: 'This listing is no longer live',
     sourceInactiveBody: 'Our last check found this person or posting gone from the source directory — they may have moved, retired, or the position may have closed. Confirm on the department page before you send; the address may bounce.',
     sourceStaleTitle: 'We have not re-checked this listing recently',
@@ -5541,6 +5546,7 @@ export const zh = {
     pastDeadline: '已过截止',
     deadlinePassed: '已过截止',
     dueInDays: '还剩 {count} 天',
+    applicationsOpenOn: '申请开放日：{date}',
     // deadline_is_estimate（NSF 预测日期）时附在日期徽章后的简短标记 ——
     // 估算日期绝不能给出确定的"已过截止"/倒计时断言。
     estimated: '预估',
@@ -8889,6 +8895,7 @@ export const zh = {
         start_date: '开始日期',
         duration: '时长',
         posted_date: '发布日期',
+        application_opens: '申请开放日',
         paid: '报酬',
         compensation: '薪酬',
         location: '工作地点',
@@ -8951,6 +8958,7 @@ export const zh = {
     yearConfigured: '来自本站整理的年级清单，申请资格请核对项目要求。',
     eligibilityInferred: '系统从招募文字中推断的申请资格，放弃申请前请核对项目要求。',
     rollingInferred: '来自本站整理的截止说明，当前日期请核对项目页面。',
+    openingQuote: '项目页原文：“{quote}”',
     concierge: {
       title: '这个要不要我们替你办？',
       body: '说一声，我们去读这个组、把你的简历改到贴合它、再把联系信写好给你。是人工一封一封做的，所以要等一两天。',
@@ -8963,6 +8971,7 @@ export const zh = {
     fields: {
       deadline: '截止日期',
       deadlineEstimate: '（估算）',
+      applicationsOpen: '申请开放日',
       // 只有采集到滚动招生证据（metadata.deadline_note）才显示"滚动招生"
       // —— is_rolling 本身只是采集器默认值。
       rollingBasis: '滚动招生 —— 无固定截止',
@@ -9574,8 +9583,8 @@ export const zh = {
     sentQuestion: '你已发送与这里完全一致的邮件吗？',
     confirmSent: '是的 — 标记为已联系',
     copyFailed: '没能复制 — 请手动选中上面的正文复制。',
-    noTargetDataTitle: '这条记录没有研究方向信息',
-    noTargetDataBody: '我们没有找到这条记录对应的研究领域、课题或论文，所以这封草稿是一封扎实的通用询问信，并未针对收件人的具体工作定制。如果条件允许，建议查看原始来源，自己补一句具体的话。',
+    noTargetDataTitle: '这条记录没有可核实的具体研究方向',
+    noTargetDataBody: '我们没有找到这条记录可核实的具体研究课题或论文，所以这封草稿是一封扎实的通用询问信，并未针对收件人的具体工作定制。如果条件允许，建议查看原始来源，自己补一句具体的话。',
     sourceInactiveTitle: '这条信息已经不在原页面上了',
     sourceInactiveBody: '我们最近一次核查时，这个人或这个职位已经从来源目录里消失——可能换了学校、退休，或者职位已关闭。发之前先去院系页面确认一下，邮箱有可能已经退信。',
     sourceStaleTitle: '这条信息我们有段时间没复核了',

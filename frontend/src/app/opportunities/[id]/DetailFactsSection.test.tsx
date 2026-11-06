@@ -362,3 +362,67 @@ describe('DetailFactsSection', () => {
     expect(within(location).queryByText('detail.facts.sourceLink')).not.toBeInTheDocument();
   });
 });
+
+describe('a program whose page states an opening still ahead', () => {
+  const OPENING = {
+    on: '2026-11-15', at: '2999-11-15T06:00:00+00:00', text: 'November 15',
+    quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+  };
+  const fields = () => readDetailFields({ detail_fields: {
+    version: DETAIL_FIELDS_VERSION,
+    fields: {
+      timing: {
+        explicit: { deadline: '2027-03-01' },
+        quotes: { deadline: { text: 'March 1: Application deadline.', source_url: 'https://summerprogram.unl.edu/', observed_at: '2026-11-05' } },
+      },
+      application_method: { explicit: { application_url: 'https://summerprogram.unl.edu/', contact_method: 'website' } },
+    },
+  } })!;
+
+  it.each([['en', 'Applications open'], ['zh', '申请开放日']] as const)(
+    'gives the opening among the timing facts, in the page\'s words (%s)', (locale, label) => {
+      render(
+        <DetailFactsSection fields={fields()} isFaculty={false} opening={OPENING}
+          t={(key, vars) => translate(locale, key, vars)} />,
+      );
+      const opens = row('timing', 'application_opens', 'source');
+      expect(within(screen.getByTestId('fact-field-timing')).getByTestId('fact-timing-application_opens')).toBe(opens);
+      expect(opens).toHaveTextContent(label);
+      expect(within(opens).getByText('November 15')).toBeInTheDocument();
+      expect(within(opens).getByTestId('fact-timing-application_opens-quote').textContent)
+        .toBe('November 15: Online application opens.');
+      expect(within(opens).getByRole('link')).toHaveAttribute('href', 'https://summerprogram.unl.edu/');
+    },
+  );
+
+  it('gives no opening row when none is ahead', () => {
+    render(<DetailFactsSection fields={fields()} isFaculty={false} t={t} />);
+    expect(screen.queryByTestId('fact-timing-application_opens')).toBeNull();
+  });
+
+  it.each([
+    ['en', 'Applications open November 15', 'Open application page'],
+    ['zh', '申请开放日：November 15', '打开申请页面'],
+  ] as const)('says when applications open in place of the application link (%s)', (locale, held, offer) => {
+    render(
+      <DetailFactsSection fields={fields()} isFaculty={false} opening={OPENING}
+        t={(key, vars) => translate(locale, key, vars)} />,
+    );
+    const link = row('application_method', 'application_url', 'source');
+    expect(link).toHaveTextContent(held);
+    expect(link).not.toHaveTextContent(offer);
+    expect(link).not.toHaveTextContent('https://summerprogram.unl.edu/');
+    expect(within(link).queryByRole('link')).toBeNull();
+    // Only the link waits for the opening; the contact method keeps its value.
+    const contact = row('application_method', 'contact_method', 'source');
+    expect(contact).toHaveTextContent('website');
+    expect(contact).not.toHaveTextContent(held);
+  });
+
+  it('offers the application link when no opening is ahead', () => {
+    render(<DetailFactsSection fields={fields()} isFaculty={false} t={(key, vars) => translate('en', key, vars)} />);
+    const link = row('application_method', 'application_url', 'source');
+    expect(within(link).getByRole('link', { name: 'Open application page' }))
+      .toHaveAttribute('href', 'https://summerprogram.unl.edu/');
+  });
+});
