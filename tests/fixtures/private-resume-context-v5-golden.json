@@ -1,0 +1,32 @@
+{
+  "receipt": {
+    "version": 1,
+    "target_scope": "private_import",
+    "verification": "unverified",
+    "context": {
+      "context_version": 5,
+      "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+      "title": "Private research note",
+      "organization": "",
+      "source_url": "",
+      "description": "Study parsers and research tools.\r\n完整原文 😀\nDo not add inferred requirements.",
+      "requirements": [],
+      "private_source": {
+        "version": 1,
+        "purpose": "resume",
+        "target_scope": "private_import",
+        "verification": "unverified",
+        "owner_id": "a1000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+        "import_source": {
+          "version": 1,
+          "description_source": "pasted_text",
+          "ai_input_scope": "source_excerpt",
+          "llm_enriched": true
+        }
+      }
+    },
+    "target_signature": "v1:sha256:f2c36e2e452cf5dc7eb818865668698a7b96b01c2325e95505ca1de8d4216b3d"
+  }
+}
