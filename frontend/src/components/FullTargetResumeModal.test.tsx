@@ -108,6 +108,20 @@ async function privateUI() {
   return { ...view, props, check, target, close };
 }
 describe('private full résumé workspace', () => {
+  it('reports the complete draft size limit instead of creating a truncated private draft', async () => {
+    // The source alone fits the 2 MiB draft limit; with the résumé the complete draft does not.
+    const length = 2 * 1024 * 1024 - 2048;
+    const target = { ...clone(privateGolden.receipt.context), description: 'x'.repeat(length) } as PrivateResumeContext;
+    advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+    const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, refresh: async () => true,
+      checkForAction: async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target)! }) };
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={profile()} privateTarget={target} privateResumeRefresh={refresh} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
+    expect(await screen.findByText(/complete résumé and opportunity text exceed/)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Edit Full name' })).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+    expect(target.description).toHaveLength(length);
+  });
   it('creates from checked complete private materials, opens supplements and saves without public AI panels', async () => {
     const { check, target } = await privateUI();
     expect(check).toHaveBeenCalledOnce(); expect(ai.props).toBeNull(); expect(plan.props).toBeNull();

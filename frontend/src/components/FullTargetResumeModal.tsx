@@ -50,7 +50,7 @@ type Session = {
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
   // The account cap only frees when this owner scope ends, so it outlives edits.
   quota: 'guest' | 'member' | 'unknown' | null;
-  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | 'private-source' | null;
+  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | 'private-source' | 'too-large' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
@@ -377,8 +377,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       const next = await createTargetResume(profileSnapshot, targetSnapshot, activeSession.doc?.id);
       if (!current(scope) || scope.creation !== creation) return;
       update(scope, (old) => ({ ...old, phase: 'doc', doc: next, provenance: null, provenanceError: false, editRevision: old.editRevision + 1, error: null }));
-    } catch {
-      if (current(scope) && scope.creation === creation) update(scope, (old) => ({ ...old, phase: old.doc ? 'doc' : 'idle', error: 'create' }));
+    } catch (error) {
+      const reason = error instanceof Error && 'code' in error && error.code === 'document_too_large' ? 'too-large' : 'create';
+      if (current(scope) && scope.creation === creation) update(scope, (old) => ({ ...old, phase: old.doc ? 'doc' : 'idle', error: reason }));
     }
   };
   const createReadiness = !profileAvailable || !ownerReady || activeSession?.saving || activeSession?.reloading || activeSession?.conflict
@@ -556,6 +557,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       </li>)}</ol>}
   </details>;
   const errors = {
+    'too-large': copy('The complete résumé and opportunity text exceed the draft limit. Nothing was truncated; your existing draft is kept.', '完整简历和机会原文超过文稿容量，内容未截断，原有文稿保留。'),
     'private-source': copy('The private source changed or could not be checked. Your edits are kept; review the source and save again.', '私有来源已变更或暂时无法核对。编辑仍保留，请核对来源后重新保存。'),
     provenance: copy('The suggestion was not applied because its change record could not be saved. Your existing draft and records are kept; you can still edit and save them.', '建议未应用：修改记录无法保存。原有文稿和记录均保留，仍可编辑和保存。'),
     checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
