@@ -1040,7 +1040,10 @@ def _contact_template(email: str, p: dict) -> str:
     """Use only route-admitted context; reading stays beside research interest."""
     opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
     if p.get("contact_purpose") == "follow_up":
-        subject = _cap_subject(f"Subject: Follow-up — {p.get('title') or 'research inquiry'}")
+        # A faculty title is the professor's name, and an area or lab would
+        # read as the topic of the earlier email, which only the student saw.
+        topic = "research inquiry" if p.get("is_faculty") else p.get("title") or "research inquiry"
+        subject = _cap_subject(f"Subject: Follow-up — {topic}")
         ask = p.get("target_conditions_template_request") or (
             "Could you let me know whether there are any current or upcoming research "
             "openings, and the best next step if so?"
