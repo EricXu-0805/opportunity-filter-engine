@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { webcrypto } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appendTargetResumeProvenance, type TargetResumeProvenance, type TargetResumeProvenanceAction } from '@/lib/target-resume-provenance';
 import * as contract from '@/lib/target-resume';
@@ -94,8 +94,7 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-async function privateUI() {
-  const target = clone(privateGolden.receipt.context) as PrivateResumeContext;
+async function privateUI(target = clone(privateGolden.receipt.context) as PrivateResumeContext) {
   advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
   const check = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target) }));
   const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, checkForAction: check, refresh: vi.fn().mockResolvedValue(true) };
@@ -181,6 +180,17 @@ describe('private full résumé workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
     expect(await screen.findByText(/private source changed or could not be checked\. Your draft is kept/)).toBeInTheDocument();
     expect(check).toHaveBeenCalledTimes(before + 1); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Exported private edit');
+  });
+  it('marks a private snapshot as not independently verified, with the source version it was built on', async () => {
+    const target = clone(privateGolden.receipt.context) as PrivateResumeContext, source = target.private_source;
+    source.revision = 7;
+    source.source_version = 'pit1:' + createHash('sha256').update(JSON.stringify({ id: target.opportunity_id, owner_id: source.owner_id, revision: 7 })).digest('hex');
+    await privateUI(target);
+    expect(screen.getByText('Private import — not independently verified. Saved source version: 7')).toBeInTheDocument();
+  });
+  it('does not mark a public snapshot as a private import', async () => {
+    await createUI();
+    expect(screen.queryByText(/Private import|not independently verified/)).toBeNull();
   });
   it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
     const { props, rerender, close } = await privateUI();
