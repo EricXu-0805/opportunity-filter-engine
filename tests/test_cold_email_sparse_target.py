@@ -84,6 +84,7 @@ def test_a_department_or_title_keyword_is_not_quoted_as_a_profile_area(departmen
      ["Chemistry"]),
     ("Studies how the brain gives rise to the psychology of mental states", ["psychology"]),
     ("Molecular Biology", ["Biology"]),
+    ("Biology/Chemistry", ["Biology"]),
 ])
 def test_a_label_that_is_not_a_whole_list_item_is_not_quoted(raw, keywords):
     _base_drafts(project_public_detail(faculty(raw, keywords=keywords, inferred=False)))
@@ -101,6 +102,12 @@ def test_a_whole_list_item_is_quoted_as_the_page_wrote_it(raw):
         subject, body = ce._extract_subject_and_body(variant["text"])
         assert 'Your profile lists “Law and Technology” as a research area.' in body
         assert ce._guard_email_output(subject, body, parts, opp, deterministic=True) == (subject, body, False)
+
+
+def test_two_broad_stated_keywords_that_are_both_list_items_quote_the_research_area():
+    opp = project_public_detail(faculty("Biology, Chemistry", keywords=["Biology", "Chemistry"], inferred=False))
+    for variant in generate_variants(PROFILE, opp, parts_cache=_common_parts(PROFILE, opp)):
+        assert 'Your profile lists “Biology” as a research area.' in variant["text"]
 
 
 def test_a_specific_list_item_after_a_broad_one_keeps_the_your_work_on_sentence():
