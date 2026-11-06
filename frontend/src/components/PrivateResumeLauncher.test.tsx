@@ -89,3 +89,16 @@ it.each([
   expect(await screen.findByText(message)).toBeInTheDocument();
   expect(screen.queryByText(/draft is kept|文稿仍保留/)).toBeNull();
 });
+
+it('offers no editor before a profile exists and links to the master résumé instead', () => {
+  mocks.profile=null;
+  render(<PrivateResumeLauncher id={id} scope={id} available />);
+  const open=screen.getByRole('button',{name:'Prepare résumé'}); expect(open).toBeDisabled();
+  expect(screen.getByRole('link',{name:'Add your profile and confirmed résumé first'})).toHaveAttribute('href','/#resume-master');
+  fireEvent.click(open); expect(screen.queryByRole('dialog')).toBeNull(); expect(mocks.read).not.toHaveBeenCalled();
+});
+
+it('shows nothing for an import that is not available', () => {
+  render(<PrivateResumeLauncher id={id} scope={id} available={false} />);
+  expect(screen.queryByRole('button',{name:'Prepare résumé'})).toBeNull(); expect(screen.queryByRole('link')).toBeNull();
+});

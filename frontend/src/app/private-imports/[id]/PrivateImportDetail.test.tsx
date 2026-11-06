@@ -72,6 +72,7 @@ it('retains histories for an owned tombstone without resolving old content', asy
   await screen.findByText(/This account copy was deleted/);
   expect(screen.getByText('Contact history ' + id)).toBeInTheDocument(); expect(resolved).not.toHaveBeenCalled();
   expect(screen.queryByText('Personal application record ' + id)).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Prepare private résumé' })).toBeNull();
 });
 it('never mounts history for a missing or foreign target', async () => {
   raw.mockResolvedValue(null); render(<PrivateImportDetail id={id} />);
@@ -104,6 +105,7 @@ it('re-resolves the exact shown version before an application write and withdraw
   expect(resolved).toHaveBeenCalledOnce(); expect(resolved.mock.calls[0][0]).toBe(id);
   expect(resolved.mock.calls[0][1]).toMatchObject({ expectedVersion: 'pit1:' + '1'.repeat(64), owner: expect.objectContaining({ uid: expect.any(String) }) });
   expect(screen.queryByText('Personal application record ' + id)).toBeNull(); expect(screen.queryByRole('button', { name: 'Prepare private email' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Prepare private résumé' })).toBeNull();
   expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
 });
 it('refuses an application write when the target changed or cannot be read, keeping the page', async () => {
