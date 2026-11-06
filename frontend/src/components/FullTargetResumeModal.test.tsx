@@ -331,7 +331,7 @@ describe('full target résumé modal', () => {
     expect(storage.save).toHaveBeenCalledTimes(1);
   });
   it.each([
-    ['document_too_large', 'The complete résumé and opportunity text exceed the draft limit. Nothing was truncated; your existing draft is kept.'],
+    ['document_too_large', 'The complete résumé and opportunity text exceed the draft limit. Nothing was truncated or saved.'],
     ['invalid_master', 'Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.'],
   ] as const)('reports a public create refused with %s by its own message', async (code, message) => {
     vi.spyOn(contract, 'createTargetResume').mockRejectedValueOnce(new contract.TargetResumeError(code));
@@ -340,6 +340,16 @@ describe('full target résumé modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
     expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: 'Edit Full name' })).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+  });
+  it('says in Chinese that an oversized first draft was neither cut nor saved', async () => {
+    // There may be no earlier draft to keep, so the message promises none.
+    i18n.locale = 'zh';
+    vi.spyOn(contract, 'createTargetResume').mockRejectedValueOnce(new contract.TargetResumeError('document_too_large'));
+    renderModal();
+    const create = await screen.findByRole('button', { name: '从已确认母版创建' });
+    await waitFor(() => expect(create).toBeEnabled());
+    fireEvent.click(create);
+    expect(await screen.findByText('完整简历和机会原文超过文稿容量，内容未截断，也未保存。')).toBeInTheDocument();
   });
   it('keeps the generic retryable save message for a failure that is not the cap', async () => {
     await createUI(); editName('Alex 王 unconfirmed'); storage.save.mockResolvedValue({ status: 'failed' });

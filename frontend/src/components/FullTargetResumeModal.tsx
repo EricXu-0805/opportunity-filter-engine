@@ -559,7 +559,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   // A deleted or missing import fails every later source check, so say so instead of asking for a retry.
   const privateGone = !!privateResumeRefresh && (!(targetMembershipReady ?? targetReady) || privateResumeRefresh.status === 'missing');
   const errors = {
-    'too-large': copy('The complete résumé and opportunity text exceed the draft limit. Nothing was truncated; your existing draft is kept.', '完整简历和机会原文超过文稿容量，内容未截断，原有文稿保留。'),
+    'too-large': copy('The complete résumé and opportunity text exceed the draft limit. Nothing was truncated or saved.', '完整简历和机会原文超过文稿容量，内容未截断，也未保存。'),
     'private-source': privateGone ? copy('Saving and export are unavailable for a deleted import.', '已删除的导入无法保存或导出文稿。')
       : copy('The private source changed or could not be checked. Your edits are kept; review the source and save again.', '私有来源已变更或暂时无法核对。编辑仍保留，请核对来源后重新保存。'),
     provenance: copy('The suggestion was not applied because its change record could not be saved. Your existing draft and records are kept; you can still edit and save them.', '建议未应用：修改记录无法保存。原有文稿和记录均保留，仍可编辑和保存。'),
