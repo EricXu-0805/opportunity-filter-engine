@@ -74,11 +74,12 @@ vi.mock('./DetailSections', () => ({
   KeywordsSection: () => <div data-testid="section-keywords" />,
 }));
 vi.mock('./DetailFactsSection', () => ({
-  DetailFactsSection: (props: { isFaculty: boolean; noSponsorship?: boolean }) => (
+  DetailFactsSection: (props: { isFaculty: boolean; noSponsorship?: boolean; opening?: { quote: string } | null }) => (
     <div
       data-testid="section-facts"
       data-faculty={String(props.isFaculty)}
       data-no-sponsorship={String(Boolean(props.noSponsorship))}
+      data-opening={props.opening?.quote ?? ''}
     />
   ),
 }));
@@ -907,6 +908,20 @@ describe('OpportunityDetail — M03 detail facts', () => {
     const future = { ...withFacts, detail_fields: { version: 'm03-v9', fields: {} } };
     render(<OpportunityDetail opp={future as never} />);
     expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
+  });
+
+  it('hands the facts the opening the program\'s page states, while it is ahead', () => {
+    const opening = (at: string) => ({
+      on: '2026-11-15', at, text: 'November 15',
+      quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+    });
+    const { unmount } = render(
+      <OpportunityDetail opp={{ ...withFacts, application_opens: opening('2999-11-15T06:00:00+00:00') } as never} />,
+    );
+    expect(screen.getByTestId('section-facts')).toHaveAttribute('data-opening', 'November 15: Online application opens.');
+    unmount();
+    render(<OpportunityDetail opp={{ ...withFacts, application_opens: opening('2000-11-15T06:00:00+00:00') } as never} />);
+    expect(screen.getByTestId('section-facts')).toHaveAttribute('data-opening', '');
   });
 
   it('shows no facts on a historical record — its terms are not on offer', () => {

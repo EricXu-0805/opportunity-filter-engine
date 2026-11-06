@@ -9,6 +9,7 @@ import {
   type FacetValue,
   safeHttpUrl,
 } from '@/lib/detail-fields';
+import type { ApplicationOpening } from '@/lib/types';
 import { Section } from './DetailSections';
 import type { TFunc } from './types';
 
@@ -188,12 +189,17 @@ export function DetailFactsSection({
   fields,
   isFaculty,
   noSponsorship = false,
+  opening = null,
   t,
 }: {
   fields: DetailFields;
   isFaculty: boolean;
   // The record's `international_basis` is "no_sponsorship" (M121).
   noSponsorship?: boolean;
+  // The opening the program's page states, while it is still ahead
+  // (`pendingApplicationOpening`). The client decides "ahead" by its own
+  // clock, so it is not one of the server's timing facets.
+  opening?: ApplicationOpening | null;
   t: TFunc;
 }) {
   return (
@@ -230,6 +236,19 @@ export function DetailFactsSection({
                     t={t}
                   />
                 ))}
+                {name === 'timing' && opening && (
+                  <FacetRow
+                    field={name}
+                    facet="application_opens"
+                    truth={{
+                      state: 'source',
+                      value: opening.text,
+                      quote: { text: opening.quote, sourceUrl: opening.source_url, observedAt: null },
+                    }}
+                    noSponsorship={noSponsorship}
+                    t={t}
+                  />
+                )}
               </dl>
               {!hasExternalResearch && field.state !== 'unknown' && (sourceHref || field.observedAt) && (
                 <p className="mt-1 text-[11px] text-gray-500 flex flex-wrap gap-x-3">
