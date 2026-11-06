@@ -525,13 +525,13 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             {!change.check && change.field === 'text' && event.kind !== 'manual' && <p className="text-xs text-gray-600">{copy('Check version unknown.', '检查版本未知。')}</p>}
           </div>;
         })}
-        {provenance.version === 4 && (event.kind === 'ai_rewrite' || event.kind === 'plan') && (event.generation ? <details className="mt-2 text-xs text-gray-600">
+        {(event.kind === 'ai_rewrite' || event.kind === 'plan') && (event.generation ? <details className="mt-2 text-xs text-gray-600">
           <summary className="cursor-pointer">{copy('Generation details', '生成记录')}</summary>
           <p className="mt-1 break-all">{copy('Configuration ID', '配置标识')}: {event.generation.version}</p>
           <p className="break-all">{copy('Pipeline version', '生成规则版本')}: {event.generation.pipeline_version}</p>
           <p className="break-all">{copy('Source draft signature', '生成前文稿签名')}: {event.generation.document_signature}</p>
           <p className="break-all">{copy('Request IDs', '请求标识')}: {event.generation.request_ids.join(', ')}</p>
-        </details> : <p className="mt-2 text-xs text-gray-600">{copy('Generation configuration was not recorded.', '未记录生成配置。')}</p>)}
+        </details> : <p className="mt-2 text-xs text-gray-600">{copy('Generation configuration: unknown', '生成配置：未知')}</p>)}
       </li>)}</ol>}
   </details>;
   const errors = {

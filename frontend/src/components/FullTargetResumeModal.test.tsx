@@ -844,23 +844,33 @@ describe('saved operation records', () => {
     const change = screen.getByText(/^Accepted content choice · /);
     expect(change.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
-  it('says a V4 AI change has no generation record and keeps the history V4 through a later edit', async () => {
+  it('says a V4 AI change has an unknown generation configuration and keeps the history V4 through a later edit', async () => {
     const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc), record = withGeneration(edit.provenance, null);
     storage.load.mockResolvedValue(recordLoaded(edit.next, record)); renderModal(p);
     await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
-    expect(screen.getByText('Generation configuration was not recorded.')).toBeVisible(); expect(screen.queryByText('Generation details')).toBeNull();
+    expect(screen.getByText('Generation configuration: unknown')).toBeVisible(); expect(screen.queryByText('Generation details')).toBeNull();
     editName('Later name'); saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
     await screen.findByText('Saved version 2');
     const saved = storage.save.mock.calls[0][3] as TargetResumeProvenance;
     expect(saved.version).toBe(4); expect(saved.events[0]).toEqual(record.events[0]); expect(saved.events[1].kind).toBe('manual');
-    expect(screen.getAllByText('Generation configuration was not recorded.')).toHaveLength(1);
+    expect(screen.getAllByText('Generation configuration: unknown')).toHaveLength(1);
   });
-  it('shows a V3 history without any generation line', async () => {
-    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc);
-    storage.load.mockResolvedValue(recordLoaded(edit.next, edit.provenance)); renderModal(p);
-    await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
-    expect(screen.getByText('Reason: Keep the stated contribution.')).toBeVisible();
-    expect(screen.queryByText('Generation configuration was not recorded.')).toBeNull(); expect(screen.queryByText('Generation details')).toBeNull();
+  it.each([['en', 1], ['en', 3], ['en', 4], ['zh', 1], ['zh', 3], ['zh', 4]] as const)(
+    'labels every AI and plan event without a generation record as unknown, and no manual event (%s, V%s history)', async (locale, version) => {
+    i18n.locale = locale;
+    const [records, unknown, details] = locale === 'zh' ? ['修改记录', '生成配置：未知', '生成记录'] : ['Change records', 'Generation configuration: unknown', 'Generation details'];
+    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc), planned = clone(edit.next);
+    planned.document.sections.flatMap(s => s.blocks).find(b => b.lines.some(l => l.text === 'Art project'))!.included = false;
+    const typed = withName(planned, 'Later name');
+    const record = clone(appendTargetResumeProvenance(appendTargetResumeProvenance(edit.provenance, edit.next, planned, { kind: 'plan' }), planned, typed, { kind: 'manual' })!);
+    expect(record.version).toBe(3); expect(record.events.map(event => event.kind)).toEqual(['ai_rewrite', 'plan', 'manual']);
+    record.version = version;
+    if (version === 4) record.events[1].generation = { version: 'target-resume-generation-v1:' + 'c'.repeat(64), pipeline_version: 'full-target-plan-v6',
+      document_signature: 'v1:sha256:' + 'd'.repeat(64), request_ids: ['plan-request'] };
+    storage.load.mockResolvedValue(recordLoaded(typed, record)); renderModal(p);
+    await screen.findByDisplayValue('Later name'); fireEvent.click(screen.getByText(records));
+    expect(screen.getAllByText(unknown)).toHaveLength(version === 4 ? 1 : 2);
+    if (version === 4) expect(screen.getByText(details)).toBeVisible(); else expect(screen.queryByText(details)).toBeNull();
   });
   it('shows legacy unknown and keeps a manual marker when text returns to the original', async () => {
     const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
