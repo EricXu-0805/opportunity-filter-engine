@@ -1036,14 +1036,19 @@ def _contact_details(p: dict) -> str:
     return f"\n\n{availability}" if availability else ""
 
 
+def follow_up_subject(p: dict) -> str:
+    """The follow-up template's subject line; the contact-claim guard reads it too."""
+    # A faculty title is the professor's name, and an area or lab would read
+    # as the topic of the earlier email, which only the student saw.
+    topic = "research inquiry" if p.get("is_faculty") else p.get("title") or "research inquiry"
+    return _cap_subject(f"Subject: Follow-up — {topic}")
+
+
 def _contact_template(email: str, p: dict) -> str:
     """Use only route-admitted context; reading stays beside research interest."""
     opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
     if p.get("contact_purpose") == "follow_up":
-        # A faculty title is the professor's name, and an area or lab would
-        # read as the topic of the earlier email, which only the student saw.
-        topic = "research inquiry" if p.get("is_faculty") else p.get("title") or "research inquiry"
-        subject = _cap_subject(f"Subject: Follow-up — {topic}")
+        subject = follow_up_subject(p)
         ask = p.get("target_conditions_template_request") or (
             "Could you let me know whether there are any current or upcoming research "
             "openings, and the best next step if so?"
