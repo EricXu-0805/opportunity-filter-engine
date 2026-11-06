@@ -215,3 +215,20 @@ def test_a_payload_cannot_bring_its_own_opening():
 
     assert "application_opens" not in project_public_opportunity_payload(
         {"title": row["title"], "application_opens": forged}, row)
+
+
+# Read 2026-11-05: the award on each program's overview page, the deadline on
+# its application page (the window's sentence).
+_CALTECH_PAGE_WORDS = {
+    "surf": "$8,354 award for the ten-week period",
+    "surf_jpl": "$9,600 award for the ten-week period",
+    "wave_fellows": "$8,354 for the ten-week period, plus a on-campus housing supplement of $2,000",
+}
+
+
+@pytest.mark.parametrize("key", sorted(_CALTECH_PAGE_WORDS))
+def test_caltechs_summer_programs_give_their_2027_award_and_deadline_in_the_pages_words(key):
+    _, _, spec = _spec("caltech", key)
+
+    assert spec["compensation"] == _CALTECH_PAGE_WORDS[key]
+    assert spec["deadline_note"] == WINDOWS[("caltech", key)].closes_quote
