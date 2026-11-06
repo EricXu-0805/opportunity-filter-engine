@@ -18,6 +18,28 @@ const start = async (name = 'Export PDF') => { fireEvent.click(screen.getByRole(
 beforeEach(async () => { vi.stubGlobal('crypto', webcrypto); localStorage.clear(); advanceOwnerEpoch('export-owner'); await syncLocalIdentityOwner('export-owner'); mocked.locale = 'en'; mocked.fetch.mockReset().mockResolvedValue(file); mocked.download.mockReset(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe('complete target résumé export', () => {
+  it.each([true, false])('checks a private source before rendering and again before download (second check %s)', async allowed => {
+    const verifySource = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(allowed);
+    render(<TargetResumeExportPanel {...props()} verifySource={verifySource} />);
+    await start(); await waitFor(() => expect(verifySource).toHaveBeenCalledTimes(2));
+    if (allowed) await waitFor(() => expect(mocked.download).toHaveBeenCalledOnce());
+    else { expect(await screen.findByRole('alert')).toHaveTextContent('private source'); expect(mocked.download).not.toHaveBeenCalled(); }
+  });
+  it('keeps a private draft when its source check fails and makes no render request', async () => {
+    render(<TargetResumeExportPanel {...props()} verifySource={async () => false} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('private source');
+    expect(mocked.fetch).not.toHaveBeenCalled(); expect(mocked.download).not.toHaveBeenCalled();
+  });
+  it('retires a pending private precheck when cancelled or edited', async () => {
+    const held = deferred<boolean>(), p = props();
+    const view = render(<TargetResumeExportPanel {...p} verifySource={() => held.promise} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel export' }));
+    const next = { ...p, draft: clone(p.draft) }; next.draft.document.sections[0].blocks[0].lines[0].text += ' edited';
+    view.rerender(<TargetResumeExportPanel {...next} verifySource={() => held.promise} />);
+    await act(async () => held.resolve(true)); expect(mocked.fetch).not.toHaveBeenCalled(); expect(mocked.download).not.toHaveBeenCalled();
+  });
   it.each(['pdf', 'docx'])('exports the explicit %s click from the unchanged current draft without autosaving', async format => {
     const p = props(); const before = JSON.stringify(p.draft); render(<TargetResumeExportPanel {...p} />);
     expect(screen.getByText(/Includes unsaved edits/)).toBeInTheDocument(); expect(mocked.fetch).not.toHaveBeenCalled();
