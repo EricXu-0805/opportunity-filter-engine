@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { Opportunity } from '@/lib/types';
+import { translate } from '@/i18n/translate';
 
 import {
   ApplicationSection,
@@ -505,11 +506,14 @@ describe('AtAGlanceSection stated opening', () => {
     },
   });
 
-  it('gives the opening in the page’s words, with the page’s sentence', () => {
-    render(<AtAGlanceSection opp={program('2999-11-15T06:00:00+00:00')} t={tFn} />);
-    expect(screen.getByText('detail.fields.applicationsOpen')).toBeInTheDocument();
+  it.each([
+    ['en', 'Applications open', 'The program page: “November 15: Online application opens.”'],
+    ['zh', '申请开放日', '项目页原文：“November 15: Online application opens.”'],
+  ] as const)('gives the opening in the page’s words, with the page’s sentence (%s)', (locale, label, note) => {
+    render(<AtAGlanceSection opp={program('2999-11-15T06:00:00+00:00')} t={(key, vars) => translate(locale, key, vars)} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.getByText('November 15')).toBeInTheDocument();
-    expect(screen.getByTestId('opening-quote')).toHaveTextContent('detail.openingQuote');
+    expect(screen.getByTestId('opening-quote').textContent).toBe(note);
   });
 
   it('drops the row once the opening has passed', () => {

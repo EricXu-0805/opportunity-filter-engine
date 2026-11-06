@@ -111,6 +111,14 @@ describe('a program whose page states an opening still ahead', () => {
     expect(screen.queryByText('detail.apply')).toBeNull();
   });
 
+  it.each([['en', 'Applications open November 15'], ['zh', '申请开放日：November 15']] as const)(
+    'gives the opening date as the page writes it (%s)', (locale, badge) => {
+      renderHeader({ opp: program('2999-11-15T06:00:00+00:00'), t: (key, vars) => translate(locale, key, vars) });
+      expect(screen.getByText(badge)).toBeInTheDocument();
+      expect(screen.queryByText(/2026-11-15/)).toBeNull();
+    },
+  );
+
   it('offers Apply once it has passed, and on an older backend payload', () => {
     for (const at of ['2000-11-15T06:00:00+00:00', null]) {
       const { unmount } = renderHeader({ opp: program(at) });
@@ -118,6 +126,18 @@ describe('a program whose page states an opening still ahead', () => {
       expect(screen.getByText('detail.apply')).toBeInTheDocument();
       unmount();
     }
+  });
+
+  it('says nothing about an opening on a listing the server no longer calls actionable', () => {
+    const closed = {
+      ...program('2999-11-15T06:00:00+00:00'),
+      target_truth: {
+        ...ACTIONABLE_TRUTH, listing_state: 'closed', actionable: false,
+        accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      },
+    } as unknown as typeof OPP;
+    renderHeader({ opp: closed });
+    expect(screen.queryByText('badges.applicationsOpenOn')).toBeNull();
   });
 });
 
