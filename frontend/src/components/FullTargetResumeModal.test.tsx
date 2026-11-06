@@ -230,6 +230,25 @@ describe('private full résumé workspace', () => {
     expect(screen.queryByText(/draft is kept|edits are kept|review the source|文稿仍保留|编辑仍保留|核对来源后/)).toBeNull();
     expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByDisplayValue('Edit on a deleted import')).toBeInTheDocument();
   });
+  it('shows the generation record of a saved private V5 AI change', async () => {
+    const target = clone(privateGolden.receipt.context) as PrivateResumeContext;
+    advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+    const doc = clone(privateGolden.draft) as TargetResumeV1, next = clone(doc);
+    const section = next.document.sections.find(s => s.kind === 'activities')!, block = section.blocks[0], line = block.lines.find(l => l.role === 'experience')!;
+    line.text = 'I built a Python parser with my teammates.';
+    const record = appendTargetResumeProvenance(null, doc, next, { kind: 'ai_rewrite' })!;
+    // This build writes no V5 record yet, so a V5 history is one that arrives from storage.
+    const provenance = { ...record, version: 5 as const, events: [{ ...record.events[0], generation: { version: 'target-resume-generation-v1:' + 'c'.repeat(64),
+      pipeline_version: 'full-target-v6', document_signature: 'v1:sha256:' + 'd'.repeat(64), request_ids: ['private-request'] } }] };
+    storage.load.mockResolvedValue({ ...loaded(next), provenance });
+    const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, refresh: async () => true,
+      checkForAction: async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target)! }) };
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={profile()} privateTarget={target} privateResumeRefresh={refresh} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
+    fireEvent.click(screen.getByText('Generation details'));
+    expect(screen.getByText('Configuration ID: target-resume-generation-v1:' + 'c'.repeat(64))).toBeVisible();
+    expect(screen.getByText('Request IDs: private-request')).toBeVisible();
+  });
   it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
     const { props, rerender, close } = await privateUI();
     rerender(<FullTargetResumeModal {...props} privateResumeRefresh={{ ...props.privateResumeRefresh, status: 'missing', checkForAction: async () => null }} />);

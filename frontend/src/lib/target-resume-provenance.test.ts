@@ -5,6 +5,7 @@ import { createTargetResume, type TargetResumeV1 } from './target-resume';
 import type { ExperienceEntry, ResumeFact } from './types';
 import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
 import old3 from '../../../tests/fixtures/target-resume-context-v3-golden.json';
+import privateGolden from '../../../tests/fixtures/private-resume-context-v5-golden.json';
 import { appendTargetResumeProvenance as append, currentLineRecord, validateTargetResumeProvenance as validate,
   type TargetResumeProvenance, type TargetResumeProvenanceAnnotation, type TargetResumeProvenanceChange } from './target-resume-provenance';
 const copy = <T,>(v:T):T => JSON.parse(JSON.stringify(v));
@@ -198,6 +199,42 @@ describe('writing V4 generation records',()=>{
   const after=changeText(doc,'Built parser tests.');
   expect(()=>append(null,doc,after,{kind:'ai_rewrite',annotations:[annotation()],generation:{...generation(),request_ids:['other']}})).toThrow();
   expect(()=>append(null,doc,after,{kind:'ai_rewrite',annotations:[{...annotation(),check:null}],generation:{...generation(),request_ids:[]}})).toThrow();
+ });
+});
+// A private draft (context 5) with an accepted AI rewrite citing its description.
+function privateAi() {
+ const before=copy(privateGolden.draft) as TargetResumeV1,after=changeText(before,'I built a Python parser with my teammates.');
+ const a={...annotation(before),target_evidence:[{field:'description' as const,requirement_index:null,start:0,end:13,quote:'Study parsers'}]};
+ return {before,after,provenance:append(null,before,after,{kind:'ai_rewrite',id:'private-ai',annotations:[a]})!};
+}
+// A V5 history is one that arrives from storage until a private draft writes one.
+function v5(p:TargetResumeProvenance,index=0,record:unknown=generation()):TargetResumeProvenance {
+ const q=copy(p);q.version=5;(q.events[index] as unknown as Record<string,unknown>).generation=record;return q;
+}
+describe('V5 private generation records',()=>{
+ it('reads a V5 history on a private draft with and without generation records',()=>{
+  const {after,provenance}=privateAi();expect(provenance.version).toBe(1);
+  const p=v5(provenance);expect(validate(p,after)).toEqual({ok:true,value:p});
+  const unknown=copy(provenance);unknown.version=5;expect(validate(unknown,after)).toEqual({ok:true,value:unknown});
+ });
+ it('binds V5 only to a private draft and keeps V4 for public drafts',()=>{
+  const {after,provenance}=privateAi();expect(validate(v4(provenance),after).ok).toBe(false);
+  const pub=ai();const unknown=copy(pub.provenance);unknown.version=5;expect(validate(unknown,pub.after).ok).toBe(false);
+  expect(validate(v5(pub.provenance),pub.after).ok).toBe(false);expect(validate(v4(pub.provenance),pub.after).ok).toBe(true);
+  const legacy=copy(pub.after),snapshot=legacy.target_snapshot as unknown as Record<string,unknown>;
+  for(const key of ['context_version','criteria','research','lab'])delete snapshot[key];
+  expect(validate({...unknown,version:1},legacy).ok).toBe(true);expect(validate(unknown,legacy).ok).toBe(false);
+ });
+ it('refuses a generation record on a private V1 history or a manual V5 event',()=>{
+  const {after,provenance}=privateAi();const legacy=v5(provenance);legacy.version=1;expect(validate(legacy,after).ok).toBe(false);
+  const typed=changeText(after,'Typed');expect(validate(v5(append(provenance,after,typed,{kind:'manual'})!,1),typed).ok).toBe(false);
+ });
+ it('keeps a V5 history V5, with its records unchanged, through later edits that carry no record',()=>{
+  const {after,provenance}=privateAi();const p=v5(provenance);
+  const typed=changeText(after,'My later wording');const q=append(p,after,typed,{kind:'manual'})!;
+  expect(q.version).toBe(5);expect(q.events[0]).toEqual(p.events[0]);expect(q.events[1]).not.toHaveProperty('generation');
+  expect(validate(copy(q),typed)).toEqual({ok:true,value:q});
+  expect(append(provenance,after,typed,{kind:'manual'})!.version).toBe(1);
  });
 });
 describe('stale, forged and malformed records',()=>{

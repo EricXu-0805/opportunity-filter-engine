@@ -24,7 +24,7 @@ export interface TargetResumeProvenanceChange extends TargetResumeProvenanceAnno
 }
 export interface TargetResumeProvenanceEvent {
   id: string; kind: TargetResumeProvenanceKind; changes: TargetResumeProvenanceChange[];
-  /** V4 only, on AI rewrite and plan events. Absent means unknown, never the current configuration. */
+  /** V4 and V5 only, on AI rewrite and plan events. Absent means unknown, never the current configuration. */
   generation?: TargetResumeGenerationRecord;
 }
 export interface TargetResumeGenerationRecord {
@@ -32,7 +32,7 @@ export interface TargetResumeGenerationRecord {
 }
 /** Locally supplied operation records. They are not authenticated server receipts. */
 export interface TargetResumeProvenance {
-  version: 1 | 2 | 3 | 4; document_id: string; opportunity_id: string;
+  version: 1 | 2 | 3 | 4 | 5; document_id: string; opportunity_id: string;
   base: TargetResumeV1['base']; events: TargetResumeProvenanceEvent[];
 }
 export interface TargetResumeProvenanceAction {
@@ -186,13 +186,13 @@ function parse(value: unknown, doc: TargetResumeV1): TargetResumeProvenance | nu
   if (new TextEncoder().encode(serialized).byteLength > TARGET_RESUME_PROVENANCE_MAX_BYTES) fail('too_large');
   const copy: unknown = JSON.parse(serialized);
   shape(copy, ['version', 'document_id', 'opportunity_id', 'base', 'events']);
-  if (![1, 2, 3, 4].includes(copy.version as number) || (copy.version === 2 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 3)) || ((copy.version === 3 || copy.version === 4) && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 4)) || copy.document_id !== doc.id || copy.opportunity_id !== doc.opportunity_id || !same(copy.base, doc.base)) fail();
+  if (![1, 2, 3, 4, 5].includes(copy.version as number) || (copy.version === 2 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 3)) || ((copy.version === 3 || copy.version === 4) && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 4)) || (copy.version === 5 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 5)) || copy.document_id !== doc.id || copy.opportunity_id !== doc.opportunity_id || !same(copy.base, doc.base)) fail();
   if (!Array.isArray(copy.events) || !copy.events.length) fail();
   if (copy.events.length > TARGET_RESUME_PROVENANCE_MAX_EVENTS) fail('too_large');
   const ids = new Set<string>();
   const replay = clone(doc);
   for (const event of [...copy.events].reverse()) {
-    const hasGeneration = copy.version === 4 && object(event) && Object.hasOwn(event, 'generation');
+    const hasGeneration = (copy.version === 4 || copy.version === 5) && object(event) && Object.hasOwn(event, 'generation');
     shape(event, ['id', 'kind', 'changes', ...(hasGeneration ? ['generation'] : [])]); id(event.id);
     if (ids.has(event.id) || !KINDS.includes(event.kind as TargetResumeProvenanceKind)) fail(); ids.add(event.id);
     const generation = hasGeneration ? generationRecord(event.generation, event.kind as TargetResumeProvenanceKind) : null;
@@ -227,8 +227,8 @@ export function appendTargetResumeProvenance(previous: TargetResumeProvenance | 
   if (!KINDS.includes(action.kind)) fail();
   if (!same({ ...old, document: null }, { ...next, document: null })) fail();
   const generation = action.generation === undefined ? undefined : generationRecord(action.generation, action.kind);
-  // A V4 history stays V4 so its generation records survive later edits.
-  const version = prior?.version === 4 || generation ? 4
+  // A V4 or V5 history keeps its version so its generation records survive later edits.
+  const version = prior?.version === 5 ? 5 : prior?.version === 4 || generation ? 4
     : 'context_version' in next.target_snapshot ? next.target_snapshot.context_version === 4 ? 3 : next.target_snapshot.context_version === 3 ? 2 : 1 : 1;
   const annotations = new Map<string, TargetResumeProvenanceAnnotation>();
   for (const annotation of action.annotations ?? []) {
