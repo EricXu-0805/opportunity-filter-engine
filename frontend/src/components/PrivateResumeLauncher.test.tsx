@@ -102,3 +102,18 @@ it('shows nothing for an import that is not available', () => {
   render(<PrivateResumeLauncher id={id} scope={id} available={false} />);
   expect(screen.queryByRole('button',{name:'Prepare résumé'})).toBeNull(); expect(screen.queryByRole('link')).toBeNull();
 });
+
+it('keeps the loading dialog modal while the source is read but the profile is unavailable', async () => {
+  const owner=golden.receipt.context.private_source.owner_id;
+  render(<PrivateResumeLauncher id={id} scope={id} available />); const open=screen.getByRole('button',{name:'Prepare résumé'}); fireEvent.click(open);
+  await screen.findByRole('dialog',{name:'Private editor'});
+  // Signing the same account out and in again retires the shown profile; the source read succeeds again.
+  await act(async()=>{advanceOwnerEpoch(null);advanceOwnerEpoch(owner);await syncLocalIdentityOwner(owner);});
+  await waitFor(()=>expect(mocks.read).toHaveBeenCalledTimes(2));
+  expect(await screen.findByText(/Your profile is unavailable/)).toBeInTheDocument();
+  await waitFor(()=>expect(screen.queryByText(/Checking your saved private source/)).toBeNull());
+  const close=screen.getByRole('button',{name:'Close'}); expect(close).toHaveFocus(); expect(document.body.style.overflow).toBe('hidden');
+  fireEvent.keyDown(document,{key:'Tab'}); expect(close).toHaveFocus();
+  fireEvent.keyDown(document,{key:'Escape'});
+  expect(screen.queryByRole('dialog')).toBeNull(); expect(open).toHaveFocus(); expect(document.body.style.overflow).toBe('');
+});
