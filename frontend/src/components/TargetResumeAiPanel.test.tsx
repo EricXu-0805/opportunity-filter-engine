@@ -315,6 +315,36 @@ describe('a batch from another generation configuration', () => {
     expect(mocked.generate).toHaveBeenCalledTimes(2); expect(screen.getAllByRole('checkbox', { name: /Use rewrite:/ }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('alert')).toBeNull();
   });
+  // The budget stops before any call; an unavailable model may have been asked once and answered nothing.
+  const allSkipped = (reason: 'budget_exhausted' | 'model_unavailable', version?: string) => async (payload: TargetResumeAiRequest) => {
+    const result = response(payload), calls = reason === 'budget_exhausted' ? 0 : 1;
+    for (const item of result.receipts) Object.assign(item, { status: 'skipped', reason_code: reason, suggestion: null });
+    return { ...result, method: 'unavailable' as const, logical_calls: calls, provider_attempts_upper_bound: 2 * calls, ...(version === undefined ? {} : { generation_version: version }) };
+  };
+  it.each([
+    ['budget_exhausted', b, 'The AI allowance is used up.'], ['budget_exhausted', undefined, 'The AI allowance is used up.'],
+    ['model_unavailable', b, 'AI is unavailable.'], ['model_unavailable', undefined, 'AI is unavailable.'],
+  ] as const)('reports a second batch with every unit skipped (%s, version %s) by its own reason and keeps the first', async (reason, second, text) => {
+    const p = await twoBatches();
+    mocked.generate.mockImplementationOnce(versioned(a)).mockImplementationOnce(allSkipped(reason, second));
+    render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent(text); expect(screen.getByRole('alert')).not.toHaveTextContent(changed);
+    expect(mocked.generate).toHaveBeenCalledTimes(2); expect(screen.getAllByRole('checkbox', { name: /Use rewrite:/ }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Continue remaining suggestions' })).toBeEnabled();
+    // A batch a model then writes under the other configuration is still refused.
+    mocked.generate.mockImplementationOnce(versioned(second));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    expect(await screen.findByText(changed)).toBeInTheDocument(); expect(mocked.generate).toHaveBeenCalledTimes(3); cleared(p);
+  });
+  it('still clears the run when a model wrote part of a batch from another configuration', async () => {
+    const p = await twoBatches();
+    mocked.generate.mockImplementationOnce(versioned(a)).mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = { ...response(payload), generation_version: b }; result.method = 'partial';
+      Object.assign(result.receipts[0], { status: 'skipped', reason_code: 'missing_result', suggestion: null }); return result;
+    });
+    render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent(changed); cleared(p);
+  });
   it('carries the shared configuration when applying after both batches', async () => {
     const p = await twoBatches();
     mocked.generate.mockImplementation(versioned(a));

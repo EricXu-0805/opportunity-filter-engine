@@ -188,7 +188,14 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         if (!checked.ok) { setError(checked.code); return; }
         working = { ...working, responses: [...working.responses, checked.value] };
         const combined = mergeTargetResumeAIResponses(working.prepared, working.responses);
+        const stop = checked.value.receipts.find((item) => stopping.has(item.reason_code ?? ''));
+        const failed = checked.value.receipts.find((item) => item.status === 'skipped'
+          && !permanent.has(item.reason_code ?? '') && item.reason_code !== 'batch_context_too_large');
         if (!combined.ok) {
+          // Every unit of this batch was skipped, so nothing from the other configuration would join: say why it stopped, keep the run.
+          if (combined.code === 'generation_config_changed' && checked.value.method === 'unavailable' && (stop || failed)) {
+            setError(stop?.reason_code ?? failed?.reason_code ?? 'model_unavailable'); return;
+          }
           // Continuing would only meet the new configuration again: start over instead.
           if (combined.code === 'generation_config_changed') {
             runRef.current = null; setRun(null); setSelected(new Set()); setDismissed(new Set()); setOrder(false); appliedKey.current = null;
@@ -199,9 +206,6 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         // The server refused only the combination; each half is a smaller request.
         const split = checked.value.receipts.filter((item) => item.reason_code === 'batch_context_too_large').map((item) => item.unit_id);
         if (split.length) queue.unshift(...[split.slice(0, Math.ceil(split.length / 2)), split.slice(Math.ceil(split.length / 2))].filter((part) => part.length));
-        const stop = checked.value.receipts.find((item) => stopping.has(item.reason_code ?? ''));
-        const failed = checked.value.receipts.find((item) => item.status === 'skipped'
-          && !permanent.has(item.reason_code ?? '') && item.reason_code !== 'batch_context_too_large');
         if (stop || (checked.value.method === 'unavailable' && failed)) {
           setError(stop?.reason_code ?? failed?.reason_code ?? 'model_unavailable');
           return;
