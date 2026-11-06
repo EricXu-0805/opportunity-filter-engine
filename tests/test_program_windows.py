@@ -232,3 +232,19 @@ def test_caltechs_summer_programs_give_their_2027_award_and_deadline_in_the_page
 
     assert spec["compensation"] == _CALTECH_PAGE_WORDS[key]
     assert spec["deadline_note"] == WINDOWS[("caltech", key)].closes_quote
+
+
+def test_jhu_summer_pura_gives_its_award_and_deadline_in_the_pages_words():
+    _, _, spec = _spec("jhu", "summer_pura")
+
+    # Read 2026-11-05 on its page: "Award amount: $6000 per recipient".
+    assert spec["compensation"] == "$6000 per recipient"
+    assert spec["deadline_note"] == ("Deadline to apply: February 1 (11:59 pm) (this includes all sections: "
+                                     "application, resume upload, proposal upload, and mentor letter/s)")
+
+
+def test_jhu_pura_whose_page_refused_us_keeps_its_config():
+    _, _, spec = _spec("jhu", "pura")
+
+    assert (spec["compensation"], spec["deadline_note"]) == (
+        "$3,000 fellowship", "Applications due September 1 (11:59 pm), including mentor letters")

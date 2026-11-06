@@ -362,11 +362,12 @@ SCHOOL: dict = {
                     lab_or_program="Summer PURA",
                     opportunity_type="summer_program",
                     paid="stipend",
-                    compensation="Summer research fellowship stipend (amount not listed on page)",
+                    compensation="$6000 per recipient",
                     eligibility_majors=["all"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="Spring application deadline; check HOUR site for current cycle",
+                    deadline_note="Deadline to apply: February 1 (11:59 pm) (this includes all sections: application, "
+                                  "resume upload, proposal upload, and mentor letter/s)",
                     keywords=["summer research", "PURA", "fellowship", "mentored research"],
                 ),
                 program(
