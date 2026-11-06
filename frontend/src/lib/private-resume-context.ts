@@ -51,3 +51,9 @@ export async function verifyPrivateResumeSource(value: PrivateResumeContext): Pr
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   return source_version === 'pit1:' + Array.from(digest, n => n.toString(16).padStart(2, '0')).join('');
 }
+/** In-memory equality for a checked source, not a server-authenticated receipt. */
+export function privateResumeKey(value: PrivateResumeContext | null): string | null {
+  if (!isPrivateResumeContext(value)) return null;
+  return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+}

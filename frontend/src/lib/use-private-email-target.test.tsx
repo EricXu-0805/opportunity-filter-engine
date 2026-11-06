@@ -53,6 +53,11 @@ describe('private email context lifecycle', () => {
     let receipt: PrivateEmailActionReceipt | null = null;
     await act(async () => { receipt = await result.current.checkForAction(); }); expect(receipt).toBeNull();
   });
+  it('reports a too-large email context as a failed read, not a reason of its own', async () => {
+    mocks.read.mockRejectedValue({ code: 'too_large' });
+    const { result } = renderHook(() => usePrivateEmailTarget(true, ID)); await drain();
+    expect(result.current).toMatchObject({ status: 'failed', reason: 'read_failed' });
+  });
   it('retains explicit blocked context for review but returns no action receipt', async () => {
     const blocked = target({ contact_policy: { state: 'blocked', reason: 'no_email', quotes: [{ start: 0, end: 8, quote: 'No email', restriction: 'no_email' }] } });
     mocks.read.mockResolvedValue(blocked);

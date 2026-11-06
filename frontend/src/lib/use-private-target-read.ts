@@ -18,6 +18,8 @@ export type PrivateTargetKind<T> = {
   id: (target: T) => string;
   /** A valid read that still grants no action, with the reason shown for it. */
   blocked?: (target: T) => string | null;
+  /** Read error codes reported as their own reason rather than read_failed. */
+  reasons?: readonly string[];
 };
 export const PRIVATE_TARGET_READ_DEADLINE_MS = 15_000;
 export const PRIVATE_TARGET_READ_INTERVAL_MS = 60_000;
@@ -53,11 +55,12 @@ function freeze<T>(value: T): T {
   }
   return value;
 }
-function failure(error: unknown): { status: 'failed' | 'missing'; reason: string } {
+function failure(error: unknown, reasons: readonly string[] = []): { status: 'failed' | 'missing'; reason: string } {
   const value = error && typeof error === 'object' ? error as { status?: unknown; code?: unknown } : null;
   if (value?.code === 'not_found' || value?.code === 'deleted') return { status: 'missing', reason: 'not_found' };
   if (value?.code === 'timeout') return { status: 'failed', reason: 'timeout' };
   if (value?.code === 'invalid_receipt') return { status: 'failed', reason: 'invalid_target' };
+  if (typeof value?.code === 'string' && reasons.includes(value.code)) return { status: 'failed', reason: value.code };
   return { status: 'failed', reason: 'read_failed' };
 }
 
@@ -154,7 +157,7 @@ export function usePrivateTargetRead<T>(enabled: boolean, opportunityId: string,
           if (!accepts()) return null;
           return Object.freeze({ checkId, owner: Object.freeze({ ...capturedOwner }), target, key });
         } catch (error) {
-          if (accepts()) publish(failure(error));
+          if (accepts()) publish(failure(error, kind.reasons));
           return null;
         }
       });
