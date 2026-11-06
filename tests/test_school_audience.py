@@ -312,6 +312,25 @@ def test_the_international_answer_is_shown_as_the_pages_and_quoted(school, key):
     }
 
 
+def test_the_pages_answer_replaces_a_configured_yes():
+    row = _configured_row("unl", "unl_summer_research_program")
+    row["eligibility"]["international_friendly"] = "yes"
+
+    loaded = data_loader._sanitize_opportunity(row)
+
+    assert loaded["eligibility"]["international_friendly"] == "no"
+    assert hard_exclusion(loaded, _filter_context(_INTL_UIUC_STUDENT)) == "citizenship_restricted"
+
+
+def test_srop_keeps_its_citizenship_rule_marked_as_our_configured_value():
+    # The page's international answer replaces only that answer's stamp.
+    loaded = data_loader._sanitize_opportunity(_configured_row("northwestern", "nu_tgs_srop"))
+    card = project_public_opportunity_payload(copy.deepcopy(loaded), loaded)
+
+    assert "eligibility.citizenship_required" in loaded["metadata"]["inferred_fields"]
+    assert card["citizenship_attribution"] == "inferred"
+
+
 def test_a_program_whose_page_states_no_citizenship_rule_keeps_its_international_answer():
     row = _configured_row("stanford", "biox_usrp")
 

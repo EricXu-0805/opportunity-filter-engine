@@ -375,7 +375,7 @@ describe('a program whose page states an opening still ahead', () => {
         explicit: { deadline: '2027-03-01' },
         quotes: { deadline: { text: 'March 1: Application deadline.', source_url: 'https://summerprogram.unl.edu/', observed_at: '2026-11-05' } },
       },
-      application_method: { explicit: { application_url: 'https://summerprogram.unl.edu/' } },
+      application_method: { explicit: { application_url: 'https://summerprogram.unl.edu/', contact_method: 'website' } },
     },
   } })!;
 
@@ -413,6 +413,10 @@ describe('a program whose page states an opening still ahead', () => {
     expect(link).not.toHaveTextContent(offer);
     expect(link).not.toHaveTextContent('https://summerprogram.unl.edu/');
     expect(within(link).queryByRole('link')).toBeNull();
+    // Only the link waits for the opening; the contact method keeps its value.
+    const contact = row('application_method', 'contact_method', 'source');
+    expect(contact).toHaveTextContent('website');
+    expect(contact).not.toHaveTextContent(held);
   });
 
   it('offers the application link when no opening is ahead', () => {
