@@ -46,6 +46,13 @@ describe('private email context lifecycle', () => {
     expect(receipt!.target).toBe(first); expect(Object.isFrozen(receipt)).toBe(true); expect(Object.isFrozen(receipt!.target.contact_policy)).toBe(true);
     expect(mocks.read).toHaveBeenCalledTimes(2); expect(writes).not.toHaveBeenCalled();
   });
+  it('refuses a context read for another import and returns no action receipt', async () => {
+    mocks.read.mockResolvedValue(target({ id: 'private-import:22222222-2222-4222-8222-222222222222' }));
+    const { result } = renderHook(() => usePrivateEmailTarget(true, ID)); await drain();
+    expect(result.current).toMatchObject({ status: 'failed', reason: 'invalid_target', target: null });
+    let receipt: PrivateEmailActionReceipt | null = null;
+    await act(async () => { receipt = await result.current.checkForAction(); }); expect(receipt).toBeNull();
+  });
   it('retains explicit blocked context for review but returns no action receipt', async () => {
     const blocked = target({ contact_policy: { state: 'blocked', reason: 'no_email', quotes: [{ start: 0, end: 8, quote: 'No email', restriction: 'no_email' }] } });
     mocks.read.mockResolvedValue(blocked);
