@@ -20,7 +20,7 @@ from src.evidence import (
     target_truth,
 )
 from src.lab_context import lab_context_for
-from src.program_windows import read_before_opening
+from src.program_windows import public_opening, read_before_opening
 from src.research_context import research_context_for
 
 _EMAIL_IN_TEXT_RE = re.compile(
@@ -1075,6 +1075,14 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         application = projected.get("application")
         if isinstance(application, dict) and application.get("application_url") is not None:
             projected["application"] = {**application, "application_url": None}
+
+    # The opening a program's reviewed window states, in the page's words. A
+    # client shows it and withholds Apply until `at`; one that does not know
+    # the field keeps showing Apply, as before.
+    projected.pop("application_opens", None)
+    opening = public_opening(canonical_record)
+    if opening is not None:
+        projected["application_opens"] = {**opening, "source_url": safe_public_http_url(opening["source_url"])}
 
     if "title" in projected:
         projected["title"] = neutralize_lifecycle_title(

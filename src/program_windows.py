@@ -23,6 +23,7 @@ class ProgramWindow:
     opens_on: date | None = None
     opens_quote: str = ""
     zone: str = ""
+    opens_text: str = ""  # the opening date as the page writes it
 
     @property
     def opens_at(self) -> datetime | None:
@@ -45,12 +46,12 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         "The official BTAA application opens November 1, 2026 and closes Tuesday, February 10, 2027.",
         date(2026, 11, 1),
         "The official BTAA application opens November 1, 2026 and closes Tuesday, February 10, 2027.",
-        "America/Chicago",
+        "America/Chicago", "November 1, 2026",
     ),
     ("unl", "unl_summer_research_program"): ProgramWindow(
         "https://summerprogram.unl.edu/", "https://summerprogram.unl.edu/", _REVIEWED, date(2027, 3, 1),
         "March 1: Application deadline.",
-        date(2026, 11, 15), "November 15: Online application opens.", "America/Chicago",
+        date(2026, 11, 15), "November 15: Online application opens.", "America/Chicago", "November 15",
     ),
     ("jhu", "summer_pura"): ProgramWindow(
         "https://hour.jhu.edu/opportunities/summerpura/", "https://hour.jhu.edu/opportunities/summerpura/",
@@ -60,7 +61,7 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         date(2026, 11, 1),
         "The Summer PURA program is accepting applications for summer 2027 projects starting 11/1/2026 "
         "through 2/1/2027.",
-        "America/New_York",
+        "America/New_York", "11/1/2026",
     ),
     ("caltech", "surf"): ProgramWindow(
         _SFP + "surf", _SFP + "surf/application_information", _REVIEWED, date(2027, 2, 22),
@@ -126,3 +127,21 @@ def read_before_opening(record: dict) -> bool:
     if read_at.tzinfo is None:
         read_at = read_at.replace(tzinfo=UTC)  # the collectors write naive UTC
     return read_at < opens_at
+
+
+def public_opening(record: dict) -> dict | None:
+    """The stated opening a client shows until it passes, or None.
+
+    ``at`` is when the opening day begins on the campus; a client compares it
+    with its own clock, so a served payload never goes stale at the boundary.
+    """
+    window = reviewed_window(record)
+    if window is None or window.opens_at is None:
+        return None
+    return {
+        "on": window.opens_on.isoformat(),
+        "at": window.opens_at.isoformat(),
+        "text": window.opens_text,
+        "quote": window.opens_quote,
+        "source_url": window.page,
+    }

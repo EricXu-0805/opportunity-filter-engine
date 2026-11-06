@@ -92,6 +92,35 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Opportunity
   );
 }
 
+describe('a program whose page states an opening still ahead', () => {
+  const program = (at: string | null) => ({
+    ...OPP,
+    url: 'https://summerprogram.unl.edu/',
+    application: { application_url: 'https://summerprogram.unl.edu/' },
+    ...(at ? {
+      application_opens: {
+        on: '2026-11-15', at, text: 'November 15',
+        quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+      },
+    } : {}),
+  } as unknown as typeof OPP);
+
+  it('says when applications open and offers no Apply until then', () => {
+    renderHeader({ opp: program('2999-11-15T06:00:00+00:00') });
+    expect(screen.getByText('badges.applicationsOpenOn')).toBeInTheDocument();
+    expect(screen.queryByText('detail.apply')).toBeNull();
+  });
+
+  it('offers Apply once it has passed, and on an older backend payload', () => {
+    for (const at of ['2000-11-15T06:00:00+00:00', null]) {
+      const { unmount } = renderHeader({ opp: program(at) });
+      expect(screen.queryByText('badges.applicationsOpenOn')).toBeNull();
+      expect(screen.getByText('detail.apply')).toBeInTheDocument();
+      unmount();
+    }
+  });
+});
+
 describe('OpportunityHeader MVP release surface', () => {
   it('badges a remote posting using the values the pipeline writes', () => {
     // The badge tested `remote_option === 'yes'`. The corpus vocabulary is

@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { parseResearchContext } from '@/lib/research-context';
+import { pendingApplicationOpening, targetPosture } from '@/lib/target-truth';
 import type { Opportunity } from '@/lib/types';
 import { facultySafeInternational, isNoSponsorshipListing, opportunityRecordKind } from '@/lib/match-utils';
 import {
@@ -89,6 +90,7 @@ export function DescriptionSection({ description, t }: { description: string; t:
 export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   const isFaculty = opp.source_type === 'faculty_research';
   const compensation = isFaculty ? '' : cleanCompensation(opp.compensation_details);
+  const opening = !isFaculty && targetPosture(opp) === 'actionable' ? pendingApplicationOpening(opp) : null;
   return (
     <Section title={t('detail.sections.atGlance')}>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
@@ -111,6 +113,15 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             note={noDeadlineKind(opp) === 'rolling' && opp.deadline_note_attribution === 'inferred'
               ? t('detail.rollingInferred') : undefined}
             noteTestId="rolling-inferred-note"
+          />
+        )}
+        {opening && (
+          <DetailRow
+            icon={<Calendar />}
+            label={t('detail.fields.applicationsOpen')}
+            value={opening.text}
+            note={t('detail.openingQuote', { quote: opening.quote })}
+            noteTestId="opening-quote"
           />
         )}
         {!isFaculty && opp.start_date && (

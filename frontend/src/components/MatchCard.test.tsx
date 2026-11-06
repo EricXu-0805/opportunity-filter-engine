@@ -728,6 +728,40 @@ describe('MatchCard', () => {
     });
   });
 
+  describe('a program whose page states an opening still ahead', () => {
+    const opening = (at: string) => ({
+      on: '2026-11-15', at, text: 'November 15',
+      quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+    });
+    const program = (extra: Partial<Opportunity> = {}) => makeMatch({
+      url: 'https://summerprogram.unl.edu/',
+      application: {
+        application_effort: 'medium', requires_resume: 'unknown', contact_method: 'website',
+        application_url: 'https://summerprogram.unl.edu/',
+      },
+      ...extra,
+    });
+
+    it('says when applications open and offers the page instead of Apply', () => {
+      render(<MatchCard match={program({ application_opens: opening('2999-11-15T06:00:00+00:00') })} onDraftEmail={() => {}} />);
+      expect(screen.getByText('badges.applicationsOpenOn')).toBeInTheDocument();
+      expect(screen.queryByText('card.applyNow')).toBeNull();
+      expect(screen.getByText('card.viewDetails').closest('a')!.getAttribute('href')).toBe('https://summerprogram.unl.edu/');
+    });
+
+    it('drops the label and offers Apply once the opening has passed', () => {
+      render(<MatchCard match={program({ application_opens: opening('2000-11-15T06:00:00+00:00') })} onDraftEmail={() => {}} />);
+      expect(screen.queryByText('badges.applicationsOpenOn')).toBeNull();
+      expect(screen.getByText('card.applyNow')).toBeInTheDocument();
+    });
+
+    it('renders an older backend payload, which states no opening, as before', () => {
+      render(<MatchCard match={program()} onDraftEmail={() => {}} />);
+      expect(screen.queryByText('badges.applicationsOpenOn')).toBeNull();
+      expect(screen.getByText('card.applyNow')).toBeInTheDocument();
+    });
+  });
+
   describe('apply / view links', () => {
     it('shows Apply Now link with application_url when present', () => {
       const match = makeMatch({}, undefined);

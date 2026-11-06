@@ -1,5 +1,5 @@
 import { opportunityRecordKind } from './record-kind';
-import type { Opportunity, OpportunityMetadata, PublicTargetTruth } from './types';
+import type { ApplicationOpening, Opportunity, OpportunityMetadata, PublicTargetTruth } from './types';
 
 /**
  * What this client may offer for a target.
@@ -244,10 +244,40 @@ export function inactiveAsDuplicate(
  */
 type ApplicationUrlSource = Pick<Opportunity, 'target_truth' | 'source_type'> & {
   application?: { application_url?: string | null };
+  application_opens?: unknown;
 };
+
+/**
+ * The opening a program's page states, while it is still ahead of `now`.
+ *
+ * Until then the program stays readable, savable and in results, but nothing
+ * may say it is open: no Apply control. A payload without the field (an older
+ * backend) or with one this build cannot read is treated as stating none.
+ */
+export function pendingApplicationOpening(
+  opp: { application_opens?: unknown } | null | undefined,
+  now: number = Date.now(),
+): ApplicationOpening | null {
+  const raw = opp?.application_opens;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+  const opening = raw as Record<string, unknown>;
+  if (typeof opening.on !== 'string' || typeof opening.at !== 'string'
+    || typeof opening.text !== 'string' || !opening.text.trim()
+    || typeof opening.quote !== 'string') return null;
+  const at = Date.parse(opening.at);
+  if (!Number.isFinite(at) || now >= at) return null;
+  return {
+    on: opening.on,
+    at: opening.at,
+    text: opening.text,
+    quote: opening.quote,
+    source_url: typeof opening.source_url === 'string' ? opening.source_url : null,
+  };
+}
 
 export function opportunityApplicationUrl(opp: ApplicationUrlSource): string | undefined {
   if (targetPosture(opp) !== 'actionable') return undefined;
+  if (pendingApplicationOpening(opp) !== null) return undefined;
   // Two independent facts, both required. Truth says the record is live;
   // record-kind says it is a listing at all. A faculty profile's
   // application_url is a directory page, and an unrecognised source type is

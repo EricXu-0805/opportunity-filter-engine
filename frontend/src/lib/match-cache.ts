@@ -119,6 +119,9 @@ const OPP_FIELDS = [
   // W11: keep the stated faculty title for rank-aware profile copy, while
   // deadline_is_estimate keeps an estimated date from rendering as hard.
   'faculty_title', 'deadline_is_estimate',
+  // A stated opening still ahead withholds Apply; dropping it on a cache hit
+  // would put Apply back on a program that has not opened.
+  'application_opens',
   // Where a value came from. The card and the CSV hedge a value flagged
   // 'inferred' (and hide an 'institution' location); without these a cache
   // hit renders the same record as though the program had stated it all.

@@ -491,3 +491,41 @@ describe('AtAGlanceSection compensation from our listing', () => {
     expect(screen.queryByTestId('compensation-inferred-note')).toBeNull();
   });
 });
+
+describe('AtAGlanceSection stated opening', () => {
+  const program = (at: string) => opp({}, {
+    source_type: 'campus_program',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null, verified_at: null, expires_at: null,
+    },
+    application_opens: {
+      on: '2026-11-15', at, text: 'November 15',
+      quote: 'November 15: Online application opens.', source_url: 'https://summerprogram.unl.edu/',
+    },
+  });
+
+  it('gives the opening in the page’s words, with the page’s sentence', () => {
+    render(<AtAGlanceSection opp={program('2999-11-15T06:00:00+00:00')} t={tFn} />);
+    expect(screen.getByText('detail.fields.applicationsOpen')).toBeInTheDocument();
+    expect(screen.getByText('November 15')).toBeInTheDocument();
+    expect(screen.getByTestId('opening-quote')).toHaveTextContent('detail.openingQuote');
+  });
+
+  it('drops the row once the opening has passed', () => {
+    render(<AtAGlanceSection opp={program('2000-11-15T06:00:00+00:00')} t={tFn} />);
+    expect(screen.queryByText('detail.fields.applicationsOpen')).toBeNull();
+  });
+
+  it('gives no opening for a program the server no longer calls actionable', () => {
+    const closed = {
+      ...program('2999-11-15T06:00:00+00:00'),
+      target_truth: {
+        listing_state: 'closed', reference_only: false, actionable: false,
+        accepting_state: 'not_accepting', reason_code: 'listing_closed', verified_at: null, expires_at: null,
+      },
+    } as Opportunity;
+    render(<AtAGlanceSection opp={closed} t={tFn} />);
+    expect(screen.queryByText('detail.fields.applicationsOpen')).toBeNull();
+  });
+});

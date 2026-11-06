@@ -179,3 +179,39 @@ def test_a_window_that_states_no_opening_leaves_the_suffix_alone():
     row = _read_open("caltech", "wave_fellows", "2026-07-18T06:41:25")
 
     assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)")
+
+
+def test_the_public_payload_carries_the_pages_stated_opening():
+    row = _row("unl", "unl_summer_research_program")
+
+    out = project_public_opportunity_payload({"title": row["title"]}, row)
+
+    assert out["application_opens"] == {
+        "on": "2026-11-15",
+        "at": "2026-11-15T06:00:00+00:00",
+        "text": "November 15",
+        "quote": "November 15: Online application opens.",
+        "source_url": "https://summerprogram.unl.edu/",
+    }
+    assert out["target_truth"]["actionable"] is True
+
+
+def test_the_match_card_carries_the_opening():
+    from backend.routes.matches import _match_card
+
+    assert _match_card(_row("jhu", "summer_pura"))["application_opens"]["text"] == "11/1/2026"
+
+
+def test_a_window_that_states_no_opening_serves_none():
+    row = _row("caltech", "surf_jpl")
+
+    assert "application_opens" not in project_public_opportunity_payload({"title": row["title"]}, row)
+
+
+def test_a_payload_cannot_bring_its_own_opening():
+    row = _row("jhu", "pura")
+    forged = {"on": "2099-01-01", "at": "2099-01-01T05:00:00+00:00", "text": "January 1", "quote": "x",
+              "source_url": None}
+
+    assert "application_opens" not in project_public_opportunity_payload(
+        {"title": row["title"], "application_opens": forged}, row)
