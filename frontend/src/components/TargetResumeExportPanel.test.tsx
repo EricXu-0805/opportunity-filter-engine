@@ -31,6 +31,13 @@ describe('complete target résumé export', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('private source');
     expect(mocked.fetch).not.toHaveBeenCalled(); expect(mocked.download).not.toHaveBeenCalled();
   });
+  it.each([['en', 'Saving and export are unavailable for a deleted import.'], ['zh', '已删除的导入无法保存或导出文稿。']])('says plainly that a deleted private source cannot be exported (%s)', async (locale, message) => {
+    mocked.locale = locale;
+    render(<TargetResumeExportPanel {...props()} verifySource={async () => false} sourceGone />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '导出 PDF' : 'Export PDF' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByRole('alert').textContent).toBe(message); expect(mocked.fetch).not.toHaveBeenCalled();
+  });
   it('retires a pending private precheck when cancelled or edited', async () => {
     const held = deferred<boolean>(), p = props();
     const view = render(<TargetResumeExportPanel {...p} verifySource={() => held.promise} />);

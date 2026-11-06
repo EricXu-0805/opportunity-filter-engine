@@ -151,13 +151,12 @@ describe('private full résumé workspace', () => {
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('A later edit');
     expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled();
   });
-  it.each(['newer source', 'another account', 'page membership lost'] as const)('refuses to save on a failed pre-save source check (%s)', async fault => {
-    const { check, target, props, rerender } = await privateUI(); editName('Kept private edit');
+  it.each(['newer source', 'another account'] as const)('refuses to save on a failed pre-save source check (%s)', async fault => {
+    const { check, target } = await privateUI(); editName('Kept private edit');
     const changed = { ...target, description: target.description + '\nNewer source' };
     const owner = fault === 'another account' ? { ...captureOwnerToken(), uid: 'b1000000-0000-4000-8000-000000000001' } : captureOwnerToken();
     const checked = fault === 'newer source' ? changed : target;
     check.mockResolvedValueOnce({ checkId: 2, owner, target: checked, key: privateResumeKey(checked) });
-    if (fault === 'page membership lost') rerender(<FullTargetResumeModal {...props} targetMembershipReady={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
     expect(await screen.findByText(/private source changed or could not be checked\. Your edits are kept/)).toBeInTheDocument();
     expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Kept private edit');
@@ -206,6 +205,25 @@ describe('private full résumé workspace', () => {
     expect(screen.getByText('You are offline. Your draft is kept; reconnect to check the source.')).toBeInTheDocument();
     rerender(<FullTargetResumeModal {...open} privateResumeRefresh={{ ...open.privateResumeRefresh, status: 'failed', reason: 'read_failed' }} />);
     expect(screen.getByText('Could not check this private source. Your draft is kept; try again.')).toBeInTheDocument();
+  });
+  it.each([
+    ['page membership lost', 'en'], ['source missing', 'en'], ['page membership lost', 'zh'],
+  ] as const)('says plainly that a deleted import cannot be saved or exported (%s, %s)', async (fault, locale) => {
+    const { check, props, rerender } = await privateUI(); editName('Edit on a deleted import');
+    check.mockResolvedValue(null); i18n.locale = locale;
+    const gone = fault === 'page membership lost' ? { targetMembershipReady: false }
+      : { privateResumeRefresh: { ...props.privateResumeRefresh, status: 'missing' as const } };
+    rerender(<FullTargetResumeModal {...props} {...gone} />);
+    const [status, refused] = locale === 'zh'
+      ? ['这条私有导入已不可用。已删除的导入无法保存或导出文稿。', '已删除的导入无法保存或导出文稿。']
+      : ['This private import is no longer available. Saving and export are unavailable for a deleted import.', 'Saving and export are unavailable for a deleted import.'];
+    expect(screen.getByText(status)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '保存目标文稿' : 'Save target draft' }));
+    expect(await screen.findByText(refused)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '导出 PDF' : 'Export PDF' }));
+    await waitFor(() => expect(screen.getAllByText(refused)).toHaveLength(2));
+    expect(screen.queryByText(/draft is kept|edits are kept|review the source|文稿仍保留|编辑仍保留|核对来源后/)).toBeNull();
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByDisplayValue('Edit on a deleted import')).toBeInTheDocument();
   });
   it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
     const { props, rerender, close } = await privateUI();

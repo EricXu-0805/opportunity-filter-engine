@@ -556,9 +556,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         </details> : <p className="mt-2 text-xs text-gray-600">{copy('Generation configuration: unknown', '生成配置：未知')}</p>)}
       </li>)}</ol>}
   </details>;
+  // A deleted or missing import fails every later source check, so say so instead of asking for a retry.
+  const privateGone = !!privateResumeRefresh && (!(targetMembershipReady ?? targetReady) || privateResumeRefresh.status === 'missing');
   const errors = {
     'too-large': copy('The complete résumé and opportunity text exceed the draft limit. Nothing was truncated; your existing draft is kept.', '完整简历和机会原文超过文稿容量，内容未截断，原有文稿保留。'),
-    'private-source': copy('The private source changed or could not be checked. Your edits are kept; review the source and save again.', '私有来源已变更或暂时无法核对。编辑仍保留，请核对来源后重新保存。'),
+    'private-source': privateGone ? copy('Saving and export are unavailable for a deleted import.', '已删除的导入无法保存或导出文稿。')
+      : copy('The private source changed or could not be checked. Your edits are kept; review the source and save again.', '私有来源已变更或暂时无法核对。编辑仍保留，请核对来源后重新保存。'),
     provenance: copy('The suggestion was not applied because its change record could not be saved. Your existing draft and records are kept; you can still edit and save them.', '建议未应用：修改记录无法保存。原有文稿和记录均保留，仍可编辑和保存。'),
     checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
     create: copy('Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.', '无法从已确认材料创建文稿，请核对母版后重试。原有编辑仍保留。'),
@@ -697,7 +700,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           {!activeSession.provenanceError && renderProvenance(doc, activeSession.provenance, copy('Change records', '修改记录'))}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
-            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} verifySource={verifyPrivateSource} />
+            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} verifySource={verifyPrivateSource} sourceGone={privateGone} />
           {authorityBlocked && <p role="alert" className="my-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This opportunity could not be used for AI adaptation. Both AI tools are paused for these materials. Your draft can still be edited, saved and exported. Close and reopen to check the current opportunity.', '当前机会无法用于 AI 调整，本次材料的选材和改写均已暂停。文稿仍可手改、保存和导出，请关闭后重新打开，核对最新机会。')}</p>}
           {!privateTarget && <><TargetResumeSupportPanel key={supportKey} draft={doc} groups={supportGroups}
             enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked && !activeSession.provenanceError}
