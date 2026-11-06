@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import copy
-from datetime import date
+from datetime import date, time
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from backend import data_loader
 from backend.lib.opportunity_detail import build_detail_fields
+from backend.lib.public_projection import neutralize_lifecycle_title, project_public_opportunity_payload
 from src import evidence
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
@@ -49,6 +51,16 @@ def test_every_window_quotes_its_closing_date(school, key):
     closes = window.closes_on
     written = (f"{_MONTHS[closes.month - 1]} {closes.day}", f"{closes.month}/{closes.day}/{closes.year}")
     assert any(text in window.closes_quote for text in written)
+
+
+@pytest.mark.parametrize(("school", "key"), sorted(k for k, w in WINDOWS.items() if w.opens_on))
+def test_every_stated_opening_is_quoted_with_its_campus_zone(school, key):
+    window = WINDOWS[(school, key)]
+    opens = window.opens_on
+    written = (f"{_MONTHS[opens.month - 1]} {opens.day}", f"{opens.month}/{opens.day}/{opens.year}")
+    assert any(text in window.opens_quote for text in written)
+    local = window.opens_at.astimezone(ZoneInfo(window.zone))
+    assert (local.date(), local.time()) == (opens, time.min)
 
 
 def test_a_harvested_program_carries_its_pages_stated_close_as_its_deadline():
@@ -128,3 +140,42 @@ def test_a_deadline_other_than_the_windows_carries_no_quote():
 
     assert timing["explicit"]["deadline"] == "2027-03-01"
     assert "deadline" not in timing["quotes"]
+
+
+def _read_open(school_slug: str, key: str, read_at: str | None) -> dict:
+    school, source, spec = _spec(school_slug, key)
+    row = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    row["metadata"]["last_verified"] = read_at
+    assert row["title"].endswith(" (applications open)")
+    return row
+
+
+@pytest.mark.parametrize(("read_at", "kept"), [
+    ("2026-10-23T11:43:39.652921", False),
+    # Midnight on November 1 in Chicago, still on daylight time, is 05:00 UTC.
+    ("2026-11-01T04:59:59", False),
+    ("2026-11-01T05:00:00", True),
+    ("2026-11-01T05:00:00+00:00", True),
+    ("2026-11-01T00:30:00-05:00", True),
+    (None, False),
+    ("yesterday", False),
+])
+def test_an_open_status_read_before_the_stated_opening_does_not_title_the_row(read_at, kept):
+    row = _read_open("northwestern", "nu_tgs_srop", read_at)
+
+    assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)") is kept
+
+
+def test_the_card_drops_a_suffix_read_before_the_opening():
+    row = _read_open("unl", "unl_summer_research_program", "2026-11-14T12:00:00")
+
+    card = project_public_opportunity_payload({"title": row["title"]}, row)
+
+    assert card["title"] == "Nebraska Summer Research Program (University of Nebraska-Lincoln)"
+    assert card["target_truth"]["actionable"] is True
+
+
+def test_a_window_that_states_no_opening_leaves_the_suffix_alone():
+    row = _read_open("caltech", "wave_fellows", "2026-07-18T06:41:25")
+
+    assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)")
