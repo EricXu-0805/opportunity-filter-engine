@@ -389,6 +389,15 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     scopeKey: `${targetId}:${lifecycle}:${liveTargetKey}`, editRevision: activeSession?.editRevision ?? 0,
     refresh: profileRefresh, target: opportunity, targetRefresh, privateResume: privateTarget, privateResumeRefresh, readiness: createReadiness, execute: () => { void create(); },
   });
+  const verifyPrivateSource = privateTarget && privateResumeRefresh ? async (owner: OwnerToken, signal?: AbortSignal): Promise<boolean> => {
+    const scope = scopeRef.current;
+    if (!scope || !current(scope) || signal?.aborted || targetMembershipReady === false) return false;
+    const receipt = await privateResumeRefresh.checkForAction();
+    return !!receipt && !signal?.aborted && current(scope) && scope.context === contextKey
+      && receipt.owner.uid === owner.uid && receipt.owner.epoch === owner.epoch && receipt.owner.generation === owner.generation
+      && isOwnerTokenValid(receipt.owner, owner.uid) && receipt.target.opportunity_id === targetId
+      && receipt.key === liveTargetKey && privateResumeKey(receipt.target) === liveTargetKey;
+  } : undefined;
   const persist = async (payload: TargetResumeV1, provenance: TargetResumeProvenance | null) => {
     if (!activeSession || activeSession.provenanceError || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict || activeSession.quota) return;
     const validation = validateTargetResume(payload);
@@ -681,7 +690,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           {!activeSession.provenanceError && renderProvenance(doc, activeSession.provenance, copy('Change records', '修改记录'))}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
-            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
+            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} verifySource={verifyPrivateSource} />
           {authorityBlocked && <p role="alert" className="my-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This opportunity could not be used for AI adaptation. Both AI tools are paused for these materials. Your draft can still be edited, saved and exported. Close and reopen to check the current opportunity.', '当前机会无法用于 AI 调整，本次材料的选材和改写均已暂停。文稿仍可手改、保存和导出，请关闭后重新打开，核对最新机会。')}</p>}
           {!privateTarget && <><TargetResumeSupportPanel key={supportKey} draft={doc} groups={supportGroups}
             enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked && !activeSession.provenanceError}

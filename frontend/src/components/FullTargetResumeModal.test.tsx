@@ -124,6 +124,13 @@ describe('private full résumé workspace', () => {
     expect(storage.save.mock.calls[0][0].base_snapshot.resume_text).toBe(profile().resume_text);
     expect(storage.save.mock.calls[0][3].events[0].kind).toBe('manual');
   });
+  it('checks the private source before an export and keeps the draft when the check fails', async () => {
+    const { check } = await privateUI(); editName('Exported private edit'); const before = check.mock.calls.length;
+    check.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    expect(await screen.findByText(/private source changed or could not be checked\. Your draft is kept/)).toBeInTheDocument();
+    expect(check).toHaveBeenCalledTimes(before + 1); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Exported private edit');
+  });
   it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
     const { props, rerender, close } = await privateUI();
     rerender(<FullTargetResumeModal {...props} privateResumeRefresh={{ ...props.privateResumeRefresh, status: 'missing', checkForAction: async () => null }} />);
