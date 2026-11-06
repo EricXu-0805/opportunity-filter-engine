@@ -17,6 +17,9 @@ import type { Opportunity, ProfileData, ResumeFact } from '@/lib/types';
 import type { LoadedTargetResume, TargetResumeSaveResult, TargetResumeV1 } from '@/lib/target-resume';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import FullTargetResumeModal from './FullTargetResumeModal';
+import privateGolden from '../../../tests/fixtures/private-resume-context-v5-golden.json';
+import { privateResumeKey, type PrivateResumeContext } from '@/lib/private-resume-context';
+import type { PrivateResumeTargetState } from '@/lib/use-private-resume-target';
 
 const storage = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), history: vi.fn(), version: vi.fn() }));
 vi.mock('./ResumeExperienceAssignmentPanel', () => ({ default: () => null }));
@@ -90,6 +93,47 @@ beforeEach(async () => {
   storage.history.mockReset().mockResolvedValue([]); storage.version.mockReset().mockResolvedValue(null);
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+async function privateUI() {
+  const target = clone(privateGolden.receipt.context) as PrivateResumeContext;
+  advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+  const check = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target) }));
+  const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, checkForAction: check, refresh: vi.fn().mockResolvedValue(true) };
+  const p = profile(), close = vi.fn();
+  const props = { isOpen: true, onClose: close, profile: p, privateTarget: target, privateResumeRefresh: refresh };
+  const view = render(<FullTargetResumeModal {...props} />);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
+  await screen.findByRole('textbox', { name: 'Edit Full name' });
+  return { ...view, props, check, target, close };
+}
+describe('private full résumé workspace', () => {
+  it('creates from checked complete private materials, opens supplements and saves without public AI panels', async () => {
+    const { check, target } = await privateUI();
+    expect(check).toHaveBeenCalledOnce(); expect(ai.props).toBeNull(); expect(plan.props).toBeNull();
+    expect(screen.getByText(/AI adaptation for private imports is not available yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/older draft did not save all/)).toBeNull();
+    expect(screen.getByText(/Study parsers and research tools\./).textContent).toBe(target.description);
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    expect(supplement.props?.opportunityId).toBe(target.opportunity_id);
+    editName('Private manual name');
+    storage.save.mockImplementation(async (doc, _revision, _owner, provenance) => ({ status: 'saved', value: { doc, provenance, revision: 1, updated_at: new Date().toISOString() } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    await waitFor(() => expect(storage.save).toHaveBeenCalledOnce());
+    expect(storage.save.mock.calls[0][0].target_snapshot).toEqual(target);
+    expect(storage.save.mock.calls[0][0].base_snapshot.resume_text).toBe(profile().resume_text);
+    expect(storage.save.mock.calls[0][3].events[0].kind).toBe('manual');
+  });
+  it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
+    const { props, rerender, close } = await privateUI();
+    rerender(<FullTargetResumeModal {...props} privateResumeRefresh={{ ...props.privateResumeRefresh, status: 'missing', checkForAction: async () => null }} />);
+    editName('Offline retained edit');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits and continue' }));
+    expect(close).toHaveBeenCalledOnce();
+  });
+});
 
 describe('full target résumé modal', () => {
   it('does nothing while closed and does not create from absent or candidate-only master data', async () => {
