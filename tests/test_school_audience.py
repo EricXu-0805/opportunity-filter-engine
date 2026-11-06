@@ -17,7 +17,14 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import pytest
+
+from backend import data_loader
+from src.collectors import campus_graph as cg
+from src.collectors.schools import SCHOOL_CONFIGS
+from src.matcher.ranker import _filter_context, hard_exclusion
 from src.normalizers.school_audience import (
+    REVIEWED_PROGRAM_AUDIENCES,
     SOURCE_DEFAULTS,
     VALID_AUDIENCES,
     apply_school_audience,
@@ -147,3 +154,72 @@ class TestExplicitCampusOnlyDetection:
         opp = self._opp("uiuc", "uiuc_our_rss", "Open position in a lab.")
         apply_school_audience([opp])
         assert opp["audience"] == "campus"
+
+
+# --- Programs whose own page says who may apply ------------------------------
+
+def _configured_row(school_slug: str, key: str) -> dict:
+    school = next(s for s in SCHOOL_CONFIGS if s["school_slug"] == school_slug)
+    for source in school["sources"]:
+        for spec in source.get("programs", []):
+            if spec["key"] == key:
+                return cg._normalize_program(school, source, spec)
+    raise LookupError((school_slug, key))
+
+
+_UIUC_STUDENT = {"home_school": "uiuc"}
+
+
+@pytest.mark.parametrize(("school", "key"), sorted(REVIEWED_PROGRAM_AUDIENCES))
+def test_every_reviewed_audience_is_for_the_page_its_program_is_configured_at(school, key):
+    row = _configured_row(school, key)
+    reviewed = REVIEWED_PROGRAM_AUDIENCES[(school, key)]
+
+    assert (row["source"], row["url"]) == (reviewed.source, reviewed.url)
+
+
+@pytest.mark.parametrize(("school", "key"), [("northwestern", "nu_tgs_srop"), ("unl", "unl_summer_research_program")])
+def test_a_visiting_student_program_reaches_students_of_other_schools(school, key):
+    row = _configured_row(school, key)
+    assert row["audience"] == "campus"
+
+    apply_school_audience([row])
+
+    assert (row["school"], row["audience"]) == (school, "open")
+    assert hard_exclusion(row, _filter_context(_UIUC_STUDENT)) is None
+    assert hard_exclusion(row, _filter_context({"home_school": school})) is None
+
+
+def test_a_stored_row_gets_its_reviewed_audience_when_the_corpus_loads():
+    stored = _configured_row("northwestern", "nu_tgs_srop")
+    assert hard_exclusion(stored, _filter_context(_UIUC_STUDENT)) == "other_school_campus"
+
+    loaded = data_loader._sanitize_opportunity(stored)
+
+    assert loaded["audience"] == "open"
+    assert hard_exclusion(loaded, _filter_context(_UIUC_STUDENT)) is None
+
+
+def test_the_rest_of_the_schools_campus_bucket_stays_campus():
+    row = _configured_row("unl", "unl_ucare")
+
+    apply_school_audience([row])
+
+    assert row["audience"] == "campus"
+
+
+@pytest.mark.parametrize("change", ["moved", "display_link_moved", "discovered", "other_source"])
+def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_audience(change):
+    row = _configured_row("unl", "unl_summer_research_program")
+    if change == "moved":
+        row["url"] = row["source_url"] = "https://summerprogram.unl.edu/2027/"
+    elif change == "display_link_moved":
+        row["url"] = "https://summerprogram.unl.edu/2027/"
+    elif change == "discovered":
+        row["metadata"]["discovered"] = True
+    else:
+        row["source"] = "unl_external_research"
+
+    data_loader._sanitize_opportunity(row)
+
+    assert row["audience"] == "campus"

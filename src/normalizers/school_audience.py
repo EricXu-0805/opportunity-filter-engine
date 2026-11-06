@@ -12,6 +12,7 @@ tagger's job.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 VALID_AUDIENCES = frozenset({"campus", "open", "unknown"})
 
@@ -538,6 +539,52 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
 }
 
 
+@dataclass(frozen=True)
+class ProgramAudience:
+    """Who may apply to one configured program, by its own page's words."""
+
+    source: str
+    url: str
+    audience: str
+    page: str
+    quote: str
+
+
+_SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
+
+# Read 2026-11-05. Keyed by (collector school, collector key); the rest of the
+# school's bucket keeps its source's audience.
+REVIEWED_PROGRAM_AUDIENCES: dict[tuple[str, str], ProgramAudience] = {
+    ("northwestern", "nu_tgs_srop"): ProgramAudience(
+        "northwestern_research_programs", _SROP, "open", _SROP,
+        "The Summer Research Opportunity Program (SROP) is an eight-week competitive research experience "
+        "hosted by Northwestern University for sophomores and juniors from colleges and universities across "
+        "the United States.",
+    ),
+    ("unl", "unl_summer_research_program"): ProgramAudience(
+        "unl_research_programs", "https://summerprogram.unl.edu/", "open",
+        "https://summerprogram.unl.edu/frequently-asked-questions/",
+        "The Nebraska Summer Research Program is only open to domestic students (U.S. citizens, permanent "
+        "residents, or non-U.S. citizens with DACA status) who are attending U.S. post-secondary institutions.",
+    ),
+}
+
+
+def apply_program_audience(opp: dict) -> None:
+    """Give a reviewed program the audience its page states, in place."""
+    metadata = opp.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("discovered"):
+        return
+    reviewed = REVIEWED_PROGRAM_AUDIENCES.get((metadata.get("collector_school"), metadata.get("collector_key")))
+    if (
+        reviewed is not None
+        and opp.get("source") == reviewed.source
+        and opp.get("url") == reviewed.url
+        and opp.get("source_url") == reviewed.url
+    ):
+        opp["audience"] = reviewed.audience
+
+
 def apply_school_audience(opportunities: list[dict]) -> dict[str, int]:
     """Set top-level ``school`` + ``audience`` on every record (in place).
 
@@ -565,5 +612,6 @@ def apply_school_audience(opportunities: list[dict]) -> dict[str, int]:
             audience = "campus"
         opp["school"] = school
         opp["audience"] = audience
+        apply_program_audience(opp)
         counts[source] = counts.get(source, 0) + 1
     return counts
