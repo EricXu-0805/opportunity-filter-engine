@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, RotateCw } from 'lucide-react';
+import { useT } from '@/i18n/client';
 
 export default function GlobalError({
   error,
@@ -11,6 +12,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useT();
   useEffect(() => {
     console.error('[ofe] unhandled error:', error);
   }, [error]);
@@ -21,8 +23,8 @@ export default function GlobalError({
     || /^API \d+:/.test(error.message ?? '')
   );
   const friendly = isApiError
-    ? "We couldn't reach the matching service. It may be waking up — please try again in a few seconds."
-    : "Something went wrong on this page.";
+    ? t('errorPage.serviceUnreachable')
+    : t('errorPage.generic');
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -36,16 +38,16 @@ export default function GlobalError({
             <p className="text-sm text-gray-600 leading-relaxed mb-4">
               {error.digest ? (
                 <>
-                  Reference ID: <code className="px-1.5 py-0.5 bg-gray-100 rounded text-[12px]">{error.digest}</code>
-                  {' — '}include this if you report the issue.
+                  {t('errorPage.referenceId')} <code className="px-1.5 py-0.5 bg-gray-100 rounded text-[12px]">{error.digest}</code>
+                  {' — '}{t('errorPage.referenceHint')}
                 </>
               ) : (
-                'You can retry, or reload the page if the problem persists.'
+                t('errorPage.retryHint')
               )}
             </p>
             <details className="mb-6">
               <summary className="text-[12px] text-gray-500 cursor-pointer hover:text-gray-700 select-none">
-                Technical details
+                {t('errorPage.technicalDetails')}
               </summary>
               <pre className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-[11px] text-gray-700 overflow-auto whitespace-pre-wrap break-words">
                 {error.message}
@@ -57,13 +59,13 @@ export default function GlobalError({
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-medium transition-colors"
               >
                 <RotateCw className="w-3.5 h-3.5" aria-hidden="true" />
-                Try again
+                {t('common.tryAgain')}
               </button>
               <Link
                 href="/"
                 className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-[13px] font-medium transition-colors"
               >
-                Back home
+                {t('errorPage.backHome')}
               </Link>
             </div>
           </div>
