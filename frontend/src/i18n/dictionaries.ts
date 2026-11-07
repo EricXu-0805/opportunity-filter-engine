@@ -5458,6 +5458,10 @@ export const en = {
     roadmapEx3: 'PyTorch',
     roadmapEx4: 'First paper',
   },
+  notFoundPage: {
+    message: "This page doesn't exist.",
+    backHome: 'Back to Home',
+  },
 } as const;
 
 export const zh = {
@@ -10804,6 +10808,10 @@ export const zh = {
     roadmapEx2: '统计',
     roadmapEx3: 'PyTorch',
     roadmapEx4: '第一篇论文',
+  },
+  notFoundPage: {
+    message: '这个页面不存在。',
+    backHome: '返回首页',
   },
 } as const;
 

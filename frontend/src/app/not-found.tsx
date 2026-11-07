@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
+import { getServerT } from '@/i18n/server';
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getServerT();
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4">
       <p className="text-7xl font-bold text-gray-200 tabular-nums">404</p>
       <p className="text-[17px] text-gray-600 text-center">
-        This page doesn&apos;t exist.
+        {t('notFoundPage.message')}
       </p>
       <Link
         href="/"
         className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-colors"
       >
         <Sparkles className="w-3.5 h-3.5" />
-        Back to Home
+        {t('notFoundPage.backHome')}
       </Link>
     </div>
   );
