@@ -2566,14 +2566,15 @@ class TestServedReasonKeys:
 
     def test_explain_keys_a_listed_result_as_the_list_does(self, sample_profile_req):
         """The research-summary line is the record's own headline, so explain
-        keys it from the full record, not from the card it serves (on a CMU
-        project-list row the card's headline is not the record's)."""
+        keys it from the full record, not from the card it serves (on some
+        Delaware faculty rows the card's headline is not the record's; a
+        listing, such as a CMU project-list row, has none since M183)."""
         import backend.routes.matches as m_module
         from src.matcher.ranker import _summarize_research
 
         records = data_loader.load_opportunities_by_id()
-        profile = {**sample_profile_req, "school": "Carnegie Mellon University", "home_school": "cmu",
-                   "research_interests_text": "natural language processing", "desired_fields": ["NLP"]}
+        profile = {**sample_profile_req, "school": "University of Delaware", "home_school": "udel",
+                   "research_interests_text": "poultry immunology", "desired_fields": ["animal science"]}
         listed = None
         for offset in range(0, 1000, 100):
             resp = client.post(f"/api/matches?limit=100&offset={offset}", json=profile)

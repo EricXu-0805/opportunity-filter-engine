@@ -401,7 +401,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # gets the plain "Matches your interests" line, and no line names them as the
 # row's work or rests a focus area on them (checklist M174). Sentences no
 # hashed knob sees.
-_MATCHER_VERSION_BASE = "37"
+# 38: a listing whose keywords are ours (every collector but the SRO) gets no
+# research headline at all, neither "This lab focuses on …" nor the research
+# summary, whatever tags it has left (checklist M183). A sentence no hashed
+# knob sees.
+_MATCHER_VERSION_BASE = "38"
 
 
 def _matcher_fingerprint() -> str:

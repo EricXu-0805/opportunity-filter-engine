@@ -2858,9 +2858,12 @@ def _summarize_research(opportunity: dict) -> str:
     )
     # Every branch that has specific_kw lists them as the row's own focus.
     # Unstamped keywords can still be ours: a listing's tags are, but for the
-    # SRO's (the detail page's rule). Falling through would quote an abstract
-    # cut mid-sentence or our own template, so there is no headline (M171).
-    if specific_kw and not keywords_are_source_topics(opportunity):
+    # SRO's (the detail page's rule). Such a listing has no headline at all
+    # (M171, M183): with no topical tag left it fell through to the program's
+    # name or the description's first sentence cut at 100 characters, on live
+    # rows a directory's name, a page title, NSF's award boilerplate or our own
+    # template. A faculty row's stamped keywords fall through as above.
+    if not (faculty_contact_claims_unverified(opportunity) or keywords_are_source_topics(opportunity)):
         return ""
     desc_focus = _extract_research_focus_from_desc(desc)
 

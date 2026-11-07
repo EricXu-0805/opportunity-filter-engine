@@ -11,6 +11,11 @@ program's own, and where they repeated a chip the dedupe dropped the interest
 line M155 hedges. Neither line is written now; the interest lines carry the
 match. Scores do not change.
 
+Nor is any other headline (M183). A listing left with no topical tag, or with
+stamped ones, fell back on the program's name or the description's first
+sentence cut at 100 characters, which on live rows was a directory's name, a
+page title, NSF's award boilerplate or our own template.
+
 A pi_name the detail page removes (`pi_name_basis`: an inference stamp, or a
 page scan on a campus program row) names no one in a line either: the lab
 labels the row, and the summary neither names it nor is let in by it.
@@ -142,17 +147,31 @@ def test_a_listing_has_no_headline_listing_its_tags(kind, lab, pi):
     assert not [line for line in fit if "embedded systems" in line or line.startswith("This lab focuses on")]
 
 
-def test_a_listing_without_topical_tags_keeps_its_headline():
-    """The PI's program and the description's first sentence, as before."""
-    row = _listing("nsf_reu", keywords=["undergraduate research"])
-    headline = "Pat Lee's Field Robotics Program: Students spend ten weeks building field robots with a mentor"
-    assert _summarize_research(row) == headline
-    assert headline in rank_opportunity(_profile(TEXTS["no overlap"]), row).reasons_fit
+# Tags that name no topic, or that a stamp already calls ours (M183).
+NO_TOPIC_TAGS = {
+    "role-only": (["undergraduate research"], None),
+    "generic-only": (["research", "summer"], None),
+    "no tags": ([], None),
+    "stamped tags": (list(TAGS), "rule:enricher"),
+}
 
 
-def test_a_research_listing_without_topical_tags_keeps_its_lab_line():
-    row = _listing("campus_program", keywords=["undergraduate research"], pi="")
-    assert "This lab focuses on Field Robotics Program" in rank_opportunity(_profile(""), row).reasons_fit
+@pytest.mark.parametrize(("lab", "pi"), [
+    ("Field Robotics Program", "Pat Lee"), ("", "Pat Lee"), ("Field Robotics Program", ""), ("", ""),
+], ids=["pi and program", "pi", "program", "description only"])
+@pytest.mark.parametrize("tags", NO_TOPIC_TAGS)
+@pytest.mark.parametrize("kind", LISTINGS)
+def test_a_listing_has_no_headline_whatever_tags_remain(kind, tags, lab, pi):
+    """With no topical tag left, the headline was the PI's program and the
+    description's first sentence cut at 100 characters, or "This lab focuses
+    on" the program's name or that sentence."""
+    keywords, stamp = NO_TOPIC_TAGS[tags]
+    row = _listing(kind, keywords=keywords, lab=lab, pi=pi)
+    if stamp:
+        stamp_inferred(row["metadata"], "keywords", stamp)
+    assert _summarize_research(row) == ""
+    fit = rank_opportunity(_profile(TEXTS["no overlap"]), row, precomputed_sim=0.5).reasons_fit
+    assert not [line for line in fit if line.startswith(("This lab focuses on", "Pat Lee", "Field Robotics", "Students"))]
 
 
 @pytest.mark.parametrize(("row", "headline"), [
@@ -163,6 +182,12 @@ def test_a_research_listing_without_topical_tags_keeps_its_lab_line():
 def test_the_sros_and_facultys_headlines_stay(row, headline):
     assert _summarize_research(row) == headline
     assert headline in rank_opportunity(_profile(TEXTS["no overlap"]), row, precomputed_sim=0.5).reasons_fit
+
+
+def test_the_sro_has_no_headline_once_a_stamp_calls_its_tags_ours():
+    row = _sro_twin(_listing("nsf_reu"))
+    stamp_inferred(row["metadata"], "keywords", "rule:enricher")
+    assert _summarize_research(row) == ""
 
 
 @pytest.mark.parametrize(("title", "line"), [
@@ -264,19 +289,15 @@ def test_a_pi_name_the_page_removes_gives_the_line_to_the_lab(case):
     assert not [line for line in fit if f"Prof. {row['pi_name']}" in line or line.startswith(f"{row['pi_name']}'s")]
 
 
-@pytest.mark.parametrize(("case", "headline"), [
-    ("company word", None),
-    ("sro lab words", None),
-    ("page scan", "This lab focuses on Field Robotics Program"),
-    ("campus row", "This lab focuses on Field Robotics Program"),
-])
-def test_a_pi_name_the_page_removes_neither_heads_nor_lets_in_the_summary(case, headline):
+@pytest.mark.parametrize("case", REMOVED_PI)
+def test_a_pi_name_the_page_removes_neither_heads_nor_lets_in_the_summary(case):
     """The summary named the PI ("Team Projects's Field Robotics Program: …"),
-    or was let in as one that does because the derived word is in the lab."""
+    or was let in as one that does because the derived word is in the lab.
+    The campus rows' "This lab focuses on Field Robotics Program" is gone too:
+    a listing has no headline (M183)."""
     row, lab = REMOVED_PI[case]
     fit = rank_opportunity(_profile(TEXTS["no overlap"]), row, precomputed_sim=0.5).reasons_fit
-    assert [line for line in fit if line.startswith((lab, "This lab focuses on", row["pi_name"]))] == (
-        [headline] if headline else [])
+    assert [line for line in fit if line.startswith((lab, "This lab focuses on", row["pi_name"]))] == []
 
 
 @pytest.mark.parametrize("text", TEXTS.values(), ids=TEXTS.keys())
@@ -314,4 +335,4 @@ def test_a_placeholder_pi_name_names_no_one(placeholder):
 
 
 def test_the_matcher_version_moved_for_the_sentences():
-    assert int(MATCHER_VERSION.split(".")[0]) >= 33
+    assert int(MATCHER_VERSION.split(".")[0]) >= 38

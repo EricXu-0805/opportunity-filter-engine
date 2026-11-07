@@ -37,8 +37,10 @@ _FIXTURE = (
 )
 _CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))["cases"]
 
+# A faculty row: a listing has no headline (M183).
 _RESEARCH_SUMMARY_RECORD = {
     "id": "m107-summary",
+    "source_type": "faculty_research",
     "pi_name": "Ada Lovelace",
     "lab_or_program": "Lovelace Lab",
     "department": "Biology",
