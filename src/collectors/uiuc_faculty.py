@@ -872,6 +872,12 @@ def _enrich_faculty_from_profile(person: dict) -> dict:
             person["research_areas"] = areas
 
     if "research_areas" not in person:
+        areas = _primary_research_area(soup)
+        if areas:
+            person["research_areas"] = areas
+            person["research_areas_as_written"] = True
+
+    if "research_areas" not in person:
         meta = soup.select_one("meta[name='description']")
         if meta and len(meta.get("content", "")) > 20:
             person["research_description"] = meta["content"][:300]
@@ -1049,8 +1055,12 @@ def normalize_faculty(
     desc_parts = [
         f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} at UIUC.",
     ]
+    # Text a read stored as the page writes it is not trimmed again: the trim
+    # rewrites an item that holds commas.
+    as_written = bool(person.get("research_areas_as_written"))
     if research_areas:
-        desc_parts.append(f"Research areas: {_trim_research_areas(research_areas, 200)}")
+        desc_parts.append(
+            f"Research areas: {research_areas if as_written else _trim_research_areas(research_areas, 200)}")
     desc_parts.append(
         "Contact this faculty member to ask whether undergraduate research "
         "opportunities are currently available."
@@ -1124,7 +1134,8 @@ def normalize_faculty(
             "manually_reviewed": False,
             "notes": f"Auto-imported from {dept_name} faculty directory",
             "faculty_title": title,
-            "research_areas_raw": _trim_research_areas(research_areas) if research_areas else "",
+            "research_areas_raw": (research_areas if as_written else _trim_research_areas(research_areas))
+            if research_areas else "",
             FACULTY_MAJOR_LABELS_MARKER: list(dept_config.get("majors") or []),
         },
     }
@@ -2962,6 +2973,36 @@ def _research_areas_from_soup(soup) -> str:
             if lines:
                 return _trim_research_areas(", ".join(lines))
     return ""
+
+
+def _primary_research_area(soup, cap: int = 200) -> str:
+    """The items of the element right after a profile's first 'Primary Research
+    Area' <h2>, as the page writes them, joined by ', '.
+
+    A Physics profile names the person's area there, in its role block. Only
+    that list: the block goes on with the title, email and office, which a
+    marker read would take too. _trim_research_areas is not applied, since it
+    rewrites an item that holds commas ("Area One, Area Two, and Area Three"
+    loses its "and"); an item that would pass ``cap`` (the description's) is
+    dropped with the rest, never cut. A run of whitespace inside an item is
+    read as one space, as a browser shows it. A list whose items hold items
+    of their own yields nothing: read whole, an item would be stored together
+    with its sub-items, a phrase the page never writes, and each sub-item
+    again."""
+    heading = next((h for h in soup.find_all("h2") if h.get_text(strip=True) == "Primary Research Area"), None)
+    block = heading.find_next_sibling() if heading else None
+    items = block.find_all("li") if block else []
+    if any(li.find("li") is not None for li in items):
+        return ""
+    kept: list[str] = []
+    for li in items:
+        item = " ".join(li.get_text(" ", strip=True).split())
+        if not item:
+            continue
+        if len(", ".join([*kept, item])) > cap:
+            break
+        kept.append(item)
+    return ", ".join(kept)
 
 
 def _lines_after(page_text: str, end: int) -> list[str]:

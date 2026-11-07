@@ -33,6 +33,7 @@ from src.collectors.uiuc_faculty import (
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
     _null_wrong_person_emails,
+    _primary_research_area,
     _rebuild_faculty_title_and_desc,
     _reenrich_broad_only_faculty,
     _research_areas_from_soup,
@@ -4090,3 +4091,146 @@ def test_a_fresh_run_keeps_co_authors_out_of_the_research_text_and_keywords(tmp_
     assert row["metadata"]["research_areas_raw"] == "Artificial Intelligence"
     assert row["keywords"] == ["artificial intelligence"]
     assert "sample" not in row["title"].lower() + row["description_clean"].lower()
+
+
+# --- M165: a Physics profile names the person's research area in its role
+# block, under "Primary Research Area". Synthetic people and areas; only the
+# structure is the page's. ---
+
+def _primary_area_profile(areas: str, after: str = "", heading: str = "<h2>Primary Research Area</h2>") -> BeautifulSoup:
+    return BeautifulSoup(f"""<html><body><main><div class="directory-profile"><div class="roles">
+  <strong>{heading}{areas}</strong>
+  <div class="role cat15 primary"><div class="title"><strong>Professor</strong></div>
+  <div class="email"><a href="mailto:person1@illinois.edu">person1@illinois.edu</a></div>
+  <div class="office">100 Example Laboratory</div></div></div>
+  <h2>Education</h2><ul><li>Ph.D., Physics, Example University, 2001</li></ul>{after}
+</div></main></body></html>""", "html.parser")
+
+
+def _physics_row_from_profile(monkeypatch, soup: BeautifulSoup) -> dict:
+    import src.collectors.uiuc_faculty as f
+
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: soup)
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    person = f._enrich_faculty_from_profile(
+        {"name": "Blair Sample", "url": f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person2"})
+    return normalize_faculty(person, DEPARTMENTS["physics"])
+
+
+def test_a_physics_profiles_primary_research_area_is_read_as_its_stated_research(monkeypatch):
+    rows = {r["pi_name"]: r for r in _fetch_physics(monkeypatch, profiles={"person2": "Professor"})}
+    row = rows["Blair Sample"]
+    assert row["metadata"]["research_areas_raw"] == "Example Matter Physics"
+    assert "Research areas: Example Matter Physics" in row["description_raw"]
+    # A card whose profile could not be read states nothing.
+    assert rows["Avery Example"]["metadata"]["research_areas_raw"] == ""
+
+
+def test_a_primary_research_area_is_stored_as_the_page_writes_it(monkeypatch):
+    # The trim the other reads go through would store "Example, Sample, Placeholder Physics".
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile(
+        "<ul><li>Example, Sample, and Placeholder Physics</li></ul>"))
+    assert row["metadata"]["research_areas_raw"] == "Example, Sample, and Placeholder Physics"
+    assert "Research areas: Example, Sample, and Placeholder Physics Contact" in row["description_raw"]
+
+
+def test_a_primary_research_area_too_long_to_store_whole_is_dropped_never_cut(monkeypatch):
+    long_item = "Example " + "Sample " * 30 + "Physics"
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile(
+        f"<ul><li>Example Matter Physics</li><li>{long_item}</li><li>Sample Information Science</li></ul>"))
+    assert row["metadata"]["research_areas_raw"] == "Example Matter Physics"
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile(f"<ul><li>{long_item}</li></ul>"))
+    assert (row["metadata"]["research_areas_raw"], "Research areas" in row["description_raw"]) == ("", False)
+
+
+def test_a_primary_research_area_list_is_read_whole_and_only_from_the_element_right_after_its_heading():
+    two = '<ul><li>Example <em>Matter</em> Physics (experimental)</li><li>Sample Information Science</li><li> </li></ul>'
+    assert _primary_research_area(_primary_area_profile(two)) == \
+        "Example Matter Physics (experimental), Sample Information Science"
+    # No list under the heading: the lists of later sections are no research area.
+    later = "<h2>Undergraduate Research Opportunities</h2><ul><li>Example detector project</li></ul>"
+    assert _primary_research_area(_primary_area_profile("", after=later)) == ""
+    # Nor is a list that follows another element, or one that is not the heading's sibling.
+    assert _primary_research_area(_primary_area_profile(
+        "<p>Example note</p><ul><li>Example Matter Physics</li></ul>")) == ""
+    assert _primary_research_area(_primary_area_profile(
+        "<ul><li>Example Matter Physics</li></ul>", heading="<div><h2>Primary Research Area</h2></div>")) == ""
+
+
+def test_only_the_first_h2_that_reads_exactly_primary_research_area_is_read():
+    area = "<ul><li>Example Matter Physics</li></ul>"
+    for heading in ("<h3>Primary Research Area</h3>", "<h2>primary research area</h2>",
+                    "<h2>Primary Research Areas</h2>", "<h2>Primary Research Area Notes</h2>"):
+        assert _primary_research_area(_primary_area_profile(area, heading=heading)) == "", heading
+    second = "<h2>Primary Research Area</h2><ul><li>Sample Information Science</li></ul>"
+    assert _primary_research_area(_primary_area_profile(area, after=second)) == "Example Matter Physics"
+    assert _primary_research_area(_primary_area_profile("<p>Example note</p>", after=second)) == ""
+
+
+def test_a_profiles_research_interests_still_win_over_its_primary_research_area(monkeypatch):
+    interests = "<h2>Research Interests</h2><ul><li>Example spectroscopy</li><li>Sample detectors</li></ul>"
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile(
+        "<ul><li>Example Matter Physics</li></ul>", after=interests))
+    assert row["metadata"]["research_areas_raw"] == "Example spectroscopy, Sample detectors"
+
+
+def test_a_primary_research_area_list_joined_to_exactly_200_characters_is_kept_whole():
+    first, second = "Example Matter Physics", "Sample " * 24 + "Sciences"
+    assert len(f"{first}, {second}") == 200
+    assert _primary_research_area(_primary_area_profile(f"<ul><li>{first}</li><li>{second}</li></ul>")) == \
+        f"{first}, {second}"
+    # One character more and the second item is dropped.
+    assert _primary_research_area(_primary_area_profile(f"<ul><li>{first}</li><li>{second}s</li></ul>")) == first
+
+
+def test_the_200_character_cap_on_a_primary_research_area_is_on_the_joined_items():
+    # Each item alone fits; the two joined do not, so the second is dropped.
+    first, second = "Example " * 18 + "Matter", "Placeholder " * 12 + "Matter"
+    assert (len(first), len(second)) == (150, 150)
+    assert _primary_research_area(_primary_area_profile(f"<ul><li>{first}</li><li>{second}</li></ul>")) == first
+
+
+def test_an_empty_primary_research_area_item_is_skipped_and_the_items_after_it_are_read():
+    items = "<ul><li>Example Matter Physics</li><li> </li><li>Sample Information Science</li></ul>"
+    assert _primary_research_area(_primary_area_profile(items)) == "Example Matter Physics, Sample Information Science"
+
+
+def test_the_list_items_of_a_block_right_after_the_primary_research_area_heading_are_read_inside_it():
+    wrapped = "<div><ul><li>Example Matter Physics</li><li>Sample Information Science</li></ul></div>"
+    assert _primary_research_area(_primary_area_profile(wrapped)) == \
+        "Example Matter Physics, Sample Information Science"
+
+
+def test_a_primary_research_area_item_whose_source_text_wraps_is_stored_with_single_spaces(monkeypatch):
+    # A browser shows the run of whitespace as one space.
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile("<ul><li>Example Matter\n      Physics</li></ul>"))
+    assert row["metadata"]["research_areas_raw"] == "Example Matter Physics"
+    assert "Research areas: Example Matter Physics Contact" in row["description_raw"]
+
+
+def test_a_primary_research_area_list_that_nests_another_list_yields_nothing(monkeypatch):
+    # Read whole, the first item would be stored with its sub-items as one
+    # phrase the page never writes, and each sub-item again.
+    nested = ("<ul><li>Example Matter Physics<ul><li>Sample Detectors</li><li>Placeholder Optics</li></ul></li>"
+              "<li>Sample Information Science</li></ul>")
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile(nested))
+    assert (row["metadata"]["research_areas_raw"], "Research areas" in row["description_raw"]) == ("", False)
+    # Inside a wrapping block too, with an ordered sub-list in a later item, and
+    # with items left unclosed, which the parser nests.
+    for items in (f"<div>{nested}</div>",
+                  "<ul><li>Example Matter Physics</li><li>Sample Information Science<ol><li>Placeholder Optics</li></ol>"
+                  "</li></ul>",
+                  "<ul><li>Example Matter Physics<li>Sample Information Science</ul>"):
+        assert _primary_research_area(_primary_area_profile(items)) == "", items
+
+
+def test_a_primary_research_area_item_keeps_its_trailing_punctuation_as_written():
+    assert _primary_research_area(_primary_area_profile("<ul><li>Example Physics.</li></ul>")) == "Example Physics."
+
+
+def test_a_research_interests_read_over_200_characters_is_still_trimmed_in_the_description(monkeypatch):
+    areas = [f"{w} Example Spectroscopy Of Sample Matter" for w in ("Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta")]
+    interests = "<h2>Research Interests</h2><ul>" + "".join(f"<li>{a}</li>" for a in areas) + "</ul>"
+    row = _physics_row_from_profile(monkeypatch, _primary_area_profile("", after=interests))
+    assert row["metadata"]["research_areas_raw"] == ", ".join(areas)
+    assert f"Research areas: {', '.join(areas[:4])} Contact" in row["description_raw"]
