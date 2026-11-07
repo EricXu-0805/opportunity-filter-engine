@@ -10,6 +10,7 @@ from pydantic import Field, ValidationError, field_validator
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
+from backend.lib.blocking import run_request_work
 from backend.lib.private_email_context import resolve_private_email_context
 from backend.lib.private_import_targets import (
     PrivateTargetService,
@@ -29,6 +30,7 @@ from backend.lib.private_import_targets_schema import (
     identifier,
     timestamp,
 )
+from backend.lib.private_resume_context import private_resume_context
 from backend.lib.private_target_resolution import project_private_target, resolve_private_import_target
 from backend.lib.request_body import (
     SMALL_BOUNDS,
@@ -37,6 +39,7 @@ from backend.lib.request_body import (
     json_body_bounds,
     json_body_on_lane,
 )
+from backend.lib.target_resume_ai_validation import fingerprint
 
 TRACKER_BATCH_LIMIT = 100
 _TRACKER_BATCH_CONCURRENCY = 4
@@ -246,3 +249,27 @@ async def read_private_email_context(target_id: str, request: Request):
         expected_owner_id=scope.expected_owner_id,
     )
     return JSONResponse(result, headers=PRIVATE)
+
+
+@router.get("/{target_id}/resume-context")
+async def read_private_resume_context(target_id: str, request: Request):
+    pairs = list(request.query_params.multi_items())
+    if len(pairs) != len(dict(pairs)) or any(
+        key not in {"expected_owner_id", "expected_target_version"} for key, _ in pairs
+    ):
+        raise ValueError("Invalid query")
+    params = dict(pairs)
+    target = await resolve_private_import_target(
+        target_id,
+        authorization=request.headers.get("authorization"),
+        expected_owner_id=params.get("expected_owner_id"),
+        expected_target_version=params.get("expected_target_version"),
+    )
+
+    def project():
+        context = private_resume_context(target)
+        return {"version": 1, "target_scope": "private_import", "verification": "unverified",
+                "context": context, "target_signature": fingerprint(context)}
+
+    # Hashing a 5 MiB source holds the GIL; it runs on the request lane like a full-target draft.
+    return JSONResponse(await run_request_work(project), headers=PRIVATE)
