@@ -2495,8 +2495,8 @@ def score_upside(
                     # prose and the lab's description, and the words in `work`
                     # are the lab's, not the student's. A tester whose profile
                     # said "machine learning, artificial intelligence" was told
-                    # their interests "align closely with Prof. Tong's work on
-                    # security" — the one area they had not mentioned. State
+                    # their interests aligned closely with a professor's work
+                    # on security — the one area they had not mentioned. State
                     # what the lab works on; do not put the alignment in the
                     # student's mouth.
                     else f"{lab_label} also works on {work}"
