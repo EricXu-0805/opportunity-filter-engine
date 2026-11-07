@@ -390,3 +390,170 @@ def test_a_vetmed_name_with_a_hyphen_is_split_only_at_the_spaced_dash(monkeypatc
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing))
     rec = h.fetch_vetmed()[0]
     assert (rec["pi_name"], rec["metadata"]["faculty_title"]) == ("Avery Example-Sample", "Clinical Assistant Professor")
+
+
+# --- M165: an LER profile can list its research interests in one paragraph,
+# between commas. Synthetic person and areas; only the structure is the page's. ---
+
+def _ler_interests(paragraph: str, block: str = "p", after: str = "", heading: str = "h3") -> str:
+    return f"""<html><body><div class="profile-bio"><h3>Education</h3><p>PhD, Mock Studies, 2001</p>
+<{heading}>Research Interests</{heading}>
+<{block}>{paragraph}</{block}>{after}
+<h3>Courses</h3><p>LER 500 Mock Course</p></div>
+<a href="mailto:person1@illinois.edu">person1@illinois.edu</a></body></html>"""
+
+
+def _fetch_ler_profile(monkeypatch, profile: str) -> dict:
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(LER_SYNTHETIC_LISTING if url == h.LER_URL else profile))
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    (rec,) = h.fetch_ler()
+    return rec
+
+
+def _reads_nothing(rec: dict) -> bool:
+    return (rec["keywords"], rec["metadata"]["research_areas_raw"]) == (list(h.LER_CFG["keywords"]), "")
+
+
+def test_ler_reads_each_area_of_a_research_interests_paragraph_that_lists_them_between_commas(monkeypatch):
+    # A balanced parenthesis is part of its area; the last entry is six words,
+    # the longest an entry may run.
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(
+        "Example Studies, Sample Markets, Placeholder Systems, Mock Dynamics (Sample), Dummy Rules Of Mock Example Firms"))
+    areas = ["Example Studies", "Sample Markets", "Placeholder Systems", "Mock Dynamics (Sample)",
+             "Dummy Rules Of Mock Example Firms"]
+    assert rec["keywords"] == areas
+    assert rec["metadata"]["research_areas_raw"] == "; ".join(areas)
+
+
+def test_ler_keeps_a_repeated_area_once_and_the_first_eight_areas_of_a_comma_paragraph(monkeypatch):
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(
+        "Example Studies, Sample Markets, Example Studies, Placeholder Systems, Sample markets"))
+    assert rec["keywords"] == ["Example Studies", "Sample Markets", "Placeholder Systems"]
+    nine = [f"{w} Studies" for w in ("Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota")]
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(", ".join(nine)))
+    assert rec["keywords"] == nine[:8]
+    # Eight distinct areas: a repeat takes no room.
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(", ".join(nine[:2] + nine[:1] + nine[2:])))
+    assert rec["keywords"] == nine[:8]
+
+
+def test_ler_reads_nothing_from_a_research_interests_paragraph_whose_commas_separate_anything_but_areas(monkeypatch):
+    for paragraph in (
+        # A sentence: its clauses after the first open in lower case.
+        "Our group studies Example Markets, their mock dynamics, and sample outcomes",
+        # Every entry capitalised, but one runs to seven words.
+        "Example Studies, Sample Markets, How Small Groups Of Mock Example Firms",
+        # Every entry a short capitalised phrase, but the paragraph ends a sentence.
+        "Example Studies, Sample Markets, Placeholder Systems, Mock Dynamics, Dummy Rules.",
+        # ... or holds a full stop in its middle.
+        "Example Studies, Sample Markets. Placeholder Systems, Mock Dynamics, Dummy Rules",
+        # No commas: one prose line.
+        "Example Studies and Sample Markets across Placeholder Systems and Mock Dynamics",
+        # A lead-in that names the section.
+        "Research Interests Include Example Markets, Sample Bargaining, Placeholder Disputes",
+        # A sub-label before a colon.
+        "Areas: Example Markets, Sample Bargaining, Placeholder Disputes, Mock Dynamics",
+        # A parenthesis whose own commas split it in two.
+        "Example Economics (Mock Wages, Sample Unions), Placeholder Policy, Mock Relations",
+    ):
+        assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(paragraph))), paragraph
+
+
+def test_ler_reads_a_comma_list_only_from_the_paragraph_under_the_first_research_heading(monkeypatch):
+    areas = "Example Studies, Sample Markets, Placeholder Systems, Mock Dynamics, Dummy Rules"
+    later = f"<h3>Research Areas</h3><p>{areas}</p>"
+    # A <div> block is not read as a comma list, and the next labelled heading is not searched.
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(areas, block="div")))
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(areas, block="div", after=later)))
+    # Once the first labelled paragraph is rejected, a later labelled heading is not searched either.
+    prose = "Our group studies Example Markets, their mock dynamics, and sample outcomes"
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(prose, after=later)))
+
+
+def test_ler_reads_no_comma_list_after_an_empty_research_interests_section(monkeypatch):
+    # The heading's next element is the next section's heading; the paragraph
+    # under that one states no research area.
+    profile = """<html><body><div class="profile-bio"><h3>Research Interests</h3>
+<h3>Courses</h3><p>LER 500 Mock Course, LER 501 Sample Course, LER 502 Placeholder Course</p></div>
+<a href="mailto:person1@illinois.edu">person1@illinois.edu</a></body></html>"""
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, profile))
+
+
+def test_ler_reads_nothing_from_a_comma_paragraph_that_holds_a_line_break(monkeypatch):
+    # Each line runs past _labeled_phrases' length guard. Read as one text, the
+    # last area of a line and the first of the next would make one entry.
+    lines = ("Alpha Studies, Beta Markets, Gamma Systems, Delta Dynamics, Epsilon Rules<br>"
+             "Zeta Studies, Eta Markets, Theta Systems, Iota Dynamics, Kappa Rules")
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(lines)))
+    # A line break inside inline markup is in the paragraph too.
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(f"<span>{lines}</span>")))
+
+
+def test_ler_reads_a_comma_paragraph_under_an_h2_h4_or_summary_research_heading_too(monkeypatch):
+    areas = "Example Studies, Sample Markets, Placeholder Systems, Mock Dynamics, Dummy Rules"
+    for heading in ("h2", "h4", "summary"):
+        rec = _fetch_ler_profile(monkeypatch, _ler_interests(areas, heading=heading))
+        assert rec["keywords"] == areas.split(", "), heading
+
+
+def test_ler_reads_nothing_from_a_comma_paragraph_with_one_unbalanced_parenthesis(monkeypatch):
+    for paragraph in (
+        # An opening parenthesis left unclosed ...
+        "Example Studies, Sample Markets (Mock Firms, Placeholder Systems, Dummy Rules",
+        # ... or a closing one never opened.
+        "Example Studies, Sample Markets), Placeholder Systems, Mock Dynamics, Dummy Rules",
+    ):
+        assert _reads_nothing(_fetch_ler_profile(monkeypatch, _ler_interests(paragraph))), paragraph
+
+
+def test_ler_keeps_a_semicolon_inside_the_comma_entry_that_holds_it(monkeypatch):
+    # Entries lie between commas. Each half around the semicolon runs past
+    # _labeled_phrases' length guard, so the comma read sees the whole paragraph.
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(
+        "Alpha Studies, Beta Markets, Gamma Systems, Delta Dynamics, Epsilon Rules; "
+        "Zeta Studies, Eta Markets, Theta Systems, Iota Dynamics, Kappa Rules"))
+    assert rec["keywords"] == ["Alpha Studies", "Beta Markets", "Gamma Systems", "Delta Dynamics",
+                               "Epsilon Rules; Zeta Studies", "Eta Markets", "Theta Systems", "Iota Dynamics"]
+
+
+def test_ler_comma_read_keeps_the_words_of_an_entry_with_inline_markup_apart():
+    soup = _soup(_ler_interests("Example <em>Labor</em> Studies, Sample Markets, Placeholder Systems"))
+    assert h._comma_listed_areas(soup) == ["Example Labor Studies", "Sample Markets", "Placeholder Systems"]
+
+
+def test_ler_stores_an_entry_whose_source_text_wraps_with_single_spaces(monkeypatch):
+    # The source wraps inside an entry, which a browser shows as one space.
+    # Each line runs past _labeled_phrases' length guard.
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(
+        "Alpha Studies, Beta Markets, Gamma Systems, Delta Dynamics, Epsilon\n    Rules, "
+        "Zeta Studies, Eta Markets, Theta Systems, Iota Dynamics"))
+    areas = ["Alpha Studies", "Beta Markets", "Gamma Systems", "Delta Dynamics", "Epsilon Rules",
+             "Zeta Studies", "Eta Markets", "Theta Systems"]
+    assert rec["keywords"] == areas
+    assert rec["metadata"]["research_areas_raw"] == "; ".join(areas)
+
+
+def test_ler_reads_a_comma_with_no_space_after_it_as_a_separator_too(monkeypatch):
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests(
+        "Alpha Studies,Beta Markets,Gamma Systems,Delta Dynamics,Epsilon Rules"))
+    assert rec["keywords"] == ["Alpha Studies", "Beta Markets", "Gamma Systems", "Delta Dynamics", "Epsilon Rules"]
+
+
+def test_ler_reads_a_paragraph_without_commas_of_six_capitalised_words_as_one_area(monkeypatch):
+    # One entry, past _labeled_phrases' 60-character guard.
+    phrase = "Placeholder Comparative Example Institutional Sample Arrangements"
+    assert _fetch_ler_profile(monkeypatch, _ler_interests(phrase))["keywords"] == [phrase]
+
+
+def test_ler_reads_a_research_interests_list_as_before_and_never_splits_its_items_on_commas(monkeypatch):
+    rec = _fetch_ler_profile(monkeypatch, _ler_interests("Example Studies; Mock Rules, Test Forms and Sample Cases"))
+    assert rec["keywords"] == ["Example Studies", "Mock Rules, Test Forms and Sample Cases"]
+    listed = _ler_interests("<li>Example Studies, Sample Markets</li>", block="ul")
+    assert _fetch_ler_profile(monkeypatch, listed)["keywords"] == ["Example Studies, Sample Markets"]
+
+
+def test_ler_never_splits_a_research_interests_list_item_on_commas(monkeypatch):
+    # A list item is one stated area however long; only a paragraph is read as a comma list.
+    listed = _ler_interests(
+        "<li>Example Studies, Sample Markets, Placeholder Systems, Mock Dynamics, Dummy Rules</li>", block="ul")
+    assert _reads_nothing(_fetch_ler_profile(monkeypatch, listed))
