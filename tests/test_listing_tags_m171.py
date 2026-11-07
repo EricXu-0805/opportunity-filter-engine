@@ -36,6 +36,8 @@ LISTINGS = {
     "simplify": ("simplify_internships", "internship", "internship"),
     "nsf_reu": ("nsf_reu", "summer_program", "summer_program"),
     "campus_program": ("illinois_research_programs", "campus_program", "research"),
+    "campus_department": ("illinois_research_programs", "campus_department", "research"),
+    "ucb_department": ("ucb_research_programs", "ucb_department", "research"),
     "manual": ("manual", "manual", "summer_program"),
     "no_source_type": ("uiuc_other", None, "research"),
 }
@@ -129,9 +131,9 @@ def test_a_stamped_listing_keeps_the_line_that_says_its_tags_are_ours():
 @pytest.mark.parametrize("kind", LISTINGS)
 def test_a_listing_whose_tags_name_no_topic_keeps_the_focus_area(kind, keywords):
     """No tag is named, so the similarity rests on the listing's description.
-    A campus program's pi_name is a page scan the detail page removes, so the
+    A campus row's pi_name is a page scan the detail page removes, so the
     program labels its line."""
-    label = "Field Robotics Program" if kind == "campus_program" else "Prof. Pat Lee"
+    label = "Field Robotics Program" if LISTINGS[kind][0].endswith("_research_programs") else "Prof. Pat Lee"
     _, fit, _ = score_upside(_profile(TEXTS["no overlap"]), _listing(kind, keywords=keywords), precomputed_sim=0.5)
     assert f"Your research interests align with {label}'s focus area" in fit
 
