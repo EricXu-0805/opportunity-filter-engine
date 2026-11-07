@@ -168,11 +168,12 @@ detail facts do, through the helper both call: `opportunity_detail.skills_basis`
 for a required or preferred skill list (inferred outside a hand-curated
 `manual` row, stamped or not, and wherever stamped; one flag covers both
 lists), `keywords_basis` for topics (inferred on every listing but an SRO
-row, whose "Research Area" field is the source's own list, and wherever
-stamped), and `majors_basis` for a major list (inferred outside a `manual`
-row, including Simplify's category-map lists, unless a program spec's page
-text states it; `majors_basis: "configured"` for a program spec's). The
-flag also covers the source-type tags a campus collector appends
+row, whose "Research Area" field is the source's own list, and an OUR blog
+feed row, whose keywords are the categories the feed put on the post; and
+wherever stamped), and `majors_basis` for a major list (inferred outside a
+`manual` row, including Simplify's category-map lists, unless a program
+spec's page text states it; `majors_basis: "configured"` for a program
+spec's). The flag also covers the source-type tags a campus collector appends
 ("announcement", "undergraduate research"), which the facts drop as no topic.
 `paid_attribution` and `location_attribution` share `paid_basis` and
 `location_basis` the same way, except that pay a funding program's published

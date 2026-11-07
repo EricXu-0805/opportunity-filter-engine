@@ -44,6 +44,7 @@ from ..evidence import (
     is_inferred,
     is_professor_rank,
     is_read_off_the_page,
+    keywords_are_source_labels,
     keywords_are_source_topics,
     target_truth,
 )
@@ -2476,9 +2477,10 @@ def score_upside(
         # The lines below name display_kw as the row's work. On a row whose
         # keywords are ours (the detail page's rule), those are a category we
         # mapped or a tag we typed, so no line is written and the interest
-        # lines carry the match (M171). Stamped keywords never reach
-        # display_kw and keep the "topics we inferred" line.
-        if sim > 0.15 and not (st.topics_ours and st.display_kw):
+        # lines carry the match (M171); nor on a row whose keywords are a
+        # feed's category labels, which name no work (M174). Stamped keywords
+        # never reach display_kw and keep the "topics we inferred" line.
+        if sim > 0.15 and not ((st.topics_ours or st.kw_labels) and st.display_kw):
             pre_sim_len = len(reasons_fit)
             # Display only genuine research areas — drop role/format tokens so a
             # job title never reads as a topic ("...work on CV, research assistant").
@@ -3118,8 +3120,10 @@ class _OppStatic:
     specific_kw: tuple[str, ...]
     display_kw: tuple[str, ...]
     kw_inferred: bool
-    # The detail page shows these keywords as ours, not the source's topics.
+    # The detail page shows these keywords as ours, not the source's words.
     topics_ours: bool
+    # The keywords are a feed's category labels (keywords_are_source_labels).
+    kw_labels: bool
     # When topics_ours: the row's own words (see _own_words); else ().
     own_words: tuple[str, ...]
     ov_kws: tuple[str, ...]
@@ -3308,7 +3312,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         () if kw_inferred
         else tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
     )
-    topics_ours = not keywords_are_source_topics(opp)
+    kw_labels = keywords_are_source_labels(opp)
+    topics_ours = not (keywords_are_source_topics(opp) or kw_labels)
 
     # The interest match's view of the keywords (stripped, non-empty), less
     # those the collector writes on every row it emits (M174).
@@ -3374,6 +3379,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         display_kw=display_kw,
         kw_inferred=kw_inferred,
         topics_ours=topics_ours,
+        kw_labels=kw_labels,
         own_words=_own_words(opp) if topics_ours else (),
         ov_kws=ov_kws,
         course_signals=course_signals,

@@ -80,6 +80,7 @@ from src.evidence import (
     inferred_method,
     is_configured_program,
     is_read_off_the_page,
+    keywords_are_source_labels,
     keywords_are_source_topics,
 )
 from src.normalizers.school_audience import reviewed_program_audience
@@ -525,8 +526,9 @@ def keywords_basis(canonical: dict) -> str | None:
     """
     stamped = _basis_for(canonical, "keywords")
     # The source's own topics (`src.evidence.keywords_are_source_topics`, the
-    # rule the cold-email paths share): an unstamped faculty row or the SRO.
-    if stamped is not None or keywords_are_source_topics(canonical):
+    # rule the cold-email paths share): an unstamped faculty row or the SRO;
+    # or the labels a feed put on its post (`keywords_are_source_labels`).
+    if stamped is not None or keywords_are_source_topics(canonical) or keywords_are_source_labels(canonical):
         return stamped
     source = str(canonical.get("source") or "")
     # Listing keywords are ours on every other collector: Simplify expands
@@ -586,9 +588,10 @@ def _research_content(payload: dict, canonical: dict) -> _Field:
     keyword_basis = keywords_basis(canonical)
     if stated:
         field.source("research_areas", stated)
-    elif keywords and keyword_basis is None:
+    elif keywords and keyword_basis is None and not keywords_are_source_labels(canonical):
         # Faculty keywords are curated off the profile or split from the
-        # scraped research text — the page's own words.
+        # scraped research text — the page's own words. A feed's category
+        # labels are its words too, but name no research area.
         field.source("research_areas", keywords)
     if keywords and keyword_basis is not None:
         field.infer("research_areas", keywords, keyword_basis)

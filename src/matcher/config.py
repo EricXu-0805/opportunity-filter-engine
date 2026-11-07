@@ -396,7 +396,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # `collector_constant_keywords`) is no interest match: no chip matches it, so
 # it adds no interest score, no "Matches your interests" line and no field
 # relevance (checklist M174). A match rule no hashed knob sees.
-_MATCHER_VERSION_BASE = "36"
+# 37: an OUR feed row's unstamped keywords are the feed's own category labels
+# (`keywords_are_source_labels`), not topics we inferred: a chip they match
+# gets the plain "Matches your interests" line, and no line names them as the
+# row's work or rests a focus area on them (checklist M174). Sentences no
+# hashed knob sees.
+_MATCHER_VERSION_BASE = "37"
 
 
 def _matcher_fingerprint() -> str:
