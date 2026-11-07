@@ -390,7 +390,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # area" line: its description is our template, so the similarity compared
 # that, not anything the professor wrote (checklist M169). A sentence no
 # hashed knob sees.
-_MATCHER_VERSION_BASE = "35"
+# 36: a keyword a collector writes on every row it emits (a campus row's
+# source type, "undergraduate research" on a page the crawl discovered, the
+# UIUC Siebel, OUR-program, URAP, DRP and URSA lists;
+# `collector_constant_keywords`) is no interest match: no chip matches it, so
+# it adds no interest score, no "Matches your interests" line and no field
+# relevance (checklist M174). A match rule no hashed knob sees.
+_MATCHER_VERSION_BASE = "36"
 
 
 def _matcher_fingerprint() -> str:

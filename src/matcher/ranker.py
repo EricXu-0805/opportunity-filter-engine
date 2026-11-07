@@ -29,6 +29,7 @@ from ..evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
+    collector_constant_keywords,
     configured_fact,
     configured_value_unstated,
     faculty_availability_status,
@@ -3309,8 +3310,12 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     )
     topics_ours = not keywords_are_source_topics(opp)
 
-    # The interest match's view of the keywords (stripped, non-empty).
-    ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
+    # The interest match's view of the keywords (stripped, non-empty), less
+    # those the collector writes on every row it emits (M174).
+    constants = collector_constant_keywords(opp)
+    ov_kws = tuple(
+        kw for kw in (k.lower().strip() for k in keywords if k and k.strip()) if kw not in constants
+    )
 
     dept_lower = (opp.get("department") or "").lower()
     elig = faculty_safe_eligibility(opp)

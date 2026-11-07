@@ -1557,6 +1557,45 @@ def keywords_are_source_topics(record: dict) -> bool:
     return record_kind(record) == "faculty_contact" or str(record.get("source") or "") in KEYWORDS_FROM_SOURCE
 
 
+def campus_constant_keywords(record: dict) -> set[str]:
+    """Keywords the campus collectors append to every row they emit.
+
+    Each appends its own source type ("program", "lab", "announcement"), and a
+    discovered row carries only that plus "undergraduate research". Neither is
+    a research topic.
+    """
+    constants = {
+        value.casefold() for value in (record.get("campus_source_type"), record.get("ucb_source_type"))
+        if isinstance(value, str) and value
+    }
+    metadata = record.get("metadata")
+    if constants and isinstance(metadata, dict) and metadata.get("discovered"):
+        constants.add("undergraduate research")
+    return constants
+
+
+# The one list each of these collectors writes on every row it emits
+# (uiuc_other and uiuc_drp add the row's program key, which is not shared).
+# A list typed into a collector's code is not the page's words, even where a
+# word of it describes the program ("computer_science", DRP's "reading").
+_COLLECTOR_KEYWORD_LISTS = {
+    "uiuc_siebel": frozenset({"research", "computer_science", "siebel", "mentor"}),
+    "uiuc_other": frozenset({"research", "program_overview"}),
+    "ucb_urap": frozenset({"research", "mentorship", "undergraduate"}),
+    "uiuc_urap": frozenset({"research", "mentorship", "undergraduate"}),
+    "uiuc_drp": frozenset({"research", "reading", "mentor", "directed_reading"}),
+    "uiuc_ursa": frozenset({"research", "engineering", "freshman", "sophomore", "mentor"}),
+}
+
+
+def collector_constant_keywords(record: dict) -> set[str]:
+    """Keywords a row carries because its collector writes them on every row
+    it emits, whatever the page says: the campus collectors' and the lists
+    above. They are not the page's words about this person or program, so the
+    ranker's interest match skips them (M174)."""
+    return campus_constant_keywords(record) | _COLLECTOR_KEYWORD_LISTS.get(str(record.get("source") or ""), set())
+
+
 # Sources whose closed records are published as reference material, stated by
 # the collector itself ("Shown as a reference for the kind of undergraduate
 # research this lab offers"). Closedness alone does not earn this: a generic
