@@ -74,11 +74,13 @@ from src.evidence import (
     CONFIGURED_PROGRAM_METHOD,
     FACT_STATED,
     SRO_NOTE_WINDOW_RE,
+    campus_constant_keywords,
     configured_fact,
     configured_value_unstated,
     inferred_method,
     is_configured_program,
     is_read_off_the_page,
+    keywords_are_source_labels,
     keywords_are_source_topics,
 )
 from src.normalizers.school_audience import reviewed_program_audience
@@ -335,22 +337,6 @@ def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str 
     return _configured(canonical, facet)
 
 
-def _collector_constant_keywords(canonical: dict) -> set[str]:
-    """Keywords the campus collectors append to every row they emit.
-
-    Each appends its own source type ("program", "lab", "announcement"), and a
-    discovered row carries only that plus "undergraduate research". Neither is
-    a research topic.
-    """
-    constants = {
-        value.casefold() for value in (canonical.get("campus_source_type"), canonical.get("ucb_source_type"))
-        if isinstance(value, str) and value
-    }
-    if constants and _dict(canonical.get("metadata")).get("discovered"):
-        constants.add("undergraduate research")
-    return constants
-
-
 def class_years_are_template(years: object) -> bool:
     """Whether a class-year list is one of the defaults collectors write."""
     values = [y.lower() for y in _str_list(years)]
@@ -540,8 +526,9 @@ def keywords_basis(canonical: dict) -> str | None:
     """
     stamped = _basis_for(canonical, "keywords")
     # The source's own topics (`src.evidence.keywords_are_source_topics`, the
-    # rule the cold-email paths share): an unstamped faculty row or the SRO.
-    if stamped is not None or keywords_are_source_topics(canonical):
+    # rule the cold-email paths share): an unstamped faculty row or the SRO;
+    # or the labels a feed put on its post (`keywords_are_source_labels`).
+    if stamped is not None or keywords_are_source_topics(canonical) or keywords_are_source_labels(canonical):
         return stamped
     source = str(canonical.get("source") or "")
     # Listing keywords are ours on every other collector: Simplify expands
@@ -596,14 +583,15 @@ def _research_content(payload: dict, canonical: dict) -> _Field:
     if stated is None:
         areas = payload.get("research_areas")
         stated = _text(areas) if isinstance(areas, str) else (", ".join(_str_list(areas)) or None)
-    constants = _collector_constant_keywords(canonical)
+    constants = campus_constant_keywords(canonical)
     keywords = [k for k in _str_list(payload.get("keywords")) if k.casefold() not in constants]
     keyword_basis = keywords_basis(canonical)
     if stated:
         field.source("research_areas", stated)
-    elif keywords and keyword_basis is None:
+    elif keywords and keyword_basis is None and not keywords_are_source_labels(canonical):
         # Faculty keywords are curated off the profile or split from the
-        # scraped research text — the page's own words.
+        # scraped research text — the page's own words. A feed's category
+        # labels are its words too, but name no research area.
         field.source("research_areas", keywords)
     if keywords and keyword_basis is not None:
         field.infer("research_areas", keywords, keyword_basis)

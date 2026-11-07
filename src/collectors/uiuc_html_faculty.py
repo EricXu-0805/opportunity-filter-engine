@@ -149,10 +149,48 @@ def _labeled_phrases(soup, label_re=_RESEARCH_LABEL_RE, split_commas=False) -> l
     return []
 
 
+def _comma_listed_areas(soup) -> list[str]:
+    """The areas of a labelled paragraph that lists them between commas
+    ("Area One, Area Two, …"). Only the first labelled heading's next sibling
+    element is read, and only when that element is a <p> holding no <br>;
+    anything else yields nothing. A later element can belong to the next
+    section, and a line break inside an entry would be read as a space,
+    making an entry the page never writes. The paragraph is read only when it
+    is such a list as a whole: every entry a capitalised phrase of at most six
+    words that holds no label, colon or unbalanced parenthesis, and no full
+    stop. Commas also separate a sentence's clauses and a parenthesis's items,
+    and one clause or half a parenthesis read as an area is a wrong statement,
+    so a paragraph with any other entry yields nothing. A paragraph with no
+    comma is one entry: a capitalised phrase of at most six words that runs
+    past _labeled_phrases' length guard is read as one area. A run of
+    whitespace inside an entry is read as one space, as a browser shows it."""
+    for tag in soup.find_all(["h2", "h3", "h4", "summary"]):
+        if _RESEARCH_LABEL_RE.search(tag.get_text(strip=True)):
+            block = tag.find_next_sibling()
+            if block is None or block.name != "p" or block.find("br") is not None:
+                return []
+            text = block.get_text(" ", strip=True)
+            entries = [" ".join(e.split()) for e in text.split(",")]
+            if "." in text or not all(
+                e[:1].isupper() and len(e.split()) <= 6 and ":" not in e
+                and e.count("(") == e.count(")") and not _RESEARCH_LABEL_RE.search(e)
+                for e in entries
+            ):
+                return []
+            out, seen = [], set()
+            for e in entries:
+                if e.lower() not in seen:
+                    seen.add(e.lower())
+                    out.append(e)
+            return out[:8]
+    return []
+
+
 def _research_interests(soup) -> list[str]:
-    """LER profiles label their block 'Research Interests'; alias kept for clarity
-    at the call site."""
-    return _labeled_phrases(soup)
+    """LER profiles label their block 'Research Interests'. Some list the areas
+    in one paragraph between commas, which _labeled_phrases keeps as one phrase
+    and so drops once it runs past its length guard."""
+    return _labeled_phrases(soup) or _comma_listed_areas(soup)
 
 
 def fetch_carle() -> list[dict]:

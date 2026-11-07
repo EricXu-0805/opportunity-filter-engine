@@ -38,6 +38,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
+# WordPress files a post given no category under a placeholder, "Uncategorized"
+# by default (this blog renamed it "Unsorted"): no label the source put on it.
+_PLACEHOLDER_CATEGORIES = frozenset({"unsorted", "uncategorized"})
+
 
 class UIUCOURRSSCollector(BaseCollector):
     """Collects research opportunities from UIUC OUR blog RSS feed."""
@@ -102,6 +106,7 @@ class UIUCOURRSSCollector(BaseCollector):
                 extra_fields={
                     "categories": [
                         tag.term for tag in entry.get("tags", [])
+                        if (tag.term or "").casefold() not in _PLACEHOLDER_CATEGORIES
                     ],
                     "author": entry.get("author", ""),
                 },
