@@ -12,7 +12,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
+  // Full-width punctuation spaces itself, and dictionary strings carry no
+  // edge whitespace, so the gaps around the digest are chosen here.
+  const zh = locale === 'zh';
   useEffect(() => {
     console.error('[ofe] unhandled error:', error);
   }, [error]);
@@ -38,8 +41,8 @@ export default function GlobalError({
             <p className="text-sm text-gray-600 leading-relaxed mb-4">
               {error.digest ? (
                 <>
-                  {t('errorPage.referenceId')} <code className="px-1.5 py-0.5 bg-gray-100 rounded text-[12px]">{error.digest}</code>
-                  {' — '}{t('errorPage.referenceHint')}
+                  {t('errorPage.referenceId')}{zh ? '' : ' '}<code className="px-1.5 py-0.5 bg-gray-100 rounded text-[12px]">{error.digest}</code>
+                  {zh ? ' —— ' : ' — '}{t('errorPage.referenceHint')}
                 </>
               ) : (
                 t('errorPage.retryHint')
