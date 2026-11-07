@@ -88,7 +88,7 @@ REAL_NAMES = [
     "Imad Al-Qadi",
     "Sayeepriyadarshini \"Sayee\" Anakk",
     "Mark Fellows",
-    "Grace Gao",
+    "Grace Exampleton",
     "Postdoctoral Fellow Jane Doe",
 ]
 
@@ -112,30 +112,30 @@ def test_null_unit_inbox_emails_nulls_unit_mailboxes_keeps_personal():
     """A department/unit/role mailbox scraped as a professor's contact (english@,
     mainoffice@physics, poultry@) is nulled — a cold email to it misfires — while
     a personal address, including the vowel-stripped and initials shapes UIUC
-    uses ("fhnstck@" for Fahnestock, "geg@" for Gary E. Gladding), is preserved."""
+    uses ("smplwd@" for Samplewood, "gee@" for Gale E. Exampleton), is preserved."""
     opps = [
-        _fac_email("Susan Koshy", "Department of English", "english@illinois.edu", "u/sk"),
-        _fac_email("Pengjie Wang", "Department of Physics", "mainoffice@physics.illinois.edu", "u/pw"),
-        _fac_email("Carl M. Parsons", "Department of Animal Sciences", "poultry@illinois.edu", "u/cp"),
-        _fac_email("Kathryn Clancy", "Department of Anthropology", "anthro@illinois.edu", "u/kc"),
+        _fac_email("Avery Samplewood", "Department of English", "english@illinois.edu", "u/as"),
+        _fac_email("Blair Exampleton", "Department of Physics", "mainoffice@physics.illinois.edu", "u/be"),
+        _fac_email("Casey M. Placeholt", "Department of Animal Sciences", "poultry@illinois.edu", "u/cp"),
+        _fac_email("Devon Mockwell", "Department of Anthropology", "anthro@illinois.edu", "u/dm"),
         # unit inboxes at OTHER schools are the same pattern — nulled too
         _fac_email("Jane Roe", "Scheller College of Business", "dean@scheller.gatech.edu",
                    "u/jr", source="gatech_faculty"),
         _fac_email("John Poe", "Nelson Institute", "info@nelson.wisc.edu",
                    "u/jp", source="wisc_faculty"),
         # personal addresses that must SURVIVE
-        _fac_email("Larry A. Fahnestock", "Department of Civil Engineering",
-                   "fhnstck@illinois.edu", "u/lf"),
-        _fac_email("Gary E. Gladding", "Department of Physics", "geg@illinois.edu", "u/gg"),
-        _fac_email("Linda Bushnell", "Electrical & Computer Engineering",
-                   "lb2@uw.edu", "u/lb", source="uw_faculty"),
+        _fac_email("Larry A. Samplewood", "Department of Civil Engineering",
+                   "smplwd@illinois.edu", "u/ls"),
+        _fac_email("Gale E. Exampleton", "Department of Physics", "gee@illinois.edu", "u/ge"),
+        _fac_email("Lynn Placeholt", "Electrical & Computer Engineering",
+                   "lp2@uw.edu", "u/lp", source="uw_faculty"),
     ]
     nulled = _null_unit_inbox_emails(opps)
     assert nulled == 6
     assert [o["contact_email"] for o in opps[:6]] == [None] * 6
-    assert opps[6]["contact_email"] == "fhnstck@illinois.edu"
-    assert opps[7]["contact_email"] == "geg@illinois.edu"
-    assert opps[8]["contact_email"] == "lb2@uw.edu"
+    assert opps[6]["contact_email"] == "smplwd@illinois.edu"
+    assert opps[7]["contact_email"] == "gee@illinois.edu"
+    assert opps[8]["contact_email"] == "lp2@uw.edu"
 
 
 def test_null_wrong_person_emails_nulls_only_curated_ids():
@@ -146,22 +146,22 @@ def test_null_wrong_person_emails_nulls_only_curated_ids():
     known = next(iter(_WRONG_PERSON_EMAIL_IDS))
     opps = [
         {"source": "uiuc_faculty", "id": known, "contact_email": "willia67@illinois.edu"},
-        {"source": "uiuc_faculty", "id": "faculty-cs-not-listed", "contact_email": "daf@illinois.edu"},
+        {"source": "uiuc_faculty", "id": "faculty-cs-not-listed", "contact_email": "aex@illinois.edu"},
     ]
     assert _null_wrong_person_emails(opps) == 1
     assert opps[0]["contact_email"] is None
-    assert opps[1]["contact_email"] == "daf@illinois.edu"
+    assert opps[1]["contact_email"] == "aex@illinois.edu"
 
 
 def test_normalize_keeps_real_person():
     cfg = DEPARTMENTS["mcb"]
     opp = normalize_faculty(
-        {"name": "Milan K. Bagchi",
-         "url": "https://mcb.illinois.edu/directory/profile/mbagchi"},
+        {"name": "Milan K. Exampleton",
+         "url": "https://mcb.illinois.edu/directory/profile/mexampleton"},
         cfg,
     )
     assert opp is not None
-    assert opp["pi_name"] == "Milan K. Bagchi"
+    assert opp["pi_name"] == "Milan K. Exampleton"
     assert opp["source"] == "uiuc_faculty"
     assert opp["department"] == cfg["name"]
     assert opp["on_campus"] is None
@@ -218,9 +218,9 @@ def _fac(pi_name, url, source="uiuc_faculty", description=""):
 
 
 def test_dedup_collapses_fuller_name_variant():
-    url = "https://physics.illinois.edu/people/directory/profile/bkclark"
-    out = _dedup_faculty_records([_fac("Bryan Clark", url), _fac("Bryan K. Clark", url)])
-    assert [o["pi_name"] for o in out] == ["Bryan K. Clark"]
+    url = "https://physics.illinois.edu/people/directory/profile/bksamplewood"
+    out = _dedup_faculty_records([_fac("Bryan Samplewood", url), _fac("Bryan K. Samplewood", url)])
+    assert [o["pi_name"] for o in out] == ["Bryan K. Samplewood"]
 
 
 def test_dedup_collapses_nickname_variant():
@@ -237,8 +237,8 @@ def test_dedup_keeps_distinct_surnames_at_same_url():
 
 def test_dedup_keeps_same_name_at_different_urls():
     rows = [
-        _fac("Bryan Clark", "https://a.illinois.edu/profile/1"),
-        _fac("Bryan Clark", "https://b.illinois.edu/profile/2"),
+        _fac("Bryan Samplewood", "https://a.illinois.edu/profile/1"),
+        _fac("Bryan Samplewood", "https://b.illinois.edu/profile/2"),
     ]
     assert len(_dedup_faculty_records(rows)) == 2
 
@@ -250,8 +250,8 @@ def test_dedup_ignores_non_faculty_rows():
 
 
 def test_dedup_strips_generational_suffix():
-    url = "https://physics.illinois.edu/people/directory/profile/demarco"
-    out = _dedup_faculty_records([_fac("Brian DeMarco", url), _fac("Brian DeMarco Jr.", url)])
+    url = "https://physics.illinois.edu/people/directory/profile/desample"
+    out = _dedup_faculty_records([_fac("Brian DeSample", url), _fac("Brian DeSample Jr.", url)])
     assert len(out) == 1
 
 
@@ -366,28 +366,28 @@ def test_final_guard_catches_keyword_sets_that_collide_only_after_hygiene():
 
 def test_carry_forward_preserves_enrichment_over_broad_rescrape():
     existing = {
-        "pi_name": "Gordon Baym", "department": "Department of Physics",
+        "pi_name": "Gordon Exampleton", "department": "Department of Physics",
         "keywords": ["cold atom physics", "pulsars and gravitational waves"],
-        "title": "Research with Prof. Gordon Baym — Physics (cold atom physics)",
+        "title": "Research with Prof. Gordon Exampleton — Physics (cold atom physics)",
         "description_raw": "Research areas: cold atom physics, pulsars.",
         "description_clean": "Research areas: cold atom physics, pulsars.",
     }
     incoming = {
-        "pi_name": "Gordon Baym", "department": "Department of Physics",
+        "pi_name": "Gordon Exampleton", "department": "Department of Physics",
         "keywords": ["physics"],  # a directory re-scrape with only the dept label
-        "title": "Research with Prof. Gordon Baym — Physics",
+        "title": "Research with Prof. Gordon Exampleton — Physics",
         "description_raw": "Contact the professor to inquire about research.",
         "description_clean": "Contact the professor to inquire about research.",
-        "contact_email": "baym@illinois.edu",  # a fresh factual field
+        "contact_email": "gexampleton@illinois.edu",  # a fresh factual field
     }
     _carry_forward_enrichment(existing, incoming)
     # Research facts survive, but legacy opening-shaped display prose must not
     # be carried back over the fresh availability-neutral projection.
     assert incoming["keywords"] == existing["keywords"]
-    assert incoming["title"] == "Research with Prof. Gordon Baym — Physics"
+    assert incoming["title"] == "Research with Prof. Gordon Exampleton — Physics"
     assert incoming["description_clean"] == "Contact the professor to inquire about research."
     # ...while the fresh factual field is untouched (still updates on merge)
-    assert incoming["contact_email"] == "baym@illinois.edu"
+    assert incoming["contact_email"] == "gexampleton@illinois.edu"
 
 
 def test_carry_forward_lets_richer_rescrape_win():
@@ -686,7 +686,7 @@ def test_carry_forward_keeps_research_areas_raw():
     that the professor removed anything.
     """
     existing = {
-        "pi_name": "Drew Milsom", "department": "PHYS",
+        "pi_name": "Drew Samplewood", "department": "PHYS",
         "keywords": ["computational astrophysics"],
         "metadata": {
             "research_areas_raw": (
@@ -697,7 +697,7 @@ def test_carry_forward_keeps_research_areas_raw():
         },
     }
     incoming = {
-        "pi_name": "Drew Milsom", "department": "PHYS",
+        "pi_name": "Drew Samplewood", "department": "PHYS",
         "keywords": ["computational astrophysics"],
         "metadata": {"last_verified": "2026-08-20T06:31:54"},
     }
@@ -1017,7 +1017,7 @@ def _fac_raw(pi_name, department, raw_text, keywords):
 
 def test_derive_enriches_broad_only_with_unique_phrases():
     rows = [_fac_raw(
-        "Minje Kim", "Siebel School of Computing and Data Science",
+        "Avery Mockwell", "Siebel School of Computing and Data Science",
         "AI for Audio, Source Separation, Model Compression", ["computer science"],
     )]
     assert _derive_keywords_from_raw(rows) == 1
@@ -1059,17 +1059,17 @@ def test_derive_rejects_colleague_names_titles_org_names_and_bare_adjectives():
     # a co-author's surname, the department's own name, the person's title,
     # a dangling adjective. None of those is a research area.
     rows = [
-        _fac_raw("Susan Tolman", "Department of Mathematics",
+        _fac_raw("Susan Placeholt", "Department of Mathematics",
                  "Symplectic Geometry, Kessler, Department of Mathematics, "
                  "Assistant Research Scientist, Sustainable, Temporal, "
                  "particularly curiosity, University of Wisconsin-Madison, "
-                 "Panel Lead, RM Espinosa-Marzal, X Zhang, Mechanical Engineering, "
+                 "Panel Lead, RM Espinosa-Marzal, X Samplewood, Mechanical Engineering, "
                  "Mechanical Science and Engineering, Cultures & Linguistics Building, "
                  "Anisotropic, Purdue Univeristy",
                  ["international mathematics research notices"]),
         _fac_raw("Ann Kessler", "Department of Mathematics", "Number Theory", ["number theory"]),
         _fac_raw("Rosa Espinosa Marzal", "Department of Mathematics", "Rheology", ["rheology"]),
-        _fac_raw("Wei Zhang", "Department of Mathematics", "Rheology", ["rheology"]),
+        _fac_raw("Wei Samplewood", "Department of Mathematics", "Rheology", ["rheology"]),
         _fac_raw("Mech Prof", "Mechanical Science & Engineering", "Tribology", ["tribology"]),
     ]
     _derive_keywords_from_raw(rows)
@@ -1099,11 +1099,11 @@ def test_derive_never_drops_a_keyword_the_row_had_to_make_room():
 
 def test_derive_drops_self_name_token():
     rows = [_fac_raw(
-        "Kellie Halloran", "Mechanical Science & Engineering",
-        "Halloran, Biomechanics", ["mechanical engineering"],
+        "Kellie Mockridge", "Mechanical Science & Engineering",
+        "Mockridge, Biomechanics", ["mechanical engineering"],
     )]
     _derive_keywords_from_raw(rows)
-    assert "halloran" not in rows[0]["keywords"]
+    assert "mockridge" not in rows[0]["keywords"]
     assert rows[0]["keywords"] == ["biomechanics"]
 
 
@@ -1214,7 +1214,7 @@ def test_is_junk_keyword_catches_contact_block_residue():
     # (email, office phone, office room/building) as "research keywords" — 92
     # records, 67% of the dept (found 2026-06-26 audit). None are research areas.
     for k in [
-        "adshead@illinois.edu", "bdemarco@illinois.edu", "geg@illinois.edu",
+        "asample@illinois.edu", "bdesample@illinois.edu", "gee@illinois.edu",
         "(217) 333-4363", "(217) 244-0646", "(217) 318-1881",
         "237b loomis laboratory", "229 loomis laboratory", "290e loomis laboratory",
         "237 d loomis laboratory", "237 medical sciences building",
@@ -1241,11 +1241,11 @@ def test_strip_furniture_keywords_drops_contact_residue_and_backfills_broad():
     opps = [
         {"source": "uiuc_faculty", "source_type": "faculty_research",
          "department": "Department of Physics",
-         "keywords": ["condensed matter physics", "ceperley@illinois.edu",
+         "keywords": ["condensed matter physics", "exampleton@illinois.edu",
                       "(217) 244-0646", "229 loomis laboratory"]},
         {"source": "uiuc_faculty", "source_type": "faculty_research",
          "department": "Department of Physics",
-         "keywords": ["327 loomis laboratory", "covey@illinois.edu"]},
+         "keywords": ["327 loomis laboratory", "samplewood@illinois.edu"]},
     ]
     changed = _strip_furniture_keywords(opps)
     assert changed == 2
@@ -1364,8 +1364,8 @@ def _fac_email(pi_name, department, email, url, source="uiuc_faculty"):
 
 def test_email_dedup_collapses_joint_appointment():
     rows = [
-        _fac_email("David Forsyth", "Computer Science", "daf@illinois.edu", "https://cs.illinois.edu/daf"),
-        _fac_email("David Forsyth", "Bioengineering", "daf@illinois.edu", "https://bioe.illinois.edu/daf"),
+        _fac_email("Avery Exampleton", "Computer Science", "aex@illinois.edu", "https://cs.illinois.edu/aex"),
+        _fac_email("Avery Exampleton", "Bioengineering", "aex@illinois.edu", "https://bioe.illinois.edu/aex"),
     ]
     out = _dedup_faculty_by_email(rows)
     assert len(out) == 1
@@ -1375,11 +1375,11 @@ def test_email_dedup_keeps_keyword_richer_over_broad_crosslisting():
     """A cross-appointed professor's home record (real keywords) must survive a
     cross-listing that carries only the broad field, even when the broad record
     has the longer name — keyword richness beats name length."""
-    broad = _fac_email("Brent W Roberts", "Carle Illinois College of Medicine",
-                       "bwrobrts@illinois.edu", "https://medicine.illinois.edu/p")
+    broad = _fac_email("Brent W Samplewood", "Carle Illinois College of Medicine",
+                       "bwsmplwd@illinois.edu", "https://medicine.illinois.edu/p")
     broad["keywords"] = ["biomedical sciences"]
-    rich = _fac_email("Brent Roberts", "Department of Psychology",
-                      "bwrobrts@illinois.edu", "https://psychology.illinois.edu/p")
+    rich = _fac_email("Brent Samplewood", "Department of Psychology",
+                      "bwsmplwd@illinois.edu", "https://psychology.illinois.edu/p")
     rich["keywords"] = ["personality development", "narcissism", "conscientiousness"]
     out = _dedup_faculty_by_email([broad, rich])
     assert len(out) == 1
@@ -1389,8 +1389,8 @@ def test_email_dedup_keeps_keyword_richer_over_broad_crosslisting():
 
 def test_email_dedup_merges_name_variants_of_same_person():
     rows = [
-        _fac_email("Pamela Martinez", "Statistics", "pamelapm@illinois.edu", "https://stat.illinois.edu/p"),
-        _fac_email("Pamela P. Martinez", "Microbiology", "pamelapm@illinois.edu", "https://mcb.illinois.edu/p"),
+        _fac_email("Pamela Exampleton", "Statistics", "pamelape@illinois.edu", "https://stat.illinois.edu/p"),
+        _fac_email("Pamela P. Exampleton", "Microbiology", "pamelape@illinois.edu", "https://mcb.illinois.edu/p"),
     ]
     assert len(_dedup_faculty_by_email(rows)) == 1
 
@@ -1399,9 +1399,9 @@ def test_email_dedup_keeps_distinct_people_sharing_admin_email():
     # A shared department/admin email must NOT merge different professors who
     # happen to share a surname (the nslack@illinois.edu over-merge guard).
     rows = [
-        _fac_email("Deming Chen", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/dchen"),
-        _fac_email("Xu Chen", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/xuchen"),
-        _fac_email("Yun-Sheng Chen", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/yschen"),
+        _fac_email("Avery Placeholt", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/aplaceholt"),
+        _fac_email("Blair Placeholt", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/bplaceholt"),
+        _fac_email("Casey-Lee Placeholt", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/clplaceholt"),
     ]
     assert len(_dedup_faculty_by_email(rows)) == 3
 
@@ -1447,11 +1447,11 @@ def test_joint_appointment_personal_email_is_not_nulled():
     # Same professor, two department rows, one shared *personal* email = 1 distinct
     # name → below threshold → kept (must not be mistaken for an admin inbox).
     rows = [
-        _fac_email("David Forsyth", "Computer Science", "daf@illinois.edu", "u/cs"),
-        _fac_email("David Forsyth", "Bioengineering", "daf@illinois.edu", "u/bioe"),
+        _fac_email("Avery Exampleton", "Computer Science", "aex@illinois.edu", "u/cs"),
+        _fac_email("Avery Exampleton", "Bioengineering", "aex@illinois.edu", "u/bioe"),
     ]
     assert _null_shared_admin_emails(rows) == 0
-    assert all(r["contact_email"] == "daf@illinois.edu" for r in rows)
+    assert all(r["contact_email"] == "aex@illinois.edu" for r in rows)
 
 
 def _one_person_row(rid, dept, name, keywords, published=True):
@@ -1491,12 +1491,12 @@ def test_three_live_professors_on_one_inbox_lose_it_and_an_inactive_row_keeps_it
 
 def test_rebuild_title_drops_navmenu_for_broad_only_prof():
     rows = [{
-        "source": "uiuc_faculty", "pi_name": "Sasa Misailovic",
+        "source": "uiuc_faculty", "pi_name": "Rowan Mockwell",
         "department": "Siebel School of Computing and Data Science",
-        "title": "Research with Prof. Sasa Misailovic — CS (bioinformatics, "
+        "title": "Research with Prof. Rowan Mockwell — CS (bioinformatics, "
                  "artificial intelligence, parallel computing)",
         "keywords": ["computer science"],
-        "description_raw": "Research opportunity with Professor Sasa Misailovic. "
+        "description_raw": "Research opportunity with Professor Rowan Mockwell. "
                            "Research areas: Architecture, Compilers and Parallel "
                            "Computing, Bioinformatics. Contact the professor.",
         "description_clean": "stale",
@@ -1504,7 +1504,7 @@ def test_rebuild_title_drops_navmenu_for_broad_only_prof():
         "eligibility": {"eligibility_text_raw": "stale"},
     }]
     assert _rebuild_faculty_title_and_desc(rows) == 1
-    assert rows[0]["title"] == "Sasa Misailovic — CS"
+    assert rows[0]["title"] == "Rowan Mockwell — CS"
     assert "bioinformatics" not in rows[0]["title"]
     assert "Research areas:" not in rows[0]["description_clean"]
     assert "Architecture" not in rows[0]["description_clean"]
@@ -1512,15 +1512,15 @@ def test_rebuild_title_drops_navmenu_for_broad_only_prof():
 
 def test_rebuild_title_keeps_genuine_specific_areas():
     rows = [{
-        "source": "uiuc_faculty", "pi_name": "Alexander Schwing",
+        "source": "uiuc_faculty", "pi_name": "Jordan Exampleton",
         "department": "Electrical & Computer Engineering",
-        "title": "Research with Prof. Alexander Schwing — ECE (stale)",
+        "title": "Research with Prof. Jordan Exampleton — ECE (stale)",
         "keywords": ["machine learning", "computer vision", "robotics"],
         "metadata": {"faculty_title": "Professor"},
     }]
     _rebuild_faculty_title_and_desc(rows)
     assert rows[0]["title"] == (
-        "Alexander Schwing — ECE (machine learning, computer vision, robotics)"
+        "Jordan Exampleton — ECE (machine learning, computer vision, robotics)"
     )
     assert "Research areas: machine learning, computer vision, robotics." in \
         rows[0]["description_raw"]
@@ -1548,13 +1548,13 @@ def test_rebuild_does_not_say_inferred_keywords_as_the_profiles_areas(method):
 
 def test_strip_pi_name_credential_suffix():
     rows = [
-        {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Helene R Dickel Phd"},
+        {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Robin R Samplewood Phd"},
         {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "John Smith MD"},
         {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Jane Doe"},          # 2 tokens — untouched
         {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Ada Min Lovelace"},  # real 3-token name
     ]
     assert _strip_pi_name_credentials(rows) == 2
-    assert rows[0]["pi_name"] == "Helene R Dickel"
+    assert rows[0]["pi_name"] == "Robin R Samplewood"
     assert rows[1]["pi_name"] == "John Smith"
     assert rows[2]["pi_name"] == "Jane Doe"
     assert rows[3]["pi_name"] == "Ada Min Lovelace"
@@ -1707,19 +1707,19 @@ def test_drop_nonperson_faculty_removes_section_headings():
         {"source": "uiuc_faculty", "pi_name": "TESL History", "keywords": []},
         {"source": "uiuc_faculty", "pi_name": "ZJUI", "keywords": []},
         {"source": "uiuc_faculty", "pi_name": "Undergraduate Student Ambassadors", "keywords": []},
-        {"source": "uiuc_faculty", "pi_name": "Kathryn Clancy", "keywords": ["biological anthropology"]},
+        {"source": "uiuc_faculty", "pi_name": "Devon Mockwell", "keywords": ["biological anthropology"]},
         {"source": "simplify_internships", "pi_name": "Awards"},  # non-faculty passes through
     ]
     kept, dropped = _drop_nonperson_faculty(rows)
     assert dropped == 4
     kept_names = [r.get("pi_name") for r in kept]
-    assert kept_names == ["Kathryn Clancy", "Awards"]  # real prof + non-faculty row
+    assert kept_names == ["Devon Mockwell", "Awards"]  # real prof + non-faculty row
 
 
 def test_strip_pronoun_suffix_from_pi_name():
-    rows = [{"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Kathryn Clancy she/her"}]
+    rows = [{"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Devon Mockwell she/her"}]
     assert _strip_pi_name_credentials(rows) == 1
-    assert rows[0]["pi_name"] == "Kathryn Clancy"
+    assert rows[0]["pi_name"] == "Devon Mockwell"
 
 
 def test_is_junk_keyword_catches_furniture_truncation_fragments():
@@ -1950,7 +1950,7 @@ class TestATombstoneMeansAReviewActuallyHappened:
 
         1,093 committed records are in this shape. The 2026-09-03 refresh
         re-harvested an address for one of them, faculty-brown-colt-588aa983,
-        and restamped the row's tombstone onto susan_bernstein@brown.edu. That
+        and restamped the row's tombstone onto a personal address. That
         row held ``contact_email: None`` for its whole life (first seen
         2026-07-12), so nothing was ever rejected: its ``identity_bound: False``
         is residue from the 2026-08-17 mass-tombstoning, and the merge was
@@ -2019,7 +2019,7 @@ _ILLINOIS_PROFILE = """
   </div>
   <div><div class="role cat15 primary">
     <div class="title"><strong>Professor</strong></div>
-    <div class="email"><a href="mailto:jhasegaw@illinois.edu">jhasegaw@illinois.edu</a></div>
+    <div class="email"><a href="mailto:mexample@illinois.edu">mexample@illinois.edu</a></div>
     <div class="office">2011 Beckman Institute</div>
   </div></div>
   <footer><a href="mailto:grainger-marcom@illinois.edu">Webmaster</a></footer>
@@ -2034,13 +2034,13 @@ def _enrich_with_page(monkeypatch, html, person=None):
     monkeypatch.setattr(f.time, "sleep", lambda *_: None)
     monkeypatch.setattr(f, "_fetch_soup", lambda url: BeautifulSoup(html, "html.parser"))
     return f._enrich_faculty_from_profile(
-        dict(person or {"pi_name": "Mark Hasegawa-Johnson",
-                        "url": "https://ece.illinois.edu/about/directory/faculty/jhasegaw"})
+        dict(person or {"pi_name": "Mark Exampleton-Sample",
+                        "url": "https://ece.illinois.edu/about/directory/faculty/mexample"})
     )
 
 
 def test_the_professors_own_role_card_wins_over_the_staff_sidebar(monkeypatch):
-    assert _enrich_with_page(monkeypatch, _ILLINOIS_PROFILE)["email"] == "jhasegaw@illinois.edu"
+    assert _enrich_with_page(monkeypatch, _ILLINOIS_PROFILE)["email"] == "mexample@illinois.edu"
 
 
 def test_a_staff_address_is_never_bound_to_a_professor(monkeypatch):
@@ -2058,8 +2058,8 @@ def test_pages_without_a_role_card_still_use_the_first_mailto(monkeypatch):
     # before this change: where a role card DOES exist (Physics, MechSE,
     # Bioengineering) it agrees with what the corpus already holds, so this
     # only ever changes the three departments the sidebar was shadowing.
-    page = '<html><body><a href="mailto:sahlgren@illinois.edu">x</a></body></html>'
-    assert _enrich_with_page(monkeypatch, page)["email"] == "sahlgren@illinois.edu"
+    page = '<html><body><a href="mailto:psample@illinois.edu">x</a></body></html>'
+    assert _enrich_with_page(monkeypatch, page)["email"] == "psample@illinois.edu"
 
 
 def test_a_role_card_without_an_email_falls_through(monkeypatch):
@@ -2089,29 +2089,29 @@ def _seen(pi_name, url, last_seen, keywords=(), metadata_extra=None):
     }
 
 
-_PROFILE = "https://physics.illinois.edu/people/directory/profile/jcovey"
+_PROFILE = "https://physics.illinois.edu/people/directory/profile/jsamplewood"
 
 
 def test_dedup_moves_the_newest_sighting_onto_the_kept_row():
-    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+    stored = _seen("Jordan P. Samplewood", _PROFILE, "2026-07-27T07:34:46",
                    keywords=["cold atom physics", "quantum computing"])
-    fresh = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11")
+    fresh = _seen("Jordan Samplewood", _PROFILE, "2026-08-24T06:20:11")
     out = _dedup_faculty_records([stored, fresh])
-    assert [o["pi_name"] for o in out] == ["Jacob P. Covey"]
+    assert [o["pi_name"] for o in out] == ["Jordan P. Samplewood"]
     assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
 
 
 def test_dedup_never_backdates_the_kept_row():
-    stored = _seen("Jacob P. Covey", _PROFILE, "2026-08-24T06:20:11",
+    stored = _seen("Jordan P. Samplewood", _PROFILE, "2026-08-24T06:20:11",
                    keywords=["cold atom physics", "quantum computing"])
-    stale = _seen("Jacob Covey", _PROFILE, "2026-07-27T07:34:46")
+    stale = _seen("Jordan Samplewood", _PROFILE, "2026-07-27T07:34:46")
     out = _dedup_faculty_records([stored, stale])
     assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
 
 
 def test_dedup_lifts_a_retirement_the_new_sighting_disproves():
     retired = _seen(
-        "Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+        "Jordan P. Samplewood", _PROFILE, "2026-07-27T07:34:46",
         keywords=["cold atom physics", "quantum computing"],
         metadata_extra={
             "is_active": False,
@@ -2119,7 +2119,7 @@ def test_dedup_lifts_a_retirement_the_new_sighting_disproves():
             "deactivation_reason": "absent_from_directory_rescrape",
         },
     )
-    fresh = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11")
+    fresh = _seen("Jordan Samplewood", _PROFILE, "2026-08-24T06:20:11")
     out = _dedup_faculty_records([retired, fresh])
     meta = out[0]["metadata"]
     assert meta["is_active"] is True
@@ -2176,7 +2176,7 @@ def test_lifting_an_emeritus_retirement_drops_a_duplicate_pointer_too():
 
 def test_dedup_keeps_a_retirement_the_dropped_row_agrees_with():
     retired = _seen(
-        "Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+        "Jordan P. Samplewood", _PROFILE, "2026-07-27T07:34:46",
         keywords=["cold atom physics", "quantum computing"],
         metadata_extra={
             "is_active": False,
@@ -2184,7 +2184,7 @@ def test_dedup_keeps_a_retirement_the_dropped_row_agrees_with():
             "deactivation_reason": "absent_from_directory_rescrape",
         },
     )
-    also_gone = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11",
+    also_gone = _seen("Jordan Samplewood", _PROFILE, "2026-08-24T06:20:11",
                       metadata_extra={"is_active": False})
     out = _dedup_faculty_records([retired, also_gone])
     assert out[0]["metadata"]["is_active"] is False
@@ -2192,21 +2192,21 @@ def test_dedup_keeps_a_retirement_the_dropped_row_agrees_with():
 
 
 def test_dedup_tolerates_a_row_with_no_usable_sighting():
-    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+    stored = _seen("Jordan P. Samplewood", _PROFILE, "2026-07-27T07:34:46",
                    keywords=["cold atom physics", "quantum computing"])
-    broken = _seen("Jacob Covey", _PROFILE, "not-a-timestamp")
+    broken = _seen("Jordan Samplewood", _PROFILE, "not-a-timestamp")
     out = _dedup_faculty_records([stored, broken])
     assert out[0]["metadata"]["last_seen_at"] == "2026-07-27T07:34:46"
 
 
 def test_email_dedup_moves_the_newest_sighting_too():
-    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+    stored = _seen("Jordan P. Samplewood", _PROFILE, "2026-07-27T07:34:46",
                    keywords=["cold atom physics", "quantum computing"])
-    fresh = _seen("Jacob Covey", "https://mrl.illinois.edu/people/covey",
+    fresh = _seen("Jordan Samplewood", "https://mrl.illinois.edu/people/samplewood",
                   "2026-08-24T06:20:11")
-    stored["contact_email"] = fresh["contact_email"] = "jcovey@illinois.edu"
+    stored["contact_email"] = fresh["contact_email"] = "jsamplewood@illinois.edu"
     out = _dedup_faculty_by_email([stored, fresh])
-    assert [o["pi_name"] for o in out] == ["Jacob P. Covey"]
+    assert [o["pi_name"] for o in out] == ["Jordan P. Samplewood"]
     assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
 
 
@@ -2216,9 +2216,9 @@ def test_a_professor_seen_this_run_is_never_proposed_for_retirement():
 
     from src.normalizers.deactivate_stale_faculty import deactivate_stale_faculty
 
-    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+    stored = _seen("Jordan P. Samplewood", _PROFILE, "2026-07-27T07:34:46",
                    keywords=["cold atom physics", "quantum computing"])
-    fresh = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11")
+    fresh = _seen("Jordan Samplewood", _PROFILE, "2026-08-24T06:20:11")
     peers = [
         _seen(f"Peer {i} Physicist",
               f"https://physics.illinois.edu/people/directory/profile/p{i}",
@@ -2237,24 +2237,27 @@ def test_a_professor_seen_this_run_is_never_proposed_for_retirement():
 
 
 def test_research_areas_stop_at_page_chrome_and_never_cut_mid_token():
-    # Verbatim from the corpus, 2026-09-02: what the marker path stored for
-    # Hanghang Tong and Ram Alagappan.
+    # What the marker path stored for two CS professors on 2026-09-02: a
+    # research sentence running into the page's next sections and cut at 300
+    # characters inside a course code, and an area list running into a
+    # teaching honor (synthetic text of those shapes).
     from src.collectors.uiuc_faculty import _trim_research_areas
 
-    tong = ("Large scale data mining and machine learning, especially for graph and multimedia "
-            "data with applications to social networks analysis, healthcare, cyber-security and "
-            "e-commerce., Research Areas, Artificial Intelligence, Data and Information Systems, "
-            "Recent Courses Taught, CS 412 CSP (CS 412 P3, CS 41")
-    out = _trim_research_areas(tong)
-    assert "Recent Courses Taught" not in out and "CS 41" not in out
+    sentence_then_courses = (
+        "Robust optimization and statistical inference, especially for sensor and satellite imagery "
+        "with applications to water resources management, agriculture, public health and energy markets., "
+        "Research Areas, Scientific Computing, Theory and Algorithms, "
+        "Recent Courses Taught, CS 457 ROB (CS 457 Q2, CS 45")
+    out = _trim_research_areas(sentence_then_courses)
+    assert "Recent Courses Taught" not in out and "CS 45" not in out
     assert "Research Areas" not in out.split(", ")
-    assert out.endswith(("e-commerce.", "Data and Information Systems"))
-    assert "Artificial Intelligence" in out
+    assert out.endswith(("energy markets.", "Theory and Algorithms"))
+    assert "Scientific Computing" in out
 
-    alagappan = ("Storage systems, Distributed systems, Operating systems, Research Areas, Systems and "
-                 "Networking, Teaching Honors, List of Teachers Ranked as Excellent, CS598: Storage Systems")
-    assert _trim_research_areas(alagappan) == \
-        "Storage systems, Distributed systems, Operating systems, Systems and Networking"
+    areas_then_honors = ("Sensor networks, Embedded systems, Signal processing, Research Areas, Robotics and "
+                         "Controls, Teaching Honors, List of Teachers Ranked as Excellent, CS521: Sensor Networks")
+    assert _trim_research_areas(areas_then_honors) == \
+        "Sensor networks, Embedded systems, Signal processing, Robotics and Controls"
 
     # the cap lands on an item boundary, not inside one
     long = ", ".join(f"topic number {i:02d}" for i in range(40))
@@ -2287,19 +2290,19 @@ def test_a_name_is_cleaned_for_every_school_not_just_uiuc():
     """The rule was gated on source == 'uiuc_faculty' while the greeting it
     protects is school-agnostic, so 509 of the 513 professors carrying a
     credential — every one outside UIUC — were addressed "Dear Professor
-    Megan Kobel, PhD, AuD,". _is_faculty_record is the gate every other
+    Morgan Exampleby, PhD, AuD,". _is_faculty_record is the gate every other
     school-agnostic pass in this file already uses."""
     rows = [
         {"source": "pitt_faculty", "source_type": "faculty_research",
-         "pi_name": "Megan Kobel, PhD, AuD"},
+         "pi_name": "Morgan Exampleby, PhD, AuD"},
         {"source": "uiuc_faculty", "source_type": "faculty_research",
-         "pi_name": "Adina Cox PhD"},
+         "pi_name": "Adina Samplewood PhD"},
         {"source": "simplify_internships", "source_type": "internship",
          "pi_name": "Acme Corp, Inc"},
     ]
     assert _strip_pi_name_credentials(rows) == 2
-    assert rows[0]["pi_name"] == "Megan Kobel"
-    assert rows[1]["pi_name"] == "Adina Cox"
+    assert rows[0]["pi_name"] == "Morgan Exampleby"
+    assert rows[1]["pi_name"] == "Adina Samplewood"
     assert rows[2]["pi_name"] == "Acme Corp, Inc"
 
 
@@ -2307,19 +2310,19 @@ def test_cleaning_a_name_never_eats_a_surname():
     """Ma, Ng and Ho are surnames AND degree abbreviations. Stripping them
     unconditionally cost 123 professors their surname in an early draft of
     this rule, so an ambiguous token needs a comma to introduce it."""
-    for name in ("Xiaolong Ma", "Chao Ma", "Shewry, Teresa", "Mark S. Massa, S.J.",
-                 "Thomas H. Welsh, Jr", "Jay Stauffer, Jr."):
+    for name in ("Example Ma", "Sample Ma", "Samplewood, Teresa", "Mark S. Massa, S.J.",
+                 "Thomas H. Exampleton, Jr", "Jay Placeholt, Jr."):
         assert clean_pi_name(name) == name, name
 
 
 def test_cleaning_a_name_strips_what_a_letter_should_not_carry():
-    assert clean_pi_name("Elise N. Erickson PhD CNM FACNM") == "Elise N. Erickson"
-    assert clean_pi_name("Erica Hansen, AuD, CCC-A, F-AAA") == "Erica Hansen"
-    assert clean_pi_name("Michelle O'Malley (she/her/hers)") == "Michelle O'Malley"
-    assert clean_pi_name("Kiera James PhD »") == "Kiera James"
-    assert clean_pi_name("Ashby  Fox") == "Ashby Fox"
+    assert clean_pi_name("Elise N. Samplewood PhD CNM FACNM") == "Elise N. Samplewood"
+    assert clean_pi_name("Erica Exampleton, AuD, CCC-A, F-AAA") == "Erica Exampleton"
+    assert clean_pi_name("Michelle O'Example (she/her/hers)") == "Michelle O'Example"
+    assert clean_pi_name("Kiera Placeholt PhD »") == "Kiera Placeholt"
+    assert clean_pi_name("Ashby  Mockwell") == "Ashby Mockwell"
     # A comma may introduce an ambiguous one; a bare surname may not.
-    assert clean_pi_name("Megan Kobel, MS") == "Megan Kobel"
+    assert clean_pi_name("Morgan Exampleby, MS") == "Morgan Exampleby"
 
 
 def test_dedup_decredentialed_faculty_collapses_one_person_keeping_the_email():
@@ -2327,13 +2330,13 @@ def test_dedup_decredentialed_faculty_collapses_one_person_keeping_the_email():
     opps = [
         {
             "id": "a", "school": "ucla", "source_type": "faculty_research",
-            "source_url": "https://snaoz.astro.ucla.edu/index.html",
-            "pi_name": "Smadar Naoz",
+            "source_url": "https://rexampleton.astro.ucla.edu/index.html",
+            "pi_name": "Rowan Exampleton",
         },
         {
             "id": "b", "school": "ucla", "source_type": "faculty_research",
-            "source_url": "https://snaoz.astro.ucla.edu/index.html",
-            "pi_name": "Smadar Naoz", "contact_email": "snaoz@astro.ucla.edu",
+            "source_url": "https://rexampleton.astro.ucla.edu/index.html",
+            "pi_name": "Rowan Exampleton", "contact_email": "rexampleton@astro.ucla.edu",
         },
     ]
     kept, dropped = _dedup_decredentialed_faculty(opps)
@@ -2347,11 +2350,11 @@ def test_dedup_decredentialed_faculty_keeps_namesakes_on_a_listing_page():
     opps = [
         {
             "id": "a", "school": "asu", "source_type": "faculty_research",
-            "source_url": "https://sms.asu.edu/People/Faculty", "pi_name": "Wei Wang",
+            "source_url": "https://sms.asu.edu/People/Faculty", "pi_name": "Avery Mockwell",
         },
         {
             "id": "b", "school": "asu", "source_type": "faculty_research",
-            "source_url": "https://sms.asu.edu/People/Faculty", "pi_name": "Xu Wang",
+            "source_url": "https://sms.asu.edu/People/Faculty", "pi_name": "Blair Mockwell",
         },
     ]
     kept, dropped = _dedup_decredentialed_faculty(opps)
@@ -2440,7 +2443,7 @@ def test_every_stored_professor_the_moved_pages_list_keeps_their_id(moved_units)
 
 def test_the_moved_units_read_every_person_their_pages_list(moved_units):
     atmos, geology, ischool = (moved_units[k] for k in ("atmos", "geology", "ischool"))
-    # Lei Zhao is listed under Affiliate and again under Adjunct Faculty.
+    # One person is listed under Affiliate and again under Adjunct Faculty.
     assert (len(atmos), len({r["id"] for r in atmos})) == (39, 38)
     assert len(geology) == 21
     assert len(ischool) == 78

@@ -1016,8 +1016,8 @@ class TestKeywordProvenanceReachesTheClient:
     @staticmethod
     def _record(inferred: bool) -> dict:
         record = {
-            "id": "faculty-utk-geog-x", "title": "Bing Zhou",
-            "source_type": "faculty_research", "pi_name": "Bing Zhou",
+            "id": "faculty-utk-geog-x", "title": "Avery Samplewood",
+            "source_type": "faculty_research", "pi_name": "Avery Samplewood",
             "keywords": ["hydrocarbon exploration and reservoir analysis"],
             "metadata": {},
         }

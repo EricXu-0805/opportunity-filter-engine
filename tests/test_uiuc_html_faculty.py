@@ -16,15 +16,15 @@ def _soup(html: str) -> BeautifulSoup:
 
 
 CARLE_LISTING = """
-<div class="item person cat3 cicom-btsci" data-netid="kahmad">
-  <div class="details"><div class="name">Kashif  Ahmad</div>
+<div class="item person cat3 cicom-btsci" data-netid="aexampleton">
+  <div class="details"><div class="name">Avery  Exampleton</div>
   <div class="title">Adjunct Teaching Professor</div>
-  <div class="contact"><span class="email"><a href="mailto:kahmad@illinois.edu">email</a></span></div>
+  <div class="contact"><span class="email"><a href="mailto:aexampleton@illinois.edu">email</a></span></div>
   </div></div>
-<div class="item person cat3 cicom-btsci" data-netid="jamos">
-  <div class="details"><div class="name">Jenny Amos</div>
+<div class="item person cat3 cicom-btsci" data-netid="bsamplewood">
+  <div class="details"><div class="name">Blair Samplewood</div>
   <div class="title">Teaching Associate Professor</div>
-  <div class="contact"><span class="email"><a href="mailto:jamos@illinois.edu">email</a></span></div>
+  <div class="contact"><span class="email"><a href="mailto:bsamplewood@illinois.edu">email</a></span></div>
   </div></div>
 """
 
@@ -57,13 +57,13 @@ CARLE_PROFILE_NO_RI = """<html><body><h2>Education</h2><p>PhD</p></body></html>"
 
 LER_LISTING = """
 <ul class="wp-block-list">
-<li><a href="/directory/leo-alexander">Alexander, Leo</a></li>
-<li><a href="/directory/robert-bruno/">Bruno, Robert</a></li>
+<li><a href="/directory/casey-placeholt">Placeholt, Casey</a></li>
+<li><a href="/directory/devon-mockwell/">Mockwell, Devon</a></li>
 </ul>
 """
 
 LER_PROFILE = """<html><body>
-<a href="mailto:leoa2@illinois.edu">Email</a>
+<a href="mailto:caseyp2@illinois.edu">Email</a>
 <h3>Research Interests</h3>
 <p>Employee recruitment and selection; Adverse impact; Psychometrics</p>
 </body></html>"""
@@ -129,13 +129,13 @@ def test_carle_parses_listing_and_enriches_from_profile(monkeypatch):
     def fake(url):
         if url == h.CARLE_URL:
             return _soup(CARLE_LISTING)
-        return _soup(CARLE_PROFILE_RI) if "kahmad" in url else _soup(CARLE_PROFILE_NO_RI)
+        return _soup(CARLE_PROFILE_RI) if "aexampleton" in url else _soup(CARLE_PROFILE_NO_RI)
     monkeypatch.setattr(h, "_fetch_soup", fake)
     monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     recs = h.fetch_carle()
     assert len(recs) == 2
-    assert recs[0]["pi_name"] == "Kashif Ahmad"
-    assert recs[0]["contact_email"] == "kahmad@illinois.edu"
+    assert recs[0]["pi_name"] == "Avery Exampleton"
+    assert recs[0]["contact_email"] == "aexampleton@illinois.edu"
     assert recs[0]["source"] == "uiuc_faculty"
     assert recs[0]["department"] == "Carle Illinois College of Medicine"
     assert "Soft Matter Tribology" in recs[0]["keywords"]   # enriched from profile
@@ -166,8 +166,8 @@ def test_ler_reverses_name_and_extracts_keywords(monkeypatch):
     monkeypatch.setattr(h, "_fetch_soup", fake)
     monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     recs = h.fetch_ler()
-    assert recs[0]["pi_name"] == "Leo Alexander"  # "Alexander, Leo" reversed
-    assert recs[0]["contact_email"] == "leoa2@illinois.edu"
+    assert recs[0]["pi_name"] == "Casey Placeholt"  # "Placeholt, Casey" reversed
+    assert recs[0]["contact_email"] == "caseyp2@illinois.edu"
     assert "Employee recruitment and selection" in recs[0]["keywords"]
     assert recs[0]["metadata"]["research_areas_raw"].startswith("Employee recruitment and selection")
 
@@ -195,9 +195,9 @@ def test_ler_relative_links_made_absolute(monkeypatch):
 FAA_PAGE = """
 <article class="person-card"><div class="person-card__info">
   <h2 class="linked-title"><a class="linked-title__link"
-    href="https://music.illinois.edu/people/profiles/andrew-anderson/">Andrew Anderson</a></h2>
-  Andrew Anderson Assistant Professor of Double Bass</div>
-  <a href="mailto:bassist@illinois.edu">email</a></article>
+    href="https://music.illinois.edu/people/profiles/rowan-exampleton/">Rowan Exampleton</a></h2>
+  Rowan Exampleton Assistant Professor of Double Bass</div>
+  <a href="mailto:examplebass@illinois.edu">email</a></article>
 """
 
 
@@ -213,8 +213,8 @@ def test_faa_card_parses_name_title_email_and_paginates(monkeypatch):
     recs = h.fetch_faa()
     music = [r for r in recs if r["department"] == "School of Music"]
     assert len(music) == 1
-    assert music[0]["pi_name"] == "Andrew Anderson"
-    assert music[0]["contact_email"] == "bassist@illinois.edu"
+    assert music[0]["pi_name"] == "Rowan Exampleton"
+    assert music[0]["contact_email"] == "examplebass@illinois.edu"
     assert "Double Bass" in music[0]["metadata"]["faculty_title"]
     # No profile is read: the unit's field is a keyword, never stated research.
     assert (music[0]["keywords"], music[0]["metadata"]["research_areas_raw"]) == (["music"], "")
@@ -256,8 +256,8 @@ def test_vetmed_extracts_img_email_and_reads_each_position_title_not_the_degrees
 
 MEDIA_LISTING = """
 <div class="pt-cv-content-item"><h4 class="pt-cv-title">
-  <a href="https://media.illinois.edu/chambers-jason-p/">Jason P. Chambers</a></h4></div>"""
-MEDIA_PROFILE = '<a href="mailto:jpchambe@illinois.edu">Email</a>'
+  <a href="https://media.illinois.edu/exampleton-jordan-p/">Jordan P. Exampleton</a></h4></div>"""
+MEDIA_PROFILE = '<a href="mailto:jpexampl@illinois.edu">Email</a>'
 
 
 def test_media_enriches_email_from_profile(monkeypatch):
@@ -266,10 +266,10 @@ def test_media_enriches_email_from_profile(monkeypatch):
     monkeypatch.setattr(h, "_fetch_soup", fake)
     monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     recs = h.fetch_media()
-    chambers = [r for r in recs if r["pi_name"] == "Jason P. Chambers"]
-    assert chambers and chambers[0]["contact_email"] == "jpchambe@illinois.edu"
-    assert chambers[0]["department"] == "Department of Advertising"
-    assert chambers[0]["metadata"]["research_areas_raw"] == ""
+    found = [r for r in recs if r["pi_name"] == "Jordan P. Exampleton"]
+    assert found and found[0]["contact_email"] == "jpexampl@illinois.edu"
+    assert found[0]["department"] == "Department of Advertising"
+    assert found[0]["metadata"]["research_areas_raw"] == ""
 
 
 # --- M149b: each collector reads the title its card or the profile it already
