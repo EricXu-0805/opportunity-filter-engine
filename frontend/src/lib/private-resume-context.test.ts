@@ -100,7 +100,8 @@ describe('private résumé source as a draft target', () => {
   });
 
   it.each(['extra', 'criteria', 'authority', 'requirements', 'public_id', 'other_prefix', 'owner', 'revision_bool', 'revision_zero',
-    'purpose', 'source_extra', 'label', 'label_excerpt', 'url', 'empty', 'surrogate', 'nul', 'version'])('refuses a promoted or malformed snapshot (%s)', fault => {
+    'purpose', 'source_extra', 'label', 'label_excerpt', 'url', 'empty', 'surrogate', 'nul', 'version', 'label_full_excerpt', 'label_version',
+    'title_blank', 'organization_long', 'link_user', 'link_password'])('refuses a promoted or malformed snapshot (%s)', fault => {
     const value = context() as unknown as Record<string, unknown>, source = value.private_source as Record<string, unknown>;
     if (fault === 'extra') value.extra = true;
     if (fault === 'criteria') value.criteria = {};
@@ -120,9 +121,30 @@ describe('private résumé source as a draft target', () => {
     if (fault === 'surrogate') value.description = '\ud800';
     if (fault === 'nul') value.description += '\u0000';
     if (fault === 'version') source.version = 2;
+    if (fault === 'label_full_excerpt') source.import_source = { version: 1, description_source: 'page_excerpt', ai_input_scope: 'full_source', llm_enriched: true };
+    if (fault === 'label_version') source.import_source = { version: 2, description_source: 'pasted_text', ai_input_scope: 'source_excerpt', llm_enriched: true };
+    if (fault === 'title_blank') value.title = ' \n ';
+    if (fault === 'organization_long') value.organization = 'o'.repeat(2001);
+    if (fault === 'link_user') value.source_url = 'https://student@example.edu/lab';
+    if (fault === 'link_password') value.source_url = 'https://student:secret@example.edu/lab';
     expect(isPrivateResumeContext(value)).toBe(false);
     const draft = doc(); draft.target_snapshot = value as unknown as TargetResumeContext;
     expect(validateTargetResume(draft)).toEqual({ ok: false, code: ['surrogate', 'nul'].includes(fault) ? 'invalid_unicode' : 'invalid_target' });
+  });
+
+  it('accepts an organization at the 2,000-character storage limit', () => {
+    const value = context(); value.organization = 'o'.repeat(2000);
+    expect(isPrivateResumeContext(value)).toBe(true);
+  });
+
+  it('accepts a source link without credentials', () => {
+    const value = context(); value.source_url = 'https://example.edu/lab?term=fall';
+    expect(isPrivateResumeContext(value)).toBe(true);
+  });
+
+  it.each(['page_text', 'pasted_text'] as const)('accepts a full-source label over a whole text (%s)', description_source => {
+    const value = context(); value.private_source.import_source = { version: 1, description_source, ai_input_scope: 'full_source', llm_enriched: true };
+    expect(isPrivateResumeContext(value)).toBe(true);
   });
 
   it('accepts the largest revision the import storage allows', async () => {
