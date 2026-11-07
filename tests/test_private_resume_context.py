@@ -125,7 +125,8 @@ def test_a_new_revision_changes_the_version_and_signature(storage):
 @pytest.mark.parametrize('fault', [
     'extra', 'criteria', 'authority', 'requirements', 'public_id', 'owner', 'revision_bool', 'revision_hash',
     'revision_zero', 'purpose', 'source_version', 'source_extra', 'labels', 'label_unknown_excerpt', 'url', 'nul',
-    'surrogate', 'source_blank', 'title_long', 'version',
+    'surrogate', 'source_blank', 'title_long', 'version', 'label_full_excerpt', 'label_version', 'title_blank',
+    'organization_long',
 ])
 def test_snapshot_cannot_gain_public_authority_or_change_its_binding(storage, fault):
     value = read().json()['context']
@@ -170,8 +171,39 @@ def test_snapshot_cannot_gain_public_authority_or_change_its_binding(storage, fa
         value['title'] = 'x' * 1001
     if fault == 'version':
         value['context_version'] = 4
+    if fault == 'label_full_excerpt':
+        source['import_source'].update(ai_input_scope='full_source', description_source='page_excerpt')
+    if fault == 'label_version':
+        source['import_source']['version'] = 2
+    if fault == 'title_blank':
+        value['title'] = ' \n '
+    if fault == 'organization_long':
+        value['organization'] = 'o' * 2001
     with pytest.raises((ValueError, TypeError)):
         validate_private_resume_context(value)
+
+
+@pytest.mark.parametrize('revision', [0, 9007199254740992])
+def test_a_rehashed_revision_outside_the_storage_range_is_refused(storage, revision):
+    value = read().json()['context']
+    source = value['private_source']
+    source['revision'] = revision
+    identity = json.dumps({'id': ID, 'owner_id': OWNER, 'revision': revision}, separators=(',', ':'))
+    source['source_version'] = 'pit1:' + hashlib.sha256(identity.encode()).hexdigest()
+    with pytest.raises(ValueError):
+        validate_private_resume_context(value)
+
+
+@pytest.mark.parametrize('description_source,accepted', [
+    ('page_text', True), ('pasted_text', True), ('page_excerpt', False), ('unknown', False)])
+def test_a_full_source_label_needs_a_whole_text(storage, description_source, accepted):
+    value = read().json()['context']
+    value['private_source']['import_source'].update(ai_input_scope='full_source', description_source=description_source)
+    if accepted:
+        assert validate_private_resume_context(value) == value
+    else:
+        with pytest.raises(ValueError):
+            validate_private_resume_context(value)
 
 
 @pytest.mark.parametrize('owner_id', ['not-a-uuid', OWNER.upper()])
