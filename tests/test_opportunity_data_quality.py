@@ -1302,7 +1302,6 @@ def _configured_program(school, key, url=None):
             "metadata": {"collector_school": school, "collector_key": key}}
 
 
-_REVIEWED_KEYS = [("northwestern", "nu_tgs_srop"), ("unl", "unl_summer_research_program"), ("stanford", "biox_usrp")]
 
 
 class TestReviewedProgramAudiencesPassTheGate:
@@ -1311,10 +1310,11 @@ class TestReviewedProgramAudiencesPassTheGate:
     other departure from the source default is still drift."""
 
     def _stamped(self):
-        from src.normalizers.school_audience import apply_school_audience
+        from src.normalizers.school_audience import REVIEWED_PROGRAM_AUDIENCES, apply_school_audience
 
-        rows = [_configured_program(s, k) for s, k in _REVIEWED_KEYS]
-        rows += [_configured_program(s, k, url="https://example.edu/other-program") for s, k in _REVIEWED_KEYS]
+        keys = sorted(REVIEWED_PROGRAM_AUDIENCES)
+        rows = [_configured_program(s, k) for s, k in keys]
+        rows += [_configured_program(s, k, url="https://example.edu/other-program") for s, k in keys]
         apply_school_audience(rows)
         return rows
 
@@ -1322,20 +1322,32 @@ class TestReviewedProgramAudiencesPassTheGate:
         from src.normalizers.school_audience import SOURCE_DEFAULTS
 
         rows = self._stamped()
-        assert [o["audience"] != SOURCE_DEFAULTS[o["source"]][1] for o in rows] == [True] * 3 + [False] * 3
+        half = len(rows) // 2
+        assert [o["audience"] != SOURCE_DEFAULTS[o["source"]][1] for o in rows] == [True] * half + [False] * half
         monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
         TestSchoolAudience().test_per_source_pairs_match_source_defaults()
 
-    @pytest.mark.parametrize("index,changes", [
-        (3, {"audience": "open"}),
-        (2, {"audience": "open"}),
-        (0, {"school": "uiuc"}),
-        (0, {"url": "https://example.edu/other-program"}),
+    @pytest.mark.parametrize("key,changes", [
+        ("other-program", {"audience": "open"}),
+        ("biox_usrp", {"audience": "open"}),
+        ("nu_tgs_srop", {"school": "uiuc"}),
+        ("nu_tgs_srop", {"url": "https://example.edu/other-program"}),
+        ("nu_tgs_srop", {"source_url": "https://example.edu/other-program"}),
+        ("nu_tgs_srop", {"source": "northwestern_labs"}),
+        ("nu_tgs_srop", {"metadata": {"collector_school": "northwestern", "collector_key": "nu_tgs_srop",
+                                      "discovered": True}}),
     ], ids=["unreviewed-row-of-a-reviewed-source", "reviewed-row-other-audience",
-            "reviewed-row-other-school", "reviewed-key-other-url"])
-    def test_any_other_departure_is_still_drift(self, monkeypatch, index, changes):
+            "reviewed-row-other-school", "reviewed-key-other-url", "reviewed-key-other-source-url",
+            "reviewed-key-other-source", "reviewed-key-discovered"])
+    def test_any_other_departure_is_still_drift(self, monkeypatch, key, changes):
         rows = self._stamped()
-        rows[index].update(changes)
+        if key == "other-program":
+            row = next(o for o in rows if o["source"] == "northwestern_research_programs"
+                       and o["url"] == "https://example.edu/other-program")
+        else:
+            row = next(o for o in rows if o["metadata"]["collector_key"] == key
+                       and o["url"] != "https://example.edu/other-program")
+        row.update(changes)
         monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
         with pytest.raises(AssertionError, match="drifted"):
             TestSchoolAudience().test_per_source_pairs_match_source_defaults()
