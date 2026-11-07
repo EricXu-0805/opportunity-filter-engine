@@ -1950,7 +1950,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // asked about is still owed (given offline, here or in another tab),
         // it is unsent, and Retry and the reconnect resend send it: the field
         // can show it already, and then no repaint arms an autosave (M137).
-        if (refreshed.pendingKeys.some((key) => asked.includes(key))) {
+        // Not when another tab answered and the browser is online: that tab
+        // is sending its answer, and says so itself if it cannot (M179).
+        if (refreshed.pendingKeys.some((key) => asked.includes(key))
+          && !(refreshed.answered && !refreshed.answeredHere && navigator.onLine)) {
           if (owns) armRetryable({ generation, token });
           tell('cloud-failed');
           return;

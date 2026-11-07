@@ -80,7 +80,7 @@ function route(key: string, oldValue: string | null, newValue: string | null) {
   });
 }
 
-type Tab = { name: string; seen: string[]; hook: ReturnType<typeof renderHook<ReturnType<typeof import('./use-profile-form').useProfileForm>, unknown>> };
+type Tab = { name: string; seen: string[]; views: string[]; hook: ReturnType<typeof renderHook<ReturnType<typeof import('./use-profile-form').useProfileForm>, unknown>> };
 /** A new tab: a fresh module realm with its own document and lineage. */
 async function open(name: string): Promise<Tab> {
   writer = name;
@@ -90,18 +90,22 @@ async function open(name: string): Promise<Tab> {
   service.identity = identity;
   const { useProfileForm } = await import('./use-profile-form');
   registering = name;
-  // Every status the tab shows, in order.
+  // Every status the tab shows, in order; and in `views` with whether Retry
+  // is armed and which questions are open beside it.
   const seen: string[] = [];
+  const views: string[] = [];
   const hook = renderHook(() => {
     const form = useProfileForm(t);
     if (seen[seen.length - 1] !== form.saveStatus) seen.push(form.saveStatus);
+    const view = `${form.saveStatus}|retry=${form.canRetrySync}|asked=${form.conflicts.map((q) => q.key).join(',')}`;
+    if (views[views.length - 1] !== view) views.push(view);
     return form;
   });
   const auth = service.auths[service.auths.length - 1];
   act(() => { auth({ user: { id: uid } }); }); await drain(); await tick(3000);
   registering = null; writer = null;
   expect(hook.result.current.hydrationState).toBe('ready');
-  return { name, seen, hook };
+  return { name, seen, views, hook };
 }
 /** What `tab` does, with every storage write it makes delivered to the others. */
 async function as(tab: Tab, fn: (form: Tab['hook']['result']['current']) => void, ms = 3000) {
@@ -673,5 +677,175 @@ describe('a question still open when another tab writes (M137)', () => {
       // Two saves, the grade's and the entry's: showing the résumé starts none.
       expect(a.seen).toEqual(['idle', 'saving', 'saved', 'idle', 'saving', 'saved', 'idle']);
     });
+  });
+});
+
+// Checklist M179. Seen live on 2026-11-07: two tabs, each asked about a major
+// it typed differently offline, press "Keep what I typed" at the same moment.
+// One answer is written down first and sent. The other tab finds the question
+// answered and sends nothing, but its read of the question still finds that
+// answer owed, because the first tab has not heard back from the server yet.
+// It said "couldn't sync" with Retry until its next read of the first tab's
+// writes, about a second later, and its Retry sent the answer a second time.
+describe('two tabs pressing "Keep what I typed" at the same moment (M179)', () => {
+  /** Each tab typed a different major offline; back online, each is asked. */
+  async function twoTabsDisagreeOnMajor() {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(a, (f) => f.update('major', 'Mathematics'));
+    await as(b, (f) => f.update('major', 'Finance'));
+    online = true;
+    await as(a, (f) => f.retryCloudSave());
+    await as(b, (f) => f.retryCloudSave());
+    expect(a.hook.result.current.conflicts.map((q) => q.key)).toEqual(['major']);
+    expect(b.hook.result.current.conflicts.map((q) => q.key)).toEqual(['major']);
+    return { a, b };
+  }
+  /** The server answers about 190 ms after the request, as it did live. */
+  function replyAfter190ms(server: (intent: ProfilePatchIntent) => Promise<ProfilePatchOutcome>) {
+    service.commit.mockImplementation((intent) => new Promise((resolve, reject) => {
+      setTimeout(() => { server(intent).then(resolve, reject); }, 190);
+    }));
+  }
+  /** The server's own rule (20261011230618): a patch that changes nothing, at
+   *  the stored revision or the one before it, is 'unchanged' (the client's
+   *  'already-saved'); `apply` answers every stale revision 'conflict'. */
+  async function applyLikeServer(intent: ProfilePatchIntent): Promise<ProfilePatchOutcome> {
+    if (!online) throw new Error('offline');
+    const merged = { ...remote, ...intent.patch } as ProfileData;
+    if (JSON.stringify(merged) === JSON.stringify(remote)
+      && (revision === intent.expectedRevision || revision === intent.expectedRevision + 1)) {
+      return { status: 'already-saved', profile: structuredClone(remote) as unknown as Record<string, unknown>, revision };
+    }
+    return apply(intent);
+  }
+  /** Time in 10 ms steps, so each tab's work interleaves as it would live. */
+  async function steps(ms: number) { for (let at = 0; at < ms; at += 10) await tick(10); }
+  /** The browser going off or on line, as every tab's window hears it. */
+  function network(on: boolean, who: string | null) {
+    online = on;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: on });
+    writer = who;
+    act(() => { window.dispatchEvent(new Event(on ? 'online' : 'offline')); });
+    writer = null;
+  }
+  /** Time passing, with `who` as the tab behind anything written meanwhile. */
+  async function wait(ms: number, who: string | null = null) { writer = who; await tick(ms); writer = null; await drain(); }
+  async function close(tab: Tab) { writer = tab.name; act(() => { tab.hook.unmount(); }); await tick(500); writer = null; await drain(); }
+  const sentSince = (from: number) => service.commit.mock.calls.slice(from).map(([intent]) => [intent.expectedRevision, intent.patch]);
+  const shown = (tab: Tab) => {
+    const form = tab.hook.result.current;
+    return { status: form.saveStatus, retry: form.canRetrySync, asked: form.conflicts.map((q) => q.key), major: form.profile.major };
+  };
+  // "Retry sync" is drawn for a failed status with Retry armed and no question open (SubmitRow).
+  const retryDrawn = (view: string) => /^(cloud-failed|device-failed|error)\|retry=true\|asked=$/.test(view);
+
+  it('the tab whose answer comes second sends nothing, never says it could not sync, and offers no Retry', async () => {
+    const { a, b } = await twoTabsDisagreeOnMajor();
+    replyAfter190ms(apply);
+    const sent = service.commit.mock.calls.length;
+    const fromA = a.seen.length; const fromB = b.seen.length; const viewsFromB = b.views.length;
+    // Tab A's lock request is first, so its answer is the one written down
+    // and sent; every storage write in this window is tab A's.
+    writer = 'A';
+    act(() => { a.hook.result.current.keepMyChanges(); b.hook.result.current.keepMyChanges(); });
+    await steps(3000);
+    writer = null; await drain();
+    expect({ sent: sentSince(sent), stored: remote.major }).toEqual({ sent: [[7, { major: 'Mathematics' }]], stored: 'Mathematics' });
+    expect(a.seen.slice(fromA)).not.toContain('cloud-failed');
+    expect({ seenB: b.seen.slice(fromB), retryDrawn: b.views.slice(viewsFromB).filter(retryDrawn) })
+      .toEqual({ seenB: expect.not.arrayContaining(['cloud-failed']), retryDrawn: [] });
+    expect(shown(b)).toEqual({ status: 'conflict-stale', retry: false, asked: [], major: 'Mathematics' });
+  });
+
+  it('a Retry clicked in the second tab right after the answers, as the live check did, sends nothing', async () => {
+    const { a, b } = await twoTabsDisagreeOnMajor();
+    replyAfter190ms(applyLikeServer);
+    const sent = service.commit.mock.calls.length;
+    writer = 'A';
+    act(() => { a.hook.result.current.keepMyChanges(); b.hook.result.current.keepMyChanges(); });
+    await tick(40);
+    const drawn = retryDrawn(b.views[b.views.length - 1]);
+    const sentByB = service.commit.mock.calls.length;
+    writer = 'B';
+    if (drawn) act(() => { b.hook.result.current.retryCloudSave(); });
+    await tick(20);
+    writer = 'A';
+    await steps(3000);
+    writer = null; await drain();
+    expect({ drawn, fromB: sentSince(sentByB), all: sentSince(sent), stored: remote.major, revision })
+      .toEqual({ drawn: false, fromB: [], all: [[7, { major: 'Mathematics' }]], stored: 'Mathematics', revision: 8 });
+  });
+
+  it('an answer another tab gave offline, then closed, still reaches the server when the network returns (a guard; already so before M179)', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    network(false, null);
+    await wait(1500);
+    await as(a, (f) => f.update('major', 'Mathematics'));
+    await as(b, (f) => f.update('major', 'Finance'));
+    await wait(2000);
+    expect(a.hook.result.current.conflicts.map((q) => q.key)).toEqual(['major']);
+    // Tab A hears nothing more, so its question stays on screen.
+    deliver = false;
+    await as(b, (f) => f.keepMyChanges());
+    await close(b);
+    await as(a, (f) => f.keepMyChanges());
+    await wait(2000);
+    expect({ shown: shown(a), stored: remote.major })
+      .toEqual({ shown: { status: 'cloud-failed', retry: true, asked: [], major: 'Finance' }, stored: 'Computer Science' });
+    deliver = true;
+    network(true, 'A');
+    await wait(4000, 'A');
+    expect({ stored: remote.major, retry: a.hook.result.current.canRetrySync }).toEqual({ stored: 'Finance', retry: false });
+  });
+
+  it('this tab\'s own answer whose send failed while the browser says online: a second Keep says it could not sync, with Retry (a guard; already so before M179)', async () => {
+    const { a } = await twoTabsDisagreeOnMajor();
+    // Requests fail, but navigator.onLine stays true (a server or network error).
+    deliver = false;
+    online = false;
+    await as(a, (f) => f.keepMyChanges());
+    expect(shown(a)).toEqual({ status: 'cloud-failed', retry: true, asked: ['major'], major: 'Mathematics' });
+    await as(a, (f) => f.keepMyChanges());
+    expect(shown(a)).toEqual({ status: 'cloud-failed', retry: true, asked: [], major: 'Mathematics' });
+    online = true;
+    await as(a, (f) => f.retryCloudSave());
+    expect(remote.major).toBe('Mathematics');
+  });
+
+  it('an edit the other tab has not sent, with no answer waiting, still says it could not sync, with Retry (a guard; already so before M179)', async () => {
+    const { a, b } = await twoTabsDisagreeOnMajor();
+    // Tab A hears nothing more, so its question stays on screen.
+    deliver = false;
+    await as(b, (f) => f.keepMyChanges());
+    expect(remote.major).toBe('Finance');
+    // Tab B's next edit of the field is not sent; navigator.onLine stays true.
+    online = false;
+    await as(b, (f) => f.update('major', 'Economics'));
+    await as(a, (f) => f.keepMyChanges());
+    expect(shown(a)).toEqual({ status: 'cloud-failed', retry: true, asked: [], major: 'Economics' });
+  });
+
+  it('with the other tab not answering, this tab\'s answer whose send fails says it could not sync and never that it was answered elsewhere (a guard; already so before M179)', async () => {
+    const { b } = await twoTabsDisagreeOnMajor();
+    replyAfter190ms(apply);
+    // The request fails after its round trip; navigator.onLine stays true.
+    online = false;
+    const viewsFromB = b.views.length;
+    writer = 'B';
+    act(() => { b.hook.result.current.keepMyChanges(); });
+    await steps(3000);
+    writer = null; await drain();
+    // A failed answer keeps its question, and the cloud-failed text stays.
+    expect({ shown: shown(b), stored: remote.major })
+      .toEqual({ shown: { status: 'cloud-failed', retry: true, asked: ['major'], major: 'Finance' }, stored: 'Computer Science' });
+    expect(b.views.slice(viewsFromB).map((view) => view.split('|')[0])).not.toContain('conflict-stale');
+    online = true;
+    await as(b, (f) => f.keepMyChanges());
+    expect(shown(b)).toEqual({ status: 'cloud-failed', retry: true, asked: [], major: 'Finance' });
+    await as(b, (f) => f.retryCloudSave());
+    expect(remote.major).toBe('Finance');
   });
 });
