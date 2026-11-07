@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
-vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: 'en' }) }));
+const i18n = vi.hoisted(() => ({ locale: 'en' as 'en' | 'zh' }));
+vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: i18n.locale }) }));
 vi.mock('@/lib/private-import-target-api', async original => {
   const importedModule = await original<typeof import('@/lib/private-import-target-api')>();
   return { ...importedModule, getPrivateImportTarget: vi.fn(), getResolvedPrivateImportTarget: vi.fn() };
@@ -31,7 +32,7 @@ beforeEach(async () => { await setupOwner(); raw.mockReset(); resolved.mockReset
   raw.mockResolvedValue({ target: { deleted_at: null, target_version: 'pit1:' + '1'.repeat(64) } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);
   resolved.mockResolvedValue(source);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); i18n.locale = 'en'; });
 it('opens full private source and both owner-scoped histories with private email preparation and no send action', async () => {
   render(<PrivateImportDetail id={id} />);
   await screen.findByText('Private test title');
@@ -43,6 +44,14 @@ it('opens full private source and both owner-scoped histories with private email
   expect(screen.getByRole('button', { name: 'Prepare private résumé' })).toBeInTheDocument();
   expect(screen.getByText('Personal application record ' + id)).toBeInTheDocument();
   expect(resolved.mock.calls[0][1].expectedVersion).toBe('pit1:' + '1'.repeat(64));
+});
+it.each([
+  ['en', 'Prepare an email from a template, or edit and export a résumé, below. AI writing for private imports is not connected yet.'],
+  ['zh', '可在下方用模板准备邮件，也可编辑和导出简历。私有机会的 AI 写作尚未接通。'],
+] as const)('says which writing tools a ready import offers (%s)', async (locale, sentence) => {
+  i18n.locale = locale;
+  render(<PrivateImportDetail id={id} />);
+  expect(await screen.findByText(sentence)).toBeInTheDocument();
 });
 it('retains histories for an owned tombstone without resolving old content', async () => {
   raw.mockResolvedValue({ target: { deleted_at: '2026-09-28T00:00:00Z' } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);
