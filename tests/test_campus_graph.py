@@ -1964,6 +1964,22 @@ def test_a_directory_page_names_no_lab_or_program(slug, key):
     assert _configured_row(slug, key)["lab_or_program"] == ""
 
 
+@pytest.mark.parametrize(("slug", "key", "stored"), [
+    ("vanderbilt", "uro_summer_directory", "URO Summer Research Directory"),
+    ("uw", "research_database", "URP Research Database"),
+    ("wisc", "ovcr_undergrad_hub", "Office of the Vice Chancellor for Research undergraduate research hub"),
+    ("purdue", "niso_scholarship_list", "NISO Scholarship List"),
+    ("purdue", "our_ext_grants", "External Grants List"),
+])
+def test_a_refresh_replaces_the_directory_name_stored_as_the_lab(processed, slug, key, stored):
+    """The stored rows keep the name until their school's next run re-emits them."""
+    row = _configured_row(slug, key)
+    processed.write_text(json.dumps([{**row, "lab_or_program": stored}]), encoding="utf-8")
+    cg.merge_into_processed([row], school_slug=slug)
+    [saved] = json.loads(processed.read_text(encoding="utf-8"))
+    assert saved["lab_or_program"] == ""
+
+
 @pytest.mark.parametrize(("slug", "key"), [
     ("vanderbilt", "uro_summer_directory"), ("uw", "research_database"), ("wisc", "ovcr_undergrad_hub"),
     ("duke", "som_summer_ug"),
