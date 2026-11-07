@@ -1562,9 +1562,9 @@ def keywords_are_source_topics(record: dict) -> bool:
 
 
 # Listing sources whose keywords are labels the source put on the post: the
-# OUR blog feed's categories ("URAP", "FGSRP", "Unsorted"). The enricher
-# replaces a bare "Unsorted" with its keyword bank's topics where the bank
-# finds any, and stamps them.
+# OUR blog feed's categories ("URAP", "FGSRP"). Its collector leaves out
+# WordPress's placeholder category, and the enricher gives a post left with
+# none its keyword bank's topics where the bank finds any, and stamps them.
 KEYWORDS_ARE_SOURCE_LABELS = frozenset({"uiuc_our_rss"})
 
 

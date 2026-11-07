@@ -1,14 +1,15 @@
 """M174: the OUR blog feed's own categories are its labels, not tags we inferred.
 
 uiuc_our_rss keeps each post's feed categories as its keywords ("URAP",
-"FGSRP", "Unsorted"). The enricher replaces a bare "Unsorted" with its keyword
-bank's topics where the bank finds any, and stamps them; five rows on the
-2026-11-07 corpus kept their categories. The rule every surface shares counted
-those as ours: the detail facts called them topics read off the text, the card
-flagged them inferred, and a chip one matched ended "— based on topics we
-inferred". They are the source's own words. They name no research area
-either, so the detail facts list none, and no line calls them the program's
-work or the email's "your work on".
+"FGSRP"), leaving out WordPress's placeholder category. The enricher fills a
+post left with no category from its keyword bank's topics where the bank finds
+any, and stamps them; five rows on the 2026-11-07 corpus kept their
+categories. The rule every surface shares counted those as ours: the detail
+facts called them topics read off the text, the card flagged them inferred,
+and a chip one matched ended "— based on topics we inferred". They are the
+source's own words. They name no research area either, so the detail facts
+list none, and no line calls them the program's work or the email's "your
+work on".
 """
 from __future__ import annotations
 
