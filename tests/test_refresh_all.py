@@ -552,6 +552,59 @@ def test_a_kept_row_takes_another_units_date_only_through_an_observed_page(
     assert saved[0]["metadata"]["last_seen_at"] == expected["metadata"]["last_seen_at"]
 
 
+@pytest.mark.parametrize("moved_rows", [1, 201])
+def test_the_run_summary_counts_and_names_the_rows_kept_as_moved(
+    monkeypatch, tmp_path, moved_rows,
+):
+    """A stored row its own unit, read in full, no longer lists is kept when
+    another unit read the same person this run. The run summary counts those
+    rows and names them, capped as would_deactivate is; a row no unit read is
+    retired and is not among them."""
+    def row(rid, url, days_ago):
+        seeded = _seed_faculty("umich_faculty", rid, days_ago)
+        seeded.update(school="umich", department="CSE", url=url)
+        return seeded
+
+    def unit(unit_id, rows, identities):
+        coverage = dict.fromkeys(
+            ("classified_nonfaculty_rows", "unparsed_rows", "ambiguous_rows",
+             "duplicate_rows", "identity_match_failures", "parser_errors",
+             "partial_render_rows"), 0)
+        coverage.update(raw_roster_rows=len(identities),
+                        parsed_faculty_rows=len(identities))
+        return {"unit_id": unit_id, "unit_url": f"https://{unit_id}.testu.edu/people/",
+                "fetch_status": "ok", "parse_status": "ok", "validation_status": "ok",
+                "roster_source_confirmed": True, "observed_count": len(identities),
+                "observed_entity_ids": [r["id"] for r in rows],
+                "observed_identities": [["url", i] for i in identities],
+                "coverage": coverage}
+
+    colleague = row("faculty-umich-cse-0000aaaa", "https://www.testu.edu/people/stays", 0)
+    departed = row("faculty-umich-cse-0000bbbb", "https://www.testu.edu/people/left", 30)
+    moved = [row(f"faculty-umich-cse-{i:08x}", f"https://www.testu.edu/people/m{i}", 30)
+             for i in range(moved_rows)]
+    processed = _stub_with_processed_file(
+        monkeypatch, tmp_path, [colleague, departed, *moved])
+
+    def fetch(unit_ledger):
+        unit_ledger["cse"] = unit("cse", [colleague], ["testu.edu/people/stays"])
+        unit_ledger["ece"] = unit(
+            "ece", [], [f"testu.edu/people/m{i}" for i in range(moved_rows)])
+        return [dict(colleague)]
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    pass_info = summary["sources"]["deactivate_stale_faculty"]
+    assert pass_info["newly_deactivated"] == 1
+    assert pass_info["records_preserved_moved_unit"] == moved_rows
+    assert pass_info["moved_unit_ids"] == [r["id"] for r in moved][:200]
+    saved = {r["id"]: r["metadata"]["is_active"]
+             for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert saved == {colleague["id"]: True, departed["id"]: False,
+                     **{r["id"]: True for r in moved}}
+
+
 def _umich_row(rid, dept, keywords, email="person7@testu.edu"):
     """One umich faculty row of one person, seen today."""
     seeded = _seed_faculty("umich_faculty", rid, 0)
