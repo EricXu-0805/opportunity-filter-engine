@@ -115,6 +115,17 @@ async function as(tab: Tab, fn: (form: Tab['hook']['result']['current']) => void
   writer = null;
   await drain();
 }
+/** The browser going off or on line, as every tab's window hears it. */
+function network(on: boolean, who: string | null) {
+  online = on;
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: on });
+  writer = who;
+  act(() => { window.dispatchEvent(new Event(on ? 'online' : 'offline')); });
+  writer = null;
+}
+/** Time passing, with `who` as the tab behind anything written meanwhile. */
+async function wait(ms: number, who: string | null = null) { writer = who; await tick(ms); writer = null; await drain(); }
+async function close(tab: Tab) { writer = tab.name; act(() => { tab.hook.unmount(); }); await tick(500); writer = null; await drain(); }
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -438,17 +449,6 @@ describe('a question still open when another tab writes (M137)', () => {
     expect(b.hook.result.current.profile.research_interests).toBe('From tab B');
   });
 
-  /** The browser going off or on line, as every tab's window hears it. */
-  function network(on: boolean, who: string | null) {
-    online = on;
-    Object.defineProperty(navigator, 'onLine', { configurable: true, value: on });
-    writer = who;
-    act(() => { window.dispatchEvent(new Event(on ? 'online' : 'offline')); });
-    writer = null;
-  }
-  /** Time passing, with `who` as the tab behind anything written meanwhile. */
-  async function wait(ms: number, who: string | null = null) { writer = who; await tick(ms); writer = null; await drain(); }
-  async function close(tab: Tab) { writer = tab.name; act(() => { tab.hook.unmount(); }); await tick(500); writer = null; await drain(); }
   const course = (name: string, status?: string) => ({ name, source: 'manual', ...(status ? { status } : {}) });
   const names = (list: unknown) => ((list ?? []) as Array<{ name: string }>).map((c) => c.name);
   const RESUME_AND_COURSES = ['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text'];
@@ -722,17 +722,6 @@ describe('two tabs pressing "Keep what I typed" at the same moment (M179)', () =
   }
   /** Time in 10 ms steps, so each tab's work interleaves as it would live. */
   async function steps(ms: number) { for (let at = 0; at < ms; at += 10) await tick(10); }
-  /** The browser going off or on line, as every tab's window hears it. */
-  function network(on: boolean, who: string | null) {
-    online = on;
-    Object.defineProperty(navigator, 'onLine', { configurable: true, value: on });
-    writer = who;
-    act(() => { window.dispatchEvent(new Event(on ? 'online' : 'offline')); });
-    writer = null;
-  }
-  /** Time passing, with `who` as the tab behind anything written meanwhile. */
-  async function wait(ms: number, who: string | null = null) { writer = who; await tick(ms); writer = null; await drain(); }
-  async function close(tab: Tab) { writer = tab.name; act(() => { tab.hook.unmount(); }); await tick(500); writer = null; await drain(); }
   const sentSince = (from: number) => service.commit.mock.calls.slice(from).map(([intent]) => [intent.expectedRevision, intent.patch]);
   const shown = (tab: Tab) => {
     const form = tab.hook.result.current;
