@@ -2163,6 +2163,27 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(server.row).toMatchObject({ college: 'Media', major: '', additional_majors: [] });
     expect(journalOps()).toEqual([]);
   });
+
+  // Checklist M179: online, a "Keep what I typed" that finds the question
+  // already answered keeps the cloud-failed text and Retry only when the
+  // answer still waiting is this tab's own. A reload is the same tab.
+  it.each([
+    ['after a reload, as given here', 'reload', true],
+    ['in a window opened from this one, as given elsewhere', 'other', false],
+  ] as const)('an answer this tab gave and could not send is reported, %s', async (_, kind, here) => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ ...FULL, major: 'ECE' }));
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'Physics' }, 8));
+    expect((await hydrateProfile()).conflictKeys).toEqual(['major']);
+    commitMock.mockRejectedValue(new Error('offline'));
+    await expect(answerConflict(['major'], 'local', captureOwnerToken(), { ...FULL, major: 'ECE' })).rejects.toThrow('offline');
+    expect(journalOps().map((op) => op.mode), 'the answer waits in the journal').toEqual(['resolve']);
+
+    openDocument(kind);
+    resetProfileDirtyLedger();
+    await hydrateProfile();
+    const refreshed = await refreshConflictQuestion(['major'], captureOwnerToken());
+    expect(refreshed).toMatchObject({ status: 'settled', pendingKeys: ['major'], answered: true, answeredHere: here });
+  });
 });
 
 describe('a composite operation across two passes settles exactly once, at the end', () => {
