@@ -243,6 +243,17 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(screen.queryByTestId('retry-sync')).toBeNull();
   });
 
+  // Checklist M179: on a 390 px phone the message and the two answer buttons
+  // shared one line, and each button was squeezed to three or four lines.
+  // jsdom has no layout, so this pins the class that moves them under it.
+  it('lets the answer buttons move under the message when both do not fit on one line', () => {
+    const { container } = renderRow({ saveStatus: 'cloud-failed', hasConflict: true, canRetrySync: true });
+    const line = container.querySelector('#profile-save-status')!;
+    expect(line).toContainElement(screen.getByTestId('conflict-keep-mine'));
+    expect([...line.classList], 'the status line wraps').toContain('flex-wrap');
+    expect([...line.classList].filter((name) => name.endsWith('flex-nowrap')), 'at every width').toEqual([]);
+  });
+
   it('is disabled and says it is working while a submit is in flight', () => {
     renderRow({ isSubmitting: true });
     expect(screen.getByTestId('generate-matches')).toBeDisabled();
