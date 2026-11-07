@@ -1832,8 +1832,9 @@ def refresh_all(
                 stale_faculty["records_preserved_still_listed"]
             ),
             # Stored people kept because another unit read the same person
-            # this run, capped as would_deactivate is. Ids only: an identity
-            # can be an address or a listed-row digest.
+            # this run: all of them counted, their ids capped as
+            # would_deactivate is. Ids only: an identity can be an address or
+            # a listed-row digest.
             "records_preserved_moved_unit": (
                 stale_faculty["records_preserved_moved_unit"]
             ),
