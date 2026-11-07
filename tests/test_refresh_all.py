@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import src.collectors.refresh_all as refresh_all
 from src.collectors import ucsb_urca_projects
 from src.collectors.refresh_contract import expected_sources
-from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
+from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, listed_token
 
 # All Berkeley faculty collectors wired into refresh_all's deep block. Derived
 # from the canonical FACULTY_SOURCES set so this stays in lockstep as new
@@ -552,20 +552,21 @@ def test_a_kept_row_takes_another_units_date_only_through_an_observed_page(
     assert saved[0]["metadata"]["last_seen_at"] == expected["metadata"]["last_seen_at"]
 
 
-@pytest.mark.parametrize("moved_rows", [1, 201])
+@pytest.mark.parametrize("moved_rows", [0, 1, 201])
 def test_the_run_summary_counts_and_names_the_rows_kept_as_moved(
     monkeypatch, tmp_path, moved_rows,
 ):
     """A stored row its own unit, read in full, no longer lists is kept when
-    another unit read the same person this run. The run summary counts those
-    rows and names them, capped as would_deactivate is; a row no unit read is
-    retired and is not among them."""
-    def row(rid, url, days_ago):
-        seeded = _seed_faculty("umich_faculty", rid, days_ago)
-        seeded.update(school="umich", department="CSE", url=url)
+    another unit read the same person this run. The run summary counts all
+    those rows and names them in the pass's order, the names capped as
+    would_deactivate is. A row its unit still lists, a row a held source would
+    retire and a row no unit read are not among them."""
+    def row(rid, url, days_ago, school="umich"):
+        seeded = _seed_faculty(f"{school}_faculty", rid, days_ago)
+        seeded.update(school=school, department="CSE", url=url)
         return seeded
 
-    def unit(unit_id, rows, identities):
+    def unit(unit_id, rows, identities, listed=()):
         coverage = dict.fromkeys(
             ("classified_nonfaculty_rows", "unparsed_rows", "ambiguous_rows",
              "duplicate_rows", "identity_match_failures", "parser_errors",
@@ -577,31 +578,55 @@ def test_the_run_summary_counts_and_names_the_rows_kept_as_moved(
                 "roster_source_confirmed": True, "observed_count": len(identities),
                 "observed_entity_ids": [r["id"] for r in rows],
                 "observed_identities": [["url", i] for i in identities],
+                "listed_identities": [listed_token("url", i) for i in listed],
                 "coverage": coverage}
 
     colleague = row("faculty-umich-cse-0000aaaa", "https://www.testu.edu/people/stays", 0)
     departed = row("faculty-umich-cse-0000bbbb", "https://www.testu.edu/people/left", 30)
+    still_listed = row("faculty-umich-cse-0000cccc", "https://www.testu.edu/people/listed", 30)
+    held = row("faculty-uw-cse-0000dddd", "https://www.testu.edu/people/held", 30,
+               school="uw")
+    # Seeded in neither id order, so a list sorted either way is not the pass's.
+    order = [*range(1, moved_rows, 2), *range(0, moved_rows, 2)]
     moved = [row(f"faculty-umich-cse-{i:08x}", f"https://www.testu.edu/people/m{i}", 30)
-             for i in range(moved_rows)]
+             for i in order]
     processed = _stub_with_processed_file(
-        monkeypatch, tmp_path, [colleague, departed, *moved])
+        monkeypatch, tmp_path, [colleague, departed, still_listed, held, *moved])
 
-    def fetch(unit_ledger):
-        unit_ledger["cse"] = unit("cse", [colleague], ["testu.edu/people/stays"])
+    def fetch_umich(unit_ledger):
+        unit_ledger["cse"] = unit("cse", [colleague], ["testu.edu/people/stays"],
+                                  listed=["testu.edu/people/listed"])
         unit_ledger["ece"] = unit(
             "ece", [], [f"testu.edu/people/m{i}" for i in range(moved_rows)])
         return [dict(colleague)]
 
-    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
-    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    def fetch_uw(unit_ledger):
+        newcomer = row("faculty-uw-cse-0000eeee", "https://www.testu.edu/people/new", 0,
+                       school="uw")
+        unit_ledger["cse"] = unit("cse", [newcomer], ["testu.edu/people/new"])
+        return [newcomer]
+
+    real_pass = refresh_all.deactivate_stale_faculty
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch_umich)
+    monkeypatch.setattr(refresh_all, "fetch_uw_faculty", fetch_uw)
+    # The run holds only uiuc_faculty, whose count ledger proposes no one, so
+    # uw_faculty is held as well to give would_deactivate a row.
+    monkeypatch.setattr(
+        refresh_all, "deactivate_stale_faculty",
+        lambda opps, fetched, held_sources: real_pass(
+            opps, fetched, held_sources={*held_sources, "uw_faculty"}))
+    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uw"})
 
     pass_info = summary["sources"]["deactivate_stale_faculty"]
     assert pass_info["newly_deactivated"] == 1
+    assert pass_info["records_preserved_still_listed"] == 1
+    assert pass_info["would_deactivate"] == [held["id"]]
     assert pass_info["records_preserved_moved_unit"] == moved_rows
     assert pass_info["moved_unit_ids"] == [r["id"] for r in moved][:200]
     saved = {r["id"]: r["metadata"]["is_active"]
              for r in json.loads(processed.read_text(encoding="utf-8"))}
     assert saved == {colleague["id"]: True, departed["id"]: False,
+                     still_listed["id"]: True, held["id"]: True,
                      **{r["id"]: True for r in moved}}
 
 
