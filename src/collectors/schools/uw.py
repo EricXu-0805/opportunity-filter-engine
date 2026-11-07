@@ -85,7 +85,6 @@ SCHOOL: dict = {
                     "posted by UW faculty and labs across disciplines, plus guidance on "
                     "identifying faculty and cold-emailing mentors. Open to all enrolled "
                     "UW undergraduates.",
-                    lab_or_program="URP Research Database",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     international_friendly="yes",
                     keywords=["undergraduate research", "research positions"],
