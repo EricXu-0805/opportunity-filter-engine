@@ -381,6 +381,17 @@ describe('whole draft content planning', () => {
 
 
 describe('accepted content-plan operation records', () => {
+  it.each(['target-resume-generation-v1:' + 'a'.repeat(64), undefined])('carries generation version %s with the accepted choices', async version => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), ...(version ? { generation_version: version } : {}) }));
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    select('publication-one'); apply();
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    if (version) expect(action.generation_version).toBe(version); else expect(action).not.toHaveProperty('generation_version');
+    // The saved record format (v1-v3) has no field for it, so the record is unchanged.
+    const { generation_version: _ignored, ...withoutVersion } = action;
+    expect(appendTargetResumeProvenance(null, p.draft, next, { ...action, id: 'event' }))
+      .toEqual(appendTargetResumeProvenance(null, p.draft, next, { ...withoutVersion, id: 'event' }));
+  });
   it('records only the selected omission, with no check, since the plan changes no text', async () => {
     mocked.generate.mockImplementation(async payload => ({ ...await response(payload), check_version: 'target-resume-source-checks-v1' }));
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();

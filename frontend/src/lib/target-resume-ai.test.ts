@@ -54,6 +54,35 @@ function response(p: PreparedTargetResumeAi, ids = p.batches[0], request_id = 'r
     method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2, receipts: ids.map(id => receipt(p, id)) };
 }
 const expected = (r: TargetResumeAiResponse) => ({ request_id: r.request_id, selected_unit_ids: r.receipts.map(x => x.unit_id) });
+
+describe('generation version on a suggestions response', () => {
+  const version = 'target-resume-generation-v1:' + 'a'.repeat(64);
+  it('accepts a well-formed version and keeps it; a response without one stays valid', async () => {
+    const p = await prep(), result = { ...response(p), generation_version: version };
+    expect(unwrap(validateTargetResumeAIResponse(p, expected(result), result)).generation_version).toBe(version);
+    expect(unwrap(validateTargetResumeAIResponse(p, expected(result), response(p)))).not.toHaveProperty('generation_version');
+  });
+  it.each([null, 7, '', 'target-resume-generation-v1:' + 'A'.repeat(64), version + '\n', version.slice(0, -1),
+    'target-resume-generation-v2:' + 'a'.repeat(64)])('refuses a malformed version %j', async bad => {
+    const p = await prep(), plain = response(p);
+    expect(validateTargetResumeAIResponse(p, expected(plain), { ...plain, generation_version: bad })).toEqual({ ok: false, code: 'invalid_response' });
+  });
+});
+
+describe('suggestion batches from different generation configurations', () => {
+  const a = 'target-resume-generation-v1:' + 'a'.repeat(64), b = 'target-resume-generation-v1:' + 'b'.repeat(64);
+  const versioned = (p: PreparedTargetResumeAi, request_id: string, version?: string) =>
+    ({ ...response(p, p.batches[0], request_id), ...(version === undefined ? {} : { generation_version: version }) });
+  it.each([[a, b], [b, a], [a, undefined], [undefined, a]])('refuses to merge %s with %s', async (first, second) => {
+    const p = await prep();
+    expect(mergeTargetResumeAIResponses(p, [versioned(p, 'one', first), versioned(p, 'two', second)]))
+      .toEqual({ ok: false, code: 'generation_config_changed' });
+  });
+  it.each([a, undefined])('merges batches that share version %s', async version => {
+    const p = await prep();
+    expect(mergeTargetResumeAIResponses(p, [versioned(p, 'one', version), versioned(p, 'two', version)]).ok).toBe(true);
+  });
+});
 const exp = (r: TargetResumeAiResponse) => r.receipts.find(x => x.evidence.kind === 'experience')!;
 const factReceipt = (r: TargetResumeAiResponse) => r.receipts.find(x => x.evidence.kind === 'fact')!;
 const context = (p: PreparedTargetResumeAi) => ({ profile_signature: p.draft.base.profile_signature, source_signature: p.draft.base.source_signature, target_signature: p.draft.base.target_signature });

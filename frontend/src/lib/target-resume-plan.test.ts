@@ -52,6 +52,20 @@ function compressed(prepared: PreparedTargetResumePlan, result = response(prepar
   return { result, item, line };
 }
 const request = (result: TargetResumePlanResponse) => ({ request_id: result.request_id, options: result.options });
+
+describe('generation version on a plan response', () => {
+  const version = 'target-resume-generation-v1:' + 'a'.repeat(64);
+  it('accepts a well-formed version and keeps it; a response without one stays valid', async () => {
+    const p = await prepare(), result = { ...response(p), generation_version: version };
+    expect(unwrap(validateTargetResumePlanResponse(p, request(result), result)).generation_version).toBe(version);
+    expect(unwrap(validateTargetResumePlanResponse(p, request(result), response(p)))).not.toHaveProperty('generation_version');
+  });
+  it.each([null, 7, '', 'target-resume-generation-v1:' + 'A'.repeat(64), version + '\n', version.slice(0, -1),
+    'target-resume-generation-v2:' + 'a'.repeat(64)])('refuses a malformed version %j', async bad => {
+    const p = await prepare(), plain = response(p);
+    expect(validateTargetResumePlanResponse(p, request(plain), { ...plain, generation_version: bad })).toEqual({ ok: false, code: 'invalid_response' });
+  });
+});
 function selection(prepared: PreparedTargetResumePlan, selection_block_ids: string[] = [], rewrite_unit_ids: string[] = []): ApplyTargetResumePlanOptions {
   return { selection_block_ids, rewrite_unit_ids, options: clone(prepared.options), current_context: {
     profile_signature: prepared.draft.base.profile_signature, source_signature: prepared.draft.base.source_signature,

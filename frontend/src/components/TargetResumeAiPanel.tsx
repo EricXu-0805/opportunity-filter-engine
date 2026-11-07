@@ -143,6 +143,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     TARGET_NOT_ACTIONABLE: copy('This opportunity is currently unavailable for résumé adaptation. Earlier suggestions were cleared; your draft is kept.', '此机会目前不能用于简历调整，旧建议已作废，文稿保留。'),
     document_too_large: copy('The complete draft exceeds the request limit. Its content is kept.', '完整文稿超过请求容量，内容仍保留。'),
     invalid_full_target_request: copy('The full draft could not be verified. Review your source materials before trying again.', '无法核对完整文稿，请检查来源材料后重试。'),
+    generation_config_changed: copy('The AI configuration changed between batches, so these suggestions were cleared. Generate again; your draft is kept.', 'AI 配置在分批生成期间有变，已清除这批建议。请重新生成；文稿保留。'),
   } as Record<string, string>)[code ?? ''] ?? copy('This request did not finish. Your complete draft is kept.', '本次处理未完成，完整原稿保留。');
 
   const generate = async (resume: boolean) => {
@@ -187,14 +188,24 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         if (!checked.ok) { setError(checked.code); return; }
         working = { ...working, responses: [...working.responses, checked.value] };
         const combined = mergeTargetResumeAIResponses(working.prepared, working.responses);
-        if (!combined.ok) { setError(combined.code); return; }
+        const stop = checked.value.receipts.find((item) => stopping.has(item.reason_code ?? ''));
+        const failed = checked.value.receipts.find((item) => item.status === 'skipped'
+          && !permanent.has(item.reason_code ?? '') && item.reason_code !== 'batch_context_too_large');
+        if (!combined.ok) {
+          // Every unit of this batch was skipped, so nothing from the other configuration would join: say why it stopped, keep the run.
+          if (combined.code === 'generation_config_changed' && checked.value.method === 'unavailable' && (stop || failed)) {
+            setError(stop?.reason_code ?? failed?.reason_code ?? 'model_unavailable'); return;
+          }
+          // Continuing would only meet the new configuration again: start over instead.
+          if (combined.code === 'generation_config_changed') {
+            runRef.current = null; setRun(null); setSelected(new Set()); setDismissed(new Set()); setOrder(false); appliedKey.current = null;
+          }
+          setError(combined.code); return;
+        }
         setRun(working); runRef.current = working;
         // The server refused only the combination; each half is a smaller request.
         const split = checked.value.receipts.filter((item) => item.reason_code === 'batch_context_too_large').map((item) => item.unit_id);
         if (split.length) queue.unshift(...[split.slice(0, Math.ceil(split.length / 2)), split.slice(Math.ceil(split.length / 2))].filter((part) => part.length));
-        const stop = checked.value.receipts.find((item) => stopping.has(item.reason_code ?? ''));
-        const failed = checked.value.receipts.find((item) => item.status === 'skipped'
-          && !permanent.has(item.reason_code ?? '') && item.reason_code !== 'batch_context_too_large');
         if (stop || (checked.value.method === 'unavailable' && failed)) {
           setError(stop?.reason_code ?? failed?.reason_code ?? 'model_unavailable');
           return;
@@ -255,7 +266,10 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         check: response.check_version ? { version: response.check_version, pipeline_version: response.pipeline_version,
           request_id: response.request_id, document_signature: response.document_signature, original: unit.original, evidence: unit.evidence } : null });
     }
-    onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations });
+    // Merged batches share one version (mergeTargetResumeAIResponses), so the first speaks for all.
+    const generationVersion = run.responses[0]?.generation_version;
+    onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations,
+      ...(generationVersion === undefined ? {} : { generation_version: generationVersion }) });
   };
   const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
     ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], alternativeUnitIds: alternativeUnitIds(), applyStructure: order, currentContext, supportGroups }) : null;

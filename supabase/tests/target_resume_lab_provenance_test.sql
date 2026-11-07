@@ -43,7 +43,7 @@ BEGIN
  RAISE WARNING 'PASS legacy RPC keeps V3 metadata on retry/no-op and clears it only on changed document';
  -- All later invalid writes must leave the exact winning current/history pair alone.
  PERFORM pg_temp.reject_prov(d,jsonb_set(p,'{version}','1'::jsonb),'lab shapes unavailable in v1');
- PERFORM pg_temp.reject_prov(d,jsonb_set(p,'{version}','4'::jsonb),'unknown v4 sidecar');
+ PERFORM pg_temp.reject_prov(d,jsonb_set(p,'{version}','5'::jsonb),'unknown v5 sidecar');
  PERFORM pg_temp.reject_prov(d,jsonb_set(p,'{version}','"3"'::jsonb),'string sidecar version');
  PERFORM pg_temp.reject_prov(jsonb_set(d,'{target_snapshot,context_version}','2'::jsonb),p,'v3 sidecar cannot bind v4 target');
  PERFORM pg_temp.reject_prov(jsonb_set(d,'{target_snapshot}','{}'::jsonb),p,'v3 sidecar cannot bind legacy target');

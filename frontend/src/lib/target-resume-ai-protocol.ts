@@ -17,6 +17,8 @@ export const FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS = 8_000;
 export const FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS = 8_507;
 /** The server cuts at most this many anchors from the target for one prompt. */
 export const FULL_TARGET_AI_MAX_ANCHORS = 48;
+/** The server's opaque identity of the models, prompts and rule versions that wrote a full-target answer. */
+export const TARGET_RESUME_GENERATION_VERSION_PATTERN = /^target-resume-generation-v1:[0-9a-f]{64}$/;
 
 export type TargetResumeAiPriority = 'high' | 'normal' | 'low';
 /** Why an experience line was kept as written ("unchanged"). */
@@ -106,6 +108,8 @@ export interface TargetResumeAiResponse {
   support_groups?: TargetResumeSupportGroup[];
   /** Absent in older responses; never infer it from pipeline_version. */
   check_version?: string | null;
+  /** Absent from older servers: the configuration is then unknown, never the current one. */
+  generation_version?: string;
   version: 1;
   pipeline_version: typeof FULL_TARGET_AI_VERSION;
   request_id: string;

@@ -14,7 +14,7 @@ function targetQuote(q, version) {
     && (q.field === 'description' ? q.requirement_index === null : integer(q.requirement_index));
   if (['paper_title','paper_abstract'].includes(q.field)) return version >= 2
     && shape(q,['field','paper_index','start','end','quote']) && integer(q.paper_index);
-  if (['lab_heading','lab_text'].includes(q.field)) return version === 3
+  if (['lab_heading','lab_text'].includes(q.field)) return version >= 3
     && shape(q,['field','page_index','section_index','start','end','quote']) && integer(q.page_index) && integer(q.section_index);
   return false;
 }
@@ -43,11 +43,21 @@ function changeValid(c, kind, version) {
   }
   return true;
 }
+function generationValid(g, kind) {
+  if (!shape(g,['version','pipeline_version','document_signature','request_ids']) || !['ai_rewrite','plan'].includes(kind)
+    || typeof g.version !== 'string' || g.version.length !== 92 || !/^target-resume-generation-v1:[a-f0-9]{64}$/.test(g.version)
+    || typeof g.pipeline_version !== 'string' || typeof g.document_signature !== 'string' || g.document_signature.length !== 74
+    || !/^v1:sha256:[a-f0-9]{64}$/.test(g.document_signature)
+    || !Array.isArray(g.request_ids) || !g.request_ids.length || g.request_ids.length > 1024
+    || !g.request_ids.every(v => nonblank(v) && Array.from(v).length <= 80) || new Set(g.request_ids).size !== g.request_ids.length) return false;
+  const pipeline = kind === 'plan' ? /^full-target-plan-v[1-9][0-9]{0,5}$/ : /^full-target-v[1-9][0-9]{0,5}$/;
+  return pipeline.exec(g.pipeline_version)?.[0] === g.pipeline_version;
+}
 export function validStubTargetResumeProvenance(doc, value) {
   if (value === null) return true;
-  if (!shape(value,['version','document_id','opportunity_id','base','events']) || ![1,2,3].includes(value.version)
+  if (!shape(value,['version','document_id','opportunity_id','base','events']) || ![1,2,3,4].includes(value.version)
     || value.version === 2 && doc.target_snapshot?.context_version !== 3
-    || value.version === 3 && doc.target_snapshot?.context_version !== 4
+    || value.version >= 3 && doc.target_snapshot?.context_version !== 4
     || !id(value.document_id) || !id(value.opportunity_id) || value.document_id !== doc.id || value.opportunity_id !== doc.opportunity_id
     || !equal(value.base,doc.base) || !shape(value.base,['master_id','master_revision','profile_signature','source_signature','target_signature'])
     || !['master_id','profile_signature','source_signature','target_signature'].every(k => nonblank(value.base[k])) || !integer(value.base.master_revision,1)
@@ -55,8 +65,12 @@ export function validStubTargetResumeProvenance(doc, value) {
     || Buffer.byteLength(JSON.stringify(value),'utf8') > 262144) return false;
   const ids=new Set();
   return value.events.every(e => {
-    if (!shape(e,['id','kind','changes']) || !id(e.id) || ids.has(e.id) || !['manual','ai_rewrite','plan','target_order'].includes(e.kind)
+    const hasGeneration = e !== null && typeof e === 'object' && Object.hasOwn(e,'generation');
+    if (!shape(e,['id','kind','changes',...(value.version === 4 && hasGeneration ? ['generation'] : [])]) || !id(e.id) || ids.has(e.id) || !['manual','ai_rewrite','plan','target_order'].includes(e.kind)
+      || hasGeneration && !generationValid(e.generation,e.kind)
       || !Array.isArray(e.changes) || !e.changes.length || e.changes.length > 1024) return false;
-    ids.add(e.id); return e.changes.every(c => changeValid(c,e.kind,value.version));
+    ids.add(e.id); return e.changes.every(c => changeValid(c,e.kind,value.version)
+      && (!hasGeneration || c.check === null || (c.check.document_signature === e.generation.document_signature
+        && c.check.pipeline_version === e.generation.pipeline_version && e.generation.request_ids.includes(c.check.request_id))));
   });
 }

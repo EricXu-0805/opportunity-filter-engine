@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
+import generationGolden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
 import { appendTargetResumeProvenance, type TargetResumeProvenance } from './target-resume-provenance';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, type TargetResumeV1 } from './target-resume';
@@ -13,6 +14,15 @@ const stamp='2026-09-24T18:00:00.000Z';
 let doc:TargetResumeV1;let filters:Array<[string,unknown]>;let select:ReturnType<typeof vi.fn>;let single:ReturnType<typeof vi.fn>;let limit:ReturnType<typeof vi.fn>;
 function deferred<T>() { let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>resolve=r);return {promise,resolve}; }
 const row=(revision=1,d=doc)=>({revision,doc:d,updated_at:stamp,provenance:null as TargetResumeProvenance|null});
+// This build writes no generation record, so a V4 history is one that arrives from storage.
+function generationPair() {
+ const before=structuredClone(generationGolden.draft) as TargetResumeV1, after=structuredClone(before);
+ after.document.sections.find(s=>s.kind==='activities')!.blocks[0].included=false;
+ const provenance=appendTargetResumeProvenance(null,before,after,{kind:'plan'})!;
+ provenance.version=4;provenance.events[0].generation={version:'target-resume-generation-v1:'+'a'.repeat(64),pipeline_version:'full-target-plan-v6',
+  document_signature:'v1:sha256:'+'a'.repeat(64),request_ids:['request-one']};
+ return {after,provenance};
+}
 beforeEach(async()=>{
  vi.stubGlobal('crypto',webcrypto);localStorage.clear();advanceOwnerEpoch(null);advanceOwnerEpoch(UID);await syncLocalIdentityOwner(UID);
  rpc.mockReset();from.mockReset();device.mockReset().mockResolvedValue(UID);getSession.mockReset().mockResolvedValue({data:{session:null},error:null});filters=[];
@@ -22,6 +32,24 @@ beforeEach(async()=>{
  const master=createEmptyResumeMaster('master');master.basics.name={id:'name',revision:1,status:'confirmed',value:'Alex 王',source:{kind:'manual'}};
  doc=await createTargetResume({institution:'UIUC',college:'Grainger',major:'CS',grade:'Junior',is_international:false,research_interests:'robotics',skills:[],resume_master:master,resume_text:'Source',experience_entries:[]},{opportunity_id:'opp',title:'Lab',organization:'UIUC',description:'robotics',requirements:[],source_url:'https://example.edu/lab',context_version:4,lab:{version:1,status:'unavailable',snapshot:null},research:{version:1,status:'unavailable',snapshot:null},criteria:{eligibility:{},timing:{},application:{},setting:{},availability:{},attribution:{}}},'target');
  single.mockResolvedValue({data:row(),error:null});
+});
+it('preserves a V4 generation record through read and historical restore',async()=>{
+ const {after,provenance}=generationPair(), historical={...row(2,after),provenance};
+ single.mockResolvedValue({data:historical,error:null});
+ const value=await loadTargetResumeVersion(after.opportunity_id,2,captureOwnerToken());expect(value).toEqual(historical);
+ rpc.mockImplementation(async(_name,args)=>({data:{status:'saved',...row(4,args.p_doc),provenance:args.p_provenance},error:null}));
+ expect(await saveTargetResume(value!.doc,3,captureOwnerToken(),value!.provenance)).toEqual({status:'saved',value:{...historical,revision:4}});
+ expect(rpc.mock.calls[0][1].p_provenance.events[0].generation).toEqual(provenance.events[0].generation);
+});
+it('sends the generation record as it was when the save began, and rejects a receipt that relabels it',async()=>{
+ const {after,provenance}=generationPair(), expected=structuredClone(provenance), gate=deferred<string>();device.mockReturnValue(gate.promise);
+ rpc.mockImplementation(async(_name,args)=>({data:{status:'saved',...row(1,args.p_doc),provenance:args.p_provenance},error:null}));
+ const pending=saveTargetResume(after,0,captureOwnerToken(),provenance);
+ provenance.events[0].generation!.request_ids.push('later-request');
+ provenance.events[0].generation!.version='target-resume-generation-v1:'+'b'.repeat(64);gate.resolve(UID);
+ expect((await pending).status).toBe('saved');expect(rpc.mock.calls[0][1].p_provenance).toEqual(expected);
+ rpc.mockResolvedValue({data:{status:'saved',...row(2,after),provenance},error:null});
+ expect(await saveTargetResume(after,1,captureOwnerToken(),expected)).toEqual({status:'failed'});
 });
 describe('target resume persistence',()=>{
  it('reads, edits, saves and restores legacy six-key documents without upgrading their source',async()=>{

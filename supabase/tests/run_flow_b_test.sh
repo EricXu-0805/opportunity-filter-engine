@@ -196,7 +196,7 @@ echo "==> run contact_material_concurrency_test.sh"
 source "$HERE/contact_material_concurrency_test.sh"
 
 for suite in target_resume_provenance_test.sql target_resume_research_provenance_test.sql \
-             target_resume_lab_provenance_test.sql; do
+             target_resume_lab_provenance_test.sql target_resume_generation_provenance_test.sql; do
   echo "==> run $suite"
   { printf 'BEGIN;\n'; cat "$HERE/$suite"; printf '\nROLLBACK;\n'; } \
     | "${PSQL[@]}" -v fixture_path="$HERE/target_resume_provenance_fixtures.sql"

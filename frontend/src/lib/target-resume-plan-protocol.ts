@@ -52,6 +52,8 @@ export interface TargetResumePlanResponse {
   support_groups?: TargetResumeSupportGroup[];
   /** Absent in older responses; never infer it from pipeline_version. */
   check_version?: string | null;
+  /** Absent from older servers: the configuration is then unknown, never the current one. */
+  generation_version?: string;
   version: 1; pipeline_version: typeof TARGET_RESUME_PLAN_ACCEPTED_VERSIONS[number];
   request_id: string; document_id: string; opportunity_id: string;
   document_signature: string; base: TargetResumeV1['base'];

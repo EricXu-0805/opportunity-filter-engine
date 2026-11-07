@@ -8,7 +8,7 @@ import {
   FULL_TARGET_AI_VERSION, FULL_TARGET_AI_MAX_BODY_BYTES, FULL_TARGET_AI_MAX_UNITS, FULL_TARGET_AI_MAX_EXPERIENCE_UNITS,
   FULL_TARGET_AI_MAX_UNIT_CHARACTERS, FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS,
   FULL_TARGET_AI_MAX_TARGET_CHARACTERS, FULL_TARGET_AI_MAX_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS,
-  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_ANCHORS, TARGET_RESUME_AI_OPS,
+  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_ANCHORS, TARGET_RESUME_AI_OPS, TARGET_RESUME_GENERATION_VERSION_PATTERN,
   type PreparedTargetResumeAi, type TargetResumeAiUnit, type TargetResumeAiReceipt,
   type TargetResumeAiRequest, type TargetResumeAiResponse,
   type TargetResumeAiPriority,
@@ -16,7 +16,7 @@ import {
 
 export type TargetResumeAIErrorCode = 'invalid_document' | 'invalid_signature' | 'signature_unavailable'
   | 'invalid_request' | 'invalid_response' | 'invalid_selection' | 'stale_document' | 'stale_context'
-  | 'incomplete_structure' | 'document_too_large' | 'legacy_target_context';
+  | 'incomplete_structure' | 'document_too_large' | 'legacy_target_context' | 'generation_config_changed';
 export type TargetResumeAIResult<T> = { ok: true; value: T } | { ok: false; code: TargetResumeAIErrorCode };
 export interface TargetResumeAICurrentContext {
   profile_signature: string; source_signature: string; target_signature: string;
@@ -322,8 +322,11 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
     if (new TextEncoder().encode(serialized).byteLength > FULL_TARGET_AI_MAX_BODY_BYTES) fail('invalid_response');
     const value: unknown = JSON.parse(serialized);
     const checkKeys = object(value) && Object.hasOwn(value, 'check_version') ? ['check_version'] : [];
+    const generationKeys = object(value) && Object.hasOwn(value, 'generation_version') ? ['generation_version'] : [];
     shape(value, ['version', 'pipeline_version', 'request_id', 'document_id', 'opportunity_id', 'document_signature',
-      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys, ...(groups === undefined ? [] : ['support_groups'])]);
+      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys, ...generationKeys, ...(groups === undefined ? [] : ['support_groups'])]);
+    if (generationKeys.length && (typeof value.generation_version !== 'string'
+      || !TARGET_RESUME_GENERATION_VERSION_PATTERN.test(value.generation_version))) fail('invalid_response');
     if (!same(value.support_groups ?? null, groups ?? null)) fail('invalid_response');
     if (checkKeys.length && value.check_version !== null
       && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');
@@ -369,6 +372,8 @@ export function mergeTargetResumeAIResponses(prepared: PreparedTargetResumeAi,
       receipts.set(item.unit_id, validateReceipt(prepared, unit, item));
     }
     for (const response of responses) {
+      // A batch written by another configuration (or one that cannot say which) never joins the run.
+      if (response.generation_version !== responses[0].generation_version) fail('generation_config_changed');
       const checked = validateTargetResumeAIResponse(prepared, {
         request_id: response.request_id, selected_unit_ids: response.receipts.map((item) => item.unit_id),
         ...(prepared.support_groups === undefined ? {} : {support_groups:supportGroupsForUnits(prepared.support_groups,response.receipts.map(item=>item.unit_id))}),

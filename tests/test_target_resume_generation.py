@@ -1,5 +1,6 @@
 """No provider traffic: the opt-in full-target generation version and what it identifies."""
 import re
+from pathlib import Path
 
 import pytest
 
@@ -158,3 +159,9 @@ def test_output_budget_policy_changes_the_version(monkeypatch):
     policy["max_tokens"] += 1
     monkeypatch.setattr(target_resume_output_budget, "OUTPUT_BUDGET_POLICY", policy)
     assert generation_version() != before
+
+
+def test_browser_checks_the_same_version_format():
+    protocol = (Path(__file__).parents[1] / "frontend/src/lib/target-resume-ai-protocol.ts").read_text()
+    browser = re.search(r"export const TARGET_RESUME_GENERATION_VERSION_PATTERN = /(.+)/;", protocol)[1]
+    assert browser == VERSION_PATTERN
