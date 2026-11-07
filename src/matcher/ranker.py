@@ -34,6 +34,7 @@ from ..evidence import (
     faculty_availability_status,
     faculty_contact_claims_unverified,
     faculty_positive_major_labels,
+    faculty_profile_summary_fields,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
     faculty_summary_inferred_keywords,
@@ -2506,7 +2507,16 @@ def score_upside(
                     if interest_phrase
                     else f"They also work on {work}"
                 )
-            elif lab_label:
+            elif lab_label and (
+                st.kw_inferred
+                or not is_faculty_contact
+                # A faculty row's description is ours, written from its fields
+                # (neutralize_unverified_faculty_claims). Unless it names
+                # research areas of the row's own, the similarity compared
+                # that template, and nothing the professor wrote gives them a
+                # focus area (M169).
+                or faculty_profile_summary_fields(opportunity)["research_areas"] is not None
+            ):
                 # The similarity is to the student's stated interests, which
                 # are never their background or experience (M13). When
                 # display_kw is empty because the keywords are inferred (a

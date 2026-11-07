@@ -385,7 +385,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # tie with an unstable sort, so one unrelated word added to one record could
 # swap tied terms in and out: 191 of 200 simulated one-word edits did on the
 # 2026-11-02 corpus. A selection rule no hashed knob sees.
-_MATCHER_VERSION_BASE = "34"
+# 35: a faculty row whose description names no research areas of its own (no
+# research text, no keywords that are the source's topics) gets no "focus
+# area" line: its description is our template, so the similarity compared
+# that, not anything the professor wrote (checklist M169). A sentence no
+# hashed knob sees.
+_MATCHER_VERSION_BASE = "35"
 
 
 def _matcher_fingerprint() -> str:
