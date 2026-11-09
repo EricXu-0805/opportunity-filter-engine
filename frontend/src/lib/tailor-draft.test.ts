@@ -43,6 +43,22 @@ describe('complete material bindings', () => {
     expect((await createBinding(p, { ...t, keywords: [...t.keywords].reverse() }, 'w13.2')).target_sig).not.toBe(original.target_sig);
     expect((await createBinding({ ...p, resume_text: p.resume_text!.trim() }, t, 'w13.2')).resume_sig).not.toBe(original.resume_sig);
   });
+  // Real details carry target_truth; the footer's sighting day sits beside it.
+  const read = (verified_at: string): Opportunity => ({ ...target(), target_truth: { listing_state: 'unknown', reference_only: false,
+    actionable: true, accepting_state: 'unknown', reason_code: null, verified_at, expires_at: null } });
+  it.each([undefined, '2026-11-04', null])('keeps a saved draft current when only the sighting day moves from %s', async seen => {
+    const p = profile(); const t = read('2026-07-22T07:01:58');
+    const saved = createDraft('owner-a', t.id, 'Original text', 'heuristic',
+      await createBinding(p, seen === undefined ? t : { ...t, last_seen_listed_at: seen }, 'w13.2'));
+    expect(await compareDraft(saved, await createBinding(p, { ...t, last_seen_listed_at: '2026-11-09' }, 'w13.2'))).toBe('current');
+  });
+  it('still marks a draft stale when the verified day moves with the sighting day', async () => {
+    const p = profile();
+    const saved = createDraft('owner-a', 'opp-1', 'Original text', 'heuristic',
+      await createBinding(p, { ...read('2026-07-22T07:01:58'), last_seen_listed_at: '2026-07-22' }, 'w13.2'));
+    const later = await createBinding(p, { ...read('2026-11-04T15:41:29'), last_seen_listed_at: '2026-11-04' }, 'w13.2');
+    expect(await compareDraft(saved, later)).toBe('stale');
+  });
   it('detects skills, withdrawn evidence, source deletion and pipeline changes even without a different target id', async () => {
     const p = profile(); const t = target(); const original = await createBinding(p, t, 'w13.2');
     const entry = p.experience_entries![0];

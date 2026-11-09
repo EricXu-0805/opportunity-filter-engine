@@ -143,6 +143,18 @@ describe('Tailor local draft provenance', () => {
     view.rerender(<TailorModal {...base} isOpen={false} />); view.rerender(<TailorModal {...base} />); await ready();
     expect(input()).toHaveValue(''); expect(saved().text).toBe(''); expect(generate()).toBeDisabled();
   });
+  // The draft was saved before detail payloads carried the footer's sighting day.
+  it('keeps a saved draft current when only the sighting day is new, and not when the verified day moves', async () => {
+    const read = (verified_at: string): Opportunity => ({ ...target, target_truth: { listing_state: 'unknown', reference_only: false,
+      actionable: true, accepting_state: 'unknown', reason_code: null, verified_at, expires_at: null } });
+    seed(encodeDraft(createDraft(OWNER, OPP, 'Saved human draft', 'manual', await createBinding(profile, read('2026-07-22T07:01:58'), 'w14.1'))));
+    const view = render(<TailorModal {...base} target={{ ...read('2026-07-22T07:01:58'), last_seen_listed_at: '2026-11-04' }} />); await ready();
+    expect(input()).toHaveValue('Saved human draft');
+    expect(screen.queryByTestId('tailor-stale-draft')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tailor-draft-review')).not.toBeInTheDocument();
+    view.rerender(<TailorModal {...base} target={{ ...read('2026-11-04T15:41:29'), last_seen_listed_at: '2026-11-04' }} />);
+    await waitFor(() => expect(screen.getByTestId('tailor-stale-draft')).toBeInTheDocument());
+  });
   it('reopening reads another tab’s latest same-target value without the old closure writing over it', async () => {
     const binding = await createBinding(profile, target, 'w14.1');
     seed(encodeDraft(createDraft(OWNER, OPP, 'First tab draft', 'manual', binding)));

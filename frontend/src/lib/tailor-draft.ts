@@ -146,8 +146,12 @@ export async function createBinding(profile: ProfileData, target: Opportunity | 
   const profileCopy: ProfileData = JSON.parse(profileJson);
   const targetCopy: unknown = JSON.parse(targetJson);
   if (!record(targetCopy) || !nonempty(targetCopy.id) || !isPublicDetail(targetCopy, targetCopy.id)) fail('invalid_target');
+  // The footer's sighting day is not target content; the server's writing
+  // version leaves it out too, so a refresh that moves only that day keeps a
+  // saved draft current.
+  const targetContent = canonical(Object.fromEntries(Object.entries(targetCopy).filter(([key]) => key !== 'last_seen_listed_at')));
   const resumeText = profileCopy.resume_text ?? '';
-  const [profile_sig, target_sig, resume_sig] = await Promise.all([digest(profileJson), digest(targetJson), digest(resumeText)]);
+  const [profile_sig, target_sig, resume_sig] = await Promise.all([digest(profileJson), digest(targetContent), digest(resumeText)]);
   return { profile_sig, target_sig, resume_sig, pipeline_version: pipelineVersion, rule_version: TAILOR_DRAFT_RULE_VERSION };
 }
 export function createDraft(ownerId: string, opportunityId: string, value: string, kind: TailorDraftOriginKind,
