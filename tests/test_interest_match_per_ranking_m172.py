@@ -15,6 +15,7 @@ alphabetical order; the score still counts every match. A chip of more than
 from __future__ import annotations
 
 import random
+import re
 
 import pytest
 
@@ -30,17 +31,23 @@ from src.matcher.config import (
 from src.matcher.reason_keys import reason_key
 
 
+def _words(term):
+    return [word for word in re.split(r"[ \-]+", term.translate(rk._GAP_FOLD)) if any(ch.isalnum() for ch in word)]
+
+
 def _overlap_before(desired, keywords, reverse_re):
     """The chip overlap as it ran before M172, row by row, with how each chip
     matched. ``reverse_re`` is _kw_word_re on the ranking path (the static
-    path then) and _word_re on _desired_field_overlap's own."""
+    path then) and _word_re on _desired_field_overlap's own. Since M174 a
+    chip of six words or more takes a keyword from inside only when the
+    keyword has two words or more."""
     if not desired or not keywords:
         return {}
     kws = [k.lower().strip() for k in keywords if k and k.strip()]
     kw_set = set(kws)
     kw_canon = {rk._canonicalize_skill(k) for k in kws}
     containment_res = [
-        reverse_re(k) for k in kws
+        (reverse_re(k), len(_words(k)) >= 2) for k in kws
         if len(k) >= 4 and not (" " not in k and k in rk._LOW_SIGNAL_ALIGN_TOKENS)
     ]
     matched = {}
@@ -59,7 +66,8 @@ def _overlap_before(desired, keywords, reverse_re):
             if any(dl_re.search(k) for k in kws):
                 matched[d] = "chip in keyword"
                 continue
-        if any(p.search(dl) for p in containment_res):
+        sentence = len(_words(dl)) >= 6
+        if any(p.search(dl) for p, phrase in containment_res if phrase or not sentence):
             matched[d] = "keyword in chip"
     return matched
 

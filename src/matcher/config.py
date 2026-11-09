@@ -405,7 +405,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # research headline at all, neither "This lab focuses on …" nor the research
 # summary, whatever tags it has left (checklist M183). A sentence no hashed
 # knob sees.
-_MATCHER_VERSION_BASE = "38"
+# 39: a chip of six words or more matches a keyword found inside it only when
+# the keyword has two words or more, so "i want to study how neural circuits
+# encode memory" no longer matches a row through "memory" (checklist M174). A
+# match rule no hashed knob sees.
+_MATCHER_VERSION_BASE = "39"
 
 
 def _matcher_fingerprint() -> str:

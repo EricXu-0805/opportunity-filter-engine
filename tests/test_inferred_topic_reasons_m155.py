@@ -295,9 +295,11 @@ def _interest_lines(fit):
 def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, ending):
     """Words are counted after the split on spaces and hyphens. A chip past
     20 words keeps the ending. One past 300 characters is a passage, which no
-    line names, with the ending or without (M172)."""
+    line names, with the ending or without (M172). The row's keyword is the
+    chip itself: a chip of six words or more takes no one-word keyword from
+    inside it (M174)."""
     _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": [chip]},
-                             _row("robotics", "", " ".join(chip.replace("\u3000", " ").split())), precomputed_sim=0.0)
+                             _row(chip, "", " ".join(chip.replace("\u3000", " ").split())), precomputed_sim=0.0)
     assert _interest_lines(fit) == ([] if ending is None else [f"Matches your interests: {chip}{ending}"])
 
 
