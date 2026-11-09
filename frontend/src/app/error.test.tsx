@@ -35,7 +35,7 @@ describe('error page', () => {
 
   it('reads all eight sentences in Chinese when the visitor chose Chinese', () => {
     let { container } = show('zh', API_ERROR);
-    expect(screen.getByRole('heading', { name: '没能连上匹配服务。它可能正在唤醒 —— 请过几秒再试。' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '没能连上匹配服务。它可能还在启动 —— 请过几秒再试。' })).toBeInTheDocument();
     expect(screen.getByText('d1').parentElement?.textContent).toBe('错误编号：d1 —— 反馈问题时请附上这个编号。');
     expect(screen.getByText('技术详情')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument();

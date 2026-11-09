@@ -10823,7 +10823,7 @@ export const zh = {
     backHome: '返回首页',
   },
   errorPage: {
-    serviceUnreachable: '没能连上匹配服务。它可能正在唤醒 —— 请过几秒再试。',
+    serviceUnreachable: '没能连上匹配服务。它可能还在启动 —— 请过几秒再试。',
     generic: '这个页面出了点问题。',
     referenceId: '错误编号：',
     referenceHint: '反馈问题时请附上这个编号。',
