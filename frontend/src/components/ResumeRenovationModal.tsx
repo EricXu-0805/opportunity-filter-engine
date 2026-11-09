@@ -145,7 +145,8 @@ function targetFingerprintFor(key: string | undefined, opportunityId: string): s
         ('is_active' in metadata && typeof metadata.is_active !== 'boolean') ||
         ('confidence_score' in metadata && (typeof metadata.confidence_score !== 'number' || !Number.isFinite(metadata.confidence_score))))) return null;
     // Validate the required public shape without projecting: optional/new
-    // fields also participate in the digest. Actionability is a separate gate.
+    // fields also participate in the digest, except the sighting day
+    // (targetContent). Actionability is a separate gate.
     return targetContent(value);
   } catch {
     return null;

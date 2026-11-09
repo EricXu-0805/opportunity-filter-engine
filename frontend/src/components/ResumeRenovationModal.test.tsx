@@ -1708,12 +1708,14 @@ describe('full target digest boundaries', () => {
   });
   // The draft was saved before detail payloads carried the footer's day.
   it.each(['2026-11-04', null])('keeps a saved draft current when only the sighting day (%s) is new', async (seen) => {
-    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    // Real details carry target_truth beside the sighting day.
+    const read = { ...targetA, target_truth: { verified_at: '2026-07-22T07:01:58' } };
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({ target_sig: targetFixtureSignature(read) })));
     const profile = makeProfile();
     const show = (target: object) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(target)} />;
-    const view = render(show({ ...targetA, last_seen_listed_at: seen }));
+    const view = render(show({ ...read, last_seen_listed_at: seen }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
-    view.rerender(show({ ...targetA, last_seen_listed_at: '2026-11-09' }));
+    view.rerender(show({ ...read, last_seen_listed_at: '2026-11-09' }));
     expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled();
     expect(screen.queryByTestId('renovation-source-review')).toBeNull();
   });
