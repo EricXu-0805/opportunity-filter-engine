@@ -1242,13 +1242,16 @@ class TestSchoolAudience:
         source-determined in Phase 1. Also fails when a new source ships
         without an entry in the mapping.
 
-        The one sanctioned deviation: apply_school_audience flips a record whose
+        Two sanctioned deviations. apply_school_audience flips a record whose
         own text restricts it to its host school from the default (school,
         "unknown") to (school, "campus"). Only that exact flip is tolerated — a
-        record claiming "campus" whose text does NOT restrict it is still drift."""
+        record claiming "campus" whose text does NOT restrict it is still drift.
+        And a configured program with an entry in REVIEWED_PROGRAM_AUDIENCES
+        carries the audience that entry gives it, at its source's school."""
         from src.normalizers.school_audience import (
             SOURCE_DEFAULTS,
             _explicitly_campus_only,
+            reviewed_program_audience,
         )
 
         data = _load_data()
@@ -1268,17 +1271,86 @@ class TestSchoolAudience:
                 and _explicitly_campus_only(o.get("school"), o)
             )
 
+        def _is_reviewed_program(o: dict) -> bool:
+            reviewed = reviewed_program_audience(o)
+            return (
+                reviewed is not None
+                and (o.get("school"), o.get("audience")) == (SOURCE_DEFAULTS[o["source"]][0], reviewed.audience)
+            )
+
         offenders = [
             (o.get("source"), o.get("id"), o.get("school"), o.get("audience"))
             for o in data
             if o.get("source") != "manual"
             and (o.get("school"), o.get("audience")) != SOURCE_DEFAULTS[o["source"]]
             and not _is_sanctioned_campus_flip(o)
+            and not _is_reviewed_program(o)
         ]
         assert not offenders, (
             f"{len(offenders)} records whose (school, audience) drifted from "
             f"their source default. First 3: {offenders[:3]}"
         )
+
+
+def _configured_program(school, key, url=None):
+    from src.normalizers.school_audience import REVIEWED_PROGRAM_AUDIENCES
+
+    reviewed = REVIEWED_PROGRAM_AUDIENCES[(school, key)]
+    url = url or reviewed.url
+    return {"id": f"{school}-{key}-{len(url)}", "source": reviewed.source, "url": url, "source_url": url,
+            "title": "Summer research program", "eligibility": {},
+            "metadata": {"collector_school": school, "collector_key": key}}
+
+
+
+
+class TestReviewedProgramAudiencesPassTheGate:
+    """apply_school_audience gives a reviewed program the audience its page
+    states, at refresh. The drift gate accepts exactly that audience; any
+    other departure from the source default is still drift."""
+
+    def _stamped(self):
+        from src.normalizers.school_audience import REVIEWED_PROGRAM_AUDIENCES, apply_school_audience
+
+        keys = sorted(REVIEWED_PROGRAM_AUDIENCES)
+        rows = [_configured_program(s, k) for s, k in keys]
+        rows += [_configured_program(s, k, url="https://example.edu/other-program") for s, k in keys]
+        apply_school_audience(rows)
+        return rows
+
+    def test_reviewed_programs_restamped_by_a_refresh_pass(self, monkeypatch):
+        from src.normalizers.school_audience import SOURCE_DEFAULTS
+
+        rows = self._stamped()
+        half = len(rows) // 2
+        assert [o["audience"] != SOURCE_DEFAULTS[o["source"]][1] for o in rows] == [True] * half + [False] * half
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        TestSchoolAudience().test_per_source_pairs_match_source_defaults()
+
+    @pytest.mark.parametrize("key,changes", [
+        ("other-program", {"audience": "open"}),
+        ("biox_usrp", {"audience": "open"}),
+        ("nu_tgs_srop", {"school": "uiuc"}),
+        ("nu_tgs_srop", {"url": "https://example.edu/other-program"}),
+        ("nu_tgs_srop", {"source_url": "https://example.edu/other-program"}),
+        ("nu_tgs_srop", {"source": "northwestern_labs"}),
+        ("nu_tgs_srop", {"metadata": {"collector_school": "northwestern", "collector_key": "nu_tgs_srop",
+                                      "discovered": True}}),
+    ], ids=["unreviewed-row-of-a-reviewed-source", "reviewed-row-other-audience",
+            "reviewed-row-other-school", "reviewed-key-other-url", "reviewed-key-other-source-url",
+            "reviewed-key-other-source", "reviewed-key-discovered"])
+    def test_any_other_departure_is_still_drift(self, monkeypatch, key, changes):
+        rows = self._stamped()
+        if key == "other-program":
+            row = next(o for o in rows if o["source"] == "northwestern_research_programs"
+                       and o["url"] == "https://example.edu/other-program")
+        else:
+            row = next(o for o in rows if o["metadata"]["collector_key"] == key
+                       and o["url"] != "https://example.edu/other-program")
+        row.update(changes)
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        with pytest.raises(AssertionError, match="drifted"):
+            TestSchoolAudience().test_per_source_pairs_match_source_defaults()
 
 
 def test_normalize_compensation_collapses_range_and_drops_absurd_hourly():
