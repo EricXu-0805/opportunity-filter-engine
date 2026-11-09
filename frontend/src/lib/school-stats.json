@@ -15,9 +15,9 @@
     },
     "asu": {
       "listing_count": 6,
-      "faculty_contact_count": 2440,
+      "faculty_contact_count": 2444,
       "unreviewed_count": 0,
-      "total_count": 2446
+      "total_count": 2450
     },
     "barnard": {
       "listing_count": 6,
@@ -81,9 +81,9 @@
     },
     "carleton": {
       "listing_count": 5,
-      "faculty_contact_count": 300,
+      "faculty_contact_count": 297,
       "unreviewed_count": 0,
-      "total_count": 305
+      "total_count": 302
     },
     "casewestern": {
       "listing_count": 4,
@@ -177,15 +177,15 @@
     },
     "emory": {
       "listing_count": 5,
-      "faculty_contact_count": 1456,
+      "faculty_contact_count": 1446,
       "unreviewed_count": 0,
-      "total_count": 1461
+      "total_count": 1451
     },
     "fsu": {
       "listing_count": 3,
-      "faculty_contact_count": 666,
+      "faculty_contact_count": 667,
       "unreviewed_count": 0,
-      "total_count": 669
+      "total_count": 670
     },
     "gatech": {
       "listing_count": 18,
@@ -201,9 +201,9 @@
     },
     "grinnell": {
       "listing_count": 7,
-      "faculty_contact_count": 247,
+      "faculty_contact_count": 246,
       "unreviewed_count": 0,
-      "total_count": 254
+      "total_count": 253
     },
     "hamilton": {
       "listing_count": 4,
@@ -267,9 +267,9 @@
     },
     "macalester": {
       "listing_count": 4,
-      "faculty_contact_count": 204,
+      "faculty_contact_count": 205,
       "unreviewed_count": 0,
-      "total_count": 208
+      "total_count": 209
     },
     "miami": {
       "listing_count": 3,
@@ -279,9 +279,9 @@
     },
     "middlebury": {
       "listing_count": 6,
-      "faculty_contact_count": 320,
+      "faculty_contact_count": 319,
       "unreviewed_count": 0,
-      "total_count": 326
+      "total_count": 325
     },
     "mit": {
       "listing_count": 6,
@@ -441,9 +441,9 @@
     },
     "tufts": {
       "listing_count": 5,
-      "faculty_contact_count": 2117,
+      "faculty_contact_count": 2120,
       "unreviewed_count": 0,
-      "total_count": 2122
+      "total_count": 2125
     },
     "ucb": {
       "listing_count": 71,
@@ -531,9 +531,9 @@
     },
     "uiuc": {
       "listing_count": 18,
-      "faculty_contact_count": 2989,
+      "faculty_contact_count": 2992,
       "unreviewed_count": 0,
-      "total_count": 3007
+      "total_count": 3010
     },
     "uky": {
       "listing_count": 3,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5642
+  "national_count": 5640
 }
