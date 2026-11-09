@@ -82,10 +82,12 @@ from src.normalizers.deactivate_stale_faculty import (
 from ..contact_instructions import (
     CAPTURE_KEY,
     SOURCE_KEY,
+    _identity,
     _url,
     capture_failure,
     capture_from_html,
     capture_metadata,
+    contact_instruction_pages,
     retained_sources,
     same_source_page,
 )
@@ -172,6 +174,45 @@ def run_start_ids(ids: frozenset[str]):
         yield
     finally:
         _RUN_START_IDS = prev
+
+
+# The (profile page, person) of each capture not marked failed that the corpus
+# held when this refresh started, with the fields the person's row held then,
+# set the same way (``run_start_profiles``): the monthly profile pass does not
+# fetch such a page again for fields the row already holds.
+_RUN_START_PROFILES: dict[tuple[str | None, str], frozenset[str]] = {}
+
+# The keys _enrich_profile reads research with; keep the two in step.
+_PROFILE_RESEARCH_KEYS = ("research_selector", "research_items_selector", "research_label_re",
+                          "research_html_re", "research_re", "cap_keywords", "digitalmeasures")
+
+
+def captured_profile_pages(rows: list[dict]) -> dict[tuple[str | None, str], frozenset[str]]:
+    """The (page, person) of each stored faculty row's page capture that is
+    not marked failed, and which of "email" and "research" every row with
+    that capture holds."""
+    pages: dict[tuple[str | None, str], frozenset[str]] = {}
+    for o in rows:
+        if o.get("source_type") != "faculty_research":
+            continue
+        research = str((o.get("metadata") or {}).get("research_areas_raw") or "").strip() or o.get("keywords")
+        held = frozenset(f for f, value in (("email", o.get("contact_email")), ("research", research)) if value)
+        for page in contact_instruction_pages(o):
+            if page["receipt"] and page["receipt"]["status"] != "failed":
+                key = (_url(page["requested_source_url"]), _identity(page.get("identity_name")))
+                pages[key] = pages.get(key, held) & held
+    return pages
+
+
+@contextmanager
+def run_start_profiles(pages: dict[tuple[str | None, str], frozenset[str]]):
+    """Hand the fetches inside this window the corpus's run-start captures."""
+    global _RUN_START_PROFILES
+    prev, _RUN_START_PROFILES = _RUN_START_PROFILES, dict(pages)
+    try:
+        yield
+    finally:
+        _RUN_START_PROFILES = prev
 
 
 def _source_budget_spent() -> bool:
@@ -2322,8 +2363,12 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     """Per-profile enrichment pass (gated): follow each faculty's own profile
     page to recover research areas / email / rank the directory listing omits.
 
-    Only records still missing the wanted fields are fetched, so a re-run (or a
-    listing that already carries them) costs nothing extra. ``always: True``
+    Only records still missing the wanted fields are fetched, so a listing that
+    already carries them costs nothing extra. The monthly pass (a block without
+    ``always`` that reads no title) also skips a person whose run-start row
+    holds a capture of the page that is not marked failed and every field the
+    block reads there, email and research (``run_start_profiles``): the merge
+    keeps those. It keeps no title read off the page. ``always: True``
     bypasses the OFE_ENRICH_PROFILES env gate — for directories whose LISTING
     has no title/email at all (bare link-lists), the profile pass isn't
     optional depth, it's where the record's core fields live. ``url_template``
@@ -2371,6 +2416,16 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
         want_email = bool(enr.get("email_selector")) and not p.get("email")
         want_title = bool(enr.get("title_selector"))
         if not (want_research or want_email or want_title):
+            continue
+        # Only the monthly pass skips: an ``always`` block's page is where its
+        # rows' core fields live, and the merge keeps no title read off a page
+        # (one from title_selector, or from position_re with use_position_title).
+        reads = {"email"} if want_email else set()
+        if want_research and any(enr.get(k) for k in _PROFILE_RESEARCH_KEYS):
+            reads.add("research")
+        reads_title = want_title or bool(enr.get("use_position_title") and enr.get("position_re"))
+        held = _RUN_START_PROFILES.get((_url(target), _identity(_clean_name(p.get("name")))))
+        if not enr.get("always") and not reads_title and held is not None and reads <= held:
             continue
         memo_key = (target, p.get("name"), repr(sorted(enr.items())))
         enrichment = _PROFILE_MEMO.get(memo_key) if _PROFILE_MEMO is not None else None

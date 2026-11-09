@@ -706,6 +706,40 @@ def test_a_faculty_graph_fetch_reads_the_run_start_ids(monkeypatch, tmp_path):
     assert faculty_graph._RUN_START_IDS == frozenset()
 
 
+def test_the_monthly_profile_pass_skips_a_page_the_run_start_corpus_captured(monkeypatch, tmp_path):
+    """A faculty_graph fetch is handed the profile pages the corpus held a
+    capture of before anything merged, with the fields their rows held, and
+    the monthly pass does not fetch a page whose row holds what it reads
+    (M176); none outside the fetch."""
+    from src.collectors import faculty_graph
+    from src.contact_instructions import CAPTURE_KEY, SOURCE_KEY, merge_contact_instruction_sources
+
+    listed = _umich_row("faculty-umich-ece-0000dddd", "ECE", ["optics"])
+    stored = json.loads(json.dumps(listed))
+    stored["metadata"][CAPTURE_KEY] = {
+        "version": 1, "status": "empty", "reason": None, "attempted_at": "2026-10-02T12:00:00+00:00",
+        "source_url": listed["url"], "record_source_url": listed["url"], "identity_name": "Avery Sample"}
+    stored["metadata"][SOURCE_KEY] = []
+    merge_contact_instruction_sources(listed, stored)
+    _stub_with_processed_file(monkeypatch, tmp_path, [stored])
+    monkeypatch.setattr(faculty_graph, "_PROFILE_ENRICH", True)
+    fetched = []
+    monkeypatch.setattr(faculty_graph, "_enrich_profile",
+                        lambda url, _enr, **_k: fetched.append(url) or ("", "", [], None, False))
+    other = "https://ece.testu.edu/people/eeee"
+
+    def fetch(unit_ledger=None):
+        faculty_graph._apply_profile_enrich(
+            [{"name": "Avery Sample", "url": listed["url"]}, {"name": "Blake Sample", "url": other}],
+            {"research_selector": ".research"})
+        return []
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    refresh_all.refresh_all(deep=True, schools={"umich"})
+    assert fetched == [other]
+    assert faculty_graph._RUN_START_PROFILES == {}
+
+
 def _ucb_row(rid, source, dept, keywords):
     seeded = _seed_faculty(source, rid, 0)
     seeded.update(school="ucb", department=dept, pi_name="Toni Varga", keywords=keywords,

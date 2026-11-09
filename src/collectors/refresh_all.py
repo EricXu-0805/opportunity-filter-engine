@@ -436,14 +436,19 @@ _BASE_SHA_RE = re.compile(r"[0-9a-f]{40}")
 _RUN_NUMBER_RE = re.compile(r"[1-9][0-9]*")
 
 
-def _run_start_corpus(path: Path) -> tuple[frozenset[str], dict[str, dict]]:
-    """Every record id in the corpus file at ``path``, and the archive stamps of
-    the duplicates the same-person collapse keeps there; none when it is absent."""
+def _run_start_corpus(
+    path: Path,
+) -> tuple[frozenset[str], dict[str, dict], dict[tuple[str | None, str], frozenset[str]]]:
+    """Every record id in the corpus file at ``path``, the archive stamps of the
+    duplicates the same-person collapse keeps there, and the profile pages it
+    holds a capture of that is not marked failed, with the fields their rows
+    hold; none when it is absent."""
     if not path.exists():
-        return frozenset(), {}
+        return frozenset(), {}, {}
     with open(path, encoding="utf-8") as f:
         rows = [o for o in json.load(f) if isinstance(o, dict) and o.get("id")]
-    return frozenset(o["id"] for o in rows), faculty_graph.duplicate_archive_stamps(rows)
+    return (frozenset(o["id"] for o in rows), faculty_graph.duplicate_archive_stamps(rows),
+            faculty_graph.captured_profile_pages(rows))
 
 
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
@@ -650,8 +655,9 @@ def refresh_all(
     # Ids a student may already hold (saved, linked, emailed): the corpus before
     # any collector merges into it. The uiuc merge's dedups and the same-person
     # collapse archive these, and need the stamps of the rows archived before: a
-    # merge replaces them.
-    published_ids, archive_stamps = _run_start_corpus(PROCESSED_FILE)
+    # merge replaces them. The monthly profile pass skips the people whose
+    # page was captured and whose row holds the fields it reads.
+    published_ids, archive_stamps, captured_pages = _run_start_corpus(PROCESSED_FILE)
 
     def selected(school: str | None) -> bool:
         if not sharded:
@@ -1367,7 +1373,8 @@ def refresh_all(
                     fetch_fn).parameters
                 with faculty_graph.source_budget(
                     budget_seconds_remaining()
-                ) as source_clock, faculty_graph.run_start_ids(published_ids):
+                ) as source_clock, faculty_graph.run_start_ids(published_ids), \
+                        faculty_graph.run_start_profiles(captured_pages):
                     new_opps = (fetch_fn(unit_ledger=unit_ledger)
                                 if accepts_ledger else fetch_fn())
                 added, updated = merge_fn(new_opps)
@@ -1553,7 +1560,7 @@ def refresh_all(
         #
         # The pass also stops at the run deadline. It starts only after the
         # sources, so on a day they spend the whole budget (the first week of
-        # the month, when OFE_ENRICH_PROFILES follows every profile link) its
+        # the month, when OFE_ENRICH_PROFILES followed every profile link) its
         # ~45 minutes used to run past the job's hard timeout and the run
         # published nothing: 09-01, 09-02, 09-04, 09-05, 09-07 and 10-01 2026
         # all entered this pass at 10:09-10:26 UTC and were killed at 11:04.
