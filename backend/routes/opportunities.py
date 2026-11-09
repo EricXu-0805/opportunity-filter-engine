@@ -31,7 +31,7 @@ from backend.lib.llm import (
     chat_model_options,
     chat_model_slug,
 )
-from backend.lib.opportunity_detail import build_detail_fields, note_says_rolling
+from backend.lib.opportunity_detail import build_detail_fields, last_seen_listed, note_says_rolling
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
@@ -660,6 +660,8 @@ async def get_opportunity(
     # projection just built (so nothing the projector stripped comes back)
     # with the canonical record consulted only for how each value was made.
     detail["detail_fields"] = build_detail_fields(detail, opp)
+    # After the version: a footer date that no writing generator reads.
+    detail["last_seen_listed_at"] = last_seen_listed(opp)
     # Revealing a contact is an action on the target, not a display detail: it
     # ends in a mailto and, for a signed-out visitor, in a sign-in prompt whose
     # only purpose is to unlock it. A closed listing stays readable, but there

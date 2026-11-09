@@ -23,8 +23,11 @@ _UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status"
 # These are response decorations, never source material. Drop poisoned corpus
 # values as well as declining to hash values later attached by a reveal route.
 # detail_fields (M03) is a display projection derived from this same payload;
-# the writing generators never read it, so it must not move the version.
-_NON_VERSIONED_FIELDS = {"writing_target_version", "contact_email_status", "detail_fields"} | REDACTED_FIELDS
+# the writing generators never read it, so it must not move the version. Nor
+# does the footer's last_seen_listed_at.
+_NON_VERSIONED_FIELDS = {
+    "writing_target_version", "contact_email_status", "detail_fields", "last_seen_listed_at",
+} | REDACTED_FIELDS
 
 
 def project_public_detail(opp: dict) -> dict:

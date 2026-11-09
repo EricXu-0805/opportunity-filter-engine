@@ -113,9 +113,9 @@ def _sanitize_opportunity(opp: dict) -> dict:
     if isinstance(meta, dict):
         meta.pop("notes", None)
         # Harvest bookkeeping with zero serving consumers (last_verified IS
-        # served on cards and stays).
+        # served on cards and stays, and last_seen_at dates a faculty
+        # detail page's footer).
         meta.pop("first_seen_at", None)
-        meta.pop("last_seen_at", None)
     _dedupe_strings(opp)
     return opp
 

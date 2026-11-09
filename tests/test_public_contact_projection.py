@@ -570,6 +570,8 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "reference_only",
     "last_verified",
     "expires_at",
+    # Carried by a faculty detail's `last_seen_listed_at` (M177).
+    "last_seen_at",
     "faculty_availability_status",
     "faculty_availability_scan_version",
     "faculty_not_accepting_undergraduates_stated",
