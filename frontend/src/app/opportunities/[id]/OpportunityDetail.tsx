@@ -312,10 +312,15 @@ export default function OpportunityDetail({
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-600 space-y-1">
             {opp.source && <p>{t('detail.source', { source: sourceLabel(opp.source, t) })}</p>}
-            {/* From the truth envelope, not metadata: the server stopped
-                serving metadata.last_verified once target_truth carried it,
-                and one timestamp cannot disagree with itself. */}
-            {opp.target_truth?.verified_at && (
+            {/* A faculty row's fields were read on verified_at, but a merged
+                duplicate can carry a later day the person was listed; the
+                server sends that day for faculty rows only. Otherwise from
+                the truth envelope, not metadata: the server stopped serving
+                metadata.last_verified once target_truth carried it, and one
+                timestamp cannot disagree with itself. */}
+            {opp.last_seen_listed_at ? (
+              <p>{t('detail.lastSeenListed', { date: opp.last_seen_listed_at })}</p>
+            ) : opp.target_truth?.verified_at && (
               <p>{t('detail.lastVerified', { date: opp.target_truth.verified_at })}</p>
             )}
           </div>

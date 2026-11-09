@@ -380,6 +380,8 @@ export interface Opportunity {
   contact_instructions?: import('./contact-instructions').ContactInstructions;
   /** Opaque server receipt for the public writing snapshot; absent in legacy/list data. */
   writing_target_version?: string;
+  /** Detail only: the day a faculty row was last seen listed (YYYY-MM-DD); null on other rows. */
+  last_seen_listed_at?: string | null;
   id: string;
   title: string;
   organization: string;
