@@ -135,6 +135,9 @@ describe('readDate', () => {
     ['2026-11', null],
     ['2026-11-4', null],
     ['seen 2026-11-04', null],
+    [' 2026-11-04', null],
+    ['26-11-04', null],
+    ['2026/11/04', null],
     [20261104, null],
     [null, null],
   ])('reads %s as %s', (value, day) => {
