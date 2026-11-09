@@ -961,8 +961,8 @@ describe('OpportunityDetail — footer date (M177)', () => {
     last_seen_listed_at: null,
   };
   const COPY = {
-    en: { listed: 'Last seen listed: 2026-11-04', verified: /^Last verified: 2026-09-01/, old: /Last verified/ },
-    zh: { listed: '最后看到在列：2026-11-04', verified: /^上次校验：2026-09-01/, old: /上次校验/ },
+    en: { listed: 'Last seen listed: 2026-11-04', verified: 'Last verified: 2026-09-01', old: /Last verified/ },
+    zh: { listed: '最后看到在列：2026-11-04', verified: '上次校验：2026-09-01', old: /上次校验/ },
   } as const;
 
   beforeEach(() => { mockHookState.current = baseHookResult(); });
@@ -984,7 +984,28 @@ describe('OpportunityDetail — footer date (M177)', () => {
   it('keeps the last-verified footer when an older backend sends no listed day', () => {
     const { last_seen_listed_at: _omitted, ...legacy } = faculty;
     render(<OpportunityDetail opp={legacy as never} />);
-    expect(screen.getByText(/^detail\.lastVerified:2026-07-22/)).toBeInTheDocument();
+    expect(screen.getByText('detail.lastVerified:2026-07-22')).toBeInTheDocument();
     expect(screen.queryByText(/detail\.lastSeenListed/)).toBeNull();
+  });
+
+  it.each(['en', 'zh'] as const)('shows the day alone, never the time (%s)', (locale) => {
+    i18nLocale.current = locale;
+    const { unmount } = render(
+      <OpportunityDetail opp={{ ...faculty, last_seen_listed_at: '2026-11-04T15:41:29.960406' } as never} />,
+    );
+    expect(screen.getByText(COPY[locale].listed)).toBeInTheDocument();
+    unmount();
+    render(<OpportunityDetail opp={program as never} />);
+    expect(screen.getByText(COPY[locale].verified)).toBeInTheDocument();
+  });
+
+  it('treats a value that does not start with a day as absent', () => {
+    const { unmount } = render(<OpportunityDetail opp={{ ...faculty, last_seen_listed_at: 'last week' } as never} />);
+    expect(screen.getByText('detail.lastVerified:2026-07-22')).toBeInTheDocument();
+    expect(screen.queryByText(/detail\.lastSeenListed/)).toBeNull();
+    unmount();
+    const unreadable = { ...program, target_truth: { ...ACTIONABLE_TRUTH, verified_at: 'recently' } };
+    render(<OpportunityDetail opp={unreadable as never} />);
+    expect(screen.queryByText(/detail\.lastVerified/)).toBeNull();
   });
 });

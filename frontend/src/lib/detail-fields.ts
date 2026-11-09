@@ -123,7 +123,7 @@ export function safeHttpUrl(value: unknown): string | null {
   }
 }
 
-function readDate(value: unknown): string | null {
+export function readDate(value: unknown): string | null {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
 }
 

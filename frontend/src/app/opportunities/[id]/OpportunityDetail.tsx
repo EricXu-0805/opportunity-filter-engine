@@ -23,7 +23,7 @@ import { canDeliverReminder } from '@/lib/reminders';
 import { pendingApplicationOpening, targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
 import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
-import { readDetailFields } from '@/lib/detail-fields';
+import { readDate, readDetailFields } from '@/lib/detail-fields';
 import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 
 import { ChatDrawer } from './ChatDrawer';
@@ -154,6 +154,9 @@ export default function OpportunityDetail({
   // render with their own hedges, exactly as before.
   const detailFields = readDetailFields(opp);
   const showsFacts = showsProfileOrOffer && detailFields !== null;
+  // A day, as the facts show it: the clock time is our run's, not the page's.
+  const listedOn = readDate(opp.last_seen_listed_at);
+  const verifiedOn = readDate(opp.target_truth?.verified_at);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
@@ -318,10 +321,10 @@ export default function OpportunityDetail({
                 the truth envelope, not metadata: the server stopped serving
                 metadata.last_verified once target_truth carried it, and one
                 timestamp cannot disagree with itself. */}
-            {opp.last_seen_listed_at ? (
-              <p>{t('detail.lastSeenListed', { date: opp.last_seen_listed_at })}</p>
-            ) : opp.target_truth?.verified_at && (
-              <p>{t('detail.lastVerified', { date: opp.target_truth.verified_at })}</p>
+            {listedOn ? (
+              <p>{t('detail.lastSeenListed', { date: listedOn })}</p>
+            ) : verifiedOn && (
+              <p>{t('detail.lastVerified', { date: verifiedOn })}</p>
             )}
           </div>
         </div>
