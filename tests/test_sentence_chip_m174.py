@@ -83,6 +83,9 @@ def test_words_are_split_on_spaces_and_hyphens_and_need_a_letter_or_digit():
     # Six pieces between spaces, five words: the em dash has no letter.
     dashed = "i want to — study robotics"
     assert _matched(dashed, "robotics") == {dashed}
+    # An em dash splits no word: "memory—circuits" is one of five.
+    joined = "i want to study memory—circuits"
+    assert _matched(joined, "circuits") == {joined}
     # A keyword's hyphen splits it as well: "x-ray" has two words.
     imaging = "i want to use x-ray imaging in medicine"
     assert _matched(imaging, "x-ray") == {imaging}
