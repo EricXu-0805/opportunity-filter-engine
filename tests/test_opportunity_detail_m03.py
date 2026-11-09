@@ -787,12 +787,20 @@ class TestLastSeenListed:
     # A confirmed listing, and a row whose kind nobody has reviewed.
     @pytest.mark.parametrize("source_type", ["campus_program", None])
     def test_any_other_row_carries_none(self, monkeypatch, source_type):
+        from backend.lib.public_opportunity_detail import project_public_detail
+
         record = _listing(source_type=source_type, metadata={
             "is_active": True, "listing_status": "open", "last_verified": self._VERIFIED, "last_seen_at": self._SEEN})
         body = self._get(monkeypatch, record)
         assert body["last_seen_listed_at"] is None
         assert body["target_truth"]["verified_at"] == self._VERIFIED
         assert "last_seen_at" not in body["metadata"]
+        poisoned = {**record, "last_seen_listed_at": "2099-01-01"}
+        poisoned_body = self._get(monkeypatch, poisoned)
+        assert poisoned_body["last_seen_listed_at"] is None
+        assert poisoned_body["writing_target_version"] == body["writing_target_version"]
+        # The writing generators read this projection, not the response.
+        assert "last_seen_listed_at" not in project_public_detail(poisoned)
 
     def test_a_corpus_value_of_the_same_name_is_neither_served_nor_versioned(self, monkeypatch):
         from backend.lib.public_opportunity_detail import project_public_detail
