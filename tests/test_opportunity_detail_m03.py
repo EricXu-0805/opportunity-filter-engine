@@ -795,11 +795,15 @@ class TestLastSeenListed:
         assert "last_seen_at" not in body["metadata"]
 
     def test_a_corpus_value_of_the_same_name_is_neither_served_nor_versioned(self, monkeypatch):
+        from backend.lib.public_opportunity_detail import project_public_detail
+
         clean = self._get(monkeypatch, self._faculty())
         poisoned = {**self._faculty(), "last_seen_listed_at": "2099-01-01"}
         body = self._get(monkeypatch, poisoned)
         assert body["last_seen_listed_at"] == "2026-11-04"
         assert body["writing_target_version"] == clean["writing_target_version"]
+        # The writing generators read this projection, not the response.
+        assert "last_seen_listed_at" not in project_public_detail(poisoned)
 
     def test_a_new_sighting_alone_does_not_change_the_writing_target(self, monkeypatch):
         from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
