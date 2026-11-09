@@ -435,6 +435,14 @@ export default function ColdEmailModal({
   if (knownTarget.id !== opportunityId || knownTarget.fingerprint !== targetFingerprint) {
     setKnownTarget({ id: opportunityId, fingerprint: targetFingerprint });
   }
+  // The footer's sighting day is not target content; the server's writing
+  // version leaves it out too, so a refresh that moves only that day keeps
+  // unfinished supplement answers on the same target.
+  const supplementTargetKey = useMemo(() => {
+    const value: unknown = JSON.parse(targetFingerprint);
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+      ? JSON.stringify({ ...value, last_seen_listed_at: undefined }) : targetFingerprint;
+  }, [targetFingerprint]);
   const [contactState, setContactState] = useState(() => ({
     id: opportunityId, value: defaultEmailContactContext(), revision: 0, dirty: false,
   }));
@@ -2511,7 +2519,7 @@ export default function ColdEmailModal({
                     onToggle={(event) => { setSupplementExpanded(event.currentTarget.open); if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>
                     <summary className="cursor-pointer text-sm font-semibold text-gray-800">{locale === 'zh' ? '补充本人贡献（可跳过）' : 'Add your personal contribution (optional)'}</summary>
                     {supplementSession && supplementSession.targetId === opportunityId && <div className="mt-3">
-                      <ResumeSupplementPanel opportunityId={opportunityId} initialDraft={pendingSupplement} onDraftSnapshotChange={supplementSnapshotChanged} owner={supplementSession.owner} targetKey={targetFingerprint} purpose="cold_email" profileAvailable={profileAvailable}
+                      <ResumeSupplementPanel opportunityId={opportunityId} initialDraft={pendingSupplement} onDraftSnapshotChange={supplementSnapshotChanged} owner={supplementSession.owner} targetKey={supplementTargetKey} purpose="cold_email" profileAvailable={profileAvailable}
                         onAcceptedProfile={(view, againstView) => {
                           const current = supplementInputRef.current, scope = supplementScopeRef.current;
                           if (!current.available || scope !== supplementSession || current.targetId !== scope.targetId
