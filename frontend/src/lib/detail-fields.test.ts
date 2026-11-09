@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DETAIL_FIELD_NAMES, DETAIL_FIELDS_VERSION, readDetailFields } from './detail-fields';
+import { DETAIL_FIELD_NAMES, DETAIL_FIELDS_VERSION, readDate, readDetailFields } from './detail-fields';
 
 function envelope(fields: Record<string, unknown>, version = DETAIL_FIELDS_VERSION) {
   return { detail_fields: { version, fields } };
@@ -125,5 +125,19 @@ describe('readDetailFields', () => {
       school: { explicit: { institution: 'X' }, provenance: { source_url: 'javascript:alert(1)' } },
     }))!;
     expect(fields.school.sourceUrl).toBeNull();
+  });
+});
+
+describe('readDate', () => {
+  it.each([
+    ['2026-11-04T15:41:29.960406', '2026-11-04'],
+    ['2026-11-04', '2026-11-04'],
+    ['2026-11', null],
+    ['2026-11-4', null],
+    ['seen 2026-11-04', null],
+    [20261104, null],
+    [null, null],
+  ])('reads %s as %s', (value, day) => {
+    expect(readDate(value)).toBe(day);
   });
 });
