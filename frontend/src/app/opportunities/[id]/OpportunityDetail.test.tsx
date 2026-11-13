@@ -16,13 +16,20 @@ import axe from 'axe-core';
 // Echoing only the key made every interpolated value invisible: "Source:
 // jhu_faculty" and "Source: Johns Hopkins Faculty" both rendered as
 // `detail.source`, so no assertion in this file could tell them apart.
-vi.mock('@/i18n/client', () => ({
-  useT: () => ({
-    locale: 'en',
-    t: (key: string, params?: Record<string, unknown>) =>
-      params ? `${key}:${Object.values(params).join('|')}` : key,
-  }),
-}));
+// A test that names a locale gets that dictionary's copy instead.
+const i18nLocale = vi.hoisted(() => ({ current: null as 'en' | 'zh' | null }));
+vi.mock('@/i18n/client', async () => {
+  const { translate } = await import('@/i18n/translate');
+  return {
+    useT: () => ({
+      locale: i18nLocale.current ?? 'en',
+      t: (key: string, params?: Record<string, string | number>) => {
+        if (i18nLocale.current) return translate(i18nLocale.current, key, params);
+        return params ? `${key}:${Object.values(params).join('|')}` : key;
+      },
+    }),
+  };
+});
 
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
 
@@ -931,5 +938,74 @@ describe('OpportunityDetail — M03 detail facts', () => {
     };
     render(<OpportunityDetail opp={closed as never} />);
     expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
+  });
+});
+
+describe('OpportunityDetail — footer date (M177)', () => {
+  // The kept row of a merged duplicate: its fields were read on 07-22, and
+  // the person was listed again on 11-04.
+  const faculty = {
+    id: 'faculty-m177-1', title: 'Faculty One', pi_name: 'Faculty One', organization: 'Example University',
+    source: 'dartmouth_faculty', source_type: 'faculty_research', record_kind: 'faculty_contact',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null,
+      verified_at: '2026-07-22T07:01:58.564068', expires_at: null,
+    },
+    last_seen_listed_at: '2026-11-04',
+  };
+  const program = {
+    ...(opp as unknown as Record<string, unknown>),
+    source: 'duke_research_programs',
+    target_truth: { ...ACTIONABLE_TRUTH, verified_at: '2026-09-01T07:16:39.492557' },
+    last_seen_listed_at: null,
+  };
+  const COPY = {
+    en: { listed: 'Last seen listed: 2026-11-04', verified: 'Last verified: 2026-09-01', old: /Last verified/ },
+    zh: { listed: '最后看到在列：2026-11-04', verified: '上次校验：2026-09-01', old: /上次校验/ },
+  } as const;
+
+  beforeEach(() => { mockHookState.current = baseHookResult(); });
+  afterEach(() => { i18nLocale.current = null; });
+
+  it.each(['en', 'zh'] as const)('dates a faculty page by when the person was last seen listed (%s)', (locale) => {
+    i18nLocale.current = locale;
+    render(<OpportunityDetail opp={faculty as never} />);
+    expect(screen.getByText(COPY[locale].listed)).toBeInTheDocument();
+    expect(screen.queryByText(COPY[locale].old)).toBeNull();
+  });
+
+  it.each(['en', 'zh'] as const)('keeps the last-verified footer on any other row (%s)', (locale) => {
+    i18nLocale.current = locale;
+    render(<OpportunityDetail opp={program as never} />);
+    expect(screen.getByText(COPY[locale].verified)).toBeInTheDocument();
+  });
+
+  it('keeps the last-verified footer when an older backend sends no listed day', () => {
+    const { last_seen_listed_at: _omitted, ...legacy } = faculty;
+    render(<OpportunityDetail opp={legacy as never} />);
+    expect(screen.getByText('detail.lastVerified:2026-07-22')).toBeInTheDocument();
+    expect(screen.queryByText(/detail\.lastSeenListed/)).toBeNull();
+  });
+
+  it.each(['en', 'zh'] as const)('shows the day alone, never the time (%s)', (locale) => {
+    i18nLocale.current = locale;
+    const { unmount } = render(
+      <OpportunityDetail opp={{ ...faculty, last_seen_listed_at: '2026-11-04T15:41:29.960406' } as never} />,
+    );
+    expect(screen.getByText(COPY[locale].listed)).toBeInTheDocument();
+    unmount();
+    render(<OpportunityDetail opp={program as never} />);
+    expect(screen.getByText(COPY[locale].verified)).toBeInTheDocument();
+  });
+
+  it('treats a value that does not start with a day as absent', () => {
+    const { unmount } = render(<OpportunityDetail opp={{ ...faculty, last_seen_listed_at: 'last week' } as never} />);
+    expect(screen.getByText('detail.lastVerified:2026-07-22')).toBeInTheDocument();
+    expect(screen.queryByText(/detail\.lastSeenListed/)).toBeNull();
+    unmount();
+    const unreadable = { ...program, target_truth: { ...ACTIONABLE_TRUTH, verified_at: 'recently' } };
+    render(<OpportunityDetail opp={unreadable as never} />);
+    expect(screen.queryByText(/detail\.lastVerified/)).toBeNull();
   });
 });

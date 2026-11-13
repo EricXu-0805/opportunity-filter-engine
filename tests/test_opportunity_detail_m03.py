@@ -730,6 +730,102 @@ class TestApiAndFrontendAgree:
         assert ("majors" in elig["explicit"]) is (majors is None)
 
 
+class TestLastSeenListed:
+    """M177: a faculty page's footer dates the last run that listed the person.
+
+    The duplicate merge carries a newer `last_seen_at` to the kept row without
+    touching `last_verified`, because the row's own fields were read on the
+    older day. The footer gets the first; every field keeps the second.
+    """
+
+    _VERIFIED = "2026-07-22T07:01:58.564068"
+    _SEEN = "2026-11-04T15:41:29.960406"
+
+    def _faculty(self, **metadata) -> dict:
+        return {
+            "id": "faculty-m177-1", "source": "dartmouth_faculty", "source_type": "faculty_research",
+            "source_url": "https://example.edu/people/one", "url": "https://example.edu/people/one",
+            "title": "Faculty One", "pi_name": "Faculty One", "organization": "Dartmouth College",
+            "department": "Engineering", "keywords": ["fluid dynamics"],
+            "eligibility": {}, "application": {"contact_method": "email"},
+            "metadata": {"is_active": True, "last_verified": self._VERIFIED, "last_seen_at": self._SEEN,
+                         "research_areas_raw": "Fluid dynamics", **metadata},
+        }
+
+    def _get(self, monkeypatch, record: dict) -> dict:
+        monkeypatch.setattr(opportunities_module, "load_opportunities_by_id", lambda: {record["id"]: record})
+        monkeypatch.setattr(opportunities_module, "release_visible_opportunity_by_id",
+                            lambda by_id, oid: by_id.get(oid))
+        response = _CLIENT.get(f"/api/opportunities/{record['id']}",
+                               params={"_release_scope": opportunities_module.CURRENT_TRUTH_AWARE_SCOPE})
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    def test_a_faculty_detail_carries_the_day_it_was_last_seen_listed(self, monkeypatch):
+        body = self._get(monkeypatch, self._faculty())
+        assert body["last_seen_listed_at"] == "2026-11-04"
+        # The day the fields were read is not moved by the listing.
+        assert body["target_truth"]["verified_at"] == self._VERIFIED
+        observed = {f["provenance"]["observed_at"] for f in body["detail_fields"]["fields"].values()}
+        assert observed - {None} == {self._VERIFIED}
+        assert "last_seen_at" not in body["metadata"]
+
+    def test_a_deactivated_faculty_row_still_says_when_it_was_last_listed(self, monkeypatch):
+        body = self._get(monkeypatch, self._faculty(is_active=False))
+        assert body["target_truth"]["reason_code"] == "inactive"
+        assert body["last_seen_listed_at"] == "2026-11-04"
+
+    @pytest.mark.parametrize("seen", ["absent", None, "", "unknown", "last week", 20261104])
+    def test_no_readable_sighting_is_never_filled_in_from_last_verified(self, monkeypatch, seen):
+        record = self._faculty()
+        if seen == "absent":
+            del record["metadata"]["last_seen_at"]
+        else:
+            record["metadata"]["last_seen_at"] = seen
+        assert self._get(monkeypatch, record)["last_seen_listed_at"] is None
+
+    # A confirmed listing, and a row whose kind nobody has reviewed.
+    @pytest.mark.parametrize("source_type", ["campus_program", None])
+    def test_any_other_row_carries_none(self, monkeypatch, source_type):
+        from backend.lib.public_opportunity_detail import project_public_detail
+
+        record = _listing(source_type=source_type, metadata={
+            "is_active": True, "listing_status": "open", "last_verified": self._VERIFIED, "last_seen_at": self._SEEN})
+        body = self._get(monkeypatch, record)
+        assert body["last_seen_listed_at"] is None
+        assert body["target_truth"]["verified_at"] == self._VERIFIED
+        assert "last_seen_at" not in body["metadata"]
+        poisoned = {**record, "last_seen_listed_at": "2099-01-01"}
+        poisoned_body = self._get(monkeypatch, poisoned)
+        assert poisoned_body["last_seen_listed_at"] is None
+        assert poisoned_body["writing_target_version"] == body["writing_target_version"]
+        # The writing generators read this projection, not the response.
+        assert "last_seen_listed_at" not in project_public_detail(poisoned)
+
+    def test_a_corpus_value_of_the_same_name_is_neither_served_nor_versioned(self, monkeypatch):
+        from backend.lib.public_opportunity_detail import project_public_detail
+
+        clean = self._get(monkeypatch, self._faculty())
+        poisoned = {**self._faculty(), "last_seen_listed_at": "2099-01-01"}
+        body = self._get(monkeypatch, poisoned)
+        assert body["last_seen_listed_at"] == "2026-11-04"
+        assert body["writing_target_version"] == clean["writing_target_version"]
+        # The writing generators read this projection, not the response.
+        assert "last_seen_listed_at" not in project_public_detail(poisoned)
+
+    def test_a_new_sighting_alone_does_not_change_the_writing_target(self, monkeypatch):
+        from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
+
+        record = self._faculty()
+        before = self._get(monkeypatch, record)["writing_target_version"]
+        record = self._faculty(last_seen_at="2026-11-09T15:00:00")
+        after = self._get(monkeypatch, record)
+        assert after["writing_target_version"] == before
+        assert after["last_seen_listed_at"] == "2026-11-09"
+        # The version the writing routes compute from the same record.
+        assert writing_target_version(project_public_detail(record)) == before
+
+
 # ---------------------------------------------------------------------------
 # Listing collectors wired to the contract (campus_graph, ucb_campus, uiuc_sro)
 # ---------------------------------------------------------------------------

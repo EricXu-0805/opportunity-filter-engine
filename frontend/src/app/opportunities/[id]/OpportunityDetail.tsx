@@ -23,7 +23,7 @@ import { canDeliverReminder } from '@/lib/reminders';
 import { pendingApplicationOpening, targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
 import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
-import { readDetailFields } from '@/lib/detail-fields';
+import { readDate, readDetailFields } from '@/lib/detail-fields';
 import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 
 import { ChatDrawer } from './ChatDrawer';
@@ -154,6 +154,9 @@ export default function OpportunityDetail({
   // render with their own hedges, exactly as before.
   const detailFields = readDetailFields(opp);
   const showsFacts = showsProfileOrOffer && detailFields !== null;
+  // A day, as the facts show it: the clock time is our run's, not the page's.
+  const listedOn = readDate(opp.last_seen_listed_at);
+  const verifiedOn = readDate(opp.target_truth?.verified_at);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
@@ -312,11 +315,16 @@ export default function OpportunityDetail({
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-600 space-y-1">
             {opp.source && <p>{t('detail.source', { source: sourceLabel(opp.source, t) })}</p>}
-            {/* From the truth envelope, not metadata: the server stopped
-                serving metadata.last_verified once target_truth carried it,
-                and one timestamp cannot disagree with itself. */}
-            {opp.target_truth?.verified_at && (
-              <p>{t('detail.lastVerified', { date: opp.target_truth.verified_at })}</p>
+            {/* A faculty row's fields were read on verified_at, but a merged
+                duplicate can carry a later day the person was listed; the
+                server sends that day for faculty rows only. Otherwise from
+                the truth envelope, not metadata: the server stopped serving
+                metadata.last_verified once target_truth carried it, and one
+                timestamp cannot disagree with itself. */}
+            {listedOn ? (
+              <p>{t('detail.lastSeenListed', { date: listedOn })}</p>
+            ) : verifiedOn && (
+              <p>{t('detail.lastVerified', { date: verifiedOn })}</p>
             )}
           </div>
         </div>

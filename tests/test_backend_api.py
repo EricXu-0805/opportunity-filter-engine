@@ -7564,9 +7564,9 @@ class TestMemoryObservability:
 
 class TestInMemoryCorpusSlim:
     def test_loader_drops_pipeline_only_fields(self):
-        # eligibility_text_raw / metadata.notes / first_seen_at / last_seen_at
-        # exist for the collectors' own passes; no serving path reads them, so
-        # the loader must not keep 10+ MiB of them resident on a 2 GB instance.
+        # eligibility_text_raw / metadata.notes / first_seen_at exist for the
+        # collectors' own passes; no serving path reads them, so the loader
+        # must not keep 10+ MiB of them resident on a 2 GB instance.
         opps = data_loader.load_opportunities()
         for o in opps[:2000]:
             elig = o.get("eligibility")
@@ -7576,7 +7576,12 @@ class TestInMemoryCorpusSlim:
             if isinstance(meta, dict):
                 assert "notes" not in meta
                 assert "first_seen_at" not in meta
-                assert "last_seen_at" not in meta
+
+    def test_loader_keeps_last_seen_at(self):
+        # The faculty detail footer dates the last run that listed the person.
+        out = data_loader._sanitize_opportunity({"metadata": {
+            "last_seen_at": "2026-11-04T15:41:29", "first_seen_at": "2026-06-01T00:00:00"}})
+        assert out["metadata"] == {"last_seen_at": "2026-11-04T15:41:29"}
 
     def test_loader_keeps_research_areas_raw(self):
         # research_areas_raw HAS serving consumers (llm_rerank candidate text,

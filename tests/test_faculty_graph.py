@@ -4170,6 +4170,246 @@ class TestInRunDedupKeepsAStoredPersonsRow:
         assert fg._RUN_START_IDS == frozenset()
 
 
+class TestTheMonthlyPassSkipsACapturedPage:
+    """The monthly profile pass skips a person only when their stored row holds
+    a capture of the page that did not fail and every field the block reads
+    there; a block that reads titles fetches everyone (M176). It used to read
+    only this run's listing row, so it fetched almost every profile again each
+    month: 513 of the 517 CMU pages fetched on 2026-11-06 had a stored capture."""
+
+    _NAME = "Avery Sample"
+    _URL = "https://x.edu/people/avery-sample"
+    _SCHOOL = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+               "id_prefix": "x", "location": "Somewhere"}
+    _DEPT = {"short": "AA", "name": "Department of AA", "majors": []}
+    _ENRICH = {"research_selector": ".research", "email_selector": ".email"}
+    _FACTS = ('<p class="research">Compilers; program analysis</p>'
+              '<p><a class="email" href="mailto:asample@x.edu">asample@x.edu</a></p>')
+    _PAGES = {
+        "captured": "<h2>Undergraduate applicants</h2><p>Please email us with a resume.</p>",
+        "empty": "<h2>Teaching</h2><p>Courses on parsing.</p>",
+        "unsupported": "<div>Please email us.</div>",
+    }
+
+    @pytest.fixture(autouse=True)
+    def _no_network(self, monkeypatch):
+        import socket
+        monkeypatch.setattr(socket, "getaddrinfo", lambda *_a, **_k: pytest.fail("network"))
+
+    def _stored(self, monkeypatch, status, enrich=None, page=None, final=None, link=_URL, **listing):
+        """The row a pass that read ``page`` (the listing ``link`` unless given)
+        as ``status``, its fetch ending at ``final`` (the page unless given),
+        leaves in the corpus, merged over the row a listing-only run left."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+        from src.collectors.uiuc_faculty import _carry_forward_enrichment
+
+        page = page or link
+        soup = None
+        if status != "failed":
+            soup = BeautifulSoup(f"<body><h1>{self._NAME}</h1>{self._FACTS}{self._PAGES[status]}</body>",
+                                 "html.parser")
+            ucb_common._mark_fetched_soup_observation(soup, requested_url=page, final_url=final or page,
+                                                      observed_at="2026-10-02T12:00:00+00:00")
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: soup)
+        listed = fg.faculty(self._NAME, title="Professor", url=link, **listing)
+        [person] = fg._apply_profile_enrich([dict(listed)], {**(enrich or self._ENRICH), "always": True})
+        row = fg._normalize(self._SCHOOL, self._DEPT, person)
+        _carry_forward_enrichment(fg._normalize(self._SCHOOL, self._DEPT, dict(listed)), row)
+        assert row["metadata"]["contact_instruction_capture"]["status"] == status
+        return row
+
+    def _lacking(self, monkeypatch, *fields):
+        """A captured row that holds neither ``fields`` (email, research)."""
+        row = self._stored(monkeypatch, "captured")
+        if "email" in fields:
+            row["contact_email"] = None
+        if "research" in fields:
+            row["metadata"]["research_areas_raw"] = ""
+            row["keywords"] = []
+        return row
+
+    def _fetches(self, monkeypatch, corpus, people=None, enrich=None):
+        """The pages a monthly pass over ``people`` fetches with ``corpus`` stored."""
+        fetched = []
+        monkeypatch.setattr(fg, "_enrich_profile",
+                            lambda url, _enr, **_k: fetched.append(url) or ("", "", [], None, False))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        people = people or [{"name": self._NAME, "url": self._URL}]
+        with fg.run_start_profiles(fg.captured_profile_pages(corpus)):
+            fg._apply_profile_enrich(people, enrich or self._ENRICH)
+        return fetched
+
+    @pytest.mark.parametrize("status", ["captured", "empty", "unsupported"])
+    def test_a_page_captured_without_a_failure_is_not_fetched_again(self, monkeypatch, status):
+        assert self._fetches(monkeypatch, [self._stored(monkeypatch, status)]) == []
+
+    def test_a_page_whose_capture_failed_is_fetched_again(self, monkeypatch):
+        # Even when the row holds an email and research from elsewhere.
+        stored = self._stored(monkeypatch, "failed")
+        stored["contact_email"], stored["metadata"]["research_areas_raw"] = "asample@x.edu", "Compilers"
+        assert self._fetches(monkeypatch, [stored]) == [self._URL]
+
+    def test_a_person_the_corpus_holds_no_capture_of_is_fetched(self, monkeypatch):
+        listed = fg._normalize(self._SCHOOL, self._DEPT, fg.faculty(self._NAME, title="Professor", url=self._URL))
+        assert self._fetches(monkeypatch, []) == [self._URL]
+        assert self._fetches(monkeypatch, [listed]) == [self._URL]
+
+    @pytest.mark.parametrize(("name", "url"), [
+        ("Blake Sample", _URL), (_NAME, "https://x.edu/people/a-sample")], ids=["another_person", "another_page"])
+    def test_a_capture_counts_only_for_its_own_person_and_page(self, monkeypatch, name, url):
+        stored = self._stored(monkeypatch, "captured")
+        assert self._fetches(monkeypatch, [stored], [{"name": name, "url": url}]) == [url]
+
+    def test_a_listing_link_counts_for_the_page_it_normalizes_to(self, monkeypatch):
+        # The ledger keys a page by its normalized address: host case and a
+        # fragment do not make it another page.
+        stored = self._stored(monkeypatch, "captured")
+        link = "https://X.EDU/people/avery-sample#research"
+        assert self._fetches(monkeypatch, [stored], [{"name": self._NAME, "url": link}]) == []
+
+    @pytest.mark.parametrize(("link", "final"), [(_URL, f"{_URL}/"), (_URL.replace("https:", "http:"), _URL)],
+                             ids=["trailing_slash", "https"])
+    def test_a_capture_counts_for_the_page_requested_not_the_address_reached(self, monkeypatch, link, final):
+        # A fetch may end at the trailing-slash or https form of the link
+        # (same_source_page); the ledger keys the page by the link requested.
+        from src.contact_instructions import contact_instruction_pages
+
+        stored = self._stored(monkeypatch, "captured", final=final, link=link)
+        assert [page["source_url"] for page in contact_instruction_pages(stored)] == [final]
+        assert self._fetches(monkeypatch, [stored], [{"name": self._NAME, "url": link}]) == []
+
+    def test_a_capture_counts_for_the_page_the_pass_fetches(self, monkeypatch):
+        # A url_template block fetches a page built from the address, not the
+        # row's link, and its capture is of that page.
+        api = "https://x.edu/api/profile/asample"
+        enrich = {"url_template": "https://x.edu/api/profile/{email_local}", "research_selector": ".research"}
+        stored = self._stored(monkeypatch, "captured", enrich, page=api, email="asample@x.edu")
+        person = {"name": self._NAME, "url": self._URL, "email": "asample@x.edu"}
+        assert self._fetches(monkeypatch, [stored], [person], enrich) == []
+
+    def test_a_page_with_a_source_but_no_capture_is_fetched(self, monkeypatch):
+        # A row stored before captures existed holds the page's source alone.
+        from src.contact_instructions import SOURCE_KEY, contact_instruction_pages, source_from_html
+
+        row = fg._normalize(self._SCHOOL, self._DEPT, fg.faculty(
+            self._NAME, title="Professor", url=self._URL, email="asample@x.edu", research_areas="Compilers"))
+        row["metadata"][SOURCE_KEY] = [source_from_html(
+            "<body><h2>Undergraduate applicants</h2><p>Please email us.</p></body>",
+            source_url=self._URL, identity_name=self._NAME, checked_at="2026-10-02T12:00:00+00:00")]
+        assert [page["receipt"] for page in contact_instruction_pages(row)] == [None]
+        assert self._fetches(monkeypatch, [row]) == [self._URL]
+
+    def test_the_listing_spelling_of_the_name_is_cleaned_as_the_record_is(self, monkeypatch):
+        stored = self._stored(monkeypatch, "captured")
+        assert self._fetches(monkeypatch, [stored], [{"name": f"{self._NAME}*", "url": self._URL}]) == []
+
+    def test_an_always_block_still_fetches_a_captured_page(self, monkeypatch):
+        stored = self._stored(monkeypatch, "captured")
+        assert self._fetches(monkeypatch, [stored], enrich={"always": True, **self._ENRICH}) == [self._URL]
+
+    @pytest.mark.parametrize(("keys", "fetched"), [
+        ({"title_selector": ".rank"}, [_URL]), ({"use_position_title": True, "position_re": "Professor"}, [_URL]),
+        ({"use_position_title": True}, []), ({"position_re": "Professor"}, [])],
+        ids=["title_selector", "position_title", "no_position_re", "position_not_used"])
+    def test_a_block_that_reads_titles_fetches_a_captured_page(self, monkeypatch, keys, fetched):
+        # The merge keeps no title read off a page, so skipping the page would
+        # drop that title and the ladder_recheck that reads it. The pass writes
+        # one from title_selector, or from position_re with use_position_title.
+        stored = self._stored(monkeypatch, "captured")
+        assert self._fetches(monkeypatch, [stored], enrich={**keys, **self._ENRICH}) == fetched
+
+    @pytest.mark.parametrize(("lacking", "fetched"), [((), []), (("email",), [_URL])], ids=["held", "lacking"])
+    def test_a_block_reading_only_an_email_needs_the_stored_email(self, monkeypatch, lacking, fetched):
+        # The listing states research, so the block reads only the email.
+        person = {"name": self._NAME, "url": self._URL, "research_areas": "Compilers"}
+        stored = self._lacking(monkeypatch, "research", *lacking)
+        assert self._fetches(monkeypatch, [stored], [person]) == fetched
+
+    def test_a_block_reads_no_email_for_a_person_the_listing_gives_one(self, monkeypatch):
+        # The block reads only research here, so the stored row needs no email.
+        person = {"name": self._NAME, "url": self._URL, "email": "asample@x.edu"}
+        stored = self._lacking(monkeypatch, "email")
+        assert self._fetches(monkeypatch, [stored], [person]) == []
+
+    @pytest.mark.parametrize(("raw", "keywords", "fetched"), [
+        ("Compilers", [], []), ("", ["Compilers"], []), ("", [], [_URL])],
+        ids=["research_text", "keywords", "neither"])
+    def test_a_block_reading_research_needs_the_stored_research(self, monkeypatch, raw, keywords, fetched):
+        stored = self._lacking(monkeypatch, "research")
+        stored["metadata"]["research_areas_raw"], stored["keywords"] = raw, keywords
+        assert self._fetches(monkeypatch, [stored]) == fetched
+
+    @pytest.mark.parametrize("key", ["research_selector", "research_items_selector", "research_label_re",
+                                     "research_html_re", "research_re", "cap_keywords", "digitalmeasures"])
+    def test_every_research_key_reads_research(self, monkeypatch, key):
+        stored = self._lacking(monkeypatch, "research")
+        assert self._fetches(monkeypatch, [stored], enrich={key: "x", "email_selector": ".email"}) == [self._URL]
+
+    def test_a_block_reading_no_research_does_not_need_it(self, monkeypatch):
+        stored = self._lacking(monkeypatch, "research")
+        assert self._fetches(monkeypatch, [stored], enrich={"email_selector": ".email"}) == []
+
+    @pytest.mark.parametrize("order", [1, -1], ids=["lacking_last", "lacking_first"])
+    def test_two_rows_with_one_capture_must_both_hold_the_field(self, monkeypatch, order):
+        # One person listed by two departments has one page and two rows.
+        held, lacking = self._stored(monkeypatch, "captured"), self._lacking(monkeypatch, "email")
+        lacking["id"] = held["id"] + "-other"
+        assert self._fetches(monkeypatch, [held, lacking][::order]) == [self._URL]
+
+    def test_an_inactive_stored_row_counts(self, monkeypatch):
+        # The merge carries a stored row's capture, research and email by id
+        # whether or not it is active, so a person who returns to the listing
+        # gets them back (test_a_skipped_persons_stored_profile_facts_survive_the_merge).
+        stored = self._stored(monkeypatch, "captured")
+        stored["metadata"]["is_active"] = False
+        assert self._fetches(monkeypatch, [stored]) == []
+
+    def test_a_row_that_is_not_a_faculty_row_does_not_count(self, monkeypatch):
+        # The pass writes a faculty row; another kind of row's fields are not
+        # merged into it.
+        stored = self._stored(monkeypatch, "captured")
+        stored["source_type"] = "lab_program"
+        assert self._fetches(monkeypatch, [stored]) == [self._URL]
+
+    @pytest.mark.parametrize("active", [True, False], ids=["active", "inactive"])
+    def test_a_skipped_persons_stored_profile_facts_survive_the_merge(self, monkeypatch, tmp_path, active):
+        import json
+
+        from src.collectors import ucb_common
+
+        stored = self._stored(monkeypatch, "captured")
+        stored["metadata"]["is_active"] = active
+        assert (stored["contact_email"], stored["metadata"]["research_areas_raw"]) == (
+            "asample@x.edu", "Compilers; program analysis")
+        path = tmp_path / "opportunities.json"
+        path.write_text(json.dumps([stored]), encoding="utf-8")
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", path)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        monkeypatch.setattr(fg, "_enrich_profile", lambda *_a, **_k: pytest.fail("fetched a captured page"))
+        dept = {**self._DEPT, "profile_enrich": self._ENRICH,
+                "faculty": [fg.faculty(self._NAME, title="Professor", url=self._URL)]}
+        with fg.run_start_profiles(fg.captured_profile_pages(json.loads(path.read_text(encoding="utf-8")))):
+            rows = fg.fetch_and_normalize({**self._SCHOOL, "departments": [dept]}, deep=True)
+        assert fg.merge_into_processed(rows) == (0, 1)
+        [saved] = json.loads(path.read_text(encoding="utf-8"))
+        assert saved["metadata"]["is_active"] is True
+        for key in ("contact_email", "keywords"):
+            assert saved[key] == stored[key], key
+        for key in ("research_areas_raw", "contact_instruction_capture",
+                    "contact_instruction_sources", "contact_instruction_pages"):
+            assert saved["metadata"][key] == stored["metadata"][key], key
+        # The carried text keeps the time it was read, not this run's.
+        assert saved["metadata"]["research_areas_verified_at"] == stored["metadata"]["last_verified"]
+
+    def test_outside_the_window_no_page_is_captured(self):
+        pages = {(self._URL, "avery sample"): frozenset({"email"})}
+        with fg.run_start_profiles(pages):
+            assert fg._RUN_START_PROFILES == pages
+        assert fg._RUN_START_PROFILES == {}
+
+
 class TestSourceBudget:
     """Cooperative per-source wall-clock budget. #712's run budget only stops
     STARTING sources — a source that started just under the deadline still ran
