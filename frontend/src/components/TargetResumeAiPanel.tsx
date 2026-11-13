@@ -268,8 +268,12 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     }
     // Merged batches share one version (mergeTargetResumeAIResponses), so the first speaks for all.
     const generationVersion = run.responses[0]?.generation_version;
+    // The requests that supplied what was accepted: the chosen rewrites, or every reviewed line for an order change.
+    const requestIds = [...new Set(run.responses.filter(item => item.receipts.some(receipt => receipt.status !== 'skipped'
+      && (order || selected.has(receipt.unit_id)))).map(item => item.request_id))];
     onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations,
-      ...(generationVersion === undefined ? {} : { generation_version: generationVersion }) });
+      ...(generationVersion === undefined ? {} : { generation: { version: generationVersion, pipeline_version: run.responses[0].pipeline_version,
+        document_signature: run.prepared.document_signature, request_ids: requestIds } }) });
   };
   const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
     ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], alternativeUnitIds: alternativeUnitIds(), applyStructure: order, currentContext, supportGroups }) : null;

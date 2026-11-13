@@ -346,3 +346,18 @@ export async function privateImportEmailRequest(id: string, action: 'context' | 
     return data;
   });
 }
+
+/** A finite private résumé source read; the receipt check runs inside the owner and deadline checks. */
+export async function privateImportResumeContextRequest(id: string, options: Options & {
+  expectedVersion?: string; verify: (data: Record<string, unknown>, wait: Operation['wait']) => Promise<void>;
+}): Promise<Record<string, unknown>> {
+  const owner = { ...options.owner }; assertOwner(owner); validateId(id);
+  if (options.expectedVersion !== undefined && !/^pit1:[a-f0-9]{64}$/.test(options.expectedVersion)) fail('invalid_input');
+  const params = new URLSearchParams({ expected_owner_id: owner.uid });
+  if (options.expectedVersion !== undefined) params.set('expected_target_version', options.expectedVersion);
+  return run(owner, options.signal, async op => {
+    const data = await request(`/${encodeURIComponent(id)}/resume-context?${params}`, owner, op);
+    await op.wait(options.verify(data, op.wait));
+    return data;
+  });
+}

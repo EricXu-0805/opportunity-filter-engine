@@ -381,16 +381,17 @@ describe('whole draft content planning', () => {
 
 
 describe('accepted content-plan operation records', () => {
-  it.each(['target-resume-generation-v1:' + 'a'.repeat(64), undefined])('carries generation version %s with the accepted choices', async version => {
+  it.each(['target-resume-generation-v1:' + 'a'.repeat(64), undefined])('saves the generation record for version %s with the accepted choices', async version => {
     mocked.generate.mockImplementation(async payload => ({ ...await response(payload), ...(version ? { generation_version: version } : {}) }));
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
     select('publication-one'); apply();
     const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
-    if (version) expect(action.generation_version).toBe(version); else expect(action).not.toHaveProperty('generation_version');
-    // The saved record format (v1-v3) has no field for it, so the record is unchanged.
-    const { generation_version: _ignored, ...withoutVersion } = action;
-    expect(appendTargetResumeProvenance(null, p.draft, next, { ...action, id: 'event' }))
-      .toEqual(appendTargetResumeProvenance(null, p.draft, next, { ...withoutVersion, id: 'event' }));
+    const record = appendTargetResumeProvenance(null, p.draft, next, action)!;
+    if (version) {
+      expect(action.generation).toEqual({ version, pipeline_version: 'full-target-plan-v6',
+        document_signature: mocked.generate.mock.calls[0][0].document_signature, request_ids: [mocked.generate.mock.calls[0][0].request_id] });
+      expect(record.version).toBe(4); expect(record.events[0].generation).toEqual(action.generation);
+    } else { expect(action).not.toHaveProperty('generation'); expect(record.version).toBe(3); expect(record.events[0]).not.toHaveProperty('generation'); }
   });
   it('records only the selected omission, with no check, since the plan changes no text', async () => {
     mocked.generate.mockImplementation(async payload => ({ ...await response(payload), check_version: 'target-resume-source-checks-v1' }));

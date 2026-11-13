@@ -308,6 +308,47 @@ describe('a batch from another generation configuration', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(changed);
     expect(mocked.generate).toHaveBeenCalledTimes(2); cleared(p);
   });
+  it.each(['rewrite', 'order'] as const)('names only the requests that supplied an accepted %s', async choice => {
+    const p = await twoBatches(); mocked.generate.mockImplementation(versioned(a));
+    render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    const requests = mocked.generate.mock.calls.map(call => call[0]);
+    const unit = prepared.units.find(item => item.evidence.kind === 'experience')!.unit_id;
+    const supplier = requests.find(request => request.selected_unit_ids.includes(unit))!;
+    expect(requests.some(request => !request.selected_unit_ids.includes(unit))).toBe(true);
+    fireEvent.click(choice === 'order' ? screen.getByRole('checkbox', { name: 'Use suggested section and block order' })
+      : screen.getByRole('checkbox', { name: `Use rewrite: ${unit}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    expect(action.generation?.request_ids).toEqual(choice === 'order' ? requests.map(request => request.request_id) : [supplier.request_id]);
+    if (choice === 'rewrite') expect(appendTargetResumeProvenance(null, p.draft, next, action)!.events[0].generation).toEqual(action.generation);
+  });
+  it('does not name a request whose receipt for the accepted line was skipped', async () => {
+    const p = props(), unit = prepared.units.find(item => item.evidence.kind === 'experience')!.unit_id;
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = { ...response(payload), generation_version: a }; result.method = 'partial'; const missed = result.receipts.find(item => item.unit_id === unit)!;
+      missed.status = 'skipped'; missed.reason_code = 'missing_result'; missed.suggestion = null; return result;
+    }).mockImplementationOnce(versioned(a));
+    render(<TargetResumeAiPanel {...p} />); await generate();
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue remaining suggestions' })); await reviewReady();
+    expect(mocked.generate).toHaveBeenCalledTimes(2); expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([unit]);
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    expect(vi.mocked(p.onApply).mock.calls[0][2].generation?.request_ids).toEqual([mocked.generate.mock.calls[1][0].request_id]);
+  });
+  it('names a request whose receipts were all kept unchanged when its priorities supplied the applied order', async () => {
+    const p = props(), unit = prepared.units.find(item => item.evidence.kind === 'experience')!.unit_id;
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = { ...response(payload), generation_version: a }; result.method = 'partial'; const missed = result.receipts.find(item => item.unit_id === unit)!;
+      missed.status = 'skipped'; missed.reason_code = 'missing_result'; missed.suggestion = null; return result;
+    }).mockImplementationOnce(async (payload: TargetResumeAiRequest) => ({ ...response(payload, true), generation_version: a }));
+    render(<TargetResumeAiPanel {...p} />); await generate();
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue remaining suggestions' })); await reviewReady();
+    expect(mocked.generate).toHaveBeenCalledTimes(2);
+    expect((await mocked.generate.mock.results[1].value as TargetResumeAiResponse).receipts.map(item => item.status)).toEqual(['unchanged']);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use suggested section and block order' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    expect(vi.mocked(p.onApply).mock.calls[0][2].generation?.request_ids).toEqual(mocked.generate.mock.calls.map(call => call[0].request_id));
+  });
   it('keeps both batches when they carry the same configuration', async () => {
     const p = await twoBatches();
     mocked.generate.mockImplementation(versioned(a));
@@ -352,25 +393,29 @@ describe('a batch from another generation configuration', () => {
     expect(mocked.generate).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getAllByRole('checkbox', { name: /Use rewrite:/ })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
-    expect(vi.mocked(p.onApply).mock.calls[0][2].generation_version).toBe(a);
+    expect(vi.mocked(p.onApply).mock.calls[0][2].generation?.version).toBe(a);
   });
 });
 
 
 describe('accepted wording operation records', () => {
   it.each([['target-resume-generation-v1:' + 'a'.repeat(64), 'rewrite'], ['target-resume-generation-v1:' + 'a'.repeat(64), 'order'], [undefined, 'rewrite']] as const)(
-    'carries generation version %s with an accepted %s', async (version, choice) => {
-    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(version ? { generation_version: version } : {}) }));
+    'saves the generation record for version %s with an accepted %s', async (version, choice) => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), check_version: 'target-resume-source-checks-v1',
+      ...(version ? { generation_version: version } : {}) }));
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
     fireEvent.click(choice === 'order' ? screen.getByRole('checkbox', { name: 'Use suggested section and block order' })
       : screen.getAllByRole('checkbox', { name: /Use rewrite:/ })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
     const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
-    if (version) expect(action.generation_version).toBe(version); else expect(action).not.toHaveProperty('generation_version');
-    // The saved record format (v1-v3) has no field for it, so the record is unchanged.
-    const { generation_version: _ignored, ...withoutVersion } = action;
-    expect(appendTargetResumeProvenance(null, p.draft, next, { ...action, id: 'event' }))
-      .toEqual(appendTargetResumeProvenance(null, p.draft, next, { ...withoutVersion, id: 'event' }));
+    if (version) expect(action.generation).toEqual({ version, pipeline_version: 'full-target-v6', document_signature: prepared.document_signature,
+      request_ids: [mocked.generate.mock.calls[0][0].request_id] });
+    else expect(action).not.toHaveProperty('generation');
+    // The suggested order of this fixture is its current order, so only the rewrite changes the draft.
+    if (choice === 'rewrite') {
+      const record = appendTargetResumeProvenance(null, p.draft, next, action)!;
+      expect(record.version).toBe(version ? 4 : 3); expect(record.events[0].generation).toEqual(action.generation);
+    }
   });
   it.each([undefined, 'target-resume-source-checks-v1'])('captures only accepted wording and the returned check version %s', async checkVersion => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(checkVersion ? { check_version: checkVersion } : {}) }));

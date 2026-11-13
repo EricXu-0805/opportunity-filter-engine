@@ -10,6 +10,7 @@ const equal = (a,b) => canonical(a) === canonical(b);
 const span = q => integer(q.start) && integer(q.end,1) && q.end > q.start && nonblank(q.quote);
 function targetQuote(q, version) {
   if (!q || !span(q)) return false;
+  if (version === 5 && q.field !== 'description') return false;
   if (['description','requirement'].includes(q.field)) return shape(q,['field','requirement_index','start','end','quote'])
     && (q.field === 'description' ? q.requirement_index === null : integer(q.requirement_index));
   if (['paper_title','paper_abstract'].includes(q.field)) return version >= 2
@@ -55,9 +56,10 @@ function generationValid(g, kind) {
 }
 export function validStubTargetResumeProvenance(doc, value) {
   if (value === null) return true;
-  if (!shape(value,['version','document_id','opportunity_id','base','events']) || ![1,2,3,4].includes(value.version)
+  if (!shape(value,['version','document_id','opportunity_id','base','events']) || ![1,2,3,4,5].includes(value.version)
     || value.version === 2 && doc.target_snapshot?.context_version !== 3
-    || value.version >= 3 && doc.target_snapshot?.context_version !== 4
+    || (value.version === 3 || value.version === 4) && doc.target_snapshot?.context_version !== 4
+    || value.version === 5 && doc.target_snapshot?.context_version !== 5
     || !id(value.document_id) || !id(value.opportunity_id) || value.document_id !== doc.id || value.opportunity_id !== doc.opportunity_id
     || !equal(value.base,doc.base) || !shape(value.base,['master_id','master_revision','profile_signature','source_signature','target_signature'])
     || !['master_id','profile_signature','source_signature','target_signature'].every(k => nonblank(value.base[k])) || !integer(value.base.master_revision,1)
@@ -66,7 +68,7 @@ export function validStubTargetResumeProvenance(doc, value) {
   const ids=new Set();
   return value.events.every(e => {
     const hasGeneration = e !== null && typeof e === 'object' && Object.hasOwn(e,'generation');
-    if (!shape(e,['id','kind','changes',...(value.version === 4 && hasGeneration ? ['generation'] : [])]) || !id(e.id) || ids.has(e.id) || !['manual','ai_rewrite','plan','target_order'].includes(e.kind)
+    if (!shape(e,['id','kind','changes',...((value.version === 4 || value.version === 5) && hasGeneration ? ['generation'] : [])]) || !id(e.id) || ids.has(e.id) || !['manual','ai_rewrite','plan','target_order'].includes(e.kind)
       || hasGeneration && !generationValid(e.generation,e.kind)
       || !Array.isArray(e.changes) || !e.changes.length || e.changes.length > 1024) return false;
     ids.add(e.id); return e.changes.every(c => changeValid(c,e.kind,value.version)
