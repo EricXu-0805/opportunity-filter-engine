@@ -126,7 +126,10 @@ test.describe('Résumé renovation (real browser)', () => {
     expect(publicTarget.id).toBe(KNOWN_ID);
     expect(publicTarget.contact_email_status).not.toBe('revealed');
     expect(publicTarget.contact_email).toBeUndefined();
-    const canonicalTarget = JSON.stringify(publicTarget, (_key, value: unknown) => (
+    // The footer's sighting day is not target content, so the signature leaves it out (M177).
+    expect(publicTarget).toHaveProperty('last_seen_listed_at');
+    const { last_seen_listed_at: _sightingDay, ...targetContent } = publicTarget;
+    const canonicalTarget = JSON.stringify(targetContent, (_key, value: unknown) => (
       value && typeof value === 'object' && !Array.isArray(value)
         ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
         : value
