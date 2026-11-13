@@ -8,6 +8,8 @@ import type { WritingTargetState } from './use-writing-target';
 import { writingTargetKey } from './writing-target';
 import { privateEmailKey, type PrivateEmailContext } from './private-email';
 import type { PrivateEmailTargetState } from './use-private-email-target';
+import { privateResumeKey, type PrivateResumeContext } from './private-resume-context';
+import type { PrivateResumeTargetState } from './use-private-resume-target';
 
 /** In-memory structural binding only. Never persisted, logged or sent as a hash. */
 export function profileActionKey(profile: ProfileData | null): string | null {
@@ -39,6 +41,8 @@ export interface ProfileActionOptions<I> {
   targetRefresh?: WritingTargetState;
   privateTarget?: PrivateEmailContext | null;
   privateTargetRefresh?: PrivateEmailTargetState;
+  privateResume?: PrivateResumeContext | null;
+  privateResumeRefresh?: PrivateResumeTargetState;
   readiness: 'ready' | 'waiting' | 'blocked';
   execute: (intent: I) => void;
 }
@@ -55,17 +59,27 @@ interface Pending<I> {
   targetBefore: string | null;
   targetId: string | null;
   targetReceipt: { key: string } | null;
-  targetScope: 'public' | 'private' | null;
+  targetScope: 'public' | 'private' | 'private_resume' | null;
   targetMatched: boolean;
   timer: ReturnType<typeof setTimeout> | null;
 }
 
-type TargetOptions = Pick<ProfileActionOptions<unknown>, 'target' | 'targetRefresh' | 'privateTarget' | 'privateTargetRefresh'>;
+type TargetOptions = Pick<ProfileActionOptions<unknown>, 'target' | 'targetRefresh' | 'privateTarget' | 'privateTargetRefresh' | 'privateResume' | 'privateResumeRefresh'>;
 function actionTarget(options: TargetOptions) {
+  if (options.privateResumeRefresh) {
+    return { kind: 'private_resume' as const, id: options.privateResume?.opportunity_id,
+      key: privateResumeKey(options.privateResume ?? null), status: options.privateResumeRefresh.status,
+      invalid: !!options.target || !!options.targetRefresh || !!options.privateTarget || !!options.privateTargetRefresh,
+      check: async () => {
+        const receipt = await options.privateResumeRefresh!.checkForAction();
+        return receipt && receipt.target.private_source.owner_id === receipt.owner.uid && privateResumeKey(receipt.target) === receipt.key
+          ? { owner: receipt.owner, id: receipt.target.opportunity_id, key: receipt.key } : null;
+      } };
+  }
   if (options.privateTargetRefresh) {
     const target = options.privateTarget;
     return { kind: 'private' as const, id: target?.id, key: privateEmailKey(target ?? null), status: options.privateTargetRefresh.status,
-      invalid: !!options.target || !!options.targetRefresh,
+      invalid: !!options.target || !!options.targetRefresh || !!options.privateResume,
       check: async () => {
         const receipt = await options.privateTargetRefresh!.checkForAction();
         return receipt && receipt.target.owner_id === receipt.owner.uid && privateEmailKey(receipt.target) === receipt.key
@@ -73,7 +87,7 @@ function actionTarget(options: TargetOptions) {
       } };
   }
   if (options.targetRefresh) return { kind: 'public' as const, id: options.target?.id, key: writingTargetKey(options.target ?? null),
-    status: options.targetRefresh.status, invalid: !!options.privateTarget,
+    status: options.targetRefresh.status, invalid: !!options.privateTarget || !!options.privateResume,
     check: async () => {
       const receipt = await options.targetRefresh!.checkForAction();
       return receipt && writingTargetKey(receipt.target) === receipt.key ? { owner: receipt.owner, id: receipt.target.id, key: receipt.key } : null;
@@ -120,6 +134,7 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     if (!current.isOpen || !current.profileAvailable || !current.profile || !before
       || (bound && (bound.invalid || !targetCheck || !bound.id || !targetBefore))
       || (current.privateTarget && !current.privateTargetRefresh)
+      || (current.privateResume && !current.privateResumeRefresh)
       || (!check && !targetCheck && current.readiness === 'blocked') || !isOwnerTokenValid(token, token.uid)) {
       setError('unavailable'); return;
     }
@@ -165,12 +180,13 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     if (!record) return;
     if (!options.isOpen) { finish(record, null); return; }
     const target = actionTarget({ target: options.target, targetRefresh: options.targetRefresh,
-      privateTarget: options.privateTarget, privateTargetRefresh: options.privateTargetRefresh });
+      privateTarget: options.privateTarget, privateTargetRefresh: options.privateTargetRefresh,
+      privateResume: options.privateResume, privateResumeRefresh: options.privateResumeRefresh });
     if (!isOwnerTokenValid(record.owner, record.owner.uid) || options.scopeKey !== record.scopeKey
       || options.editRevision !== record.editRevision
       || (record.targetId !== null && (target?.id !== record.targetId || target?.kind !== record.targetScope))) { finish(record, 'changed'); return; }
     if (!options.profileAvailable || !options.profile) finish(record, 'unavailable');
-  }, [options.isOpen, options.profileAvailable, options.profile, options.scopeKey, options.editRevision, options.target, options.targetRefresh, options.privateTarget, options.privateTargetRefresh, owner, finish]);
+  }, [options.isOpen, options.profileAvailable, options.profile, options.scopeKey, options.editRevision, options.target, options.targetRefresh, options.privateTarget, options.privateTargetRefresh, options.privateResume, options.privateResumeRefresh, owner, finish]);
 
   useEffect(() => {
     const record = pending.current;
@@ -204,7 +220,7 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     if (current.readiness === 'waiting') return;
     finish(record, null); // Retire before executing; StrictMode cannot repeat it.
     current.execute(record.intent);
-  }, [version, options.profile, options.readiness, options.scopeKey, options.editRevision, options.profileAvailable, options.isOpen, options.target, options.targetRefresh, options.privateTarget, options.privateTargetRefresh, owner, finish]);
+  }, [version, options.profile, options.readiness, options.scopeKey, options.editRevision, options.profileAvailable, options.isOpen, options.target, options.targetRefresh, options.privateTarget, options.privateTargetRefresh, options.privateResume, options.privateResumeRefresh, owner, finish]);
 
   useEffect(() => () => {
     const record = pending.current;

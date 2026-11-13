@@ -5731,7 +5731,7 @@ describe('useProfileForm — a generic conflict is reconciled canonically, never
   // actually happened.
   /** What the rebuild finds when the question has gone away: the row holds
    *  the value on screen, so nothing is redrawn and no save is re-armed. */
-  function settledRebuild(opts: { answered: boolean; pendingKeys?: string[] }) {
+  function settledRebuild(opts: { answered: boolean; answeredHere?: boolean; pendingKeys?: string[] }) {
     syncOverrides.refreshConflictQuestion = (async () => ({
       status: 'settled' as const,
       profile: { ...ROW, major: 'ECE' },
@@ -5741,6 +5741,7 @@ describe('useProfileForm — a generic conflict is reconciled canonically, never
       pendingKeys: opts.pendingKeys ?? [],
       flushed: null,
       answered: opts.answered,
+      answeredHere: opts.answeredHere ?? false,
     })) as never;
   }
 
@@ -5781,6 +5782,31 @@ describe('useProfileForm — a generic conflict is reconciled canonically, never
   it('a save whose question went away with an edit still unsent says so, and Retry sends it', async () => {
     await currentQuestionAtRev10();
     settledRebuild({ answered: false, pendingKeys: ['research_interests'] });
+    act(() => { screen.getByTestId('set-interests').click(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 1700)); });
+    expect(screen.getByTestId('conflict-keys').textContent).toBe('');
+    expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed');
+
+    syncOverrides.flushPendingProfileWrite = async () => (
+      { status: 'saved' as const, revision: 12, profile: { ...ROW, major: 'ECE', research_interests: 'my interests' } }
+    );
+    syncOverrides.flushCalls = 0;
+    await act(async () => {
+      screen.getByTestId('retry-sync').click();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(syncOverrides.flushCalls, 'Retry sends what is still unsent').toBe(1);
+    expect(screen.getByTestId('save-status').textContent).toBe('saved');
+  });
+
+  // Checklist M179 made "Keep what I typed" say "already answered", with no
+  // Retry, when another tab's answer to the question is still on its way and
+  // the browser is online. A save is not a click on the question: it still
+  // reports what the outbox holds.
+  it('a save whose question another tab answered while it was rebuilt, that answer still unsent and the browser online, says so, and Retry sends it (a guard; already so before M179)', async () => {
+    expect(navigator.onLine, 'the browser says it is online').toBe(true);
+    await currentQuestionAtRev10();
+    settledRebuild({ answered: true, answeredHere: false, pendingKeys: ['major'] });
     act(() => { screen.getByTestId('set-interests').click(); });
     await act(async () => { await new Promise((r) => setTimeout(r, 1700)); });
     expect(screen.getByTestId('conflict-keys').textContent).toBe('');

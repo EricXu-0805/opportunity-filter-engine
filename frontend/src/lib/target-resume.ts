@@ -1,3 +1,4 @@
+import { isPrivateResumeContext, verifyPrivateResumeSource, type PrivateResumeContext } from './private-resume-context';
 import { isLabContext, type LabContext } from './lab-context';
 import { isResearchContext, type ResearchContext } from './research-context';
 import type { TargetResumeProvenance } from './target-resume-provenance';
@@ -68,7 +69,7 @@ export interface TargetResumeContextV3 extends TargetResumeContextV1 {
 export interface TargetResumeContextV4 extends TargetResumeContextV1 {
   context_version: 4; criteria: TargetResumeCriteriaV2; research: ResearchContext; lab: LabContext;
 }
-export type TargetResumeContext = TargetResumeContextV1 | TargetResumeContextV2 | TargetResumeContextV3 | TargetResumeContextV4;
+export type TargetResumeContext = TargetResumeContextV1 | TargetResumeContextV2 | TargetResumeContextV3 | TargetResumeContextV4 | PrivateResumeContext;
 
 export interface TargetResumeLine {
   id: string;
@@ -226,6 +227,11 @@ function criteriaGroup(value: unknown, fields: Readonly<Record<string, CriteriaF
   }
 }
 function targetValid(value: unknown): asserts value is TargetResumeContext {
+  if (record(value) && value.context_version === 5) {
+    if (!isPrivateResumeContext(value)) fail('invalid_target');
+    return;
+  }
+  if (record(value) && typeof value.opportunity_id === 'string' && value.opportunity_id.startsWith('private-import:')) fail('invalid_target');
   const current = record(value) && Object.hasOwn(value, 'context_version');
   shape(value, current ? [...TARGET_KEYS, 'context_version', 'criteria', ...([3, 4].includes(value.context_version as number) ? ['research'] : []), ...(value.context_version === 4 ? ['lab'] : [])] : TARGET_KEYS, 'invalid_target');
   try { identifier(value.opportunity_id); } catch { fail('invalid_target'); }
@@ -259,7 +265,10 @@ export async function targetResumeProfileSignature(profile: ProfileData): Promis
 }
 export async function targetResumeContextSignature(target: TargetResumeContext): Promise<string> {
   targetValid(target);
-  return fingerprint(documentJson(target));
+  const captured = documentJson(target);
+  const snapshot = JSON.parse(captured) as TargetResumeContext;
+  if (isPrivateResumeContext(snapshot) && !await verifyPrivateResumeSource(snapshot)) fail('invalid_signature');
+  return fingerprint(captured);
 }
 
 /** Capture a bounded public-field contract, including its uncertainty and
@@ -464,7 +473,7 @@ export async function createTargetResume(profile: ProfileData, target: TargetRes
   string(raw, 'invalid_source');
   if (resumeTextCharacters(raw) > MAX_RESUME_TEXT_CHARACTERS) fail('invalid_source');
   targetValid(target);
-  if (!isCurrentTargetResumeContext(target)) fail('invalid_target');
+  if (!isCurrentTargetResumeContext(target) && !isPrivateResumeContext(target)) fail('invalid_target');
   const targetSnapshot = JSON.parse(documentJson(target)) as TargetResumeContext;
   const [sourceSignature, profileSignature, targetSignature] = await Promise.all([
     sourceDigest(raw), fingerprint(profileJson), targetResumeContextSignature(targetSnapshot),

@@ -179,7 +179,8 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     }
     const generationVersion = review.response.generation_version;
     onApply(review.prepared.canonical_draft, result.value, { kind: 'plan', annotations,
-      ...(generationVersion === undefined ? {} : { generation_version: generationVersion }) });
+      ...(generationVersion === undefined ? {} : { generation: { version: generationVersion, pipeline_version: review.response.pipeline_version,
+        document_signature: review.prepared.document_signature, request_ids: [review.response.request_id] } }) });
   };
   const sectionTitle = (section: TargetResumeV1['document']['sections'][number]) => section.heading || ({
     basics: copy('Contact', '基本信息'), education: copy('Education', '教育'), activities: copy('Experience and projects', '经历与项目'),

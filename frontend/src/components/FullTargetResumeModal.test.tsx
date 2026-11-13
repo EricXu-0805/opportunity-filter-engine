@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { webcrypto } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appendTargetResumeProvenance, type TargetResumeProvenance, type TargetResumeProvenanceAction } from '@/lib/target-resume-provenance';
 import * as contract from '@/lib/target-resume';
@@ -17,6 +17,9 @@ import type { Opportunity, ProfileData, ResumeFact } from '@/lib/types';
 import type { LoadedTargetResume, TargetResumeSaveResult, TargetResumeV1 } from '@/lib/target-resume';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import FullTargetResumeModal from './FullTargetResumeModal';
+import privateGolden from '../../../tests/fixtures/private-resume-context-v5-golden.json';
+import { privateResumeKey, type PrivateResumeContext } from '@/lib/private-resume-context';
+import type { PrivateResumeTargetState } from '@/lib/use-private-resume-target';
 
 const storage = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), history: vi.fn(), version: vi.fn() }));
 vi.mock('./ResumeExperienceAssignmentPanel', () => ({ default: () => null }));
@@ -90,6 +93,172 @@ beforeEach(async () => {
   storage.history.mockReset().mockResolvedValue([]); storage.version.mockReset().mockResolvedValue(null);
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+async function privateUI(target = clone(privateGolden.receipt.context) as PrivateResumeContext) {
+  advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+  const check = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target) }));
+  const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, checkForAction: check, refresh: vi.fn().mockResolvedValue(true) };
+  const p = profile(), close = vi.fn();
+  const props = { isOpen: true, onClose: close, profile: p, privateTarget: target, privateResumeRefresh: refresh };
+  const view = render(<FullTargetResumeModal {...props} />);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
+  await screen.findByRole('textbox', { name: 'Edit Full name' });
+  return { ...view, props, check, target, close };
+}
+describe('private full résumé workspace', () => {
+  it('reports the complete draft size limit instead of creating a truncated private draft', async () => {
+    // The source alone fits the 2 MiB draft limit; with the résumé the complete draft does not.
+    const length = 2 * 1024 * 1024 - 2048;
+    const target = { ...clone(privateGolden.receipt.context), description: 'x'.repeat(length) } as PrivateResumeContext;
+    advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+    const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, refresh: async () => true,
+      checkForAction: async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target)! }) };
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={profile()} privateTarget={target} privateResumeRefresh={refresh} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
+    expect(await screen.findByText(/complete résumé and opportunity text exceed/)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Edit Full name' })).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+    expect(target.description).toHaveLength(length);
+  });
+  it('creates from checked complete private materials, opens supplements and saves without public AI panels', async () => {
+    const { check, target } = await privateUI();
+    expect(check).toHaveBeenCalledOnce(); expect(ai.props).toBeNull(); expect(plan.props).toBeNull();
+    expect(screen.getByText(/AI adaptation for private imports is not available yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/older draft did not save all/)).toBeNull();
+    expect(screen.getByText(/Study parsers and research tools\./).textContent).toBe(target.description);
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    expect(supplement.props?.opportunityId).toBe(target.opportunity_id);
+    editName('Private manual name');
+    storage.save.mockImplementation(async (doc, _revision, _owner, provenance) => ({ status: 'saved', value: { doc, provenance, revision: 1, updated_at: new Date().toISOString() } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    await waitFor(() => expect(storage.save).toHaveBeenCalledOnce());
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(storage.save.mock.calls[0][0].target_snapshot).toEqual(target);
+    expect(storage.save.mock.calls[0][0].base_snapshot.resume_text).toBe(profile().resume_text);
+    expect(storage.save.mock.calls[0][3].events[0].kind).toBe('manual');
+  });
+  it('keeps the draft when a private pre-save source read fails; retry cannot overwrite later typing', async () => {
+    const { check } = await privateUI(); editName('Keep my first edit');
+    check.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled());
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep my first edit');
+    let finish!: (value: unknown) => void;
+    storage.save.mockImplementation((doc, _revision, _owner, provenance) => new Promise(resolve => { finish = () => resolve({ status: 'saved', value: { doc, provenance, revision: 1, updated_at: new Date().toISOString() } }); }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await waitFor(() => expect(storage.save).toHaveBeenCalledOnce());
+    editName('A later edit'); await act(async () => finish(null));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('A later edit');
+    expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled();
+  });
+  it.each(['newer source', 'another account'] as const)('refuses to save on a failed pre-save source check (%s)', async fault => {
+    const { check, target } = await privateUI(); editName('Kept private edit');
+    const changed = { ...target, description: target.description + '\nNewer source' };
+    const owner = fault === 'another account' ? { ...captureOwnerToken(), uid: 'b1000000-0000-4000-8000-000000000001' } : captureOwnerToken();
+    const checked = fault === 'newer source' ? changed : target;
+    check.mockResolvedValueOnce({ checkId: 2, owner, target: checked, key: privateResumeKey(checked) });
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    expect(await screen.findByText(/private source changed or could not be checked\. Your edits are kept/)).toBeInTheDocument();
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Kept private edit');
+  });
+  it('retains edits when the private source changes during a pending save check', async () => {
+    const { check, target, props, rerender } = await privateUI(); editName('Retained private edit');
+    let resolve!: (value: unknown) => void;
+    check.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    const changed = { ...target, description: target.description + '\nChanged source' };
+    rerender(<FullTargetResumeModal {...props} privateTarget={changed} privateResumeRefresh={{ ...props.privateResumeRefresh, target: changed }} />);
+    await act(async () => resolve({ owner: captureOwnerToken(), target, key: privateResumeKey(target) }));
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Retained private edit');
+    expect(screen.getByText(/Study parsers and research tools\./).textContent).toBe(target.description);
+    expect(await screen.findByText(/created from different profile or target/)).toBeInTheDocument();
+  });
+  it('checks the private source before an export and keeps the draft when the check fails', async () => {
+    const { check } = await privateUI(); editName('Exported private edit'); const before = check.mock.calls.length;
+    check.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    expect(await screen.findByText(/private source changed or could not be checked\. Your draft is kept/)).toBeInTheDocument();
+    expect(check).toHaveBeenCalledTimes(before + 1); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Exported private edit');
+  });
+  it('marks a private snapshot as not independently verified, with the source version it was built on', async () => {
+    const target = clone(privateGolden.receipt.context) as PrivateResumeContext, source = target.private_source;
+    source.revision = 7;
+    source.source_version = 'pit1:' + createHash('sha256').update(JSON.stringify({ id: target.opportunity_id, owner_id: source.owner_id, revision: 7 })).digest('hex');
+    await privateUI(target);
+    expect(screen.getByText('Private import — not independently verified. Saved source version: 7')).toBeInTheDocument();
+  });
+  it.each(['private', 'public'] as const)('names the organization after the snapshot title only when there is one (%s)', async kind => {
+    if (kind === 'private') await privateUI(); else await createUI();
+    const line = screen.getByText('Target requirements and original materials').nextElementSibling;
+    expect(line?.textContent).toBe(kind === 'private' ? 'Private research note' : 'Robotics research · Example Lab');
+  });
+  it('does not mark a public snapshot as a private import', async () => {
+    await createUI();
+    expect(screen.queryByText(/Private import|not independently verified/)).toBeNull();
+  });
+  it('says the draft is kept only while a private draft is open', async () => {
+    const target = clone(privateGolden.receipt.context) as PrivateResumeContext;
+    advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+    const failed: PrivateResumeTargetState = { target, status: 'failed', reason: 'read_failed', refresh: async () => false, checkForAction: async () => null };
+    const props = { isOpen: true, onClose: vi.fn(), profile: profile(), privateTarget: target };
+    const view = render(<FullTargetResumeModal {...props} privateResumeRefresh={failed} />);
+    await screen.findByRole('button', { name: 'Create from confirmed master' });
+    expect(screen.getByText('Could not check this private source. Try again.')).toBeInTheDocument();
+    view.unmount();
+    const { rerender, props: open } = await privateUI(target);
+    rerender(<FullTargetResumeModal {...open} privateResumeRefresh={{ ...open.privateResumeRefresh, status: 'offline' }} />);
+    expect(screen.getByText('You are offline. Your draft is kept; reconnect to check the source.')).toBeInTheDocument();
+    rerender(<FullTargetResumeModal {...open} privateResumeRefresh={{ ...open.privateResumeRefresh, status: 'failed', reason: 'read_failed' }} />);
+    expect(screen.getByText('Could not check this private source. Your draft is kept; try again.')).toBeInTheDocument();
+  });
+  it.each([
+    ['page membership lost', 'en'], ['source missing', 'en'], ['page membership lost', 'zh'],
+  ] as const)('says plainly that a deleted import cannot be saved or exported (%s, %s)', async (fault, locale) => {
+    const { check, props, rerender } = await privateUI(); editName('Edit on a deleted import');
+    check.mockResolvedValue(null); i18n.locale = locale;
+    const gone = fault === 'page membership lost' ? { targetMembershipReady: false }
+      : { privateResumeRefresh: { ...props.privateResumeRefresh, status: 'missing' as const } };
+    rerender(<FullTargetResumeModal {...props} {...gone} />);
+    const [status, refused] = locale === 'zh'
+      ? ['这条私有导入已不可用。已删除的导入无法保存或导出文稿。', '已删除的导入无法保存或导出文稿。']
+      : ['This private import is no longer available. Saving and export are unavailable for a deleted import.', 'Saving and export are unavailable for a deleted import.'];
+    expect(screen.getByText(status)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '保存目标文稿' : 'Save target draft' }));
+    expect(await screen.findByText(refused)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '导出 PDF' : 'Export PDF' }));
+    await waitFor(() => expect(screen.getAllByText(refused)).toHaveLength(2));
+    expect(screen.queryByText(/draft is kept|edits are kept|review the source|文稿仍保留|编辑仍保留|核对来源后/)).toBeNull();
+    expect(storage.save).not.toHaveBeenCalled(); expect(screen.getByDisplayValue('Edit on a deleted import')).toBeInTheDocument();
+  });
+  it('shows the generation record of a saved private V5 AI change', async () => {
+    const target = clone(privateGolden.receipt.context) as PrivateResumeContext;
+    advanceOwnerEpoch(target.private_source.owner_id); await syncLocalIdentityOwner(target.private_source.owner_id);
+    const doc = clone(privateGolden.draft) as TargetResumeV1, next = clone(doc);
+    const section = next.document.sections.find(s => s.kind === 'activities')!, block = section.blocks[0], line = block.lines.find(l => l.role === 'experience')!;
+    line.text = 'I built a Python parser with my teammates.';
+    const record = appendTargetResumeProvenance(null, doc, next, { kind: 'ai_rewrite' })!;
+    // This build writes no V5 record yet, so a V5 history is one that arrives from storage.
+    const provenance = { ...record, version: 5 as const, events: [{ ...record.events[0], generation: { version: 'target-resume-generation-v1:' + 'c'.repeat(64),
+      pipeline_version: 'full-target-v6', document_signature: 'v1:sha256:' + 'd'.repeat(64), request_ids: ['private-request'] } }] };
+    storage.load.mockResolvedValue({ ...loaded(next), provenance });
+    const refresh: PrivateResumeTargetState = { target, status: 'ready', reason: null, refresh: async () => true,
+      checkForAction: async () => ({ checkId: 1, owner: captureOwnerToken(), target, key: privateResumeKey(target)! }) };
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={profile()} privateTarget={target} privateResumeRefresh={refresh} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); fireEvent.click(screen.getByText('Change records'));
+    fireEvent.click(screen.getByText('Generation details'));
+    expect(screen.getByText('Configuration ID: target-resume-generation-v1:' + 'c'.repeat(64))).toBeVisible();
+    expect(screen.getByText('Request IDs: private-request')).toBeVisible();
+  });
+  it('keeps source-deleted drafts editable, then confirms before closing unsaved work', async () => {
+    const { props, rerender, close } = await privateUI();
+    rerender(<FullTargetResumeModal {...props} privateResumeRefresh={{ ...props.privateResumeRefresh, status: 'missing', checkForAction: async () => null }} />);
+    editName('Offline retained edit');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits and continue' }));
+    expect(close).toHaveBeenCalledOnce();
+  });
+});
 
 describe('full target résumé modal', () => {
   it('does nothing while closed and does not create from absent or candidate-only master data', async () => {
@@ -179,6 +348,27 @@ describe('full target résumé modal', () => {
     expect(screen.getByRole('alert')).toBe(alert);
     expect(screen.getByRole('button', { name: saveName })).toBeDisabled();
     expect(storage.save).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    ['document_too_large', 'The complete résumé and opportunity text exceed the draft limit. Nothing was truncated or saved.'],
+    ['invalid_master', 'Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.'],
+  ] as const)('reports a public create refused with %s by its own message', async (code, message) => {
+    vi.spyOn(contract, 'createTargetResume').mockRejectedValueOnce(new contract.TargetResumeError(code));
+    renderModal();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create from confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create from confirmed master' }));
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Edit Full name' })).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+  });
+  it('says in Chinese that an oversized first draft was neither cut nor saved', async () => {
+    // There may be no earlier draft to keep, so the message promises none.
+    i18n.locale = 'zh';
+    vi.spyOn(contract, 'createTargetResume').mockRejectedValueOnce(new contract.TargetResumeError('document_too_large'));
+    renderModal();
+    const create = await screen.findByRole('button', { name: '从已确认母版创建' });
+    await waitFor(() => expect(create).toBeEnabled());
+    fireEvent.click(create);
+    expect(await screen.findByText('完整简历和机会原文超过文稿容量，内容未截断，也未保存。')).toBeInTheDocument();
   });
   it('keeps the generic retryable save message for a failure that is not the cap', async () => {
     await createUI(); editName('Alex 王 unconfirmed'); storage.save.mockResolvedValue({ status: 'failed' });
@@ -854,6 +1044,18 @@ describe('saved operation records', () => {
     const saved = storage.save.mock.calls[0][3] as TargetResumeProvenance;
     expect(saved.version).toBe(4); expect(saved.events[0]).toEqual(record.events[0]); expect(saved.events[1].kind).toBe('manual');
     expect(screen.getAllByText('Generation configuration: unknown')).toHaveLength(1);
+  });
+  it('saves an accepted AI change with its generation record as V4', async () => {
+    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc), check = edit.action.annotations![0].check!;
+    const generation = { version: 'target-resume-generation-v1:' + 'a'.repeat(64), pipeline_version: check.pipeline_version,
+      document_signature: check.document_signature, request_ids: [check.request_id] };
+    storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true));
+    act(() => ai.props!.onApply(edit.canonical, edit.next, { ...edit.action, generation }));
+    fireEvent.click(screen.getByText('Change records')); fireEvent.click(screen.getByText('Generation details'));
+    expect(screen.getByText('Request IDs: controlled-request')).toBeVisible();
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    const saved = storage.save.mock.calls[0][3] as TargetResumeProvenance;
+    expect(saved.version).toBe(4); expect(saved.events[0].generation).toEqual(generation);
   });
   it.each([['en', 1], ['en', 3], ['en', 4], ['zh', 1], ['zh', 3], ['zh', 4]] as const)(
     'labels every AI and plan event without a generation record as unknown, and no manual event (%s, V%s history)', async (locale, version) => {
