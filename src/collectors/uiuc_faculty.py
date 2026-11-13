@@ -872,6 +872,12 @@ def _enrich_faculty_from_profile(person: dict) -> dict:
             person["research_areas"] = areas
 
     if "research_areas" not in person:
+        areas = _primary_research_area(soup)
+        if areas:
+            person["research_areas"] = areas
+            person["research_areas_as_written"] = True
+
+    if "research_areas" not in person:
         meta = soup.select_one("meta[name='description']")
         if meta and len(meta.get("content", "")) > 20:
             person["research_description"] = meta["content"][:300]
@@ -1049,8 +1055,12 @@ def normalize_faculty(
     desc_parts = [
         f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} at UIUC.",
     ]
+    # Text a read stored as the page writes it is not trimmed again: the trim
+    # rewrites an item that holds commas.
+    as_written = bool(person.get("research_areas_as_written"))
     if research_areas:
-        desc_parts.append(f"Research areas: {_trim_research_areas(research_areas, 200)}")
+        desc_parts.append(
+            f"Research areas: {research_areas if as_written else _trim_research_areas(research_areas, 200)}")
     desc_parts.append(
         "Contact this faculty member to ask whether undergraduate research "
         "opportunities are currently available."
@@ -1124,7 +1134,8 @@ def normalize_faculty(
             "manually_reviewed": False,
             "notes": f"Auto-imported from {dept_name} faculty directory",
             "faculty_title": title,
-            "research_areas_raw": _trim_research_areas(research_areas) if research_areas else "",
+            "research_areas_raw": (research_areas if as_written else _trim_research_areas(research_areas))
+            if research_areas else "",
             FACULTY_MAJOR_LABELS_MARKER: list(dept_config.get("majors") or []),
         },
     }
@@ -1272,7 +1283,7 @@ def missing_departments(opps: list[dict], departments: list[str] = None) -> list
 # (or differing URLs) are never merged.
 _NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
-# Academic credentials scraped onto the end of a name ("Helene R Dickel Phd").
+# Academic credentials scraped onto the end of a name ("Robin R Samplewood Phd").
 # They are not part of the name, leak into the title, and "phd" trips the
 # grad-level penalty regex — so strip a trailing credential token.
 # Tokens that cannot be a surname, so they are safe to strip wherever they sit.
@@ -1284,7 +1295,7 @@ _NAME_CREDENTIALS = {
     "m.pharm", "m.ed", "r.ph", "cnm", "crna", "aprn", "dnp", "msn", "bsn", "fnp",
 }
 # These ARE common surnames — Ma, Ng, Ho — so they may only be stripped when a
-# comma introduces them ("Megan Kobel, MS" yes; "Xiaolong Ma" never). Without
+# comma introduces them ("Morgan Exampleby, MS" yes; "Example Ma" never). Without
 # the split, 123 professors lost their surname.
 _COMMA_ONLY_CREDENTIALS = {"ma", "ms", "msc", "m.sc", "mfa", "mpa", "rn", "np", "pa", "pe", "od", "esq"}
 _NAME_PRONOUNS_RE = re.compile(
@@ -1297,7 +1308,7 @@ def clean_pi_name(name: str) -> str:
     """A person's name as a letter would address them.
 
     Strips appended pronouns, scraped trailing glyphs, and academic credentials
-    — repeatedly, because a directory writes "Elise N. Erickson PhD CNM FACNM".
+    — repeatedly, because a directory writes "Elise N. Samplewood PhD CNM FACNM".
     Never reduces a name below two tokens and never removes a generational
     suffix: "Jr" is part of someone's name, not a credential.
     """
@@ -1365,7 +1376,7 @@ def _faculty_name_key(opp: dict) -> tuple[str, str] | None:
     if not url or not name:
         return None
     tokens = [t for t in name.replace(",", " ").split() if t]
-    # Drop generational suffixes so "Brian DeMarco Jr." keys the same as "Brian DeMarco".
+    # Drop generational suffixes so "Brian DeSample Jr." keys the same as "Brian DeSample".
     while tokens and tokens[-1].lower().strip(".") in _NAME_SUFFIXES:
         tokens.pop()
     if len(tokens) < 2:
@@ -1929,7 +1940,7 @@ def _dedup_decredentialed_faculty(opps: list[dict], dropped: dict | None = None)
     dropped for ``faculty_graph.settle_dropped_rows``.
 
     This runs after ``_strip_pi_name_credentials``, which is what exposes them:
-    UCLA listed Smadar Naoz twice, the two rows distinguishable only by a "PhD"
+    UCLA listed one professor twice, the two rows distinguishable only by a "PhD"
     suffix until the suffix came off. The key is the *full* name deliberately.
     ``_dedup_faculty_records`` keys on the surname alone, which is safe only for
     uiuc_faculty because that collector gives every professor their own
@@ -2329,7 +2340,7 @@ _SERVICE_ROLE_RE = re.compile(
 # number AND a building-type word, so dimensional areas ("2d materials",
 # "3d printing") and lab-method areas ("laboratory automation") are never caught.
 _CONTACT_INFO_RE = re.compile(
-    r"[^\s@]+@[^\s@]+\.[a-z]{2,}"                       # email: adshead@illinois.edu
+    r"[^\s@]+@[^\s@]+\.[a-z]{2,}"                       # email: asample@illinois.edu
     r"|\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}"           # phone: (217) 333-4363
     r"|^\d{2,4}[a-z]?\s+.*\b(?:laborator(?:y|ies)|hall|building|annex)\b",  # 237b loomis laboratory
     re.IGNORECASE,
@@ -2432,7 +2443,7 @@ def _clean_research_phrase(phrase: str) -> str | None:
 # gone: the unit's own name, the person's title, a co-author's surname, a
 # dangling adjective. Names are recognised from the school's own roster — every
 # token of a one- or two-word phrase is a token of some UIUC faculty pi_name
-# (other schools' rosters carry junk names like "J Buchanan Motor Neuroscience").
+# (other schools' rosters carry junk names like "J Example Motor Neuroscience").
 _ORG_NAME_RE = re.compile(
     r"^(?:department|school|college|institute|center|centre|division|office|university) of\b"
     r"|\buniver\w*|\b(?:building|hall)$"
@@ -2623,8 +2634,8 @@ def _strip_fragment_keywords(opps: list[dict]) -> int:
 # (email, first_token, last_token) collapses the joint appointments. The FIRST
 # name must match too: a shared department/admin email (e.g. "nslack@illinois.edu"
 # attached to a dozen ECE professors) must never merge distinct people who happen
-# to share a surname — only true name-variants of one person (David Forsyth in CS
-# & BioE; Pamela / Pamela P. Martinez) collapse.
+# to share a surname — only true name-variants of one person (one professor in
+# CS & BioE; Pamela / Pamela P. Exampleton) collapse.
 def _faculty_email_key(opp: dict) -> tuple[str, str, str] | None:
     if opp.get("source") != "uiuc_faculty":
         return None
@@ -2669,7 +2680,7 @@ def _dedup_faculty_by_email(opps: list[dict], dropped: dict | None = None) -> li
 
 # An email attached to this many *distinct* professors is a department/advising
 # inbox scraped in place of a personal address, not one person's contact (e.g.
-# amwhit@illinois.edu on 123 profs, nslack@illinois.edu on 116). Counting
+# one advising address on 123 profs, nslack@illinois.edu on 116). Counting
 # distinct names — not rows — keeps a real professor's joint-appointment rows
 # (one name, one shared personal email) from being mistaken for an admin inbox.
 _SHARED_ADMIN_EMAIL_THRESHOLD = 3
@@ -2745,13 +2756,13 @@ def _null_unit_inbox_emails(opps: list[dict]) -> int:
 # merge — a re-scrape would otherwise re-introduce the wrong address. Keyed by
 # the stable faculty id (md5 of dept+short-name), so it survives re-scrapes.
 _WRONG_PERSON_EMAIL_IDS: frozenset[str] = frozenset({
-    "faculty-linguistics-fe67198e",   # Jill Anne Huang ← tschopp2@
-    "faculty-linguistics-9676e2bd",   # Brenna Nierenhausen ← willia67@
-    "faculty-fshn-0d0e4ecc",          # Toni Gist ← burkhalt@
-    "faculty-ib-d6462bdc",            # Marianne Alleyne ← vanlaarh@
-    "faculty-ansc-e70a3671",          # Sarah D. Richardson ← salbert2@
-    "faculty-communication-06a2e092", # Lauren Weiner ← lgrill@
-    "faculty-fshn-7ea288d3",          # Marcia Helena Siegel ← monaco@
+    "faculty-linguistics-fe67198e",   # ← tschopp2@
+    "faculty-linguistics-9676e2bd",   # ← willia67@
+    "faculty-fshn-0d0e4ecc",          # ← burkhalt@
+    "faculty-ib-d6462bdc",            # ← vanlaarh@
+    "faculty-ansc-e70a3671",          # ← salbert2@
+    "faculty-communication-06a2e092", # ← lgrill@
+    "faculty-fshn-7ea288d3",          # ← monaco@
 })
 
 
@@ -2863,12 +2874,13 @@ _RESEARCH_SELECTORS = [
 
 # Section titles that follow a faculty page's research text. The marker path
 # below takes the eight lines after "Research Interests", and on Siebel School
-# pages those lines run straight into the next sections: "Research Areas,
-# Systems and Networking, Recent Courses Taught, CS 412 CSP (CS 412 P3, CS 41"
-# — cut mid-token by the 300-character cap — was stored as Hanghang Tong's
-# research areas and rendered on his page under "Research areas:". Measured:
-# 404 of 2,817 UIUC records carried a section title in the field and 759
-# ended mid-token.
+# pages those lines run straight into the next sections. Text of the shape
+# "Research Areas, Scientific Computing, Recent Courses Taught, CS 457 ROB
+# (CS 457 Q2, CS 45" (a synthetic example: section titles around an area
+# label, then a course list cut mid-token by the 300-character cap) was
+# stored as a CS professor's research areas and rendered on their page under
+# "Research areas:". Measured: 404 of 2,817 UIUC records carried a section
+# title in the field and 759 ended mid-token.
 _AREA_LABEL_HEADINGS = frozenset({
     "research areas", "research interests", "research focus", "research area",
     "research description", "research topics", "research statement",
@@ -2962,6 +2974,36 @@ def _research_areas_from_soup(soup) -> str:
             if lines:
                 return _trim_research_areas(", ".join(lines))
     return ""
+
+
+def _primary_research_area(soup, cap: int = 200) -> str:
+    """The items of the element right after a profile's first 'Primary Research
+    Area' <h2>, as the page writes them, joined by ', '.
+
+    A Physics profile names the person's area there, in its role block. Only
+    that list: the block goes on with the title, email and office, which a
+    marker read would take too. _trim_research_areas is not applied, since it
+    rewrites an item that holds commas ("Area One, Area Two, and Area Three"
+    loses its "and"); an item that would pass ``cap`` (the description's) is
+    dropped with the rest, never cut. A run of whitespace inside an item is
+    read as one space, as a browser shows it. A list whose items hold items
+    of their own yields nothing: read whole, an item would be stored together
+    with its sub-items, a phrase the page never writes, and each sub-item
+    again."""
+    heading = next((h for h in soup.find_all("h2") if h.get_text(strip=True) == "Primary Research Area"), None)
+    block = heading.find_next_sibling() if heading else None
+    items = block.find_all("li") if block else []
+    if any(li.find("li") is not None for li in items):
+        return ""
+    kept: list[str] = []
+    for li in items:
+        item = " ".join(li.get_text(" ", strip=True).split())
+        if not item:
+            continue
+        if len(", ".join([*kept, item])) > cap:
+            break
+        kept.append(item)
+    return ", ".join(kept)
 
 
 def _lines_after(page_text: str, end: int) -> list[str]:

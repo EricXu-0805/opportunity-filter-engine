@@ -5458,6 +5458,19 @@ export const en = {
     roadmapEx3: 'PyTorch',
     roadmapEx4: 'First paper',
   },
+  notFoundPage: {
+    message: "This page doesn't exist.",
+    backHome: 'Back to Home',
+  },
+  errorPage: {
+    serviceUnreachable: "We couldn't reach the matching service. It may be waking up — please try again in a few seconds.",
+    generic: 'Something went wrong on this page.',
+    referenceId: 'Reference ID:',
+    referenceHint: 'include this if you report the issue.',
+    retryHint: 'You can retry, or reload the page if the problem persists.',
+    technicalDetails: 'Technical details',
+    backHome: 'Back home',
+  },
 } as const;
 
 export const zh = {
@@ -10804,6 +10817,19 @@ export const zh = {
     roadmapEx2: '统计',
     roadmapEx3: 'PyTorch',
     roadmapEx4: '第一篇论文',
+  },
+  notFoundPage: {
+    message: '这个页面不存在。',
+    backHome: '返回首页',
+  },
+  errorPage: {
+    serviceUnreachable: '没能连上匹配服务。它可能还在启动 —— 请过几秒再试。',
+    generic: '这个页面出了点问题。',
+    referenceId: '错误编号：',
+    referenceHint: '反馈问题时请附上这个编号。',
+    retryHint: '可以重试；如果问题仍然存在，请刷新页面。',
+    technicalDetails: '技术详情',
+    backHome: '返回首页',
   },
 } as const;
 

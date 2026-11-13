@@ -1543,18 +1543,77 @@ def keywords_are_source_topics(record: dict) -> bool:
 
     A faculty row's keywords are curated off the profile or split from its
     research text, unless a stamp says we derived them (an OpenAlex author
-    record matched by surname and institution). A listing's are ours on every
+    record matched by surname and institution). A listing's are not, on every
     collector but the SRO, stamped or not: Simplify expands its category
     through a map, campus program specs and manual rows carry tags a person
-    typed, NSF and the normalizer run a keyword bank over the text.
+    typed, NSF and the normalizer run a keyword bank over the text, and the
+    OUR feed's unstamped ones are the categories it put on the post
+    (`keywords_are_source_labels`): its words, but no topic.
 
-    One rule for the detail page's topic row and the public
-    ``keywords_attribution`` (``backend.lib.opportunity_detail.keywords_basis``)
-    and for the cold-email paths that present keywords as the source's words.
+    The rule for the cold-email paths that present keywords as the source's
+    topics. With `keywords_are_source_labels`, the rule for the detail page's
+    topic row and the public ``keywords_attribution``
+    (``backend.lib.opportunity_detail.keywords_basis``): either one makes the
+    keywords the source's words, not ours.
     """
     if inferred_method(record, "keywords") is not None:
         return False
     return record_kind(record) == "faculty_contact" or str(record.get("source") or "") in KEYWORDS_FROM_SOURCE
+
+
+# Listing sources whose keywords are labels the source put on the post: the
+# OUR blog feed's categories ("URAP", "FGSRP"). Its collector leaves out
+# WordPress's placeholder category, and the enricher gives a post left with
+# none its keyword bank's topics where the bank finds any, and stamps them.
+KEYWORDS_ARE_SOURCE_LABELS = frozenset({"uiuc_our_rss"})
+
+
+def keywords_are_source_labels(record: dict) -> bool:
+    """Whether a record's keywords are labels its source put on it: the
+    source's own words, but no statement of what the program works on, so
+    they are neither ours nor its topics (M174)."""
+    if inferred_method(record, "keywords") is not None:
+        return False
+    return str(record.get("source") or "") in KEYWORDS_ARE_SOURCE_LABELS
+
+
+def campus_constant_keywords(record: dict) -> set[str]:
+    """Keywords the campus collectors append to every row they emit.
+
+    Each appends its own source type ("program", "lab", "announcement"), and a
+    discovered row carries only that plus "undergraduate research". Neither is
+    a research topic.
+    """
+    constants = {
+        value.casefold() for value in (record.get("campus_source_type"), record.get("ucb_source_type"))
+        if isinstance(value, str) and value
+    }
+    metadata = record.get("metadata")
+    if constants and isinstance(metadata, dict) and metadata.get("discovered"):
+        constants.add("undergraduate research")
+    return constants
+
+
+# The one list each of these collectors writes on every row it emits
+# (uiuc_other and uiuc_drp add the row's program key, which is not shared).
+# A list typed into a collector's code is not the page's words, even where a
+# word of it describes the program ("computer_science", DRP's "reading").
+_COLLECTOR_KEYWORD_LISTS = {
+    "uiuc_siebel": frozenset({"research", "computer_science", "siebel", "mentor"}),
+    "uiuc_other": frozenset({"research", "program_overview"}),
+    "ucb_urap": frozenset({"research", "mentorship", "undergraduate"}),
+    "uiuc_urap": frozenset({"research", "mentorship", "undergraduate"}),
+    "uiuc_drp": frozenset({"research", "reading", "mentor", "directed_reading"}),
+    "uiuc_ursa": frozenset({"research", "engineering", "freshman", "sophomore", "mentor"}),
+}
+
+
+def collector_constant_keywords(record: dict) -> set[str]:
+    """Keywords a row carries because its collector writes them on every row
+    it emits, whatever the page says: the campus collectors' and the lists
+    above. They are not the page's words about this person or program, so the
+    ranker's interest match skips them (M174)."""
+    return campus_constant_keywords(record) | _COLLECTOR_KEYWORD_LISTS.get(str(record.get("source") or ""), set())
 
 
 # Sources whose closed records are published as reference material, stated by

@@ -753,7 +753,7 @@ class TestGraduateLevelGating:
             "Undergraduate Research Assistant",
             "UR2PhD (CS 397)",
             "Computer Vision Intern",
-            "Research with Prof. David Forsyth — CS",
+            "Research with Prof. Avery Exampleton — CS",
             "Summer Undergraduate Research Fellowship",
             "Master Electrician Apprentice",  # "Master" without 's must NOT match
             "New Graduate Software Engineer",  # entry-level scheme, NOT grad-level
@@ -1061,7 +1061,7 @@ class TestTopicAlignmentPenalty:
     # penalized — burying 38% of UIUC faculty incl. the best ML/CV topical fits
     # (found 2026-06-15 dogfooding a real F-1 profile).
     def test_superset_phrase_keyword_aligns(self):
-        # interest "computer vision" vs Prof. Schwing's real keyword
+        # interest "computer vision" vs a computer-vision professor's real keyword
         opp = self._research(["computer vision and pattern recognition"])
         assert _topic_alignment_penalty(self._profile(), opp) == 1.0
 
@@ -1294,9 +1294,9 @@ class TestUpsideReasonHook:
         # line (M171).
         return {
             "id": "opp-hook",
-            "title": "Research with Prof. Schwing — ECE",
-            "lab_or_program": "Prof. Alexander Schwing's Research Group",
-            "pi_name": "Alexander Schwing",
+            "title": "Research with Prof. Exampleton — ECE",
+            "lab_or_program": "Prof. Jordan Exampleton's Research Group",
+            "pi_name": "Jordan Exampleton",
             "source_type": "faculty_research",
             "opportunity_type": "research",
             "keywords": ["machine learning", "computer vision", "robotics"],
@@ -1429,8 +1429,8 @@ class TestInterestReasonDedup:
 
     def test_no_literal_overlap_does_not_put_the_alignment_in_the_students_mouth(self):
         # Production: a profile saying "machine learning, artificial
-        # intelligence" was told "Your research interests align closely with
-        # Prof. Hanghang Tong's work on security" — the one area the student
+        # intelligence" was told its research interests "align closely" with
+        # a CS professor's "work on security" — the one area the student
         # had not mentioned. The similarity is between the student's prose and
         # the lab's description; the words in `work` are the lab's. Say what
         # the lab works on. The overlap case keeps its "closely matches" line.
@@ -2628,7 +2628,7 @@ class TestCorpusPrecomputeEquivalence:
 class TestInterestBonusNameLeakage:
     """Interest tokens must match research signal, not the professor's name.
     2026-07 audit: a cancer-immunology student's 'gene/genomics' tokens put
-    Gene Fridman (ENT) at #1 and Eugene Finkel (political science) in her
+    a professor named Gene (ENT) at #1 and one named Eugene (political science) in her
     top-8 at JHU — 10/15 of her matches were name-substring luck."""
 
     def _opp(self, pi, title, kws):
@@ -2638,7 +2638,7 @@ class TestInterestBonusNameLeakage:
 
     def test_interest_token_ignores_professor_name(self):
         from src.matcher.ranker import _interest_bonus
-        opp = self._opp("Gene Y. Fridman", "Research with Prof. Gene Y. Fridman — SOM", [])
+        opp = self._opp("Gene Y. Samplewood", "Research with Prof. Gene Y. Samplewood — SOM", [])
         assert _interest_bonus(
             {"research_interests_text": "cancer immunology, genomics, gene editing"}, opp
         ) == 0.0
@@ -2646,7 +2646,7 @@ class TestInterestBonusNameLeakage:
     def test_interest_token_no_midword_hit(self):
         from src.matcher.ranker import _interest_bonus
         # even with the name cut out, 'gene' must not hit the middle of a word
-        opp = self._opp("Eugene Finkel", "Research with Prof. Eugene Finkel — SAIS",
+        opp = self._opp("Eugene Placeholt", "Research with Prof. Eugene Placeholt — SAIS",
                         ["eugenics history"])
         assert _interest_bonus({"research_interests_text": "gene editing"}, opp) == 0.0
 
@@ -2658,7 +2658,7 @@ class TestInterestBonusNameLeakage:
 
     def test_real_topical_keyword_unaffected(self):
         from src.matcher.ranker import _interest_bonus
-        opp = self._opp("Nicole Baumgarth", "Research with Prof. Nicole Baumgarth — SOM",
+        opp = self._opp("Nicole Mockwell", "Research with Prof. Nicole Mockwell — SOM",
                         ["cancer immunology", "B cells"])
         assert _interest_bonus({"research_interests_text": "cancer immunology"}, opp) > 0.0
 
