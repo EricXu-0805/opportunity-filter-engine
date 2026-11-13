@@ -12,6 +12,7 @@ import json
 import pytest
 
 from src.collectors import ucsb_urca_projects as u
+from src.matcher.ranker import rank_opportunity
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 
 SITEMAP_FIXTURE = """<?xml version="1.0"?><urlset>
@@ -249,6 +250,26 @@ class TestNormalize:
 
     def test_stable_id_across_reruns(self):
         assert self._rec()["id"] == self._rec()["id"]
+
+    def test_the_directory_is_not_the_projects_lab(self):
+        """A project with no topical tag read "Your research interests align
+        with URCA Undergraduate Research Directory's focus area" (M183)."""
+        o = u.normalize_project(
+            {"id": "a0W6", "url": "https://ucsb.my.site.com/urca/s/funding-program/a0W6/x",
+             "title": "Oral Histories Of Santa Barbara", "slug": "x"})
+        assert o["lab_or_program"] == ""
+        profile = {"research_interests_text": "local history", "seeking_type": ["research"]}
+        fit = rank_opportunity(profile, o, precomputed_sim=0.5).reasons_fit
+        assert not [line for line in fit if "focus area" in line or "Directory" in line]
+
+    def test_a_refresh_replaces_the_stored_directory_name(self, monkeypatch, tmp_path):
+        processed = tmp_path / "opportunities.json"
+        stored = {**self._rec(), "lab_or_program": "URCA Undergraduate Research Directory"}
+        processed.write_text(json.dumps([stored]), encoding="utf-8")
+        monkeypatch.setattr(u, "PROCESSED_FILE", processed)
+        u.merge_snapshot_into_processed([self._rec()], snapshot_complete=True)
+        [saved] = json.loads(processed.read_text(encoding="utf-8"))
+        assert saved["lab_or_program"] == ""
 
     def test_empty_scrape_does_not_touch_corpus(self):
         assert u.merge_into_processed([]) == (0, 0)

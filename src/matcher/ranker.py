@@ -2689,6 +2689,18 @@ def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[st
 
 
 _NO_CHIPS: frozenset[str] = frozenset()
+# A chip of this many words or more is a sentence ("i want to study how neural
+# circuits encode memory"), and one word of it is not what it is about: a
+# keyword found inside it matches only when the keyword has two words or more
+# (checklist M174).
+_SENTENCE_WORDS = 6
+
+
+def _word_count(term: str) -> int:
+    """How many words ``term`` has, split on spaces and hyphens as _TERM_GAP
+    splits them ("end-to-end" has three); a piece with no letter or digit is
+    no word."""
+    return sum(1 for word in re.split(_TERM_GAP, term.translate(_GAP_FOLD)) if any(ch.isalnum() for ch in word))
 
 
 class _ChipMatch:
@@ -2702,7 +2714,7 @@ class _ChipMatch:
     inside a chip.
     """
 
-    __slots__ = ("_labels", "_canonical", "_forward", "_reverse", "_reverse_re", "_decided")
+    __slots__ = ("_labels", "_canonical", "_forward", "_reverse", "_sentences", "_reverse_re", "_decided")
 
     def __init__(self, desired: set[str], reverse_re: Callable[[str], "re.Pattern[str]"]) -> None:
         # Stripped chip -> the chips as the student wrote them, which the
@@ -2723,6 +2735,7 @@ class _ChipMatch:
         self._canonical = canonical
         self._forward = sorted((dl for dl in contained if len(dl) >= 4), key=len)
         self._reverse = sorted(contained, key=len, reverse=True)
+        self._sentences = frozenset(dl for dl in contained if _word_count(dl) >= _SENTENCE_WORDS)
         self._reverse_re = reverse_re
         self._decided: dict[str, frozenset[str]] = {}
 
@@ -2761,7 +2774,14 @@ class _ChipMatch:
             for dl in self._reverse:
                 if len(dl) < len(k):
                     break
-                if dl not in terms and k in dl and self._reverse_re(k).search(dl):
+                # The keyword's words are counted only once a sentence holds
+                # it: counting them for every keyword slowed each ranking.
+                if (
+                    dl not in terms
+                    and k in dl
+                    and (dl not in self._sentences or _word_count(k) >= 2)
+                    and self._reverse_re(k).search(dl)
+                ):
                     terms.add(dl)
         if not terms:
             return _NO_CHIPS
@@ -2858,9 +2878,12 @@ def _summarize_research(opportunity: dict) -> str:
     )
     # Every branch that has specific_kw lists them as the row's own focus.
     # Unstamped keywords can still be ours: a listing's tags are, but for the
-    # SRO's (the detail page's rule). Falling through would quote an abstract
-    # cut mid-sentence or our own template, so there is no headline (M171).
-    if specific_kw and not keywords_are_source_topics(opportunity):
+    # SRO's (the detail page's rule). Such a listing has no headline at all
+    # (M171, M183): with no topical tag left it fell through to the program's
+    # name or the description's first sentence cut at 100 characters, on live
+    # rows a directory's name, a page title, NSF's award boilerplate or our own
+    # template. A faculty row's stamped keywords fall through as above.
+    if not (faculty_contact_claims_unverified(opportunity) or keywords_are_source_topics(opportunity)):
         return ""
     desc_focus = _extract_research_focus_from_desc(desc)
 

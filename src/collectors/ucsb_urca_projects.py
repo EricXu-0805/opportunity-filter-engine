@@ -300,7 +300,8 @@ def normalize_project(raw: dict) -> dict:
         "title": raw["title"][:200],
         "organization": "University of California, Santa Barbara",
         "department": "",
-        "lab_or_program": "URCA Undergraduate Research Directory",
+        # The directory the project is listed in is not its lab or program.
+        "lab_or_program": "",
         # No pi_name: the mentor isn't reliably on the sitemap, and a shared/blank
         # name across 240+ project records would trip the shared-name DQ gate.
         "pi_name": None,

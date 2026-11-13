@@ -56,7 +56,6 @@ SCHOOL: dict = {
                     "https://research.wisc.edu/information-for-undergraduate-students/",
                     "Central gateway from UW-Madison's Office of Research listing the campus's undergraduate research programs and funding, including Undergraduate Research Scholars, Wisconsin Idea Fellowships, the Summer Research Opportunity Program, Hilldale/Holstrom fellowships, and the Undergraduate Symposium.",
                     organization="UW-Madison Office of the Vice Chancellor for Research",
-                    lab_or_program="Office of the Vice Chancellor for Research undergraduate research hub",
                     opportunity_type="research",
                     paid="unknown",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],

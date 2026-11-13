@@ -229,6 +229,9 @@ SCHOOL: dict = {
                     "premed and PhD-bound undergraduates.",
                     organization="Duke University School of Medicine",
                     department="School of Medicine, Office of Research",
+                    # A directory is no lab (M183), but the title names none, so
+                    # this value is what makes configured_fact treat the page as
+                    # a hub whose sentences are about the programs it lists.
                     lab_or_program="Summer Undergraduate Research Opportunities directory",
                     paid="stipend",
                     compensation="Varies by program",

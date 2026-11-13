@@ -73,7 +73,6 @@ SCHOOL: dict = {
                     "A curated directory of summer research programs open to Vanderbilt "
                     "undergraduates — on-campus labs, VUSRP, and external REUs — with "
                     "guidance on eligibility and deadlines by field.",
-                    lab_or_program="URO Summer Research Directory",
                     opportunity_type="summer_program",
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",

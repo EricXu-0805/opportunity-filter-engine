@@ -29,6 +29,7 @@ from src.collectors.schools.uci import SCHOOL as UCI
 from src.collectors.schools.ucsb import SCHOOL as UCSB
 from src.collectors.schools.ucsd import SCHOOL as UCSD
 from src.contact_instructions import CAPTURE_KEY
+from src.evidence import CAPTURED_PAGE_MARKER, FACT_STATED, FACT_UNSTATED, configured_fact
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 from src.program_windows import reviewed_window
 from tests.test_faculty_graph import fake_chromium
@@ -1944,6 +1945,52 @@ def test_the_lurie_summer_research_directory_is_described_in_its_pages_words():
         "in the Chicago metropolitan area.")
     # The page states no stipend or pay.
     assert (row["paid"], row["compensation_details"]) == ("unknown", "")
+
+
+def _configured_row(slug, key):
+    [school] = [school for school in SCHOOL_CONFIGS if school["school_slug"] == slug]
+    [row] = [o for o in cg.fetch_and_normalize(school) if o["metadata"]["collector_key"] == key]
+    return row
+
+
+@pytest.mark.parametrize(("slug", "key"), [
+    ("vanderbilt", "uro_summer_directory"), ("uw", "research_database"), ("wisc", "ovcr_undergrad_hub"),
+    ("purdue", "niso_scholarship_list"), ("purdue", "our_ext_grants"),
+])
+def test_a_directory_page_names_no_lab_or_program(slug, key):
+    """A directory, list or hub page is not a lab or a program (M183): its
+    name as the row's lab read "Your research interests align with URO Summer
+    Research Directory's focus area" and "Lab: URP Research Database"."""
+    assert _configured_row(slug, key)["lab_or_program"] == ""
+
+
+@pytest.mark.parametrize(("slug", "key", "stored"), [
+    ("vanderbilt", "uro_summer_directory", "URO Summer Research Directory"),
+    ("uw", "research_database", "URP Research Database"),
+    ("wisc", "ovcr_undergrad_hub", "Office of the Vice Chancellor for Research undergraduate research hub"),
+    ("purdue", "niso_scholarship_list", "NISO Scholarship List"),
+    ("purdue", "our_ext_grants", "External Grants List"),
+])
+def test_a_refresh_replaces_the_directory_name_stored_as_the_lab(processed, slug, key, stored):
+    """The stored rows keep the name until their school's next run re-emits them."""
+    row = _configured_row(slug, key)
+    processed.write_text(json.dumps([{**row, "lab_or_program": stored}]), encoding="utf-8")
+    cg.merge_into_processed([row], school_slug=slug)
+    [saved] = json.loads(processed.read_text(encoding="utf-8"))
+    assert saved["lab_or_program"] == ""
+
+
+@pytest.mark.parametrize(("slug", "key"), [
+    ("vanderbilt", "uro_summer_directory"), ("uw", "research_database"), ("wisc", "ovcr_undergrad_hub"),
+    ("duke", "som_summer_ug"),
+])
+def test_a_directory_page_states_no_fact_of_its_own(slug, key):
+    """Its sentences are about the programs it lists. Duke's title names no
+    directory, so its lab still does."""
+    row = {**_configured_row(slug, key), "paid": "stipend",
+           "description": f"Our summary.\n\n{CAPTURED_PAGE_MARKER} Participants receive a stipend."}
+    assert configured_fact(row, "paid").state == FACT_UNSTATED
+    assert configured_fact({**row, "title": "Summer Research", "lab_or_program": ""}, "paid").state == FACT_STATED
 
 
 # Configured program pages that more than one spec cites, as the keys that
