@@ -385,7 +385,23 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # tie with an unstable sort, so one unrelated word added to one record could
 # swap tied terms in and out: 191 of 200 simulated one-word edits did on the
 # 2026-11-02 corpus. A selection rule no hashed knob sees.
-_MATCHER_VERSION_BASE = "34"
+# 35: a faculty row whose description names no research areas of its own (no
+# research text, no keywords that are the source's topics) gets no "focus
+# area" line: its description is our template, so the similarity compared
+# that, not anything the professor wrote (checklist M169). A sentence no
+# hashed knob sees.
+# 36: a keyword a collector writes on every row it emits (a campus row's
+# source type, "undergraduate research" on a page the crawl discovered, the
+# UIUC Siebel, OUR-program, URAP, DRP and URSA lists;
+# `collector_constant_keywords`) is no interest match: no chip matches it, so
+# it adds no interest score, no "Matches your interests" line and no field
+# relevance (checklist M174). A match rule no hashed knob sees.
+# 37: an OUR feed row's unstamped keywords are the feed's own category labels
+# (`keywords_are_source_labels`), not topics we inferred: a chip they match
+# gets the plain "Matches your interests" line, and no line names them as the
+# row's work or rests a focus area on them (checklist M174). Sentences no
+# hashed knob sees.
+_MATCHER_VERSION_BASE = "37"
 
 
 def _matcher_fingerprint() -> str:
