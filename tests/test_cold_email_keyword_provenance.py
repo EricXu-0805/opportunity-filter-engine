@@ -17,7 +17,7 @@ import pytest
 from backend.lib.opportunity_detail import keywords_basis
 from backend.lib.public_opportunity_detail import project_public_detail
 from backend.routes import cold_email as ce
-from src.evidence import keywords_are_source_topics, stamp_inferred
+from src.evidence import keywords_are_source_labels, keywords_are_source_topics, stamp_inferred
 from src.recommender.cold_email import (
     _common_parts,
     _stated_keywords,
@@ -35,7 +35,7 @@ OUR_TAGS = {
     "campus_program_spec": ("illinois_research_programs", "campus_program"),
     "manual": ("manual", "manual"),
     "nsf_reu": ("nsf_reu", "summer_program"),
-    "normalizer": ("uiuc_our_rss", "rss"),
+    "normalizer": ("cmu_uro_projects", "campus_program"),
 }
 
 
@@ -230,9 +230,13 @@ def test_a_program_keeps_its_publications_tag():
     _record("handshake", "internship"),
     {**_record("uiuc_sro", "summer_program"), "source_type": None},
     _faculty(), _faculty(stamped=True),
+    _record("uiuc_our_rss", "rss"),
 ])
 def test_one_rule_for_the_detail_page_and_the_email(opp):
     """The canonical record and its public projection get the same answer, and
-    it is the detail page's."""
+    it is the detail page's: the source's words are its topics, or the labels
+    a feed put on its post, which the email does not call its work (M174)."""
     public = project_public_detail(opp)
-    assert keywords_are_source_topics(opp) is keywords_are_source_topics(public) is (keywords_basis(opp) is None)
+    assert keywords_are_source_topics(opp) is keywords_are_source_topics(public)
+    assert keywords_are_source_labels(opp) is keywords_are_source_labels(public)
+    assert (keywords_are_source_topics(opp) or keywords_are_source_labels(opp)) is (keywords_basis(opp) is None)
