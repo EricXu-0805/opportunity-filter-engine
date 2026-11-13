@@ -18,7 +18,8 @@ test('null metadata remains accepted; V3 permits old and paper quote variants',(
  assert.equal(valid(doc,provenance),true);
 });
 const mutations={
- 'unknown version':p=>p.provenance.version=5,
+ 'unknown version':p=>p.provenance.version=6,
+ 'V5 on V4 target':p=>p.provenance.version=5,
  'string version':p=>p.provenance.version='3',
  'V3 on V3 target':p=>p.doc.target_snapshot.context_version=3,
  'V2 on V4 target':p=>p.provenance.version=2,
@@ -84,5 +85,22 @@ test('V4 wire keeps text-review request, pipeline and source signature aligned',
  for(const field of ['request_id','pipeline_version','document_signature']) {
   const changed=structuredClone(p);changed.provenance.events[0].changes[0].check[field]=field==='document_signature'?'v1:sha256:'+'c'.repeat(64):'other';
   assert.equal(valid(changed.doc,changed.provenance),false);
+ }
+});
+function privatePair() {
+ const p=pair(1);p.provenance.version=5;p.doc.target_snapshot.context_version=5;
+ p.provenance.events[0].generation=generationPair().provenance.events[0].generation;return p;
+}
+test('V5 wire record keeps generation metadata on a private target and binds no other',()=>{
+ const p=privatePair(), before=structuredClone(p);assert.equal(valid(p.doc,p.provenance),true);assert.deepEqual(p,before);
+ for(const mutate of [p=>p.doc.target_snapshot.context_version=4,p=>p.provenance.version=4,p=>{p.provenance.version=1;}]) {
+  const q=privatePair();mutate(q);assert.equal(valid(q.doc,q.provenance),false);
+ }
+ const unknown=privatePair();delete unknown.provenance.events[0].generation;assert.equal(valid(unknown.doc,unknown.provenance),true);
+});
+test('V5 wire cites the description only',()=>{
+ for(const quote of [{field:'requirement',requirement_index:0,start:0,end:2,quote:'中😀'},pair(2).provenance.events[0].changes[0].target_evidence[0],
+   pair(3).provenance.events[0].changes[0].target_evidence[0]]) {
+  const p=privatePair();p.provenance.events[0].changes[0].target_evidence=[quote];assert.equal(valid(p.doc,p.provenance),false);
  }
 });

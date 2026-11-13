@@ -29,11 +29,13 @@ from ..evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
+    collector_constant_keywords,
     configured_fact,
     configured_value_unstated,
     faculty_availability_status,
     faculty_contact_claims_unverified,
     faculty_positive_major_labels,
+    faculty_profile_summary_fields,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
     faculty_summary_inferred_keywords,
@@ -42,6 +44,7 @@ from ..evidence import (
     is_inferred,
     is_professor_rank,
     is_read_off_the_page,
+    keywords_are_source_labels,
     keywords_are_source_topics,
     target_truth,
 )
@@ -2474,9 +2477,10 @@ def score_upside(
         # The lines below name display_kw as the row's work. On a row whose
         # keywords are ours (the detail page's rule), those are a category we
         # mapped or a tag we typed, so no line is written and the interest
-        # lines carry the match (M171). Stamped keywords never reach
-        # display_kw and keep the "topics we inferred" line.
-        if sim > 0.15 and not (st.topics_ours and st.display_kw):
+        # lines carry the match (M171); nor on a row whose keywords are a
+        # feed's category labels, which name no work (M174). Stamped keywords
+        # never reach display_kw and keep the "topics we inferred" line.
+        if sim > 0.15 and not ((st.topics_ours or st.kw_labels) and st.display_kw):
             pre_sim_len = len(reasons_fit)
             # Display only genuine research areas — drop role/format tokens so a
             # job title never reads as a topic ("...work on CV, research assistant").
@@ -2494,8 +2498,8 @@ def score_upside(
                     # prose and the lab's description, and the words in `work`
                     # are the lab's, not the student's. A tester whose profile
                     # said "machine learning, artificial intelligence" was told
-                    # their interests "align closely with Prof. Tong's work on
-                    # security" — the one area they had not mentioned. State
+                    # their interests aligned closely with a professor's work
+                    # on security — the one area they had not mentioned. State
                     # what the lab works on; do not put the alignment in the
                     # student's mouth.
                     else f"{lab_label} also works on {work}"
@@ -2506,7 +2510,16 @@ def score_upside(
                     if interest_phrase
                     else f"They also work on {work}"
                 )
-            elif lab_label:
+            elif lab_label and (
+                st.kw_inferred
+                or not is_faculty_contact
+                # A faculty row's description is ours, written from its fields
+                # (neutralize_unverified_faculty_claims). Unless it names
+                # research areas of the row's own, the similarity compared
+                # that template, and nothing the professor wrote gives them a
+                # focus area (M169).
+                or faculty_profile_summary_fields(opportunity)["research_areas"] is not None
+            ):
                 # The similarity is to the student's stated interests, which
                 # are never their background or experience (M13). When
                 # display_kw is empty because the keywords are inferred (a
@@ -3107,8 +3120,10 @@ class _OppStatic:
     specific_kw: tuple[str, ...]
     display_kw: tuple[str, ...]
     kw_inferred: bool
-    # The detail page shows these keywords as ours, not the source's topics.
+    # The detail page shows these keywords as ours, not the source's words.
     topics_ours: bool
+    # The keywords are a feed's category labels (keywords_are_source_labels).
+    kw_labels: bool
     # When topics_ours: the row's own words (see _own_words); else ().
     own_words: tuple[str, ...]
     ov_kws: tuple[str, ...]
@@ -3297,10 +3312,15 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         () if kw_inferred
         else tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
     )
-    topics_ours = not keywords_are_source_topics(opp)
+    kw_labels = keywords_are_source_labels(opp)
+    topics_ours = not (keywords_are_source_topics(opp) or kw_labels)
 
-    # The interest match's view of the keywords (stripped, non-empty).
-    ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
+    # The interest match's view of the keywords (stripped, non-empty), less
+    # those the collector writes on every row it emits (M174).
+    constants = collector_constant_keywords(opp)
+    ov_kws = tuple(
+        kw for kw in (k.lower().strip() for k in keywords if k and k.strip()) if kw not in constants
+    )
 
     dept_lower = (opp.get("department") or "").lower()
     elig = faculty_safe_eligibility(opp)
@@ -3359,6 +3379,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         display_kw=display_kw,
         kw_inferred=kw_inferred,
         topics_ours=topics_ours,
+        kw_labels=kw_labels,
         own_words=_own_words(opp) if topics_ours else (),
         ov_kws=ov_kws,
         course_signals=course_signals,

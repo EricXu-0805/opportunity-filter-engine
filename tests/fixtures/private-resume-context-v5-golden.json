@@ -28,5 +28,435 @@
       }
     },
     "target_signature": "v1:sha256:f2c36e2e452cf5dc7eb818865668698a7b96b01c2325e95505ca1de8d4216b3d"
-  }
+  },
+  "draft": {
+    "base": {
+      "master_id": "master-golden",
+      "master_revision": 1,
+      "profile_signature": "v1:sha256:535a6e64ebbc538b910169f9432ba659e3dfa0489aaa422ecf450a9162148f8d",
+      "source_signature": "2ddc402e646b4d1cd6089d2c1665d58294add808f49db5ff756c6f0c3926022e",
+      "target_signature": "v1:sha256:f2c36e2e452cf5dc7eb818865668698a7b96b01c2325e95505ca1de8d4216b3d"
+    },
+    "base_snapshot": {
+      "experience_entries": [
+        {
+          "id": "evidence-one",
+          "revision": 2,
+          "source": {
+            "end": 76,
+            "kind": "resume",
+            "quote": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+            "signature": "2ddc402e646b4d1cd6089d2c1665d58294add808f49db5ff756c6f0c3926022e",
+            "start": 7
+          },
+          "status": "confirmed",
+          "text": "I did not lead the team. I built a Python parser 😀 with my teammates."
+        }
+      ],
+      "research_interests": "",
+      "resume_master": {
+        "activities": [
+          {
+            "details": [
+              {
+                "id": "evidence-one",
+                "revision": 2
+              }
+            ],
+            "id": "project-one",
+            "kind": "project",
+            "title": {
+              "id": "project-title",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Parser project 😀"
+            }
+          }
+        ],
+        "basics": {
+          "email": {
+            "id": "email",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "student@example.test"
+          },
+          "links": [],
+          "name": {
+            "id": "name",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "测试生"
+          }
+        },
+        "education": [
+          {
+            "degree": {
+              "id": "degree",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "B.S. — expected 2028"
+            },
+            "details": [],
+            "id": "education-one",
+            "school": {
+              "id": "school",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "UIUC"
+            }
+          }
+        ],
+        "id": "master-golden",
+        "other_sections": [
+          {
+            "heading": "Awards 奖项",
+            "id": "awards",
+            "items": [
+              {
+                "id": "award",
+                "revision": 1,
+                "source": {
+                  "kind": "manual"
+                },
+                "status": "confirmed",
+                "value": "College scholarship"
+              }
+            ]
+          }
+        ],
+        "publications": [
+          {
+            "authors": {
+              "id": "authors",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Tester, A.; 测试生"
+            },
+            "details": [],
+            "id": "publication-one",
+            "publication_status": {
+              "id": "publication-status",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Submitted, not accepted"
+            },
+            "title": {
+              "id": "publication-title",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "研究记录"
+            }
+          }
+        ],
+        "revision": 1,
+        "section_order": [
+          "basics",
+          "education",
+          "activities",
+          "publications",
+          "skills",
+          "awards"
+        ],
+        "skills": [
+          {
+            "id": "skill",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "Python — beginner"
+          }
+        ],
+        "source_signature": "2ddc402e646b4d1cd6089d2c1665d58294add808f49db5ff756c6f0c3926022e",
+        "unmapped_ranges": [],
+        "version": 1
+      },
+      "resume_text": "姓名：测试生\nI did not lead the team. I built a Python parser 😀 with my teammates.\n论文：研究记录"
+    },
+    "document": {
+      "sections": [
+        {
+          "blocks": [
+            {
+              "id": "master-golden",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "name",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-1",
+                  "included": true,
+                  "label": "",
+                  "original": "测试生",
+                  "role": "name",
+                  "text": "测试生"
+                },
+                {
+                  "evidence": {
+                    "id": "email",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-2",
+                  "included": true,
+                  "label": "",
+                  "original": "student@example.test",
+                  "role": "email",
+                  "text": "student@example.test"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "basics",
+          "included": true,
+          "kind": "basics"
+        },
+        {
+          "blocks": [
+            {
+              "id": "education-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "school",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-3",
+                  "included": true,
+                  "label": "",
+                  "original": "UIUC",
+                  "role": "school",
+                  "text": "UIUC"
+                },
+                {
+                  "evidence": {
+                    "id": "degree",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-4",
+                  "included": true,
+                  "label": "",
+                  "original": "B.S. — expected 2028",
+                  "role": "degree",
+                  "text": "B.S. — expected 2028"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "education",
+          "included": true,
+          "kind": "education"
+        },
+        {
+          "blocks": [
+            {
+              "id": "project-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "project-title",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-5",
+                  "included": true,
+                  "label": "",
+                  "original": "Parser project 😀",
+                  "role": "title",
+                  "text": "Parser project 😀"
+                },
+                {
+                  "evidence": {
+                    "id": "evidence-one",
+                    "kind": "experience",
+                    "revision": 2
+                  },
+                  "id": "line-6",
+                  "included": true,
+                  "label": "",
+                  "original": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+                  "role": "experience",
+                  "text": "My manual draft edit is not evidence."
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "activities",
+          "included": true,
+          "kind": "activities"
+        },
+        {
+          "blocks": [
+            {
+              "id": "publication-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "publication-title",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-7",
+                  "included": true,
+                  "label": "",
+                  "original": "研究记录",
+                  "role": "title",
+                  "text": "研究记录"
+                },
+                {
+                  "evidence": {
+                    "id": "authors",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-8",
+                  "included": true,
+                  "label": "",
+                  "original": "Tester, A.; 测试生",
+                  "role": "authors",
+                  "text": "Tester, A.; 测试生"
+                },
+                {
+                  "evidence": {
+                    "id": "publication-status",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-9",
+                  "included": true,
+                  "label": "",
+                  "original": "Submitted, not accepted",
+                  "role": "publication_status",
+                  "text": "Submitted, not accepted"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "publications",
+          "included": true,
+          "kind": "publications"
+        },
+        {
+          "blocks": [
+            {
+              "id": "skill",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "skill",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-10",
+                  "included": true,
+                  "label": "",
+                  "original": "Python — beginner",
+                  "role": "skill",
+                  "text": "Python — beginner"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "skills",
+          "included": true,
+          "kind": "skills"
+        },
+        {
+          "blocks": [
+            {
+              "id": "award",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "award",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-11",
+                  "included": true,
+                  "label": "Awards 奖项",
+                  "original": "College scholarship",
+                  "role": "other",
+                  "text": "College scholarship"
+                }
+              ]
+            }
+          ],
+          "heading": "Awards 奖项",
+          "id": "awards",
+          "included": true,
+          "kind": "other"
+        }
+      ]
+    },
+    "id": "draft-golden",
+    "kind": "full_resume",
+    "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+    "target_snapshot": {
+      "context_version": 5,
+      "description": "Study parsers and research tools.\r\n完整原文 😀\nDo not add inferred requirements.",
+      "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+      "organization": "",
+      "private_source": {
+        "import_source": {
+          "ai_input_scope": "source_excerpt",
+          "description_source": "pasted_text",
+          "llm_enriched": true,
+          "version": 1
+        },
+        "owner_id": "a1000000-0000-4000-8000-000000000001",
+        "purpose": "resume",
+        "revision": 1,
+        "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+        "target_scope": "private_import",
+        "verification": "unverified",
+        "version": 1
+      },
+      "requirements": [],
+      "source_url": "",
+      "title": "Private research note"
+    },
+    "version": 1
+  },
+  "document_signature": "v1:sha256:d93b72cc32d1a17dcb968e79f68da86dd93746be5e2e6f762721e1382249c634"
 }

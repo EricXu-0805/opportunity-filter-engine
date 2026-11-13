@@ -2359,6 +2359,8 @@ interface ProfileRefreshState {
    *  have applied it since. False when the question went away without
    *  anybody answering it: the row came to agree, or a load settled it. */
   answered: boolean;
+  /** Whether such an answer was given in THIS tab (its journal lineage). */
+  answeredHere: boolean;
 }
 
 export type ProfileConflictRefresh =
@@ -3953,6 +3955,7 @@ export async function refreshConflictQuestion(
       /** See ProfileRefreshState.answered: read before this pass applies
        *  and retires anything. */
       answered: boolean;
+      answeredHere: boolean;
       /** Journal-plan keys whose chosen value is not in the outbox at all —
        *  a journal-only disagreement that has been answered. They still have
        *  to be staged and sent, outside the lock. */
@@ -3978,6 +3981,8 @@ export async function refreshConflictQuestion(
     const rebased = rebasedOps(answers.value);
     if (!rebased) return { failed: 'journal' };
     const answered = answers.value.some((op) => op.mode === 'resolve'
+      && Object.keys(op.decisions ?? {}).some((k) => keys.includes(k)));
+    const answeredHere = answers.value.some((op) => op.mode === 'resolve' && op.lineage === getJournalLineageId()
       && Object.keys(op.decisions ?? {}).some((k) => keys.includes(k)));
     const before = env?.pending ?? null;
     const applied = applyPendingResolutions(before, answers.value);
@@ -4100,6 +4105,7 @@ export async function refreshConflictQuestion(
         : conflictsFor(stillLocked, journalPlan, repaired, remote, revision),
       pendingKeys: [...new Set([...(repaired?.dirtyKeys ?? []), ...planOwed])],
       answered,
+      answeredHere,
       planOwed,
       unlocked: repaired !== before
         && (before?.lockedKeys.length ?? 0) > 0
@@ -4118,7 +4124,8 @@ export async function refreshConflictQuestion(
   if (repair.failed) return { status: 'device-failed', phase: repair.failed, retryable: true };
   if (!persist) {
     const state: ProfileRefreshState = { profile: repair.profile, baseProfile: repair.baseProfile,
-      revision: repair.revision, pendingKeys: repair.pendingKeys, flushed: null, answered: repair.answered };
+      revision: repair.revision, pendingKeys: repair.pendingKeys, flushed: null, answered: repair.answered,
+      answeredHere: repair.answeredHere };
     return repair.conflicts.length === 0
       ? { status: 'settled', conflicts: [], ...state }
       : { status: 'current', conflicts: repair.conflicts, ...state };
@@ -4173,6 +4180,7 @@ export async function refreshConflictQuestion(
     // The first pass applies an answer and retires its receipt, so the
     // second may no longer see it.
     answered: repair.answered || final.answered,
+    answeredHere: repair.answeredHere || final.answeredHere,
   };
   return final.conflicts.length === 0
     ? { status: 'settled', conflicts: [], ...state }

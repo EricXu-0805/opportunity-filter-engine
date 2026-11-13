@@ -12,9 +12,12 @@ import type { TargetResumeExportFormat, TargetResumeExportLocale, TargetResumeEx
 export interface TargetResumeExportPanelProps {
   draft: TargetResumeV1; owner: OwnerToken; contextKey: string;
   enabled: boolean; unsaved: boolean; outdated: boolean; profileAvailable?: boolean;
+  verifySource?: (owner: OwnerToken, signal?: AbortSignal) => Promise<boolean>;
+  /** The private source was deleted, so verifySource can no longer pass. */
+  sourceGone?: boolean;
 }
 const control = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40';
-export default function TargetResumeExportPanel({ draft, owner, contextKey, enabled, unsaved, outdated, profileAvailable = true }: TargetResumeExportPanelProps) {
+export default function TargetResumeExportPanel({ draft, owner, contextKey, enabled, unsaved, outdated, profileAvailable = true, verifySource, sourceGone = false }: TargetResumeExportPanelProps) {
   const uiLocale = useLocale(); const copy = (en: string, zh: string) => uiLocale === 'zh' ? zh : en;
   const [locale, setLocale] = useState<TargetResumeExportLocale>(uiLocale === 'zh' ? 'zh' : 'en');
   const [pageSize, setPageSize] = useState<TargetResumeExportPageSize>('letter');
@@ -50,6 +53,7 @@ export default function TargetResumeExportPanel({ draft, owner, contextKey, enab
       && state.current.enabled && isOwnerTokenValid(state.current.owner, state.current.owner.uid);
     setBusy(format); setError(null); setDone(false);
     try {
+      if (verifySource && !await verifySource(owner, controller.signal)) { if (live()) setError('source_changed'); return; }
       const result = await prepareTargetResumeExport(draft, { locale, page_size: pageSize });
       if (!live()) return;
       if (!result.ok) { setError(result.code); return; }
@@ -58,11 +62,15 @@ export default function TargetResumeExportPanel({ draft, owner, contextKey, enab
         document_signature: prepared.document_signature, export_signature: prepared.export_signature,
         projection: prepared.projection }, { owner, signal: controller.signal });
       if (!live() || !isPreparedTargetResumeExportCurrent(prepared, state.current.draft)) return;
+      if (verifySource && !await verifySource(owner, controller.signal)) { if (live()) setError('source_changed'); return; }
+      if (!live() || !isPreparedTargetResumeExportCurrent(prepared, state.current.draft)) return;
       downloadTargetResumeExport(file); setDone(true);
     } catch (caught) { if (live()) setError(caught instanceof ApiError ? caught.code : 'export_failed'); }
     finally { if (operation.current.generation === generation) { operation.current.busy = false; operation.current.controller = null; setBusy(null); } }
   };
   const reasons: Record<string, string> = {
+    source_changed: sourceGone ? copy('Saving and export are unavailable for a deleted import.', '已删除的导入无法保存或导出文稿。')
+      : copy('The private source changed or could not be checked. Your draft is kept; review the source and try again.', '私有来源已变更或暂时无法核对。文稿保留，请核对来源后重试。'),
     empty_document: copy('Select at least one non-empty field before exporting.', '请先选择至少一项非空内容。'),
     unsupported_character: copy('The selected text contains a character this format cannot store. Your text is kept.', '所选内容含文件格式无法保存的字符，原文仍保留。'),
     invalid_export_text: copy('The selected text contains a character this format cannot store. Your text is kept.', '所选内容含文件格式无法保存的字符，原文仍保留。'),

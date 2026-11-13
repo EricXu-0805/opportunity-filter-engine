@@ -1018,8 +1018,8 @@ class TestKeywordProvenanceReachesTheClient:
     @staticmethod
     def _record(inferred: bool) -> dict:
         record = {
-            "id": "faculty-utk-geog-x", "title": "Bing Zhou",
-            "source_type": "faculty_research", "pi_name": "Bing Zhou",
+            "id": "faculty-utk-geog-x", "title": "Avery Samplewood",
+            "source_type": "faculty_research", "pi_name": "Avery Samplewood",
             "keywords": ["hydrocarbon exploration and reservoir analysis"],
             "metadata": {},
         }
@@ -1062,7 +1062,7 @@ class TestKeywordProvenanceReachesTheClient:
         return {"id": f"{source}-1", "title": "Undergraduate project", "source": source,
                 "source_type": "uiuc_research", "keywords": ["machine learning"], "metadata": {}}
 
-    @pytest.mark.parametrize("source", ["cmu_uro_projects", "uiuc_our_rss", "nsf_reu", "manual"])
+    @pytest.mark.parametrize("source", ["cmu_uro_projects", "nsf_reu", "manual"])
     def test_an_unstamped_listing_topic_is_labelled(self, source):
         """A listing's topics are a keyword bank's, a category map's or a
         config tag, stamped or not: the detail facts call them inferred, so

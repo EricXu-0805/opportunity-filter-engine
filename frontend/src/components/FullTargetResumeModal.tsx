@@ -12,9 +12,12 @@ import { FULL_TARGET_AI_VERSION } from '@/lib/target-resume-ai-protocol';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
+import type { PrivateResumeTargetState } from '@/lib/use-private-resume-target';
+import { isPrivateResumeContext, privateResumeKey, type PrivateResumeContext } from '@/lib/private-resume-context';
 import { useProfileAction } from '@/lib/use-profile-action';
 import { writingTargetKey } from '@/lib/writing-target';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
+import PrivateResumeStatus from './PrivateResumeStatus';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import ResumeExperienceAssignmentPanel from './ResumeExperienceAssignmentPanel';
 import TargetResumeSupportPanel from './TargetResumeSupportPanel';
@@ -47,7 +50,7 @@ type Session = {
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
   // The account cap only frees when this owner scope ends, so it outlives edits.
   quota: 'guest' | 'member' | 'unknown' | null;
-  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | null;
+  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | 'private-source' | 'too-large' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
@@ -73,14 +76,18 @@ const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opa
 const bundleKey = (doc: TargetResumeV1, provenance: TargetResumeProvenance | null | undefined) => canonical({ doc, provenance: provenance ?? null });
 const isDirty = (session: Session) => !!session.doc && (session.provenanceError || bundleKey(session.doc, session.provenance) !== session.savedJson);
 
-export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, targetChecking = false, profileAvailable = true, profileRefresh, targetRefresh, targetMembershipReady }: {
-  isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
+type TargetProps = { opportunity: Opportunity; privateTarget?: never; privateResumeRefresh?: never }
+  | { opportunity?: never; privateTarget: PrivateResumeContext; privateResumeRefresh: PrivateResumeTargetState };
+
+export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, privateTarget, privateResumeRefresh, onOpenLegacy, onCloseRequestChange, targetReady = true, targetChecking = false, profileAvailable = true, profileRefresh, targetRefresh, targetMembershipReady }: {
+  isOpen: boolean; onClose: () => void; profile: ProfileData; onOpenLegacy?: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
   targetReady?: boolean; targetChecking?: boolean; profileAvailable?: boolean; profileRefresh?: ProfileRefreshState;
   targetRefresh?: WritingTargetState; targetMembershipReady?: boolean;
-}) {
+} & TargetProps) {
   const locale = useLocale();
-  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready')
+    && (!privateResumeRefresh || privateResumeRefresh.status === 'ready');
   const profileAvailableRef = useRef(profileAvailable);
   useLayoutEffect(() => { profileAvailableRef.current = profileAvailable; }, [profileAvailable]);
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
@@ -92,12 +99,13 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     && isOwnerTokenValid(supplementProfile.view.token, supplementProfile.view.token.uid)
     ? supplementProfile.view.renderedProfile : profile;
   const profileKey = canonical(acceptedProfile);
-  const target = targetResumeContextFromOpportunity(opportunity);
+  const target = privateTarget ?? targetResumeContextFromOpportunity(opportunity!);
+  const targetId = target.opportunity_id;
   const targetKey = canonical(target);
   // The persisted résumé snapshot is deliberately narrower than the live
   // public target. Retire pending work for any live change without rebinding
   // that snapshot or reopening this owner-scoped editor.
-  const liveTargetKey = writingTargetKey(opportunity);
+  const liveTargetKey = privateTarget ? privateResumeKey(privateTarget) : writingTargetKey(opportunity!);
   const contextKey = `${profileKey}\n${targetKey}\n${liveTargetKey}`;
   const profileSnapshot = useMemo<ProfileData>(() => JSON.parse(profileKey), [profileKey]);
   const targetSnapshot = useMemo(() => JSON.parse(targetKey) as typeof target, [targetKey]);
@@ -176,7 +184,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       return;
     }
     const previous = scopeRef.current;
-    const scope: Scope = { active: true, owner: captureOwnerToken(), targetId: opportunity.id,
+    const scope: Scope = { active: true, owner: captureOwnerToken(), targetId: targetId,
       context: contextKey, creation: 0, historyRequest: 0, historyGeneration: 0, historyListRequest: 0, reads: new Map() };
     scopeRef.current = scope;
     // A target-document read retry does not discard independent answers.
@@ -202,14 +210,14 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         retireScope(scope); setLifecycle((old) => old + 1);
       }
     });
-    void loadTargetResume(opportunity.id, scope.owner, { signal: beginRead(scope, 'current') }).then((loaded) => {
+    void loadTargetResume(targetId, scope.owner, { signal: beginRead(scope, 'current') }).then((loaded) => {
       update(scope, (old) => loaded === null ? { ...old, phase: 'idle' }
         : { ...old, phase: 'doc', doc: clone(loaded.doc), provenance: clone(loaded.provenance ?? null), provenanceError: false, revision: loaded.revision, savedJson: bundleKey(loaded.doc, loaded.provenance) });
     }).catch((error: unknown) => update(scope, (old) => ({ ...old, phase: 'load-error', error: error && typeof error === 'object' && 'code' in error && error.code === 'timeout' ? 'timeout' : null })));
     return () => { retireScope(scope); unsubscribe(); };
     // Content-only changes preserve local work and retire creation below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, opportunity.id, lifecycle, update]);
+  }, [isOpen, targetId, lifecycle, update]);
 
   useLayoutEffect(() => {
     const scope = scopeRef.current;
@@ -230,7 +238,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       ? { ...old, phase: old.doc ? 'doc' : 'idle', error: 'checking' } : old);
   }, [sourceReady, isOpen, update]);
 
-  const activeSession = isOpen && session?.scope.targetId === opportunity.id
+  const activeSession = isOpen && session?.scope.targetId === targetId
     && isTokenOwnerStillCurrent(session.scope.owner) ? session : null;
   const ownerReady = !!activeSession && isOwnerTokenValid(activeSession.scope.owner, activeSession.scope.owner.uid);
   const dirty = !!activeSession && isDirty(activeSession);
@@ -247,7 +255,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const supportKey = `${contextKey}\n${doc ? canonical(doc) : ''}`;
   const supportGroups = supportSelection?.key === supportKey ? supportSelection.groups : [];
   const comparable = profileAvailable && checks?.key === contextKey ? checks : null;
-  const incompleteTarget = !!doc && !isCurrentTargetResumeContext(doc.target_snapshot);
+  const incompleteTarget = !!doc && !isCurrentTargetResumeContext(doc.target_snapshot) && !isPrivateResumeContext(doc.target_snapshot);
   const outdated = incompleteTarget || (!!doc && !!comparable && (doc.base.profile_signature !== comparable.profile
     || doc.base.target_signature !== comparable.target || doc.base.source_signature !== comparable.source));
   const creating = activeSession?.phase === 'creating';
@@ -284,7 +292,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   }, [activeScope, ownerReady, profileAvailable, supplementMounted]);
   useEffect(() => {
     if (!isOpen) return;
-    const targetId = opportunity.id; const editor = editorId();
+    const editor = editorId();
     // Held while the editor is open; the browser releases it if the tab closes or crashes.
     let released = false; let release = () => { released = true; };
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
@@ -298,7 +306,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     window.addEventListener('pagehide', hide); window.addEventListener('pageshow', show);
     // Closing or unmounting the editor makes its kept answers recoverable.
     return () => { window.removeEventListener('pagehide', hide); window.removeEventListener('pageshow', show); hide(); release(); };
-  }, [isOpen, opportunity.id]);
+  }, [isOpen, targetId]);
   const storeSupplement = (scope: Scope, snapshot: ResumeSupplementDraftSnapshot | null) => {
     if (!current(scope)) return;
     // Answers too large to keep leave the previous copy and the leave warning in place.
@@ -369,8 +377,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       const next = await createTargetResume(profileSnapshot, targetSnapshot, activeSession.doc?.id);
       if (!current(scope) || scope.creation !== creation) return;
       update(scope, (old) => ({ ...old, phase: 'doc', doc: next, provenance: null, provenanceError: false, editRevision: old.editRevision + 1, error: null }));
-    } catch {
-      if (current(scope) && scope.creation === creation) update(scope, (old) => ({ ...old, phase: old.doc ? 'doc' : 'idle', error: 'create' }));
+    } catch (error) {
+      const reason = error instanceof Error && 'code' in error && error.code === 'document_too_large' ? 'too-large' : 'create';
+      if (current(scope) && scope.creation === creation) update(scope, (old) => ({ ...old, phase: old.doc ? 'doc' : 'idle', error: reason }));
     }
   };
   const createReadiness = !profileAvailable || !ownerReady || activeSession?.saving || activeSession?.reloading || activeSession?.conflict
@@ -378,9 +387,18 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       ? 'waiting' : !targetReady || !profileRefreshReady(profileRefresh) || !comparable.canCreate ? 'blocked' : 'ready';
   const createAction = useProfileAction<'create'>({
     isOpen: isOpen && !!activeSession, profile: acceptedProfile, profileAvailable,
-    scopeKey: `${opportunity.id}:${lifecycle}:${liveTargetKey}`, editRevision: activeSession?.editRevision ?? 0,
-    refresh: profileRefresh, target: opportunity, targetRefresh, readiness: createReadiness, execute: () => { void create(); },
+    scopeKey: `${targetId}:${lifecycle}:${liveTargetKey}`, editRevision: activeSession?.editRevision ?? 0,
+    refresh: profileRefresh, target: opportunity, targetRefresh, privateResume: privateTarget, privateResumeRefresh, readiness: createReadiness, execute: () => { void create(); },
   });
+  const verifyPrivateSource = privateTarget && privateResumeRefresh ? async (owner: OwnerToken, signal?: AbortSignal): Promise<boolean> => {
+    const scope = scopeRef.current;
+    if (!scope || !current(scope) || signal?.aborted || targetMembershipReady === false) return false;
+    const receipt = await privateResumeRefresh.checkForAction();
+    return !!receipt && !signal?.aborted && current(scope) && scope.context === contextKey
+      && receipt.owner.uid === owner.uid && receipt.owner.epoch === owner.epoch && receipt.owner.generation === owner.generation
+      && isOwnerTokenValid(receipt.owner, owner.uid) && receipt.target.opportunity_id === targetId
+      && receipt.key === liveTargetKey && privateResumeKey(receipt.target) === liveTargetKey;
+  } : undefined;
   const persist = async (payload: TargetResumeV1, provenance: TargetResumeProvenance | null) => {
     if (!activeSession || activeSession.provenanceError || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict || activeSession.quota) return;
     const validation = validateTargetResume(payload);
@@ -392,6 +410,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     const provenanceSnapshot = clone(provenance);
     update(scope, (old) => ({ ...old, saving: true, error: null }));
     try {
+      if (verifyPrivateSource && !await verifyPrivateSource(scope.owner)) {
+        update(scope, old => ({ ...old, saving: false, error: 'private-source' })); return;
+      }
+      if (!current(scope)) return;
       const result = await saveTargetResume(snapshot, revision, scope.owner, provenanceSnapshot);
       if (!current(scope)) return;
       if (result.status === 'saved' || result.status === 'unchanged') {
@@ -415,7 +437,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     update(scope, (old) => ({ ...old, reloading: true, error: null }));
     try {
-      const loaded = await loadTargetResume(opportunity.id, scope.owner, { signal: beginRead(scope, 'current') });
+      const loaded = await loadTargetResume(targetId, scope.owner, { signal: beginRead(scope, 'current') });
       if (!loaded) { update(scope, (old) => ({ ...old, reloading: false, error: 'missing' })); return; }
       if (!current(scope)) return;
       scope.historyGeneration += 1; scope.historyRequest += 1; scope.reads.get('history')?.abort(); scope.reads.get('version')?.abort();
@@ -436,7 +458,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     update(scope, (old) => ({ ...old, historyBusy: true, historyError: false,
       ...(!older ? { selectedRevision: null, selectedVersion: null, versionBusy: false, versionError: false } : {}) }));
     try {
-      const versions = await loadTargetResumeHistory(opportunity.id, scope.owner, before, { signal: beginRead(scope, 'history') });
+      const versions = await loadTargetResumeHistory(targetId, scope.owner, before, { signal: beginRead(scope, 'history') });
       if (current(scope) && scope.historyGeneration === generation && scope.historyListRequest === request) update(scope, (old) => {
         const combined = older ? [...(old.history ?? []), ...versions] : versions;
         return { ...old, history: combined.filter((version, index) => combined.findIndex((item) => item.revision === version.revision) === index),
@@ -455,7 +477,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     const generation = scope.historyGeneration;
     update(scope, (old) => ({ ...old, selectedRevision: revision, selectedVersion: null, versionBusy: true, versionError: false }));
     try {
-      const loaded = await loadTargetResumeVersion(opportunity.id, revision, scope.owner, { signal: beginRead(scope, 'version') });
+      const loaded = await loadTargetResumeVersion(targetId, revision, scope.owner, { signal: beginRead(scope, 'version') });
       if (current(scope) && scope.historyRequest === request && scope.historyGeneration === generation) update(scope, (old) => ({ ...old, selectedVersion: loaded, versionBusy: false, versionError: !loaded }));
     } catch { if (current(scope) && scope.historyRequest === request && scope.historyGeneration === generation) update(scope, (old) => ({ ...old, versionBusy: false, versionError: true })); }
   };
@@ -534,7 +556,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         </details> : <p className="mt-2 text-xs text-gray-600">{copy('Generation configuration: unknown', '生成配置：未知')}</p>)}
       </li>)}</ol>}
   </details>;
+  // A deleted or missing import fails every later source check, so say so instead of asking for a retry.
+  const privateGone = !!privateResumeRefresh && (!(targetMembershipReady ?? targetReady) || privateResumeRefresh.status === 'missing');
   const errors = {
+    'too-large': copy('The complete résumé and opportunity text exceed the draft limit. Nothing was truncated or saved.', '完整简历和机会原文超过文稿容量，内容未截断，也未保存。'),
+    'private-source': privateGone ? copy('Saving and export are unavailable for a deleted import.', '已删除的导入无法保存或导出文稿。')
+      : copy('The private source changed or could not be checked. Your edits are kept; review the source and save again.', '私有来源已变更或暂时无法核对。编辑仍保留，请核对来源后重新保存。'),
     provenance: copy('The suggestion was not applied because its change record could not be saved. Your existing draft and records are kept; you can still edit and save them.', '建议未应用：修改记录无法保存。原有文稿和记录均保留，仍可编辑和保存。'),
     checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
     create: copy('Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.', '无法从已确认材料创建文稿，请核对母版后重试。原有编辑仍保留。'),
@@ -551,7 +578,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     <div className="absolute inset-0 bg-gray-900/60" aria-hidden="true" onClick={() => askLeave('close')} />
     <div ref={panelRef} className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-xl sm:mx-4 sm:h-auto sm:max-h-[92vh] sm:max-w-6xl sm:rounded-2xl">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b p-4 sm:flex sm:justify-between sm:px-6">
-        <div className="min-w-0"><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{opportunity.title}</p></div>
+        <div className="min-w-0"><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{target.title}</p></div>
         <div className="contents sm:ml-3 sm:flex sm:shrink-0 sm:items-start sm:gap-2">
           <button type="button" className={`${button} col-start-1 row-start-2 justify-self-start`} disabled={!ownerReady || (!profileAvailable && !supplementMounted)} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
             onClick={() => {
@@ -567,7 +594,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <button type="button" className={`${button} col-start-2 row-start-1`} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
         </div>
       </header>
-      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />
+      {privateResumeRefresh && <PrivateResumeStatus state={privateResumeRefresh} available={targetMembershipReady ?? targetReady} draft={!!doc} />}
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={privateTarget ? true : targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />
         {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p>{leave === 'rebuild'
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Your latest 20 saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；最近 20 个已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
@@ -619,24 +647,25 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             : doc.base_snapshot.research_interests || copy('No research interests were provided for this draft.', '这份稿件的资料中没有填写研究兴趣。')}</p>
         </details>}
 
-        <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Review AI suggestions before applying them, then export the current draft.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，再导出当前稿。')}</p>
+        <p className="text-sm text-gray-600">{privateTarget ? copy('Select and edit your résumé, add confirmed details, then save or export. AI adaptation for private imports is not available yet.', '选择和修改简历、补充确认过的经历，再保存或导出。私有机会的 AI 适配尚未接通。') : copy('Choose and edit content for this opportunity. Review AI suggestions before applying them, then export the current draft.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，再导出当前稿。')}</p>
         {(!activeSession || activeSession.phase === 'loading') && <p role="status" className="mt-4">{copy('Loading saved target résumé…', '正在读取已保存的目标简历…')}</p>}
         {activeSession?.phase === 'load-error' && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
           <p>{activeSession.error === 'timeout' ? copy('Reading the saved résumé took too long. Nothing was replaced; try reading it again.', '读取已保存简历超时，未替换任何内容，请重试读取。') : copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
           <button type="button" className={`${button} mt-2`} onClick={() => setLifecycle((old) => old + 1)}>{copy('Retry reading saved résumé', '重试读取已保存简历')}</button>
         </div>}
-        {createAction.busy && <p role="status" className="mt-3 text-sm">{copy(targetRefresh ? 'Checking current profile and opportunity before creating the draft…' : 'Checking current profile before creating the draft…', targetRefresh ? '创建文稿前正在核对最新资料及机会…' : '创建文稿前正在核对最新资料…')}</p>}
-        {createAction.error && <p role="alert" className="mt-3 text-sm text-amber-800">{createAction.error === 'changed' ? copy('Your draft or target changed during the check. Your edits are kept; choose the action again when ready.', '核对期间文稿或目标已变更。编辑仍保留，请准备好后重新选择操作。') : copy(targetRefresh ? 'Your profile or opportunity could not be verified. Your draft is kept; retry the check before creating a new draft.' : 'Current profile could not be verified. Your draft is kept; retry the profile check before creating a new draft.', targetRefresh ? '未能核对当前资料或机会。文稿仍保留，请重试核对后再创建新稿。' : '未能核对当前资料。文稿仍保留，请重试资料核对后再创建新稿。')}</p>}
+        {createAction.busy && <p role="status" className="mt-3 text-sm">{copy(targetRefresh || privateResumeRefresh ? 'Checking current profile and opportunity before creating the draft…' : 'Checking current profile before creating the draft…', targetRefresh || privateResumeRefresh ? '创建文稿前正在核对最新资料及机会…' : '创建文稿前正在核对最新资料…')}</p>}
+        {createAction.error && <p role="alert" className="mt-3 text-sm text-amber-800">{createAction.error === 'changed' ? copy('Your draft or target changed during the check. Your edits are kept; choose the action again when ready.', '核对期间文稿或目标已变更。编辑仍保留，请准备好后重新选择操作。') : copy(targetRefresh || privateResumeRefresh ? 'Your profile or opportunity could not be verified. Your draft is kept; retry the check before creating a new draft.' : 'Current profile could not be verified. Your draft is kept; retry the profile check before creating a new draft.', targetRefresh || privateResumeRefresh ? '未能核对当前资料或机会。文稿仍保留，请重试核对后再创建新稿。' : '未能核对当前资料。文稿仍保留，请重试资料核对后再创建新稿。')}</p>}
         {activeSession?.error && activeSession.phase !== 'load-error' && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors[activeSession.error]}</p>}
         {doc && <>
           {!comparable && <p role="status" className="mt-3 text-sm text-amber-800">{copy('Current source comparison is unavailable or still loading. This draft keeps its original source snapshots.', '当前来源对比尚未完成或不可用，此稿仍保留原始来源快照。')}</p>}
           {incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.', '旧稿未保存完整机会要求，仍可编辑、保存和导出。请重新创建后，再用 AI 按当前要求修改。')}</p>}
           {outdated && !incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This draft was created from different profile or target materials. Your edits and original source remain intact; they were not rebound to the current profile.', '此稿基于不同版本的资料或目标。编辑与原始来源均已保留，没有改绑到当前资料。')}</p>}
           <details className="mt-4 rounded-xl border p-3"><summary className="cursor-pointer font-medium">{copy('Target requirements and original materials', '目标要求与原始材料')}</summary>
-            <p className="mt-2 font-medium">{doc.target_snapshot.title} · {doc.target_snapshot.organization}</p>
+            <p className="mt-2 font-medium">{doc.target_snapshot.title}{doc.target_snapshot.organization && ` · ${doc.target_snapshot.organization}`}</p>
             <p className="mt-2 whitespace-pre-wrap break-words text-sm">{doc.target_snapshot.description}</p>
             <ul className="mt-2 list-inside list-disc text-sm">{doc.target_snapshot.requirements.map((requirement, index) => <li key={index} className="whitespace-pre-wrap break-words">{requirement}</li>)}</ul>
             {doc.target_snapshot.source_url && <p className="mt-2 break-all text-xs text-gray-500">{copy('Source', '来源')}: {doc.target_snapshot.source_url}</p>}
+            {isPrivateResumeContext(doc.target_snapshot) && <p className="mt-2 text-sm text-amber-800">{copy('Private import — not independently verified. Saved source version:', '私有导入，未经独立核实。保存的来源版本：')} {doc.target_snapshot.private_source.revision}</p>}
             <TargetResumeCriteria target={doc.target_snapshot} locale={locale} />
             <details className="mt-3"><summary className="cursor-pointer text-sm">{copy('Complete original résumé text', '原始简历全文')}</summary><pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{doc.base_snapshot.resume_text || copy('No imported résumé text; this draft uses confirmed master fields.', '没有导入的简历原文，此稿使用已确认母版字段。')}</pre></details>
           </details>
@@ -671,9 +700,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           {!activeSession.provenanceError && renderProvenance(doc, activeSession.provenance, copy('Change records', '修改记录'))}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
-            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
+            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} verifySource={verifyPrivateSource} sourceGone={privateGone} />
           {authorityBlocked && <p role="alert" className="my-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This opportunity could not be used for AI adaptation. Both AI tools are paused for these materials. Your draft can still be edited, saved and exported. Close and reopen to check the current opportunity.', '当前机会无法用于 AI 调整，本次材料的选材和改写均已暂停。文稿仍可手改、保存和导出，请关闭后重新打开，核对最新机会。')}</p>}
-          <TargetResumeSupportPanel key={supportKey} draft={doc} groups={supportGroups}
+          {!privateTarget && <><TargetResumeSupportPanel key={supportKey} draft={doc} groups={supportGroups}
             enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked && !activeSession.provenanceError}
             onChange={groups=>setSupportSelection({key:supportKey,groups})} onDirtyChange={setSupportDirty}/>
           <TargetResumePlanPanel supportGroups={supportGroups} key={`plan:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
@@ -716,6 +745,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                 } catch { return { ...old, error: 'provenance' }; }
               });
             }} />
+          </>}
           <div className="space-y-4">
             {doc.document.sections.map((section, sectionIndex) => <fieldset key={section.id} className="min-w-0 rounded-xl border p-3" disabled={!canEdit}>
               <legend className="px-1 font-semibold">{sectionTitle(section)}</legend>

@@ -1,12 +1,20 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
-vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: 'en' }) }));
+const i18n = vi.hoisted(() => ({ locale: 'en' as 'en' | 'zh' }));
+vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: i18n.locale }) }));
 vi.mock('@/lib/private-import-target-api', async original => {
   const importedModule = await original<typeof import('@/lib/private-import-target-api')>();
   return { ...importedModule, getPrivateImportTarget: vi.fn(), getResolvedPrivateImportTarget: vi.fn() };
 });
+const releaseFlags = vi.hoisted(() => ({}) as Record<string, unknown>);
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  Object.assign(releaseFlags, actual.RELEASE_SCOPE);
+  return { ...actual, RELEASE_SCOPE: releaseFlags };
+});
 vi.mock('@/components/PrivateEmailLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private email</button> : null }));
+vi.mock('@/components/PrivateResumeLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private résumé</button> : null }));
 vi.mock('@/components/ApplicationRecordForm', async () => {
   const { useState } = await import('react'); const { captureOwnerToken } = await import('@/lib/identity-owner');
   return { default: function Form({ opportunityId, ownerReady, verifyTarget }: { opportunityId: string; ownerReady: boolean; verifyTarget?: (owner: ReturnType<typeof captureOwnerToken>) => Promise<boolean> }) {
@@ -30,7 +38,7 @@ beforeEach(async () => { await setupOwner(); raw.mockReset(); resolved.mockReset
   raw.mockResolvedValue({ target: { deleted_at: null, target_version: 'pit1:' + '1'.repeat(64) } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);
   resolved.mockResolvedValue(source);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); releaseFlags.resumeRenovate = true; i18n.locale = 'en'; });
 it('opens full private source and both owner-scoped histories with private email preparation and no send action', async () => {
   render(<PrivateImportDetail id={id} />);
   await screen.findByText('Private test title');
@@ -39,8 +47,24 @@ it('opens full private source and both owner-scoped histories with private email
   expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /generate|send|apply/i })).toBeNull();
   expect(screen.getByRole('button', { name: 'Prepare private email' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Prepare private résumé' })).toBeInTheDocument();
   expect(screen.getByText('Personal application record ' + id)).toBeInTheDocument();
   expect(resolved.mock.calls[0][1].expectedVersion).toBe('pit1:' + '1'.repeat(64));
+});
+it.each([
+  ['en', 'Prepare an email from a template, or edit and export a résumé, below. AI writing for private imports is not connected yet.'],
+  ['zh', '可在下方用模板准备邮件，也可编辑和导出简历。私有机会的 AI 写作尚未接通。'],
+] as const)('says which writing tools a ready import offers (%s)', async (locale, sentence) => {
+  i18n.locale = locale;
+  render(<PrivateImportDetail id={id} />);
+  expect(await screen.findByText(sentence)).toBeInTheDocument();
+});
+it('offers private résumé editing only while the résumé release switch is on, like the public entries', async () => {
+  releaseFlags.resumeRenovate = false;
+  render(<PrivateImportDetail id={id} />);
+  await screen.findByText('Private test title');
+  expect(screen.getByRole('button', { name: 'Prepare private email' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Prepare private résumé' })).toBeNull();
 });
 it('retains histories for an owned tombstone without resolving old content', async () => {
   raw.mockResolvedValue({ target: { deleted_at: '2026-09-28T00:00:00Z' } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);
@@ -48,6 +72,7 @@ it('retains histories for an owned tombstone without resolving old content', asy
   await screen.findByText(/This account copy was deleted/);
   expect(screen.getByText('Contact history ' + id)).toBeInTheDocument(); expect(resolved).not.toHaveBeenCalled();
   expect(screen.queryByText('Personal application record ' + id)).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Prepare private résumé' })).toBeNull();
 });
 it('never mounts history for a missing or foreign target', async () => {
   raw.mockResolvedValue(null); render(<PrivateImportDetail id={id} />);
@@ -80,6 +105,7 @@ it('re-resolves the exact shown version before an application write and withdraw
   expect(resolved).toHaveBeenCalledOnce(); expect(resolved.mock.calls[0][0]).toBe(id);
   expect(resolved.mock.calls[0][1]).toMatchObject({ expectedVersion: 'pit1:' + '1'.repeat(64), owner: expect.objectContaining({ uid: expect.any(String) }) });
   expect(screen.queryByText('Personal application record ' + id)).toBeNull(); expect(screen.queryByRole('button', { name: 'Prepare private email' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Prepare private résumé' })).toBeNull();
   expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
 });
 it('refuses an application write when the target changed or cannot be read, keeping the page', async () => {

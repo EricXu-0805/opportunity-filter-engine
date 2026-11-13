@@ -915,8 +915,9 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # often enough — common surname, department field family too coarse to
     # separate two people — that presenting them as stated fact is a claim we
     # cannot support. Absent means stated. A listing's topics are ours too
-    # unless it is an SRO row (`opportunity_detail.keywords_basis`, the rule
-    # the detail facts use): keyword banks, category maps and config tags.
+    # unless it is an SRO row or a feed's own category labels
+    # (`opportunity_detail.keywords_basis`, the rule the detail facts use):
+    # keyword banks, category maps and config tags.
     if projected.get("keywords") and opportunity_detail.keywords_basis(canonical_record) is not None:
         projected["keywords_attribution"] = "inferred"
     # pi_name is the exception that gets removed rather than marked. It is

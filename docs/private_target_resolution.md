@@ -13,7 +13,7 @@ These existing paths still require a public, release-visible corpus target:
 | `/tailor/full-target/suggestions`, `/tailor/full-target/selection-plan` | Canonical ID lookup → actionability → public target context v4 and full snapshot/signature comparison. These routes currently do not take an authenticated private owner scope. |
 | `/resume/full-target/export` | Renders the supplied validated document projection; it performs no target lookup or provider call. Export is not target verification. |
 
-The new resolver does not change these writing paths. In B61, `/private-imports/[id]` reads the owner-bound private target and displays `ContactHistory` and `ApplicationHistory`. An active target can use `ApplicationRecordForm` to let the user confirm a record of a past application. Tracker resolves private IDs separately from public targets and retains a deleted-target placeholder linked to history. These are personal history records; they do not send an email, submit an application, or generate materials. Private email and résumé generation still require explicit consumer integration and private input-scope decisions.
+The new resolver does not change these writing paths. In B61, `/private-imports/[id]` reads the owner-bound private target and displays `ContactHistory` and `ApplicationHistory`. An active target can use `ApplicationRecordForm` to let the user confirm a record of a past application. Tracker resolves private IDs separately from public targets and retains a deleted-target placeholder linked to history. These are personal history records; they do not send an email, submit an application, or generate materials. The page also offers template email preparation (`private_cold_email.md`) and a full target résumé that the owner edits and exports by hand on the private source, read through `GET /api/private-import-targets/{id}/resume-context` (`private_resume_context.md`) while the `resume_renovate` release switch is on; neither calls a model. AI writing of private emails and résumés still requires explicit consumer integration and private input-scope decisions.
 
 ## Resolver and endpoint
 
@@ -93,7 +93,7 @@ Remaining work is explicit:
 
 - A reviewed public/private union in each writer and its restore/version checks.
 - A separate private target context that never borrows public evidence authority. This read projection must not be passed wholesale to an existing generator.
-- Recipient confirmation and private email policy, plus targeted résumé input scope and provenance.
+- Recipient confirmation and private email policy, plus the input scope and provenance of AI résumé suggestions on a private import. Manual résumé editing is integrated: a private draft stores a version 5 snapshot with provenance version 1 records (`private_resume_context.md`).
 - Private email sending and generated-material integration, including version-bound restoration of new writing drafts. B61 already displays existing contact/application history and supports user-confirmed past-application records; it does not add private material generation or sending.
 - Hosted deployment and real account acceptance. B60 native SQL remains partially verified; B61 performs no native database test or migration.
 
