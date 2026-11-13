@@ -101,6 +101,25 @@ describe('cold email unfinished supplement persistence',()=>{
   expect(accuracy()).not.toBeChecked();expect(accuracy()).toBeEnabled();expect(accuracy()).toHaveAccessibleName('I reviewed the current activity and profile, and confirm the selected information is accurate.');
   expect(controller().confirm).not.toHaveBeenCalled();expect(api.stream).not.toHaveBeenCalled();expect(api.confirm).not.toHaveBeenCalled();
  });
+ // Real details carry target_truth; the footer's sighting day sits beside it.
+ const read=(verified_at:string)=>({...target,target_truth:{listing_state:'open' as const,reference_only:false,actionable:true,accepting_state:'accepting' as const,reason_code:null,verified_at,expires_at:null}});
+ const supplementKey=()=>(supplement.options as ResumeSupplementOptions).targetKey;
+ async function savedKey(){await act(async()=>{});const r=readColdEmailDraft(captureOwnerToken(),target.id);if(r.status!=='present')throw new Error('saved draft missing');return r.draft.pendingSupplement?.targetKey;}
+ it.each([undefined,'2026-11-04',null])('keeps unfinished answers on the same target when only the sighting day moves from %s',async seen=>{
+  const first=read('2026-07-22T07:01:58');const view=mount({target:seen===undefined?first:{...first,last_seen_listed_at:seen}});
+  await ready();openSupplement();answer();await savedAnswer();const key=supplementKey();
+  // Every other field stays in the key exactly as before the field existed.
+  expect(key).toBe(JSON.stringify(first));expect(await savedKey()).toBe(key);
+  view.rerender(<ColdEmailModal {...view.props} target={{...first,last_seen_listed_at:'2026-11-09'}}/>);
+  expect(supplementKey()).toBe(key);expect(await savedKey()).toBe(key);expect(task()).toHaveValue('Exact unsubmitted task 王');
+  // A list refresh that withdraws the target for a moment is not a change either.
+  view.rerender(<ColdEmailModal {...view.props} target={undefined}/>);expect(supplementKey()).toBe(key);
+ });
+ it('still moves unfinished answers to the new target when the verified day moves with the sighting day',async()=>{
+  const view=mount({target:{...read('2026-07-22T07:01:58'),last_seen_listed_at:'2026-07-22'}});await ready();openSupplement();answer();await savedAnswer();const key=supplementKey();
+  view.rerender(<ColdEmailModal {...view.props} target={{...read('2026-11-04T15:41:29'),last_seen_listed_at:'2026-11-04'}}/>);
+  expect(supplementKey()).not.toBe(key);await waitFor(async()=>expect(await savedKey()).toBe(supplementKey()));
+ });
  it('restores on the same mounted modal after closing and reopening',async()=>{
   const view=mount();await ready();openSupplement();answer();fireEvent.click(button('closeAria'));await waitFor(()=>expect(view.props.onClose).toHaveBeenCalledOnce());
   view.rerender(<ColdEmailModal {...view.props} isOpen={false}/>);view.rerender(<ColdEmailModal {...view.props} isOpen/>);

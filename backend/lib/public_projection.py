@@ -703,6 +703,10 @@ _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     # carry these, and two copies of a timestamp is two things to disagree.
     "last_verified",
     "expires_at",
+    # A faculty detail's `last_seen_listed_at` carries its day. Left here it
+    # would ship on every detail-shaped payload and move the writing target
+    # version on each refresh that lists a person whose row was not re-read.
+    "last_seen_at",
     # The neutralizer's own bookkeeping. `faculty_availability_status` here is
     # the internal marker the scan writes into metadata — not the top-level
     # field of the same name, which is a deliberate part of the payload and

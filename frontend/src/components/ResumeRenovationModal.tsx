@@ -110,6 +110,13 @@ function canonicalProfile(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
+// The footer's sighting day is not target content; the server's writing
+// version leaves it out too, so a refresh that moves only that day keeps a
+// saved draft current.
+function targetContent(value: object): string {
+  return canonicalProfile({ ...value, last_seen_listed_at: undefined });
+}
+
 // The workspace supplies the current public target payload (detail or
 // match-card projection), not the full server record. ID/title alone cannot
 // establish saved provenance; malformed/mismatched input stays unknown.
@@ -138,8 +145,9 @@ function targetFingerprintFor(key: string | undefined, opportunityId: string): s
         ('is_active' in metadata && typeof metadata.is_active !== 'boolean') ||
         ('confidence_score' in metadata && (typeof metadata.confidence_score !== 'number' || !Number.isFinite(metadata.confidence_score))))) return null;
     // Validate the required public shape without projecting: optional/new
-    // fields also participate in the digest. Actionability is a separate gate.
-    return canonicalProfile(value);
+    // fields also participate in the digest, except the sighting day
+    // (targetContent). Actionability is a separate gate.
+    return targetContent(value);
   } catch {
     return null;
   }
@@ -261,7 +269,7 @@ export default function ResumeRenovationModal({
   const targetFingerprint = useMemo(() => targetFingerprintFor(targetKey, opportunityId), [targetKey, opportunityId]);
   // Only a verified detail receipt can authorize model work. The legacy
   // provenance key must describe that same target, never a seed/list card.
-  const expectedTargetVersion = isPublicDetail(target, opportunityId) && canonicalProfile(target) === targetFingerprint
+  const expectedTargetVersion = isPublicDetail(target, opportunityId) && targetContent(target) === targetFingerprint
     ? writingTargetVersion(target) : null;
   const [targetVersionIssue, setTargetVersionIssue] = useState<'changed' | 'unavailable' | null>(null);
   const [targetVersionChecking, setTargetVersionChecking] = useState(false);

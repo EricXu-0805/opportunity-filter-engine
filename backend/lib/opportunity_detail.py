@@ -82,6 +82,7 @@ from src.evidence import (
     is_read_off_the_page,
     keywords_are_source_labels,
     keywords_are_source_topics,
+    record_kind,
 )
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
@@ -824,8 +825,8 @@ def _provenance(payload: dict, source: str, *, observed_key: str | None = None) 
     ``observed_at`` prefers a field-specific stamp, then the truth envelope's
     ``verified_at`` — the last time the collector loaded the page and checked
     it. Not ``last_seen_at``: that is the last run that listed the record,
-    whether or not its page loaded (the loader drops it from the served corpus
-    anyway). Never synthesized: absent everywhere means null.
+    whether or not its page loaded (`last_seen_listed` below). Never
+    synthesized: absent everywhere means null.
     """
     metadata = _dict(payload.get("metadata"))
     truth = _dict(payload.get("target_truth"))
@@ -839,6 +840,20 @@ def _provenance(payload: dict, source: str, *, observed_key: str | None = None) 
         or public_projection.safe_public_http_url(payload.get(second)),
         "observed_at": observed,
     }
+
+
+def last_seen_listed(canonical: dict) -> str | None:
+    """The day a faculty row's person was last seen listed, or None.
+
+    A duplicate merge carries a newer ``last_seen_at`` to the row it keeps and
+    leaves ``last_verified`` alone, because that row's fields were read on the
+    older day. The page footer says the first; the facts keep the second.
+    None on every other kind of row, and wherever the stamp is unreadable.
+    """
+    if record_kind(canonical) != "faculty_contact":
+        return None
+    seen = _date(_dict(canonical.get("metadata")).get("last_seen_at"))
+    return seen[:10] if seen else None
 
 
 # Bases no reading of the page produced: a value the collector or our config

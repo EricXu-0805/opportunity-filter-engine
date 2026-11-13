@@ -113,8 +113,12 @@ What one scheduled run does:
    day that also runs the Illinois Experts pass). The job itself times out at
    350 minutes.
 2. In the first seven days of the month, follows each faculty profile link of
-   the shard (`OFE_ENRICH_PROFILES=1`). On the first Monday it also runs the
-   Illinois Experts pass for `uiuc`, capped at 30 minutes.
+   the shard (`OFE_ENRICH_PROFILES=1`). It skips a person whose stored row
+   holds a capture of that page not marked failed and already holds each field
+   the block reads there (email, research), unless the block reads a title.
+   Blocks marked `always` run on every run and never skip a stored page. On
+   the first Monday it also runs the Illinois Experts pass for `uiuc`, capped
+   at 30 minutes.
 3. Runs the corpus-wide offline passes (`python -m src.normalizers.enrich_processed --save`,
    `python -m src.normalizers.deactivate_past --save`) and the data-quality
    tests.
