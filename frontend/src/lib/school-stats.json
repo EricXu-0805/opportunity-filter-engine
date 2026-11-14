@@ -27,9 +27,9 @@
     },
     "bates": {
       "listing_count": 7,
-      "faculty_contact_count": 177,
+      "faculty_contact_count": 176,
       "unreviewed_count": 0,
-      "total_count": 184
+      "total_count": 183
     },
     "bc": {
       "listing_count": 5,
@@ -75,9 +75,9 @@
     },
     "caltech": {
       "listing_count": 14,
-      "faculty_contact_count": 429,
+      "faculty_contact_count": 432,
       "unreviewed_count": 0,
-      "total_count": 443
+      "total_count": 446
     },
     "carleton": {
       "listing_count": 5,
@@ -87,9 +87,9 @@
     },
     "casewestern": {
       "listing_count": 4,
-      "faculty_contact_count": 726,
+      "faculty_contact_count": 727,
       "unreviewed_count": 0,
-      "total_count": 730
+      "total_count": 731
     },
     "cincinnati": {
       "listing_count": 2,
@@ -135,9 +135,9 @@
     },
     "colostate": {
       "listing_count": 5,
-      "faculty_contact_count": 939,
+      "faculty_contact_count": 940,
       "unreviewed_count": 0,
-      "total_count": 944
+      "total_count": 945
     },
     "columbia": {
       "listing_count": 6,
@@ -189,9 +189,9 @@
     },
     "gatech": {
       "listing_count": 18,
-      "faculty_contact_count": 1316,
+      "faculty_contact_count": 1318,
       "unreviewed_count": 0,
-      "total_count": 1334
+      "total_count": 1336
     },
     "georgetown": {
       "listing_count": 6,
@@ -261,9 +261,9 @@
     },
     "lsu": {
       "listing_count": 6,
-      "faculty_contact_count": 1232,
+      "faculty_contact_count": 1233,
       "unreviewed_count": 0,
-      "total_count": 1238
+      "total_count": 1239
     },
     "macalester": {
       "listing_count": 4,
@@ -309,9 +309,9 @@
     },
     "neu": {
       "listing_count": 7,
-      "faculty_contact_count": 2072,
+      "faculty_contact_count": 2057,
       "unreviewed_count": 0,
-      "total_count": 2079
+      "total_count": 2064
     },
     "njit": {
       "listing_count": 4,
@@ -339,9 +339,9 @@
     },
     "osu": {
       "listing_count": 6,
-      "faculty_contact_count": 2501,
+      "faculty_contact_count": 2502,
       "unreviewed_count": 0,
-      "total_count": 2507
+      "total_count": 2508
     },
     "pitt": {
       "listing_count": 3,
@@ -399,9 +399,9 @@
     },
     "sbu": {
       "listing_count": 6,
-      "faculty_contact_count": 914,
+      "faculty_contact_count": 913,
       "unreviewed_count": 0,
-      "total_count": 920
+      "total_count": 919
     },
     "smith": {
       "listing_count": 5,
@@ -465,9 +465,9 @@
     },
     "uci": {
       "listing_count": 15,
-      "faculty_contact_count": 1303,
+      "faculty_contact_count": 1302,
       "unreviewed_count": 0,
-      "total_count": 1318
+      "total_count": 1317
     },
     "ucla": {
       "listing_count": 18,
@@ -488,10 +488,10 @@
       "total_count": 1175
     },
     "ucsb": {
-      "listing_count": 265,
-      "faculty_contact_count": 855,
+      "listing_count": 267,
+      "faculty_contact_count": 847,
       "unreviewed_count": 0,
-      "total_count": 1120
+      "total_count": 1114
     },
     "ucsc": {
       "listing_count": 3,
@@ -543,9 +543,9 @@
     },
     "umass": {
       "listing_count": 9,
-      "faculty_contact_count": 1560,
+      "faculty_contact_count": 1563,
       "unreviewed_count": 0,
-      "total_count": 1569
+      "total_count": 1572
     },
     "umd": {
       "listing_count": 7,
@@ -615,9 +615,9 @@
     },
     "utk": {
       "listing_count": 4,
-      "faculty_contact_count": 1043,
+      "faculty_contact_count": 1052,
       "unreviewed_count": 0,
-      "total_count": 1047
+      "total_count": 1056
     },
     "uva": {
       "listing_count": 5,
