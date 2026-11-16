@@ -94,7 +94,8 @@ def test_no_target_data_asks_without_inventing_research_topic_or_opening(source_
         assert 'your lab' not in text and 'open position' not in text
         assert '?' in text
         if source_type == 'faculty_research':
-            assert 'whether you have any current or upcoming research openings' in text
+            # No experience to show: the ask is for advice, and names no area the row does not state.
+            assert 'what you would suggest I learn or do first to prepare for research?' in text
         else:
             assert 'first step' in text
 

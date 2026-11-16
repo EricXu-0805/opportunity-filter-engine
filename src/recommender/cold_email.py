@@ -1134,9 +1134,28 @@ def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str
     )
 
 
+def _advice_ask(p: dict) -> str:
+    """What to learn or do first, and whether to come back: no opening is asked about.
+
+    Owner, 2026-11-06 (scored sample E6): a student with nothing to show in
+    the professor's area asks for advice, rather than hanging "what
+    preparation would be useful" on an opening. The ask states nothing about
+    the student or the professor. "This area" is the one the subject line
+    names; a row that states none gets no such phrase. It says "contact", not
+    "write": the attribution check reads "I write" as a claim of work done.
+    """
+    scope = " in this area" if p.get("research_area") else ""
+    return (
+        f"\n\nCould I ask what you would suggest I learn or do first to prepare for research{scope}?"
+        " May I contact you again once I have done that?"
+    )
+
+
 def _template_ask(p: dict) -> str:
     if p.get("target_conditions_template_request"):
         return _contact_details(p) + "\n\n" + p["target_conditions_template_request"]
+    if p.get("is_faculty") and not _pick_resume_bullet(p):
+        return _contact_details(p) + _advice_ask(p)
     return _contact_details(p) + _ask_for_lab_type(
         p.get("lab_type"), is_faculty=bool(p.get("is_faculty"))
     )

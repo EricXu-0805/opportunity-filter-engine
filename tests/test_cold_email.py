@@ -566,22 +566,25 @@ class TestFacultyContactProfileTruth:
             assert "position" not in rules
 
     def test_all_deterministic_faculty_variants_ask_about_openings_without_posting_claims(self):
-        variants = generate_variants(self._PROFILE, self._FACULTY)
+        # Without an experience in the professor's area the ask is for advice
+        # instead (tests/test_cold_email_template_rules.py).
+        for bullets in (["I trained a computer vision model on medical imaging scans."], []):
+            variants = generate_variants(self._PROFILE, self._FACULTY, resume_bullets=bullets)
 
-        assert {variant["id"] for variant in variants} == {
-            "balanced", "skills", "concise",
-        }
-        for variant in variants:
-            text = variant["text"].lower()
-            assert "your research" in text or "your work on computer vision" in text
-            assert "current or upcoming research openings" in text
-            for forbidden in (
-                "directly applicable to this position",
-                "this position uses",
-                "role requires",
-                "work described in your posting",
-            ):
-                assert forbidden not in text
+            assert {variant["id"] for variant in variants} == {
+                "balanced", "skills", "concise",
+            }
+            for variant in variants:
+                text = variant["text"].lower()
+                assert "your research" in text or "your work on computer vision" in text
+                assert ("current or upcoming research openings" in text) is bool(bullets)
+                for forbidden in (
+                    "directly applicable to this position",
+                    "this position uses",
+                    "role requires",
+                    "work described in your posting",
+                ):
+                    assert forbidden not in text
 
 
 class TestCourseworkDatePollution:
