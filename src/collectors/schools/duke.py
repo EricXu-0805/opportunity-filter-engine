@@ -477,8 +477,6 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": [
                 "https://undergraduateresearch.duke.edu/T-SUMR",
-                "https://undergraduateresearch.duke.edu/opportunity/biological-sciences-undergraduate-research-fellowship-bsurf",
-                "https://undergraduateresearch.duke.edu/SURF",
                 "https://undergraduateresearch.duke.edu/duke-prime-cancer-research-program",
                 "https://undergraduateresearch.duke.edu/opportunity/reach-equity-summer-undergraduate-research-program-resurp",
                 "https://undergraduateresearch.duke.edu/opportunity/summer-research-internship-toxicology-and-environmental-health",
@@ -521,51 +519,6 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     deadline_note="Applications typically due in spring for summer",
                     keywords=["Trinity College", "mentored research", "summer", "faculty mentor", "thesis prep"],
-                ),
-                program(
-                    "bsurf",
-                    "Duke BSURF \u2014 Biological Sciences Undergraduate Research Fellowship",
-                    "https://undergraduateresearch.duke.edu/opportunity/biological-sciences-undergraduate-research-fellowship-bsurf",
-                    "A highly selective 8-week summer fellowship placing rising-sophomore Duke "
-                    "students in a biological or biomedical science lab (in Arts & Sciences "
-                    "departments or School of Medicine basic-science labs) to do hands-on "
-                    "mentored research. Includes cohort professional-development workshops on "
-                    "reading papers, research ethics, and science communication. Provides a "
-                    "$4,000 stipend plus on-campus housing; students commit full-time with no "
-                    "other classes or jobs.",
-                    organization="Duke University",
-                    department="Department of Biology / School of Medicine basic sciences",
-                    lab_or_program="BSURF",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="$4,000 stipend + on-campus housing (8 weeks)",
-                    eligibility_majors=["biology", "biological sciences", "neuroscience", "biomedical sciences"],
-                    preferred_year=["freshman", "sophomore"],
-                    international_friendly="yes",
-                    deadline_note="For rising sophomores (current Duke first-years); application in the spring semester.",
-                    keywords=["biology", "summer research", "fellowship", "rising sophomore", "lab placement"],
-                ),
-                program(
-                    "surf",
-                    "Duke SURF \u2014 Summer Undergraduate Research Fellowship",
-                    "https://undergraduateresearch.duke.edu/SURF",
-                    "Duke's flagship 8-week paid summer research fellowship for rising "
-                    "sophomores, pairing students with faculty mentors to learn research skills "
-                    "as a cohort. Provides a stipend plus campus housing; students work "
-                    "full-time on research. Note: the Biological & Brain Sciences arm of SURF "
-                    "did not run in Summer 2026, so confirm which tracks are active for the "
-                    "current cycle.",
-                    organization="Duke University",
-                    department="Undergraduate Research Support Office",
-                    lab_or_program="SURF",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="Stipend + on-campus housing (8 weeks)",
-                    eligibility_majors=["all"],
-                    preferred_year=["freshman", "sophomore"],
-                    international_friendly="yes",
-                    deadline_note="For rising sophomores; spring application. Biological & Brain Sciences arm did not run in Summer 202",
-                    keywords=["summer research", "fellowship", "rising sophomore", "faculty mentor", "stipend"],
                 ),
                 program(
                     "prime_cancer",

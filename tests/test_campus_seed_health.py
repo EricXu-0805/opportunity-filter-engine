@@ -326,6 +326,42 @@ class TestSeedInventory:
         for gone in ("$10,000", "meridian", "Circumnavigators Club", "blog", "50+ page", "early January"):
             assert gone not in stated
 
+    def test_duke_surf_and_bsurf_leave_with_their_pages(self):
+        """campus-seed-health run 43749236597 (2026-11-15) found both seeds gone.
+
+        /SURF and the BSURF opportunity page answer 404, and the URS site's
+        own /opportunity/urs/bsurf redirects to /SURF. BSURF was SURF's
+        earlier name: a student profile on the site says "a BSURF (now SURF)
+        fellow in 2023". The office's Opportunities page (URS-Funding) and
+        its Duke Opportunities list name two summer programs it funds,
+        T-SUMR and TRI-PATH, and no SURF; both are records already. A page
+        outside the menu, opportunities-urs-administered-awards-and-
+        fellowships, still describes SURF and links the dead /SURF. Seeds and
+        records are removed, so the next Duke refresh retires the stored rows
+        duke-a83f596db7f6 and duke-db2b91d604f5 as no longer listed.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://undergraduateresearch.duke.edu/SURF",
+            "https://undergraduateresearch.duke.edu/opportunity/"
+            "biological-sciences-undergraduate-research-fellowship-bsurf",
+        }
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (seeds & dead)
+        assert not (set(programs.values()) & dead)
+        assert ("duke", "surf") not in programs
+        assert ("duke", "bsurf") not in programs
+        assert programs[("duke", "tri_path")] == "https://undergraduateresearch.duke.edu/TRI-Path"
+        assert programs[("duke", "tsumr_trinity_research")] == "https://undergraduateresearch.duke.edu/T-SUMR"
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.
