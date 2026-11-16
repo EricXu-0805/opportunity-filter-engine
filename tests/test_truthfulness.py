@@ -29,6 +29,7 @@ from src.evidence import (
     is_deceased_listing,
     is_inferred,
     is_professor_rank,
+    is_retired_title,
     is_synthesized_email_source,
     is_trainee_title,
     record_conflict,
@@ -180,6 +181,53 @@ class TestPositionUnknown:
         maintained = {**SCHOOL, "school_slug": next(iter(SEPARATELY_MAINTAINED_SCHOOLS))}
         rec = fg_normalize(maintained, DEPT, _person(title="Postdoctoral Scholar"))
         assert rec["metadata"]["is_active"] is True
+
+    @pytest.mark.parametrize("title", [
+        "Professor Emeritus",
+        "Professor Emerita of History",
+        "Professor (Retired)",
+        "Professor Emerit",
+        "Associate Professor Emerit",
+        "Teaching Faculty Emerit",
+        "Jane Roe Professor Emerit of Electrical Engineering, and Alex Poe Professor Emerit of Computing",
+        "Emertius, Professor of Chemistry",
+        "In Memoriam, Professor Emertius",
+        "Emeritas Professor*",
+        "Adjunct Assistant Professor Emeriti",
+    ])
+    def test_emeritus_and_retired_titles_as_directories_spell_them(self, title):
+        assert is_retired_title(title)
+
+    @pytest.mark.parametrize("title", [
+        "Associate Professor (Tenure), Emergency Medicine",
+        "Professor of Emerging Media",
+        "Emerson Professor of Engineering",
+        "Professor and Director, EMERGE Institute",
+        "Zemerov Professor of Physics",
+        "Associate Professor (phased retiree)",
+        "Professor, English (phase retirement as of July 1, 2025)",
+        # A bare "Emer." also abbreviates "Emergency": not read.
+        "Distinguished Professor of History Emer.",
+        "Professor",
+        "",
+        None,
+    ])
+    def test_titles_that_only_look_like_emeritus_are_not_retired_titles(self, title):
+        assert not is_retired_title(title)
+
+    def test_a_misspelt_emeritus_card_is_dropped_like_an_emeritus_one(self):
+        for title in ("Professor Emerit", "Emertius, Professor of Chemistry",
+                      "Emeritas Professor*", "Adjunct Assistant Professor Emeriti"):
+            assert fg_normalize(SCHOOL, DEPT, _person(title=title)) is None, title
+        kept = fg_normalize(SCHOOL, DEPT, _person(title="Professor of Emergency Medicine"))
+        assert kept["metadata"]["is_active"] is True
+
+    def test_a_separately_maintained_school_keeps_a_misspelt_emeritus_card(self):
+        maintained = {**SCHOOL, "school_slug": next(iter(SEPARATELY_MAINTAINED_SCHOOLS))}
+        rec = fg_normalize(maintained, DEPT, _person(title="Professor Emerit"))
+        assert rec["metadata"]["is_active"] is True
+        # The spellings read before this rule are dropped there as they were.
+        assert fg_normalize(maintained, DEPT, _person(title="Professor Emeritus")) is None
 
     @pytest.mark.parametrize("name, title", [
         ("Jane Roe", "In Memoriam, Professor"),

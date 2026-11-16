@@ -95,6 +95,7 @@ from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
     is_deceased_listing,
     is_professor_rank,
+    is_retired_title,
     is_trainee_title,
 )
 from ..school_scope import SEPARATELY_MAINTAINED_SCHOOLS
@@ -626,14 +627,17 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         return None
     if school.get("school_slug") not in SEPARATELY_MAINTAINED_SCHOOLS and (
             is_trainee_title(title)
+            or is_retired_title(title)
             # The name as the card writes it: the cleanup above strips a
             # trailing "(deceased)".
             or is_deceased_listing(html.unescape(person.get("name") or ""), title)):
-        # A graduate student or postdoc, not a professor to ask, or someone
-        # the card says has died. The stored row is retired by
-        # deactivate_trainee_faculty or deactivate_deceased_faculty before the
-        # unit ledgers count; a row stored under another title is reported
-        # missed and holds its unit, as a card that turns emeritus does.
+        # A graduate student or postdoc, not a professor to ask, an emeritus
+        # title in a spelling the line above does not read ("Professor
+        # Emerit"), or someone the card says has died. The stored row is
+        # retired by deactivate_trainee_faculty, deactivate_retired_title_faculty
+        # or deactivate_deceased_faculty before the unit ledgers count; a row
+        # stored under another title is reported missed and holds its unit, as
+        # a card that turns emeritus does.
         return None
 
     short = dept["short"]

@@ -220,6 +220,22 @@ def is_deceased_listing(name: object, title: object) -> bool:
                for text in (name, title))
 
 
+# An emeritus or retired title, in the spellings the corpus's directories
+# write: "Emeritus", "Emerita", Wisconsin's "Emerit", the plural "Emeriti" and
+# the misspellings "Emeritas" and "Emertius". Whole words only, so never
+# "Emergency", "Emerging" or "Emerson"; a bare "Emer." also abbreviates
+# "Emergency" and is not read.
+_EMERITUS_OR_RETIRED_RE = re.compile(
+    r"\b(?:emerit(?:us|a|i|as)?|emertius|retired)\b", re.IGNORECASE)
+
+RETIRED_TITLE_REASON = "retired_title"
+
+
+def is_retired_title(title: object) -> bool:
+    """True when a stated title holds an emeritus or retired word."""
+    return isinstance(title, str) and bool(_EMERITUS_OR_RETIRED_RE.search(title))
+
+
 # ---------------------------------------------------------------------------
 # 2. Stated vs inferred (field-level inference stamps)
 # ---------------------------------------------------------------------------

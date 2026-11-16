@@ -35,8 +35,10 @@ from datetime import date, datetime, timedelta
 
 from src.evidence import (
     DECEASED_REASON,
+    RETIRED_TITLE_REASON,
     TRAINEE_REASON,
     is_deceased_listing,
+    is_retired_title,
     is_trainee_title,
 )
 
@@ -1297,6 +1299,24 @@ def deactivate_deceased_faculty(opps: list[dict], selected=None,
     return _retire_stated(
         opps, lambda opp, meta: is_deceased_listing(opp.get("pi_name"), meta.get("faculty_title")),
         DECEASED_REASON, selected, held, today)
+
+
+def deactivate_retired_title_faculty(opps: list[dict], selected=None,
+                                     held: frozenset[str] = frozenset(),
+                                     today: date | None = None) -> dict:
+    """Retire, in place, active faculty rows whose stated title is an emeritus
+    or retired one (``evidence.is_retired_title``).
+
+    The collectors have always dropped a card titled "Emeritus", so no row was
+    stored for one; a row stored under a spelling they did not read ("Professor
+    Emerit") is retired here, as ``deactivate_trainee_faculty`` retires a
+    trainee's, and keeps its id. The caller holds UIUC with the schools another
+    maintainer owns: its collector lists an emeritus title that sits beside a
+    current role or an active lab.
+    """
+    return _retire_stated(
+        opps, lambda opp, meta: is_retired_title(meta.get("faculty_title")),
+        RETIRED_TITLE_REASON, selected, held, today)
 
 
 def _retire_stated(opps: list[dict], states, reason: str, selected,

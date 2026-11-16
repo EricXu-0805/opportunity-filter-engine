@@ -21,6 +21,7 @@ from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import (
     FACULTY_SOURCES,
     deactivate_deceased_faculty,
+    deactivate_retired_title_faculty,
     deactivate_stale_faculty,
     deactivate_trainee_faculty,
     finalize_unit_ledger,
@@ -1656,11 +1657,16 @@ def refresh_all(
         # in CI on the next push.
         deact_counts = deactivate_past(all_opps)
 
-        # People a directory lists as having died, then graduate students and
-        # postdocs, are retired on every run, before any unit ledger counts
-        # active rows (deactivate_deceased_faculty, deactivate_trainee_faculty).
+        # People a directory lists as having died, then emeritus and retired
+        # titles, then graduate students and postdocs, are retired on every
+        # run, before any unit ledger counts active rows
+        # (deactivate_deceased_faculty, deactivate_retired_title_faculty,
+        # deactivate_trainee_faculty). UIUC's collector decides which emeritus
+        # titles stay listed, so its rows are counted, not changed.
         deceased = deactivate_deceased_faculty(
             all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
+        retired_titles = deactivate_retired_title_faculty(
+            all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS | {"uiuc"})
         trainees = deactivate_trainee_faculty(
             all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
 
@@ -1819,6 +1825,14 @@ def refresh_all(
                 "deceased_listings: retired %d row(s) whose name or title says the "
                 "person has died %s; left %s to their maintainer",
                 deceased["deactivated"], deceased["by_school"], deceased["held"],
+            )
+        summary["sources"]["retired_titles"] = {**retired_titles, "status": "ok"}
+        if retired_titles["deactivated"] or retired_titles["held"]:
+            logger.info(
+                "retired_titles: retired %d emeritus/retired row(s) %s; left %s to "
+                "their maintainer or, at UIUC, to its collector",
+                retired_titles["deactivated"], retired_titles["by_school"],
+                retired_titles["held"],
             )
         summary["sources"]["trainee_titles"] = {**trainees, "status": "ok"}
         if trainees["deactivated"] or trainees["held"]:
