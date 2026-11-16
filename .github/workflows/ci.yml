@@ -18,8 +18,77 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # On a push to main, decides whether the four test jobs below may be skipped
+  # because the pull request already ran them on this exact tree. Until this
+  # job every merge ran the suite a second time on main, a median 60 minutes
+  # in front of the backend deploy (22 green runs on main, 2026-11-01 to
+  # 11-14), and a flake there held the backend back while Vercel had already
+  # shipped the frontend (2026-11-13: one failed Frontend unit-test step on
+  # 52124020 put the deploy hook 3h08m after the merge).
+  #
+  # scripts/ci_skip_decision.py answers skip only on proof: this commit is the
+  # merge commit of exactly one merged pull request whose head is in this
+  # repository; its tree is the tree of that head; the commit main was on is
+  # an ancestor of that head, so the pull_request run, which tests the head
+  # merged into main, tested this tree; and the newest pull_request run of
+  # this workflow for that head succeeded with Backend, Frontend, Migrations
+  # and E2E each `success`. An API error, a missing or ambiguous answer, a
+  # failed checkout or a crash of the script is skip=false: the suite runs.
+  #
+  # The cases thought through:
+  # - A manual dispatch never skips: the script refuses every event but a
+  #   push, and the output below repeats that. It is how to run the suite on
+  #   main by hand: `gh workflow run ci.yml --ref main`.
+  # - A re-run of an older main run decides again from the same facts. If it
+  #   skips, deploy-backend still deploys nothing once main has moved.
+  # - A pull request merged with --admin while behind main: the merge commit's
+  #   tree is not the head's tree, or main's commit is not in the head. Runs.
+  # - A revert, or anything else pushed straight to main, has no pull request.
+  #   Runs.
+  # - Two pull requests with one head sha: if the commit lists both, that is
+  #   ambiguous and the suite runs. If it lists one, every pull_request run
+  #   for that head tested the same tree, and only the newest counts.
+  # - A pull request whose CI failed and was re-run: the run's conclusion and
+  #   its job list are those of the last attempt.
+  # - A pull request whose Migrations job failed, which branch protection does
+  #   not require: its run did not succeed. Runs.
+  decide:
+    name: Decide (run or skip the suite)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # Read access only, for the lookups above.
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      skip: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.decide.outputs.skip == 'true' }}
+    steps:
+      - uses: actions/checkout@v6
+        # Only the script, not the corpus. A failed checkout leaves no script,
+        # and the step below then answers skip=false.
+        continue-on-error: true
+        with:
+          sparse-checkout: scripts/ci_skip_decision.py
+          sparse-checkout-cone-mode: false
+
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/ci_skip_decision.py || {
+            echo "::warning::scripts/ci_skip_decision.py did not run to the end, so the suite runs."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          }
+
   backend:
     name: Backend (lint + pytest)
+    needs: decide
+    # !cancelled() rather than the default success(): if `decide` itself
+    # fails, its output is empty and the suite runs. The same line is on the
+    # other three test jobs.
+    if: ${{ !cancelled() && needs.decide.outputs.skip != 'true' }}
     runs-on: ubuntu-24.04
     # PR #974 passed all 4,927 tests in 28m18s, but setup and cleanup
     # brought the job past its old 30-minute cap (run 35967896474).
@@ -71,6 +140,8 @@ jobs:
 
   frontend:
     name: Frontend (typecheck + build)
+    needs: decide
+    if: ${{ !cancelled() && needs.decide.outputs.skip != 'true' }}
     runs-on: ubuntu-24.04
     # 10 was set when the unit suite was a fraction of its current size. The
     # suite is now 3,846 tests — 4.5 minutes of pure vitest on a warm laptop —
@@ -116,6 +187,8 @@ jobs:
 
   migrations:
     name: Migrations (Flow B merge + CLI replay)
+    needs: decide
+    if: ${{ !cancelled() && needs.decide.outputs.skip != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -152,17 +225,19 @@ jobs:
 
   e2e:
     name: E2E (Playwright)
+    needs: decide
+    if: ${{ !cancelled() && needs.decide.outputs.skip != 'true' }}
     runs-on: ubuntu-24.04
     # Headroom over the typical run; the suite now boots a production server
     # (see the build step below + playwright.config webServer) instead of the
     # slow on-demand-compiling dev server, so it completes well inside this.
     # 45 since the MVP integration: 61 spec files instead of 22.
     timeout-minutes: 45
-    # No `needs`: this job installs its own backend dependencies and builds
-    # the frontend itself, so it starts with the other three. While it waited
-    # for Backend and Frontend, Backend's 34 minutes came before its 27
-    # (medians of 58 green runs, 2026-11-01 to 11-14) and the four jobs took
-    # 61 minutes together. deploy-backend below still needs all four.
+    # It needs neither Backend nor Frontend: it installs its own backend
+    # dependencies and builds the frontend itself, so it starts with the other
+    # three. While it waited for those two, Backend's 34 minutes came before
+    # its 27 (medians of 58 green runs, 2026-11-01 to 11-14) and the four jobs
+    # took 61 minutes together. deploy-backend below still needs all four.
     defaults:
       run:
         working-directory: frontend
@@ -249,7 +324,9 @@ jobs:
           retention-days: 14
 
   # Deploys the backend through a Render deploy hook once the checks branch
-  # protection requires, and the Migrations check, have passed. render.yaml's
+  # protection requires, and the Migrations check, have passed: on this
+  # commit, or, when `decide` skipped them, on the pull request that carried
+  # this tree. render.yaml's
   # `autoDeployTrigger: checksPass` waits for EVERY check run on the commit
   # and has no notion of "required", so an unrelated run on main (a red
   # advisory, a refresh dispatched on main) has held backend deploys, once
@@ -263,12 +340,28 @@ jobs:
   # docs/RELEASE.md.
   deploy-backend:
     name: Deploy backend (Render hook)
-    needs: [backend, frontend, migrations, e2e]
+    needs: [decide, backend, frontend, migrations, e2e]
     # A push to main only: never a pull request, a manual dispatch or a
-    # schedule. There is no status function here, so GitHub applies
-    # success(): a needed job that failed, was cancelled or was skipped skips
-    # the deploy.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # schedule. Under the default success() a skipped need skips this job,
+    # and the four test jobs are skipped whenever `decide` says so. The
+    # condition therefore carries its own status function and names every
+    # result. It deploys in two cases only: `decide` proved the tree and all
+    # four jobs were skipped, or all four ran here and succeeded. A test job
+    # that failed or was cancelled, a `decide` that did not succeed, or a
+    # cancelled run deploys nothing.
+    if: >-
+      ${{
+        !cancelled()
+        && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        && needs.decide.result == 'success'
+        && (
+          (needs.decide.outputs.skip == 'true'
+            && needs.backend.result == 'skipped' && needs.frontend.result == 'skipped'
+            && needs.migrations.result == 'skipped' && needs.e2e.result == 'skipped')
+          || (needs.backend.result == 'success' && needs.frontend.result == 'success'
+            && needs.migrations.result == 'success' && needs.e2e.result == 'success')
+        )
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Read access only, to look up the head of main.
@@ -278,8 +371,8 @@ jobs:
       - name: Ask Render to deploy this commit
         # The hook URL carries a key, and anyone holding it can deploy. It
         # reaches the script only through env and is never printed. `ref`
-        # pins the deploy to the commit these checks passed on rather than
-        # whatever is at the head of main when Render builds.
+        # pins the deploy to this commit rather than whatever is at the head
+        # of main when Render builds.
         #
         # A re-run of an older main run is still a push to main and still
         # carries that commit's own sha, so it passes the `if` above. Deploying
