@@ -252,6 +252,42 @@ class TestSeedInventory:
         assert programs[("uci", "engineering_ugresearch")] == page
         assert page in seeds
 
+    def test_syracuse_source_pages_move_with_the_october_site_change(self):
+        """campus-seed-health run 40211548227 (2026-10-25) found both pages gone.
+
+        The SOURCE's sitemap gives 2026-10-21 as the last change of both
+        successor pages. Its menu now lists "Open Undergraduate Research
+        Opportunities" at for-students/open-opportunities/, which says
+        "SOURCE is piloting hosting open undergraduate research opportunities
+        on our site", and the symposium page kept its slug one level up, at
+        research-symposium/.
+        That page lists the SOURCE Spring Showcase and other units' research
+        days; it names no Fall Expo and no Summer Symposium, so the record's
+        title stops naming them. The keys stay, so the stored rows
+        syracuse-bc89f2a14633 and syracuse-5533bfb47b70 move in place on the
+        next Syracuse refresh.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://undergraduateresearch.syracuse.edu/source-opportunites/",
+            "https://undergraduateresearch.syracuse.edu/for-students/research-symposium/",
+        }
+        specs = {
+            (config["school_slug"], spec["key"]): spec
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (dead & {spec["url"] for spec in specs.values()})
+        assert specs[("syracuse", "syracuse_source_opportunities")]["url"] == (
+            "https://undergraduateresearch.syracuse.edu/for-students/open-opportunities/"
+        )
+        symposia = specs[("syracuse", "syracuse_source_symposia")]
+        assert symposia["url"] == "https://undergraduateresearch.syracuse.edu/research-symposium/"
+        assert "Fall" not in symposia["title"] + symposia["description"]
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.

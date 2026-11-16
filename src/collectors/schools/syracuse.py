@@ -93,15 +93,20 @@ SCHOOL: dict = {
                     keywords=["research funding", "SOURCE Bridge Award",
                               "SOURCE Fellowship", "summer research"],
                 ),
+                # source-opportunites/ and for-students/research-symposium/
+                # have answered 404 since the 2026-10-25 probe. The site's
+                # sitemap says the two pages below last changed on 2026-10-21;
+                # both were read on 2026-11-16.
                 program(
                     "syracuse_source_opportunities",
-                    "SOURCE Research Opportunities Database (Syracuse University)",
-                    "https://undergraduateresearch.syracuse.edu/source-opportunites/",
-                    "The SOURCE's listing of current undergraduate research and "
-                    "creative-engagement opportunities at Syracuse University — "
-                    "open faculty projects, lab positions, and program openings "
-                    "students can browse and apply to across the sciences, "
-                    "engineering, humanities, social sciences, and the arts.",
+                    "Open Undergraduate Research Opportunities (The SOURCE, Syracuse University)",
+                    "https://undergraduateresearch.syracuse.edu/for-students/open-opportunities/",
+                    "The SOURCE is piloting hosting open undergraduate research "
+                    "opportunities on its site, which it hopes will serve as a "
+                    "central place for students seeking research experiences and "
+                    "mentors seeking motivated students to connect. The page "
+                    "links to the list of open opportunities and says it is not "
+                    "an exhaustive list of undergraduate research opportunities.",
                     lab_or_program="The SOURCE",
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
@@ -110,14 +115,15 @@ SCHOOL: dict = {
                 ),
                 program(
                     "syracuse_source_symposia",
-                    "SOURCE Research Symposia: Fall Expo & Spring Showcase (Syracuse University)",
-                    "https://undergraduateresearch.syracuse.edu/for-students/research-symposium/",
-                    "The SOURCE's undergraduate research symposia — the Fall "
-                    "Research Expo, the Spring Research Showcase, and the Summer "
-                    "Symposium — where Syracuse undergraduates present posters and "
-                    "talks on their faculty-mentored research and creative work. A "
-                    "venue for students to share results, get feedback, and connect "
-                    "with mentors and peers across disciplines.",
+                    "SOURCE Research Symposia (Syracuse University)",
+                    "https://undergraduateresearch.syracuse.edu/research-symposium/",
+                    "The SOURCE's research symposia page: celebrations and "
+                    "symposia that showcase undergraduate student presentations "
+                    "of their research, scholarly, and creative work. It lists the "
+                    "SOURCE Spring Showcase, with student research talks, an "
+                    "award ceremony, and a poster session with interactive "
+                    "displays, beside the research days and symposia of Syracuse "
+                    "schools, colleges, and programs.",
                     lab_or_program="The SOURCE",
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
