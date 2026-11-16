@@ -416,6 +416,39 @@ class TestSeedInventory:
         assert ("caltech", "rising_tide") not in specs
         assert "Rising Tide" not in specs[("caltech", "sfp_hub")]["description"]
 
+    def test_bates_hoffman_and_environmental_internship_leave_with_their_pages(self):
+        """campus-seed-health run 41333994421 (2026-11-01) found both pages gone.
+
+        Both answer 404, and a search of the academics site's published
+        pages for either name returns only pages that mention it. Neither is
+        on the Summer Funded Opportunities index. The Summer Funded
+        Opportunity Deadlines page still lists "Hoffman Research Support
+        Grants" with "TBD" and no link, and does not list the internship. The
+        Student Research page describes both and links the Hoffman grant at
+        research-opportunities/summer-grants-summary/, which is a 404 too.
+        With no page of its own to send a student to, each record is removed;
+        the next Bates refresh retires the stored rows bates-3773ff7710f4 and
+        bates-511c38090d90 as no longer listed, and a record configured again
+        under the same key brings its row back.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://www.bates.edu/academics/student-research/summer-grants-summary/"
+            "hoffman-research-support-grant/",
+            "https://www.bates.edu/academics/student-research/summer/bates-environmental-internship/",
+        }
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (set(programs.values()) & dead)
+        assert ("bates", "bates_hoffman_grant") not in programs
+        assert ("bates", "bates_environmental_internship") not in programs
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.
