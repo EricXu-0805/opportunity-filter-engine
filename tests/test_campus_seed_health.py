@@ -288,6 +288,44 @@ class TestSeedInventory:
         assert symposia["url"] == "https://undergraduateresearch.syracuse.edu/research-symposium/"
         assert "Fall" not in symposia["title"] + symposia["description"]
 
+    def test_northwestern_circumnavigator_record_is_the_global_research_grant(self):
+        """campus-seed-health run 42507442114 (2026-11-08) found this seed gone.
+
+        funding/circumnavigator-grant/ answers 404. The office's menu and its
+        funding index list a Global Research Grant at funding/grg/ and no
+        Circumnavigator Grant, while a slide on its home page still links the
+        dead page under the old name. The new page keeps the old grant's
+        shape (one junior a year, ten continuous weeks, five countries, three
+        continents) and its proposal guide is still a file named
+        Circumnavigators-Proposal-Guide, but the award is "$13,000" and the
+        page names no club, meridian rule, blog or paper length. Its
+        "DEADLINE Thursday, November 19, 2026 (11:59 PM CST)" is the date the
+        record already carried. The key stays, so the stored row
+        northwestern-f46efa753da9 moves in place on the next refresh.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://undergradresearch.northwestern.edu/funding/circumnavigator-grant/"
+        page = "https://undergradresearch.northwestern.edu/funding/grg/"
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        specs = {
+            (config["school_slug"], spec["key"]): spec
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+        grant = specs[("northwestern", "nu_circumnavigator_grant")]
+
+        assert dead not in seeds
+        assert dead not in {spec["url"] for spec in specs.values()}
+        assert grant["url"] == page and page in seeds
+        assert grant["title"] == "Northwestern Global Research Grant"
+        assert grant["compensation"] == "$13,000 grant"
+        assert "November 19, 2026" in grant["deadline_note"]
+        stated = grant["description"] + grant["deadline_note"]
+        for gone in ("$10,000", "meridian", "Circumnavigators Club", "blog", "50+ page", "early January"):
+            assert gone not in stated
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.

@@ -364,6 +364,8 @@ class TestEveryConfiguredNoteTheRuleReads:
         "gatech/petit_scholars":
             "2027 cohort applications were due Sept. 15, 2026; dates for the next cohort are not posted yet",
         "jhu/jhu_ustar": "2025 cohort applications were due January 24, 2025; no later dates are posted",
+        "northwestern/nu_circumnavigator_grant": "Deadline Thursday, November 19, 2026 (11:59 PM CST); finalist "
+                                                 "interviews during week one of winter quarter",
         "northwestern/nu_iin_nanotech_reu": "Summer 2026 deadline was Feb 9, 2026; Summer 2027 deadline not posted yet",
         "northwestern/nu_lurie_cancer_summer_internship":
             "Your completed application must be received by midnight on Sunday, February 14, 2027.",
