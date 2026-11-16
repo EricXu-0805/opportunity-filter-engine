@@ -926,7 +926,7 @@ test.describe('M19 cloud save scenarios', () => {
       await phone.locator('#grade').selectOption('Senior');
       await phone.locator('#research_interests').fill(phoneText);
       await expect(phone.locator('#profile-save-status'))
-        .toContainText('Changed on another device — this edit was NOT saved.', { timeout: 15_000 });
+        .toContainText('Changed somewhere else — this edit was not saved yet.', { timeout: 15_000 });
       await expect(phone.getByTestId('conflict-keep-mine')).toBeVisible();
       await expect(phone.getByTestId('conflict-use-cloud')).toBeVisible();
       await expect(phone.locator('#research_interests'), 'the phone keeps what was typed there').toHaveValue(phoneText);
@@ -1230,7 +1230,7 @@ test.describe('M101 leaving Home and coming back in the same page', () => {
 
       const status = page.locator('#profile-save-status');
       await expect(page.getByTestId('conflict-keep-mine'), 'the question is asked').toBeVisible({ timeout: 10_000 });
-      await expect(status).toContainText('Changed on another device — this edit was NOT saved.');
+      await expect(status).toContainText('Changed somewhere else — this edit was not saved yet.');
       await expect(page.locator('#research_interests')).toHaveValue(text);
       await expect.poll(() => receipts.length).toBe(2);
       expect(receipts, 'the name nobody else changed went through').toMatchObject([
@@ -1292,7 +1292,7 @@ test.describe('M102 two tabs of one account', () => {
       await page.bringToFront();
       await page.evaluate(() => window.dispatchEvent(new Event('focus')));
       await expect(page.getByTestId('conflict-keep-mine'), 'asked here too').toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('#profile-save-status')).toContainText('Changed on another device');
+      await expect(page.locator('#profile-save-status')).toContainText('Changed somewhere else');
       await expect(page.locator('#research_interests'), 'what was typed, not the value it drew before').toHaveValue(typed);
       expect(idleCas).toEqual([]);
 
