@@ -2406,6 +2406,139 @@ def test_b55_real_sro_evidence_flows_to_health_and_safe_publish(monkeypatch, tmp
             assert stored["metadata"]["last_verified"] == old_time
 
 
+def _national_run_with_unread_sro_list(monkeypatch, tmp_path, list_page, stored_sro=True):
+    """A deep national run whose SRO list pages all answer as ``list_page``
+    does; the corpus holds one SRO program last verified three days ago,
+    or with ``stored_sro`` false one row of another source."""
+    import socket
+    from datetime import UTC, datetime, timedelta
+
+    from src.collectors import source_health, uiuc_sro
+    from src.collectors.base import RawOpportunity
+
+    old_time = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+    prior = uiuc_sro.raw_to_normalized(RawOpportunity(
+        source="uiuc_sro", source_url="https://researchops.web.illinois.edu/?page=0",
+        url="https://researchops.web.illinois.edu/audit-program", title="Audit program",
+        description_raw="Study sensors"))
+    prior["metadata"]["last_verified"] = old_time
+    if not stored_sro:
+        prior["source"] = "manual"
+    path = _stub_with_processed_file(monkeypatch, tmp_path, [prior])
+    monkeypatch.setattr(socket.socket, "connect", lambda *a, **k: pytest.fail("No external network permitted"))
+    monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "_rate_limit", lambda *a: None)
+    monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "MAX_PAGES", 3)
+    monkeypatch.setattr(uiuc_sro.requests, "get", list_page)
+    monkeypatch.setattr(refresh_all, "fetch_sro_with_evidence", uiuc_sro.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_sro", lambda records: uiuc_sro.merge_into_processed(records, str(path)))
+    ledger = source_health.empty_ledger()
+    source_health.record_attempt(ledger, source="uiuc_sro", school=None, outcome=source_health.SUCCESS_NONZERO,
+                                emitted=1, baseline=1, now=datetime.fromisoformat(old_time))
+    source_health.save_ledger(ledger, tmp_path / "source_health.json")
+    tracking = []
+    monkeypatch.setattr(refresh_all, "_update_professor_tracking",
+                        lambda *a, **k: tracking.append(k["refresh_ok"]))
+    summary = refresh_all.refresh_all(deep=True, national=True)
+    health = source_health.load_ledger(tmp_path / "source_health.json")["sources"]["uiuc_sro"]
+    stored = next(row for row in json.loads(path.read_text()) if row["id"] == prior["id"])
+    return summary, health, prior, stored, old_time, tracking
+
+
+def _sro_list_refused(requested, **kwargs):
+    import requests
+
+    response = requests.Response()
+    response.status_code = 403
+    raise requests.HTTPError("403 Client Error: Forbidden", response=response)
+
+
+def _sro_list_without_table(requested, **kwargs):
+    class Response:
+        url, text = requested, "<main><p>Scheduled maintenance.</p></main>"
+
+        def raise_for_status(self): pass
+    return Response()
+
+
+@pytest.mark.parametrize("list_page", [_sro_list_refused, _sro_list_without_table])
+def test_an_unread_sro_list_degrades_the_national_shard_and_keeps_its_rows(monkeypatch, tmp_path, list_page):
+    """On 2026-11-15 the SRO list read nothing, the source was labelled
+    "error", and Simplify, NSF and every national campus program went
+    unpublished with it."""
+    from src.collectors import source_health
+
+    summary, health, prior, stored, old_time, tracking = _national_run_with_unread_sro_list(
+        monkeypatch, tmp_path, list_page)
+
+    info = summary["sources"]["uiuc_sro"]
+    release = summary["release"]
+    assert info["fetched"] == 0 and info["list_pages_loaded"] == 0 and info["list_complete"] is False
+    assert info["status"] == source_health.SUSPICIOUS_ZERO
+    assert info["suspicious_zero_baseline"] == 1
+    assert info["error"].startswith("Source check incomplete: list_pages_failed, list_incomplete")
+    assert "national" in release["publishable"] and release["status"] == "degraded"
+    assert {"kind": "suspicious_zero", "source": "uiuc_sro",
+            "detail": "0 records, previously 1"} in release["degradations"]
+    # The stored program is as it was: not retired, no date moved.
+    assert stored["metadata"] == prior["metadata"]
+    assert stored["metadata"]["is_active"] is True and stored["metadata"]["last_verified"] == old_time
+    assert "unlisted" not in info
+    # Its last success stays where it was, and tracking stays closed.
+    assert health["status"] == source_health.SUSPICIOUS_ZERO
+    assert health["last_success_at"] == old_time
+    assert health["consecutive_failures"] == 1
+    assert tracking == [False]
+
+
+def test_an_unread_sro_list_still_withholds_national_when_the_corpus_holds_no_sro_rows(monkeypatch, tmp_path):
+    summary, health, *_ = _national_run_with_unread_sro_list(
+        monkeypatch, tmp_path, _sro_list_refused, stored_sro=False)
+
+    info = summary["sources"]["uiuc_sro"]
+    assert info["status"] == "error" and "suspicious_zero_baseline" not in info
+    assert "national" not in summary["release"]["publishable"]
+    assert any(reason.startswith("source uiuc_sro reported error: Source check incomplete")
+               for reason in summary["release"]["by_unit"]["national"]["reasons"])
+    assert health["status"] == "failed"
+
+
+def test_an_unread_sro_list_with_invalid_evidence_still_withholds_national(monkeypatch, tmp_path):
+    summary, *_ = _national_run_with_unread_sro_list(monkeypatch, tmp_path, _sro_list_refused)
+    assert summary["sources"]["uiuc_sro"]["status"] == "suspicious_zero"
+
+    # The same run with page counts that do not add up: three tried, one failed.
+    monkeypatch.setattr(refresh_all, "fetch_sro_with_evidence", lambda **kwargs: ([], {
+        "list_pages_attempted": 3, "list_pages_loaded": 0, "list_pages_failed": 1,
+        "list_complete": False, "list_errors": []}))
+    summary = refresh_all.refresh_all(deep=True, national=True)
+
+    info = summary["sources"]["uiuc_sro"]
+    assert info["status"] == "error" and info["incomplete_reasons"] == ["list_pages_counts_invalid"]
+    assert "national" not in summary["release"]["publishable"]
+
+
+def test_an_empty_national_campus_crawl_with_failed_pages_is_still_an_error(monkeypatch, tmp_path):
+    """The rule above is for the three national list sources. A campus
+    program that publishes in the national shard keeps the label it had,
+    whatever rows the corpus holds for it."""
+    from src.collectors.refresh_contract import national_campus_sources
+
+    key = sorted(national_campus_sources())[0]
+    stored = _seed_faculty(key, "campus-program", days_ago=3)
+    stored["source_type"] = "campus_program"
+    _stub_with_processed_file(monkeypatch, tmp_path, [stored])
+    proof = {"deep": True, "crawl_sources_expected": 1, "crawl_sources_loaded": 0,
+             "live_pages_attempted": 1, "live_pages_loaded": 0, "seed_pages_expected": 1,
+             "seed_pages_loaded": 0, "seed_pages_failed": 1, "crawl_errors": ["seed fetch failed"]}
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([], proof))
+    monkeypatch.setattr(refresh_all, "fetch_ucb_campus_with_evidence", lambda *a, **k: ([], proof))
+
+    summary = refresh_all.refresh_all(deep=True, national=True)
+
+    assert summary["sources"][key]["status"] == "error"
+    assert "national" not in summary["release"]["publishable"]
+
+
 @pytest.mark.parametrize("scenario", ["complete", "control_refused", "list_failed", "normalization_failed",
                                       "evidence_missing", "merge_failed"])
 def test_a_complete_sro_listing_retires_only_unlisted_programs_whose_page_is_gone(monkeypatch, tmp_path, scenario):

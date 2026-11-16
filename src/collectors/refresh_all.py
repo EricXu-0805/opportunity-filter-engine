@@ -67,6 +67,7 @@ from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .refresh_contract import (
     CONFIRMED_EMPTY_SOURCES,
+    NATIONAL_SOURCES,
     UIUC_EMPTY_DEPARTMENT_KIND,
     evaluate_refresh_summary,
     expected_sources,
@@ -1531,7 +1532,7 @@ def refresh_all(
 
     # Persist useful partial harvests without claiming a complete source check.
     # Failed/unsupported condition capture is distinct from a supported empty.
-    for info in summary["sources"].values():
+    for name, info in summary["sources"].items():
         if not isinstance(info, dict) or info.get("status") != "ok":
             continue
         incomplete, invalid = source_health.collection_evidence_issues(info)
@@ -1539,6 +1540,17 @@ def refresh_all(
             info["status"] = "error" if invalid or not info.get("fetched") else "partial_failure"
             info["incomplete_reasons"] = invalid + incomplete
             info["error"] = "Source check incomplete: " + ", ".join(invalid + incomplete)
+            # A national list source that read nothing behind valid evidence
+            # of failed pages is a suspicious zero when the corpus holds rows
+            # for it, not an error: every national source shares one shard,
+            # and on 2026-11-15 an unreadable SRO list withheld all of them.
+            # Its rows are untouched (the merge upserts, and the unlisted pass
+            # needs a complete list), and its last success does not advance.
+            if info["status"] == "error" and not invalid and name in NATIONAL_SOURCES:
+                baseline = len(_stored_active_rows(PROCESSED_FILE, name))
+                if baseline:
+                    info["status"] = source_health.SUSPICIOUS_ZERO
+                    info["suspicious_zero_baseline"] = baseline
 
     # Condition checks have their own freshness and do not count as directory
     # observations, successful source health, or evidence of faculty departure.
