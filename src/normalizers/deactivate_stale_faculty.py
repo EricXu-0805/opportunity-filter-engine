@@ -298,6 +298,11 @@ def _retire(opp: dict, today: date) -> None:
     meta["deactivation_reason"] = "absent_from_directory_rescrape"
 
 
+# Why a published row kept for its id is inactive when the person is live in
+# another row; ``duplicate_of`` beside it names that row.
+DUPLICATE_REASON = "duplicate_of_live_record"
+
+
 # ---------------------------------------------------------------------------
 # Per-unit collection ledger
 #
@@ -559,6 +564,17 @@ def _read_on_pages(records: list[dict], ledger: dict, listing) -> tuple[set, set
             if email:
                 people.add((person, "mail", email))
     return mails, people
+
+
+def _read_elsewhere(opp: dict, identity: tuple[str, str], unit: str,
+                    active: list[dict], ledger: dict, listing) -> list[dict]:
+    """The source's active rows for this person under the other units that
+    read them this run."""
+    readers = {key for key, entry in ledger.items()
+               if key != unit and identity in (_observed_identities(entry) or ())}
+    return [o for o in active
+            if o is not opp and _unit_id_of(o) in readers
+            and identity_key(o, listing) == identity]
 
 
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
@@ -971,7 +987,8 @@ def deactivate_stale_faculty(
 
     Returns counts for newly deactivated/kept/inactive records, the
     preservation buckets, and — for every proposed retirement — the evidence
-    that authorised it.
+    that authorised it. ``archived_moved`` names each list-page row archived
+    under the row another unit read for the same person (``duplicate_of``).
     """
     held_sources = held_sources or frozenset()
     today = today or date.today()
@@ -995,6 +1012,8 @@ def deactivate_stale_faculty(
         "records_preserved_ambiguous_identity": 0,
         "records_preserved_moved_unit": 0,
         "moved": [],
+        "records_archived_moved_unit": 0,
+        "archived_moved": [],
         "records_preserved_still_listed": 0,
         "units_examined": 0,
         "units_complete_by_identity": 0,
@@ -1138,6 +1157,34 @@ def deactivate_stale_faculty(
                         continue
                     if identity in observed_run_wide:
                         # Same person, different unit: a move, not a departure.
+                        # A list-page row past the grace window whose own page
+                        # no longer shows the person, read or not, is archived
+                        # under the one row another unit read for them, and
+                        # keeps its id. With no such single row it stays.
+                        heirs = []
+                        if (identity[0] == "person" and seen is not None
+                                and seen < cutoff and not _shown_on_page(
+                                    opp, ledger, unit, (set(), set()))):
+                            heirs = _read_elsewhere(
+                                opp, identity, unit, active, ledger, listing)
+                        if len(heirs) == 1:
+                            counts["archived_moved"].append({
+                                "entity_id": opp.get("id"),
+                                "duplicate_of": heirs[0].get("id"),
+                                "from_unit": unit,
+                                "to_unit": _unit_id_of(heirs[0]),
+                                "school": opp.get("school"),
+                            })
+                            if held or dry_run:
+                                counts["would_deactivate"].append(opp.get("id"))
+                                continue
+                            opp.setdefault("metadata", {}).update(
+                                is_active=False,
+                                deactivated_at=today.isoformat(),
+                                deactivation_reason=DUPLICATE_REASON,
+                                duplicate_of=heirs[0].get("id"))
+                            counts["records_archived_moved_unit"] += 1
+                            continue
                         counts["records_preserved_moved_unit"] += 1
                         counts["moved"].append({
                             "entity_id": opp.get("id"),

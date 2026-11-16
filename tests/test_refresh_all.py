@@ -26,7 +26,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import src.collectors.refresh_all as refresh_all
 from src.collectors import ucsb_urca_projects
 from src.collectors.refresh_contract import expected_sources
-from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, listed_token
+from src.normalizers.deactivate_stale_faculty import (
+    FACULTY_SOURCES,
+    identity_key,
+    listed_token,
+)
 
 # All Berkeley faculty collectors wired into refresh_all's deep block. Derived
 # from the canonical FACULTY_SOURCES set so this stays in lockstep as new
@@ -628,6 +632,65 @@ def test_the_run_summary_counts_and_names_the_rows_kept_as_moved(
     assert saved == {colleague["id"]: True, departed["id"]: False,
                      still_listed["id"]: True, held["id"]: True,
                      **{r["id"]: True for r in moved}}
+
+
+def test_a_list_page_person_only_another_unit_lists_is_archived_under_its_row(
+    monkeypatch, tmp_path,
+):
+    """A list-page row past the grace window, whose own unit read its page in
+    full without them while another unit read the same person, ends the run
+    inactive with ``duplicate_of`` naming that unit's row, which stays live.
+    The summary counts and names it; no id leaves the corpus (M178)."""
+    pages = {"me": "https://me.testu.edu/people", "ece": "https://ece.testu.edu/people"}
+    listing = {"me.testu.edu/people", "ece.testu.edu/people"}
+
+    def row(rid, unit, name, days_ago, **fields):
+        seeded = _seed_faculty("umich_faculty", rid, days_ago)
+        seeded.update(school="umich", department=unit.upper(), pi_name=name,
+                      url=pages[unit], **fields)
+        return seeded
+
+    def unit(unit_id, rows):
+        coverage = dict.fromkeys(
+            ("classified_nonfaculty_rows", "unparsed_rows", "ambiguous_rows",
+             "duplicate_rows", "identity_match_failures", "parser_errors",
+             "partial_render_rows"), 0)
+        coverage.update(raw_roster_rows=len(rows), parsed_faculty_rows=len(rows))
+        return {"unit_id": unit_id, "unit_url": pages[unit_id],
+                "fetch_status": "ok", "parse_status": "ok", "validation_status": "ok",
+                "roster_source_confirmed": True, "observed_count": len(rows),
+                "observed_entity_ids": [r["id"] for r in rows],
+                "observed_identities": [list(identity_key(r, listing)) for r in rows],
+                "listing_urls": [pages[unit_id].split("//")[1]],
+                # The page was recorded, and shows none of the stored people.
+                "page_people": [], "coverage": coverage}
+
+    colleague = row("faculty-umich-me-0000aaaa", "me", "Robin Example", 0)
+    old = row("faculty-umich-me-0000bbbb", "me", "Kim Sample", 30,
+              contact_email="person4@testu.edu", keywords=["optics"])
+    new = row("faculty-umich-ece-0000cccc", "ece", "Kim Sample", 0,
+              contact_email="person4@testu.edu")
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [colleague, old, new])
+
+    def fetch(unit_ledger):
+        unit_ledger["me"] = unit("me", [colleague])
+        unit_ledger["ece"] = unit("ece", [new])
+        return [dict(colleague), dict(new)]
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    pass_info = summary["sources"]["deactivate_stale_faculty"]
+    assert pass_info["records_archived_moved_unit"] == 1
+    assert pass_info["archived_moved_unit_ids"] == [old["id"]]
+    assert pass_info["records_preserved_moved_unit"] == 0
+    assert pass_info["moved_unit_ids"] == []
+    assert pass_info["newly_deactivated"] == 0
+    saved = {r["id"]: r["metadata"] for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert sorted(saved) == sorted([colleague["id"], old["id"], new["id"]])
+    assert (saved[old["id"]]["is_active"], saved[old["id"]]["deactivation_reason"],
+            saved[old["id"]]["duplicate_of"]) == (False, "duplicate_of_live_record", new["id"])
+    assert saved[new["id"]]["is_active"] is True and "duplicate_of" not in saved[new["id"]]
 
 
 def _umich_row(rid, dept, keywords, email="person7@testu.edu"):

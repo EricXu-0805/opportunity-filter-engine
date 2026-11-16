@@ -418,9 +418,10 @@ TWO_SCHOOL = {"school_slug": "testu", "organization": "Test University", "id_pre
               "departments": [UNIT_A, UNIT_B]}
 
 
-def _unit_tr(name, title="Professor"):
+def _unit_tr(name, title="Professor", email=None):
+    mail = f'<a href="mailto:{email}">{email}</a>' if email else ""
     return (f'<tr><td class="name">{name}</td><td class="title">{title}</td>'
-            '<td class="email"></td></tr>')
+            f'<td class="email">{mail}</td></tr>')
 
 
 def _unit_read(dept, rows, ladder=None):
@@ -457,3 +458,169 @@ def test_a_namesake_on_another_units_page_keeps_no_one_gone():
     assert ledger["aaa"]["retirement_authorized"] is True
     assert [p["entity_id"] for p in out["proposals"]] == ["faculty-testu-aaa-0000aaaa"]
     assert gone["metadata"]["is_active"] is False
+
+
+# A list-page row whose own unit, read in full, no longer shows the person
+# while another unit of the school reads them is archived under that unit's
+# row once the grace window has passed, and keeps its id (M178).
+UNIT_C = _unit("CCC", "https://www.testu.edu/ccc/people")
+MAIL = "person4@testu.edu"
+
+
+def _in_unit_a(name, email=None, last_seen=LONG_AGO):
+    return {"id": "faculty-testu-aaa-0000aaaa", "source": "testu_faculty",
+            "source_type": "faculty_research", "school": "testu",
+            "department": UNIT_A["name"], "pi_name": name,
+            "url": UNIT_A["scrape"]["url"], "contact_email": email,
+            "keywords": ["optics"],
+            "metadata": {"is_active": True, "last_seen_at": last_seen}}
+
+
+def _run_units(reads, stored, *, ladder=None, **options):
+    """Read each ``(unit, rows)`` page, store what was read beside ``stored``,
+    and run the retirement pass. Returns its counts and the corpus."""
+    school = {**TWO_SCHOOL, "departments": [dept for dept, _ in reads]}
+    listing = fg._listing_urls(school)
+    corpus, ledger = [], {}
+    for dept, rows in reads:
+        produced, cov = _unit_read(dept, rows, ladder)
+        corpus += [copy.deepcopy(r) for r in produced]
+        ledger[dept["short"].lower()] = fg._unit_observation(
+            school, dept, produced, STARTED, coverage=cov, listing_urls=listing)
+    corpus += stored
+    finalize_unit_ledger(ledger, corpus, "testu_faculty")
+    assert all(entry["retirement_authorized"] is True for entry in ledger.values())
+    return deactivate_stale_faculty(
+        corpus, {"testu_faculty": ledger}, today=TODAY, **options), corpus
+
+
+def _kept_as_moved(out, *rows):
+    assert out["archived_moved"] == [] and out["records_archived_moved_unit"] == 0
+    assert [m["entity_id"] for m in out["moved"]] == [r["id"] for r in rows]
+    assert out["newly_deactivated"] == 0 and out["would_deactivate"] == []
+    for r in rows:
+        assert r["metadata"] == {"is_active": True, "last_seen_at": r["metadata"]["last_seen_at"]}
+
+
+@pytest.mark.parametrize("email", [None, MAIL], ids=["no address", "address"])
+def test_a_person_only_another_unit_lists_is_archived_under_that_units_row(email):
+    old = _in_unit_a("Kim Sample", email)
+    out, corpus = _run_units(
+        [(UNIT_A, [_unit_tr("Robin Example")]),
+         (UNIT_B, [_unit_tr("Pat Example"), _unit_tr("Kim Sample", email=email)])], [old])
+    new = next(r for r in corpus if r["pi_name"] == "Kim Sample" and r is not old)
+    assert new["id"].startswith("faculty-testu-bbb-") and new["department"] == UNIT_B["name"]
+    assert out["archived_moved"] == [{
+        "entity_id": old["id"], "duplicate_of": new["id"],
+        "from_unit": "aaa", "to_unit": "bbb", "school": "testu"}]
+    assert out["records_archived_moved_unit"] == 1
+    assert out["records_preserved_moved_unit"] == 0 and out["moved"] == []
+    assert out["newly_deactivated"] == 0 and out["would_deactivate"] == []
+    assert old["metadata"] == {
+        "is_active": False, "last_seen_at": LONG_AGO,
+        "deactivated_at": TODAY.isoformat(),
+        "deactivation_reason": fg.DUPLICATE_REASON, "duplicate_of": new["id"]}
+    # The run's collapse then keeps both: the old id for whoever saved it, the
+    # person live under the unit that lists them.
+    kept = fg.collapse_same_person_faculty(
+        corpus, published_ids=frozenset({old["id"]}), today=TODAY)["kept"]
+    assert {r["id"]: (r["metadata"]["is_active"], r["metadata"].get("duplicate_of"))
+            for r in kept if r["pi_name"] == "Kim Sample"} == {
+        old["id"]: (False, new["id"]), new["id"]: (True, None)}
+
+
+def test_a_moved_person_inside_the_grace_window_is_kept_as_moved():
+    recent = (TODAY - timedelta(days=GRACE_DAYS)).isoformat()
+    old = _in_unit_a("Kim Sample", MAIL, last_seen=recent)
+    out, _ = _run_units(
+        [(UNIT_A, [_unit_tr("Robin Example")]),
+         (UNIT_B, [_unit_tr("Kim Sample", email=MAIL)])], [old])
+    _kept_as_moved(out, old)
+
+
+@pytest.mark.parametrize("still_shown", [
+    _unit_tr("Kim Sample", "Professor Emerita"),
+    _unit_tr("Robin Sample", "Professor Emerita", MAIL)],
+    ids=["name", "address beside the surname"])
+def test_a_moved_person_their_own_page_still_shows_is_kept_as_moved(still_shown):
+    # Their own unit's page lists them under a title its gate skips.
+    old = _in_unit_a("Kim Sample", MAIL)
+    out, _ = _run_units(
+        [(UNIT_A, [_unit_tr("Robin Example"), still_shown]),
+         (UNIT_B, [_unit_tr("Kim Sample", email=MAIL)])], [old], ladder={"drop": "emerit"})
+    _kept_as_moved(out, old)
+
+
+def test_a_moved_person_two_other_units_list_is_kept_as_moved():
+    old = _in_unit_a("Kim Sample")
+    out, _ = _run_units(
+        [(UNIT_A, [_unit_tr("Robin Example")]), (UNIT_B, [_unit_tr("Kim Sample")]),
+         (UNIT_C, [_unit_tr("Kim Sample")])], [old])
+    _kept_as_moved(out, old)
+
+
+def test_a_moved_person_is_archived_only_under_a_row_of_a_unit_that_read_them():
+    # The unit that read them left the row to another (read, not emitted). A
+    # third unit holds a row for them and no longer lists them either.
+    old = _in_unit_a("Kim Sample", MAIL)
+    unread = {**_in_unit_a("Kim Sample", MAIL), "id": "faculty-testu-ccc-0000cccc",
+              "department": UNIT_C["name"], "url": UNIT_C["scrape"]["url"]}
+    school = {**TWO_SCHOOL, "departments": [UNIT_A, UNIT_B, UNIT_C]}
+    listing = fg._listing_urls(school)
+    a_rows, a_cov = _unit_read(UNIT_A, [_unit_tr("Robin Example")])
+    b_rows, b_cov = _unit_read(UNIT_B, [_unit_tr("Pat Example"),
+                                        _unit_tr("Kim Sample", email=MAIL)])
+    c_rows, c_cov = _unit_read(UNIT_C, [_unit_tr("Lee Example")])
+    corpus = [copy.deepcopy(r) for r in a_rows + b_rows[:1] + c_rows] + [old, unread]
+    ledger = {"aaa": fg._unit_observation(school, UNIT_A, a_rows, STARTED, coverage=a_cov,
+                                          listing_urls=listing),
+              "bbb": fg._unit_observation(school, UNIT_B, b_rows[:1], STARTED, coverage=b_cov,
+                                          listing_urls=listing, read_not_emitted=b_rows[1:]),
+              "ccc": fg._unit_observation(school, UNIT_C, c_rows, STARTED, coverage=c_cov,
+                                          listing_urls=listing)}
+    finalize_unit_ledger(ledger, corpus, "testu_faculty")
+    out = deactivate_stale_faculty(corpus, {"testu_faculty": ledger}, today=TODAY)
+    assert all(entry["retirement_authorized"] is True for entry in ledger.values())
+    assert identity_key(old, listing) == identity_key(unread, listing)
+    _kept_as_moved(out, old, unread)
+
+
+@pytest.mark.parametrize("options", [{"dry_run": True}, {"held_sources": {"testu_faculty"}}],
+                         ids=["dry run", "held source"])
+def test_a_dry_run_or_a_held_source_reports_the_archive_and_writes_nothing(options):
+    old = _in_unit_a("Kim Sample", MAIL)
+    out, corpus = _run_units(
+        [(UNIT_A, [_unit_tr("Robin Example")]),
+         (UNIT_B, [_unit_tr("Kim Sample", email=MAIL)])], [old], **options)
+    new = next(r for r in corpus if r["pi_name"] == "Kim Sample" and r is not old)
+    assert [(m["entity_id"], m["duplicate_of"]) for m in out["archived_moved"]] == [
+        (old["id"], new["id"])]
+    assert out["would_deactivate"] == [old["id"]]
+    assert out["records_archived_moved_unit"] == 0 and out["moved"] == []
+    assert old["metadata"] == {"is_active": True, "last_seen_at": LONG_AGO}
+
+
+def test_a_moved_person_with_a_profile_page_is_kept_as_moved():
+    # Not a list-page row: the profile link is the identity, and no page check
+    # covers it. Another unit holds and read a row on the same profile page.
+    profile = "https://www.testu.edu/people/kim-sample"
+    old = {**_in_unit_a("Kim Sample"), "url": profile}
+    other = {**_in_unit_a("Kim Sample"), "id": "faculty-testu-bbb-0000bbbb",
+             "department": UNIT_B["name"], "url": profile,
+             "metadata": {"is_active": True, "last_seen_at": TODAY.isoformat()}}
+    school = {**TWO_SCHOOL, "departments": [UNIT_A, UNIT_B]}
+    listing = fg._listing_urls(school)
+    a_rows, a_cov = _unit_read(UNIT_A, [_unit_tr("Robin Example")])
+    b_rows, b_cov = _unit_read(UNIT_B, [_unit_tr("Pat Example")])
+    corpus = [copy.deepcopy(r) for r in a_rows + b_rows] + [old, other]
+    ledger = {"aaa": fg._unit_observation(school, UNIT_A, a_rows, STARTED, coverage=a_cov,
+                                          listing_urls=listing),
+              "bbb": fg._unit_observation(school, UNIT_B, b_rows, STARTED, coverage=b_cov,
+                                          listing_urls=listing)}
+    ledger["bbb"]["observed_identities"].append(list(identity_key(other, listing)))
+    ledger["bbb"]["observed_entity_ids"].append(other["id"])
+    finalize_unit_ledger(ledger, corpus, "testu_faculty")
+    out = deactivate_stale_faculty(corpus, {"testu_faculty": ledger}, today=TODAY)
+    assert identity_key(old, listing)[0] == "url"
+    assert ledger["aaa"]["retirement_authorized"] is True
+    _kept_as_moved(out, old)

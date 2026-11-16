@@ -70,6 +70,7 @@ from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
+    DUPLICATE_REASON,
     UNIT_LEDGER_VERSION,
     _name_words,
     _unit_id_of,
@@ -4181,11 +4182,6 @@ def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
     return best
 
 
-# Why a published row the collapse dropped is inactive; ``duplicate_of`` beside
-# it names the row that was kept.
-DUPLICATE_REASON = "duplicate_of_live_record"
-
-
 def duplicate_archive_stamps(rows: list[dict]) -> dict[str, dict]:
     """The ``deactivated_at`` and ``duplicate_of`` of each row the collapse
     keeps inactive as a duplicate, by id."""
@@ -4476,6 +4472,11 @@ def collapse_same_person_faculty(opps: list[dict],
         (o.get("school"), _norm_faculty_url(o), _norm_person_name(o.get("pi_name"))): o
         for o in kept_active if _norm_faculty_url(o) and _norm_person_name(o.get("pi_name"))
     }
+    # Rows this run minted that the passes above dropped: they are deleted, so
+    # a row archived under one earlier in the run (deactivate_stale_faculty's
+    # ``archived_moved``) follows it to the row that is kept.
+    deleted = {o.get("id"): o for o, _, _ in dropped.values()
+               if o.get("id") not in published_ids}
     for o in opps:
         if id(o) in dropped or _is_active_faculty(o) or o.get("source_type") != "faculty_research":
             continue
@@ -4489,6 +4490,8 @@ def collapse_same_person_faculty(opps: list[dict],
             # not; _carry_sighting refuses another person's row on a shared inbox.
             _carry_sighting(by_url_name or by_email, o, pages)
             drop(by_url_name or by_email, o, school)
+        elif (o.get("metadata") or {}).get("duplicate_of") in deleted:
+            drop(deleted[o["metadata"]["duplicate_of"]], o, school)
 
     remove, removed_by_school, archived_by_school = settle_dropped_rows(
         dropped, published_ids, today, archived)
