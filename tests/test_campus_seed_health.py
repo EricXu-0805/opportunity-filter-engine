@@ -449,6 +449,32 @@ class TestSeedInventory:
         assert ("bates", "bates_hoffman_grant") not in programs
         assert ("bates", "bates_environmental_internship") not in programs
 
+    def test_tamu_summer_resources_record_leaves_with_its_page(self):
+        """campus-seed-health run 43749236597 (2026-11-15) found this page gone.
+
+        ugr.tamu.edu/resources/summer.html, which the 2026-11-08 run still
+        counted ok, answers 404. The office's menu does not list it under
+        Resources, and no page took its place: resources/summer/ and
+        programs/summer/ are 404s, and the Summer Poster Session page is the
+        event, not the guidance. The site's sitemap ("Summer Resources &
+        Guidance") and its General Resources page still link the address, so
+        it may come back. Until it does the record has no page to send a
+        student to; the next Texas A&M refresh retires the stored row
+        tamu-4b42514a1f6f as no longer listed.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://ugr.tamu.edu/resources/summer.html"
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in set(programs.values())
+        assert ("tamu", "ugr_summer_reu_gateway") not in programs
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.
