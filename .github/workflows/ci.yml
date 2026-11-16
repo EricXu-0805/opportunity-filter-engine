@@ -158,7 +158,11 @@ jobs:
     # slow on-demand-compiling dev server, so it completes well inside this.
     # 45 since the MVP integration: 61 spec files instead of 22.
     timeout-minutes: 45
-    needs: [backend, frontend]
+    # No `needs`: this job installs its own backend dependencies and builds
+    # the frontend itself, so it starts with the other three. While it waited
+    # for Backend and Frontend, Backend's 34 minutes came before its 27
+    # (medians of 58 green runs, 2026-11-01 to 11-14) and the four jobs took
+    # 61 minutes together. deploy-backend below still needs all four.
     defaults:
       run:
         working-directory: frontend

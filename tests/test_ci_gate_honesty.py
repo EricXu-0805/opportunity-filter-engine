@@ -115,6 +115,19 @@ def test_the_required_jobs_still_exist_under_these_ids():
     )
 
 
+def test_no_required_job_waits_for_another():
+    """E2E had `needs: [backend, frontend]` and used nothing either produced:
+    it installs its own backend dependencies and builds the frontend itself.
+    The wait only put Backend's 34 minutes in front of E2E's 27.
+    """
+    jobs = _jobs("ci.yml")
+    for job_id in REQUIRED_CI_JOBS:
+        needs = jobs[job_id].get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        waited = sorted(set(needs) & set(REQUIRED_CI_JOBS))
+        assert not waited, f"{job_id} waits for {waited}"
+
+
 def test_no_required_job_contains_a_step_whose_failure_is_ignored():
     """The core rule: a required check must not carry a decorative step.
 
