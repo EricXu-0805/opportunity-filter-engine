@@ -201,6 +201,25 @@ def is_trainee_title(title: object) -> bool:
     return bool(_POSTDOC_ROLE_RE.search(own)) and not _TEACHING_ROLE_RE.search(own)
 
 
+# A card a directory keeps for someone who has died says "In Memoriam" or
+# "Deceased", in the name ("Jane Roe (In Memoriam)", "In Memoriam: Jane Roe")
+# or in the title ("In Memoriam, Professor", "Professor of History, Deceased").
+# "Deceased" counts only as a clause of its own, between punctuation or the
+# ends of the text: before a noun ("Deceased Donor Program") it is not the
+# person. A chair named in someone's memory ("Jane Roe Memorial Professor") is
+# a living person's title.
+_DECEASED_RE = re.compile(
+    r"\bin\s+memoriam\b|(?:^|[^\w\s])\s*deceased\s*(?:$|[^\w\s])", re.IGNORECASE)
+
+DECEASED_REASON = "listed_as_deceased"
+
+
+def is_deceased_listing(name: object, title: object) -> bool:
+    """True when a faculty card's name or title says the person has died."""
+    return any(isinstance(text, str) and bool(_DECEASED_RE.search(text))
+               for text in (name, title))
+
+
 # ---------------------------------------------------------------------------
 # 2. Stated vs inferred (field-level inference stamps)
 # ---------------------------------------------------------------------------

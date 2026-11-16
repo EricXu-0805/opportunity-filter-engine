@@ -33,7 +33,12 @@ import secrets
 import unicodedata
 from datetime import date, datetime, timedelta
 
-from src.evidence import TRAINEE_REASON, is_trainee_title
+from src.evidence import (
+    DECEASED_REASON,
+    TRAINEE_REASON,
+    is_deceased_listing,
+    is_trainee_title,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1274,6 +1279,28 @@ def deactivate_trainee_faculty(opps: list[dict], selected=None,
     retirement in its unit. ``selected`` limits the pass to this run's schools;
     rows of a school in ``held`` are counted, not changed.
     """
+    return _retire_stated(
+        opps, lambda opp, meta: is_trainee_title(meta.get("faculty_title")),
+        TRAINEE_REASON, selected, held, today)
+
+
+def deactivate_deceased_faculty(opps: list[dict], selected=None,
+                                held: frozenset[str] = frozenset(),
+                                today: date | None = None) -> dict:
+    """Retire, in place, active faculty rows whose name or title says the
+    person has died (``evidence.is_deceased_listing``).
+
+    Runs where ``deactivate_trainee_faculty`` does, for its reason: the
+    collectors drop such a card, and the row stored for it must leave the
+    baseline before a unit ledger counts it. The row keeps its id.
+    """
+    return _retire_stated(
+        opps, lambda opp, meta: is_deceased_listing(opp.get("pi_name"), meta.get("faculty_title")),
+        DECEASED_REASON, selected, held, today)
+
+
+def _retire_stated(opps: list[dict], states, reason: str, selected,
+                   held: frozenset[str], today: date | None) -> dict:
     stamp = (today or date.today()).isoformat()
     retired: dict[str, int] = {}
     kept: dict[str, int] = {}
@@ -1284,7 +1311,7 @@ def deactivate_trainee_faculty(opps: list[dict], selected=None,
         if selected is not None and not selected(school):
             continue
         meta = opp.get("metadata") or {}
-        if meta.get("is_active") is False or not is_trainee_title(meta.get("faculty_title")):
+        if meta.get("is_active") is False or not states(opp, meta):
             continue
         if school in held:
             kept[school] = kept.get(school, 0) + 1
@@ -1292,6 +1319,6 @@ def deactivate_trainee_faculty(opps: list[dict], selected=None,
         meta = opp.setdefault("metadata", {})
         meta["is_active"] = False
         meta["deactivated_at"] = stamp
-        meta["deactivation_reason"] = TRAINEE_REASON
+        meta["deactivation_reason"] = reason
         retired[school] = retired.get(school, 0) + 1
     return {"deactivated": sum(retired.values()), "by_school": retired, "held": kept}

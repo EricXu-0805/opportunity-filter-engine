@@ -20,6 +20,7 @@ from pathlib import Path
 from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import (
     FACULTY_SOURCES,
+    deactivate_deceased_faculty,
     deactivate_stale_faculty,
     deactivate_trainee_faculty,
     finalize_unit_ledger,
@@ -1655,8 +1656,11 @@ def refresh_all(
         # in CI on the next push.
         deact_counts = deactivate_past(all_opps)
 
-        # Graduate students and postdocs are retired on every run, before any
-        # unit ledger counts active rows (deactivate_trainee_faculty).
+        # People a directory lists as having died, then graduate students and
+        # postdocs, are retired on every run, before any unit ledger counts
+        # active rows (deactivate_deceased_faculty, deactivate_trainee_faculty).
+        deceased = deactivate_deceased_faculty(
+            all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
         trainees = deactivate_trainee_faculty(
             all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
 
@@ -1809,6 +1813,13 @@ def refresh_all(
         # retired record keeps the reason it was retired for.
         unsupported = deactivate_unsupported_schools(all_opps)
         summary["sources"]["unsupported_schools"] = {**unsupported, "status": "ok"}
+        summary["sources"]["deceased_listings"] = {**deceased, "status": "ok"}
+        if deceased["deactivated"] or deceased["held"]:
+            logger.info(
+                "deceased_listings: retired %d row(s) whose name or title says the "
+                "person has died %s; left %s to their maintainer",
+                deceased["deactivated"], deceased["by_school"], deceased["held"],
+            )
         summary["sources"]["trainee_titles"] = {**trainees, "status": "ok"}
         if trainees["deactivated"] or trainees["held"]:
             logger.info(

@@ -275,6 +275,9 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         # rows by their stated title on every run (deactivate_trainee_faculty).
         # It writes no records of its own.
         "trainee_titles",
+        # The same kind of pass for rows whose name or title says the person
+        # has died (deactivate_deceased_faculty).
+        "deceased_listings",
         # Withdraws publication trust from records a superseded attribution
         # gate approved. It fetches nothing and emits no record — it edits the
         # trust stamp on records other collectors produced — so it has no

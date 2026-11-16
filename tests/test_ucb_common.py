@@ -67,6 +67,16 @@ def test_normalize_faculty_drops_a_postdoc():
         {"name": "Jane Doe", "url": "https://x/jd", "title": "NSF Postdoctoral Fellow"}, _CONFIG) is None
 
 
+def test_normalize_faculty_drops_a_card_that_says_the_person_has_died():
+    for person in ({"name": "Jane Doe", "url": "https://x/jd", "title": "In Memoriam, Professor"},
+                   {"name": "Jane Doe (In Memoriam)", "url": "https://x/jd", "title": "Professor"},
+                   {"name": "Jane Doe", "url": "https://x/jd", "title": "Professor, Deceased"}):
+        assert normalize_faculty(person, _CONFIG) is None, person
+    assert normalize_faculty(
+        {"name": "Jane Doe", "url": "https://x/jd", "title": "Jane Roe Memorial Professor"},
+        _CONFIG) is not None
+
+
 def test_normalize_faculty_keeps_real_person():
     opp = normalize_faculty({"name": "David Ackerly", "url": "https://x/a"}, _CONFIG)
     assert opp is not None
