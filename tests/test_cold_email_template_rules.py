@@ -35,6 +35,9 @@ LISTING = {"id": "template-rules-listing", "source": "uiuc_sro", "source_type": 
            "description_raw": "Research on speech recognition.",
            "eligibility": {"skills_required": []}, "application": {}, "metadata": {"is_active": True}}
 
+# The same professor's row at another campus; a national row names none.
+ELSEWHERE = {**FACULTY, "id": "template-rules-elsewhere", "school": "purdue"}
+
 RELATED = "I trained a speech recognition model on recordings of 40 speakers."
 # One word in common with the professor's research: under the two-word rule it reached no e-mail.
 PROJECT = "I measured the signal-to-noise ratio of a hearing-aid prototype before and after filtering."
@@ -54,7 +57,7 @@ def texts(opp, experience=(), profile=PROFILE):
 def client(monkeypatch):
     app = FastAPI()
     app.include_router(ce.router, prefix="/api")
-    rows = {row["id"]: row for row in (FACULTY, LISTING)}
+    rows = {row["id"]: row for row in (FACULTY, LISTING, ELSEWHERE)}
     monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: deepcopy(rows))
     monkeypatch.setattr(ce, "is_configured", lambda: False)
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: pytest.fail("unexpected provider"))
@@ -219,3 +222,47 @@ def test_a_resume_line_whose_source_changed_is_not_quoted():
     selection = select_experience(ExperienceEvidence.model_validate(evidence), _common_parts(PROFILE, FACULTY))
     assert [item["excerpt"] for item in selection.templates] == [PROJECT]
     assert selection.excluded == [{"id": evidence["entries"][0]["id"], "revision": 1, "reason": "source_quote_mismatch"}]
+
+
+def test_a_student_writing_inside_their_own_school_does_not_name_it_and_keeps_the_major():
+    balanced, skills, concise = texts(FACULTY)
+    assert "My name is Audit Student, and I am a junior studying Electrical Engineering. I am interested in" in balanced
+    assert "My name is Audit Student, and I am a junior Electrical Engineering major. I am interested in" in skills
+    assert "I am a junior Electrical Engineering student, interested in your research in" in concise
+    for text in [balanced, skills, concise, *texts(LISTING, (RELATED, UNRELATED))]:
+        assert "UIUC" not in text and "Electrical Engineering" in text
+
+
+@pytest.mark.parametrize("school", ["purdue", None, ""], ids=["another-school", "national-row", "no-school-stated"])
+def test_a_student_writing_anywhere_else_still_names_their_school(school):
+    balanced, skills, concise = texts({**FACULTY, "school": school})
+    assert "I am a junior studying Electrical Engineering at UIUC." in balanced
+    assert "I am a junior Electrical Engineering major at UIUC." in skills
+    assert "I am a junior Electrical Engineering student at UIUC," in concise
+
+
+def test_the_campus_is_matched_on_the_profiles_own_slug_never_guessed():
+    # A caller that sends no home school (no public route: the request model
+    # always carries one) keeps the school it gave.
+    for home in (None, "", "ucb"):
+        profile = {**PROFILE, "home_school": home}
+        assert all(" at UIUC" in text for text in texts(FACULTY, profile=profile)), home
+    # The slug decides, however the display name is written.
+    for text in texts(FACULTY, profile={**PROFILE, "home_school": " UIUC ", "school": "University of Illinois"}):
+        assert "University of Illinois" not in text
+
+
+def test_without_a_major_the_same_school_sentence_stays_grammatical():
+    balanced, skills, concise = texts(FACULTY, profile={**PROFILE, "major": ""})
+    assert "My name is Audit Student, and I am a junior student. I am interested in" in balanced
+    assert "and I am a junior student. I am interested in" in skills
+    assert "I am a junior student, interested in" in concise
+    assert all("  " not in text and "UIUC" not in text for text in (balanced, skills, concise))
+
+
+@pytest.mark.parametrize("endpoint", ["", "variants"])
+def test_template_routes_leave_out_the_school_only_for_a_recipient_at_the_students_own(client, endpoint):
+    _out, own = served(client, FACULTY, (RELATED, PROJECT), endpoint)
+    assert own and all("UIUC" not in body and "Electrical Engineering" in body for body in own)
+    _out, other = served(client, ELSEWHERE, (RELATED, PROJECT), endpoint)
+    assert other and all("Electrical Engineering" in body and " at UIUC" in body for body in other)

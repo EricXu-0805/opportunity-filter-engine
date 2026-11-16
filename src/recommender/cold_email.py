@@ -874,6 +874,12 @@ def _common_parts(
     year = profile.get("year", "undergraduate")
     major = profile.get("major", "")
     school = profile.get("school", "UIUC")
+    # Owner, 2026-11-06 (scored sample E2): a student writing inside their own
+    # university need not say which one; the major is what matters there.
+    # home_school is the profile's campus slug and a row's school its host
+    # campus (None on a national row), so only a stated match counts.
+    home_school = str(profile.get("home_school") or "").strip().casefold()
+    recipient_at_own_school = bool(home_school) and home_school == str(opportunity.get("school") or "").strip().casefold()
     skills = _extract_skill_names(profile.get("hard_skills", []))
     skill_levels = _extract_skill_levels(profile.get("hard_skills", []))
     research_interests = _clean_research_interests(
@@ -950,6 +956,7 @@ def _common_parts(
 
     return dict(
         name=name, year=year, major=major, school=school,
+        recipient_at_own_school=recipient_at_own_school,
         # False is also the form/API default, not proof of domestic status.
         international_student=True if profile.get("international_student") is True else None,
         skills=skills, skill_levels=skill_levels,
@@ -1163,7 +1170,7 @@ def _template_ask(p: dict) -> str:
 
 def _at_school(p: dict) -> str:
     school = (p.get("school") or "").strip()
-    return f" at {school}" if school else ""
+    return f" at {school}" if school and not p.get("recipient_at_own_school") else ""
 
 
 def _student_self(p: dict, connector: str) -> str:
