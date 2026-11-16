@@ -1029,6 +1029,103 @@ def test_nonzero_uiuc_component_collapse_cannot_retire_old_faculty(
     assert all(o["metadata"]["is_active"] is True for o in saved)
 
 
+def _uiuc_run_with_empty_departments(monkeypatch, tmp_path, stored_rows, empty):
+    """A deep UIUC run whose static walk reads "Department of Wells" and none
+    of ``empty``; ``stored_rows`` says how many rows, last seen 30 days ago,
+    the corpus holds for each other department."""
+    read = [_seed_faculty("uiuc_faculty", f"read-{index}", days_ago=0) for index in range(5)]
+    for row in read:
+        row["department"] = "Department of Wells"
+    stored = []
+    for department, count in stored_rows.items():
+        for index in range(count):
+            row = _seed_faculty("uiuc_faculty", f"{department} {index}", days_ago=30)
+            row["department"] = department
+            stored.append(row)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, read + stored)
+    _stub_successful_uiuc_deep_components(monkeypatch)
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda enrich: read)
+    monkeypatch.setattr(refresh_all, "faculty_missing_departments", lambda _records: list(empty))
+    # UIUC's other sources each read a row, so the departments are the run's only gap.
+    for name in ("fetch_rss", "fetch_urap", "fetch_ursa", "fetch_drp", "fetch_siebel", "fetch_other"):
+        monkeypatch.setattr(refresh_all, name, lambda *a, **k: [{"id": "listed"}])
+    tracking = []
+    monkeypatch.setattr(refresh_all, "_update_professor_tracking",
+                        lambda *a, **k: tracking.append(k["refresh_ok"]))
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
+    saved = {row["id"]: row for row in json.loads(processed.read_text(encoding="utf-8"))}
+    return summary, [(row, saved[row["id"]]) for row in stored], tracking
+
+
+@pytest.mark.parametrize("stored_rows", [
+    {"Department of Tides": 3},
+    {"Department of Tides": 3, "School of Kites": 1},
+])
+def test_one_or_two_empty_uiuc_departments_with_stored_rows_publish_uiuc(
+    monkeypatch, tmp_path, stored_rows,
+):
+    summary, rows, tracking = _uiuc_run_with_empty_departments(
+        monkeypatch, tmp_path, stored_rows, empty=sorted(stored_rows))
+
+    faculty = summary["sources"]["uiuc_faculty"]
+    release = summary["release"]
+    assert faculty["status"] == "ok" and "error" not in faculty
+    assert faculty["empty_departments"] == sorted(stored_rows)
+    assert faculty["empty_department_baselines"] == stored_rows
+    assert release["publishable"] == ["uiuc"] and release["status"] == "degraded"
+    assert sorted(item["detail"] for item in release["degradations"]
+                  if item["kind"] == "empty_department") == [
+        f"{department}: 0 records, previously {count}"
+        for department, count in sorted(stored_rows.items())]
+    # The departments' rows keep the dates they had, and none is retired.
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
+    for before, after in rows:
+        assert after["metadata"] == before["metadata"]
+    # Professor tracking reads directories as complete, so it stays closed.
+    assert tracking == [False]
+
+
+@pytest.mark.parametrize("stored_rows, empty", [
+    ({"Department of Tides": 3, "School of Kites": 1, "Department of Maps": 2},
+     ["Department of Tides", "School of Kites", "Department of Maps"]),
+    ({"Department of Tides": 3}, ["Department of Tides", "School of Kites"]),
+    ({}, ["Department of Tides"]),
+])
+def test_three_empty_uiuc_departments_or_one_without_stored_rows_withhold_uiuc(
+    monkeypatch, tmp_path, stored_rows, empty,
+):
+    summary, rows, _ = _uiuc_run_with_empty_departments(monkeypatch, tmp_path, stored_rows, empty)
+
+    faculty = summary["sources"]["uiuc_faculty"]
+    assert faculty["status"] == "error"
+    assert faculty["error"] == f"empty departments: {sorted(empty)}"
+    assert summary["release"]["publishable"] == []
+    # Twice, as before: once for the error status, once for the departments.
+    assert summary["release"]["by_unit"]["uiuc"]["reasons"] == [
+        f"source uiuc_faculty reported error: empty departments: {sorted(empty)}",
+        f"uiuc_faculty reported empty departments: {sorted(empty)}",
+    ]
+    for before, after in rows:
+        assert after["metadata"] == before["metadata"]
+
+
+def test_an_inactive_stored_row_does_not_count_for_an_empty_uiuc_department(monkeypatch, tmp_path):
+    retired = _seed_faculty("uiuc_faculty", "retired", days_ago=30)
+    retired["department"] = "Department of Tides"
+    retired["metadata"]["is_active"] = False
+    _stub_with_processed_file(monkeypatch, tmp_path, [retired])
+    _stub_successful_uiuc_deep_components(monkeypatch)
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda enrich: [{"id": "read"}])
+    monkeypatch.setattr(refresh_all, "faculty_missing_departments",
+                        lambda _records: ["Department of Tides"])
+
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
+
+    assert summary["sources"]["uiuc_faculty"]["empty_department_baselines"] == {"Department of Tides": 0}
+    assert summary["sources"]["uiuc_faculty"]["status"] == "error"
+    assert summary["release"]["publishable"] == []
+
+
 @pytest.mark.parametrize("outcome", ["empty_departments", "failed_component", "deferred"])
 def test_the_uiuc_hold_is_reported_kept_whatever_uiuc_faculty_reported(monkeypatch, tmp_path, outcome):
     """uiuc_faculty is handed to the retirement pass only when it reports "ok",

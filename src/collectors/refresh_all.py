@@ -67,9 +67,11 @@ from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .refresh_contract import (
     CONFIRMED_EMPTY_SOURCES,
+    UIUC_EMPTY_DEPARTMENT_KIND,
     evaluate_refresh_summary,
     expected_sources,
     shard_of_source,
+    uiuc_empty_departments_degrade,
 )
 from .schools import SCHOOL_CONFIGS
 from .schools.amherst_faculty import fetch_and_normalize as fetch_amherst_faculty
@@ -449,6 +451,18 @@ def _run_start_corpus(
         rows = [o for o in json.load(f) if isinstance(o, dict) and o.get("id")]
     return (frozenset(o["id"] for o in rows), faculty_graph.duplicate_archive_stamps(rows),
             faculty_graph.captured_profile_pages(rows))
+
+
+def _stored_active_rows(path: Path, source: str) -> list[dict]:
+    """The active rows the corpus file at ``path`` holds for ``source``; none
+    when it is absent. Read only when a source or one of its departments came
+    back empty, to tell one with rows to keep from one that never had any."""
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [o for o in json.load(f)
+                if isinstance(o, dict) and o.get("source") == source
+                and (o.get("metadata") or {}).get("is_active") is not False]
 
 
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
@@ -864,6 +878,15 @@ def refresh_all(
                     fetch_html_faculty,
                 )
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
+            # The active rows the corpus holds for each department that read
+            # empty, counted before the merge: it can archive a stored row as
+            # another department's duplicate.
+            empty_depts = faculty_missing_departments(faculty_opps)
+            empty_baselines: dict[str, int] = {}
+            if empty_depts:
+                stored_depts = [row.get("department") for row
+                                in _stored_active_rows(PROCESSED_FILE, "uiuc_faculty")]
+                empty_baselines = {dept: stored_depts.count(dept) for dept in empty_depts}
             added, updated = merge_faculty(all_faculty, published_ids=published_ids,
                                            archived=archive_stamps)
             # Surface the silent-scrape-failure class (a declared department whose
@@ -871,7 +894,6 @@ def refresh_all(
             # bare warning is invisible in the run log, so list empties in the
             # summary and ERROR-log each so the refresh's audit file flags it.
             # (Checked against the static DEPARTMENTS only; the JS depts aren't in it.)
-            empty_depts = faculty_missing_departments(faculty_opps)
             for dept in empty_depts:
                 logger.error(
                     "UIUC faculty department scraped ZERO records — likely URL rot / "
@@ -882,7 +904,12 @@ def refresh_all(
                 for name, info in components.items()
                 if info.get("status") != "ok"
             ]
-            if empty_depts:
+            # A few empty departments the corpus already holds rows for leave
+            # the source "ok": their rows stay as they were and the release
+            # verdict reports each as degraded (uiuc_empty_departments_degrade).
+            if empty_depts and not uiuc_empty_departments_degrade(
+                empty_depts, empty_baselines
+            ):
                 component_errors.append(
                     f"empty departments: {sorted(empty_depts)}"
                 )
@@ -895,6 +922,7 @@ def refresh_all(
                 "updated": updated,
                 "enriched": deep,
                 "empty_departments": empty_depts,
+                "empty_department_baselines": empty_baselines,
                 "components": components,
                 # The four producer families share one source value, so the
                 # corpus cannot prove which component owned an old row, and a
@@ -2055,7 +2083,8 @@ def refresh_all(
         suspicious = [
             item["source"]
             for item in preliminary_release.get("degradations") or ()
-            if item.get("kind") in (source_health.SUSPICIOUS_ZERO, "partial_failure")
+            if item.get("kind") in (source_health.SUSPICIOUS_ZERO, "partial_failure",
+                                    UIUC_EMPTY_DEPARTMENT_KIND)
         ]
         if suspicious:
             logger.warning(
