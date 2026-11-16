@@ -763,11 +763,12 @@ class TestAlertStep:
     """The alert step itself, as the runner runs it after a failure or a cancel."""
 
     def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, withheld="",
-             extra_env=None, **scenario):
+             unread="", extra_env=None, **scenario):
         if guard_copy:
             shutil.copy(_SCRIPT, tmp_path / "refresh_rotation.py")
         step = _workflow_step("Alert operator")
         env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard, "WITHHELD": withheld,
+               "UNREAD": unread,
                "RESEND_API_KEY": "not-a-key", "OPERATOR_EMAIL": "operator@example.com", "SHARD": "uw"}
         assert set(step["env"]) <= {*env, "GH_TOKEN", "REPO"}
         result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env, **(extra_env or {}))
@@ -875,6 +876,40 @@ class TestAlertStep:
         assert "FAILED" in mail["subject"]
         assert mail["text"].startswith("The scheduled data refresh failed.")
         assert mail["text"].endswith("\n" + self._WITHHELD)
+
+    # What the publish step writes when a shard published without a department
+    # or a national source that read nothing (see tests/test_publishable_shards.py).
+    # Each withheld its shard until 2026-11-16 and was mailed as a withheld school.
+    _UNREAD = ("Published without a fresh read (1), each keeping the rows it had:\n"
+               "- uw: uw_faculty: Department of Tides: 0 records, previously 38")
+
+    def test_runs_when_a_published_shard_went_without_a_source(self):
+        step = _workflow_step("Alert operator")
+        assert "steps.publish.outputs.unread != ''" in str(step["if"])
+        assert step["env"]["UNREAD"] == "${{ steps.publish.outputs.unread }}"
+
+    def test_a_run_that_published_without_reading_a_source_mails_which(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), unread=self._UNREAD)
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh published without reading a source (shard: uw)"
+        assert mail["text"].endswith("Run: https://github.com/o/r/actions/runs/200\n\n" + self._UNREAD)
+        assert "withheld" not in mail["text"] and "failed" not in mail["text"]
+
+    def test_a_run_that_withheld_a_school_adds_what_the_rest_went_without(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success", guard="proceed",
+                             runs=_runs((200, SCHEDULED)), withheld=self._WITHHELD, unread=self._UNREAD)
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh withheld schools (shard: uw)"
+        assert mail["text"].endswith("\n\n" + self._WITHHELD + "\n\n" + self._UNREAD)
+
+    def test_a_failed_run_adds_what_its_verdict_left_unread(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), unread=self._UNREAD)
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh FAILED (shard: uw)"
+        assert mail["text"].startswith("The scheduled data refresh failed.")
+        assert mail["text"].endswith("\n\n" + self._UNREAD)
 
     def test_a_failure_without_withheld_schools_keeps_its_old_text(self, fake_gh, tmp_path):
         _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",

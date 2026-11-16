@@ -18,6 +18,9 @@ from pathlib import Path
 
 import yaml
 
+from src.collectors.refresh_contract import evaluate_refresh_summary, expected_sources
+from tests.test_refresh_contract import _graph_ok, _ok, _summary
+
 _REPO = Path(__file__).resolve().parents[1]
 _SCRIPT = _REPO / "scripts" / "publishable_shards.py"
 _spec = importlib.util.spec_from_file_location("publishable_shards", _SCRIPT)
@@ -131,6 +134,81 @@ class TestWithheld:
         assert _mod.notes(AUTHORIZED, _status(AUTHORIZED)) == ""
 
 
+def _uiuc_status(**faculty) -> dict:
+    """A deep uiuc+uw run's status as refresh_contract writes its verdict:
+    uw_faculty read zero rows, and uiuc_faculty is as ``faculty`` says."""
+    sources = {key: _ok(1) for key in expected_sources({"uiuc"}, national=False, deep=True)}
+    sources["uiuc_faculty"].update(stale_deactivation_authorized=False, **faculty)
+    sources["deactivate_stale_faculty"] = {
+        "status": "ok", "skipped_partial_scrape": [], "deactivation_not_authorized": ["uiuc_faculty"]}
+    sources["campus_graph:uw"] = _graph_ok()
+    sources["uw_faculty"] = {"status": "suspicious_zero", "fetched": 0, "suspicious_zero_baseline": 90}
+    summary = _summary({"uiuc", "uw"}, sources)
+    return {**summary, "release": evaluate_refresh_summary(
+        summary, schools={"uiuc", "uw"}, national=False, deep=True)}
+
+
+_ONE_DEPARTMENT = dict(empty_departments=["Department of Tides"],
+                       empty_department_baselines={"Department of Tides": 38})
+
+
+def _national_status(**sro) -> dict:
+    """A deep national run's status with uiuc_sro as ``sro`` says."""
+    sources = {key: _graph_ok() for key in expected_sources(None, national=True, deep=True)}
+    sources.update(nsf_reu=_ok(128), simplify_internships=_ok(5326), uiuc_sro=sro)
+    summary = _summary(None, sources, national=True)
+    return {**summary, "release": evaluate_refresh_summary(
+        summary, schools=None, national=True, deep=True)}
+
+
+# uiuc_sro as refresh_all labels a list whose every page failed while the corpus holds its rows.
+_UNREAD_LIST = dict(status="suspicious_zero", fetched=0, suspicious_zero_baseline=285,
+                    list_pages_attempted=15, list_pages_loaded=0, list_pages_failed=15,
+                    list_complete=False, list_errors=[{"reason": "fetch_failed"}])
+
+
+class TestUnread:
+    """What a shard published without is named to the PR and the alert.
+
+    An empty UIUC department and an unread national list each withheld their
+    shard until 2026-11-16, and a withheld shard is mailed. Their shards
+    publish now, which on its own would have ended the mail.
+    """
+
+    def test_an_empty_department_of_a_published_school_is_named(self):
+        status = _uiuc_status(**_ONE_DEPARTMENT)
+        assert status["release"]["publishable"] == ["uiuc", "uw"]
+        # uw_faculty's zero rows are not: a school's zero-row source never sent mail.
+        assert _mod.unread(["uiuc", "uw"], status) == [
+            ("uiuc", "uiuc_faculty: Department of Tides: 0 records, previously 38")]
+        assert _mod.unread_notes(["uiuc", "uw"], status) == (
+            "Published without a fresh read (1), each keeping the rows it had:\n"
+            "- uiuc: uiuc_faculty: Department of Tides: 0 records, previously 38")
+        assert _mod.notes(["uiuc", "uw"], status) == ""
+
+    def test_an_unread_source_of_the_published_national_shard_is_named(self):
+        status = _national_status(**_UNREAD_LIST)
+        assert status["release"]["publishable"] == ["national"]
+        assert _mod.unread(["national"], status) == [("national", "uiuc_sro: 0 records, previously 285")]
+
+    def test_nothing_is_named_when_every_source_was_read_or_the_verdict_is_absent(self):
+        assert _mod.unread(["uiuc", "uw"], _uiuc_status()) == []
+        assert _mod.unread(["national"], _national_status(**_ok(288))) == []
+        for status in (None, {}, {"release": {}}, _status(AUTHORIZED), PARTIAL):
+            assert _mod.unread(AUTHORIZED, status) == []
+            assert _mod.unread_notes(AUTHORIZED, status) == ""
+
+    def test_a_withheld_shard_is_reported_by_its_reasons_alone(self):
+        status = _uiuc_status(**_ONE_DEPARTMENT, status="error", error="js: component failed")
+        assert status["release"]["publishable"] == ["uw"]
+        assert _mod.unread(["uiuc", "uw"], status) == []
+        assert _mod.withheld(["uiuc", "uw"], status) == [
+            ("uiuc", ["source uiuc_faculty reported error: js: component failed"])]
+
+    def test_only_authorized_shards_are_reported(self):
+        assert _mod.unread(["uw"], _uiuc_status(**_ONE_DEPARTMENT)) == []
+
+
 class TestCli:
     def _run(self, authorized, status, tmp_path, *extra):
         path = tmp_path / "collector_status.json"
@@ -158,6 +236,13 @@ class TestCli:
         r = self._run("uw,wisc", everything, tmp_path, "--label", "--shard", "")
         assert (r.returncode, r.stdout) == (0, "shard: full\n")
         assert self._run("uw,wisc", everything, tmp_path, "--label").returncode != 0
+
+    def test_prints_what_published_shards_went_without(self, tmp_path):
+        r = self._run("uiuc,uw", _uiuc_status(**_ONE_DEPARTMENT), tmp_path, "--unread")
+        assert (r.returncode, r.stdout) == (0, _mod.unread_notes(
+            ["uiuc", "uw"], _uiuc_status(**_ONE_DEPARTMENT)) + "\n"), r.stderr
+        r = self._run("uiuc,uw", _uiuc_status(), tmp_path, "--unread")
+        assert (r.returncode, r.stdout) == (0, "")
 
     def test_prints_the_narrowed_list(self, tmp_path):
         r = self._run("ucsb,umich,caltech", _status(["umich", "caltech"]), tmp_path)
@@ -232,7 +317,7 @@ def _outputs(text: str) -> dict:
 class TestThePrNamesWhatItPublishes:
     """The publish step's own lines, run under bash against a run's verdict."""
 
-    def _run(self, tmp_path, status, shard="ucsb,umich,caltech"):
+    def _run(self, tmp_path, status, shard="ucsb,umich,caltech", authorized="ucsb,umich,caltech"):
         (tmp_path / "scripts").mkdir()
         shutil.copy(_SCRIPT, tmp_path / "scripts" / "publishable_shards.py")
         (tmp_path / "data" / "processed").mkdir(parents=True)
@@ -243,7 +328,7 @@ class TestThePrNamesWhatItPublishes:
             ["bash", "-c", "set -euo pipefail\n" + _naming_snippet()
              + 'printf %s "$TARGETS" > targets; printf %s "$MSG" > title; printf %s "$BODY" > body\n'],
             cwd=tmp_path, capture_output=True, text=True,
-            env={**os.environ, "AUTHORIZED": "ucsb,umich,caltech", "SHARD": shard, "MODE": "deep",
+            env={**os.environ, "AUTHORIZED": authorized, "SHARD": shard, "MODE": "deep",
                  "COUNTS": "10 total, 5 emails, 1 inactive, deep mode", "GITHUB_OUTPUT": str(output)},
         )
         assert result.returncode == 0, result.stdout + result.stderr
@@ -278,6 +363,28 @@ class TestThePrNamesWhatItPublishes:
         assert read["body"] == ("Automated deep data refresh (shard: ucsb,umich,caltech). Merges "
                                 "automatically once Backend + Frontend checks pass.")
         assert output == ""
+
+    def test_a_full_release_that_went_without_a_department_reports_it(self, tmp_path):
+        status = _uiuc_status(**_ONE_DEPARTMENT)
+        read, output = self._run(tmp_path, status, shard="uiuc,uw", authorized="uiuc,uw")
+        unread = _mod.unread_notes(["uiuc", "uw"], status)
+        assert read["targets"] == "uiuc,uw"
+        assert read["title"].endswith("deep mode, shard: uiuc,uw)")
+        assert read["body"] == ("Automated deep data refresh (shard: uiuc,uw). Merges "
+                                "automatically once Backend + Frontend checks pass.\n\n" + unread)
+        # The alert step reads this output; nothing is withheld, so that one is unset.
+        assert _outputs(output) == {"unread": unread}
+
+    def test_a_partial_release_reports_the_withheld_and_what_the_rest_went_without(self, tmp_path):
+        status = _uiuc_status(**_ONE_DEPARTMENT)
+        status["sources"]["uw_faculty"] = {"status": "error", "error": "HTTP 500"}
+        status["release"] = evaluate_refresh_summary(
+            status, schools={"uiuc", "uw"}, national=False, deep=True)
+        read, output = self._run(tmp_path, status, shard="uiuc,uw", authorized="uiuc,uw")
+        notes, unread = _mod.notes(["uiuc", "uw"], status), _mod.unread_notes(["uiuc", "uw"], status)
+        assert read["targets"] == "uiuc"
+        assert read["body"].endswith("checks pass.\n\n" + notes + "\n\n" + unread)
+        assert _outputs(output) == {"withheld": notes, "unread": unread}
 
     def test_the_commit_and_the_pr_use_what_the_step_built(self):
         step = _publish_step()

@@ -453,6 +453,15 @@ jobs:
               END="WITHHELD_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
               { echo "withheld<<$END"; echo "$NOTES"; echo "$END"; } >> "$GITHUB_OUTPUT"
             fi
+            # A school department or a national source that read nothing used
+            # to withhold its shard and so reach NOTES. Its shard publishes
+            # now, and this is what still tells the PR and the alert step.
+            UNREAD=$(python3 scripts/publishable_shards.py --authorized "$AUTHORIZED" --unread)
+            if [ -n "$UNREAD" ]; then
+              BODY="$BODY"$'\n\n'"$UNREAD"
+              END="UNREAD_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+              { echo "unread<<$END"; echo "$UNREAD"; echo "$END"; } >> "$GITHUB_OUTPUT"
+            fi
             python3 scripts/shard_corpus.py split --only-shards "$TARGETS" --retained-file "$RUNNER_TEMP/retained-shards"
 
             # ...and the cost of that guarantee, paid here. Deadlines pass on
@@ -581,8 +590,10 @@ jobs:
       # the job rather than failing it, so the 5-hour timeouts on 08-01, 08-03
       # and 08-07 alerted nobody either. A school the release verdict withheld
       # is a failure too, though the run succeeds, and used to send nothing.
+      # So is a department or national source a published shard went without:
+      # it withheld the shard until 2026-11-16 and was mailed as that.
       - name: Alert operator on failure
-        if: failure() || cancelled() || steps.publish.outputs.withheld != ''
+        if: failure() || cancelled() || steps.publish.outputs.withheld != '' || steps.publish.outputs.unread != ''
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
@@ -594,6 +605,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           GUARD: ${{ steps.guard.outputs.outcome }}
           WITHHELD: ${{ steps.publish.outputs.withheld }}
+          UNREAD: ${{ steps.publish.outputs.unread }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
             echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
@@ -619,12 +631,19 @@ jobs:
           NL=$'\n'
           SUBJECT="JoinALab: data refresh FAILED (shard: ${SHARD:-full})"
           TEXT="The scheduled data refresh failed.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}The corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived)."
-          if [ "$JOB_STATUS" = success ]; then
-            # Only withheld schools bring a run that succeeded here.
+          if [ "$JOB_STATUS" = success ] && [ -n "$WITHHELD" ]; then
+            # Withheld schools, or else what a published shard went without,
+            # bring a run that succeeded here.
             SUBJECT="JoinALab: data refresh withheld schools (shard: ${SHARD:-full})"
             TEXT="The data refresh finished, but its release verdict withheld some of its schools, listed below. Each keeps the data last committed for it until a later refresh publishes it.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}$WITHHELD"
+          elif [ "$JOB_STATUS" = success ]; then
+            SUBJECT="JoinALab: data refresh published without reading a source (shard: ${SHARD:-full})"
+            TEXT="The data refresh finished and published its shard, but it read nothing for the sources or departments listed below. Each keeps the rows it had, with the dates they carried, until a later refresh reads it.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL"
           elif [ -n "$WITHHELD" ]; then
             TEXT="$TEXT${NL}${NL}Its release verdict had also withheld schools:${NL}$WITHHELD"
+          fi
+          if [ -n "$UNREAD" ]; then
+            TEXT="$TEXT${NL}${NL}$UNREAD"
           fi
           # The verdict's reasons are free text, so the payload is encoded, not
           # spliced. If python3 cannot encode it, a fixed short form still goes.
