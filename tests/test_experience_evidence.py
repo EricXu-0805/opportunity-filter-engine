@@ -128,7 +128,9 @@ def test_rank_full_collection_before_cap_and_reach_relevant_long_entry_tail():
     assert len(result.eligible) == 13
     assert all(item["excerpt"] == texts[int(item["id"].split('-')[1])] for item in result.selected)
     assert sum(len(item["excerpt"]) for item in result.selected) <= 4000
-    assert result.template is None  # Never extract a favorable sentence from a longer entry.
+    # Never extract a favorable sentence from a longer entry. The short
+    # entries are the student's too, and a sentence confirmed twice is quoted once.
+    assert [item["excerpt"] for item in result.templates] == ["Organized campus community events."]
     assert "experience_prompt_budget_omission" in result.usage()["notices"]
     assert "experience_template_budget_omission" in result.quoted_usage("")["notices"]
 
@@ -351,7 +353,7 @@ def template_selection(printed):
 
 
 def template_pick(printed):
-    return template_selection(printed).template
+    return [item["excerpt"] for item in template_selection(printed).templates]
 
 
 def test_the_template_quotes_the_bullet_under_a_role_line_not_the_role_line():
@@ -359,7 +361,7 @@ def test_the_template_quotes_the_bullet_under_a_role_line_not_the_role_line():
     # email's work paragraph. A title, a lab and dates say nothing the
     # student did; the bullet under them does. Both share two words with
     # this target.
-    assert template_pick(ROLE_LINE + "\n" + RADIOGRAPH_BULLET)["excerpt"] == RADIOGRAPH_BULLET
+    assert template_pick(ROLE_LINE + "\n" + RADIOGRAPH_BULLET) == [RADIOGRAPH_BULLET]
 
 
 @pytest.mark.parametrize("line", [
@@ -380,7 +382,7 @@ def test_the_template_quotes_the_bullet_under_a_role_line_not_the_role_line():
 def test_a_role_or_heading_line_is_never_the_template_example(line):
     selection = template_selection(line)
     assert resume_bullet_relevance(_common_parts(PROFILE, IMAGING), line) >= 2
-    assert selection.template is None
+    assert selection.templates == []
     # It stays a confirmed fact the AI brief reads.
     assert [item["excerpt"] for item in selection.selected] == [line]
 
@@ -396,7 +398,7 @@ def test_a_role_or_heading_line_is_never_the_template_example(line):
     "在 Health Imaging Lab 训练了胸片分类模型",
 ])
 def test_a_line_that_says_what_was_done_is_still_quoted(line):
-    assert template_pick(line)["excerpt"] == line
+    assert template_pick(line) == [line]
 
 
 @pytest.mark.parametrize("line, role", [
@@ -460,8 +462,8 @@ def test_ai_fallback_receipt_describes_final_template_only(client, monkeypatch, 
     out = response_body(client.post('/api/cold-email', json=payload), '')
     assert out["fallback_reason"] == reason
     assert out["method"] == "template"
-    assert len(out["experience_usage"]["selected"]) == 1
-    assert out["experience_usage"]["selected"][0]["id"] == "experience-12"
+    # The entry closest to the target, then the first of the rest.
+    assert [item["id"] for item in out["experience_usage"]["selected"]] == ["experience-12", "experience-0"]
 
 
 @pytest.mark.parametrize("endpoint", ["", "stream", "variants", "refine"])

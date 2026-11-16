@@ -2048,21 +2048,27 @@ class TestTheStudentsOwnWorkReachesTheEmail:
     def test_a_single_shared_word_is_not_a_topic(self):
         """"The campus learning center" shares `learn` with "machine learning".
 
-        Stem equality alone let that one collision carry a tutoring line into a
-        machine-learning professor's inbox — 18 of production's top 100 with a
-        resume holding nothing relevant. Two shared words takes it to 1.
+        Stem equality alone let that one collision decide what a
+        machine-learning professor read — 18 of production's top 100 with a
+        resume holding nothing relevant. Two shared words takes it to 1. The
+        line is the student's own work and is quoted whatever it shares (owner,
+        2026-11-06: every template e-mail said too little), but one shared word
+        is still not work in the professor's area: a bullet with two leads it,
+        and alone it does not earn the ask about openings.
         """
         opp = {
+            "source_type": "faculty_research",
             "opportunity_type": "research", "pi_name": "Jane Doe",
             "department": "Computer Science",
             "keywords": ["machine learning"],
             "metadata": {"research_areas_raw": "Machine learning theory"},
         }
-        email = generate_cold_email(
-            self._profile(), opp,
-            resume_bullets=["Tutored calculus at the campus learning center"],
-        )
-        assert "Tutored calculus" not in email
+        tutoring = "Tutored calculus at the campus learning center"
+        theory = "Proved a bound in learning theory for a reading course"
+        email = generate_cold_email(self._profile(), opp, resume_bullets=[tutoring])
+        assert tutoring in email and "research openings" not in email
+        email = generate_cold_email(self._profile(), opp, resume_bullets=[tutoring, theory])
+        assert email.index(theory) < email.index(tutoring) and "research openings" in email
 
     def test_word_forms_connect_across_the_two_sides(self):
         """A resume says what someone DID; a research page says what a field IS.
@@ -2090,11 +2096,11 @@ class TestTheStudentsOwnWorkReachesTheEmail:
         assert "image segmentation pipeline" in email
 
     def test_the_bullet_is_chosen_for_overlap_with_the_target(self):
-        """Not the first one. A cold email has one paragraph to earn a reply,
-        and calculus tutoring does not earn it from a segmentation lab."""
+        """Not the first one. The bullet closest to a segmentation lab leads,
+        one more follows in the student's own order, and a third stays out."""
         email = generate_cold_email(self._profile(), self._OPP,
                                     resume_bullets=self._BULLETS)
-        assert "Tutored introductory calculus" not in email
+        assert email.index("image segmentation pipeline") < email.index("Tutored introductory calculus")
         assert "rename files" not in email
 
     def test_nothing_is_invented_when_there_are_no_bullets(self):

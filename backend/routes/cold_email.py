@@ -2463,7 +2463,7 @@ def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict
         parts["experience_materials"] = selection.selected
         parts["experience_materials_all"] = facts
     parts["experience_excerpts"] = [item["excerpt"] for item in selection.selected]
-    parts["experience_template_excerpt"] = selection.template["excerpt"] if selection.template else ""
+    parts["experience_template_excerpts"] = [item["excerpt"] for item in selection.templates]
     return parts, selection
 
 
