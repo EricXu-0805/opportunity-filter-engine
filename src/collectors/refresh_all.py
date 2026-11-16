@@ -1787,7 +1787,7 @@ def refresh_all(
                 )
             else:
                 faculty_fetched[name] = info.get("fetched", 0)
-        deactivation_not_authorized: list[str] = []
+        held_sources = {"uiuc_faculty"}
         if "uiuc_faculty" in faculty_fetched:
             # The hold stands: uiuc_faculty is reported as not authorized, and
             # refresh_contract still blocks a release that says otherwise. It
@@ -1798,9 +1798,15 @@ def refresh_all(
                 summary["sources"]["uiuc_faculty"].get("stale_unit_ledger") or {}
             )
             faculty_fetched["uiuc_faculty"] = ledger
-            deactivation_not_authorized.append("uiuc_faculty")
+        # Reported for every held source this run was to collect, whatever its
+        # status: the pass writes nothing for a held source and is never given
+        # one that did not report "ok". Reporting it only for "ok" made the
+        # verdict say the hold was lost whenever a UIUC department failed.
+        deactivation_not_authorized = sorted(
+            held_sources & set(expected_sources(schools, national=national, deep=deep))
+        )
         stale_faculty = deactivate_stale_faculty(
-            all_opps, faculty_fetched, held_sources={"uiuc_faculty"},
+            all_opps, faculty_fetched, held_sources=held_sources,
         )
         # Schools the product no longer offers are held inactive on EVERY run,
         # not deactivated once: a merge is an upsert that writes is_active back

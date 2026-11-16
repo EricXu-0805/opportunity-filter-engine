@@ -1029,6 +1029,45 @@ def test_nonzero_uiuc_component_collapse_cannot_retire_old_faculty(
     assert all(o["metadata"]["is_active"] is True for o in saved)
 
 
+@pytest.mark.parametrize("outcome", ["empty_departments", "failed_component", "deferred"])
+def test_the_uiuc_hold_is_reported_kept_whatever_uiuc_faculty_reported(monkeypatch, tmp_path, outcome):
+    """uiuc_faculty is handed to the retirement pass only when it reports "ok",
+    and then as a held source, so no run retires its rows. The summary named
+    the hold only for "ok", and the verdict read every failed UIUC department
+    as "deactivate_stale_faculty did not preserve the UIUC safety hold"."""
+    stored = _seed_faculty("uiuc_faculty", "stored", days_ago=60)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [stored])
+    _stub_successful_uiuc_deep_components(monkeypatch)
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda enrich: [{"id": "read"}])
+    budget = None
+    if outcome == "empty_departments":
+        monkeypatch.setattr(refresh_all, "faculty_missing_departments",
+                            lambda _records: ["Department of Tides"])
+    elif outcome == "failed_component":
+        monkeypatch.setattr(refresh_all, "fetch_js_faculty", lambda: [])
+    else:
+        budget = 0
+
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"}, time_budget_minutes=budget)
+
+    assert summary["sources"]["uiuc_faculty"]["status"] == (
+        "deferred_deadline" if outcome == "deferred" else "error")
+    assert summary["sources"]["deactivate_stale_faculty"]["deactivation_not_authorized"] == ["uiuc_faculty"]
+    # UIUC is still withheld each time, for the reason that applies.
+    assert summary["release"]["publishable"] == []
+    assert not any("safety hold" in reason for reason in summary["release"]["reasons"])
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert [row["metadata"]["is_active"] for row in saved] == [True]
+
+
+def test_a_run_that_does_not_collect_uiuc_reports_no_hold(monkeypatch, tmp_path):
+    _stub_with_processed_file(monkeypatch, tmp_path, [_seed_faculty("uw_faculty", "uw-existing", days_ago=1)])
+
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"})
+
+    assert summary["sources"]["deactivate_stale_faculty"]["deactivation_not_authorized"] == []
+
+
 # --- Per-school shard scoping -------------------------------------------------
 #
 # The daily rotation runs refresh_all(schools={...}) / refresh_all(national=True).
