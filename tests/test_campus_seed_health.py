@@ -362,6 +362,33 @@ class TestSeedInventory:
         assert programs[("duke", "tri_path")] == "https://undergraduateresearch.duke.edu/TRI-Path"
         assert programs[("duke", "tsumr_trinity_research")] == "https://undergraduateresearch.duke.edu/T-SUMR"
 
+    def test_duke_huang_fellows_leaves_with_its_page(self):
+        """campus-seed-health run 40211548227 (2026-10-25) found this seed gone.
+
+        scienceandsociety.duke.edu/huang-fellows-program/ answers 404. The
+        site's sitemap (377 addresses) has no Huang or fellows page, and its
+        Undergraduate Education page lists two certificates only. Duke's
+        Experiential Education listing for the fellowship says "The Huang
+        Fellows program is not currently recruiting new cohorts" and links a
+        Science & Society address that is not there either. The stored row
+        duke-38a4f583d43c has been inactive since its page read as closed;
+        with the record gone the next Duke refresh marks it no longer listed.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://scienceandsociety.duke.edu/huang-fellows-program/"
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in seeds
+        assert dead not in set(programs.values())
+        assert ("duke", "huang_fellows") not in programs
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.

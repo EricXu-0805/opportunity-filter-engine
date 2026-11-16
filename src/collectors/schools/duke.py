@@ -491,7 +491,6 @@ SCHOOL: dict = {
                 "https://fhi.duke.edu/education/story/",
                 "https://iid.duke.edu/iid/climate/",
                 "https://codeplus.duke.edu/",
-                "https://scienceandsociety.duke.edu/huang-fellows-program/",
                 "https://undergraduateresearch.duke.edu/opportunity/duke-national-academy-engineering-grand-challenge-scholar-program",
                 "https://pratt.duke.edu/academics/undergrad/research/pratt-fellows/",
                 "https://dcri.org/education/dukes-star-program",
@@ -803,28 +802,6 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     deadline_note="Applications typically open winter/spring for summer cohort",
                     keywords=["software development", "technology", "summer program", "10-week", "product design"],
-                ),
-                program(
-                    "huang_fellows",
-                    "Huang Fellows Program \u2014 Duke Science & Society",
-                    "https://scienceandsociety.duke.edu/huang-fellows-program/",
-                    "The Huang Fellows Program is a selective cohort experience for first-year "
-                    "Duke students that combines a paid summer research placement in a science "
-                    "or engineering lab with seminars on the ethical and societal dimensions of "
-                    "science. Open to rising sophomores (applicants in their first year) across "
-                    "STEM interests. Fellows receive a summer research stipend and continue "
-                    "with programming into the following year.",
-                    organization="Duke University",
-                    department="Duke Science & Society",
-                    lab_or_program="Huang Fellows",
-                    opportunity_type="fellowship",
-                    paid="stipend",
-                    compensation="Summer research stipend",
-                    eligibility_majors=["biology", "engineering", "chemistry", "STEM", "all"],
-                    preferred_year=["freshman", "sophomore"],
-                    international_friendly="yes",
-                    deadline_note="Applications open to first-year students, typically due in spring",
-                    keywords=["science and society", "ethics", "lab research", "first-year", "cohort"],
                 ),
                 program(
                     "grand_challenge_scholars",
