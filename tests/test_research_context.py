@@ -60,6 +60,29 @@ def test_thirty_day_boundary_future_checked_time_and_successful_empty():
     assert context(s)['snapshot']['works'] == []
 
 
+def _dated(*years):
+    s = snapshot()
+    s['works'] = [{**s['works'][0], 'work_id': f'https://openalex.org/W{n}', 'year': year, 'publication_date': None}
+                  for n, year in enumerate(years, 1)]
+    return s
+
+
+def test_a_snapshot_whose_newest_paper_is_over_ten_years_old_is_not_served():
+    # M152, on NOW's calendar year (2026). Eleven years old: no papers at all.
+    unavailable = {'version': 1, 'status': 'unavailable', 'snapshot': None}
+    assert context(_dated(2015, 1999)) == unavailable
+    # Ten is still shown, and a list is shown whole on its newest paper's date.
+    assert context(_dated(2016))['status'] == 'available'
+    assert [w['year'] for w in context(_dated(2017, 1999))['snapshot']['works']] == [2017, 1999]
+    # The boundary is the calendar year, and an old list is not kept as 'stale'.
+    assert context(_dated(2016), now=datetime(2026, 12, 31, 23, 59, 59, tzinfo=UTC))['status'] == 'stale'
+    assert context(_dated(2016), now=datetime(2027, 1, 1, tzinfo=UTC)) == unavailable
+    # Another maintainer's school keeps its list (src/school_scope.py).
+    held, s = record(), _dated(2015)
+    held['school'], s['institution_id'] = 'unc', 'https://openalex.org/I114027177'
+    assert context(s, held)['status'] == 'available'
+
+
 @pytest.mark.parametrize('field,value', [
     ('pi_name', 'Other Lee'), ('school', 'uw'), ('school', 'unknown'),
     ('source_url', 'https://example.edu/other'),
