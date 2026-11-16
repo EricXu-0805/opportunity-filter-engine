@@ -9,13 +9,15 @@ long as anyone on the page was read, nobody on it could be retired. Such a row
 is now the person on the page: their name together with their address. It is
 retired only when the full read shows neither their address nor their name
 (unless a row read this run is that person): a title gate or a card selector
-that skips a person the page still shows keeps them.
+that skips a person the page still shows keeps them. The address counts only
+in a card that also shows their surname (M178).
 """
 from __future__ import annotations
 
 import copy
 from datetime import date, timedelta
 
+import pytest
 from bs4 import BeautifulSoup
 
 from src.collectors import faculty_graph as fg
@@ -230,6 +232,85 @@ def test_a_person_on_a_card_the_selector_does_not_match_is_kept():
     assert out["proposals"] == []
     assert by_mail["metadata"]["is_active"] is True
     assert by_name["metadata"]["is_active"] is True
+
+
+@pytest.mark.parametrize("address", [
+    '<a href="mailto:person9@testu.edu">Email</a>', "<p>person9@testu.edu</p>"],
+    ids=["mailto", "text"])
+def test_an_address_inside_another_persons_card_keeps_no_one(address):
+    # The page still shows the stored address, on a card the selector does not
+    # match that names someone else; a namesake's card carries another (M178).
+    extra = (f'<div class="card"><h3>Robin Example</h3><p>Lecturer</p>{address}</div>'
+             '<div class="card"><h3>Mary Gone</h3>'
+             '<a href="mailto:person7@testu.edu">Email</a></div>')
+    gone = _stored("faculty-testu-anth-0000aaaa", "Henry Gone", email="person9@testu.edu")
+    out, entry = _retire([gone], extra=extra)
+    assert entry["retirement_authorized"] is True
+    assert [p["entity_id"] for p in out["proposals"]] == ["faculty-testu-anth-0000aaaa"]
+    assert out["records_preserved_still_listed"] == 0
+    assert gone["metadata"]["is_active"] is False
+
+
+def test_the_first_address_on_the_page_is_read_in_its_own_card_too():
+    # The other person's row comes first, under a title the unit skips.
+    rows = [_tr("Robin Example", "Dean Emeritus", "person9@testu.edu"), *ROWS,
+            _tr("Mary Gone", "Dean Emerita", "person7@testu.edu")]
+    gone = _stored("faculty-testu-anth-0000aaaa", "Henry Gone", email="person9@testu.edu")
+    out, entry = _retire([gone], rows=rows, ladder={"drop": "emerit"})
+    assert entry["retirement_authorized"] is True
+    assert [p["entity_id"] for p in out["proposals"]] == ["faculty-testu-anth-0000aaaa"]
+
+
+def test_an_address_in_a_card_with_the_surname_keeps_the_person():
+    # The card writes the stored surname under another first name; a second
+    # card carries another address and the stored first name.
+    extra = ('<div class="card"><h3>Robin Gone</h3><p>person9@testu.edu</p></div>'
+             '<div class="card"><h3>Henry Example</h3>'
+             '<a href="mailto:person6@testu.edu">Email</a></div>')
+    kept = _stored("faculty-testu-anth-0000aaaa", "Henry Gone", email="person9@testu.edu")
+    out, entry = _retire([kept], extra=extra)
+    assert entry["retirement_authorized"] is True
+    assert out["proposals"] == []
+    assert out["records_preserved_still_listed"] == 1
+    assert kept["metadata"]["is_active"] is True
+
+
+def test_a_surname_only_inside_the_address_is_not_the_card_showing_it():
+    extra = '<div class="card"><h3>Robin Example</h3><p>gone@testu.edu</p></div>'
+    gone = _stored("faculty-testu-anth-0000aaaa", "Henry Gone", email="gone@testu.edu")
+    out, _ = _retire([gone], extra=extra)
+    assert [p["entity_id"] for p in out["proposals"]] == ["faculty-testu-anth-0000aaaa"]
+
+
+def test_a_listed_row_is_the_card_for_its_own_address():
+    # A feed row has no markup: its name is what its address stands beside.
+    def read(listed):
+        soup = BeautifulSoup(_page(ROWS), "html.parser")
+        fg._ACTIVE_COVERAGE = fg._new_coverage()
+        try:
+            specs = fg._parse_cards(soup, DEPT["scrape"]["selectors"], LISTING)
+            for email, name in listed:
+                fg._cover("raw_roster_rows")
+                fg._cover("classified_nonfaculty_rows")
+                fg._cover_listed(email, None, name)
+            coverage = dict(fg._ACTIVE_COVERAGE)
+        finally:
+            fg._ACTIVE_COVERAGE = None
+        return [r for s in specs if (r := fg._normalize(SCHOOL, DEPT, s))], coverage
+
+    produced, coverage = read([("person9@testu.edu", "Example, Robin"),
+                               ("person6@testu.edu", "Sample, Kimberly")])
+    other = _stored("faculty-testu-anth-0000aaaa", "Henry Gone", email="person9@testu.edu")
+    same = _stored("faculty-testu-anth-0000ac02", "Kim Sample", email="person6@testu.edu")
+    corpus = [copy.deepcopy(r) for r in produced] + [other, same]
+    ledger = {"anth": fg._unit_observation(SCHOOL, DEPT, produced, STARTED, coverage=coverage,
+                                           listing_urls=fg._listing_urls(SCHOOL))}
+    finalize_unit_ledger(ledger, corpus, "testu_faculty")
+    out = deactivate_stale_faculty(corpus, {"testu_faculty": ledger}, today=TODAY)
+    assert ledger["anth"]["retirement_authorized"] is True
+    assert [p["entity_id"] for p in out["proposals"]] == ["faculty-testu-anth-0000aaaa"]
+    assert same["metadata"]["is_active"] is True
+    assert "person6@testu.edu" not in str(ledger) and "sample" not in str(ledger)
 
 
 def test_a_name_over_a_line_break_or_with_a_nickname_is_still_shown():

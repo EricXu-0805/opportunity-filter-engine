@@ -71,6 +71,7 @@ from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
     UNIT_LEDGER_VERSION,
+    _name_words,
     _unit_id_of,
     canonical_listing_urls,
     canonical_profile_url,
@@ -1159,7 +1160,9 @@ def _cover_listed(email: object, link: object, name: str) -> None:
         name))
     shown = _ACTIVE_COVERAGE.setdefault("_page_people", set())
     if isinstance(email, str) and "@" in email:
-        shown.add(("mail", email.strip().lower()))
+        # The row is the card that carries the address.
+        shown.update(("card", f"{email.strip().lower()} {word}")
+                     for word in _name_words(name))
     if (person := listed_name_key(name)):
         shown.add(("name", person))
 
@@ -1167,21 +1170,49 @@ def _cover_listed(email: object, link: object, name: str) -> None:
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 
 
+def _address_cards(carried: list) -> set[tuple[str, str]]:
+    """``("card", "address word")`` for each word of the card that carries
+    each address: the largest element around the address that holds no other
+    address, read without its addresses. ``carried`` pairs each address with
+    the element it was found in."""
+    # The addresses under each element; two are enough to know it holds another.
+    under: dict[int, set[str]] = {}
+    for address, el in carried:
+        for node in (el, *el.parents):
+            held = under.setdefault(id(node), set())
+            if address in held or len(held) > 1:
+                break
+            held.add(address)
+    words: dict[int, set[str]] = {}
+    shown: set[tuple[str, str]] = set()
+    for address, el in carried:
+        card = el
+        while card.parent is not None and under[id(card.parent)] == {address}:
+            card = card.parent
+        if id(card) not in words:
+            words[id(card)] = set(_name_words(
+                _EMAIL_RE.sub(" ", card.get_text(" ", strip=True))))
+        shown.update(("card", f"{address} {word}") for word in words[id(card)])
+    return shown
+
+
 def _page_people(soup) -> set[tuple[str, str]]:
     """Every address and name a fetched page shows, whatever its cards and
-    title gates made of them: ``("mail", address)`` from its mailto links and
-    text, ``("name", key)`` (``page_name_keys``) from each text and each short
-    element's text (a name split over two spans). A name the page has commented
-    out (``<!-- Jane Doe -->``) is not shown."""
+    title gates made of them: ``("card", "address word")`` for each address in
+    its mailto links and text, beside each word of the card that carries it
+    (``_address_cards``), ``("name", key)`` (``page_name_keys``) from each text
+    and each short element's text (a name split over two spans). A name the
+    page has commented out (``<!-- Jane Doe -->``) is not shown."""
     from bs4.element import PreformattedString  # noqa: PLC0415
 
     shown: set[tuple[str, str]] = set()
+    carried: list = []
     for a in soup.select("a[href]"):
         href = a["href"].strip()
         if href[:7].lower() == "mailto:":
             address = unquote(href[7:]).split("?")[0].strip().lower()
             if "@" in address:
-                shown.add(("mail", address))
+                carried.append((address, a))
     short: dict[int, str | None] = {}
     for text in soup.find_all(string=True):
         if isinstance(text, PreformattedString):
@@ -1190,7 +1221,7 @@ def _page_people(soup) -> set[tuple[str, str]]:
             continue
         if not text.strip():
             continue
-        shown.update(("mail", m.lower()) for m in _EMAIL_RE.findall(text))
+        carried.extend((m.lower(), text.parent) for m in _EMAIL_RE.findall(text))
         shown.update(("name", k) for k in page_name_keys(text))
         # Up to three enclosing elements, while their text stays name-sized.
         for parent in list(text.parents)[:3]:
@@ -1202,6 +1233,7 @@ def _page_people(soup) -> set[tuple[str, str]]:
                     shown.update(("name", k) for k in page_name_keys(short[key]))
             if short[key] is None:
                 break
+    shown.update(_address_cards(carried))
     return shown
 
 

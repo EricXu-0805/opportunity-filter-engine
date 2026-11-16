@@ -415,7 +415,8 @@ _LISTED_KEY = secrets.token_bytes(16)
 
 def listed_token(kind: str, value: str) -> str:
     """A run-keyed digest of one listed row's ``("email" | "url", value)``, or
-    of one address or name a list page shows (``"mail"`` | ``"name"``)."""
+    of what a list page shows: a name (``"name"``), or an address beside one
+    word of the card that carries it (``"card"``)."""
     return hmac.new(_LISTED_KEY, f"{kind}:{value}".encode(),
                     hashlib.sha256).hexdigest()[:16]
 
@@ -501,15 +502,17 @@ def _listed_tokens_of(record: dict) -> set[str]:
 def _shown_on_page(record: dict, ledger: dict, unit: str,
                    read: tuple[set, set]) -> bool:
     """Whether the page a list-page row came from still shows the person
-    (``page_people`` in ``_unit_observation``): their address, or their name,
-    that no row read this run accounts for (``read``). A title gate that skips
-    a listed "Director of Graduate Studies", or a card the selector does not
-    match, leaves the person on the page and so keeps them. A row read this run
-    accounts for the address it carries, and for the name only when it is the
-    same person (the same first name, or the same address): one read under a
-    new id is live in that row, and the stored copy is folded away as a
-    tombstone. A namesake (Lisa beside Lee Sample) accounts for nothing. A page
-    the run did not record is not evidence of absence."""
+    (``page_people`` in ``_unit_observation``): their address in a card that
+    also shows their surname, or their name, that no row read this run accounts
+    for (``read``). An address inside another person's card shows that person,
+    not this one. A title gate that skips a listed "Director of Graduate
+    Studies", or a card the selector does not match, leaves the person on the
+    page and so keeps them. A row read this run accounts for the address it
+    carries, and for the name only when it is the same person (the same first
+    name, or the same address): one read under a new id is live in that row,
+    and the stored copy is folded away as a tombstone. A namesake (Lisa beside
+    Lee Sample) accounts for nothing. A page the run did not record is not
+    evidence of absence."""
     url = canonical_profile_url(record.get("url") or record.get("source_url"))
     pages = [e.get("page_people") for key, e in ledger.items()
              if isinstance(e, dict) and (key == unit or url in (
@@ -521,10 +524,11 @@ def _shown_on_page(record: dict, ledger: dict, unit: str,
     mails, people = read
     email = record.get("contact_email")
     email = email.strip().lower() if isinstance(email, str) and "@" in email else ""
-    if email and email not in mails and listed_token("mail", email) in shown:
-        return True
     words = _listed_name_words(record.get("pi_name"))
     if not words:
+        return True
+    if (email and email not in mails
+            and listed_token("card", f"{email} {words[-1]}") in shown):
         return True
     person = f"{words[-1]} {words[0][0]}"
     if listed_token("name", person) not in shown:
