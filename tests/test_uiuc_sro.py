@@ -178,6 +178,38 @@ def test_a_page_past_the_end_still_is_not_a_listing(monkeypatch):
         {"reason": "unsupported_list", "source_url": UIUCSROCollector.BASE_URL + "?page=0"}]
 
 
+def test_a_failed_list_page_logs_why(monkeypatch, caplog):
+    """On 2026-11-15 every list page failed and the run log said nothing: the
+    evidence keeps "fetch_failed" alone, and no evidence file was published."""
+    import logging
+
+    import requests
+
+    refused = requests.Response()
+    refused.status_code = 403
+    answers = iter([requests.HTTPError("403 Client Error: Forbidden", response=refused),
+                    requests.ConnectionError("connection reset"),
+                    lambda url: _Page(url, _fixture("sro_list_page12.html"))])
+
+    def get(url, *_a, **_k):
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer(url)
+
+    monkeypatch.setattr(uiuc_sro.requests, "get", get)
+    collector = UIUCSROCollector(config={"rate_limit_delay": 0})
+    with caplog.at_level(logging.WARNING, logger="collector.uiuc_sro"):
+        assert collector.collect() == []
+    base = UIUCSROCollector.BASE_URL
+    assert [(record.levelname, record.getMessage()) for record in caplog.records] == [
+        ("WARNING", f"SRO list page {base}?page=0 failed (fetch_failed): HTTPError, HTTP 403"),
+        ("WARNING", f"SRO list page {base}?page=1 failed (fetch_failed): ConnectionError, no HTTP response"),
+        # A page that loaded without the table: a reason, and no exception to name.
+        ("WARNING", f"SRO list page {base}?page=2 failed (unsupported_list)"),
+    ]
+
+
 @pytest.mark.parametrize("name", ["sro_detail_chbsp.html", "sro_detail_lurie.html"])
 def test_a_hidden_copy_of_a_trimmed_link_field_is_the_same_field(monkeypatch, name):
     monkeypatch.setattr(uiuc_sro.requests, "get", lambda *_a, **_k: _Detail(_fixture(name)))

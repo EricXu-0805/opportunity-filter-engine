@@ -13,6 +13,7 @@ import hashlib
 import json
 import logging
 import re
+import sys
 import time
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -135,6 +136,16 @@ class UIUCSROCollector(BaseCollector):
     def _list_failure(self, url: str, reason: str) -> None:
         self.evidence["list_pages_failed"] += 1
         self.evidence["list_errors"].append({"reason": reason, "source_url": url})
+        # The evidence keeps the reason alone, and a run with no publishable
+        # shard uploads none of it: on 2026-11-15 nothing said why every page
+        # failed. A fetch failure is recorded while its exception is handled.
+        cause = ""
+        error = sys.exception()
+        if error is not None:
+            status = getattr(getattr(error, "response", None), "status_code", None)
+            cause = f": {type(error).__name__}, " + (
+                f"HTTP {status}" if status is not None else "no HTTP response")
+        self.logger.warning(f"SRO list page {url} failed ({reason}){cause}")
 
     @staticmethod
     def _capture_detail_html(html: str, **binding) -> dict:
