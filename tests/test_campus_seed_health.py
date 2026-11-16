@@ -389,6 +389,33 @@ class TestSeedInventory:
         assert dead not in set(programs.values())
         assert ("duke", "huang_fellows") not in programs
 
+    def test_caltech_rising_tide_leaves_with_its_page(self):
+        """campus-seed-health run 40211548227 (2026-10-25) found this page gone.
+
+        sfp.caltech.edu/undergraduate-research/programs/rising-tide answers
+        404, and the Student-Faculty Programs index and menu no longer list
+        Rising Tide. Two pages under the dead one still answer,
+        program-information and eligibility; the site's search finds only
+        those, they give 2026 dates, and the second says "The 2026
+        application period is now closed." A record sent there would offer a
+        program its office has taken off its list, so the record goes and the
+        hub record stops naming Rising Tide. The row caltech-b1447833185f is
+        in national.json, so the national refresh retires it.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://sfp.caltech.edu/undergraduate-research/programs/rising-tide"
+        specs = {
+            (config["school_slug"], spec["key"]): spec
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not any(spec["url"].startswith(dead) for spec in specs.values())
+        assert ("caltech", "rising_tide") not in specs
+        assert "Rising Tide" not in specs[("caltech", "sfp_hub")]["description"]
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.
