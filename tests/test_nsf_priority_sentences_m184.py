@@ -13,12 +13,19 @@ and 12 rows' majors came from it (CS 10, ECE 9, Materials Science 1).
 The rule: when the collector picks topic tags and majors, it does not read an
 abstract sentence that names NSF (or the National Science Foundation) together
 with the word "priority" or "priorities". The description keeps the sentence.
+
+The enricher fills an NSF row the collector left without a tag from its own
+keyword patterns, over the same abstract: it wrote "artificial intelligence"
+back on 3 of the 5 rows the rule leaves without one, and had written it on a
+sixth row from "NSF priorities in Biotechnology and AI". On an NSF row it
+leaves out the same sentences.
 """
 from __future__ import annotations
 
 import pytest
 
 from src.collectors.nsf_reu import normalize_award
+from src.normalizers.enricher import enrich_opportunity
 
 SITE = (
     "This REU Site award to Example State University supports the training of 10 students "
@@ -129,3 +136,43 @@ def test_the_description_keeps_the_sentence():
     assert TEMPLATE in row["description_raw"]
     assert TEMPLATE in row["description_clean"]
     assert row["eligibility"]["eligibility_text_raw"] == row["description_raw"][:500]
+
+
+def _backfilled(*sentences):
+    row = _award(*sentences)
+    assert row["keywords"] == []
+    return enrich_opportunity(row)
+
+
+@pytest.mark.parametrize("sentence", [
+    TEMPLATE,
+    "The training students will receive is aligned with the NSF priorities in Biotechnology and AI.",
+    "The training students will receive is aligned with the NSF priority in Quantum Information Science.",
+], ids=["template", "abbreviation", "quantum"])
+def test_the_backfill_reads_no_nsf_priority_sentence_either(sentence):
+    row = _backfilled(SITE, sentence, MERIT)
+    assert row["keywords"] == ["undergraduate research"]
+    assert row["metadata"]["inferred_fields"]["keywords"] == "rule:enricher"
+
+
+def test_the_backfill_leaves_out_a_sentence_the_stored_description_cuts_short():
+    """description_clean is the abstract's first 1,500 characters."""
+    lead = f"{SITE} " + "Students present a poster at the end of the summer. " * 30
+    cut = TEMPLATE.index(" and Biotechnology")
+    row = _backfilled(lead[: 1500 - cut] + TEMPLATE, MERIT)
+    assert row["description_clean"].endswith("NSF priorities in Artificial Intelligence")
+    assert row["keywords"] == ["undergraduate research"]
+
+
+def test_the_backfill_still_reads_the_sites_own_sentences():
+    row = _backfilled(SITE, "Students use AI to classify colony images.", TEMPLATE, MERIT)
+    assert row["keywords"] == ["artificial intelligence", "undergraduate research"]
+
+
+def test_the_backfill_reads_the_sentence_on_a_row_of_another_source():
+    row = {
+        "id": "m184-campus", "source": "example_research_programs", "source_type": "campus_program",
+        "title": "Summer Microbiology Program", "keywords": [], "eligibility": {}, "metadata": {},
+        "description_clean": f"Students study how bacteria colonize a host. {TEMPLATE}",
+    }
+    assert enrich_opportunity(row)["keywords"] == ["artificial intelligence"]
