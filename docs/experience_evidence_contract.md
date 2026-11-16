@@ -87,8 +87,12 @@ package does not yet connect every permitted long entry to the model. Neither
 provider-call counts nor the total experience prompt budget are increased.
 This does not solve cross-project number reuse or semantic entailment.
 
-Templates quote at most one complete entry of at most 220 codepoints, subject
-to the existing minimum two matching words. Larger entries are not excerpted;
+Templates quote at most two complete entries of at most 220 codepoints each,
+most matching words with the target first, ties in the student's order. The
+count of matching words orders them and does not decide whether an entry is
+quoted; it still decides a faculty template's closing ask (two matching words
+in the first quoted entry keep the question about openings, otherwise the
+template asks what to learn or do first). Larger entries are not excerpted;
 `experience_template_budget_omission` reports that limitation on each variant
 and template/fallback receipt. The final output gate still applies. A fallback
 to an identity-neutral inquiry reports no selected evidence.
@@ -135,7 +139,7 @@ Receipts retain a maximum of eight entries and 4,000 total text codepoints.
 Local input can contain more matching facts; `experience_usage_receipt_limit`
 then means only part of its supplied evidence is listed, not that the remainder
 was unused. Variants each carry their own receipt; the top-level receipt
-contains their union (currently at most one example). Frontends must display
+contains their union (currently at most two examples). Frontends must display
 the selected variant's receipt and bind cached drafts to the current
 profile/evidence revision and pipeline version.
 
