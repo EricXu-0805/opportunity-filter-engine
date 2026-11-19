@@ -39,9 +39,9 @@
     },
     "boulder": {
       "listing_count": 9,
-      "faculty_contact_count": 1600,
+      "faculty_contact_count": 1599,
       "unreviewed_count": 0,
-      "total_count": 1609
+      "total_count": 1608
     },
     "bowdoin": {
       "listing_count": 7,
@@ -147,9 +147,9 @@
     },
     "cornell": {
       "listing_count": 4,
-      "faculty_contact_count": 1592,
+      "faculty_contact_count": 1578,
       "unreviewed_count": 0,
-      "total_count": 1596
+      "total_count": 1582
     },
     "dartmouth": {
       "listing_count": 7,
@@ -225,9 +225,9 @@
     },
     "houston": {
       "listing_count": 6,
-      "faculty_contact_count": 1079,
+      "faculty_contact_count": 1080,
       "unreviewed_count": 0,
-      "total_count": 1085
+      "total_count": 1086
     },
     "iastate": {
       "listing_count": 4,
@@ -303,9 +303,9 @@
     },
     "nd": {
       "listing_count": 7,
-      "faculty_contact_count": 1265,
+      "faculty_contact_count": 1257,
       "unreviewed_count": 0,
-      "total_count": 1272
+      "total_count": 1264
     },
     "neu": {
       "listing_count": 7,
@@ -333,9 +333,9 @@
     },
     "oregonstate": {
       "listing_count": 4,
-      "faculty_contact_count": 611,
+      "faculty_contact_count": 612,
       "unreviewed_count": 0,
-      "total_count": 615
+      "total_count": 616
     },
     "osu": {
       "listing_count": 6,
@@ -345,9 +345,9 @@
     },
     "pitt": {
       "listing_count": 3,
-      "faculty_contact_count": 1121,
+      "faculty_contact_count": 1120,
       "unreviewed_count": 0,
-      "total_count": 1124
+      "total_count": 1123
     },
     "pomona": {
       "listing_count": 6,
@@ -471,9 +471,9 @@
     },
     "ucla": {
       "listing_count": 18,
-      "faculty_contact_count": 2007,
+      "faculty_contact_count": 2006,
       "unreviewed_count": 0,
-      "total_count": 2025
+      "total_count": 2024
     },
     "uconn": {
       "listing_count": 5,
@@ -519,9 +519,9 @@
     },
     "uga": {
       "listing_count": 5,
-      "faculty_contact_count": 2160,
+      "faculty_contact_count": 2179,
       "unreviewed_count": 0,
-      "total_count": 2165
+      "total_count": 2184
     },
     "uiowa": {
       "listing_count": 3,
@@ -609,9 +609,9 @@
     },
     "utexas": {
       "listing_count": 22,
-      "faculty_contact_count": 2217,
+      "faculty_contact_count": 2218,
       "unreviewed_count": 0,
-      "total_count": 2239
+      "total_count": 2240
     },
     "utk": {
       "listing_count": 4,
@@ -633,9 +633,9 @@
     },
     "vanderbilt": {
       "listing_count": 3,
-      "faculty_contact_count": 1151,
+      "faculty_contact_count": 1154,
       "unreviewed_count": 0,
-      "total_count": 1154
+      "total_count": 1157
     },
     "vassar": {
       "listing_count": 6,
