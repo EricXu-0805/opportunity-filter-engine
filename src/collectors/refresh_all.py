@@ -403,6 +403,7 @@ from .ucsb_urca_projects import (
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import (
+    PROFILE_GONE_REASON,
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
     _strip_furniture_keywords,
@@ -457,16 +458,18 @@ def _run_start_corpus(
             faculty_graph.captured_profile_pages(rows))
 
 
-def _stored_active_rows(path: Path, source: str) -> list[dict]:
-    """The active rows the corpus file at ``path`` holds for ``source``; none
-    when it is absent. Read only when a source or one of its departments came
-    back empty, to tell one with rows to keep from one that never had any."""
+def _stored_active_rows(path: Path, source: str, or_retired_as: str | None = None) -> list[dict]:
+    """The active rows the corpus file at ``path`` holds for ``source``, and
+    with ``or_retired_as`` those retired for that reason; none when it is
+    absent. Read only when a source or one of its departments came back empty,
+    to tell one with rows to keep from one that never had any."""
     if not path.exists():
         return []
     with open(path, encoding="utf-8") as f:
         return [o for o in json.load(f)
                 if isinstance(o, dict) and o.get("source") == source
-                and (o.get("metadata") or {}).get("is_active") is not False]
+                and ((meta := o.get("metadata") or {}).get("is_active") is not False
+                     or (or_retired_as is not None and meta.get("deactivation_reason") == or_retired_as))]
 
 
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
@@ -884,12 +887,15 @@ def refresh_all(
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
             # The active rows the corpus holds for each department that read
             # empty, counted before the merge: it can archive a stored row as
-            # another department's duplicate.
+            # another department's duplicate. Rows retired for a gone profile
+            # page count as well: that pass retires rows of just such an
+            # unread department, and one it emptied would read from then on
+            # as a department that never had rows, which blocks UIUC.
             empty_depts = faculty_missing_departments(faculty_opps)
             empty_baselines: dict[str, int] = {}
             if empty_depts:
-                stored_depts = [row.get("department") for row
-                                in _stored_active_rows(PROCESSED_FILE, "uiuc_faculty")]
+                stored_depts = [row.get("department") for row in _stored_active_rows(
+                    PROCESSED_FILE, "uiuc_faculty", or_retired_as=PROFILE_GONE_REASON)]
                 empty_baselines = {dept: stored_depts.count(dept) for dept in empty_depts}
             added, updated = merge_faculty(all_faculty, published_ids=published_ids,
                                            archived=archive_stamps)

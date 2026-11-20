@@ -1956,6 +1956,34 @@ def test_a_refresh_that_does_not_collect_uiuc_faculty_asks_for_no_profile_page(m
     assert json.loads(processed.read_text(encoding="utf-8"))[0]["metadata"]["is_active"] is True
 
 
+def test_a_uiuc_department_emptied_by_gone_profile_pages_still_publishes_uiuc_on_the_next_run(monkeypatch, tmp_path):
+    """A department whose list page reads empty degrades UIUC while the corpus
+    holds rows for it. Once every one of them was retired for a gone page, the
+    next run counted none, and that run and each one after it withheld UIUC."""
+    read = [{**_seed_faculty("uiuc_faculty", f"read-{index}", days_ago=0), "department": "Department of Wells"}
+            for index in range(5)]
+    tides = [{**_unlisted_uiuc_row(f"tides-{index}"), "department": "Department of Tides"} for index in range(3)]
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, read + tides)
+    _stub_successful_uiuc_deep_components(monkeypatch)
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda enrich: read)
+    monkeypatch.setattr(refresh_all, "faculty_missing_departments", lambda _records: ["Department of Tides"])
+    for name in ("fetch_rss", "fetch_urap", "fetch_ursa", "fetch_drp", "fetch_siebel", "fetch_other"):
+        monkeypatch.setattr(refresh_all, name, lambda *a, **k: [{"id": "listed"}])
+    monkeypatch.setattr(refresh_all, "_update_professor_tracking", lambda *a, **k: None)
+    monkeypatch.setattr("src.collectors.uiuc_faculty.profile_page_answer", lambda url: (404, url))
+
+    runs = [refresh_all.refresh_all(deep=True, schools={"uiuc"}) for _ in range(2)]
+
+    assert [run["sources"]["uiuc_faculty"]["profile_gone"]["deactivated"] for run in runs] == [3, 0]
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert [row["metadata"]["is_active"] for row in saved] == [True] * 5 + [False] * 3
+    for run in runs:
+        faculty, release = run["sources"]["uiuc_faculty"], run["release"]
+        assert faculty["status"] == "ok" and "error" not in faculty
+        assert faculty["empty_department_baselines"] == {"Department of Tides": 3}
+        assert release["publishable"] == ["uiuc"] and release["status"] == "degraded"
+
+
 def test_run_summary_reports_tombstoned_contacts_the_enricher_skipped(monkeypatch, tmp_path):
     """A tombstoned contact is never re-scraped; the run summary says how many
     were held back, so a refresh shows the guard working rather than hiding it."""
