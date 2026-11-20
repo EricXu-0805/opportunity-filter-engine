@@ -609,9 +609,9 @@
     },
     "utexas": {
       "listing_count": 22,
-      "faculty_contact_count": 2217,
+      "faculty_contact_count": 2218,
       "unreviewed_count": 0,
-      "total_count": 2239
+      "total_count": 2240
     },
     "utk": {
       "listing_count": 4,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5640
+  "national_count": 5622
 }
