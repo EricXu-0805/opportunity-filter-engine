@@ -251,13 +251,60 @@ gh api repos/<owner>/<repo>/commits/<sha>/check-runs \
 The structural fix is to stop letting an unrelated job decide. `ci.yml` has a
 `Deploy backend (Render hook)` job for that: on a push to main, once Backend,
 Frontend, E2E (the three checks branch protection requires) and Migrations
-(which the release gate's `ci:*` also requires) have passed, it POSTs
+(which the release gate's `ci:*` also requires) have passed, on that commit or
+on its pull request (the next section), it POSTs
 the Render deploy hook with `ref` set to that commit, and fails on any answer
 outside 2xx. It first asks GitHub for the head of main and deploys only if the
 commit is still the head; otherwise it logs a notice and passes, and the newer
 commit's own run deploys. Until the `RENDER_DEPLOY_HOOK_URL` secret exists it
 logs a notice, deploys nothing and passes, so its own check cannot hold today's
 `checksPass` deploy. Nothing changes until the owner switches over.
+
+### A merge does not run the suite a second time
+
+Every push to main used to run Backend, Frontend, Migrations and E2E again on
+a tree its pull request had already tested. Over the 22 green first-attempt
+runs on main from 2026-11-01 to 11-14, when E2E still waited for Backend, that
+put a median 60 minutes in front of the deploy job. `ci.yml` now starts with a
+`Decide (run or skip the suite)` job. On a push to main it runs
+`scripts/ci_skip_decision.py`, which reads six answers from the GitHub API and
+says skip only when all of these hold:
+
+- the pushed commit is the merge commit of exactly one merged pull request,
+  into main, whose head is in this repository;
+- the commit is a merge of that head or a single-parent (squash) commit, and
+  its tree is the head's tree;
+- the commit main was on, its first parent, is an ancestor of the head, so the
+  `pull_request` run, which tests the head merged into main, tested that tree;
+- the newest `pull_request` run of `ci.yml` for the head is `completed` and
+  `success`, and its Backend, Frontend, Migrations and E2E jobs are each
+  `success`.
+
+Then the four jobs are skipped and the deploy job runs at once. An API error,
+a missing or ambiguous answer, a failed checkout or a crash of the script all
+answer skip=false, and the four jobs run as before. They also run on every
+pull request and every manual run. The answer and its reason are a notice on
+the run page.
+
+A replay of the script on 2026-11-16 over the last 60 commits on main answered
+skip for 57. The other three (#1152, #1162, #1165) were merged one to three
+commits behind main, so their trees were not their heads' trees, and the suite
+would have run. The replay read the API as it answers now, not as it answered
+seconds after each merge. On that date the push path itself had never run: it
+cannot before the workflow is on main.
+
+What changes for anyone reading a main commit's checks:
+
+- On a skipped commit the four checks read `skipped`. The release gate's
+  `ci:*` then reports `SKIPPED` for that SHA, which blocks: the suite did not
+  run on that commit, and the gate does not read the pull request's run. A
+  manual run on the same commit does not change that today. The check-runs
+  listing came newest first when read on 2026-11-16, and the gate keeps the
+  last entry of each name, which is the oldest.
+- To run the suite on the head of main: `gh workflow run ci.yml --ref main`.
+  A manual run never skips and never deploys.
+- If the `Decide` job itself fails, the four jobs still run and the deploy job
+  does not. Re-run the failed job while that commit is still the head of main.
 
 ### Switching the backend deploy to the CI hook
 

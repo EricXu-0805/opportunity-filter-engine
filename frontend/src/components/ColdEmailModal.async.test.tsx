@@ -68,7 +68,8 @@ async function generate() {
 }
 // A rebuild refreshes templates only; the AI draft still takes a Generate click.
 async function generateRestoredDraft() {
-  await act(async () => {});
+  // The rebuild button also shows while the saved sources are being hashed and compared.
+  await waitFor(() => expect(screen.queryByText(/sources for this draft have not been checked yet/)).toBeNull());
   const rebuild = screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' });
   if (rebuild) {
     fireEvent.click(rebuild);

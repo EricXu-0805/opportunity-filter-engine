@@ -281,7 +281,8 @@ describe('persistent cold-email draft recovery', () => {
     vi.mocked(window.open).mockReturnValue(popup as unknown as Window);
     mount({ profileRefresh: { status: 'ready', refresh: vi.fn(), checkForAction: profileCheck },
       targetRefresh: { status: 'ready', target, reason: null, refresh: vi.fn(), checkForAction: targetCheck } });
-    await restored(); profileCheck.mockClear(); targetCheck.mockClear();
+    // The restored draft is ready once its saved sources are hashed and compared and its metadata refresh is accepted.
+    await restored(); await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); profileCheck.mockClear(); targetCheck.mockClear();
     profileCheck.mockResolvedValue(null); fireEvent.click(button('gmail'));
     await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
     expect(profileCheck).toHaveBeenCalledOnce(); expect(targetCheck).toHaveBeenCalledOnce();
@@ -574,10 +575,11 @@ describe('persistent cold-email draft recovery', () => {
         expect(confirmation()).toBeChecked();
         expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Background confirmed for the next draft.');
         // The restored draft's metadata refresh still runs once the detail has loaded.
-        await waitFor(() => expect(api.variants).toHaveBeenCalledOnce()); await act(async () => {});
+        // Generate is enabled once that refresh's receipt has been hashed and accepted.
+        await waitFor(() => expect(api.variants).toHaveBeenCalledOnce()); await waitFor(() => expect(button('generateAiDraft')).toBeEnabled());
         expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false });
         expect(draftWrites).toBe(0);
-        expect(field('body')).toHaveValue(edits.body); expect(button('generateAiDraft')).toBeEnabled();
+        expect(field('body')).toHaveValue(edits.body);
       });
     }
 

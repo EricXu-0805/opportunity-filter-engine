@@ -531,8 +531,13 @@ jobs:
             # Wait for the required checks to register, then watch them to
             # completion. A red check fails this step (no retry: a data/DQ
             # failure will not pass on replay) and triggers the alert below.
-            for i in $(seq 1 12); do
-              gh pr checks "$BRANCH" --required >/dev/null 2>&1 && break
+            # CI's test jobs register only after its `decide` job has run, so
+            # this waits until the three required checks are listed, ten
+            # minutes at most. gh exits non-zero while a check is pending:
+            # only the count it prints is read.
+            for i in $(seq 1 40); do
+              LISTED=$(gh pr checks "$BRANCH" --required --json name --jq 'length' 2>/dev/null) || true
+              [ "${LISTED:-0}" -ge 3 ] 2>/dev/null && break
               echo "waiting for required checks to register ($i)…"; sleep 15
             done
             gh pr checks "$BRANCH" --required --watch
