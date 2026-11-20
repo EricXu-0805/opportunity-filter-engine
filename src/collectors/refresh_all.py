@@ -406,6 +406,7 @@ from .uiuc_faculty import (
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
     _strip_furniture_keywords,
+    deactivate_gone_profiles,
     enforce_final_shared_keyword_invariant,
 )
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
@@ -1858,6 +1859,17 @@ def refresh_all(
         stale_faculty = deactivate_stale_faculty(
             all_opps, faculty_fetched, held_sources=held_sources,
         )
+        # The hold leaves a UIUC row one way out: no roster has listed it for
+        # more than 14 days and its own profile page answers 404 or 410.
+        if "uiuc_faculty" in summary["sources"]:
+            profile_gone = deactivate_gone_profiles(all_opps)
+            summary["sources"]["uiuc_faculty"]["profile_gone"] = profile_gone
+            logger.info(
+                "uiuc_faculty: %d row(s) unlisted for more than 14 days, %d profile "
+                "page(s) asked for, %d gone and retired; kept %s",
+                profile_gone["candidates"], profile_gone["probed"],
+                profile_gone["deactivated"], profile_gone["kept"],
+            )
         # Schools the product no longer offers are held inactive on EVERY run,
         # not deactivated once: a merge is an upsert that writes is_active back
         # to True, so a one-time pass would be undone by the next harvest that
