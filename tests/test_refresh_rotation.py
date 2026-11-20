@@ -773,11 +773,12 @@ class TestAlertStep:
     """The alert step itself, as the runner runs it after a failure or a cancel."""
 
     def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, withheld="",
-             extra_env=None, **scenario):
+             unread="", extra_env=None, **scenario):
         if guard_copy:
             shutil.copy(_SCRIPT, tmp_path / "refresh_rotation.py")
         step = _workflow_step("Alert operator")
         env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard, "WITHHELD": withheld,
+               "UNREAD": unread,
                "RESEND_API_KEY": "not-a-key", "OPERATOR_EMAIL": "operator@example.com", "SHARD": "uw"}
         assert set(step["env"]) <= {*env, "GH_TOKEN", "REPO"}
         result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env, **(extra_env or {}))
@@ -885,6 +886,40 @@ class TestAlertStep:
         assert "FAILED" in mail["subject"]
         assert mail["text"].startswith("The scheduled data refresh failed.")
         assert mail["text"].endswith("\n" + self._WITHHELD)
+
+    # What the publish step writes when a shard published without a department
+    # or a national source that read nothing (see tests/test_publishable_shards.py).
+    # Each withheld its shard until 2026-11-16 and was mailed as a withheld school.
+    _UNREAD = ("Published without a fresh read (1), each keeping the rows it had:\n"
+               "- uw: uw_faculty: Department of Tides: 0 records, previously 38")
+
+    def test_runs_when_a_published_shard_went_without_a_source(self):
+        step = _workflow_step("Alert operator")
+        assert "steps.publish.outputs.unread != ''" in str(step["if"])
+        assert step["env"]["UNREAD"] == "${{ steps.publish.outputs.unread }}"
+
+    def test_a_run_that_published_without_reading_a_source_mails_which(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), unread=self._UNREAD)
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh published without reading a source (shard: uw)"
+        assert mail["text"].endswith("Run: https://github.com/o/r/actions/runs/200\n\n" + self._UNREAD)
+        assert "withheld" not in mail["text"] and "failed" not in mail["text"]
+
+    def test_a_run_that_withheld_a_school_adds_what_the_rest_went_without(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success", guard="proceed",
+                             runs=_runs((200, SCHEDULED)), withheld=self._WITHHELD, unread=self._UNREAD)
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh withheld schools (shard: uw)"
+        assert mail["text"].endswith("\n\n" + self._WITHHELD + "\n\n" + self._UNREAD)
+
+    def test_a_failed_run_adds_what_its_verdict_left_unread(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), unread=self._UNREAD)
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh FAILED (shard: uw)"
+        assert mail["text"].startswith("The scheduled data refresh failed.")
+        assert mail["text"].endswith("\n\n" + self._UNREAD)
 
     def test_a_failure_without_withheld_schools_keeps_its_old_text(self, fake_gh, tmp_path):
         _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
@@ -1015,6 +1050,53 @@ class TestSupersededPrStep:
         split = script.index(f'python3 scripts/shard_corpus.py split --only-shards "$TARGETS" {record}\n')
         assert script.count(record) == 2
         assert split < script.index("STALE=$(") < script.rindex(record)
+
+
+class TestBrowserInstallStep:
+    """`playwright install --with-deps` runs apt-get. On 2026-11-11 the runner
+    could not resolve the Ubuntu mirror, the one attempt failed after ten
+    minutes, and the day's 26 schools were not refreshed."""
+
+    _INSTALL = "python -m playwright install --with-deps chromium"
+
+    def _run(self, tmp_path, failures):
+        """The script between the pip install and the end of the needs-browser
+        branch, with a python whose first ``failures`` calls fail."""
+        script = str(_workflow_step("Run data refresh")["run"])
+        install = script.split("pip install playwright\n", 1)[1].split("\n  fi\n", 1)[0]
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        log = tmp_path / "calls.log"
+        log.write_text("")
+        for name, body in {
+            "python": 'echo "python $*" >> "$CALLS"\n[ "$(grep -c "^python " "$CALLS")" -gt "$FAILURES" ]\n',
+            "sleep": 'echo "sleep $1" >> "$CALLS"\n',
+        }.items():
+            (bin_dir / name).write_text("#!/bin/sh\n" + body)
+            (bin_dir / name).chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-e", "-c", install], capture_output=True, text=True,
+            env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                 "CALLS": str(log), "FAILURES": str(failures)},
+        )
+        return result, log.read_text().splitlines()
+
+    def test_an_install_that_works_runs_once(self, tmp_path):
+        result, calls = self._run(tmp_path, failures=0)
+        assert result.returncode == 0, result.stderr
+        assert calls == [self._INSTALL]
+
+    def test_two_failed_installs_wait_30_then_90_seconds_for_a_third(self, tmp_path):
+        result, calls = self._run(tmp_path, failures=2)
+        assert result.returncode == 0, result.stderr
+        assert calls == [self._INSTALL, "sleep 30", self._INSTALL, "sleep 90", self._INSTALL]
+        assert result.stdout.count("::warning::") == 2
+
+    def test_a_third_failed_install_fails_the_step(self, tmp_path):
+        result, calls = self._run(tmp_path, failures=3)
+        assert result.returncode == 1
+        assert calls == [self._INSTALL, "sleep 30", self._INSTALL, "sleep 90", self._INSTALL]
+        assert "::error::" in result.stdout
 
 
 class TestRequiredChecksRegister:

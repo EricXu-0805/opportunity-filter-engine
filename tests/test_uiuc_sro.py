@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import os
 import sys
+from types import SimpleNamespace
 
 import pytest
+import requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -178,6 +180,38 @@ def test_a_page_past_the_end_still_is_not_a_listing(monkeypatch):
         {"reason": "unsupported_list", "source_url": UIUCSROCollector.BASE_URL + "?page=0"}]
 
 
+def test_a_failed_list_page_logs_why(monkeypatch, caplog):
+    """On 2026-11-15 every list page failed and the run log said nothing: the
+    evidence keeps "fetch_failed" alone, and no evidence file was published."""
+    import logging
+
+    import requests
+
+    refused = requests.Response()
+    refused.status_code = 403
+    answers = iter([requests.HTTPError("403 Client Error: Forbidden", response=refused),
+                    requests.ConnectionError("connection reset"),
+                    lambda url: _Page(url, _fixture("sro_list_page12.html"))])
+
+    def get(url, *_a, **_k):
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer(url)
+
+    monkeypatch.setattr(uiuc_sro.requests, "get", get)
+    collector = UIUCSROCollector(config={"rate_limit_delay": 0})
+    with caplog.at_level(logging.WARNING, logger="collector.uiuc_sro"):
+        assert collector.collect() == []
+    base = UIUCSROCollector.BASE_URL
+    assert [(record.levelname, record.getMessage()) for record in caplog.records] == [
+        ("WARNING", f"SRO list page {base}?page=0 failed (fetch_failed): HTTPError, HTTP 403"),
+        ("WARNING", f"SRO list page {base}?page=1 failed (fetch_failed): ConnectionError, no HTTP response"),
+        # A page that loaded without the table: a reason, and no exception to name.
+        ("WARNING", f"SRO list page {base}?page=2 failed (unsupported_list)"),
+    ]
+
+
 @pytest.mark.parametrize("name", ["sro_detail_chbsp.html", "sro_detail_lurie.html"])
 def test_a_hidden_copy_of_a_trimmed_link_field_is_the_same_field(monkeypatch, name):
     monkeypatch.setattr(uiuc_sro.requests, "get", lambda *_a, **_k: _Detail(_fixture(name)))
@@ -196,3 +230,80 @@ def test_a_hidden_link_copy_that_points_elsewhere_keeps_the_page_unsupported(mon
     record, evidence = _scrape()
     assert record.extra_fields[CAPTURE_KEY]["status"] == "unsupported"
     assert evidence["detail_errors"] == [{"source_url": _DETAIL, "reason": "unparsed_relevant_content"}]
+
+
+# ── a list page that fails to load is tried again ──────────────────────────
+# On 2026-11-15 all 15 list pages failed inside 17 s, the next source's first
+# request was answered 150 ms later, and the empty list held back the week's
+# national shard. A page now gets three tries, 10 then 20 seconds apart.
+
+
+def _http_error(status):
+    return requests.HTTPError(response=SimpleNamespace(status_code=status))
+
+
+def _collect(monkeypatch, answers, max_pages=None):
+    """Run the collector against one answer per request: an exception to raise
+    or a fixture to serve, the last answer repeating. Returns the collector,
+    its records, the addresses it asked for and the waits it took."""
+    requested, waits = [], []
+
+    def get(url, *_a, **_k):
+        answer = answers[min(len(requested), len(answers) - 1)]
+        requested.append(url)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer(url) if callable(answer) else _Page(url, _fixture(answer))
+
+    monkeypatch.setattr(uiuc_sro.requests, "get", get)
+    collector = UIUCSROCollector(config={"rate_limit_delay": 0}, sleep=waits.append)
+    if max_pages:
+        collector.MAX_PAGES = max_pages
+    return collector, collector.collect(), requested, waits
+
+
+@pytest.mark.parametrize("failures", [
+    [requests.ConnectionError("refused"), requests.Timeout("slow")],
+    [_http_error(503), _http_error(429)],
+], ids=["connection-then-timeout", "503-then-429"])
+def test_a_list_page_that_fails_twice_and_then_loads_is_a_loaded_page(monkeypatch, failures):
+    answers = failures + ["sro_list_page10.html"] * 11 + ["sro_list_page11.html"]
+    collector, records, requested, waits = _collect(monkeypatch, answers)
+    first = UIUCSROCollector.BASE_URL + "?page=0"
+    assert requested[:4] == [first, first, first, UIUCSROCollector.BASE_URL + "?page=1"]
+    assert len(requested) == 14 and waits == [10, 20]
+    evidence = collector.evidence
+    assert (evidence["list_pages_attempted"], evidence["list_pages_loaded"],
+            evidence["list_pages_failed"]) == (12, 12, 0)
+    assert evidence["list_complete"] is True and evidence["list_errors"] == []
+    assert len(records) == 11 * 2 + 4
+
+
+def test_a_list_that_never_answers_is_recorded_as_it_was(monkeypatch):
+    collector, records, requested, waits = _collect(monkeypatch, [requests.ConnectionError("unreachable")])
+    pages = [UIUCSROCollector.BASE_URL + f"?page={n}" for n in range(UIUCSROCollector.MAX_PAGES)]
+    assert records == []
+    assert collector.evidence == {
+        **UIUCSROCollector._new_evidence(),
+        "list_pages_attempted": 15, "list_pages_failed": 15,
+        "list_errors": [{"reason": "fetch_failed", "source_url": url} for url in pages]
+        + [{"reason": "page_limit", "source_url": UIUCSROCollector.BASE_URL}],
+    }
+    # Once the first page has failed its three tries the list is incomplete
+    # whatever follows, so the other 14 are asked for once each, as before.
+    assert requested == [pages[0]] * 3 + pages[1:]
+    assert waits == [10, 20]
+
+
+@pytest.mark.parametrize("answer, reason", [
+    (lambda url: _Page("https://researchops.web.illinois.edu/maintenance", _fixture("sro_list_page10.html")),
+     "redirect_mismatch"),
+    ("sro_list_page12.html", "unsupported_list"),
+    (_http_error(404), "fetch_failed"),
+], ids=["redirect", "no-table", "404"])
+def test_a_page_that_answered_is_not_asked_for_again(monkeypatch, answer, reason):
+    collector, records, requested, waits = _collect(monkeypatch, [answer], max_pages=1)
+    url = UIUCSROCollector.BASE_URL + "?page=0"
+    assert requested == [url] and waits == []
+    assert records == [] and collector.evidence["list_pages_failed"] == 1
+    assert collector.evidence["list_errors"][0] == {"reason": reason, "source_url": url}
