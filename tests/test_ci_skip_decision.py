@@ -466,6 +466,62 @@ def test_anything_but_a_push_to_main_asks_github_nothing(tmp_path, event, ref):
     assert "::notice::" not in result.stdout
 
 
+# GitHub lists a squash merge's pull request some seconds after the push. The
+# data refresh's #1207 had none 4 seconds after it merged, and its suite ran.
+
+def _github_answering(monkeypatch, pulls_in_turn: list):
+    """The script with gh replaced: each ask for the pull requests gets the
+    next of ``pulls_in_turn``, every other fact its true value. Returns the
+    script, the facts asked for and the seconds waited."""
+    import scripts.ci_skip_decision as script
+
+    asked, waited = [], []
+
+    def fetch(name: str, _path: str) -> object:
+        asked.append(name)
+        return pulls_in_turn.pop(0) if name == "pulls" else _facts()[name]
+
+    monkeypatch.setattr(script, "_from_github", fetch)
+    monkeypatch.setattr(script.time, "sleep", waited.append)
+    return script, asked, waited
+
+
+def test_an_empty_list_of_pull_requests_is_asked_for_again_until_it_is_listed(monkeypatch):
+    script, asked, waited = _github_answering(monkeypatch, [[], [], [_pull()]])
+    skip, reason = _decide("push", "refs/heads/main", REPO, MERGED, script._from_github_once_listed)
+    assert skip is True, reason
+    assert asked == ["pulls"] * 3 + [name for name in _FACT_NAMES if name != "pulls"]
+    assert waited == [script.PULLS_WAIT_SECONDS] * 2
+
+
+def test_a_commit_no_pull_request_ever_lists_stops_asking_and_runs_the_suite(monkeypatch):
+    script, asked, waited = _github_answering(monkeypatch, [[] for _ in range(20)])
+    skip, reason = _decide("push", "refs/heads/main", REPO, MERGED, script._from_github_once_listed)
+    assert skip is False
+    assert "0 pull requests" in reason
+    assert asked == ["pulls"] * (1 + script.PULLS_RETRIES)
+    assert waited == [script.PULLS_WAIT_SECONDS] * script.PULLS_RETRIES
+
+
+@pytest.mark.parametrize("answer", [
+    [_pull(), _pull(number=42)], {"message": "Not Found"}, None,
+], ids=["two_pull_requests", "not_a_list", "nothing"])
+def test_only_an_empty_list_is_asked_for_again(monkeypatch, answer):
+    script, asked, waited = _github_answering(monkeypatch, [answer])
+    skip, _ = _decide("push", "refs/heads/main", REPO, MERGED, script._from_github_once_listed)
+    assert skip is False
+    assert asked == ["pulls"]
+    assert waited == []
+
+
+def test_every_ask_at_its_time_limit_and_every_wait_still_fit_the_jobs_time_limit():
+    import scripts.ci_skip_decision as script
+
+    job_seconds = _ci()["jobs"]["decide"]["timeout-minutes"] * 60
+    asks = len(_FACT_NAMES) + script.PULLS_RETRIES
+    assert asks * 30 + script.PULLS_RETRIES * script.PULLS_WAIT_SECONDS < job_seconds
+
+
 # ------------------------------------------------------------- the workflow
 
 _TEST_JOBS = ("backend", "frontend", "migrations", "e2e")
