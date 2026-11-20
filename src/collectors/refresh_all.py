@@ -416,6 +416,7 @@ from .uiuc_js_faculty import fetch_and_normalize as fetch_js_faculty
 from .uiuc_json_faculty import fetch_and_normalize as fetch_json_faculty
 from .uiuc_other import fetch_and_normalize as fetch_other
 from .uiuc_other import merge_into_processed as merge_other
+from .uiuc_our_rss import delist_old_posts as delist_rss_old_posts
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
 from .uiuc_our_rss import merge_into_processed as merge_rss
 from .uiuc_siebel import fetch_and_normalize as fetch_siebel
@@ -1720,6 +1721,11 @@ def refresh_all(
             summary["sources"]["uiuc_sro"]["unlisted"] = sro_unlisted
             logger.info("SRO: %d programs no longer listed deactivated, %d kept (control page %s)",
                         sro_unlisted["deactivated"], sro_unlisted["kept"], sro_unlisted["control"])
+
+        if "uiuc_our_rss" in summary["sources"]:
+            rss_delisted = delist_rss_old_posts(all_opps)
+            summary["sources"]["uiuc_our_rss"]["delisted_old_posts"] = rss_delisted
+            logger.info("RSS: %d old posts delisted", rss_delisted)
 
         # Classify every source's output BEFORE anything reads its status.
         # A collector that fetched nothing because its department moved host
