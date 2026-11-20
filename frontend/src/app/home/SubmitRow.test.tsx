@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { translate } from '@/i18n/translate';
 import { SubmitRow } from './SubmitRow';
 
 const t = ((key: string) => key) as never;
@@ -252,6 +253,18 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(line).toContainElement(screen.getByTestId('conflict-keep-mine'));
     expect([...line.classList], 'the status line wraps').toContain('flex-wrap');
     expect([...line.classList].filter((name) => name.endsWith('flex-nowrap')), 'at every width').toEqual([]);
+  });
+
+  // Checklist M179: the other side can be another tab of this browser, not
+  // another device, and the question is answered with the two buttons.
+  it.each([
+    ['en', 'Changed somewhere else — this edit was not saved yet. Choose which version to keep.'],
+    ['zh', '在别处改过了 —— 这次编辑还没保存，请选择保留哪一版。'],
+  ] as const)('an open question says in %s that the field was changed somewhere else, beside the two answers', (locale, text) => {
+    renderRow({ saveStatus: 'conflict', hasConflict: true, t: ((key: string) => translate(locale, key)) as never });
+    expect(screen.getByText(text)).toBeVisible();
+    expect(screen.getByTestId('conflict-keep-mine')).toBeVisible();
+    expect(screen.getByTestId('conflict-use-cloud')).toBeVisible();
   });
 
   it('is disabled and says it is working while a submit is in flight', () => {

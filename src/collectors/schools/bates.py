@@ -3,11 +3,14 @@
 Curated seed records of Bates's undergraduate-research landscape, centered on
 the college's Summer Research Fellowships and its named endowed summer grants
 and fellowships administered through the Office of the Dean of the Faculty
-(Phillips, Otis, Hoffman, Bouley-Creasy, Technos), plus the academic-year
-research grants, the environmentally focused internships, the Harward Center's
-community-engagement fellowships, the Center for Purposeful Work internships,
-and the sustainability office's Green Innovation Grant. Every URL was
-curl-verified live (HTTP 200) on 2026-07-23.
+(Phillips, Otis, Bouley-Creasy, Technos), plus the academic-year research
+grants, the Harward Center's community-engagement fellowships, the Center for
+Purposeful Work internships, and the sustainability office's Green Innovation
+Grant. Every URL was curl-verified live (HTTP 200) on 2026-07-23. The Hoffman
+Research Support Grant and Bates Environmental Internship pages have answered
+404 since the 2026-11-01 probe and their records were dropped on 2026-11-16.
+Bates's Student Research page still describes both and links the missing
+pages, so each record can return once its page does.
 
 Emit buckets → (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -96,23 +99,6 @@ SCHOOL: dict = {
                               "sustainability"],
                 ),
                 program(
-                    "bates_hoffman_grant",
-                    "Hoffman Research Support Grant (Bates)",
-                    f"{_SR}/summer-grants-summary/hoffman-research-support-grant/",
-                    "Grants supporting students in all disciplines engaged in "
-                    "summer research: funds can cover travel to a research site, "
-                    "research supplies, or other project expenses, and may be "
-                    "combined with other sources of support such as a faculty "
-                    "research grant.",
-                    lab_or_program="Hoffman Research Support Grant",
-                    opportunity_type="research",
-                    paid="yes",
-                    preferred_year=["sophomore", "junior", "senior"],
-                    international_friendly="yes",
-                    keywords=["research grant", "summer research", "any discipline",
-                              "research travel"],
-                ),
-                program(
                     "bates_bouley_creasy_fund",
                     "Bouley-Creasy Fund for Earth and Climate Sciences (Bates)",
                     f"{_SR}/summer-grants-summary/bouley-fund-for-geology/",
@@ -141,22 +127,6 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     keywords=["international", "Japan", "cultural exchange",
                               "fellowship"],
-                ),
-                program(
-                    "bates_environmental_internship",
-                    "Bates Environmental Internships",
-                    f"{_SR}/summer/bates-environmental-internship/",
-                    "Funded summer internships placing students with "
-                    "environmental organizations and research projects, giving "
-                    "hands-on experience in conservation, environmental science, "
-                    "and sustainability fieldwork.",
-                    lab_or_program="Bates Environmental Internships",
-                    opportunity_type="internship",
-                    paid="stipend",
-                    preferred_year=["freshman", "sophomore", "junior"],
-                    international_friendly="unknown",
-                    keywords=["environment", "internship", "conservation",
-                              "sustainability"],
                 ),
                 # academic-year/ is a 404, and so is the Academic Year Research
                 # Grant Information index it used to redirect to. The grant

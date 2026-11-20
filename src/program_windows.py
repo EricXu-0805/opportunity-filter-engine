@@ -36,6 +36,7 @@ class ProgramWindow:
 _REVIEWED = date(2026, 11, 5)
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
 _SFP = "https://sfp.caltech.edu/undergraduate-research/programs/"
+_GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 
 # A page that writes its dates without a year ("March 1: Application
 # deadline.") names the cycle elsewhere on the same page ("View the 2027
@@ -47,6 +48,10 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         date(2026, 11, 1),
         "The official BTAA application opens November 1, 2026 and closes Tuesday, February 10, 2027.",
         "America/Chicago", "November 1, 2026",
+    ),
+    ("northwestern", "nu_circumnavigator_grant"): ProgramWindow(
+        _GRG, _GRG, date(2026, 11, 16), date(2026, 11, 19),
+        "DEADLINE Thursday, November 19, 2026 (11:59 PM CST)",
     ),
     ("unl", "unl_summer_research_program"): ProgramWindow(
         "https://summerprogram.unl.edu/", "https://summerprogram.unl.edu/", _REVIEWED, date(2027, 3, 1),

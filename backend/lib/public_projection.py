@@ -16,6 +16,7 @@ from src.evidence import (
     configured_value_unstated,
     faculty_safe_eligibility,
     is_read_off_the_page,
+    page_states_applications_open,
     record_kind,
     target_truth,
 )
@@ -630,6 +631,13 @@ def neutralize_lifecycle_title(title: object, canonical_record: dict) -> str:
 
     Nor does a program whose page was read before the opening its reviewed
     window states (`read_before_opening`): it cannot say this cycle opened.
+
+    And the suffix stays only where the page, as the row's last refresh read
+    it, says so itself (M90, `page_states_applications_open`). The collectors
+    write it on an "Apply Now" link anywhere on the page and keep it through
+    runs that fail to load the page: on 2026-11-16 that put the claim on 27
+    served titles, and of their 26 pages that loaded none said it of the
+    row's own program.
     """
     text = str(title or "")
     if (
@@ -637,6 +645,7 @@ def neutralize_lifecycle_title(title: object, canonical_record: dict) -> str:
         and target_truth(canonical_record).actionable
         and not configured_note_window_passed(canonical_record)
         and not read_before_opening(canonical_record)
+        and page_states_applications_open(canonical_record)
     ):
         return text
     match = _TERMINAL_LIFECYCLE_SUFFIX_RE.search(text)

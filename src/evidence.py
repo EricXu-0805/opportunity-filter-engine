@@ -201,6 +201,41 @@ def is_trainee_title(title: object) -> bool:
     return bool(_POSTDOC_ROLE_RE.search(own)) and not _TEACHING_ROLE_RE.search(own)
 
 
+# A card a directory keeps for someone who has died says "In Memoriam" or
+# "Deceased", in the name ("Jane Roe (In Memoriam)", "In Memoriam: Jane Roe")
+# or in the title ("In Memoriam, Professor", "Professor of History, Deceased").
+# "Deceased" counts only as a clause of its own, between punctuation or the
+# ends of the text: before a noun ("Deceased Donor Program") it is not the
+# person. A chair named in someone's memory ("Jane Roe Memorial Professor") is
+# a living person's title.
+_DECEASED_RE = re.compile(
+    r"\bin\s+memoriam\b|(?:^|[^\w\s])\s*deceased\s*(?:$|[^\w\s])", re.IGNORECASE)
+
+DECEASED_REASON = "listed_as_deceased"
+
+
+def is_deceased_listing(name: object, title: object) -> bool:
+    """True when a faculty card's name or title says the person has died."""
+    return any(isinstance(text, str) and bool(_DECEASED_RE.search(text))
+               for text in (name, title))
+
+
+# An emeritus or retired title, in the spellings the corpus's directories
+# write: "Emeritus", "Emerita", Wisconsin's "Emerit", the plural "Emeriti" and
+# the misspellings "Emeritas" and "Emertius". Whole words only, so never
+# "Emergency", "Emerging" or "Emerson"; a bare "Emer." also abbreviates
+# "Emergency" and is not read.
+_EMERITUS_OR_RETIRED_RE = re.compile(
+    r"\b(?:emerit(?:us|a|i|as)?|emertius|retired)\b", re.IGNORECASE)
+
+RETIRED_TITLE_REASON = "retired_title"
+
+
+def is_retired_title(title: object) -> bool:
+    """True when a stated title holds an emeritus or retired word."""
+    return isinstance(title, str) and bool(_EMERITUS_OR_RETIRED_RE.search(title))
+
+
 # ---------------------------------------------------------------------------
 # 2. Stated vs inferred (field-level inference stamps)
 # ---------------------------------------------------------------------------
@@ -848,6 +883,15 @@ def _check_window(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
 # Hub"): a sentence there is about one of the programs it lists.
 _HUB_RE = re.compile(r"\b(?:directory|directories|hub|database|listings?)\b", re.IGNORECASE)
 
+
+def _page_lists_other_programs(record: dict) -> bool:
+    """Whether a sentence on the row's page may be about another program."""
+    metadata = record.get("metadata")
+    if isinstance(metadata, dict) and metadata.get("shared_program_page") is True:
+        return True
+    return any(isinstance(record.get(key), str) and _HUB_RE.search(record[key]) for key in ("title", "lab_or_program"))
+
+
 _FACT_CHECKS = {
     "paid": _check_paid,
     "compensation": _check_compensation,
@@ -872,10 +916,7 @@ def configured_fact(record: dict, facet: str) -> ConfiguredFact:
     path = CONFIGURED_FACT_PATHS[facet]
     if not is_configured_program(record) or inferred_method(record, path) not in (None, CONFIGURED_PROGRAM_METHOD):
         return _UNSTATED
-    metadata = record.get("metadata")
-    if isinstance(metadata, dict) and metadata.get("shared_program_page") is True:
-        return _UNSTATED
-    if any(isinstance(record.get(key), str) and _HUB_RE.search(record[key]) for key in ("title", "lab_or_program")):
+    if _page_lists_other_programs(record):
         return _UNSTATED
     sentences, origins = _captured_text(record)
     if not sentences:
@@ -893,6 +934,36 @@ def configured_value_unstated(record: dict, facet: str) -> bool:
     """Whether ``facet`` holds a campus program spec's value that the page text
     the row carries does not state: our configuration, shown as inference."""
     return is_configured_program(record) and configured_fact(record, facet).state != FACT_STATED
+
+
+# The whole of a sentence, so nothing in it names a cycle, another program or
+# an audience: "Applications are now open for the 2026 3-Minute Thesis
+# Competition" is not one.
+_APPLICATIONS_OPEN_RE = re.compile(r"applications?\s+(?:are|is)\s+(?:(?:currently|now)\s+)?open[.!]*", re.IGNORECASE)
+
+
+def page_states_applications_open(record: dict) -> bool:
+    """Whether the page a configured row's last refresh read says that
+    applications are open (M90).
+
+    The collectors' `metadata.status` is no such statement. It reads the
+    whole page, site menu included: of the 33 suffixed rows whose page read
+    "open" on 2026-11-16, 27 did on an "Apply Now" link alone and 6 on a
+    sentence about something else's applications. And a run that fails to
+    load the page (`seed_page_verified` not True) keeps the stored status.
+
+    So only a sentence of the excerpt counts, on the terms `configured_fact`
+    reads one: each run that loads the page rewrites the excerpt and a run
+    that does not drops it, while a captured passage outlives the read that
+    kept it.
+    """
+    metadata = record.get("metadata")
+    description = record.get("description")
+    if (not isinstance(metadata, dict) or metadata.get("seed_page_verified") is not True
+            or not isinstance(description, str) or not is_configured_program(record)
+            or _page_lists_other_programs(record)):
+        return False
+    return any(_APPLICATIONS_OPEN_RE.fullmatch(sentence) for sentence in _excerpt_sentences(description))
 
 
 # SRO work-authorization notes written before the collector read the
