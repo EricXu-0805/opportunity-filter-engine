@@ -569,12 +569,25 @@ def _read_on_pages(records: list[dict], ledger: dict, listing) -> tuple[set, set
 def _read_elsewhere(opp: dict, identity: tuple[str, str], unit: str,
                     active: list[dict], ledger: dict, listing) -> list[dict]:
     """The source's active rows for this person under the other units that
-    read them this run."""
+    read them this run. The identity alone is a surname and a first initial,
+    which a namesake shares, so a row is this person's only with the same
+    first name or the same address, as in ``_shown_on_page``."""
     readers = {key for key, entry in ledger.items()
                if key != unit and identity in (_observed_identities(entry) or ())}
+
+    def mail(record: dict) -> str:
+        email = record.get("contact_email")
+        return email.strip().lower() if isinstance(email, str) and "@" in email else ""
+
+    words = _listed_name_words(opp.get("pi_name")) or [""]
+
+    def same_person(other: dict) -> bool:
+        theirs = _listed_name_words(other.get("pi_name")) or [""]
+        return bool(words[0] and words[0] == theirs[0]) or bool(mail(opp) and mail(opp) == mail(other))
+
     return [o for o in active
             if o is not opp and _unit_id_of(o) in readers
-            and identity_key(o, listing) == identity]
+            and identity_key(o, listing) == identity and same_person(o)]
 
 
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:

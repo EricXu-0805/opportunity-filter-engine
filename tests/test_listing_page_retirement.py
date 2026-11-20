@@ -551,6 +551,23 @@ def test_a_moved_person_their_own_page_still_shows_is_kept_as_moved(still_shown)
     _kept_as_moved(out, old)
 
 
+def test_a_namesake_another_unit_lists_is_not_the_person():
+    # Same surname and first initial, another first name, no address on either.
+    old = _in_unit_a("Kim Sample")
+    out, _ = _run_units([(UNIT_A, [_unit_tr("Robin Example")]),
+                         (UNIT_B, [_unit_tr("Ken Sample")])], [old])
+    _kept_as_moved(out, old)
+
+
+def test_another_first_name_with_the_persons_own_address_is_the_person():
+    old = _in_unit_a("Kimberly Sample", MAIL)
+    out, corpus = _run_units([(UNIT_A, [_unit_tr("Robin Example")]),
+                              (UNIT_B, [_unit_tr("Kim Sample", email=MAIL)])], [old])
+    new = next(r for r in corpus if r["pi_name"] == "Kim Sample")
+    assert out["records_archived_moved_unit"] == 1
+    assert old["metadata"]["duplicate_of"] == new["id"]
+
+
 def test_a_moved_person_two_other_units_list_is_kept_as_moved():
     old = _in_unit_a("Kim Sample")
     out, _ = _run_units(
