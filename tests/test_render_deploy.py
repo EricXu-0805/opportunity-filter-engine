@@ -1,8 +1,10 @@
 """How the backend is started and deployed on Render."""
 from __future__ import annotations
 
+import itertools
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -66,26 +68,72 @@ def _deploy_step() -> dict:
 
 
 def test_the_deploy_waits_for_the_required_checks_and_migrations():
+    """And for `decide`, whose answer says whether the four ran at all."""
     job = _deploy_job()
-    assert sorted(job["needs"]) == sorted(_DEPLOY_CHECKS)
+    assert sorted(job["needs"]) == sorted([*_DEPLOY_CHECKS, "decide"])
     jobs = _ci()["jobs"]
     for job_id, check in _DEPLOY_CHECKS.items():
         assert jobs[job_id]["name"] == check, job_id
 
 
-def test_only_a_push_to_main_deploys():
-    """Never a pull request, a manual dispatch or a schedule.
+_RESULTS = ("success", "failure", "cancelled", "skipped")
 
-    No status function either: with none, GitHub applies success(), so a
-    needed job that failed, was cancelled or was skipped skips the deploy.
-    always() or failure() here would deploy a commit whose checks did not pass.
+
+def _condition(text: str):
+    """The job's `if:` as a function of the facts GitHub evaluates it on.
+
+    Translates the few operators the condition may use and refuses anything
+    else, so always(), failure() or a new context cannot slip in unevaluated.
+    `!cancelled()` is the only status function allowed.
     """
-    condition = " ".join(str(_deploy_job()["if"]).split())
-    assert "github.event_name == 'push'" in condition
-    assert "github.ref == 'refs/heads/main'" in condition
-    assert "||" not in condition
-    for function in ("always()", "success()", "failure()", "cancelled()"):
-        assert function not in condition, function
+    text = " ".join(str(text).split())
+    assert text.startswith("${{") and text.endswith("}}"), text
+    text = text[3:-2].replace("!cancelled()", "(not CANCELLED)")
+    text = text.replace("&&", " and ").replace("||", " or ")
+    text = text.replace("needs.decide.outputs.skip", "SKIP")
+    text = re.sub(r"needs\.([a-z0-9_-]+)\.result", r"RESULT['\1']", text)
+    text = text.replace("github.event_name", "EVENT").replace("github.ref", "REF")
+    rest = re.sub(r"'[^']*'|\b(?:and|or|not|CANCELLED|EVENT|REF|SKIP|RESULT)\b|==|!=|[()\[\]\s]", "", text)
+    assert rest == "", f"the deploy condition uses something this test cannot evaluate: {rest!r}"
+    code = compile(text.strip(), "<deploy if>", "eval")
+
+    def holds(*, cancelled: bool, event: str, ref: str, skip: str, results: dict[str, str]) -> bool:
+        return bool(eval(code, {"__builtins__": {}}, {
+            "CANCELLED": cancelled, "EVENT": event, "REF": ref, "SKIP": skip, "RESULT": results}))
+    return holds
+
+
+def test_it_deploys_only_from_main_and_only_a_tree_whose_four_jobs_passed():
+    """Every combination of event, ref, cancellation, `decide` and the four
+    results, against the condition as written in ci.yml.
+
+    It deploys in two cases: all four jobs ran here and succeeded, or `decide`
+    succeeded with skip 'true' and all four were skipped for it. A failed,
+    cancelled or skipped test job deploys nothing in any other way, and
+    neither does a pull request, a manual dispatch, a schedule, a `decide`
+    that failed, or a cancelled run. An empty skip is what a failed `decide`
+    leaves behind.
+    """
+    holds = _condition(_deploy_job()["if"])
+    jobs = tuple(_DEPLOY_CHECKS)
+    deployed = 0
+    for cancelled, event, ref, decide, skip in itertools.product(
+            (False, True),
+            ("push", "pull_request", "workflow_dispatch", "schedule"),
+            ("refs/heads/main", "refs/heads/batch/example", "refs/pull/7/merge"),
+            _RESULTS, ("true", "false", "")):
+        for combination in itertools.product(_RESULTS, repeat=len(jobs)):
+            proven = skip == "true" and all(result == "skipped" for result in combination)
+            passed = all(result == "success" for result in combination)
+            expected = (not cancelled and event == "push" and ref == "refs/heads/main"
+                        and decide == "success" and (proven or passed))
+            got = holds(cancelled=cancelled, event=event, ref=ref, skip=skip,
+                        results={"decide": decide, **dict(zip(jobs, combination, strict=True))})
+            assert got == expected, (cancelled, event, ref, decide, skip, combination)
+            deployed += got
+    # Of 73,728 combinations: the four passing under each of the three skip
+    # values, and the proven skip.
+    assert deployed == 4
 
 
 def test_a_failed_deploy_is_not_hidden():
