@@ -65,6 +65,13 @@ vi.mock('./ContactRevealSection', () => ({
     );
   },
 }));
+// A sentinel here too: the real section renders nothing until its own read
+// of the student's requests answers, so "absent" was true of a mounted one.
+vi.mock('./ConciergeRequestSection', () => ({
+  ConciergeRequestSection: (props: { opportunityId: string }) => (
+    <div data-testid="concierge-request-section">{props.opportunityId}</div>
+  ),
+}));
 // Visible sentinels, not nulls. Every one of these rendered `null`, so
 // "the eligibility section is absent" was true of a mounted one as well —
 // the parent could mount all six for a closed listing and nothing here
@@ -282,6 +289,31 @@ describe('OpportunityDetail — MVP capability surface', () => {
     expect(screen.queryByTestId('opportunity-chatbot')).not.toBeInTheDocument();
     expect(screen.queryByTestId('chat-drawer')).not.toBeInTheDocument();
     expect(screen.queryByTestId('professor-follow')).not.toBeInTheDocument();
+  });
+});
+
+// Checklist M54: the section invites a request nobody is notified of, so it
+// ships off.
+describe('OpportunityDetail — the request section release switch, RELEASE_SCOPE.conciergeRequests', () => {
+  let shipped: unknown;
+  beforeEach(() => { shipped = releaseFlags.conciergeRequests; mockHookState.current = baseHookResult(); });
+  afterEach(() => { releaseFlags.conciergeRequests = shipped; });
+
+  it('off: an actionable target keeps its contact section and shows no request section', () => {
+    releaseFlags.conciergeRequests = false;
+    render(<OpportunityDetail opp={opp} />);
+    expect(screen.getByTestId('contact-reveal')).toBeInTheDocument();
+    expect(screen.queryByTestId('concierge-request-section')).toBeNull();
+  });
+
+  it('on: an actionable target shows the section for that target, and a target with no truth does not', () => {
+    releaseFlags.conciergeRequests = true;
+    const { unmount } = render(<OpportunityDetail opp={opp} />);
+    expect(screen.getByTestId('concierge-request-section')).toHaveTextContent('opp-1');
+    unmount();
+
+    render(<OpportunityDetail opp={{ ...(opp as Record<string, unknown>), target_truth: null } as never} />);
+    expect(screen.queryByTestId('concierge-request-section')).toBeNull();
   });
 });
 

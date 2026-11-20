@@ -55,6 +55,9 @@ def _stub_all_collectors(monkeypatch, tmp_path):
                 lambda opps, **kwargs: (0, 0),
             )
     monkeypatch.setattr(refresh_all, "PROCESSED_FILE", tmp_path / "missing.json")
+    # No refresh under test asks a UIUC profile page whether it is gone.
+    monkeypatch.setattr("src.collectors.uiuc_faculty.profile_page_answer",
+                        lambda url: pytest.fail(f"No external network permitted: {url}"))
     # The post-write tracking pass must never touch the repo's real artifact
     # from a test run.
     monkeypatch.setattr(refresh_all, "TRACKING_FILE", tmp_path / "professor_tracking.json")
@@ -1917,6 +1920,69 @@ def test_national_run_touches_no_faculty(monkeypatch, tmp_path):
     assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
     saved = json.loads(processed.read_text(encoding="utf-8"))[0]
     assert saved["metadata"]["is_active"] is True
+
+
+def _unlisted_uiuc_row(ident: str) -> dict:
+    """A UIUC row no roster has listed for 60 days, with a profile page of its own."""
+    return {**_seed_faculty("uiuc_faculty", ident, days_ago=60),
+            "source_url": f"https://{ident}.testu.edu/directory/profile/{ident}"}
+
+
+def test_a_uiuc_refresh_retires_an_unlisted_row_only_when_its_profile_page_is_gone(monkeypatch, tmp_path):
+    gone, live = _unlisted_uiuc_row("gone"), _unlisted_uiuc_row("live")
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [gone, live])
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+    monkeypatch.setattr("src.collectors.uiuc_faculty.profile_page_answer",
+                        lambda url: (404 if url == gone["source_url"] else 200, url))
+
+    summary = refresh_all.refresh_all(deep=False, schools={"uiuc"})
+
+    assert summary["sources"]["uiuc_faculty"]["profile_gone"] == {
+        "candidates": 2, "probed": 2, "deactivated": 1, "deactivated_ids": ["gone"], "kept": {"http_200": 1}}
+    # Absence alone still retires no UIUC row.
+    assert summary["sources"]["deactivate_stale_faculty"]["deactivation_not_authorized"] == ["uiuc_faculty"]
+    saved = {o["id"]: o["metadata"] for o in json.loads(processed.read_text(encoding="utf-8"))}
+    assert {k: saved["gone"].get(k) for k in ("is_active", "deactivation_reason", "deactivated_at")} == {
+        "is_active": False, "deactivation_reason": "profile_page_gone", "deactivated_at": date.today().isoformat()}
+    assert saved["live"]["is_active"] is True
+    assert "deactivation_reason" not in saved["live"]
+
+
+def test_a_refresh_that_does_not_collect_uiuc_faculty_asks_for_no_profile_page(monkeypatch, tmp_path):
+    # The stubbed requester fails the test when asked.
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [_unlisted_uiuc_row("gone")])
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    assert "uiuc_faculty" not in summary["sources"]
+    assert json.loads(processed.read_text(encoding="utf-8"))[0]["metadata"]["is_active"] is True
+
+
+def test_rows_of_a_uiuc_department_that_read_empty_are_not_asked_about_and_uiuc_still_publishes(monkeypatch, tmp_path):
+    """A department whose list page reads empty degrades UIUC while the corpus
+    holds active rows for it. Retiring them for gone pages would leave none,
+    and every later run would read it as a department that never had rows and
+    withhold UIUC. The stubbed requester fails the test when asked."""
+    read = [{**_seed_faculty("uiuc_faculty", f"read-{index}", days_ago=0), "department": "Department of Wells"}
+            for index in range(5)]
+    tides = [{**_unlisted_uiuc_row(f"tides-{index}"), "department": "Department of Tides"} for index in range(3)]
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, read + tides)
+    _stub_successful_uiuc_deep_components(monkeypatch)
+    monkeypatch.setattr(refresh_all, "fetch_faculty", lambda enrich: read)
+    monkeypatch.setattr(refresh_all, "faculty_missing_departments", lambda _records: ["Department of Tides"])
+    for name in ("fetch_rss", "fetch_urap", "fetch_ursa", "fetch_drp", "fetch_siebel", "fetch_other"):
+        monkeypatch.setattr(refresh_all, name, lambda *a, **k: [{"id": "listed"}])
+    monkeypatch.setattr(refresh_all, "_update_professor_tracking", lambda *a, **k: None)
+
+    runs = [refresh_all.refresh_all(deep=True, schools={"uiuc"}) for _ in range(2)]
+
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert [row["metadata"]["is_active"] for row in saved] == [True] * 8
+    for run in runs:
+        faculty, release = run["sources"]["uiuc_faculty"], run["release"]
+        assert faculty["profile_gone"] == {"candidates": 3, "probed": 0, "deactivated": 0, "deactivated_ids": [],
+                                           "kept": {"department_unread": 3}}
+        assert faculty["status"] == "ok" and "error" not in faculty
+        assert faculty["empty_department_baselines"] == {"Department of Tides": 3}
+        assert release["publishable"] == ["uiuc"] and release["status"] == "degraded"
 
 
 def test_run_summary_reports_tombstoned_contacts_the_enricher_skipped(monkeypatch, tmp_path):

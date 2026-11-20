@@ -30,6 +30,7 @@ describe('MVP public release scope', () => {
       payments: false,
       conciergePayQr: false,
       courseStatus: true,
+      conciergeRequests: false,
     });
   });
 

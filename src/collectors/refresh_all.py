@@ -406,6 +406,7 @@ from .uiuc_faculty import (
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
     _strip_furniture_keywords,
+    deactivate_gone_profiles,
     enforce_final_shared_keyword_invariant,
 )
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
@@ -416,6 +417,7 @@ from .uiuc_js_faculty import fetch_and_normalize as fetch_js_faculty
 from .uiuc_json_faculty import fetch_and_normalize as fetch_json_faculty
 from .uiuc_other import fetch_and_normalize as fetch_other
 from .uiuc_other import merge_into_processed as merge_other
+from .uiuc_our_rss import delist_old_posts as delist_rss_old_posts
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
 from .uiuc_our_rss import merge_into_processed as merge_rss
 from .uiuc_siebel import fetch_and_normalize as fetch_siebel
@@ -1721,6 +1723,11 @@ def refresh_all(
             logger.info("SRO: %d programs no longer listed deactivated, %d kept (control page %s)",
                         sro_unlisted["deactivated"], sro_unlisted["kept"], sro_unlisted["control"])
 
+        if "uiuc_our_rss" in summary["sources"]:
+            rss_delisted = delist_rss_old_posts(all_opps)
+            summary["sources"]["uiuc_our_rss"]["delisted_old_posts"] = rss_delisted
+            logger.info("RSS: %d old posts delisted", rss_delisted)
+
         # Classify every source's output BEFORE anything reads its status.
         # A collector that fetched nothing because its department moved host
         # (ucb_ling_faculty), was re-themed (colgate_faculty), or was refused
@@ -1858,6 +1865,24 @@ def refresh_all(
         stale_faculty = deactivate_stale_faculty(
             all_opps, faculty_fetched, held_sources=held_sources,
         )
+        # The hold leaves a UIUC row one way out: no roster has listed it for
+        # more than 14 days and its own profile page answers 404 or 410. A
+        # department whose list page read empty in this run listed nobody, so
+        # its rows are not asked about: the release verdict reports them as
+        # preserved untouched, and it counts them to tell that department from
+        # one that never had rows.
+        if "uiuc_faculty" in summary["sources"]:
+            profile_gone = deactivate_gone_profiles(
+                all_opps,
+                unread_departments=summary["sources"]["uiuc_faculty"].get("empty_departments") or (),
+            )
+            summary["sources"]["uiuc_faculty"]["profile_gone"] = profile_gone
+            logger.info(
+                "uiuc_faculty: %d row(s) unlisted for more than 14 days, %d profile "
+                "page(s) asked for, %d gone and retired; kept %s",
+                profile_gone["candidates"], profile_gone["probed"],
+                profile_gone["deactivated"], profile_gone["kept"],
+            )
         # Schools the product no longer offers are held inactive on EVERY run,
         # not deactivated once: a merge is an upsert that writes is_active back
         # to True, so a one-time pass would be undone by the next harvest that

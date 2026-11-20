@@ -4237,3 +4237,233 @@ def test_a_research_interests_read_over_200_characters_is_still_trimmed_in_the_d
     row = _physics_row_from_profile(monkeypatch, _primary_area_profile("", after=interests))
     assert row["metadata"]["research_areas_raw"] == ", ".join(areas)
     assert f"Research areas: {', '.join(areas[:4])} Contact" in row["description_raw"]
+
+
+# --- A UIUC row no roster has listed for 14 days is retired only when its own
+# profile page answers 404 or 410; absence alone retires none (M149). Synthetic
+# people, and the only pages there are sit in each test's ``answers``. ---
+
+def _unlisted(slug: str, days: int = 30, host: str = "physics.testu.edu", **metadata) -> dict:
+    """An active row last read on a roster ``days`` before the run of 2026-11-20."""
+    from datetime import datetime, timedelta
+
+    seen = (datetime(2026, 11, 20, 6) - timedelta(days=days)).isoformat()
+    return _seen(f"Avery {slug.title()}", f"https://{host}/directory/profile/{slug}", seen, metadata_extra=metadata)
+
+
+def _retire_gone(rows: list[dict], answers: dict, clock=None, today=None, **options) -> tuple[dict, list]:
+    """The pass over ``rows`` and the pages it asked for. An answer is a
+    status, a (status, address that answered) pair, or the error raised. Under
+    a ``clock`` each request takes a quarter second and is listed with its time."""
+    from datetime import date
+
+    from src.collectors.uiuc_faculty import deactivate_gone_profiles
+
+    asked = []
+
+    def ask(url):
+        asked.append(url if clock is None else (url.split("/")[2], clock.now))
+        if url not in answers:
+            pytest.fail(f"asked for a page no test serves: {url}")
+        if clock is not None:
+            clock.now += 0.25
+        answer = answers[url]
+        if isinstance(answer, Exception):
+            raise answer
+        return answer if isinstance(answer, tuple) else (answer, url)
+
+    timing = {"sleep": lambda seconds: None} if clock is None else {"clock": clock, "sleep": clock.sleep}
+    return deactivate_gone_profiles(rows, today=today or date(2026, 11, 20), ask=ask, **timing, **options), asked
+
+
+class _RunClock:
+    """A clock only ``sleep`` and a request move."""
+
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
+@pytest.mark.parametrize("answer", [404, 410, (404, "https://physics.testu.edu/directory/profile/gone/")],
+                         ids=["404", "410", "404_after_a_trailing_slash"])
+def test_an_unlisted_row_whose_profile_page_is_gone_is_retired_and_keeps_its_id(answer):
+    row = _unlisted("gone")
+    result, asked = _retire_gone([row], {row["source_url"]: answer})
+    assert asked == [row["source_url"]]
+    assert row["id"] == "faculty-test-avery-gone"
+    assert {k: row["metadata"].get(k) for k in ("is_active", "deactivated_at", "deactivation_reason")} == {
+        "is_active": False, "deactivated_at": "2026-11-20", "deactivation_reason": "profile_page_gone"}
+    assert result == {"candidates": 1, "probed": 1, "deactivated": 1, "deactivated_ids": [row["id"]], "kept": {}}
+
+
+def _request_errors() -> list:
+    import requests
+
+    return [(requests.Timeout("synthetic"), "timeout"),
+            (requests.ConnectionError("synthetic"), "connection_error"),
+            (requests.exceptions.SSLError("synthetic"), "certificate_error"),
+            (ValueError("synthetic"), "request_failed")]
+
+
+@pytest.mark.parametrize("answer, reason", [
+    (200, "http_200"), (403, "http_403"), (500, "http_500"), (503, "http_503"),
+    *_request_errors(),
+    # The site answers a missing profile from its directory, or from another host.
+    ((404, "https://physics.testu.edu/directory"), "redirected"),
+    ((404, "https://www.testu.edu/directory/profile/kept"), "redirected"),
+    ((200, "https://physics.testu.edu/directory/profile/kept?moved=1"), "redirected"),
+], ids=lambda value: value if isinstance(value, str) else "")
+def test_any_other_answer_keeps_the_row_and_is_counted_under_its_reason(answer, reason):
+    row = _unlisted("kept")
+    before = json.dumps(row, sort_keys=True)
+    result, asked = _retire_gone([row], {row["source_url"]: answer})
+    assert asked == [row["source_url"]]
+    assert json.dumps(row, sort_keys=True) == before
+    assert result == {"candidates": 1, "probed": 1, "deactivated": 0, "deactivated_ids": [], "kept": {reason: 1}}
+
+
+def test_a_row_with_no_page_of_its_own_is_kept_and_no_page_is_asked_for():
+    none, listing_a, listing_b = _unlisted("nourl"), _unlisted("first"), _unlisted("second")
+    none["source_url"] = none["url"] = ""
+    # The department's list page, on every row whose card links no profile.
+    listing_a["source_url"] = listing_b["source_url"] = "https://physics.testu.edu/directory/faculty"
+    rows = [none, listing_a, listing_b]
+    result, asked = _retire_gone(rows, {listing_a["source_url"]: 404})
+    assert asked == []
+    assert [row["metadata"]["is_active"] for row in rows] == [True, True, True]
+    assert result == {"candidates": 3, "probed": 0, "deactivated": 0, "deactivated_ids": [],
+                      "kept": {"no_profile_url": 3}}
+
+
+@pytest.mark.parametrize("sharer", [
+    lambda: _unlisted("second", is_active=False, deactivated_at="2026-09-01", deactivation_reason="listed_as_emeritus"),
+    lambda: {**_unlisted("second"), "source": "testu_faculty"},
+], ids=["a_retired_row", "a_row_of_another_source"])
+def test_a_page_any_other_row_carries_is_not_asked_for(sharer):
+    row, other = _unlisted("first"), sharer()
+    row["source_url"] = other["source_url"] = "https://physics.testu.edu/directory/faculty"
+    result, asked = _retire_gone([row, other], {row["source_url"]: 404})
+    assert asked == []
+    assert row["metadata"]["is_active"] is True
+    assert result == {"candidates": 1, "probed": 0, "deactivated": 0, "deactivated_ids": [],
+                      "kept": {"no_profile_url": 1}}
+
+
+def test_a_row_of_a_department_whose_list_page_read_empty_is_kept_and_its_page_is_not_asked_for():
+    """An unread list says nothing about who is on it, and the release verdict
+    reports that department's rows as preserved untouched."""
+    unread, read = _unlisted("unread"), _unlisted("read")
+    unread["department"] = "Department of Tides"
+    before = json.dumps(unread, sort_keys=True)
+    result, asked = _retire_gone([unread, read], {read["source_url"]: 404},
+                                 unread_departments=["Department of Tides"])
+    assert asked == [read["source_url"]]
+    assert json.dumps(unread, sort_keys=True) == before
+    assert result == {"candidates": 2, "probed": 1, "deactivated": 1, "deactivated_ids": [read["id"]],
+                      "kept": {"department_unread": 1}}
+
+
+def test_only_active_uiuc_rows_unlisted_for_more_than_14_days_are_asked_about():
+    over = _unlisted("over", days=15)
+    others = [
+        _unlisted("fourteen", days=14),
+        _unlisted("emeritus", is_active=False, deactivated_at="2026-09-01", deactivation_reason="listed_as_emeritus"),
+        {**_unlisted("elsewhere"), "source": "testu_faculty"},
+        _unlisted("undated"),
+    ]
+    others[-1]["metadata"]["last_seen_at"] = "not-a-timestamp"
+    before = json.dumps(others, sort_keys=True)
+    result, asked = _retire_gone([over, *others], {row["source_url"]: 404 for row in [over, *others]})
+    assert asked == [over["source_url"]]
+    assert json.dumps(others, sort_keys=True) == before
+    assert (result["candidates"], result["deactivated_ids"]) == (1, [over["id"]])
+
+
+def test_a_run_that_can_ask_for_no_page_retires_nobody():
+    import requests
+
+    rows = [_unlisted(f"person{i}", host=f"unit{i % 3}.testu.edu") for i in range(6)]
+    result, asked = _retire_gone(rows, {row["source_url"]: requests.ConnectionError("offline") for row in rows})
+    assert len(asked) == 6
+    assert all(row["metadata"] == {"last_seen_at": "2026-10-21T06:00:00", "is_active": True} for row in rows)
+    assert result == {"candidates": 6, "probed": 6, "deactivated": 0, "deactivated_ids": [],
+                      "kept": {"connection_error": 6}}
+
+
+def test_a_run_stops_at_its_cap_and_starts_at_a_different_row_each_day(monkeypatch):
+    """A row whose page still answers stays unlisted and is asked about on every
+    run. Asked oldest first each time, such rows held every place under the cap
+    and a row unlisted after them was never asked about."""
+    from datetime import date, timedelta
+
+    import src.collectors.uiuc_faculty as f
+
+    monkeypatch.setattr(f, "PROFILE_PROBE_CAP", 2)
+    rows = [_unlisted(f"person{i}", days=90 - i) for i in range(5)]
+    pages = [row["source_url"] for row in rows]
+    runs = []
+    for day in range(30):
+        result, asked = _retire_gone(rows, dict.fromkeys(pages, 200), today=date(2026, 11, 20) + timedelta(days=day))
+        assert result == {"candidates": 5, "probed": 2, "deactivated": 0, "deactivated_ids": [],
+                          "kept": {"http_200": 2, "over_probe_cap": 3}}
+        runs.append(asked)
+    # Each run takes the next two of the oldest-first order from where it starts.
+    assert all(pages.index(second) == (pages.index(first) + 1) % 5 for first, second in runs)
+    assert {page for asked in runs for page in asked} == set(pages)
+
+
+def test_pages_on_one_host_are_asked_for_a_delay_apart_while_another_host_takes_its_turn():
+    from src.collectors.uiuc_faculty import DELAY
+
+    rows = [_unlisted(f"person{i}", days=90 - i) for i in range(3)] + [_unlisted("other", host="chem.testu.edu")]
+    _, asked = _retire_gone(rows, {row["source_url"]: 200 for row in rows}, clock=_RunClock())
+    assert asked == [("physics.testu.edu", 1000.0), ("chem.testu.edu", 1000.25),
+                     ("physics.testu.edu", 1000.25 + DELAY), ("physics.testu.edu", 1000.5 + 2 * DELAY)]
+
+
+def test_a_run_out_of_time_keeps_the_rows_it_did_not_reach(monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    monkeypatch.setattr(f, "PROFILE_PROBE_SECONDS", 2)
+    rows = [_unlisted(f"person{i}", days=90 - i) for i in range(4)]
+    result, _ = _retire_gone(rows, {row["source_url"]: 404 for row in rows}, clock=_RunClock())
+    assert [row["metadata"]["is_active"] for row in rows] == [False, False, True, True]
+    assert result == {"candidates": 4, "probed": 2, "deactivated": 2,
+                      "deactivated_ids": [rows[0]["id"], rows[1]["id"]], "kept": {"out_of_time": 2}}
+
+
+def test_the_page_is_asked_for_once_as_the_collector_asks_for_a_page(monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    calls = []
+
+    class Response:
+        status_code, url = 404, "https://physics.testu.edu/directory/profile/gone"
+
+        def close(self):
+            calls.append("closed")
+
+    def get(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response()
+
+    monkeypatch.setattr(f.requests, "get", get)
+    assert f.profile_page_answer(Response.url) == (404, Response.url)
+    # GET, redirects followed, certificates verified: nothing switched off.
+    assert calls == [(Response.url, {"headers": f.HEADERS, "timeout": 10, "stream": True}), "closed"]
+
+
+def test_a_row_retired_for_a_gone_page_is_live_again_once_a_roster_lists_it(tmp_path):
+    stored = _stored_psych_row("Avery Example", "person1")
+    _retire_gone([stored], {stored["source_url"]: 404})
+    assert stored["metadata"]["deactivation_reason"] == "profile_page_gone"
+    fresh = _stored_psych_row("Avery Example", "person1")
+    fresh["metadata"]["last_seen_at"] = "2026-11-23T00:00:00"
+    row = _merge(tmp_path, [stored], [fresh])["Avery Example"]
+    assert (row["id"], row["metadata"]["is_active"]) == (stored["id"], True)
+    assert _INACTIVE_STATE.isdisjoint(row["metadata"])

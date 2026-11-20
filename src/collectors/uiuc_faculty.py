@@ -22,6 +22,7 @@ import re
 import time
 import unicodedata
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from functools import cache
 from pathlib import Path
@@ -3391,6 +3392,112 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None,
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
 
     return added, updated
+
+
+PROFILE_GONE_REASON = "profile_page_gone"
+PROFILE_GONE_AFTER_DAYS = 14
+# The most profile pages one run asks for, and the longest it keeps asking. The
+# 367 active rows no roster had read since 2026-10-26 take about three minutes.
+PROFILE_PROBE_CAP = 400
+PROFILE_PROBE_SECONDS = 300
+
+
+def profile_page_answer(url: str) -> tuple[int, str]:
+    """The status a GET of ``url`` ends on, redirects followed, and the address
+    that gave it, asked for as the collector asks for a page."""
+    resp = requests.get(url, headers=HEADERS, timeout=10, stream=True)
+    resp.close()
+    return resp.status_code, resp.url
+
+
+def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, ask=None,
+                             clock=time.monotonic, sleep=time.sleep,
+                             unread_departments: Iterable[str] = ()) -> dict:
+    """Retire, in place, active UIUC faculty rows no roster has listed for more
+    than PROFILE_GONE_AFTER_DAYS whose own profile page answers 404 or 410.
+
+    Absence alone retires no UIUC row (refresh_all holds uiuc_faculty out of
+    deactivate_stale_faculty), so a row whose page was taken down stayed listed.
+    Each such row's page is asked for once, oldest sighting first, DELAY apart
+    per host, for at most PROFILE_PROBE_CAP rows and PROFILE_PROBE_SECONDS a
+    run; with more rows than the cap, the run starts at a different one each
+    day. Anything but a 404 or 410 from the page itself keeps the row, counted
+    in ``kept`` under its reason: another status, a failed request, a redirect
+    to another address, a URL that is no one person's page (none, or one
+    another row carries, whatever its source or state), a row the run did not
+    get to. A row of one of ``unread_departments``, those whose list page read
+    empty in this run, is kept without its page being asked for: a list nobody
+    could read says nothing about who is on it. A retired row keeps its id,
+    and the merge puts it back live when a roster lists it again.
+    """
+    ask = ask or profile_page_answer
+    today = today or date.today()
+    active = [opp for opp in all_opps if opp.get("source") == "uiuc_faculty"
+              and (opp.get("metadata") or {}).get("is_active") is not False]
+    carried = Counter(canonical_profile_evidence_url(opp.get("source_url")) for opp in all_opps)
+    stale = sorted(((seen, opp["id"], opp) for opp in active if (seen := _observed_at(opp)) is not None
+                    and (today - seen.date()).days > PROFILE_GONE_AFTER_DAYS), key=lambda row: row[:2])
+    unread = set(unread_departments)
+    kept: Counter = Counter()
+    own_page: list[tuple[dict, tuple]] = []
+    for _, _, opp in stale:
+        page = canonical_profile_evidence_url(opp.get("source_url"))
+        if opp.get("department") in unread:
+            kept["department_unread"] += 1
+        elif page is None or carried[page] > 1:
+            kept["no_profile_url"] += 1
+        else:
+            own_page.append((opp, page))
+    if len(own_page) > PROFILE_PROBE_CAP:
+        # Rows that can never be retired (a page that still answers, a host
+        # that refuses the request) stay unlisted and are asked about again on
+        # every run. Always asked first, they would fill the cap in time and
+        # no later row would be asked about at all.
+        start = int(hashlib.sha256(today.isoformat().encode()).hexdigest(), 16) % len(own_page)
+        own_page = own_page[start:] + own_page[:start]
+        kept["over_probe_cap"] = len(own_page) - PROFILE_PROBE_CAP
+    queues: dict[str, list[tuple[dict, tuple]]] = {}
+    for opp, page in own_page[:PROFILE_PROBE_CAP]:
+        queues.setdefault(page[0], []).append((opp, page))
+    queued = min(len(own_page), PROFILE_PROBE_CAP)
+    started = clock()
+    ready: dict[str, float] = {}
+    probed = 0
+    gone: list[dict] = []
+    while queues:
+        if clock() - started >= PROFILE_PROBE_SECONDS:
+            kept["out_of_time"] += queued - probed
+            break
+        # The host whose turn comes first; one not yet asked can be asked now.
+        host = min(queues, key=lambda name: ready.get(name, started))
+        wait = ready.get(host, started) - clock()
+        if wait > 0:
+            sleep(wait)
+        opp, page = queues[host].pop(0)
+        if not queues[host]:
+            del queues[host]
+        probed += 1
+        try:
+            status, answered = ask(opp["source_url"])
+        except Exception as exc:  # noqa: BLE001
+            # Outside the collector's error handling: a failed request proves nothing.
+            kept["certificate_error" if isinstance(exc, requests.exceptions.SSLError)
+                 else "timeout" if isinstance(exc, requests.exceptions.Timeout)
+                 else "connection_error" if isinstance(exc, requests.exceptions.ConnectionError)
+                 else "request_failed"] += 1
+        else:
+            if canonical_profile_evidence_url(answered) != page:
+                kept["redirected"] += 1
+            elif status in (404, 410):
+                gone.append(opp)
+            else:
+                kept[f"http_{status}"] += 1
+        ready[host] = clock() + DELAY
+    for opp in gone:
+        opp["metadata"].update(is_active=False, deactivated_at=today.isoformat(),
+                               deactivation_reason=PROFILE_GONE_REASON)
+    return {"candidates": len(stale), "probed": probed, "deactivated": len(gone),
+            "deactivated_ids": [opp["id"] for opp in gone], "kept": dict(sorted(kept.items()))}
 
 
 if __name__ == "__main__":
