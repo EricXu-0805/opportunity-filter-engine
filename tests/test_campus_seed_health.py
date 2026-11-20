@@ -252,6 +252,229 @@ class TestSeedInventory:
         assert programs[("uci", "engineering_ugresearch")] == page
         assert page in seeds
 
+    def test_syracuse_source_pages_move_with_the_october_site_change(self):
+        """campus-seed-health run 40211548227 (2026-10-25) found both pages gone.
+
+        The SOURCE's sitemap gives 2026-10-21 as the last change of both
+        successor pages. Its menu now lists "Open Undergraduate Research
+        Opportunities" at for-students/open-opportunities/, which says
+        "SOURCE is piloting hosting open undergraduate research opportunities
+        on our site", and the symposium page kept its slug one level up, at
+        research-symposium/.
+        That page lists the SOURCE Spring Showcase and other units' research
+        days; it names no Fall Expo and no Summer Symposium, so the record's
+        title stops naming them. The keys stay, so the stored rows
+        syracuse-bc89f2a14633 and syracuse-5533bfb47b70 move in place on the
+        next Syracuse refresh.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://undergraduateresearch.syracuse.edu/source-opportunites/",
+            "https://undergraduateresearch.syracuse.edu/for-students/research-symposium/",
+        }
+        specs = {
+            (config["school_slug"], spec["key"]): spec
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (dead & {spec["url"] for spec in specs.values()})
+        assert specs[("syracuse", "syracuse_source_opportunities")]["url"] == (
+            "https://undergraduateresearch.syracuse.edu/for-students/open-opportunities/"
+        )
+        symposia = specs[("syracuse", "syracuse_source_symposia")]
+        assert symposia["url"] == "https://undergraduateresearch.syracuse.edu/research-symposium/"
+        assert "Fall" not in symposia["title"] + symposia["description"]
+
+    def test_northwestern_circumnavigator_record_is_the_global_research_grant(self):
+        """campus-seed-health run 42507442114 (2026-11-08) found this seed gone.
+
+        funding/circumnavigator-grant/ answers 404. The office's menu and its
+        funding index list a Global Research Grant at funding/grg/ and no
+        Circumnavigator Grant, while a slide on its home page still links the
+        dead page under the old name. The new page keeps the old grant's
+        shape (one junior a year, ten continuous weeks, five countries, three
+        continents) and its proposal guide is still a file named
+        Circumnavigators-Proposal-Guide, but the award is "$13,000" and the
+        page names no club, meridian rule, blog or paper length. Its
+        "DEADLINE Thursday, November 19, 2026 (11:59 PM CST)" is the date the
+        record already carried. The key stays, so the stored row
+        northwestern-f46efa753da9 moves in place on the next refresh.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://undergradresearch.northwestern.edu/funding/circumnavigator-grant/"
+        page = "https://undergradresearch.northwestern.edu/funding/grg/"
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        specs = {
+            (config["school_slug"], spec["key"]): spec
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+        grant = specs[("northwestern", "nu_circumnavigator_grant")]
+
+        assert dead not in seeds
+        assert dead not in {spec["url"] for spec in specs.values()}
+        assert grant["url"] == page and page in seeds
+        assert grant["title"] == "Northwestern Global Research Grant"
+        assert grant["compensation"] == "$13,000 grant"
+        assert "November 19, 2026" in grant["deadline_note"]
+        stated = grant["description"] + grant["deadline_note"]
+        for gone in ("$10,000", "meridian", "Circumnavigators Club", "blog", "50+ page", "early January"):
+            assert gone not in stated
+
+    def test_duke_surf_and_bsurf_leave_with_their_pages(self):
+        """campus-seed-health run 43749236597 (2026-11-15) found both seeds gone.
+
+        /SURF and the BSURF opportunity page answer 404, and the URS site's
+        own /opportunity/urs/bsurf redirects to /SURF. BSURF was SURF's
+        earlier name: a student profile on the site says "a BSURF (now SURF)
+        fellow in 2023". The office's Opportunities page (URS-Funding) and
+        its Duke Opportunities list name two summer programs it funds,
+        T-SUMR and TRI-PATH, and no SURF; both are records already. A page
+        outside the menu, opportunities-urs-administered-awards-and-
+        fellowships, still describes SURF and links the dead /SURF. Seeds and
+        records are removed, so the next Duke refresh retires the stored rows
+        duke-a83f596db7f6 and duke-db2b91d604f5 as no longer listed.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://undergraduateresearch.duke.edu/SURF",
+            "https://undergraduateresearch.duke.edu/opportunity/"
+            "biological-sciences-undergraduate-research-fellowship-bsurf",
+        }
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (seeds & dead)
+        assert not (set(programs.values()) & dead)
+        assert ("duke", "surf") not in programs
+        assert ("duke", "bsurf") not in programs
+        assert programs[("duke", "tri_path")] == "https://undergraduateresearch.duke.edu/TRI-Path"
+        assert programs[("duke", "tsumr_trinity_research")] == "https://undergraduateresearch.duke.edu/T-SUMR"
+
+    def test_duke_huang_fellows_leaves_with_its_page(self):
+        """campus-seed-health run 40211548227 (2026-10-25) found this seed gone.
+
+        scienceandsociety.duke.edu/huang-fellows-program/ answers 404. The
+        site's sitemap (377 addresses) has no Huang or fellows page, and its
+        Undergraduate Education page lists two certificates only. Duke's
+        Experiential Education listing for the fellowship says "The Huang
+        Fellows program is not currently recruiting new cohorts" and links a
+        Science & Society address that is not there either. The stored row
+        duke-38a4f583d43c has been inactive since its page read as closed;
+        with the record gone the next Duke refresh marks it no longer listed.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://scienceandsociety.duke.edu/huang-fellows-program/"
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in seeds
+        assert dead not in set(programs.values())
+        assert ("duke", "huang_fellows") not in programs
+
+    def test_caltech_rising_tide_leaves_with_its_page(self):
+        """campus-seed-health run 40211548227 (2026-10-25) found this page gone.
+
+        sfp.caltech.edu/undergraduate-research/programs/rising-tide answers
+        404, and the Student-Faculty Programs index and menu no longer list
+        Rising Tide. Two pages under the dead one still answer,
+        program-information and eligibility; the site's search finds only
+        those, they give 2026 dates, and the second says "The 2026
+        application period is now closed." A record sent there would offer a
+        program its office has taken off its list, so the record goes and the
+        hub record stops naming Rising Tide. The row caltech-b1447833185f is
+        in national.json, so the national refresh retires it.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://sfp.caltech.edu/undergraduate-research/programs/rising-tide"
+        specs = {
+            (config["school_slug"], spec["key"]): spec
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not any(spec["url"].startswith(dead) for spec in specs.values())
+        assert ("caltech", "rising_tide") not in specs
+        assert "Rising Tide" not in specs[("caltech", "sfp_hub")]["description"]
+
+    def test_bates_hoffman_and_environmental_internship_leave_with_their_pages(self):
+        """campus-seed-health run 41333994421 (2026-11-01) found both pages gone.
+
+        Both answer 404, and a search of the academics site's published
+        pages for either name returns only pages that mention it. Neither is
+        on the Summer Funded Opportunities index. The Summer Funded
+        Opportunity Deadlines page still lists "Hoffman Research Support
+        Grants" with "TBD" and no link, and does not list the internship. The
+        Student Research page describes both and links the Hoffman grant at
+        research-opportunities/summer-grants-summary/, which is a 404 too.
+        With no page of its own to send a student to, each record is removed;
+        the next Bates refresh retires the stored rows bates-3773ff7710f4 and
+        bates-511c38090d90 as no longer listed, and a record configured again
+        under the same key brings its row back.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://www.bates.edu/academics/student-research/summer-grants-summary/"
+            "hoffman-research-support-grant/",
+            "https://www.bates.edu/academics/student-research/summer/bates-environmental-internship/",
+        }
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (set(programs.values()) & dead)
+        assert ("bates", "bates_hoffman_grant") not in programs
+        assert ("bates", "bates_environmental_internship") not in programs
+
+    def test_tamu_summer_resources_record_leaves_with_its_page(self):
+        """campus-seed-health run 43749236597 (2026-11-15) found this page gone.
+
+        ugr.tamu.edu/resources/summer.html, which the 2026-11-08 run still
+        counted ok, answers 404. The office's menu does not list it under
+        Resources, and no page took its place: resources/summer/ and
+        programs/summer/ are 404s, and the Summer Poster Session page is the
+        event, not the guidance. The site's sitemap ("Summer Resources &
+        Guidance") and its General Resources page still link the address, so
+        it may come back. Until it does the record has no page to send a
+        student to; the next Texas A&M refresh retires the stored row
+        tamu-4b42514a1f6f as no longer listed.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://ugr.tamu.edu/resources/summer.html"
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in set(programs.values())
+        assert ("tamu", "ugr_summer_reu_gateway") not in programs
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.

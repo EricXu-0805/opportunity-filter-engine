@@ -475,7 +475,7 @@ SCHOOL: dict = {
                 "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/urap/",
                 "https://undergradresearch.northwestern.edu/funding/ctg/",
-                "https://undergradresearch.northwestern.edu/funding/circumnavigator-grant/",
+                "https://undergradresearch.northwestern.edu/funding/grg/",
                 "https://undergradresearch.northwestern.edu/funding/emerging-scholars/",
                 "https://www.mccormick.northwestern.edu/students/undergraduate/research-opportunities/grants-awards.html",
                 "https://www.mccormick.northwestern.edu/biomedical/academics/undergraduate/research-opportunities/summer-research-awards.html",
@@ -655,25 +655,36 @@ SCHOOL: dict = {
                     deadline_note="Rolling; final deadline June 1 each year; apply before the conference",
                     keywords=["conference travel", "presentation", "reimbursement", "rolling deadline"],
                 ),
+                # /funding/circumnavigator-grant/ has answered 404 since the
+                # 2026-11-08 probe. The office's menu and funding index now list
+                # the Global Research Grant at /funding/grg/ and no Circumnavigator
+                # Grant: the same deadline, juniors only, ten weeks, five
+                # countries, three continents, and a proposal guide still filed
+                # as Circumnavigators-Proposal-Guide. The page, read on
+                # 2026-11-16, names no Circumnavigators Club, meridian rule, blog
+                # or paper length. The key stays so the row keeps its id.
                 program(
                     "nu_circumnavigator_grant",
-                    "Northwestern Circumnavigators Travel-Study Grant",
-                    "https://undergradresearch.northwestern.edu/funding/circumnavigator-grant/",
-                    "$10,000 grant for a solo around-the-world summer research project: at "
-                    "least 10 continuous weeks of travel through 5+ countries on 3+ "
-                    "continents, crossing every meridian. Open to juniors (any discipline) "
-                    "who will return as full-time undergraduates; winners blog twice weekly "
-                    "and produce a 50+ page research paper. Co-sponsored with the "
-                    "Circumnavigators Club Chicago chapter.",
+                    "Northwestern Global Research Grant",
+                    "https://undergradresearch.northwestern.edu/funding/grg/",
+                    "$13,000 grant to spend the summer travelling the world, researching "
+                    "a topic of the student's choice in any field of study. One winner a "
+                    "year travels for ten continuous weeks, starting and ending the trip "
+                    "from the same location, to at least five countries on at least three "
+                    "continents. Open to full-time Northwestern students with junior "
+                    "standing who will be returning to campus the next year. The winner "
+                    "submits weekly reflections during the trip and a final report, and "
+                    "presents at the Undergraduate Research and Arts Exposition the "
+                    "following spring.",
                     organization="Northwestern University",
                     department="Office of Undergraduate Research",
-                    lab_or_program="Circumnavigators Travel-Study Grant",
+                    lab_or_program="Global Research Grant",
                     opportunity_type="fellowship",
                     paid="stipend",
-                    compensation="$10,000 travel-study grant",
+                    compensation="$13,000 grant",
                     eligibility_majors=["all"],
                     preferred_year=["junior"],
-                    deadline_note="Application due Thursday, November 19, 2026 (11:59 PM CST); final interviews in early January",
+                    deadline_note="Deadline Thursday, November 19, 2026 (11:59 PM CST); finalist interviews during week one of winter quarter",
                     keywords=["global travel", "independent research", "juniors only", "travel grant", "circumnavigation"],
                 ),
                 program(

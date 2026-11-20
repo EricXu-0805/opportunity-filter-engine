@@ -7,6 +7,8 @@ first-year bridge and academic-year funding channels, and the institutes
 (KNI, Beckman, Resnick, Chen, IQIM, IPAC) that host undergraduates as
 cold-email targets. Every URL was fetch-verified (HTTP 200 + real content) on
 2026-07-09; discontinued programs (MURF — folded into WAVE) were dropped.
+Rising Tide was dropped on 2026-11-16: its page has answered 404 since the
+2026-10-25 probe and SFP's programs index and menu no longer list it.
 
 Emit buckets -> (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -50,9 +52,9 @@ SCHOOL: dict = {
                     "Student-Faculty Programs (SFP) — Caltech",
                     "https://sfp.caltech.edu/undergraduate-research/programs",
                     "Caltech's central office for undergraduate research, administering "
-                    "SURF, SURF@JPL, WAVE Fellows, Amgen Scholars, Rising Tide, the "
-                    "visiting-student VURP pathway, exchange programs, and the research "
-                    "communication competitions. More than 90% of Caltech undergraduates "
+                    "SURF, SURF@JPL, WAVE Fellows, Amgen Scholars, the visiting-student "
+                    "VURP pathway, exchange programs, and the research communication "
+                    "competitions. More than 90% of Caltech undergraduates "
                     "do research before graduating, and SFP is the front door: it runs "
                     "the application systems, mentor matching, seminar programming, and "
                     "the end-of-summer SURF Seminar Days.",
@@ -483,31 +485,6 @@ SCHOOL: dict = {
                     international_friendly="no",
                     deadline_note="Via WAVE — January 9",
                     keywords=["neuroscience", "BrainWAVE", "Chen Institute", "WAVE"],
-                ),
-                program(
-                    "rising_tide",
-                    "Rising Tide Program (Caltech–Pasadena City College)",
-                    "https://sfp.caltech.edu/undergraduate-research/programs/rising-tide",
-                    "Six-week summer research-techniques training program for Pasadena "
-                    "City College undergraduates with little or no research experience "
-                    "and strong interest in chemistry or biology. Training is led by "
-                    "Caltech graduate students and postdocs across synthetic and "
-                    "analytical chemistry, computational chemistry, and biochemistry, "
-                    "plus science communication and professional development; "
-                    "participants earn a certificate. The program encourages "
-                    "first-generation and geographically underrepresented students and "
-                    "accepts all eligible applicants (faculty nomination required).",
-                    organization="California Institute of Technology",
-                    department="Student-Faculty Programs",
-                    lab_or_program="Rising Tide",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="$4,886 for six weeks (2026)",
-                    eligibility_majors=["chemistry", "biology", "biochemistry"],
-                    preferred_year=["freshman", "sophomore", "junior"],
-                    international_friendly="no",
-                    deadline_note="The 2026 application period is now closed; PCC students with faculty nomination",
-                    keywords=["community college", "research training", "chemistry", "biology", "certificate"],
                 ),
                 program(
                     "vurp",

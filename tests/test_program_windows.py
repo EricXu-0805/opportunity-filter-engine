@@ -109,6 +109,20 @@ def test_the_program_is_offered_until_its_close_and_closed_after(monkeypatch):
     assert (truth.actionable, truth.reason_code, truth.evidence_key) == (False, "listing_closed", "deadline")
 
 
+def test_northwestern_global_research_grant_closes_on_the_deadline_its_page_states(monkeypatch):
+    # Read 2026-11-16: the page's DEADLINE heading is followed by "Thursday,
+    # November 19, 2026 (11:59 PM CST)". The record carried that date only in
+    # its note, so it would stay listed as rolling after the date passes.
+    row = _row("northwestern", "nu_circumnavigator_grant")
+
+    assert (row["deadline"], row["is_rolling"]) == ("2026-11-19", False)
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 20))
+    assert evidence.target_truth(row).actionable is True
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 21))
+    truth = evidence.target_truth(row)
+    assert (truth.actionable, truth.reason_code, truth.evidence_key) == (False, "listing_closed", "deadline")
+
+
 @pytest.mark.parametrize("change", ["moved", "display_link_moved", "source_page_moved", "discovered", "other_school",
                                     "other_key"])
 def test_only_the_reviewed_program_at_its_reviewed_page_gets_the_window(change):
