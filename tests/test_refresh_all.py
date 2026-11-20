@@ -2223,6 +2223,7 @@ def test_b55_real_sro_evidence_flows_to_health_and_safe_publish(monkeypatch, tmp
     monkeypatch.setattr(socket.socket, "connect", lambda *a, **k: pytest.fail("No external network permitted"))
     monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "_rate_limit", lambda *a: None)
     monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "MAX_PAGES", 3)
+    monkeypatch.setattr(uiuc_sro, "LIST_RETRY_BACKOFF", 0)
     table = '<table class="views-table"><tbody><tr><td class="views-field-title"><a href="/audit-program">Audit program</a><br>Study sensors</td></tr></tbody></table>'
     empty = '<table class="views-table"><tbody></tbody></table>'
     class Response:
@@ -2296,6 +2297,7 @@ def test_a_complete_sro_listing_retires_only_unlisted_programs_whose_page_is_gon
     monkeypatch.setattr(socket.socket, "connect", lambda *a, **k: pytest.fail("No external network permitted"))
     monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "_rate_limit", lambda *a: None)
     monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "MAX_PAGES", 3)
+    monkeypatch.setattr(uiuc_sro, "LIST_RETRY_BACKOFF", 0)
     monkeypatch.setattr(uiuc_sro, "DEEP_SCRAPE_DELAY", 0)
     rows = ('<tr><td class="views-field-title"><a href="/opportunity/sensor-reu">Sensor REU</a><br>Study sensors</td></tr>'
             '<tr><td class="views-field-title"><a href="/opportunity/field-school">Field school</a><br>Dig sites</td></tr>')

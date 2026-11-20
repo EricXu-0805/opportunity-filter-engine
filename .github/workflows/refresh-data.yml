@@ -242,7 +242,22 @@ jobs:
             if [[ "$(python3 scripts/refresh_rotation.py \
                      --schools "$SHARD" --allow-full --needs-browser)" == "true" ]]; then
               pip install playwright
-              python -m playwright install --with-deps chromium
+              # --with-deps runs apt-get. On 2026-11-11 the runner could not
+              # resolve azure.archive.ubuntu.com, the one attempt gave up
+              # after ten minutes, and the day's 26 schools went unrefreshed.
+              # Three attempts, 30 then 90 seconds apart; a third failure
+              # fails the step and alerts as before. Two failed attempts and
+              # their waits cost about 22 minutes, which the worst run below
+              # (near minute 313 of 350) can still absorb.
+              for WAIT in 30 90 fail; do
+                python -m playwright install --with-deps chromium && break
+                if [ "$WAIT" = fail ]; then
+                  echo "::error::Chromium could not be installed in three attempts."
+                  exit 1
+                fi
+                echo "::warning::Chromium install failed; trying again in $WAIT seconds."
+                sleep "$WAIT"
+              done
             fi
             # First run of the month for this shard: enable the gated
             # per-profile enrichment pass (OFE_ENRICH_PROFILES). It follows each

@@ -60,6 +60,12 @@ RESEARCH_AREAS = {
 
 DEEP_SCRAPE_DELAY = 3  # seconds between detail page fetches
 
+# A list page that fails to load is tried LIST_FETCH_ATTEMPTS times in all.
+# On 2026-11-15 all 15 pages failed inside 17 s, the next source was answered
+# at once, and the empty list held back that week's national shard.
+LIST_FETCH_ATTEMPTS = 3
+LIST_RETRY_BACKOFF = 10  # seconds; doubles each attempt
+
 
 class UIUCSROCollector(BaseCollector):
     """Scrapes UIUC Summer Research Opportunities Database."""
@@ -67,12 +73,13 @@ class UIUCSROCollector(BaseCollector):
     BASE_URL = "https://researchops.web.illinois.edu/"
     MAX_PAGES = 15  # Safety cap; stops when no more rows
 
-    def __init__(self, config: dict = None, deep: bool = False):
+    def __init__(self, config: dict = None, deep: bool = False, sleep=time.sleep):
         super().__init__(
             source_name="uiuc_sro",
             config=config or {"rate_limit_delay": 3},
         )
         self.deep = deep
+        self._sleep = sleep  # the wait before a list page is tried again
         self.evidence = self._new_evidence()
 
     @staticmethod
@@ -94,10 +101,7 @@ class UIUCSROCollector(BaseCollector):
             url = f"{self.BASE_URL}?page={page}"
             self.evidence["list_pages_attempted"] += 1
             try:
-                resp = requests.get(url, timeout=30, headers={
-                    "User-Agent": "OpportunityFilterEngine/1.0 (educational project)"
-                })
-                resp.raise_for_status()
+                resp = self._get_list_page(url)
             except Exception:
                 self._list_failure(url, "fetch_failed")
                 continue
@@ -131,6 +135,32 @@ class UIUCSROCollector(BaseCollector):
                 if i < len(opportunities) - 1:
                     time.sleep(DEEP_SCRAPE_DELAY)
         return opportunities
+
+    def _get_list_page(self, url: str):
+        """One list page, tried again after a failure that may pass.
+
+        As fetch_soup (ucb_common) does: a connection error, a timeout, a 5xx
+        or a 429 is tried again, and any other failure is final. Once a page
+        has failed, the list is incomplete whatever follows, so the pages
+        after it get one try, as before.
+        """
+        attempts = 1 if self.evidence["list_pages_failed"] else LIST_FETCH_ATTEMPTS
+        for attempt in range(1, attempts + 1):
+            try:
+                resp = requests.get(url, timeout=30, headers={
+                    "User-Agent": "OpportunityFilterEngine/1.0 (educational project)"
+                })
+                resp.raise_for_status()
+                return resp
+            except Exception as error:
+                if attempt == attempts or not _may_pass_on_retry(error):
+                    raise
+                delay = LIST_RETRY_BACKOFF * 2 ** (attempt - 1)
+                self.logger.warning(
+                    f"SRO list page {url} failed on attempt {attempt}/{attempts} "
+                    f"({error}); retrying in {delay}s"
+                )
+                self._sleep(delay)
 
     def _list_failure(self, url: str, reason: str) -> None:
         self.evidence["list_pages_failed"] += 1
@@ -485,6 +515,14 @@ def _field_value(soup, name: str) -> str:
         return ""
     items = [item.get_text(" ", strip=True) for item in node.select(".field__item")]
     return ", ".join(item for item in items if item)
+
+
+def _may_pass_on_retry(error: Exception) -> bool:
+    """Whether a list-page failure is a connection error, a timeout, a 5xx or a 429."""
+    if isinstance(error, requests.exceptions.HTTPError):
+        status = getattr(error.response, "status_code", None)
+        return status is not None and (status >= 500 or status == 429)
+    return isinstance(error, requests.exceptions.ConnectionError | requests.exceptions.Timeout)
 
 
 def _pager_marks_last(soup, page: int) -> bool:

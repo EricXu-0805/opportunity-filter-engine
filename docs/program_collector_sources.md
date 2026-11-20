@@ -28,6 +28,7 @@ The old list-only `fetch_and_normalize` wrapper remains compatible. Callers usin
 
 - Drupal eligibility, deadline and application-link fields use the real `.field__label` / `.field-label` and complete value. Existing page headings are retained as context. Labels are never generated from schema field names.
 - A successful recognized empty listing table ends pagination. Missing tables, partially unparsed rows, failed requests and page-cap exhaustion do not prove a complete list. Valid rows from a partial page can still be retained.
+- A list request that fails with a connection error, a timeout, a 5xx or a 429 is tried three times in all, 10 then 20 seconds apart, before its page counts as failed; any other failure counts at once. After the first failed page the remaining pages get one try each. The list counts below are pages, not requests.
 - Failed or unsupported detail checks do not set `deep_scraped`. A new record without a successful detail check has `metadata.last_verified: null`. Successful checks use the capture's actual observation time.
 - On a quick/failed/unsupported refresh, prior detail fields and their verification time survive the list refresh. The current capture receipt still records the failure. A new list title can change without declaring old detail facts freshly verified.
 - `normalization_failed` counts records that could not be normalized instead of hiding them behind a nonempty result list.

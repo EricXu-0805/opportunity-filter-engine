@@ -1005,3 +1005,50 @@ class TestSupersededPrStep:
         split = script.index(f'python3 scripts/shard_corpus.py split --only-shards "$TARGETS" {record}\n')
         assert script.count(record) == 2
         assert split < script.index("STALE=$(") < script.rindex(record)
+
+
+class TestBrowserInstallStep:
+    """`playwright install --with-deps` runs apt-get. On 2026-11-11 the runner
+    could not resolve the Ubuntu mirror, the one attempt failed after ten
+    minutes, and the day's 26 schools were not refreshed."""
+
+    _INSTALL = "python -m playwright install --with-deps chromium"
+
+    def _run(self, tmp_path, failures):
+        """The script between the pip install and the end of the needs-browser
+        branch, with a python whose first ``failures`` calls fail."""
+        script = str(_workflow_step("Run data refresh")["run"])
+        install = script.split("pip install playwright\n", 1)[1].split("\n  fi\n", 1)[0]
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        log = tmp_path / "calls.log"
+        log.write_text("")
+        for name, body in {
+            "python": 'echo "python $*" >> "$CALLS"\n[ "$(grep -c "^python " "$CALLS")" -gt "$FAILURES" ]\n',
+            "sleep": 'echo "sleep $1" >> "$CALLS"\n',
+        }.items():
+            (bin_dir / name).write_text("#!/bin/sh\n" + body)
+            (bin_dir / name).chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-e", "-c", install], capture_output=True, text=True,
+            env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                 "CALLS": str(log), "FAILURES": str(failures)},
+        )
+        return result, log.read_text().splitlines()
+
+    def test_an_install_that_works_runs_once(self, tmp_path):
+        result, calls = self._run(tmp_path, failures=0)
+        assert result.returncode == 0, result.stderr
+        assert calls == [self._INSTALL]
+
+    def test_two_failed_installs_wait_30_then_90_seconds_for_a_third(self, tmp_path):
+        result, calls = self._run(tmp_path, failures=2)
+        assert result.returncode == 0, result.stderr
+        assert calls == [self._INSTALL, "sleep 30", self._INSTALL, "sleep 90", self._INSTALL]
+        assert result.stdout.count("::warning::") == 2
+
+    def test_a_third_failed_install_fails_the_step(self, tmp_path):
+        result, calls = self._run(tmp_path, failures=3)
+        assert result.returncode == 1
+        assert calls == [self._INSTALL, "sleep 30", self._INSTALL, "sleep 90", self._INSTALL]
+        assert "::error::" in result.stdout
