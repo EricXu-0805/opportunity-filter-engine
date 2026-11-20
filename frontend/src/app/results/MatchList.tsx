@@ -3,6 +3,7 @@
 import { Fragment, memo } from 'react';
 import MatchCard from '@/components/MatchCard';
 import { mixesOpportunityTypes } from '@/lib/match-utils';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { ConciergeCta } from './ConciergeCta';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
@@ -221,7 +222,7 @@ export function MatchList({
                   position={positionOffset + idx + 1}
                 />
               </div>
-              {page === 1 && idx === Math.min(3, matches.length - 1) && (
+              {RELEASE_SCOPE.conciergeRequests && page === 1 && idx === Math.min(3, matches.length - 1) && (
                 <div className="lg:col-span-2">
                   <ConciergeCta t={t} />
                 </div>

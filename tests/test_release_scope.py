@@ -71,6 +71,7 @@ UNACCEPTED_FEATURES = frozenset({
     "payments",
     "microsoft_school_auth",
     "concierge_pay_qr",
+    "concierge_requests",
 })
 
 

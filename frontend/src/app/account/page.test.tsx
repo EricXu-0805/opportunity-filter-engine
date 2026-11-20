@@ -61,6 +61,14 @@ vi.mock('@/i18n/client', () => ({
   useT: () => ({ t: (key: string) => key }),
 }));
 
+// On for the suites below, which are about the request form itself. The
+// shipped value is off; the release-switch describe covers both states.
+const release = vi.hoisted(() => ({ conciergeRequests: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get conciergeRequests() { return release.conciergeRequests; } } };
+});
+
 import AccountPage from './page';
 import { OwnerMismatchError } from '@/lib/identity-owner';
 
@@ -239,6 +247,31 @@ describe('AccountPage — paid-intent CTA', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('account.intentFailed');
     expect(screen.queryByText('account.intentDone')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'account.intentSubmit' })).not.toBeDisabled();
+  });
+});
+
+describe('AccountPage — the request form release switch, RELEASE_SCOPE.conciergeRequests', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue(authState('u1'));
+  });
+  afterEach(() => { release.conciergeRequests = true; });
+
+  it('off: the Plan card keeps the free plan row and offers no request', async () => {
+    release.conciergeRequests = false;
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.freePlan')).toBeInTheDocument());
+    expect(screen.getByText('account.planTitle')).toBeInTheDocument();
+    expect(screen.queryByText('account.premiumTitle')).not.toBeInTheDocument();
+    expect(screen.queryByText('account.premiumDesc')).not.toBeInTheDocument();
+    expect(screen.queryByText('account.intentCta')).not.toBeInTheDocument();
+  });
+
+  it('on: the request row sits under the free plan row, as before', async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.freePlan')).toBeInTheDocument());
+    expect(screen.getByText('account.premiumTitle')).toBeInTheDocument();
+    expect(screen.getByText('account.premiumDesc')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'account.intentCta' })).toBeInTheDocument();
   });
 });
 
