@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 
 MAIN_REF = "refs/heads/main"
@@ -38,6 +39,12 @@ REQUIRED_JOBS = (
     "E2E (Playwright)",
 )
 _SHA = re.compile(r"[0-9a-f]{40}")
+# GitHub lists the pull request of a squash merge some seconds after the push:
+# the data refresh's #1207 had none 4 seconds after it merged (2026-11-20), so
+# the suite ran on main and the deploy waited 40 minutes for it. An empty list
+# is asked for again this many times, this many seconds apart.
+PULLS_RETRIES = 3
+PULLS_WAIT_SECONDS = 5
 
 # Returns one fact (parsed JSON) by name; the path is where the GitHub API
 # serves it. Raises Refusal when the fact cannot be had.
@@ -203,7 +210,8 @@ def decide(*, event: str, ref: str, repo: str, sha: str,
 
 def _from_github(name: str, path: str) -> object:
     try:
-        # Six calls at 30 seconds each stay inside the job's five minutes.
+        # Six calls and PULLS_RETRIES more, at 30 seconds each, with the waits
+        # between them, stay inside the job's five minutes.
         done = subprocess.run(["gh", "api", path], capture_output=True, text=True, timeout=30)
     except (OSError, subprocess.SubprocessError) as exc:
         raise Refusal(f"the fact {name!r} could not be fetched ({type(exc).__name__})") from exc
@@ -215,11 +223,24 @@ def _from_github(name: str, path: str) -> object:
         raise Refusal(f"the fact {name!r} is not JSON") from exc
 
 
+def _from_github_once_listed(name: str, path: str) -> object:
+    """``_from_github``, asking again for a list of pull requests that came
+    back empty. A commit pushed straight to main has none either, so it waits
+    the same seconds before its suite runs."""
+    answer = _from_github(name, path)
+    for _ in range(PULLS_RETRIES if name == "pulls" else 0):
+        if answer != []:
+            break
+        time.sleep(PULLS_WAIT_SECONDS)
+        answer = _from_github(name, path)
+    return answer
+
+
 def main() -> int:
     env = os.environ
     event, ref = env.get("GITHUB_EVENT_NAME", ""), env.get("GITHUB_REF", "")
     skip, reason = _decide(event, ref, env.get("GITHUB_REPOSITORY", ""),
-                           env.get("GITHUB_SHA", ""), _from_github)
+                           env.get("GITHUB_SHA", ""), _from_github_once_listed)
     reason = " ".join(reason.split())
     answer = "true" if skip else "false"
     # On main the answer decides whether the suite runs at all, so it goes on
