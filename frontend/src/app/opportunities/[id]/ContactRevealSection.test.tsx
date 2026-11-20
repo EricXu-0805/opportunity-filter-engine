@@ -282,4 +282,10 @@ describe('availability and copy', () => {
     expect(en.detail.contactRetry).toBe('Retry'); expect(zh.detail.contactRetry).toBe('重试');
     for (const dictionary of [en, zh]) for (const key of ['contactLoading', 'contactLoadError', 'contactAuthError', 'contactUnavailable', 'contactSessionRequired'] as const) expect(dictionary.detail[key].length).toBeGreaterThan(2);
   });
+  it('says where an address comes from instead of calling it verified, in the sign-in and no-address sentences', () => {
+    expect(en.detail.contactSignInPrompt).toBe('An email address from an official public source is on file for this recipient. Sign in to reveal it.'); expect(zh.detail.contactSignInPrompt).toBe('这位收件人有一个采集自官方公开来源的邮箱地址。登录后即可查看。');
+    expect(en.detail.contactUnavailable).toBe('No email address from an official public source is available for this opportunity.'); expect(zh.detail.contactUnavailable).toBe('这个机会暂时没有采集自官方公开来源的邮箱地址。');
+    expect(en.coldEmail.emailUnavailableTitle).toBe("We couldn't find an email address from an official public source for this recipient."); expect(zh.coldEmail.emailUnavailableTitle).toBe('没能从官方公开来源找到这位收件人的邮箱。');
+    expect(en.coldEmail.signInToRevealTitle).toBe('Sign in to unlock the recipient’s email address.'); expect(zh.coldEmail.signInToRevealTitle).toBe('登录后即可查看收件人的邮箱。');
+  });
 });
