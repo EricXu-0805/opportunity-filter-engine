@@ -69,9 +69,12 @@ from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .refresh_contract import (
     CONFIRMED_EMPTY_SOURCES,
+    NATIONAL_SOURCES,
+    UIUC_EMPTY_DEPARTMENT_KIND,
     evaluate_refresh_summary,
     expected_sources,
     shard_of_source,
+    uiuc_empty_departments_degrade,
 )
 from .schools import SCHOOL_CONFIGS
 from .schools.amherst_faculty import fetch_and_normalize as fetch_amherst_faculty
@@ -451,6 +454,18 @@ def _run_start_corpus(
         rows = [o for o in json.load(f) if isinstance(o, dict) and o.get("id")]
     return (frozenset(o["id"] for o in rows), faculty_graph.duplicate_archive_stamps(rows),
             faculty_graph.captured_profile_pages(rows))
+
+
+def _stored_active_rows(path: Path, source: str) -> list[dict]:
+    """The active rows the corpus file at ``path`` holds for ``source``; none
+    when it is absent. Read only when a source or one of its departments came
+    back empty, to tell one with rows to keep from one that never had any."""
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [o for o in json.load(f)
+                if isinstance(o, dict) and o.get("source") == source
+                and (o.get("metadata") or {}).get("is_active") is not False]
 
 
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
@@ -866,6 +881,15 @@ def refresh_all(
                     fetch_html_faculty,
                 )
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
+            # The active rows the corpus holds for each department that read
+            # empty, counted before the merge: it can archive a stored row as
+            # another department's duplicate.
+            empty_depts = faculty_missing_departments(faculty_opps)
+            empty_baselines: dict[str, int] = {}
+            if empty_depts:
+                stored_depts = [row.get("department") for row
+                                in _stored_active_rows(PROCESSED_FILE, "uiuc_faculty")]
+                empty_baselines = {dept: stored_depts.count(dept) for dept in empty_depts}
             added, updated = merge_faculty(all_faculty, published_ids=published_ids,
                                            archived=archive_stamps)
             # Surface the silent-scrape-failure class (a declared department whose
@@ -873,7 +897,6 @@ def refresh_all(
             # bare warning is invisible in the run log, so list empties in the
             # summary and ERROR-log each so the refresh's audit file flags it.
             # (Checked against the static DEPARTMENTS only; the JS depts aren't in it.)
-            empty_depts = faculty_missing_departments(faculty_opps)
             for dept in empty_depts:
                 logger.error(
                     "UIUC faculty department scraped ZERO records — likely URL rot / "
@@ -884,7 +907,12 @@ def refresh_all(
                 for name, info in components.items()
                 if info.get("status") != "ok"
             ]
-            if empty_depts:
+            # A few empty departments the corpus already holds rows for leave
+            # the source "ok": their rows stay as they were and the release
+            # verdict reports each as degraded (uiuc_empty_departments_degrade).
+            if empty_depts and not uiuc_empty_departments_degrade(
+                empty_depts, empty_baselines
+            ):
                 component_errors.append(
                     f"empty departments: {sorted(empty_depts)}"
                 )
@@ -897,6 +925,7 @@ def refresh_all(
                 "updated": updated,
                 "enriched": deep,
                 "empty_departments": empty_depts,
+                "empty_department_baselines": empty_baselines,
                 "components": components,
                 # The four producer families share one source value, so the
                 # corpus cannot prove which component owned an old row, and a
@@ -1505,7 +1534,7 @@ def refresh_all(
 
     # Persist useful partial harvests without claiming a complete source check.
     # Failed/unsupported condition capture is distinct from a supported empty.
-    for info in summary["sources"].values():
+    for name, info in summary["sources"].items():
         if not isinstance(info, dict) or info.get("status") != "ok":
             continue
         incomplete, invalid = source_health.collection_evidence_issues(info)
@@ -1513,6 +1542,17 @@ def refresh_all(
             info["status"] = "error" if invalid or not info.get("fetched") else "partial_failure"
             info["incomplete_reasons"] = invalid + incomplete
             info["error"] = "Source check incomplete: " + ", ".join(invalid + incomplete)
+            # A national list source that read nothing behind valid evidence
+            # of failed pages is a suspicious zero when the corpus holds rows
+            # for it, not an error: every national source shares one shard,
+            # and on 2026-11-15 an unreadable SRO list withheld all of them.
+            # Its rows are untouched (the merge upserts, and the unlisted pass
+            # needs a complete list), and its last success does not advance.
+            if info["status"] == "error" and not invalid and name in NATIONAL_SOURCES:
+                baseline = len(_stored_active_rows(PROCESSED_FILE, name))
+                if baseline:
+                    info["status"] = source_health.SUSPICIOUS_ZERO
+                    info["suspicious_zero_baseline"] = baseline
 
     # Condition checks have their own freshness and do not count as directory
     # observations, successful source health, or evidence of faculty departure.
@@ -1797,7 +1837,7 @@ def refresh_all(
                 )
             else:
                 faculty_fetched[name] = info.get("fetched", 0)
-        deactivation_not_authorized: list[str] = []
+        held_sources = {"uiuc_faculty"}
         if "uiuc_faculty" in faculty_fetched:
             # The hold stands: uiuc_faculty is reported as not authorized, and
             # refresh_contract still blocks a release that says otherwise. It
@@ -1808,9 +1848,15 @@ def refresh_all(
                 summary["sources"]["uiuc_faculty"].get("stale_unit_ledger") or {}
             )
             faculty_fetched["uiuc_faculty"] = ledger
-            deactivation_not_authorized.append("uiuc_faculty")
+        # Reported for every held source this run was to collect, whatever its
+        # status: the pass writes nothing for a held source and is never given
+        # one that did not report "ok". Reporting it only for "ok" made the
+        # verdict say the hold was lost whenever a UIUC department failed.
+        deactivation_not_authorized = sorted(
+            held_sources & set(expected_sources(schools, national=national, deep=deep))
+        )
         stale_faculty = deactivate_stale_faculty(
-            all_opps, faculty_fetched, held_sources={"uiuc_faculty"},
+            all_opps, faculty_fetched, held_sources=held_sources,
         )
         # Schools the product no longer offers are held inactive on EVERY run,
         # not deactivated once: a merge is an upsert that writes is_active back
@@ -2084,7 +2130,8 @@ def refresh_all(
         suspicious = [
             item["source"]
             for item in preliminary_release.get("degradations") or ()
-            if item.get("kind") in (source_health.SUSPICIOUS_ZERO, "partial_failure")
+            if item.get("kind") in (source_health.SUSPICIOUS_ZERO, "partial_failure",
+                                    UIUC_EMPTY_DEPARTMENT_KIND)
         ]
         if suspicious:
             logger.warning(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.collectors.refresh_contract import (
     NATIONAL_SOURCES,
     evaluate_refresh_summary,
@@ -661,6 +663,112 @@ def test_uiuc_empty_departments_still_block_release():
     )
     assert uiuc["ready"] is False
     assert any("empty departments" in reason for reason in uiuc["reasons"])
+
+
+def _uiuc_with_empty_departments(baselines, empty=None) -> dict:
+    sources = {
+        key: _ok(1)
+        for key in expected_sources({"uiuc"}, national=False, deep=True)
+    }
+    sources["uiuc_faculty"].update(
+        stale_deactivation_authorized=False,
+        empty_departments=list(baselines) if empty is None else empty,
+    )
+    if baselines is not None:
+        sources["uiuc_faculty"]["empty_department_baselines"] = baselines
+    sources["deactivate_stale_faculty"] = {
+        "status": "ok",
+        "skipped_partial_scrape": [],
+        "deactivation_not_authorized": ["uiuc_faculty"],
+    }
+    return evaluate_refresh_summary(
+        _summary({"uiuc"}, sources),
+        schools={"uiuc"},
+        national=False,
+        deep=True,
+    )
+
+
+@pytest.mark.parametrize("baselines", [
+    {"Department of Tides": 38},
+    {"Department of Tides": 38, "School of Kites": 1},
+])
+def test_one_or_two_empty_uiuc_departments_with_stored_rows_degrade_and_publish(baselines):
+    """One department of 31 answered 403 on 2026-11-09 and UIUC, 3,498 rows
+    read that day, was withheld. Its stored rows are kept either way."""
+    uiuc = _uiuc_with_empty_departments(baselines)
+
+    assert uiuc["ready"] is True
+    assert uiuc["status"] == "degraded"
+    assert uiuc["publishable"] == ["uiuc"]
+    # One keyed entry per department, so the run names each of them.
+    assert [item for item in uiuc["degradations"] if item["kind"] == "empty_department"] == [
+        {"kind": "empty_department", "source": "uiuc_faculty",
+         "detail": f"{name}: 0 records, previously {count}"}
+        for name, count in sorted(baselines.items())
+    ]
+    for name in baselines:
+        assert any(name in warning and "preserved untouched" in warning
+                   for warning in uiuc["warnings"])
+
+
+def test_three_empty_uiuc_departments_still_block_release():
+    uiuc = _uiuc_with_empty_departments(
+        {"Department of Tides": 38, "School of Kites": 12, "Department of Maps": 20})
+
+    assert uiuc["publishable"] == []
+    assert uiuc["by_unit"]["uiuc"]["reasons"] == [
+        "uiuc_faculty reported empty departments: "
+        "['Department of Maps', 'Department of Tides', 'School of Kites']"
+    ]
+    assert not [item for item in uiuc["degradations"] if item["kind"] == "empty_department"]
+
+
+@pytest.mark.parametrize("empty, baselines", [
+    (["Department of Tides"], {"Department of Tides": 0}),
+    (["Department of Tides", "School of Kites"], {"Department of Tides": 38, "School of Kites": 0}),
+    (["Department of Tides", "School of Kites"], {"Department of Tides": 38}),
+    (["Department of Tides"], {}),
+    (["Department of Tides"], None),
+    (["Department of Tides"], {"Department of Tides": True}),
+    (["Department of Tides"], {"Department of Tides": "38"}),
+    (["Department of Tides"], {"Department of Tides": -1}),
+])
+def test_an_empty_uiuc_department_without_stored_rows_still_blocks_release(empty, baselines):
+    """A department the corpus never held rows for is a directory that has
+    not worked yet, not one that stopped: nothing is there to keep."""
+    uiuc = _uiuc_with_empty_departments(baselines, empty)
+
+    assert uiuc["publishable"] == []
+    assert any("empty departments" in reason for reason in uiuc["by_unit"]["uiuc"]["reasons"])
+
+
+def test_an_errored_uiuc_faculty_source_blocks_whatever_its_departments_say():
+    """The department rule replaces one block, not the error status: a failed
+    component still withholds UIUC beside an isolated empty department."""
+    sources = {
+        key: _ok(1)
+        for key in expected_sources({"uiuc"}, national=False, deep=True)
+    }
+    sources["uiuc_faculty"].update(
+        status="error",
+        error="js: js UIUC faculty component fetched zero records",
+        stale_deactivation_authorized=False,
+        empty_departments=["Department of Tides"],
+        empty_department_baselines={"Department of Tides": 38},
+    )
+    sources["deactivate_stale_faculty"] = {
+        "status": "ok",
+        "skipped_partial_scrape": [],
+        "deactivation_not_authorized": ["uiuc_faculty"],
+    }
+    uiuc = evaluate_refresh_summary(
+        _summary({"uiuc"}, sources), schools={"uiuc"}, national=False, deep=True)
+
+    assert uiuc["publishable"] == []
+    assert uiuc["by_unit"]["uiuc"]["reasons"] == [
+        "source uiuc_faculty reported error: js: js UIUC faculty component fetched zero records"
+    ]
 
 
 def test_ucd_zero_is_explicitly_degraded_without_withholding_ucd():

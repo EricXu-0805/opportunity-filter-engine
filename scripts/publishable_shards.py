@@ -21,10 +21,16 @@ publishable and the withheld shards, each withheld one with the verdict's
 reasons. The title used to name the requested shard, withheld schools
 included, and a withheld school sent no mail.
 
+``--unread`` lists what a shard published without: a school department or a
+national source that read nothing this run and keeps the rows it had. Each
+withheld its whole shard until 2026-11-16, so it reached the operator as a
+withheld shard; now that the shard publishes, this is what still says so.
+
 Usage:
     python3 scripts/publishable_shards.py --authorized "uw,wisc,national"
     python3 scripts/publishable_shards.py --authorized "uw,wisc" --label --shard "uw,wisc"
     python3 scripts/publishable_shards.py --authorized "uw,wisc" --notes
+    python3 scripts/publishable_shards.py --authorized "uiuc,national" --unread
 """
 
 from __future__ import annotations
@@ -106,6 +112,54 @@ def notes(authorized: list[str], status: dict | None) -> str:
     return "\n".join(lines)
 
 
+def unread(authorized: list[str], status: dict | None) -> list[tuple[str, str]]:
+    """What each published shard went without this run: (shard, source and detail).
+
+    Two of the verdict's degradations: a department of a school's faculty
+    source that read empty (``empty_department``), and a source of the
+    national shard that read zero rows while the corpus holds rows for it
+    (``suspicious_zero``). A school shard's own zero-row sources are not
+    listed: they have published without mail since they stopped withholding
+    their school, and the operator queue tracks them. Nor is a degradation
+    of a withheld shard, which is reported by its reasons.
+    """
+
+    release = status.get("release") if isinstance(status, dict) else None
+    release = release if isinstance(release, dict) else {}
+    policies = release.get("policies") if isinstance(release.get("policies"), list) else []
+    shard_of = {
+        policy["summary_key"]: policy.get("school") or "national"
+        for policy in policies
+        if isinstance(policy, dict) and isinstance(policy.get("summary_key"), str)
+    }
+    earned = set(publishable(authorized, status))
+    degradations = release.get("degradations") if isinstance(release.get("degradations"), list) else []
+    found = []
+    for item in degradations:
+        if not isinstance(item, dict) or not isinstance(item.get("source"), str):
+            continue
+        shard = shard_of.get(item["source"])
+        kind = item.get("kind")
+        if shard not in earned or not (
+            kind == "empty_department" or (kind == "suspicious_zero" and shard == "national")
+        ):
+            continue
+        detail = " ".join(str(item.get("detail") or "").split())
+        found.append((shard, f"{item['source']}: {detail}" if detail else item["source"]))
+    return list(dict.fromkeys(found))
+
+
+def unread_notes(authorized: list[str], status: dict | None) -> str:
+    """What published shards went without, for the PR body and the alert; empty when nothing."""
+
+    gaps = unread(authorized, status)
+    if not gaps:
+        return ""
+    lines = [f"Published without a fresh read ({len(gaps)}), each keeping the rows it had:"]
+    lines += [f"- {shard}: {text}" for shard, text in gaps]
+    return "\n".join(lines)
+
+
 def _read_status(path: Path) -> dict | None:
     try:
         with path.open(encoding="utf-8") as handle:
@@ -137,6 +191,11 @@ def main() -> int:
         action="store_true",
         help="print the publishable and withheld shards with reasons instead; empty when none is withheld",
     )
+    output.add_argument(
+        "--unread",
+        action="store_true",
+        help="print what the published shards went without instead; empty when nothing",
+    )
     parser.add_argument("--shard", help="the run's requested shard; empty for a full refresh")
     args = parser.parse_args()
 
@@ -150,8 +209,8 @@ def main() -> int:
             parser.error("--label needs --shard")
         print(title_label(args.shard, authorized, status))
         return 0
-    if args.notes:
-        text = notes(authorized, status)
+    if args.notes or args.unread:
+        text = notes(authorized, status) if args.notes else unread_notes(authorized, status)
         if text:
             print(text)
         return 0

@@ -840,8 +840,8 @@ describe('ColdEmailModal', () => {
       fireEvent.change(bodyArea, { target: { value: 'my hand-tuned draft' } });
       await act(async () => { release(AI_RESP); });
       // Draft is available on the AI pill but the user's edit stays put.
+      const pill = await screen.findByRole('button', { name: 'coldEmail.aiVariantLabel' });
       expect(screen.getByDisplayValue('my hand-tuned draft')).toBeInTheDocument();
-      const pill = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
       await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       await waitFor(() => expect(screen.getByDisplayValue('Clicked AI Body')).toBeInTheDocument());

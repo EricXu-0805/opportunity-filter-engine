@@ -2908,13 +2908,17 @@ _AREA_STOP_HEADINGS = (
 )
 
 
-def _trim_research_areas(text: str, cap: int = 300) -> str:
+def _trim_research_areas(text: str, cap: int = 300, strip_conjunctions: bool = True) -> str:
     """The research text alone, whole items only, never longer than ``cap``.
 
     Section titles are page chrome, not areas: a bare "Research Areas" item is
     dropped and everything from a courses/teaching/education/publications
     title onward is cut. The cap then lands on an item boundary — a 300th
     character inside "CS 412" left "CS 41" on the page.
+
+    ``strip_conjunctions=False`` leaves an item its own leading "and": what
+    _primary_research_area stores, since one area can hold commas ("Atomic,
+    Molecular, and Optical Physics"). Titles are dropped and cut the same.
     """
     items = [i.strip() for i in (text or "").split(",")]
     kept: list[str] = []
@@ -2922,9 +2926,11 @@ def _trim_research_areas(text: str, cap: int = 300) -> str:
         # "signal processing, and acoustics" splits into "and acoustics": the
         # Oxford comma is the source page's, not a research area of its own.
         # 31 raws each carried "and acoustics" and "and remote sensing".
-        item = re.sub(r"^(?:and|or|&)\s+", "", item, flags=re.IGNORECASE).strip()
-        low = item.lower()
-        if not item or low in _AREA_LABEL_HEADINGS:
+        bare = re.sub(r"^(?:and|or|&)\s+", "", item, flags=re.IGNORECASE).strip()
+        if strip_conjunctions:
+            item = bare
+        low = bare.lower()
+        if not bare or low in _AREA_LABEL_HEADINGS:
             continue
         if low in _AREA_STOP_HEADINGS or any(
             low.startswith(h + " ") or low.startswith(h + ":") or low.startswith(h + " (")

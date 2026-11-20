@@ -263,15 +263,26 @@ describe('confirmed contact context and editable email lifetime', () => {
   });
 
   it('expires the original copy record after editing away and back without clearing a later copy', async () => {
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     open(); await ready();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    // Copy runs through several promise hops (profile/target checks, dispatch,
-    // recipient check, clipboard). Drain them without moving the fake clock,
-    // so the 2 s feedback timings below stay exact.
+    // Copy first verifies a receipt with a WebCrypto digest. That finishes on a
+    // native thread, so no fixed number of promise turns covers it. Wait on the
+    // real clock until this copy has written the clipboard and released the
+    // button; the fake clock is not moved, so the 2 s timings below stay exact.
     const click = async (name: string) => {
+      const copies = writeText.mock.calls.length + 1;
       await act(async () => fireEvent.click(screen.getByRole('button', { name })));
-      for (let i = 0; i < 20; i += 1) await act(async () => { await Promise.resolve(); });
+      const deadline = performance.now() + 2000;
+      for (;;) {
+        try {
+          expect(writeText).toHaveBeenCalledTimes(copies);
+          expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeEnabled();
+          return;
+        } catch (error) { if (performance.now() > deadline) throw error; }
+        await act(async () => { await new Promise(resolve => setImmediate(resolve)); });
+      }
     };
     try {
       await click('coldEmail.copy');
