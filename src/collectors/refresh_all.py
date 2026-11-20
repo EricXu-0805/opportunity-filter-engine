@@ -403,9 +403,11 @@ from .ucsb_urca_projects import (
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import (
+    PROFILE_GONE_REASON,
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
     _strip_furniture_keywords,
+    deactivate_gone_profiles,
     enforce_final_shared_keyword_invariant,
 )
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
@@ -457,16 +459,18 @@ def _run_start_corpus(
             faculty_graph.captured_profile_pages(rows))
 
 
-def _stored_active_rows(path: Path, source: str) -> list[dict]:
-    """The active rows the corpus file at ``path`` holds for ``source``; none
-    when it is absent. Read only when a source or one of its departments came
-    back empty, to tell one with rows to keep from one that never had any."""
+def _stored_active_rows(path: Path, source: str, or_retired_as: str | None = None) -> list[dict]:
+    """The active rows the corpus file at ``path`` holds for ``source``, and
+    with ``or_retired_as`` those retired for that reason; none when it is
+    absent. Read only when a source or one of its departments came back empty,
+    to tell one with rows to keep from one that never had any."""
     if not path.exists():
         return []
     with open(path, encoding="utf-8") as f:
         return [o for o in json.load(f)
                 if isinstance(o, dict) and o.get("source") == source
-                and (o.get("metadata") or {}).get("is_active") is not False]
+                and ((meta := o.get("metadata") or {}).get("is_active") is not False
+                     or (or_retired_as is not None and meta.get("deactivation_reason") == or_retired_as))]
 
 
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
@@ -884,12 +888,15 @@ def refresh_all(
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
             # The active rows the corpus holds for each department that read
             # empty, counted before the merge: it can archive a stored row as
-            # another department's duplicate.
+            # another department's duplicate. Rows retired for a gone profile
+            # page count as well: that pass retires rows of just such an
+            # unread department, and one it emptied would read from then on
+            # as a department that never had rows, which blocks UIUC.
             empty_depts = faculty_missing_departments(faculty_opps)
             empty_baselines: dict[str, int] = {}
             if empty_depts:
-                stored_depts = [row.get("department") for row
-                                in _stored_active_rows(PROCESSED_FILE, "uiuc_faculty")]
+                stored_depts = [row.get("department") for row in _stored_active_rows(
+                    PROCESSED_FILE, "uiuc_faculty", or_retired_as=PROFILE_GONE_REASON)]
                 empty_baselines = {dept: stored_depts.count(dept) for dept in empty_depts}
             added, updated = merge_faculty(all_faculty, published_ids=published_ids,
                                            archived=archive_stamps)
@@ -1864,6 +1871,17 @@ def refresh_all(
         stale_faculty = deactivate_stale_faculty(
             all_opps, faculty_fetched, held_sources=held_sources,
         )
+        # The hold leaves a UIUC row one way out: no roster has listed it for
+        # more than 14 days and its own profile page answers 404 or 410.
+        if "uiuc_faculty" in summary["sources"]:
+            profile_gone = deactivate_gone_profiles(all_opps)
+            summary["sources"]["uiuc_faculty"]["profile_gone"] = profile_gone
+            logger.info(
+                "uiuc_faculty: %d row(s) unlisted for more than 14 days, %d profile "
+                "page(s) asked for, %d gone and retired; kept %s",
+                profile_gone["candidates"], profile_gone["probed"],
+                profile_gone["deactivated"], profile_gone["kept"],
+            )
         # Schools the product no longer offers are held inactive on EVERY run,
         # not deactivated once: a merge is an upsert that writes is_active back
         # to True, so a one-time pass would be undone by the next harvest that
