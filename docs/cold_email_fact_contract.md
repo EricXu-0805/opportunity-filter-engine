@@ -114,8 +114,9 @@ collection never falls back to those strings or to automatic raw extraction.
   entries are packed without splitting sentences or clipping qualifiers.
   Nonfitting entries remain in the library and produce a budget notice; a
   valid entry longer than 4,000 codepoints is not yet sent to the model.
-- Templates use the same full-entry ranking with the existing two-word minimum
-  and at most one complete entry no longer than 220 codepoints. Longer entries
+- Templates use the same full-entry ranking and quote at most two complete
+  entries, each no longer than 220 codepoints, whatever their overlap with the
+  target. Longer entries
   produce a template-budget notice. A neutral final recovery uses none.
   Local refinement reports complete confirmed facts present in its actual
   input, capped at eight / 4,000 with an explicit partial-receipt notice.

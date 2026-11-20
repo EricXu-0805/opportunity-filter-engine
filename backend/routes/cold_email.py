@@ -2178,7 +2178,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.24"
+COLD_EMAIL_PIPELINE_VERSION = "w12.25"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2463,7 +2463,7 @@ def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict
         parts["experience_materials"] = selection.selected
         parts["experience_materials_all"] = facts
     parts["experience_excerpts"] = [item["excerpt"] for item in selection.selected]
-    parts["experience_template_excerpt"] = selection.template["excerpt"] if selection.template else ""
+    parts["experience_template_excerpts"] = [item["excerpt"] for item in selection.templates]
     return parts, selection
 
 

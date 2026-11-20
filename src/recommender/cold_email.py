@@ -874,6 +874,12 @@ def _common_parts(
     year = profile.get("year", "undergraduate")
     major = profile.get("major", "")
     school = profile.get("school", "UIUC")
+    # Owner, 2026-11-06 (scored sample E2): a student writing inside their own
+    # university need not say which one; the major is what matters there.
+    # home_school is the profile's campus slug and a row's school its host
+    # campus (None on a national row), so only a stated match counts.
+    home_school = str(profile.get("home_school") or "").strip().casefold()
+    recipient_at_own_school = bool(home_school) and home_school == str(opportunity.get("school") or "").strip().casefold()
     skills = _extract_skill_names(profile.get("hard_skills", []))
     skill_levels = _extract_skill_levels(profile.get("hard_skills", []))
     research_interests = _clean_research_interests(
@@ -950,6 +956,7 @@ def _common_parts(
 
     return dict(
         name=name, year=year, major=major, school=school,
+        recipient_at_own_school=recipient_at_own_school,
         # False is also the form/API default, not proof of domestic status.
         international_student=True if profile.get("international_student") is True else None,
         skills=skills, skill_levels=skill_levels,
@@ -1134,9 +1141,31 @@ def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str
     )
 
 
+def _advice_ask(p: dict) -> str:
+    """What to learn or do first, and whether to come back: no opening is asked about.
+
+    Owner, 2026-11-06 (scored sample E6): a student with no experience to
+    quote asks for advice, rather than hanging "what preparation would be
+    useful" on an opening. A student who quotes one keeps the question about
+    openings: shared words with the target cannot tell whether a project is in
+    the professor's area, and on 140 UIUC rows they said "no" for 136 of one
+    student's. The ask states nothing about
+    the student or the professor. "This area" is the one the subject line
+    names; a row that states none gets no such phrase. It says "contact", not
+    "write": the attribution check reads "I write" as a claim of work done.
+    """
+    scope = " in this area" if p.get("research_area") else ""
+    return (
+        f"\n\nCould I ask what you would suggest I learn or do first to prepare for research{scope}?"
+        " May I contact you again once I have done that?"
+    )
+
+
 def _template_ask(p: dict) -> str:
     if p.get("target_conditions_template_request"):
         return _contact_details(p) + "\n\n" + p["target_conditions_template_request"]
+    if p.get("is_faculty") and not _pick_resume_bullets(p):
+        return _contact_details(p) + _advice_ask(p)
     return _contact_details(p) + _ask_for_lab_type(
         p.get("lab_type"), is_faculty=bool(p.get("is_faculty"))
     )
@@ -1144,7 +1173,7 @@ def _template_ask(p: dict) -> str:
 
 def _at_school(p: dict) -> str:
     school = (p.get("school") or "").strip()
-    return f" at {school}" if school else ""
+    return f" at {school}" if school and not p.get("recipient_at_own_school") else ""
 
 
 def _student_self(p: dict, connector: str) -> str:
@@ -1164,18 +1193,16 @@ def _student_self(p: dict, connector: str) -> str:
     return f"a {' '.join(filter(None, [year, major]))} student{at}"
 
 
-# A cold email has one paragraph to earn a reply, so the bullet that goes in it
-# is chosen for overlap with the target rather than taken in resume order.
+# A cold email has little room to earn a reply, so the bullets that go in it
+# are ordered by overlap with the target rather than taken in resume order.
 # Capped because a resume line can run long and the reader is skimming.
 _BULLET_CAP = 220
 
-# Shared words a bullet needs before it counts as speaking to this target.
-#
-# One shared word is often a coincidence: "the campus learning center"
-# shares `learn` with "machine learning". Preserve the two-word threshold as
-# a conservative selection heuristic, not proof of a research connection.
-_MIN_BULLET_OVERLAP = 2
-
+# The owner found every scored template e-mail short of content (2026-11-06/07):
+# with one bullet, and only one that shared two words with the target, an EE
+# student's two signal-processing projects reached no e-mail. Two bullets go in
+# whatever their overlap; overlap decides their order.
+_TEMPLATE_BULLETS = 2
 
 def _significant_terms(text: str) -> list[str]:
     """Content words from a target's own description of itself.
@@ -1228,15 +1255,13 @@ def resume_bullet_relevance(p: dict, text: str) -> int:
     return len(_target_match_terms(p) & words)
 
 
-def select_resume_bullets(
-    p: dict, *, limit: int, min_overlap: int = 0,
-) -> list[str]:
+def select_resume_bullets(p: dict, *, limit: int) -> list[str]:
     """Select original experience strings by target-word overlap, then cap.
 
     Ties retain input order; no source is rewritten or removed from ``p``.
-    The AI brief may retain weak-match experiences as factual background. The
-    template uses a stricter threshold before volunteering one example. This
-    lexical score prioritizes evidence; it does not prove a research connection.
+    The AI brief and the template both keep weak-match experiences: they are
+    the student's facts whatever the target. This lexical score prioritizes
+    evidence; it does not prove a research connection.
     """
     scored: list[tuple[str, int]] = []
     for bullet in p.get("resume_bullets") or []:
@@ -1244,31 +1269,26 @@ def select_resume_bullets(
             continue
         # Equality, not substring containment: "learning center" must not
         # match a whole topic merely because it contains the stem "learn".
-        score = resume_bullet_relevance(p, bullet)
-        if score >= min_overlap:
-            scored.append((bullet, score))
+        scored.append((bullet, resume_bullet_relevance(p, bullet)))
     scored.sort(key=lambda item: item[1], reverse=True)
     return [bullet for bullet, _score in scored[:max(0, limit)]]
 
 
-def _pick_resume_bullet(p: dict) -> str:
-    """The strongest lexical match, quoted from the student's own source."""
-    if "experience_template_excerpt" in p:
-        return p["experience_template_excerpt"] or ""
-    selected = select_resume_bullets(p, limit=1, min_overlap=_MIN_BULLET_OVERLAP)
-    if not selected:
-        return ""
-    return selected[0].strip()[:_BULLET_CAP].rstrip()
+def _pick_resume_bullets(p: dict) -> list[str]:
+    """The template's examples, strongest lexical match first, each quoted from the student's own source."""
+    if "experience_template_excerpts" in p:
+        return list(p["experience_template_excerpts"])
+    return [bullet.strip()[:_BULLET_CAP].rstrip() for bullet in select_resume_bullets(p, limit=_TEMPLATE_BULLETS)]
 
 
 def _p3_concrete_work(p: dict) -> str:
-    bullet = _pick_resume_bullet(p)
-    if not bullet:
-        return ""
     # Overlap is a selection aid, not proof this is the work most relevant to
-    # the recipient. Quote an actual experience without claiming that link.
-    ending = "" if bullet.endswith((".", "!", "?")) else "."
-    return f"\n\n{bullet}{ending}"
+    # the recipient. Quote actual experiences without claiming that link, each
+    # as its own paragraph so no sentence is read as part of another's.
+    return "".join(
+        f"\n\n{bullet}{'' if bullet.endswith(('.', '!', '?')) else '.'}"
+        for bullet in _pick_resume_bullets(p)
+    )
 
 
 def _build_balanced(p: dict) -> str:

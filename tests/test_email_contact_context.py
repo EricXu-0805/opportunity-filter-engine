@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
+from tests.experience_fixtures import confirmed_experience
 from tests.test_cold_email_writing_quality import OPP, PROFILE
 
 FIRST = {"version": 1, "purpose": "first_contact"}
@@ -360,7 +361,10 @@ def test_faculty_contact_context_still_asks_whether_an_opening_exists(client, mo
     faculty = {**OPP, "source_type": "faculty_research", "record_kind": "faculty_contact",
                "metadata": {"is_active": True, "faculty_title": "Professor", "research_areas_raw": "Python parser tools"}}
     monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {OPP["id"]: faculty})
-    out = result(post(client, "", context), "")
+    # With an experience in the professor's area the ask is about an opening
+    # (tests/test_cold_email_template_rules.py covers the student without one).
+    evidence = confirmed_experience(["I wrote Python parser tools for a course project."])
+    out = result(post(client, "", context, experience_evidence=evidence), "")
     assert "current or upcoming research openings" in out["body"]
     assert "your open position" not in out["body"]
     assert out["contact_context_receipt"]["purpose"] == context["purpose"]
