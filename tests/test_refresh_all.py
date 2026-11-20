@@ -914,6 +914,116 @@ def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     assert summary["sources"]["trainee_titles"]["held"] == {"uga": 1}
 
 
+def test_the_refresh_retires_rows_that_say_the_person_has_died_before_the_unit_ledgers_count(
+    monkeypatch, tmp_path,
+):
+    """A row whose name or title says the person has died is retired on every
+    run, in this run's schools only, before finalize_unit_ledger counts a
+    unit's active rows; it keeps its id, and a chair named in someone's memory
+    is a living person's title."""
+    def row(rid, school, title, name="Jane Roe"):
+        seeded = _seed_faculty(f"{school}_faculty", rid, 0)
+        seeded.update(school=school, department="Earth Sciences", pi_name=name)
+        seeded["metadata"]["faculty_title"] = title
+        return seeded
+
+    by_title = row("faculty-umich-earth-0001aaaa", "umich", "In Memoriam, Professor")
+    by_name = row("faculty-umich-earth-0001bbbb", "umich", "Professor", "Jane Roe (In Memoriam)")
+    chair = row("faculty-umich-earth-0001cccc", "umich", "Jane Roe Memorial Professor")
+    elsewhere = row("faculty-osu-earth-0001dddd", "osu", "Professor of History, Deceased")
+    held = row("faculty-uga-ads-0001eeee", "uga", "Professor", "In Memoriam: Jane Roe")
+    processed = _stub_with_processed_file(
+        monkeypatch, tmp_path, [by_title, by_name, chair, elsewhere, held])
+
+    active_at_ledger = []
+    finalize = refresh_all.finalize_unit_ledger
+
+    def recording_finalize(ledger, opps, name):
+        active_at_ledger.extend(
+            o["metadata"]["is_active"] for o in opps if o["id"] in (by_title["id"], by_name["id"]))
+        return finalize(ledger, opps, name)
+
+    def fetch(unit_ledger):
+        unit_ledger["earth"] = {"unit_id": "earth", "observed_entity_ids": [chair["id"]],
+                                "observed_identities": [["url", "testu.edu/people/prof"]],
+                                "unit_url": "https://earth.testu.edu/people/"}
+        return [dict(chair)]
+
+    monkeypatch.setattr(refresh_all, "finalize_unit_ledger", recording_finalize)
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uga"})
+
+    saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert len(saved) == 5
+    for rid in (by_title["id"], by_name["id"]):
+        assert saved[rid]["metadata"]["is_active"] is False
+        assert saved[rid]["metadata"]["deactivation_reason"] == "listed_as_deceased"
+    assert saved[chair["id"]]["metadata"]["is_active"] is True
+    assert saved[elsewhere["id"]]["metadata"]["is_active"] is True
+    assert active_at_ledger == [False, False]
+    assert summary["sources"]["deceased_listings"] == {
+        "deactivated": 2, "by_school": {"umich": 2}, "held": {"uga": 1}, "status": "ok"}
+    # Another maintainer's school is counted, not changed.
+    assert saved[held["id"]]["metadata"]["is_active"] is True
+
+
+def test_the_refresh_retires_rows_stored_under_an_emeritus_title_but_not_uiucs(
+    monkeypatch, tmp_path,
+):
+    """A row stored under an emeritus title, in any spelling the rule reads, is
+    retired on every run before the unit ledgers count. UIUC's collector lists
+    an emeritus title beside a current role, so UIUC rows are counted, not
+    changed, like another maintainer's; a row that also says the person has
+    died keeps that reason."""
+    def row(rid, school, title):
+        seeded = _seed_faculty(f"{school}_faculty", rid, 0)
+        seeded.update(school=school, department="Earth Sciences", pi_name="Jane Roe")
+        seeded["metadata"]["faculty_title"] = title
+        return seeded
+
+    emerit = row("faculty-umich-earth-0002aaaa", "umich", "Professor Emerit")
+    emertius = row("faculty-umich-earth-0002bbbb", "umich", "Emertius, Professor of Chemistry")
+    late = row("faculty-umich-earth-0002cccc", "umich", "In Memoriam, Professor Emertius")
+    professor = row("faculty-umich-earth-0002dddd", "umich", "Professor of Emergency Medicine")
+    uiuc = row("faculty-earth-0002eeee", "uiuc", "Research Professor, Professor Emeritus")
+    held = row("faculty-uga-ads-0002ffff", "uga", "Professor Emerit")
+    elsewhere = row("faculty-osu-earth-00021111", "osu", "Professor Emerit")
+    processed = _stub_with_processed_file(
+        monkeypatch, tmp_path, [emerit, emertius, late, professor, uiuc, held, elsewhere])
+
+    active_at_ledger = []
+    finalize = refresh_all.finalize_unit_ledger
+
+    def recording_finalize(ledger, opps, name):
+        active_at_ledger.extend(
+            o["metadata"]["is_active"] for o in opps if o["id"] in (emerit["id"], emertius["id"]))
+        return finalize(ledger, opps, name)
+
+    def fetch(unit_ledger):
+        unit_ledger["earth"] = {"unit_id": "earth", "observed_entity_ids": [professor["id"]],
+                                "observed_identities": [["url", "testu.edu/people/prof"]],
+                                "unit_url": "https://earth.testu.edu/people/"}
+        return [dict(professor)]
+
+    monkeypatch.setattr(refresh_all, "finalize_unit_ledger", recording_finalize)
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uga", "uiuc"})
+
+    saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert len(saved) == 7
+    for rid in (emerit["id"], emertius["id"]):
+        assert saved[rid]["metadata"]["is_active"] is False
+        assert saved[rid]["metadata"]["deactivation_reason"] == "retired_title"
+    assert saved[late["id"]]["metadata"]["deactivation_reason"] == "listed_as_deceased"
+    assert active_at_ledger == [False, False]
+    for rid in (professor["id"], uiuc["id"], held["id"], elsewhere["id"]):
+        assert saved[rid]["metadata"]["is_active"] is True
+    assert summary["sources"]["retired_titles"] == {
+        "deactivated": 2, "by_school": {"umich": 2}, "held": {"uiuc": 1, "uga": 1},
+        "status": "ok"}
+    assert summary["sources"]["deceased_listings"]["by_school"] == {"umich": 1}
+
+
 def test_a_partial_berkeley_scrape_with_postdoc_cards_still_retires_no_one(monkeypatch, tmp_path):
     """Berkeley sources report one count. A postdoc card must not stand in for a
     professor the scrape missed: 15 of 20 professors read alongside 6 postdoc

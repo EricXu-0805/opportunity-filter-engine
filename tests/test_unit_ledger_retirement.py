@@ -17,8 +17,12 @@ import pytest
 import yaml
 
 from src.normalizers.deactivate_stale_faculty import (
+    DECEASED_REASON,
     GRACE_DAYS,
+    RETIRED_TITLE_REASON,
     TRAINEE_REASON,
+    deactivate_deceased_faculty,
+    deactivate_retired_title_faculty,
     deactivate_stale_faculty,
     deactivate_trainee_faculty,
     finalize_unit_ledger,
@@ -517,6 +521,127 @@ def test_the_trainee_pass_keeps_to_its_schools_and_leaves_held_ones_counted():
     assert deactivate_trainee_faculty(
         opps, lambda school: school in {"testu", "heldu"}, held=frozenset({"heldu"}),
         today=TODAY)["deactivated"] == 0
+
+
+def test_a_row_that_says_the_person_has_died_retires_and_does_not_block_its_unit():
+    """The collector drops an In Memoriam card the page still links, so the
+    stored row must leave the baseline before the unit ledger counts it; it
+    keeps its id and its address."""
+    late = rec("faculty-tu-bio-99999999", seen=RECENT)
+    late["metadata"]["faculty_title"] = "In Memoriam, Professor"
+    late["contact_email"] = "roe@testu.edu"
+    others = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(9)]
+    opps = [late, *others]
+    entry = observation(observed_ids=[o["id"] for o in others])
+    entry["document_identities"] = [list(ident(o["id"])) for o in opps]
+    entry["completeness_status"] = None
+    entry["retirement_authorized"] = None
+
+    out = deactivate_deceased_faculty(opps, today=TODAY)
+    finalize_unit_ledger({"bio": entry}, opps, "testu_faculty")
+
+    assert out == {"deactivated": 1, "by_school": {"testu": 1}, "held": {}}
+    assert opps[0]["id"] == "faculty-tu-bio-99999999"
+    assert late["metadata"]["is_active"] is False
+    assert late["metadata"]["deactivation_reason"] == DECEASED_REASON == "listed_as_deceased"
+    assert late["metadata"]["deactivated_at"] == TODAY.isoformat()
+    assert late["contact_email"] == "roe@testu.edu"
+    assert entry.get("missed_present_identities") == []
+    assert entry["retirement_authorized"] is True
+
+
+def test_the_deceased_pass_reads_name_and_title_and_leaves_held_schools_counted():
+    def row(rid, school="testu", name="Jane Roe", title="Professor", active=True):
+        r = rec(rid, school=school, active=active)
+        r["pi_name"] = name
+        r["metadata"]["faculty_title"] = title
+        return r
+
+    by_title = row("faculty-tu-bio-a0000001", title="Professor of History, Deceased")
+    by_name = row("faculty-tu-bio-a0000002", name="Jane Roe (In Memoriam)")
+    name_first = row("faculty-tu-bio-a0000003", name="In Memoriam: Jane Roe", title="")
+    other_school = row("faculty-ou-bio-a0000004", school="otheru", title="In Memoriam, Professor")
+    held = row("faculty-hu-bio-a0000005", school="heldu", name="In Memoriam — Jane Roe")
+    retired_before = row("faculty-tu-bio-a0000006", title="In Memoriam, Professor", active=False)
+    retired_before["metadata"]["deactivation_reason"] = "absent_from_directory_rescrape"
+    chair = row("faculty-tu-bio-a0000007", title="Jane Roe Memorial Professor of History")
+    no_title = row("faculty-tu-bio-a0000008", title=None)
+    opps = [by_title, by_name, name_first, other_school, held, retired_before, chair, no_title]
+
+    def run():
+        return deactivate_deceased_faculty(
+            opps, lambda school: school in {"testu", "heldu"}, held=frozenset({"heldu"}),
+            today=TODAY)
+
+    assert run() == {"deactivated": 3, "by_school": {"testu": 3}, "held": {"heldu": 1}}
+    for retired in (by_title, by_name, name_first):
+        assert retired["metadata"]["is_active"] is False
+        assert retired["metadata"]["deactivation_reason"] == DECEASED_REASON
+    for kept in (other_school, held, chair, no_title):
+        assert kept["metadata"]["is_active"] is True
+        assert "deactivation_reason" not in kept["metadata"]
+    assert retired_before["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
+    assert run() == {"deactivated": 0, "by_school": {}, "held": {"heldu": 1}}
+    assert len(opps) == 8
+
+
+def test_a_row_stored_under_a_misspelt_emeritus_title_retires_and_does_not_block_its_unit():
+    """The collector now drops a "Professor Emerit" card the page still links,
+    so the row stored for it must leave the baseline before the unit ledger
+    counts it; it keeps its id."""
+    emerit = rec("faculty-tu-bio-b0000001", seen=RECENT)
+    emerit["metadata"]["faculty_title"] = "Professor Emerit"
+    others = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(9)]
+    opps = [emerit, *others]
+    entry = observation(observed_ids=[o["id"] for o in others])
+    entry["document_identities"] = [list(ident(o["id"])) for o in opps]
+    entry["completeness_status"] = None
+    entry["retirement_authorized"] = None
+
+    out = deactivate_retired_title_faculty(opps, today=TODAY)
+    finalize_unit_ledger({"bio": entry}, opps, "testu_faculty")
+
+    assert out == {"deactivated": 1, "by_school": {"testu": 1}, "held": {}}
+    assert opps[0]["id"] == "faculty-tu-bio-b0000001"
+    assert emerit["metadata"]["is_active"] is False
+    assert emerit["metadata"]["deactivation_reason"] == RETIRED_TITLE_REASON == "retired_title"
+    assert emerit["metadata"]["deactivated_at"] == TODAY.isoformat()
+    assert entry.get("missed_present_identities") == []
+    assert entry["retirement_authorized"] is True
+
+
+def test_the_retired_title_pass_keeps_to_its_schools_and_leaves_held_ones_counted():
+    def row(rid, school="testu", title="Professor Emerit", active=True):
+        r = rec(rid, school=school, active=active)
+        r["metadata"]["faculty_title"] = title
+        return r
+
+    emerit = row("faculty-tu-bio-b0000002")
+    emertius = row("faculty-tu-bio-b0000003", title="Emertius, Professor of Chemistry")
+    emeritus = row("faculty-tu-bio-b0000004", title="Professor Emeritus")
+    other_school = row("faculty-ou-bio-b0000005", school="otheru")
+    held = row("faculty-hu-bio-b0000006", school="heldu",
+               title="Research Professor, Professor Emeritus")
+    retired_before = row("faculty-tu-bio-b0000007", active=False)
+    retired_before["metadata"]["deactivation_reason"] = "absent_from_directory_rescrape"
+    emergency = row("faculty-tu-bio-b0000008", title="Professor of Emergency Medicine")
+    abbreviated = row("faculty-tu-bio-b0000009", title="Professor of History Emer.")
+    opps = [emerit, emertius, emeritus, other_school, held, retired_before, emergency, abbreviated]
+
+    def run():
+        return deactivate_retired_title_faculty(
+            opps, lambda school: school in {"testu", "heldu"}, held=frozenset({"heldu"}),
+            today=TODAY)
+
+    assert run() == {"deactivated": 3, "by_school": {"testu": 3}, "held": {"heldu": 1}}
+    for retired in (emerit, emertius, emeritus):
+        assert retired["metadata"]["is_active"] is False
+        assert retired["metadata"]["deactivation_reason"] == RETIRED_TITLE_REASON
+    for kept in (other_school, held, emergency, abbreviated):
+        assert kept["metadata"]["is_active"] is True
+    assert retired_before["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
+    assert run() == {"deactivated": 0, "by_school": {}, "held": {"heldu": 1}}
+    assert len(opps) == 8
 
 
 def test_source_health_fixture_carries_no_calendar_dates():
