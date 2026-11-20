@@ -106,7 +106,7 @@ def test_a_faculty_row_without_topics_keeps_todays_email_exactly():
         "My name is Eric, and I am a sophomore studying Biology at UIUC. I am interested in "
         "developmental biology. I would like to learn more about the work in the Lee Lab.\n\n"
         "I have foundational exposure to Python.\n\n"
-        "Could I ask whether you have any current or upcoming research openings for a student? "
-        "If so, what preparation would be useful before a brief conversation?\n\n"
+        "Could I ask what you would suggest I learn or do first to prepare for research? "
+        "May I contact you again once I have done that?\n\n"
         "Best regards,\nEric"
     )

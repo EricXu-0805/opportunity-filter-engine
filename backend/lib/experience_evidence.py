@@ -17,6 +17,9 @@ from src.recommender.cold_email import resume_bullet_relevance
 PROMPT_CHARACTER_BUDGET = 4000
 MAX_SELECTED_ENTRIES = 8
 TEMPLATE_CHARACTER_BUDGET = 220
+# The owner found every scored template e-mail short of content (2026-11-06/07):
+# with one example, and only one sharing two words with the target, most had none.
+TEMPLATE_ENTRY_LIMIT = 2
 
 # A PDF prints one bullet over several lines and the import proposes each line
 # as its own entry, so "reaching 0.87 AUC ..." sits one entry below the action
@@ -42,7 +45,7 @@ _WRAP = re.compile(r"(?<=[^\s.!?])[ \t]*\r?\n[ \t]*(?=[a-z]|\d(?!\d*[.)]\s))")
 # A word without case (Chinese) says nothing either way, and a line with no
 # cased word is never read as a role line, since this rule cannot read it.
 # The line stays a confirmed fact for the AI brief and every check; it is only
-# never the template's one quoted example.
+# never one of the template's quoted examples.
 _LINE_WORD = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*")
 _RESUME_ROLES = (
     "intern assistant engineer researcher developer analyst manager lead leader fellow tutor consultant "
@@ -95,7 +98,7 @@ def _within_budget(entries: list[ExperienceEntry], contexts: dict | None = None)
 class ExperienceSelection:
     eligible: list[ExperienceEntry]
     selected: list[dict]
-    template: dict | None
+    templates: list[dict]
     excluded: list[dict]
     legacy_ignored: bool
     contexts: dict | None = None
@@ -134,14 +137,14 @@ class ExperienceSelection:
         }
 
     def quoted_usage(self, body: str) -> dict:
-        # Only the actual complete template example is claimed as quoted.
-        selected = [self.template] if self.template and self.template["excerpt"] in body else []
+        # Only the complete template examples actually in the body are claimed as quoted.
+        selected = [item for item in self.templates if item["excerpt"] in body]
         return self.usage(selected, mode="template")
 
     def local_usage(self, supplied_body: str) -> dict:
         # Local edits take the browser body, not the AI-selected brief. Report
         # whole confirmed entries found in that actual input, including entries
-        # outside the template's one example. This is not paraphrase attribution.
+        # outside the template's examples. This is not paraphrase attribution.
         normalized = " ".join(supplied_body.split())
         supplied = [entry for entry in self.eligible if " ".join(entry.text.split()) in normalized]
         selected = _within_budget(supplied, self.contexts)
@@ -273,9 +276,15 @@ def select_experience(
                 eligible.append(entry)
     ranked = sorted(eligible, key=lambda entry: resume_bullet_relevance(parts, entry.text), reverse=True)
     selected = _within_budget(ranked, contexts)
-    template = next((_receipt(entry, contexts) for entry in ranked
-                     if len(entry.text) <= TEMPLATE_CHARACTER_BUDGET
-                     and resume_bullet_relevance(parts, entry.text) >= 2
-                     and not names_no_action(entry.text)), None)
-    return ExperienceSelection(eligible, selected, template, excluded, bool(legacy_bullets), contexts, context_notices,
+    # Overlap with the target orders the template's examples; it no longer
+    # decides whether the student's work appears at all. A sentence confirmed
+    # twice is quoted once.
+    templates: list[dict] = []
+    for entry in ranked:
+        if (len(entry.text) <= TEMPLATE_CHARACTER_BUDGET and not names_no_action(entry.text)
+                and all(item["excerpt"] != entry.text for item in templates)):
+            templates.append(_receipt(entry, contexts))
+            if len(templates) == TEMPLATE_ENTRY_LIMIT:
+                break
+    return ExperienceSelection(eligible, selected, templates, excluded, bool(legacy_bullets), contexts, context_notices,
                                evidence.resume_text if evidence is not None else "")

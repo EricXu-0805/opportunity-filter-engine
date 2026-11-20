@@ -59,7 +59,7 @@ def test_whole_lab_material_prioritizes_ninth_entry_with_stable_ties():
     parts, selected = request_parts(public)
     assert selected.selected[0]['id'] == 'experience-8'
     assert [item['id'] for item in selected.selected[1:]] == [f'experience-{i}' for i in range(7)]
-    assert selected.template['excerpt'] == RELATED
+    assert selected.templates[0]['excerpt'] == RELATED
     assert resume_bullet_relevance(parts, RELATED) == 2
     source = parts['source_research_text']
     for page in public['lab_context']['snapshot']['pages']:

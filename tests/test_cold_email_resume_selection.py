@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
-from src.recommender.cold_email import _common_parts, _pick_resume_bullet, generate_variants
+from src.recommender.cold_email import _common_parts, _pick_resume_bullets, generate_variants, resume_bullet_relevance
 from tests.experience_fixtures import confirmed_experience
 
 PROFILE = {
@@ -42,9 +42,13 @@ def test_relevant_ninth_bullet_reaches_brief_before_the_eight_bullet_limit():
 
 def test_student_interest_does_not_authenticate_template_relevance():
     parts = _common_parts(PROFILE, OPP, resume_bullets=[UNRELATED])
-    assert _pick_resume_bullet(parts) == ""
+    # The bullet shares words with the student's interest, none with the
+    # target. It is still the student's work and is quoted, with no claim of fit.
+    assert resume_bullet_relevance(parts, UNRELATED) == 0
+    assert _pick_resume_bullets(parts) == [UNRELATED]
     for variant in generate_variants(PROFILE, OPP, resume_bullets=[UNRELATED]):
-        assert UNRELATED not in variant["text"]
+        assert UNRELATED in variant["text"]
+        assert "Most relevant to your work" not in variant["text"]
     # A real experience remains admissible background, and interests remain
     # aspirations. Neither is erased just because this target is unrelated.
     brief = ce._render_student_brief(parts)
@@ -146,7 +150,7 @@ def test_selection_changes_with_target_evidence_not_student_interest():
         {**PROFILE, "research_interests_text": "robot motion planning, autonomous navigation algorithms"},
         OPP, resume_bullets=bullets,
     )
-    assert _pick_resume_bullet(history) == _pick_resume_bullet(changed_interest) == RELEVANT
+    assert _pick_resume_bullets(history) == _pick_resume_bullets(changed_interest) == [RELEVANT, UNRELATED]
     robotics = {**OPP, "keywords": ["robot motion planning"], "description_raw": "Robot motion planning algorithms."}
-    assert _pick_resume_bullet(_common_parts(PROFILE, robotics, resume_bullets=bullets)) == UNRELATED
+    assert _pick_resume_bullets(_common_parts(PROFILE, robotics, resume_bullets=bullets)) == [UNRELATED, RELEVANT]
     assert bullets == [UNRELATED, RELEVANT]
