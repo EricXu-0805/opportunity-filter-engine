@@ -2053,8 +2053,7 @@ class TestTheStudentsOwnWorkReachesTheEmail:
         resume holding nothing relevant. Two shared words takes it to 1. The
         line is the student's own work and is quoted whatever it shares (owner,
         2026-11-06: every template e-mail said too little), but one shared word
-        is still not work in the professor's area: a bullet with two leads it,
-        and alone it does not earn the ask about openings.
+        is still not work in the professor's area: a bullet with two leads it.
         """
         opp = {
             "source_type": "faculty_research",
@@ -2066,7 +2065,7 @@ class TestTheStudentsOwnWorkReachesTheEmail:
         tutoring = "Tutored calculus at the campus learning center"
         theory = "Proved a bound in learning theory for a reading course"
         email = generate_cold_email(self._profile(), opp, resume_bullets=[tutoring])
-        assert tutoring in email and "research openings" not in email
+        assert tutoring in email
         email = generate_cold_email(self._profile(), opp, resume_bullets=[tutoring, theory])
         assert email.index(theory) < email.index(tutoring) and "research openings" in email
 

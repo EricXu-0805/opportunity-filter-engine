@@ -89,10 +89,9 @@ This does not solve cross-project number reuse or semantic entailment.
 
 Templates quote at most two complete entries of at most 220 codepoints each,
 most matching words with the target first, ties in the student's order. The
-count of matching words orders them and does not decide whether an entry is
-quoted; it still decides a faculty template's closing ask (two matching words
-in the first quoted entry keep the question about openings, otherwise the
-template asks what to learn or do first). Larger entries are not excerpted;
+count of matching words orders them and decides nothing else: a faculty
+template that quotes an entry asks about openings, and one that quotes none
+asks what to learn or do first. Larger entries are not excerpted;
 `experience_template_budget_omission` reports that limitation on each variant
 and template/fallback receipt. The final output gate still applies. A fallback
 to an identity-neutral inquiry reports no selected evidence.

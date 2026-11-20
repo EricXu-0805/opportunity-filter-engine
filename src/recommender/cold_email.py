@@ -1144,9 +1144,12 @@ def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str
 def _advice_ask(p: dict) -> str:
     """What to learn or do first, and whether to come back: no opening is asked about.
 
-    Owner, 2026-11-06 (scored sample E6): a student with nothing to show in
-    the professor's area asks for advice, rather than hanging "what
-    preparation would be useful" on an opening. The ask states nothing about
+    Owner, 2026-11-06 (scored sample E6): a student with no experience to
+    quote asks for advice, rather than hanging "what preparation would be
+    useful" on an opening. A student who quotes one keeps the question about
+    openings: shared words with the target cannot tell whether a project is in
+    the professor's area, and on 140 UIUC rows they said "no" for 136 of one
+    student's. The ask states nothing about
     the student or the professor. "This area" is the one the subject line
     names; a row that states none gets no such phrase. It says "contact", not
     "write": the attribution check reads "I write" as a claim of work done.
@@ -1161,7 +1164,7 @@ def _advice_ask(p: dict) -> str:
 def _template_ask(p: dict) -> str:
     if p.get("target_conditions_template_request"):
         return _contact_details(p) + "\n\n" + p["target_conditions_template_request"]
-    if p.get("is_faculty") and not _quotes_experience_in_area(p):
+    if p.get("is_faculty") and not _pick_resume_bullets(p):
         return _contact_details(p) + _advice_ask(p)
     return _contact_details(p) + _ask_for_lab_type(
         p.get("lab_type"), is_faculty=bool(p.get("is_faculty"))
@@ -1200,16 +1203,6 @@ _BULLET_CAP = 220
 # student's two signal-processing projects reached no e-mail. Two bullets go in
 # whatever their overlap; overlap decides their order.
 _TEMPLATE_BULLETS = 2
-
-# Shared words a bullet needs before it counts as speaking to this target.
-#
-# One shared word is often a coincidence: "the campus learning center"
-# shares `learn` with "machine learning". Preserve the two-word threshold as
-# a conservative heuristic, not proof of a research connection. It no longer
-# decides whether a bullet is quoted, only which ask closes the e-mail
-# (_template_ask).
-_MIN_BULLET_OVERLAP = 2
-
 
 def _significant_terms(text: str) -> list[str]:
     """Content words from a target's own description of itself.
@@ -1286,12 +1279,6 @@ def _pick_resume_bullets(p: dict) -> list[str]:
     if "experience_template_excerpts" in p:
         return list(p["experience_template_excerpts"])
     return [bullet.strip()[:_BULLET_CAP].rstrip() for bullet in select_resume_bullets(p, limit=_TEMPLATE_BULLETS)]
-
-
-def _quotes_experience_in_area(p: dict) -> bool:
-    """Whether the first quoted bullet shares enough words with this target."""
-    quoted = _pick_resume_bullets(p)
-    return bool(quoted) and resume_bullet_relevance(p, quoted[0]) >= _MIN_BULLET_OVERLAP
 
 
 def _p3_concrete_work(p: dict) -> str:

@@ -86,9 +86,8 @@ def served(client, opp, experience, endpoint="", **extra):
     return out, [item["body"] for item in items]
 
 
-@pytest.mark.parametrize("experience", [(), (UNRELATED,)], ids=["no-experience", "nothing-in-the-area"])
-def test_a_student_with_nothing_in_the_professors_area_asks_for_advice_not_about_openings(experience):
-    for text in texts(FACULTY, experience):
+def test_a_student_with_no_experience_to_quote_asks_for_advice_not_about_openings():
+    for text in texts(FACULTY):
         assert text.count(ADVICE_ASK) == 1
         assert "openings" not in text and "If so" not in text
 
@@ -101,8 +100,10 @@ def test_the_advice_ask_names_no_area_when_the_record_states_none():
         assert "this area" not in text and "openings" not in text
 
 
-def test_a_student_with_an_experience_in_the_professors_area_keeps_the_openings_ask():
-    for text in texts(FACULTY, (UNRELATED, RELATED)):
+@pytest.mark.parametrize("experience", [(UNRELATED,), (PROJECT,), (UNRELATED, RELATED)],
+                         ids=["no-shared-word", "one-shared-word", "two-shared-words"])
+def test_a_student_who_quotes_an_experience_keeps_the_openings_ask_whatever_its_overlap(experience):
+    for text in texts(FACULTY, experience):
         assert text.count(OPENINGS_ASK) == 1
         assert "learn or do first" not in text
 
@@ -121,8 +122,8 @@ def test_a_listing_keeps_its_own_ask(experience):
 
 
 @pytest.mark.parametrize("endpoint", ["", "variants"])
-@pytest.mark.parametrize("experience, ask", [((), ADVICE_ASK), ((UNRELATED,), ADVICE_ASK), ((RELATED,), OPENINGS_ASK)],
-                         ids=["no-experience", "nothing-in-the-area", "in-the-area"])
+@pytest.mark.parametrize("experience, ask", [((), ADVICE_ASK), ((UNRELATED,), OPENINGS_ASK), ((RELATED,), OPENINGS_ASK)],
+                         ids=["no-experience", "no-shared-word", "two-shared-words"])
 def test_every_template_route_serves_the_ask_and_it_passes_every_fact_check(client, endpoint, experience, ask):
     out, bodies = served(client, FACULTY, experience, endpoint)
     assert bodies and all(body.count(ask) == 1 for body in bodies)
@@ -176,7 +177,7 @@ def test_template_routes_quote_two_confirmed_experiences_and_the_receipt_lists_t
 def test_two_experiences_outside_the_area_are_quoted_and_pass_every_fact_check(client, endpoint):
     out, bodies = served(client, FACULTY, (UNRELATED, PROJECT), endpoint)
     assert bodies and all(f"\n\n{PROJECT}\n\n{UNRELATED}\n\n" in body for body in bodies)
-    assert all(body.count(ADVICE_ASK) == 1 for body in bodies)
+    assert all(body.count(OPENINGS_ASK) == 1 for body in bodies)
     assert [item["excerpt"] for item in out["experience_usage"]["selected"]] == [PROJECT, UNRELATED]
 
 
