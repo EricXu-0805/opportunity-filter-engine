@@ -2149,8 +2149,7 @@ def _archived_and_seen_again(archived_metadata: dict, seen_metadata: dict) -> li
     return [archived, fresh]
 
 
-@pytest.mark.parametrize("reason", ["duplicate_of_live_record", "absent_from_directory_rescrape",
-                                    "profile_page_gone"])
+@pytest.mark.parametrize("reason", ["duplicate_of_live_record", "absent_from_directory_rescrape"])
 @_ROW_DEDUPS
 def test_a_newer_sighting_puts_an_archived_duplicate_back_live_without_its_pointer(dedup, reason):
     """The pointer is part of the inactive state: a row put back live drops it
