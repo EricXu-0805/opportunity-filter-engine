@@ -2061,6 +2061,32 @@ class TestCollapseKeepsPublishedIds:
             [own, other, tomb], published_ids=frozenset({"own", "other", "tomb"}))
         assert tomb["metadata"]["duplicate_of"] == "own"
 
+    @pytest.mark.parametrize("target_published", [False, True], ids=["minted", "published"])
+    def test_a_row_archived_under_a_row_the_run_deletes_follows_it(self, target_published):
+        """The retirement pass archives a moved list-page row under the row
+        another unit read, before the collapse runs (M178). When the collapse
+        then deletes that row, minted this run, the archived one names the row
+        it was dropped into; a published target stays, with its own pointer."""
+        kept = _fac_rec("kept", school="testu", pi_name="Avery Sample", dept="Physics",
+                        url="https://phys.testu.edu/faculty", keywords=["optics"])
+        target = _fac_rec("target", school="testu", pi_name="Avery Sample",
+                          dept="Applied Physics", url="https://ap.testu.edu/faculty")
+        moved = _fac_rec("moved", school="testu", pi_name="Avery Sample", dept="Chemistry",
+                         url="https://chem.testu.edu/people", is_active=False)
+        moved["metadata"].update(deactivated_at="2026-11-01",
+                                 deactivation_reason=fg.DUPLICATE_REASON, duplicate_of="target")
+        published = {"kept", "moved"} | ({"target"} if target_published else set())
+        res = fg.collapse_same_person_faculty(
+            [kept, target, moved], published_ids=frozenset(published), today=date(2026, 11, 6))
+        assert [o["id"] for o in res["kept"]] == [
+            "kept", *(["target"] if target_published else []), "moved"]
+        assert moved["metadata"] == {
+            "is_active": False, "deactivated_at": "2026-11-01",
+            "deactivation_reason": fg.DUPLICATE_REASON,
+            "duplicate_of": "target" if target_published else "kept"}
+        if target_published:
+            assert target["metadata"]["duplicate_of"] == "kept"
+
 
 # --- WordPress-REST api source (UCLA-style, no network in tests) -------------
 

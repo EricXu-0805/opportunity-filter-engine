@@ -305,6 +305,11 @@ def _retire(opp: dict, today: date) -> None:
     meta["deactivation_reason"] = "absent_from_directory_rescrape"
 
 
+# Why a published row kept for its id is inactive when the person is live in
+# another row; ``duplicate_of`` beside it names that row.
+DUPLICATE_REASON = "duplicate_of_live_record"
+
+
 # ---------------------------------------------------------------------------
 # Per-unit collection ledger
 #
@@ -422,7 +427,8 @@ _LISTED_KEY = secrets.token_bytes(16)
 
 def listed_token(kind: str, value: str) -> str:
     """A run-keyed digest of one listed row's ``("email" | "url", value)``, or
-    of one address or name a list page shows (``"mail"`` | ``"name"``)."""
+    of what a list page shows: a name (``"name"``), or an address beside one
+    word of the card that carries it (``"card"``)."""
     return hmac.new(_LISTED_KEY, f"{kind}:{value}".encode(),
                     hashlib.sha256).hexdigest()[:16]
 
@@ -508,15 +514,17 @@ def _listed_tokens_of(record: dict) -> set[str]:
 def _shown_on_page(record: dict, ledger: dict, unit: str,
                    read: tuple[set, set]) -> bool:
     """Whether the page a list-page row came from still shows the person
-    (``page_people`` in ``_unit_observation``): their address, or their name,
-    that no row read this run accounts for (``read``). A title gate that skips
-    a listed "Director of Graduate Studies", or a card the selector does not
-    match, leaves the person on the page and so keeps them. A row read this run
-    accounts for the address it carries, and for the name only when it is the
-    same person (the same first name, or the same address): one read under a
-    new id is live in that row, and the stored copy is folded away as a
-    tombstone. A namesake (Lisa beside Lee Sample) accounts for nothing. A page
-    the run did not record is not evidence of absence."""
+    (``page_people`` in ``_unit_observation``): their address in a card that
+    also shows their surname, or their name, that no row read this run accounts
+    for (``read``). An address inside another person's card shows that person,
+    not this one. A title gate that skips a listed "Director of Graduate
+    Studies", or a card the selector does not match, leaves the person on the
+    page and so keeps them. A row read this run accounts for the address it
+    carries, and for the name only when it is the same person (the same first
+    name, or the same address): one read under a new id is live in that row,
+    and the stored copy is folded away as a tombstone. A namesake (Lisa beside
+    Lee Sample) accounts for nothing. A page the run did not record is not
+    evidence of absence."""
     url = canonical_profile_url(record.get("url") or record.get("source_url"))
     pages = [e.get("page_people") for key, e in ledger.items()
              if isinstance(e, dict) and (key == unit or url in (
@@ -528,10 +536,11 @@ def _shown_on_page(record: dict, ledger: dict, unit: str,
     mails, people = read
     email = record.get("contact_email")
     email = email.strip().lower() if isinstance(email, str) and "@" in email else ""
-    if email and email not in mails and listed_token("mail", email) in shown:
-        return True
     words = _listed_name_words(record.get("pi_name"))
     if not words:
+        return True
+    if (email and email not in mails
+            and listed_token("card", f"{email} {words[-1]}") in shown):
         return True
     person = f"{words[-1]} {words[0][0]}"
     if listed_token("name", person) not in shown:
@@ -562,6 +571,30 @@ def _read_on_pages(records: list[dict], ledger: dict, listing) -> tuple[set, set
             if email:
                 people.add((person, "mail", email))
     return mails, people
+
+
+def _read_elsewhere(opp: dict, identity: tuple[str, str], unit: str,
+                    active: list[dict], ledger: dict, listing) -> list[dict]:
+    """The source's active rows for this person under the other units that
+    read them this run. The identity alone is a surname and a first initial,
+    which a namesake shares, so a row is this person's only with the same
+    first name or the same address, as in ``_shown_on_page``."""
+    readers = {key for key, entry in ledger.items()
+               if key != unit and identity in (_observed_identities(entry) or ())}
+
+    def mail(record: dict) -> str:
+        email = record.get("contact_email")
+        return email.strip().lower() if isinstance(email, str) and "@" in email else ""
+
+    words = _listed_name_words(opp.get("pi_name")) or [""]
+
+    def same_person(other: dict) -> bool:
+        theirs = _listed_name_words(other.get("pi_name")) or [""]
+        return bool(words[0] and words[0] == theirs[0]) or bool(mail(opp) and mail(opp) == mail(other))
+
+    return [o for o in active
+            if o is not opp and _unit_id_of(o) in readers
+            and identity_key(o, listing) == identity and same_person(o)]
 
 
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
@@ -974,7 +1007,8 @@ def deactivate_stale_faculty(
 
     Returns counts for newly deactivated/kept/inactive records, the
     preservation buckets, and — for every proposed retirement — the evidence
-    that authorised it.
+    that authorised it. ``archived_moved`` names each list-page row archived
+    under the row another unit read for the same person (``duplicate_of``).
     """
     held_sources = held_sources or frozenset()
     today = today or date.today()
@@ -998,6 +1032,8 @@ def deactivate_stale_faculty(
         "records_preserved_ambiguous_identity": 0,
         "records_preserved_moved_unit": 0,
         "moved": [],
+        "records_archived_moved_unit": 0,
+        "archived_moved": [],
         "records_preserved_still_listed": 0,
         "units_examined": 0,
         "units_complete_by_identity": 0,
@@ -1141,6 +1177,34 @@ def deactivate_stale_faculty(
                         continue
                     if identity in observed_run_wide:
                         # Same person, different unit: a move, not a departure.
+                        # A list-page row past the grace window whose own page
+                        # no longer shows the person, read or not, is archived
+                        # under the one row another unit read for them, and
+                        # keeps its id. With no such single row it stays.
+                        heirs = []
+                        if (identity[0] == "person" and seen is not None
+                                and seen < cutoff and not _shown_on_page(
+                                    opp, ledger, unit, (set(), set()))):
+                            heirs = _read_elsewhere(
+                                opp, identity, unit, active, ledger, listing)
+                        if len(heirs) == 1:
+                            counts["archived_moved"].append({
+                                "entity_id": opp.get("id"),
+                                "duplicate_of": heirs[0].get("id"),
+                                "from_unit": unit,
+                                "to_unit": _unit_id_of(heirs[0]),
+                                "school": opp.get("school"),
+                            })
+                            if held or dry_run:
+                                counts["would_deactivate"].append(opp.get("id"))
+                                continue
+                            opp.setdefault("metadata", {}).update(
+                                is_active=False,
+                                deactivated_at=today.isoformat(),
+                                deactivation_reason=DUPLICATE_REASON,
+                                duplicate_of=heirs[0].get("id"))
+                            counts["records_archived_moved_unit"] += 1
+                            continue
                         counts["records_preserved_moved_unit"] += 1
                         counts["moved"].append({
                             "entity_id": opp.get("id"),

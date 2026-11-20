@@ -1873,6 +1873,16 @@ def refresh_all(
             "moved_unit_ids": [
                 moved["entity_id"] for moved in stale_faculty["moved"][:200]
             ],
+            # Stored list-page people whose own page no longer shows them,
+            # archived under the row another unit read for them this run
+            # (``duplicate_of`` on the row). Counted and capped likewise.
+            "records_archived_moved_unit": (
+                stale_faculty["records_archived_moved_unit"]
+            ),
+            "archived_moved_unit_ids": [
+                moved["entity_id"]
+                for moved in stale_faculty["archived_moved"][:200]
+            ],
             "status": "ok",
         }
         logger.info(
