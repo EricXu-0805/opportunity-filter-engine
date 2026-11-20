@@ -7,12 +7,15 @@ a time of day or a year on its own, and every such date is two or more UTC
 days back.
 
 The campus collector writes the suffix whenever the program page reads as open
-(USTAR's page still carries an "APPLY NOW!" button), and the served title keeps
+(USTAR's page still carries an "APPLY NOW!" button), and the served title kept
 it for any actionable listing. M05's closure reads only the structured
 `deadline` field, which a configured program never has: its window is prose in
 `metadata.deadline_note`. So Georgia Tech Petit (note: "…with a September 15,
 2026 deadline") and JHU USTAR (note: "…were due January 24, 2025") kept saying
 applications are open, weeks and a year and a half after those dates.
+
+Since 2026-11-16 the suffix also needs the page's own sentence
+(TestOnlyThePagesOwnSentenceKeepsTheSuffix), so the rows here carry one.
 """
 
 from __future__ import annotations
@@ -37,9 +40,14 @@ def calendar(monkeypatch):
     return _TODAY
 
 
+def _page(excerpt: str) -> str:
+    return f"Scholars spend a year in a faculty lab.\n\nFrom the program page: {excerpt}"
+
+
 def _program(note: object, *, title: str = "Petit Undergraduate Research Scholars Program (IBB) (applications open)",
              **overrides) -> dict:
-    """A configured campus program the way campus_graph writes it."""
+    """A configured campus program the way campus_graph writes it, read off a
+    page that says applications are open."""
     record = {
         "id": "gatech-b681bbe40c66",
         "source": "gatech_research_programs",
@@ -47,6 +55,7 @@ def _program(note: object, *, title: str = "Petit Undergraduate Research Scholar
         "campus_source_type": "program",
         "title": title,
         "url": "https://bioresearch.gatech.edu/education-and-outreach/petit-scholars",
+        "description": _page("Applications are now open."),
         "deadline": None,
         "is_rolling": True,
         "metadata": {
@@ -71,7 +80,7 @@ _PETIT_NEXT = "2027 cohort applications were due Sept. 15, 2026; dates for the n
 class TestAPassedNoteDeadlineEndsTheOpenClaim:
     def test_petit(self, calendar):
         # What the config at b8602cb0 writes on the next refresh. The live
-        # row's note says "open" and keeps the suffix (TestWordsThatKeepTheWindowOpen).
+        # row's note says "open", which this rule leaves alone (TestWordsThatKeepTheWindowOpen).
         record = _program(_PETIT_NEXT)
         assert neutralize_lifecycle_title(record["title"], record) == _PETIT
 
@@ -146,7 +155,7 @@ class TestWordsThatKeepTheWindowOpen:
     whatever dates it gives: the page may be right that applications are open."""
 
     @pytest.mark.parametrize("note", [
-        # Live rows: their notes mention the opening, so they keep the suffix.
+        # Live rows: their notes mention the opening, so this rule leaves the suffix.
         "2027 cohort applications open with a September 15, 2026 deadline",
         "Applications open Oct 15, 2025; deadline Feb 15, 2026; decisions by April 1, 2026",
         "Application opened November 1, 2025; deadline February 1, 2026, 11:59pm PDT; "
@@ -332,17 +341,121 @@ class TestWhatItDoesNotTouch:
 
     def test_a_discovered_page_is_not_a_configured_program(self, calendar):
         record = _program("2025 cohort applications were due January 24, 2025")
+        assert evidence.configured_note_window_passed(record) is True
         record["metadata"]["discovered"] = True
-        assert neutralize_lifecycle_title(record["title"], record) == record["title"]
+        assert evidence.configured_note_window_passed(record) is False
 
     def test_a_note_from_another_collector_is_not_read(self, calendar):
         record = _program("Deadline: January 24, 2025", source="uiuc_sro", source_type="uiuc_research")
-        assert neutralize_lifecycle_title(record["title"], record) == record["title"]
+        assert evidence.configured_note_window_passed(record) is False
 
     def test_the_record_is_never_mutated(self, calendar):
         record = _program("2025 cohort applications were due January 24, 2025")
         before = deepcopy(record)
         neutralize_lifecycle_title(record["title"], record)
+        assert record == before
+
+
+class TestOnlyThePagesOwnSentenceKeepsTheSuffix:
+    """M90, 2026-11-16: 27 served titles said "(applications open)". The
+    collector's status reads the whole page: of their 26 pages that loaded, 18
+    read open on an "Apply Now" link alone, 6 on a sentence about something
+    else's applications and 2 no longer read open. Six of the rows held a
+    status from a read weeks earlier, because their page had stopped loading.
+
+    So the suffix stays only on a configured program whose last refresh
+    loaded its page and kept, in the excerpt, a sentence that says, whole,
+    that applications are open."""
+
+    @pytest.mark.parametrize("excerpt", [
+        "Applications are open.",
+        "Applications are currently open!",
+        "Scholars join a lab for a year. Applications are now open. Apply through the portal.",
+        "Meet the scholars\nApplications are now open",
+    ], ids=["plain", "currently", "among-other-sentences", "heading-line"])
+    def test_a_page_that_says_so_keeps_it(self, calendar, excerpt):
+        record = _program("", description=_page(excerpt))
+        assert neutralize_lifecycle_title(record["title"], record) == record["title"]
+
+    @pytest.mark.parametrize("description", [
+        # Most of the 27: the excerpt has no such sentence, or there is none.
+        "Scholars spend a year in a faculty lab.",
+        _page("Scholars join a faculty lab for a year and present at a spring symposium."),
+        # A link's label: uf-d8572cb84ea9 in the page body, purdue-8d52cd4b08e0 in the site menu.
+        _page("Scholars are supported in their pursuit of a Ph.D. Apply Now!"),
+        _page("Admissions Overview Undergraduate Admissions Apply Now Academics"),
+        # A sentence about something else: osu-b6451f208c42, ucb-5f4f6f484f1251,
+        # uchicago-6806765d5248, purdue-805818988b54, arizona-9159d1ff5d3d.
+        _page("Applications are now open for the 2026 Three Minute Thesis Competition."),
+        _page("Workshop and Startup Spotlight applications are now open."),
+        _page("The field semester program is now accepting applications for the Fall 2027 program!"),
+        _page("Spring 2027 – Now Accepting Faculty Project Applications"),
+        _page("Honors Scholars Now Accepting Applications"),
+        # A cycle the sentence names: tamu-f960392cf9ec, under /reu-archive/.
+        _page("Applications for Summer 2026 REU are now open."),
+        _page("Applications are not open."),
+        _page("Applications are open to rising juniors."),
+        _page("If applications are open, apply through the portal."),
+        _page("Applications will open in January."),
+    ], ids=["no-page-text", "nothing-said", "apply-now-button", "apply-now-menu", "another-event", "another-call",
+            "another-program", "another-audience", "another-office-program", "a-named-cycle", "not-open",
+            "open-to", "hedged", "later"])
+    def test_a_page_that_does_not_say_so_loses_it(self, calendar, description):
+        record = _program("", description=description)
+        assert neutralize_lifecycle_title(record["title"], record) == _PETIT
+
+    def test_a_sentence_the_excerpt_cut_short_is_not_read(self, calendar):
+        # The words cut off may be "for the 2026 Three Minute Thesis Competition".
+        tail = "Applications are now open"
+        cut = "a" * (evidence.EXCERPT_LIMIT - len(tail) - 2) + ". " + tail
+        assert len(cut) == evidence.EXCERPT_LIMIT
+        record = _program("", description=_page(cut))
+        assert neutralize_lifecycle_title(record["title"], record) == _PETIT
+        whole = _program("", description=_page(cut[1:]))
+        assert neutralize_lifecycle_title(whole["title"], whole) == whole["title"]
+
+    @pytest.mark.parametrize("seed_page_verified", [False, None])
+    def test_a_status_held_from_an_earlier_read(self, calendar, seed_page_verified):
+        """cornell-4860da480b01 was last read on 09-17 and upenn-8063dfd66d46
+        on 10-10: every run since failed to load the page, and merge kept the
+        stored status and title."""
+        record = _program("")
+        record["metadata"]["seed_page_verified"] = seed_page_verified
+        assert neutralize_lifecycle_title(record["title"], record) == _PETIT
+
+    def test_a_passage_outlives_the_read_that_kept_it(self, calendar):
+        """princeton-b07d2a507b0d: the passages of the 11-06 read stayed on
+        the row after the 11-13 read failed. Only the excerpt is this read's."""
+        record = _program("", description="Scholars spend a year in a faculty lab.")
+        record["source_url"] = record["url"]
+        record["metadata"]["contact_instruction_sources"] = [{
+            "source_url": record["url"], "record_source_url": record["url"],
+            "checked_at": "2026-10-03T13:47:30+00:00",
+            "sections": [{"heading": "How to apply", "text": "Applications are now open."}],
+        }]
+        assert "Applications are now open." in evidence._captured_text(record)[0]
+        assert neutralize_lifecycle_title(record["title"], record) == _PETIT
+
+    def test_a_page_the_config_shares_or_calls_a_directory(self, calendar):
+        shared = _program("")
+        shared["metadata"]["shared_program_page"] = True
+        assert neutralize_lifecycle_title(shared["title"], shared) == _PETIT
+        directory = _program("", title="Summer Research Opportunities Directory (applications open)")
+        assert neutralize_lifecycle_title(directory["title"], directory) == "Summer Research Opportunities Directory"
+
+    def test_a_row_no_program_spec_wrote(self, calendar):
+        discovered = _program("")
+        discovered["metadata"]["discovered"] = True
+        assert neutralize_lifecycle_title(discovered["title"], discovered) == _PETIT
+        other = _program("", source="uiuc_sro", source_type="uiuc_research")
+        assert neutralize_lifecycle_title(other["title"], other) == _PETIT
+
+    def test_only_the_claim_goes(self, calendar):
+        record = _program("", description="Scholars spend a year in a faculty lab.")
+        before = deepcopy(record)
+        payload = project_public_opportunity_payload(deepcopy(record), record)
+        assert payload["title"] == _PETIT
+        assert payload["target_truth"]["actionable"] is True
         assert record == before
 
 

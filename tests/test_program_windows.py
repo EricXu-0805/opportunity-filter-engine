@@ -179,7 +179,8 @@ def test_a_deadline_other_than_the_windows_carries_no_quote():
 
 def _read_open(school_slug: str, key: str, read_at: str | None) -> dict:
     school, source, spec = _spec(school_slug, key)
-    row = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True)
+    row = cg._normalize_program(school, source, spec, status="open", seed_page_verified=True,
+                                extra_desc="Applications are now open.")
     row["metadata"]["last_verified"] = read_at
     assert row["title"].endswith(" (applications open)")
     return row
