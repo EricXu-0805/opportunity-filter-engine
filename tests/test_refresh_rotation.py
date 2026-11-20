@@ -569,6 +569,16 @@ with open(log_path) as handle:
     earlier = [json.loads(line) for line in handle if line.strip()]
 with open(log_path, "a") as handle:
     handle.write(json.dumps(args) + "\n")
+if args[:2] == ["pr", "checks"]:
+    # How many required checks are listed at each successive call (the last
+    # count repeats). gh exits 8 while a listed check is pending, 1 with none.
+    counts = scenario["required_listed"]
+    listed = counts[min(sum(1 for call in earlier if call[:2] == ["pr", "checks"]), len(counts) - 1)]
+    if not listed:
+        sys.stderr.write("no required checks reported on the branch\n")
+        sys.exit(1)
+    print(listed)
+    sys.exit(8)
 if args[:2] == ["pr", "list"]:
     if scenario.get("pr_list_fails"):
         sys.exit(1)
@@ -1087,3 +1097,23 @@ class TestBrowserInstallStep:
         assert result.returncode == 1
         assert calls == [self._INSTALL, "sleep 30", self._INSTALL, "sleep 90", self._INSTALL]
         assert "::error::" in result.stdout
+
+
+class TestRequiredChecksRegister:
+    """The data PR's required checks are listed only once CI's `decide` job has
+    run. The step waits for all three, however long a runner takes to pick
+    that job up, before it watches them."""
+
+    @staticmethod
+    def _wait():
+        script = str(_workflow_step("merge once required checks pass")["run"])
+        start = script.index("for i in $(seq 1 40); do")
+        return 'BRANCH=auto/refresh-data-1\n' + script[start:script.index('gh pr checks "$BRANCH" --required --watch', start)]
+
+    @pytest.mark.parametrize("listed, sleeps", [([3], 0), ([0, 0, 3], 2), ([0, 1, 1, 3], 3), ([0], 40)],
+                             ids=["at-once", "after-decide", "one-at-a-time", "never"])
+    def test_it_waits_until_all_three_are_listed(self, fake_gh, listed, sleeps):
+        result, calls = fake_gh(self._wait(), {"required_listed": listed})
+        assert result.returncode == 0, result.stderr
+        assert [call for call in calls if call[0] == "sleep"] == [["sleep", "15"]] * sleeps
+        assert result.stdout.count("waiting for required checks to register") == sleeps
