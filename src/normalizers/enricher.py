@@ -17,6 +17,7 @@ import re
 from collections.abc import Iterable
 from html import unescape
 
+from src.collectors.nsf_reu import without_nsf_priority_sentences
 from src.evidence import stamp_inferred
 from src.opportunity_terms import extract_skill_mentions, extract_skill_requirements
 
@@ -263,8 +264,12 @@ def _store_skill_mentions(opp: dict, mentions: list[str]) -> bool:
 
 def _combined_text(opp: dict) -> str:
     title = _source_title(opp).lower()
-    desc = (opp.get("description_clean") or opp.get("description_raw") or "").lower()
-    desc = re.sub(r"<[^>]+>", " ", desc)
+    desc = opp.get("description_clean") or opp.get("description_raw") or ""
+    if opp.get("source") == "nsf_reu":
+        # The backfill fills the rows the NSF collector left without a tag, so
+        # it leaves out the sentences that collector leaves out (M184).
+        desc = without_nsf_priority_sentences(desc)
+    desc = re.sub(r"<[^>]+>", " ", desc.lower())
     lab = (opp.get("lab_or_program") or "").lower()
     dept = (opp.get("department") or "").lower()
     return f"{title} {dept} {lab} {desc}"
