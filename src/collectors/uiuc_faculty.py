@@ -3418,7 +3418,8 @@ def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, as
     deactivate_stale_faculty), so a row whose page was taken down stayed listed.
     Each such row's page is asked for once, oldest sighting first, DELAY apart
     per host, for at most PROFILE_PROBE_CAP rows and PROFILE_PROBE_SECONDS a
-    run. Anything but a 404 or 410 from the page itself keeps the row, counted
+    run; with more rows than the cap, the run starts at a different one each
+    day. Anything but a 404 or 410 from the page itself keeps the row, counted
     in ``kept`` under its reason: another status, a failed request, a redirect
     to another address, a URL that is no one person's page (none, or one
     another row carries, whatever its source or state), a row the run did not
@@ -3433,17 +3434,25 @@ def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, as
     stale = sorted(((seen, opp["id"], opp) for opp in active if (seen := _observed_at(opp)) is not None
                     and (today - seen.date()).days > PROFILE_GONE_AFTER_DAYS), key=lambda row: row[:2])
     kept: Counter = Counter()
-    queues: dict[str, list[tuple[dict, tuple]]] = {}
-    queued = 0
+    own_page: list[tuple[dict, tuple]] = []
     for _, _, opp in stale:
         page = canonical_profile_evidence_url(opp.get("source_url"))
         if page is None or carried[page] > 1:
             kept["no_profile_url"] += 1
-        elif queued >= PROFILE_PROBE_CAP:
-            kept["over_probe_cap"] += 1
         else:
-            queues.setdefault(page[0], []).append((opp, page))
-            queued += 1
+            own_page.append((opp, page))
+    if len(own_page) > PROFILE_PROBE_CAP:
+        # Rows that can never be retired (a page that still answers, a host
+        # that refuses the request) stay unlisted and are asked about again on
+        # every run. Always asked first, they would fill the cap in time and
+        # no later row would be asked about at all.
+        start = int(hashlib.sha256(today.isoformat().encode()).hexdigest(), 16) % len(own_page)
+        own_page = own_page[start:] + own_page[:start]
+        kept["over_probe_cap"] = len(own_page) - PROFILE_PROBE_CAP
+    queues: dict[str, list[tuple[dict, tuple]]] = {}
+    for opp, page in own_page[:PROFILE_PROBE_CAP]:
+        queues.setdefault(page[0], []).append((opp, page))
+    queued = min(len(own_page), PROFILE_PROBE_CAP)
     started = clock()
     ready: dict[str, float] = {}
     probed = 0

@@ -4252,7 +4252,7 @@ def _unlisted(slug: str, days: int = 30, host: str = "physics.testu.edu", **meta
     return _seen(f"Avery {slug.title()}", f"https://{host}/directory/profile/{slug}", seen, metadata_extra=metadata)
 
 
-def _retire_gone(rows: list[dict], answers: dict, clock=None) -> tuple[dict, list]:
+def _retire_gone(rows: list[dict], answers: dict, clock=None, today=None) -> tuple[dict, list]:
     """The pass over ``rows`` and the pages it asked for. An answer is a
     status, a (status, address that answered) pair, or the error raised. Under
     a ``clock`` each request takes a quarter second and is listed with its time."""
@@ -4274,7 +4274,7 @@ def _retire_gone(rows: list[dict], answers: dict, clock=None) -> tuple[dict, lis
         return answer if isinstance(answer, tuple) else (answer, url)
 
     timing = {"sleep": lambda seconds: None} if clock is None else {"clock": clock, "sleep": clock.sleep}
-    return deactivate_gone_profiles(rows, today=date(2026, 11, 20), ask=ask, **timing), asked
+    return deactivate_gone_profiles(rows, today=today or date(2026, 11, 20), ask=ask, **timing), asked
 
 
 class _RunClock:
@@ -4382,17 +4382,26 @@ def test_a_run_that_can_ask_for_no_page_retires_nobody():
                       "kept": {"connection_error": 6}}
 
 
-def test_a_run_asks_for_the_oldest_sightings_first_and_stops_at_its_cap(monkeypatch):
+def test_a_run_stops_at_its_cap_and_starts_at_a_different_row_each_day(monkeypatch):
+    """A row whose page still answers stays unlisted and is asked about on every
+    run. Asked oldest first each time, such rows held every place under the cap
+    and a row unlisted after them was never asked about."""
+    from datetime import date, timedelta
+
     import src.collectors.uiuc_faculty as f
 
     monkeypatch.setattr(f, "PROFILE_PROBE_CAP", 2)
-    newest, oldest, middle = _unlisted("newest", days=20), _unlisted("oldest", days=90), _unlisted("middle", days=40)
-    rows = [newest, oldest, middle]
-    result, asked = _retire_gone(rows, {row["source_url"]: 404 for row in rows})
-    assert asked == [oldest["source_url"], middle["source_url"]]
-    assert newest["metadata"]["is_active"] is True
-    assert result == {"candidates": 3, "probed": 2, "deactivated": 2,
-                      "deactivated_ids": [oldest["id"], middle["id"]], "kept": {"over_probe_cap": 1}}
+    rows = [_unlisted(f"person{i}", days=90 - i) for i in range(5)]
+    pages = [row["source_url"] for row in rows]
+    runs = []
+    for day in range(30):
+        result, asked = _retire_gone(rows, dict.fromkeys(pages, 200), today=date(2026, 11, 20) + timedelta(days=day))
+        assert result == {"candidates": 5, "probed": 2, "deactivated": 0, "deactivated_ids": [],
+                          "kept": {"http_200": 2, "over_probe_cap": 3}}
+        runs.append(asked)
+    # Each run takes the next two of the oldest-first order from where it starts.
+    assert all(pages.index(second) == (pages.index(first) + 1) % 5 for first, second in runs)
+    assert {page for asked in runs for page in asked} == set(pages)
 
 
 def test_pages_on_one_host_are_asked_for_a_delay_apart_while_another_host_takes_its_turn():
