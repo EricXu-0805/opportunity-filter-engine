@@ -17,6 +17,7 @@ from src.publication_trust import (
     can_use_publications_for_personalization,
     verified_recent_works,
     works_are_verified,
+    works_may_be_served,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "can_use_publications_for_personalization",
     "verified_recent_works",
     "works_are_verified",
+    "works_may_be_served",
 ]

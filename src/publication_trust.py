@@ -38,6 +38,10 @@ to write them.
 """
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
+
+from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS
+
 VERIFIED_AUTHOR_ID = "verified_author_id"
 NAME_MATCH = "name_match"
 # Trust withdrawn pending re-judgement by the current gate. Written by the
@@ -70,6 +74,16 @@ _KNOWN_STATUSES = frozenset({VERIFIED_AUTHOR_ID, NAME_MATCH, PENDING_REMEDIATION
 # still running, and the population recomputed itself without anyone editing
 # a list.
 CURRENT_WORKS_GATE = 3
+
+# How many calendar years old a record's newest listed paper may be before the
+# whole list stops being served (M152). The detail page titles the list "Recent
+# publications" and the e-mail flow lets a student say they read one of them;
+# faculty-jhu-som-ab46342e, a Neuroscience row, was serving three 1996-1999
+# head-and-neck cancer papers that way. Ten is the reviewer's choice
+# (2026-11-16) because it fits the word "Recent"; it is not a measured
+# threshold, and this is the one place to change it. The rule reads dates only
+# and judges nobody's authorship.
+RECENT_WORKS_MAX_AGE_YEARS = 10
 
 
 def attribution_status(opp: dict) -> str | None:
@@ -132,10 +146,38 @@ def can_use_publications_for_personalization(opp: dict) -> bool:
     return works_are_verified(opp)
 
 
-def verified_recent_works(opp: dict) -> list[dict]:
-    """``metadata.recent_works`` when attribution is explicitly verified,
-    else ``[]``. The ONLY sanctioned way for a serving/generation path to read
-    a record's publications."""
+def newest_work_is_recent(works: object, *, today: date | None = None) -> bool:
+    """Whether the newest year on a paper list is at most
+    ``RECENT_WORKS_MAX_AGE_YEARS`` calendar years before this one.
+
+    False when no paper on it has a year: a recency nobody can read is not
+    shown as one.
+    """
+    years = [
+        work["year"] for work in (works if isinstance(works, list) else [])
+        if isinstance(work, dict) and type(work.get("year")) is int
+    ]
+    this_year = (today or datetime.now(UTC).date()).year
+    return bool(years) and this_year - max(years) <= RECENT_WORKS_MAX_AGE_YEARS
+
+
+def works_may_be_served(opp: dict, works: object, *, today: date | None = None) -> bool:
+    """Whether ``works``, a non-empty paper list of ``opp``, is recent enough
+    to serve (M152). Detail, cards and every writing flow ask this one function."""
+    school = opp.get("school")
+    if isinstance(school, str) and school in SEPARATELY_MAINTAINED_SCHOOLS:
+        # Another maintainer's rows stay as they are until that maintainer
+        # takes the rule (src/school_scope.py).
+        return True
+    return newest_work_is_recent(works, today=today)
+
+
+def verified_recent_works(opp: dict, *, today: date | None = None) -> list[dict]:
+    """``metadata.recent_works`` when attribution is explicitly verified and
+    the list may be served (``works_may_be_served``), else ``[]``. The ONLY
+    sanctioned way for a serving/generation path to read a record's
+    publications."""
     if not works_are_verified(opp):
         return []
-    return (opp.get("metadata") or {}).get("recent_works") or []
+    works = (opp.get("metadata") or {}).get("recent_works") or []
+    return works if works and works_may_be_served(opp, works, today=today) else []

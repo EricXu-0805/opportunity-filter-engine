@@ -78,7 +78,8 @@ def test_malformed_or_removed_publications_fail_closed(works):
 def test_absent_year_matches_only_absent_or_null_source_year():
     ctx = context(year=None)
     for paper in [{"title": PAPER["title"]}, {"title": PAPER["title"], "year": None}]:
-        opp = deepcopy(OPP); opp["metadata"]["recent_works"] = [paper]
+        # A list is served only while some paper on it has a recent year (M152).
+        opp = deepcopy(OPP); opp["metadata"]["recent_works"] = [paper, {"title": "A dated paper", "year": PAPER["year"]}]
         validate_paper_reading(ctx, opp)
     assert "(None)" not in paper_reading_sentence(ctx)
     with pytest.raises(ValueError):

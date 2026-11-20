@@ -610,8 +610,9 @@ class TestLabTypeDetection:
 
     @staticmethod
     def _professor(department, keywords, areas="", works=(), *, matched_topics=False):
+        # Dated this year: a paper list is read only while its newest paper is recent (M152).
         metadata = {"research_areas_raw": areas, "publication_attribution_status": "verified_author_id",
-                    "recent_works": [{"title": title} for title in works]}
+                    "recent_works": [{"title": title, "year": date.today().year} for title in works]}
         if matched_topics:
             metadata["inferred_fields"] = {"keywords": "derived:openalex_topics"}
         return {"source_type": "faculty_research", "title": "Research with Prof. X",

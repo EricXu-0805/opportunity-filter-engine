@@ -10,6 +10,9 @@ paths, not just the centralized helper.
 from __future__ import annotations
 
 import json
+from datetime import UTC, date, datetime
+
+import pytest
 
 from src.publication_trust import (
     NAME_MATCH,
@@ -301,3 +304,161 @@ class TestServedPayloads:
         src_detail = inspect.getsource(op.get_opportunity)
         for s in (src_batch, src_similar, src_detail):
             assert "_redact" in s
+
+
+_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status", "publication_author_id")
+
+
+def _aged(*ages):
+    """Papers that many calendar years old today, so the fixtures never expire."""
+    this_year = datetime.now(UTC).year
+    return [{"title": f"Zebrafinch Syrinx Imaging, Part {n}", "year": this_year - age}
+            for n, age in enumerate(ages, 1)]
+
+
+def _verified(works, **fields):
+    opp = {**_opp(VERIFIED_AUTHOR_ID, works=works), **fields}
+    opp["metadata"]["publication_author_id"] = "https://openalex.org/A123"
+    return opp
+
+
+def _reading(work):
+    return {"version": 1, "purpose": "first_contact",
+            "paper_reading": {**work, "level": "abstract", "confirmed": True}}
+
+
+class TestRecentListsOnly:
+    """M152: a verified list is served only when its newest paper is at most
+    ten calendar years old. The rule reads the dates, never the authorship."""
+
+    def test_newest_paper_eleven_years_old_is_shown_nowhere_and_cannot_be_chosen(self):
+        from backend.lib.email_contact_context import email_research_works, validate_paper_reading
+        from backend.lib.public_opportunity_detail import project_public_detail
+        from backend.routes.matches import _match_card
+
+        opp = _verified(_aged(11, 27))
+        assert works_are_verified(opp)
+        assert verified_recent_works(opp) == []
+        detail = project_public_detail(opp)
+        assert not any(key in detail["metadata"] for key in _PUBLICATION_KEYS)
+        card = _match_card(opp)
+        assert "recent_works" not in card and "publication_attribution_status" not in card
+        # The e-mail flow validates against the detail projection; the raw row
+        # is refused by the same rule.
+        for target in (detail, opp):
+            assert email_research_works(target) == []
+            for work in opp["metadata"]["recent_works"]:
+                with pytest.raises(ValueError):
+                    validate_paper_reading(_reading(work), target)
+
+    def test_an_old_list_reaches_no_writing_flow_and_a_recent_one_still_does(self, monkeypatch):
+        from backend.routes import matches, tailor
+        from backend.routes.cold_email import _build_email_corpus, _professor_anchors, _render_professor_brief
+        from backend.routes.opportunities import _build_chat_system_prompt
+        from src.matcher.ranker import MatchResult
+        from src.recommender.cold_email import _common_parts
+
+        profile = {"name": "Eric", "year": "freshman", "major": "CompE", "school": "UIUC",
+                   "hard_skills": ["Python"], "research_interests_text": "brain-computer interfaces"}
+        lookup = {"old": {**_verified(_aged(11)), "id": "old"}, "kept": {**_verified(_aged(9, 27)), "id": "kept"}}
+        for opp, shown in ((lookup["old"], False), (lookup["kept"], True)):
+            parts = _common_parts(profile, opp)
+            assert bool(parts["recent_works"]) is shown
+            assert ("Zebrafinch" in _build_chat_system_prompt(opp, None)) is shown
+            assert ("Zebrafinch" in _render_professor_brief(parts, opp)) is shown
+            assert ("zebrafinch" in _build_email_corpus(parts, opp)) is shown
+            assert ("zebrafinch" in _professor_anchors(parts, opp)) is shown
+            anchors = tailor._snapshot_anchors(opp, opp)
+            assert any(anchor.evidence["field"] == "paper_title" for anchor in anchors) is shown
+
+        captured = {}
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+
+        def fake_score(query, cand):
+            captured["cand"] = dict(cand)
+            return {c[0]: {"s": 50.0, "r": ""} for c in cand}
+
+        monkeypatch.setattr(matches, "_llm_score_candidates", fake_score)
+        results = [
+            MatchResult(opportunity_id=i, eligibility_score=50, readiness_score=50,
+                        upside_score=50, final_score=50.0, bucket="good_match",
+                        reasons_fit=[], reasons_gap=[], next_steps=[])
+            for i in lookup
+        ]
+        matches.llm_rerank({"research_interests_text": "recent-lists-query"}, results, lookup)
+        assert "Zebrafinch" in captured["cand"]["kept"]
+        assert "Zebrafinch" not in captured["cand"]["old"]
+
+    def test_newest_paper_nine_years_old_serves_the_whole_list_as_before(self):
+        from backend.lib.email_contact_context import validate_paper_reading
+        from backend.lib.public_opportunity_detail import project_public_detail
+        from backend.routes.matches import _match_card
+
+        opp = _verified(_aged(9, 27))
+        works = opp["metadata"]["recent_works"]
+        assert verified_recent_works(opp) == works
+        detail, card = project_public_detail(opp), _match_card(opp)
+        assert detail["metadata"]["recent_works"] == works
+        assert detail["metadata"]["publication_attribution_status"] == VERIFIED_AUTHOR_ID
+        assert detail["metadata"]["publication_author_id"] == "https://openalex.org/A123"
+        assert card["recent_works"] == works and card["publication_attribution_status"] == VERIFIED_AUTHOR_ID
+        # The list is shown whole: its 27-year-old paper can still be chosen.
+        for work in works:
+            validate_paper_reading(_reading(work), detail)
+
+    @pytest.mark.parametrize("works", [[], None])
+    def test_a_record_without_papers_is_unchanged(self, works):
+        from backend.lib.public_opportunity_detail import project_public_detail
+        from backend.routes.matches import _match_card
+
+        opp = _verified(works)
+        assert verified_recent_works(opp) == []
+        detail, card = project_public_detail(opp), _match_card(opp)
+        assert detail["metadata"]["publication_attribution_status"] == VERIFIED_AUTHOR_ID
+        assert detail["metadata"]["publication_author_id"] == "https://openalex.org/A123"
+        assert detail["metadata"].get("recent_works") == works
+        assert "recent_works" not in card and "publication_attribution_status" not in card
+
+    @pytest.mark.parametrize("works", [_aged(9, 27), _aged(0), [], None])
+    def test_recent_and_empty_lists_have_the_payloads_they_had_without_the_rule(self, works, monkeypatch):
+        import src.publication_trust as trust
+        from backend.lib.public_opportunity_detail import project_public_detail
+        from backend.routes.matches import _match_card
+
+        opp = _verified(works)
+        detail, card = project_public_detail(opp), _match_card(opp)
+        monkeypatch.setattr(trust, "RECENT_WORKS_MAX_AGE_YEARS", 10**6)
+        assert project_public_detail(opp) == detail and _match_card(opp) == card
+
+    def test_the_boundary_is_the_calendar_year(self):
+        from src.publication_trust import newest_work_is_recent
+
+        works = [{"title": "Zebrafinch Syrinx Imaging", "year": 2016}, {"title": "An Older One", "year": 1999}]
+        opp = _verified(works)
+        # Ten years back is still shown, on the first and the last day of the year.
+        for today in (date(2026, 1, 1), date(2026, 12, 31)):
+            assert newest_work_is_recent(works, today=today)
+            assert verified_recent_works(opp, today=today) == works
+        # The next 1 January it is eleven years old.
+        assert not newest_work_is_recent(works, today=date(2027, 1, 1))
+        assert verified_recent_works(opp, today=date(2027, 1, 1)) == []
+
+    def test_a_list_with_no_readable_year_is_not_served(self):
+        for works in ([{"title": "Undated"}], [{"title": "Undated", "year": None}],
+                      [{"title": "Year as text", "year": str(datetime.now(UTC).year)}],
+                      [{"title": "Year as a flag", "year": True}]):
+            assert verified_recent_works(_verified(works)) == [], works
+        # One readable recent year is enough, and the undated paper stays on the list.
+        mixed = [{"title": "Undated"}, *_aged(3)]
+        assert verified_recent_works(_verified(mixed)) == mixed
+
+    def test_separately_maintained_schools_keep_their_lists(self):
+        # Another maintainer's rows: the rule counts them and leaves them alone.
+        from backend.lib.public_opportunity_detail import project_public_detail
+        from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS
+
+        for school in sorted(SEPARATELY_MAINTAINED_SCHOOLS):
+            opp = _verified(_aged(11), school=school)
+            assert verified_recent_works(opp) == opp["metadata"]["recent_works"], school
+            assert project_public_detail(opp)["metadata"]["recent_works"] == opp["metadata"]["recent_works"], school
+        assert verified_recent_works(_verified(_aged(11), school="uiuc")) == []
