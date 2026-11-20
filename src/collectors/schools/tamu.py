@@ -2,11 +2,15 @@
 
 Curated seed records of TAMU's undergraduate-research landscape, anchored on
 LAUNCH's Office of Undergraduate Research (ugr.tamu.edu) — the URS thesis
-program, the two student-run journals, and the NSF-REU summer gateway — plus
-the team-based Aggie Research Program (transitioning to Aggie Collaborate),
-the Cyclotron Institute's nuclear-physics REU, and the College of Agriculture
-& Life Sciences' own Undergraduate Research Scholars. URLs verified live
-(HTTP 200) on 2026-07-18.
+program and the two student-run journals — plus the team-based Aggie Research
+Program (transitioning to Aggie Collaborate), the Cyclotron Institute's
+nuclear-physics REU, and the College of Agriculture & Life Sciences' own
+Undergraduate Research Scholars. URLs verified live (HTTP 200) on 2026-07-18.
+The office's summer resources page (resources/summer.html, the NSF-REU
+gateway record) answered 404 on the 2026-11-15 probe and is off the site's
+menu; the record was dropped on 2026-11-16. The site's own sitemap and its
+General Resources page still link the address, so the record can return if
+the page does.
 
 Emit buckets → (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -100,22 +104,6 @@ SCHOOL: dict = {
                     preferred_year=["sophomore", "junior"],
                     keywords=["law", "public policy", "undergraduate journal",
                               "social science research"],
-                ),
-                program(
-                    "ugr_summer_reu_gateway",
-                    "UGR Summer Research Resources — NSF-REU Gateway (Texas A&M)",
-                    "https://ugr.tamu.edu/resources/summer.html",
-                    "The Office of Undergraduate Research serves as the campus "
-                    "gateway for NSF-REU summer programs and other non-NSF "
-                    "undergraduate summer research experiences, collecting and "
-                    "distributing the campus policies that govern them. Hosts "
-                    "a professional-development series and a summer poster "
-                    "session for summer researchers.",
-                    lab_or_program="Summer Research Resources",
-                    opportunity_type="research",
-                    preferred_year=["freshman", "sophomore", "junior"],
-                    keywords=["REU", "summer research", "NSF",
-                              "professional development"],
                 ),
                 program(
                     "aggie_research_program",

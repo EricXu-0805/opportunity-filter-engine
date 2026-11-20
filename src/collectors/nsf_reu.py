@@ -174,6 +174,25 @@ def _extract_keywords(title: str, abstract: str) -> list[str]:
     return [kw for kw in KEYWORD_BANK if kw in combined][:8]
 
 
+# Abstracts say which of NSF's own priority areas an award is aligned with
+# ("The training students will receive is aligned with NSF priorities in
+# Artificial Intelligence and Biotechnology."). That names NSF's programme
+# areas, not the site's research: on the 2026-11-16 corpus it was the only
+# place the tagged topic stood on 22 rows, and it gave 11 of them CS or ECE as
+# a major. So the topic and major scans leave out every abstract sentence that
+# names NSF together with the word "priority" or "priorities" (M184).
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
+_NSF_NAME = re.compile(r"\bNSF\b|National Science Foundation")
+_PRIORITY_WORD = re.compile(r"\bpriorit(?:y|ies)\b", re.IGNORECASE)
+
+
+def without_nsf_priority_sentences(text: str) -> str:
+    return " ".join(
+        sentence for sentence in _SENTENCE_BREAK.split(text)
+        if not (_NSF_NAME.search(sentence) and _PRIORITY_WORD.search(sentence))
+    )
+
+
 def fetch_reu_awards(max_results: int = 500) -> list[dict]:
     all_awards = []
     offset = 1
@@ -255,9 +274,10 @@ def normalize_award(award: dict) -> dict:
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
     skills = _extract_skills_from_abstract(abstract)
-    majors = _infer_majors(title, abstract, program)
+    topic_text = without_nsf_priority_sentences(abstract)
+    majors = _infer_majors(title, topic_text, program)
     intl = _detect_international(abstract)
-    keywords = _extract_keywords(title, abstract)
+    keywords = _extract_keywords(title, topic_text)
 
     clean_title = re.sub(r"^REU\s+Site:\s*", "", title, flags=re.IGNORECASE).strip()
 

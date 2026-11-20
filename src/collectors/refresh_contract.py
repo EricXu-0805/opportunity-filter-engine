@@ -68,6 +68,13 @@ RELEASABLE_INCOMPLETE_STATUSES = frozenset(
 # the same reason the two above are: it cannot produce a false retirement.
 SUSPICIOUS_ZERO_STATUS = "suspicious_zero"
 
+# How many UIUC departments may read empty in one run while UIUC still
+# publishes. 2 is the reviewer's choice (2026-11-16) for "an isolated failure,
+# not a site-wide break"; the owner may change it here. On 2026-11-09 one
+# department of 31 answered 403 and 3,498 freshly read rows were discarded.
+UIUC_MAX_EMPTY_DEPARTMENTS = 2
+UIUC_EMPTY_DEPARTMENT_KIND = "empty_department"
+
 # Sources for which emitting nothing is declared, expected behaviour — the
 # only way a zero is read as legitimate. Never inferred: an undeclared source
 # that has held records and now emits none is suspicious, which is the point.
@@ -253,6 +260,27 @@ def _expected_shard(
         "schools": sorted(schools or ()),
         "national": national,
     }
+
+
+def uiuc_empty_departments_degrade(empty: object, baselines: object) -> bool:
+    """Whether uiuc_faculty's empty departments degrade UIUC instead of blocking it.
+
+    True for at most UIUC_MAX_EMPTY_DEPARTMENTS of them, each with active rows
+    in the corpus the run started from (``baselines``, by department name). One
+    definition: refresh_all labels the source with it and the verdict below
+    decides with it, so the two cannot disagree.
+    """
+    return (
+        isinstance(empty, list)
+        and isinstance(baselines, dict)
+        and 0 < len(empty) <= UIUC_MAX_EMPTY_DEPARTMENTS
+        and all(
+            isinstance(name, str)
+            and type(baselines.get(name)) is int
+            and baselines[name] > 0
+            for name in empty
+        )
+    )
 
 
 CONDITION_REFRESH_STATUSES = frozenset({"ok", "partial", "skipped", "unavailable"})
@@ -692,11 +720,30 @@ def evaluate_refresh_summary(
 
     uiuc = sources.get("uiuc_faculty")
     if isinstance(uiuc, dict) and uiuc.get("empty_departments"):
-        block(
-            "uiuc_faculty reported empty departments: "
-            f"{sorted(uiuc['empty_departments'])}",
-            "uiuc",
-        )
+        empty = uiuc["empty_departments"]
+        baselines = uiuc.get("empty_department_baselines")
+        if uiuc_empty_departments_degrade(empty, baselines):
+            # An isolated unreadable department costs coverage, never
+            # accuracy: the merge is upsert-only and UIUC stale retirement is
+            # held (below), so its stored rows keep the dates they had. More
+            # of them, or one the corpus never held rows for, still blocks.
+            for name in sorted(empty):
+                degrade(
+                    UIUC_EMPTY_DEPARTMENT_KIND,
+                    "uiuc_faculty",
+                    f"{name}: 0 records, previously {baselines[name]}",
+                    f"uiuc_faculty read zero records for {name} while the "
+                    f"corpus holds {baselines[name]} record(s) for it; those "
+                    "records are preserved untouched and UIUC still "
+                    "publishes, but this run cannot claim to have seen the "
+                    "department",
+                )
+        else:
+            block(
+                "uiuc_faculty reported empty departments: "
+                f"{sorted(uiuc['empty_departments'])}",
+                "uiuc",
+            )
     if "uiuc_faculty" in policies and isinstance(uiuc, dict):
         if uiuc.get("stale_deactivation_authorized") is not False:
             block(

@@ -75,8 +75,8 @@ describe('ColdEmail authoritative target receipt', () => {
     expect(screen.queryByDisplayValue('WRONG TARGET')).toBeNull();
     view.rerender(<ColdEmailModal {...props} isOpen={false} />); api.stream.mockResolvedValue({ ...result, body: 'Current AI' });
     view.rerender(<ColdEmailModal {...props} />); await screen.findByDisplayValue('Template body');
-    await act(async () => {});
-    expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull();
+    // The reopened draft offers a rebuild until its saved sources are hashed and compared.
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
     await generate();
     await screen.findByDisplayValue('Current AI');
     expect(api.stream.mock.calls.length).toBeGreaterThan(1);

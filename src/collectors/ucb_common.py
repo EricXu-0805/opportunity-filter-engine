@@ -51,7 +51,13 @@ from backend.lib.contact_visibility import (
     verified_send_target,
 )
 
-from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank, is_trainee_title
+from ..evidence import (
+    FACULTY_MAJOR_LABELS_MARKER,
+    is_deceased_listing,
+    is_professor_rank,
+    is_retired_title,
+    is_trainee_title,
+)
 from .atomic_json import atomic_write_json
 from .import_document import ImportDocumentError, parse_import_html
 
@@ -1840,10 +1846,11 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     # "Title:" vs "Position title:") can never leak the label into the
     # user-facing description or metadata.
     title = _clean_scraped_title(person.get("title"))
-    if _RETIRED_TITLE_RE.search(title):
+    if is_retired_title(title):
         return None
-    if is_trainee_title(title):
-        # A graduate student or postdoc; deactivate_trainee_faculty retires a
+    if is_trainee_title(title) or is_deceased_listing(name, title):
+        # A graduate student or postdoc, or someone the card says has died;
+        # deactivate_trainee_faculty or deactivate_deceased_faculty retires a
         # stored row. Dropped, not emitted, so `fetched` counts only faculty.
         return None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))

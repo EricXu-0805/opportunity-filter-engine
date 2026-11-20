@@ -1237,12 +1237,15 @@ class TestTheDigestDescribesTargetsLikeEveryOtherEmail:
             assert "applications open" not in part.casefold()
 
     def test_a_confirmed_open_listing_keeps_its_suffix_byte_for_byte(self):
-        # The over-redaction control: an open listing may say it is open.
+        # The over-redaction control: a listing whose page says it is open may say so.
         _subject, html, text = _render_one({
             "id": "listing-open-1",
             "title": "Summer REU (applications open)",
             "organization": "Test University",
-            **_LIVE,
+            "source": "example_research_programs",
+            "description": "Our summary.\n\nFrom the program page: Applications are now open.",
+            "source_type": "campus_program",
+            "metadata": {"is_active": True, "seed_page_verified": True},
         })
         for part in (html, text):
             assert "Summer REU (applications open)" in part

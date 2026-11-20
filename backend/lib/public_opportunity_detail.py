@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from backend.lib.position_truth import displayed_title
 from backend.lib.public_projection import project_public_opportunity_payload
-from backend.lib.publication_attribution import works_are_verified
+from backend.lib.publication_attribution import works_are_verified, works_may_be_served
 from src.contact_instructions import contact_instructions_for
 from src.evidence import faculty_safe_public_record
 from src.lab_context import lab_context_for
@@ -70,13 +70,15 @@ def project_public_detail(opp: dict) -> dict:
     # Publication trust boundary: works whose attribution is anything but
     # explicitly verified (name_match, absent, junk) are internal candidates
     # for the recollection/verification effort, not the professor's
-    # publications — never served. Copy-on-write — the metadata dict is
-    # shared with the in-process corpus cache.
+    # publications — never served. Nor is a verified list whose newest paper
+    # is too old to be called recent (M152, works_may_be_served). Copy-on-write
+    # — the metadata dict is shared with the in-process corpus cache.
     md = out.get("metadata")
     if (
         isinstance(md, dict)
         and any(k in md for k in _UNVERIFIED_PUBLICATION_KEYS)
-        and not works_are_verified(opp)
+        and not (works_are_verified(opp) and (
+            not md.get("recent_works") or works_may_be_served(opp, md["recent_works"])))
     ):
         out["metadata"] = {
             k: v for k, v in md.items() if k not in _UNVERIFIED_PUBLICATION_KEYS

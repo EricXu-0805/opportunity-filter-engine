@@ -13,6 +13,8 @@ from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
 from urllib.parse import urlsplit, urlunsplit
 
+from src.publication_trust import works_may_be_served
+
 # school slug -> OpenAlex institution id (resolved once via /institutions). The
 # id is matched against each candidate author's full affiliation history, so a
 # professor who has since moved is still matched while a same-name person at a
@@ -340,6 +342,10 @@ def research_context_for(opp, *, now=None):
         value = (opp.get('metadata') or {}).get('research_snapshot') if type(opp) is dict else None
         snapshot = validate_research_snapshot(value, opp, now=current)
         if snapshot is None:
+            return unavailable
+        # M152: a list whose newest paper is too old is not served at all, here
+        # as for the legacy titles. Not 'stale', which still shows the papers.
+        if snapshot['works'] and not works_may_be_served(opp, snapshot['works'], today=current.date()):
             return unavailable
         stale = current - _stamp(snapshot['checked_at']) > RESEARCH_MAX_AGE
         return {'version': 1, 'status': 'stale' if stale else 'available',

@@ -33,7 +33,14 @@ import secrets
 import unicodedata
 from datetime import date, datetime, timedelta
 
-from src.evidence import TRAINEE_REASON, is_trainee_title
+from src.evidence import (
+    DECEASED_REASON,
+    RETIRED_TITLE_REASON,
+    TRAINEE_REASON,
+    is_deceased_listing,
+    is_retired_title,
+    is_trainee_title,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -298,6 +305,11 @@ def _retire(opp: dict, today: date) -> None:
     meta["deactivation_reason"] = "absent_from_directory_rescrape"
 
 
+# Why a published row kept for its id is inactive when the person is live in
+# another row; ``duplicate_of`` beside it names that row.
+DUPLICATE_REASON = "duplicate_of_live_record"
+
+
 # ---------------------------------------------------------------------------
 # Per-unit collection ledger
 #
@@ -415,7 +427,8 @@ _LISTED_KEY = secrets.token_bytes(16)
 
 def listed_token(kind: str, value: str) -> str:
     """A run-keyed digest of one listed row's ``("email" | "url", value)``, or
-    of one address or name a list page shows (``"mail"`` | ``"name"``)."""
+    of what a list page shows: a name (``"name"``), or an address beside one
+    word of the card that carries it (``"card"``)."""
     return hmac.new(_LISTED_KEY, f"{kind}:{value}".encode(),
                     hashlib.sha256).hexdigest()[:16]
 
@@ -501,15 +514,17 @@ def _listed_tokens_of(record: dict) -> set[str]:
 def _shown_on_page(record: dict, ledger: dict, unit: str,
                    read: tuple[set, set]) -> bool:
     """Whether the page a list-page row came from still shows the person
-    (``page_people`` in ``_unit_observation``): their address, or their name,
-    that no row read this run accounts for (``read``). A title gate that skips
-    a listed "Director of Graduate Studies", or a card the selector does not
-    match, leaves the person on the page and so keeps them. A row read this run
-    accounts for the address it carries, and for the name only when it is the
-    same person (the same first name, or the same address): one read under a
-    new id is live in that row, and the stored copy is folded away as a
-    tombstone. A namesake (Lisa beside Lee Sample) accounts for nothing. A page
-    the run did not record is not evidence of absence."""
+    (``page_people`` in ``_unit_observation``): their address in a card that
+    also shows their surname, or their name, that no row read this run accounts
+    for (``read``). An address inside another person's card shows that person,
+    not this one. A title gate that skips a listed "Director of Graduate
+    Studies", or a card the selector does not match, leaves the person on the
+    page and so keeps them. A row read this run accounts for the address it
+    carries, and for the name only when it is the same person (the same first
+    name, or the same address): one read under a new id is live in that row,
+    and the stored copy is folded away as a tombstone. A namesake (Lisa beside
+    Lee Sample) accounts for nothing. A page the run did not record is not
+    evidence of absence."""
     url = canonical_profile_url(record.get("url") or record.get("source_url"))
     pages = [e.get("page_people") for key, e in ledger.items()
              if isinstance(e, dict) and (key == unit or url in (
@@ -521,10 +536,11 @@ def _shown_on_page(record: dict, ledger: dict, unit: str,
     mails, people = read
     email = record.get("contact_email")
     email = email.strip().lower() if isinstance(email, str) and "@" in email else ""
-    if email and email not in mails and listed_token("mail", email) in shown:
-        return True
     words = _listed_name_words(record.get("pi_name"))
     if not words:
+        return True
+    if (email and email not in mails
+            and listed_token("card", f"{email} {words[-1]}") in shown):
         return True
     person = f"{words[-1]} {words[0][0]}"
     if listed_token("name", person) not in shown:
@@ -555,6 +571,30 @@ def _read_on_pages(records: list[dict], ledger: dict, listing) -> tuple[set, set
             if email:
                 people.add((person, "mail", email))
     return mails, people
+
+
+def _read_elsewhere(opp: dict, identity: tuple[str, str], unit: str,
+                    active: list[dict], ledger: dict, listing) -> list[dict]:
+    """The source's active rows for this person under the other units that
+    read them this run. The identity alone is a surname and a first initial,
+    which a namesake shares, so a row is this person's only with the same
+    first name or the same address, as in ``_shown_on_page``."""
+    readers = {key for key, entry in ledger.items()
+               if key != unit and identity in (_observed_identities(entry) or ())}
+
+    def mail(record: dict) -> str:
+        email = record.get("contact_email")
+        return email.strip().lower() if isinstance(email, str) and "@" in email else ""
+
+    words = _listed_name_words(opp.get("pi_name")) or [""]
+
+    def same_person(other: dict) -> bool:
+        theirs = _listed_name_words(other.get("pi_name")) or [""]
+        return bool(words[0] and words[0] == theirs[0]) or bool(mail(opp) and mail(opp) == mail(other))
+
+    return [o for o in active
+            if o is not opp and _unit_id_of(o) in readers
+            and identity_key(o, listing) == identity and same_person(o)]
 
 
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
@@ -967,7 +1007,8 @@ def deactivate_stale_faculty(
 
     Returns counts for newly deactivated/kept/inactive records, the
     preservation buckets, and — for every proposed retirement — the evidence
-    that authorised it.
+    that authorised it. ``archived_moved`` names each list-page row archived
+    under the row another unit read for the same person (``duplicate_of``).
     """
     held_sources = held_sources or frozenset()
     today = today or date.today()
@@ -991,6 +1032,8 @@ def deactivate_stale_faculty(
         "records_preserved_ambiguous_identity": 0,
         "records_preserved_moved_unit": 0,
         "moved": [],
+        "records_archived_moved_unit": 0,
+        "archived_moved": [],
         "records_preserved_still_listed": 0,
         "units_examined": 0,
         "units_complete_by_identity": 0,
@@ -1134,6 +1177,34 @@ def deactivate_stale_faculty(
                         continue
                     if identity in observed_run_wide:
                         # Same person, different unit: a move, not a departure.
+                        # A list-page row past the grace window whose own page
+                        # no longer shows the person, read or not, is archived
+                        # under the one row another unit read for them, and
+                        # keeps its id. With no such single row it stays.
+                        heirs = []
+                        if (identity[0] == "person" and seen is not None
+                                and seen < cutoff and not _shown_on_page(
+                                    opp, ledger, unit, (set(), set()))):
+                            heirs = _read_elsewhere(
+                                opp, identity, unit, active, ledger, listing)
+                        if len(heirs) == 1:
+                            counts["archived_moved"].append({
+                                "entity_id": opp.get("id"),
+                                "duplicate_of": heirs[0].get("id"),
+                                "from_unit": unit,
+                                "to_unit": _unit_id_of(heirs[0]),
+                                "school": opp.get("school"),
+                            })
+                            if held or dry_run:
+                                counts["would_deactivate"].append(opp.get("id"))
+                                continue
+                            opp.setdefault("metadata", {}).update(
+                                is_active=False,
+                                deactivated_at=today.isoformat(),
+                                deactivation_reason=DUPLICATE_REASON,
+                                duplicate_of=heirs[0].get("id"))
+                            counts["records_archived_moved_unit"] += 1
+                            continue
                         counts["records_preserved_moved_unit"] += 1
                         counts["moved"].append({
                             "entity_id": opp.get("id"),
@@ -1274,6 +1345,46 @@ def deactivate_trainee_faculty(opps: list[dict], selected=None,
     retirement in its unit. ``selected`` limits the pass to this run's schools;
     rows of a school in ``held`` are counted, not changed.
     """
+    return _retire_stated(
+        opps, lambda opp, meta: is_trainee_title(meta.get("faculty_title")),
+        TRAINEE_REASON, selected, held, today)
+
+
+def deactivate_deceased_faculty(opps: list[dict], selected=None,
+                                held: frozenset[str] = frozenset(),
+                                today: date | None = None) -> dict:
+    """Retire, in place, active faculty rows whose name or title says the
+    person has died (``evidence.is_deceased_listing``).
+
+    Runs where ``deactivate_trainee_faculty`` does, for its reason: the
+    collectors drop such a card, and the row stored for it must leave the
+    baseline before a unit ledger counts it. The row keeps its id.
+    """
+    return _retire_stated(
+        opps, lambda opp, meta: is_deceased_listing(opp.get("pi_name"), meta.get("faculty_title")),
+        DECEASED_REASON, selected, held, today)
+
+
+def deactivate_retired_title_faculty(opps: list[dict], selected=None,
+                                     held: frozenset[str] = frozenset(),
+                                     today: date | None = None) -> dict:
+    """Retire, in place, active faculty rows whose stated title is an emeritus
+    or retired one (``evidence.is_retired_title``).
+
+    The collectors have always dropped a card titled "Emeritus", so no row was
+    stored for one; a row stored under a spelling they did not read ("Professor
+    Emerit") is retired here, as ``deactivate_trainee_faculty`` retires a
+    trainee's, and keeps its id. The caller holds UIUC with the schools another
+    maintainer owns: its collector lists an emeritus title that sits beside a
+    current role or an active lab.
+    """
+    return _retire_stated(
+        opps, lambda opp, meta: is_retired_title(meta.get("faculty_title")),
+        RETIRED_TITLE_REASON, selected, held, today)
+
+
+def _retire_stated(opps: list[dict], states, reason: str, selected,
+                   held: frozenset[str], today: date | None) -> dict:
     stamp = (today or date.today()).isoformat()
     retired: dict[str, int] = {}
     kept: dict[str, int] = {}
@@ -1284,7 +1395,7 @@ def deactivate_trainee_faculty(opps: list[dict], selected=None,
         if selected is not None and not selected(school):
             continue
         meta = opp.get("metadata") or {}
-        if meta.get("is_active") is False or not is_trainee_title(meta.get("faculty_title")):
+        if meta.get("is_active") is False or not states(opp, meta):
             continue
         if school in held:
             kept[school] = kept.get(school, 0) + 1
@@ -1292,6 +1403,6 @@ def deactivate_trainee_faculty(opps: list[dict], selected=None,
         meta = opp.setdefault("metadata", {})
         meta["is_active"] = False
         meta["deactivated_at"] = stamp
-        meta["deactivation_reason"] = TRAINEE_REASON
+        meta["deactivation_reason"] = reason
         retired[school] = retired.get(school, 0) + 1
     return {"deactivated": sum(retired.values()), "by_school": retired, "held": kept}

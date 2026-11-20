@@ -97,6 +97,9 @@ def _records() -> list[dict]:
         _listing("intl-email", eligibility={"international_friendly": "jane@example.edu"}),
         _listing("eligibility-list", eligibility=["not", "a", "dict"]),
         _listing("suffix-open", title="Summer Lab (applications open)"),
+        _listing("suffix-page-says-open", title="Summer Lab (applications open)", source="example_research_programs",
+                 description="Our summary.\n\nFrom the program page: Applications are now open.",
+                 metadata={"is_active": True, "seed_page_verified": True}),
         _listing("suffix-closed", title="Summer Lab (applications open)",
                  metadata={"is_active": True, "listing_status": "closed"}),
         _listing("suffix-note-passed", title="Summer Lab (applications open)", source="jhu_research_programs",
@@ -417,7 +420,9 @@ def test_rows_of_the_active_generation_are_built_once(view_row_table):
 
 def _petit_program() -> dict:
     return _listing("petit", title="Petit Scholars (applications open)", source="gatech_research_programs",
-                    deadline=None, metadata={"is_active": True, "deadline_note": "2027 cohort applications were due "
+                    description="Our summary.\n\nFrom the program page: Applications are now open.",
+                    deadline=None, metadata={"is_active": True, "seed_page_verified": True,
+                                             "deadline_note": "2027 cohort applications were due "
                                              "Sept. 15, 2026; dates for the next cohort are not posted yet"})
 
 

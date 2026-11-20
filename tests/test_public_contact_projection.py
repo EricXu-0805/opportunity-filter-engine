@@ -596,15 +596,18 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
 
 _LIVE_LISTING = {
     "id": "listing-1",
+    "source": "example_research_programs",
     "source_type": "campus_program",
     "title": "Vision Lab RA (applications open)",
     "deadline": "2099-09-01",
     "paid": "stipend",
     "opportunity_type": "research",
+    # The page's own sentence, read on the row's last refresh, is what lets the title say so (M90).
+    "description": "We are recruiting two students.\n\nFrom the program page: Applications are now open.",
     "description_clean": "We are recruiting two students.",
     "eligibility": {"international_friendly": "yes"},
     "application": {"application_url": "https://example.edu/apply"},
-    "metadata": {"is_active": True, "notes": "keep me"},
+    "metadata": {"is_active": True, "seed_page_verified": True, "notes": "keep me"},
 }
 
 _FACULTY = {
@@ -646,8 +649,9 @@ class TestTheCentralProjector:
         assert out["description_clean"] == "We are recruiting two students."
         assert out["eligibility"] == {"international_friendly": "yes"}
         assert out["application"]["application_url"] == "https://example.edu/apply"
-        # An open listing may say it is open. This is the only case that keeps
-        # the suffix, and stripping every suffix everywhere must fail here.
+        # A listing whose page says it is open may say so. This is the only
+        # case that keeps the suffix, and stripping every suffix everywhere
+        # must fail here.
         assert out["title"] == "Vision Lab RA (applications open)"
         # Evidence in, decision out — for every kind, not only unknown ones.
         assert "is_active" not in out["metadata"]
