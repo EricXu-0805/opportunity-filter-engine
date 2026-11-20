@@ -171,7 +171,7 @@ describe('a fresh guest who has not filled in college, major and grade yet', () 
 
 // A new browser session is a new journal lineage (sessionStorage is empty),
 // and nothing before the row exists ever drains: so one person's edits from
-// two visits used to stay "Changed on another device" forever, the older
+// two visits used to stay "Changed somewhere else" forever, the older
 // value on screen and the newer one lost.
 describe('a guest who comes back in a new browser session before the row exists', () => {
   const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
@@ -203,7 +203,7 @@ describe('a guest who comes back in a new browser session before the row exists'
     expect(form().conflictKeys, 'no question about the person\'s own two visits').toEqual([]);
     expect(form().conflicts).toEqual([]);
     expect(form().saveStatus).toBe('awaiting-required');
-    expect(screen.queryByText(/Changed on another device/)).toBeNull();
+    expect(screen.queryByText(/Changed somewhere else/)).toBeNull();
     expect(sends()).toEqual([]);
 
     await edit('college', 'Grainger College of Engineering');

@@ -184,7 +184,7 @@ async function twoTabsDisagree() {
 }
 
 describe('another tab\'s answer and saves reach this tab without a reload (M117)', () => {
-  it('(a) this tab\'s own saved edit says saved, not "NOT saved", after the other tab answered the question', async () => {
+  it('(a) this tab\'s own saved edit says saved, not "not saved yet", after the other tab answered the question', async () => {
     const { a, b } = await twoTabsDisagree();
     // Not even the storage events are needed: the save itself must not be
     // judged against a question the shared state no longer holds.
