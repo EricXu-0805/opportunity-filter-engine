@@ -4251,7 +4251,7 @@ def _unlisted(slug: str, days: int = 30, host: str = "physics.testu.edu", **meta
     return _seen(f"Avery {slug.title()}", f"https://{host}/directory/profile/{slug}", seen, metadata_extra=metadata)
 
 
-def _retire_gone(rows: list[dict], answers: dict, clock=None, today=None) -> tuple[dict, list]:
+def _retire_gone(rows: list[dict], answers: dict, clock=None, today=None, **options) -> tuple[dict, list]:
     """The pass over ``rows`` and the pages it asked for. An answer is a
     status, a (status, address that answered) pair, or the error raised. Under
     a ``clock`` each request takes a quarter second and is listed with its time."""
@@ -4273,7 +4273,7 @@ def _retire_gone(rows: list[dict], answers: dict, clock=None, today=None) -> tup
         return answer if isinstance(answer, tuple) else (answer, url)
 
     timing = {"sleep": lambda seconds: None} if clock is None else {"clock": clock, "sleep": clock.sleep}
-    return deactivate_gone_profiles(rows, today=today or date(2026, 11, 20), ask=ask, **timing), asked
+    return deactivate_gone_profiles(rows, today=today or date(2026, 11, 20), ask=ask, **timing, **options), asked
 
 
 class _RunClock:
@@ -4352,6 +4352,20 @@ def test_a_page_any_other_row_carries_is_not_asked_for(sharer):
     assert row["metadata"]["is_active"] is True
     assert result == {"candidates": 1, "probed": 0, "deactivated": 0, "deactivated_ids": [],
                       "kept": {"no_profile_url": 1}}
+
+
+def test_a_row_of_a_department_whose_list_page_read_empty_is_kept_and_its_page_is_not_asked_for():
+    """An unread list says nothing about who is on it, and the release verdict
+    reports that department's rows as preserved untouched."""
+    unread, read = _unlisted("unread"), _unlisted("read")
+    unread["department"] = "Department of Tides"
+    before = json.dumps(unread, sort_keys=True)
+    result, asked = _retire_gone([unread, read], {read["source_url"]: 404},
+                                 unread_departments=["Department of Tides"])
+    assert asked == [read["source_url"]]
+    assert json.dumps(unread, sort_keys=True) == before
+    assert result == {"candidates": 2, "probed": 1, "deactivated": 1, "deactivated_ids": [read["id"]],
+                      "kept": {"department_unread": 1}}
 
 
 def test_only_active_uiuc_rows_unlisted_for_more_than_14_days_are_asked_about():

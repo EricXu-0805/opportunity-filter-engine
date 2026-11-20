@@ -22,6 +22,7 @@ import re
 import time
 import unicodedata
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from functools import cache
 from pathlib import Path
@@ -3410,7 +3411,8 @@ def profile_page_answer(url: str) -> tuple[int, str]:
 
 
 def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, ask=None,
-                             clock=time.monotonic, sleep=time.sleep) -> dict:
+                             clock=time.monotonic, sleep=time.sleep,
+                             unread_departments: Iterable[str] = ()) -> dict:
     """Retire, in place, active UIUC faculty rows no roster has listed for more
     than PROFILE_GONE_AFTER_DAYS whose own profile page answers 404 or 410.
 
@@ -3423,8 +3425,10 @@ def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, as
     in ``kept`` under its reason: another status, a failed request, a redirect
     to another address, a URL that is no one person's page (none, or one
     another row carries, whatever its source or state), a row the run did not
-    get to. A retired row keeps its id, and the merge puts it back live when a
-    roster lists it again.
+    get to. A row of one of ``unread_departments``, those whose list page read
+    empty in this run, is kept without its page being asked for: a list nobody
+    could read says nothing about who is on it. A retired row keeps its id,
+    and the merge puts it back live when a roster lists it again.
     """
     ask = ask or profile_page_answer
     today = today or date.today()
@@ -3433,11 +3437,14 @@ def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, as
     carried = Counter(canonical_profile_evidence_url(opp.get("source_url")) for opp in all_opps)
     stale = sorted(((seen, opp["id"], opp) for opp in active if (seen := _observed_at(opp)) is not None
                     and (today - seen.date()).days > PROFILE_GONE_AFTER_DAYS), key=lambda row: row[:2])
+    unread = set(unread_departments)
     kept: Counter = Counter()
     own_page: list[tuple[dict, tuple]] = []
     for _, _, opp in stale:
         page = canonical_profile_evidence_url(opp.get("source_url"))
-        if page is None or carried[page] > 1:
+        if opp.get("department") in unread:
+            kept["department_unread"] += 1
+        elif page is None or carried[page] > 1:
             kept["no_profile_url"] += 1
         else:
             own_page.append((opp, page))
