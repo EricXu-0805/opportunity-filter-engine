@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { RELEASE_SCOPE } from '../src/lib/release-scope';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 
 /**
@@ -37,6 +38,7 @@ async function openDetail(page: Page) {
 
 test.describe('Concierge request (real browser)', () => {
   test.describe.configure({ timeout: 60_000 });
+  test.skip(!RELEASE_SCOPE.conciergeRequests, 'the request section is hidden while RELEASE_SCOPE.conciergeRequests is off');
 
   test('asking is remembered across a reload, not just on the screen',
     async ({ page }) => {

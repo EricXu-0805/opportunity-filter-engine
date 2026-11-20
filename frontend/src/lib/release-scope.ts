@@ -45,6 +45,12 @@ export const RELEASE_SCOPE = Object.freeze({
   // course quick action words a profile without them as that build does. The
   // server reads `courses` either way.
   courseStatus: true,
+  // Checklist M54: the three places a student can ask us to handle an
+  // application by hand: the section on the opportunity page, the card in the
+  // results list, and the request form on /account. Closed because nobody is
+  // notified of a request and nobody is assigned to answer one. The rows
+  // already on file and the admin queue that reads them are untouched.
+  conciergeRequests: false,
 } as const);
 
 // Included in every server-side cached discovery URL. Bump whenever the public

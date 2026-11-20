@@ -32,8 +32,6 @@ Davis, since 2026-09-06).
 5. Track applications on `/tracker` and `/dashboard`, with deadlines and
    reminders by Web Push or email.
 6. Import a posting by URL or pasted text as a private target.
-7. Ask JoinALab to handle one professor for them (the concierge request on the
-   opportunity page). A person does it by hand, and nothing is charged.
 
 ## Release flags
 
@@ -56,6 +54,7 @@ their API routes answer 404 from `ReleaseScopeMiddleware` in
 | `payments` | `payments` | off | Orders and the admin orders view, `/api/orders`, `/api/admin/orders` | Migration 026 dropped the orders RLS policies and revoked browser access, and the pricing module and payment QR images are not on `main` |
 | `microsoft_school_auth` | `microsoftSchoolAuth` | off | Microsoft sign-in; the backend also refuses sessions minted through the Azure provider | Azure publisher verification needs a verified legal entity, which does not exist yet |
 | `concierge_pay_qr` | `conciergePayQr` | off | The payment QR for the concierge channel | Needs a confirmed receiving account |
+| `concierge_requests` | `conciergeRequests` | off | The three places a student can ask JoinALab to handle an application by hand: the section on the opportunity page, the card in the results list, the request form on `/account`. The requests already on file and the admin queue that reads them stay | Nobody is notified of a request and nobody is assigned to answer one |
 
 How a flag changes:
 

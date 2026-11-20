@@ -25,6 +25,7 @@ import { useT } from '@/i18n/client';
 import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 import { bySlug } from '@/lib/schools';
 import { track } from '@/lib/analytics';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import {
   getAuthState,
@@ -331,22 +332,24 @@ export default function AccountPage() {
           <Card>
             <h2 className="text-lg font-bold text-gray-900 mb-5">{t('account.planTitle')}</h2>
             <PlanRow />
-            <div className="flex items-center justify-between gap-4 pt-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{t('account.premiumTitle')}</p>
-                <p className="text-[13px] text-gray-500 mt-0.5">{t('account.premiumDesc')}</p>
+            {RELEASE_SCOPE.conciergeRequests && (
+              <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{t('account.premiumTitle')}</p>
+                  <p className="text-[13px] text-gray-500 mt-0.5">{t('account.premiumDesc')}</p>
+                </div>
+                {/* No explicit key/reset needed: every identity transition
+                    round-trips through the `loading` gate above, which
+                    unmounts this ENTIRE branch (a different element type at
+                    this tree position) and mounts a fresh one once the new
+                    owner's load commits — PremiumIntent's internal
+                    email/phase state is destroyed and reseeded from the new
+                    `email` prop along with everything else here, not carried
+                    over. Confirmed via mutation: removing a bespoke key had
+                    no effect on any test. */}
+                <PremiumIntent defaultEmail={email} />
               </div>
-              {/* No explicit key/reset needed: every identity transition
-                  round-trips through the `loading` gate above, which
-                  unmounts this ENTIRE branch (a different element type at
-                  this tree position) and mounts a fresh one once the new
-                  owner's load commits — PremiumIntent's internal
-                  email/phase state is destroyed and reseeded from the new
-                  `email` prop along with everything else here, not carried
-                  over. Confirmed via mutation: removing a bespoke key had
-                  no effect on any test. */}
-              <PremiumIntent defaultEmail={email} />
-            </div>
+            )}
           </Card>
         </div>
       )}
@@ -445,7 +448,7 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
 function PlanRow() {
   const { t } = useT();
   return (
-    <div className="flex items-center justify-between gap-4 pb-4 border-b border-gray-100">
+    <div className="flex items-center justify-between gap-4">
       <div>
         <p className="text-sm font-semibold text-gray-900">{t('account.freePlan')}</p>
         <p className="text-[13px] text-gray-500 mt-0.5">{t('account.freePlanDesc')}</p>

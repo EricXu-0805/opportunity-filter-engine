@@ -307,7 +307,7 @@ export default function OpportunityDetail({
           {/* Placed after the address, where the size of the job becomes
               concrete. Bound to this record, because the work being asked for
               is: read this lab, tailor to this lab, write to this person. */}
-          {actionable && <ConciergeRequestSection opportunityId={opp.id} t={t} />}
+          {RELEASE_SCOPE.conciergeRequests && actionable && <ConciergeRequestSection opportunityId={opp.id} t={t} />}
           {/* The facts section already carries research areas, split into
               what the page says and what we derived. */}
           {!showsFacts && <KeywordsSection opp={opp} t={t} />}

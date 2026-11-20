@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { useRef } from 'react';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
@@ -39,6 +39,17 @@ vi.mock('@/components/CheckedTailorModal', () => ({
     );
   },
 }));
+
+// A sentinel for the results card, so its presence is the list's decision
+// alone and not the card's own dismissal state.
+vi.mock('./ConciergeCta', () => ({
+  ConciergeCta: () => <div data-testid="concierge-cta" />,
+}));
+const release = vi.hoisted(() => ({ conciergeRequests: false }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get conciergeRequests() { return release.conciergeRequests; } } };
+});
 
 import { MatchList } from './MatchList';
 import type { MatchResult, Opportunity, ProfileData } from '@/lib/types';
@@ -628,5 +639,32 @@ describe('MatchList — heading outline under the results page h1', () => {
     expect(violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
     expect(screen.getByRole('heading', { level: 2, name: 'results.listHeading' })).toHaveClass('sr-only');
     expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Opportunity A', 'Opportunity B']);
+  });
+});
+
+// Checklist M54: the card invites a request nobody is notified of, so it
+// ships off.
+describe('MatchList — the request card release switch, RELEASE_SCOPE.conciergeRequests', () => {
+  const matches = ['a', 'b', 'c', 'd', 'e'].map((id) => makeMatch(`opp-${id}`, `Opportunity ${id.toUpperCase()}`));
+  afterEach(() => { release.conciergeRequests = false; });
+
+  it('off: page 1 lists every match and no request card', () => {
+    release.conciergeRequests = false;
+    const { container } = render(<MatchList {...baseListProps({ matches })} />);
+    expect(container.querySelectorAll('[id^="match-card-"]')).toHaveLength(5);
+    expect(screen.queryByTestId('concierge-cta')).toBeNull();
+  });
+
+  it('on: page 1 carries one card after the fourth match, and page 2 none', () => {
+    release.conciergeRequests = true;
+    const { container, unmount } = render(<MatchList {...baseListProps({ matches })} />);
+    const card = screen.getByTestId('concierge-cta');
+    expect(screen.getAllByTestId('concierge-cta')).toHaveLength(1);
+    const order = Array.from(container.querySelectorAll('[id^="match-card-"], [data-testid="concierge-cta"]'));
+    expect(order.indexOf(card)).toBe(4);
+    unmount();
+
+    render(<MatchList {...baseListProps({ matches, page: 2, totalPages: 2 })} />);
+    expect(screen.queryByTestId('concierge-cta')).toBeNull();
   });
 });

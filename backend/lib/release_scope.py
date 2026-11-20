@@ -26,6 +26,7 @@ ReleaseFeature = Literal[
     "microsoft_school_auth",
     "concierge_pay_qr",
     "course_status",
+    "concierge_requests",
 ]
 
 RELEASE_SCOPE = MappingProxyType(
@@ -77,6 +78,14 @@ RELEASE_SCOPE = MappingProxyType(
         # whichever way it is set, as it reads every profile field, and a
         # student's own status is never a door to close.
         "course_status": True,
+        # Checklist M54: the three places a student can ask us to handle an
+        # application by hand (the section on the opportunity page, the card
+        # in the results list, the request form on /account). Closed because
+        # nobody is notified of a request and nobody is assigned to answer
+        # one. A frontend surface only: the request is a browser insert into
+        # `waitlist`, not a route of this app, and the admin read of the rows
+        # already on file stays open.
+        "concierge_requests": False,
     }
 )
 
