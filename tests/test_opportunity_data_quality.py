@@ -634,7 +634,11 @@ class TestR70ADataQuality:
         what _trim_research_areas keeps of it; a data PR that writes the
         earlier rows back, or a stop heading added without a repair, fails
         here. The message counts the keywords found only in the dropped part
-        and names rows by id alone: that part names people."""
+        and names rows by id alone: that part names people.
+
+        A Physics "Primary Research Area" is stored as the page writes it
+        (M165), so one area that holds commas keeps its "and"; the gate takes
+        that text too, up to that read's 200 characters."""
         from src.collectors.uiuc_faculty import _trim_research_areas
 
         offenders, keywords = [], 0
@@ -644,7 +648,7 @@ class TestR70ADataQuality:
             if o.get("source") != "uiuc_faculty" or md.get("is_active") is False or not isinstance(raw, str):
                 continue
             kept = _trim_research_areas(raw)
-            if kept == raw:
+            if raw in (kept, _trim_research_areas(raw, 200, strip_conjunctions=False)):
                 continue
             offenders.append(o.get("id"))
             low, cut = raw.lower(), len(kept)
@@ -1351,6 +1355,37 @@ class TestReviewedProgramAudiencesPassTheGate:
         monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
         with pytest.raises(AssertionError, match="drifted"):
             TestSchoolAudience().test_per_source_pairs_match_source_defaults()
+
+
+class TestAPrimaryResearchAreaPassesTheGate:
+    """A Physics profile's "Primary Research Area" is stored as the page
+    writes it (M165). The first UIUC refresh after that read, on 2026-11-16,
+    failed the research-text gate on three rows holding "Atomic, Molecular,
+    and Optical Physics", and none of that day's schools was published. The
+    gate accepts that text; text past a publication-list heading, or longer
+    than that read stores, still fails."""
+
+    @staticmethod
+    def _physics_row(raw: str) -> list[dict]:
+        return [{"id": "faculty-physics-00000000", "source": "uiuc_faculty", "keywords": [],
+                 "metadata": {"is_active": True, "research_areas_raw": raw}}]
+
+    def test_an_area_that_keeps_the_pages_own_and(self, monkeypatch):
+        rows = self._physics_row("Atomic, Molecular, and Optical Physics")
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        TestR70ADataQuality().test_active_uiuc_research_text_is_what_the_collector_keeps()
+
+    @pytest.mark.parametrize("raw", [
+        "Example Matter Physics, Articles in Conference Proceedings, A. Sample",
+        "Example Matter, and Sample Optics, Monographs, B. Sample",
+        "Example Matter Physics, and Patents, C. Sample",
+        "Example Matter, and " + "Sample Optics " * 16,
+    ], ids=["past-a-heading", "an-and-then-a-heading", "an-and-on-the-heading", "longer-than-the-read-stores"])
+    def test_other_text_still_fails(self, monkeypatch, raw):
+        rows = self._physics_row(raw.strip())
+        monkeypatch.setattr(f"{__name__}._load_data", lambda: rows)
+        with pytest.raises(AssertionError, match="run past what the collector keeps"):
+            TestR70ADataQuality().test_active_uiuc_research_text_is_what_the_collector_keeps()
 
 
 def test_normalize_compensation_collapses_range_and_drops_absurd_hourly():
