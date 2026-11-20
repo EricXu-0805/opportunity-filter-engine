@@ -16,12 +16,14 @@ import re
 import ssl
 import urllib.error
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from html import unescape
 from pathlib import Path
 from typing import Optional
 
 import feedparser
+
+from src.normalizers.deadlines import parse_to_date
 
 from .atomic_json import atomic_write_json
 from .base import BaseCollector, RawOpportunity
@@ -41,6 +43,11 @@ PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 # WordPress files a post given no category under a placeholder, "Uncategorized"
 # by default (this blog renamed it "Unsorted"): no label the source put on it.
 _PLACEHOLDER_CATEGORIES = frozenset({"unsorted", "uncategorized"})
+
+# How many days after its publication a post stays listed. The owner chose 180
+# on 2026-11-20 (M192).
+POST_LISTED_DAYS = 180
+OLD_POST_REASON = "old_post"
 
 
 class UIUCOURRSSCollector(BaseCollector):
@@ -254,9 +261,45 @@ def fetch_and_normalize() -> list[dict]:
     return normalized
 
 
-def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
+def _is_old_post(opp: dict, today: date) -> bool:
+    """Whether the post was published more than ``POST_LISTED_DAYS`` days
+    before ``today`` and the row's deadline is not a date after ``today``."""
+    posted = parse_to_date(opp.get("posted_date"))
+    if posted is None or (today - posted).days <= POST_LISTED_DAYS:
+        return False
+    deadline = parse_to_date(opp.get("deadline"))
+    return deadline is None or deadline <= today
+
+
+def delist_old_posts(all_opps: list[dict], today: date | None = None) -> int:
+    """Retire, in place, this feed's active rows whose post is old
+    (``_is_old_post``), and return how many.
+
+    The feed goes on listing a post long after it was published. The row and
+    its id stay in the corpus, and ``merge_into_processed`` keeps it delisted
+    while the feed lists the post. A row with no ``posted_date`` is left as it
+    is.
+    """
+    today = today or datetime.now(UTC).date()
+    delisted = 0
+    for opp in all_opps:
+        if opp.get("source") != "uiuc_our_rss":
+            continue
+        meta = opp.setdefault("metadata", {})
+        if meta.get("is_active") is False or not _is_old_post(opp, today):
+            continue
+        meta["is_active"] = False
+        meta["deactivated_at"] = today.isoformat()
+        meta["deactivation_reason"] = OLD_POST_REASON
+        delisted += 1
+    return delisted
+
+
+def merge_into_processed(new_opps: list[dict], filepath: str = None,
+                         today: date | None = None) -> tuple[int, int]:
     """Merge new opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
+    today = today or datetime.now(UTC).date()
 
     existing = []
     if Path(filepath).exists():
@@ -270,6 +313,15 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
         if opp["id"] in index:
             # Update last_seen timestamp
             opp["metadata"]["first_seen_at"] = index[opp["id"]].get("metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            # The fresh row arrives active: a post delisted for its age stays
+            # delisted, from the same date, for as long as it is still old.
+            stored = index[opp["id"]].get("metadata", {})
+            if (stored.get("is_active") is False
+                    and stored.get("deactivation_reason") == OLD_POST_REASON
+                    and _is_old_post(opp, today)):
+                opp["metadata"]["is_active"] = False
+                opp["metadata"]["deactivated_at"] = stored.get("deactivated_at")
+                opp["metadata"]["deactivation_reason"] = OLD_POST_REASON
             index[opp["id"]] = opp
             updated += 1
         else:
