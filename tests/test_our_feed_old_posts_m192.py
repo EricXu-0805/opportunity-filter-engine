@@ -169,3 +169,24 @@ def test_a_uiuc_refresh_delists_the_old_post_once_and_collects_the_new_one(monke
     assert _retirement(again) == _retirement(old)
     assert new["metadata"]["is_active"] is True
     assert (info["fetched"], info["updated"], info["delisted_old_posts"]) == (2, 2, 0)
+
+
+def test_a_uiuc_refresh_that_cannot_read_the_feed_still_delists_the_stored_old_post(monkeypatch, tmp_path):
+    """The rule reads only what the row already stores, so a run whose feed
+    request fails still delists by age."""
+    today = datetime.now(UTC).date()
+    body = _feed(_post(200, today=today), _post(3, today=today))
+    monkeypatch.setattr(uiuc_our_rss.UIUCOURRSSCollector, "_fetch_feed_bytes", lambda self: body)
+    path = _stub_with_processed_file(monkeypatch, tmp_path, uiuc_our_rss.fetch_and_normalize())
+
+    def feed_down():
+        raise RuntimeError("feed down")
+
+    monkeypatch.setattr(refresh_all, "fetch_rss", feed_down)
+    summary = refresh_all.refresh_all(deep=False, schools={"uiuc"})
+
+    info = summary["sources"]["uiuc_our_rss"]
+    assert (info["status"], info["delisted_old_posts"]) == ("error", 1)
+    old, new = json.loads(path.read_text())
+    assert (old["metadata"]["is_active"], old["metadata"]["deactivation_reason"]) == (False, "old_post")
+    assert new["metadata"]["is_active"] is True
