@@ -4341,6 +4341,20 @@ def test_a_row_with_no_page_of_its_own_is_kept_and_no_page_is_asked_for():
                       "kept": {"no_profile_url": 3}}
 
 
+@pytest.mark.parametrize("sharer", [
+    lambda: _unlisted("second", is_active=False, deactivated_at="2026-09-01", deactivation_reason="listed_as_emeritus"),
+    lambda: {**_unlisted("second"), "source": "testu_faculty"},
+], ids=["a_retired_row", "a_row_of_another_source"])
+def test_a_page_any_other_row_carries_is_not_asked_for(sharer):
+    row, other = _unlisted("first"), sharer()
+    row["source_url"] = other["source_url"] = "https://physics.testu.edu/directory/faculty"
+    result, asked = _retire_gone([row, other], {row["source_url"]: 404})
+    assert asked == []
+    assert row["metadata"]["is_active"] is True
+    assert result == {"candidates": 1, "probed": 0, "deactivated": 0, "deactivated_ids": [],
+                      "kept": {"no_profile_url": 1}}
+
+
 def test_only_active_uiuc_rows_unlisted_for_more_than_14_days_are_asked_about():
     over = _unlisted("over", days=15)
     others = [

@@ -3421,14 +3421,15 @@ def deactivate_gone_profiles(all_opps: list[dict], today: date | None = None, as
     run. Anything but a 404 or 410 from the page itself keeps the row, counted
     in ``kept`` under its reason: another status, a failed request, a redirect
     to another address, a URL that is no one person's page (none, or one
-    another active row carries), a row the run did not get to. A retired row
-    keeps its id, and the merge puts it back live when a roster lists it again.
+    another row carries, whatever its source or state), a row the run did not
+    get to. A retired row keeps its id, and the merge puts it back live when a
+    roster lists it again.
     """
     ask = ask or profile_page_answer
     today = today or date.today()
     active = [opp for opp in all_opps if opp.get("source") == "uiuc_faculty"
               and (opp.get("metadata") or {}).get("is_active") is not False]
-    carried = Counter(canonical_profile_evidence_url(opp.get("source_url")) for opp in active)
+    carried = Counter(canonical_profile_evidence_url(opp.get("source_url")) for opp in all_opps)
     stale = sorted(((seen, opp["id"], opp) for opp in active if (seen := _observed_at(opp)) is not None
                     and (today - seen.date()).days > PROFILE_GONE_AFTER_DAYS), key=lambda row: row[:2])
     kept: Counter = Counter()
