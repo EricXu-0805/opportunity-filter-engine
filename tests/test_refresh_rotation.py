@@ -732,7 +732,7 @@ def fake_gh(tmp_path):
             env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "RUNNER_TEMP": str(tmp_path),
                  "GITHUB_OUTPUT": str(tmp_path / "github_output"),
                  "FAKE_GH_SCENARIO": str(scenario_path), "FAKE_GH_LOG": str(log),
-                 "GH_TOKEN": "not-a-token", "REPO": "o/r", "SHA": "abc123", **env},
+                 "GH_TOKEN": "not-a-token", "REPO": "o/r", "REF": "main", **env},
         )
         calls = [json.loads(line) for line in log.read_text().splitlines() if line.strip()]
         return result, calls
@@ -818,6 +818,51 @@ class TestOverlapStep:
         assert _workflow_step("overlapping")["id"] == "guard"
         fake_gh(_workflow_step("overlapping")["run"], scenario, EVENT=event, RUN_ID="300")
         assert (tmp_path / "github_output").read_text() == f"outcome={outcome}\n"
+
+
+class TestTheCommitARunWorksFrom:
+    """GitHub records a commit for a run when the run is created, and a run can
+    wait hours before its job starts. On 2026-11-20 run 44706638096 waited 3.5
+    hours behind another dispatch and worked from that commit: its data PR
+    (#1208) carried 13 schools' counts and the source ledger from before
+    #1207, which had merged 16 seconds before its job started."""
+
+    @staticmethod
+    def _steps():
+        workflow = yaml.safe_load((_REPO / ".github/workflows/refresh-data.yml").read_text())
+        return workflow["jobs"]["refresh"]["steps"]
+
+    def test_the_checkout_takes_the_runs_branch_as_it_is_when_the_job_starts(self):
+        [checkout] = [step for step in self._steps() if str(step.get("uses", "")).startswith("actions/checkout@")]
+        # Given no ref, the action checks out the recorded commit (github.sha);
+        # given a branch, it fetches the branch and checks out its tip. The
+        # run's own branch, so a dispatch that tests a branch still runs it.
+        assert checkout["with"].get("ref") == "${{ github.ref }}"
+
+    @pytest.mark.parametrize("event, branch", [(MANUAL, "main"), (SCHEDULED, "main"), (MANUAL, "wip/a-branch")])
+    def test_the_guard_reads_its_script_on_that_branch_too(self, fake_gh, event, branch):
+        guard = _workflow_step("overlapping")
+        # What GitHub hands a run that waited: sha is the commit it was queued on.
+        github = {"event_name": event, "run_id": "300", "repository": "o/r", "token": "not-a-token",
+                  "ref": f"refs/heads/{branch}", "ref_name": branch, "sha": "1" * 40}
+        env = {name: re.sub(r"\$\{\{ github\.(\w+) \}\}", lambda found: github[found.group(1)], value)
+               for name, value in guard["env"].items()}
+        result, calls = fake_gh(guard["run"], {"runs": _runs((300, event))}, **env)
+        assert result.returncode == 0, result.stdout + result.stderr
+        [read] = [call for call in calls if "/contents/" in call[-1]]
+        assert read[-1] == f"repos/o/r/contents/scripts/refresh_rotation.py?ref={branch}"
+
+    def test_no_step_names_the_commit_the_run_was_queued_on(self):
+        """The checkout brings the code and the corpus, and no later step may go
+        back to the recorded commit for either."""
+        for step in self._steps():
+            label = step.get("name") or step.get("uses")
+            if str(step.get("uses", "")).startswith("actions/checkout@"):
+                assert step["with"].get("ref") == "${{ github.ref }}", label
+            # A shell comment may name it.
+            said = json.dumps({**step, "run": re.sub(r"(?m)^\s*#.*$", "", str(step.get("run", "")))})
+            for name in ("github.sha", "GITHUB_SHA", "github.workflow_sha", "GITHUB_WORKFLOW_SHA"):
+                assert name not in said, f"{label}: {name}"
 
 
 _SENDER = "JoinALab <alerts@example.com>"
