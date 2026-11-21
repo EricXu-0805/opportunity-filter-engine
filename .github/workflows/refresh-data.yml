@@ -165,8 +165,13 @@ jobs:
             echo "Cancelled run(s) $CANCEL stopped; proceeding."
           fi
 
+      # The run's branch as it is now, not the commit GitHub recorded when the
+      # run was created (the default). On 2026-11-20 run 44706638096 waited 3.5
+      # hours in the queue, and its data PR (#1208) carried 13 schools' counts
+      # from before #1207, which merged 16 seconds before its job started.
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.ref }}
           persist-credentials: false
 
       - uses: actions/setup-python@v6

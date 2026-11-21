@@ -750,6 +750,26 @@ class TestOverlapStep:
         assert (tmp_path / "github_output").read_text() == f"outcome={outcome}\n"
 
 
+class TestTheCommitARunWorksFrom:
+    """GitHub records a commit for a run when the run is created, and a run can
+    wait hours before its job starts. On 2026-11-20 run 44706638096 waited 3.5
+    hours behind another dispatch and worked from that commit: its data PR
+    (#1208) carried 13 schools' counts and the source ledger from before
+    #1207, which had merged 16 seconds before its job started."""
+
+    @staticmethod
+    def _steps():
+        workflow = yaml.safe_load((_REPO / ".github/workflows/refresh-data.yml").read_text())
+        return workflow["jobs"]["refresh"]["steps"]
+
+    def test_the_checkout_takes_the_runs_branch_as_it_is_when_the_job_starts(self):
+        [checkout] = [step for step in self._steps() if str(step.get("uses", "")).startswith("actions/checkout@")]
+        # Given no ref, the action checks out the recorded commit (github.sha);
+        # given a branch, it fetches the branch and checks out its tip. The
+        # run's own branch, so a dispatch that tests a branch still runs it.
+        assert checkout["with"].get("ref") == "${{ github.ref }}"
+
+
 _SENDER = "JoinALab <alerts@example.com>"
 
 
