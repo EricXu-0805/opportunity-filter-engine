@@ -20,6 +20,7 @@ from refresh_rotation import (  # noqa: E402
     NATIONAL_SHARD,
     WEEKLY_ROTATION,
     alert_decision,
+    daily_national_sources,
     normalize_publication_unit,
     normalize_requested_shard,
     overlap_decision,
@@ -107,6 +108,44 @@ def test_target_shards_are_bounded_to_the_authorized_selection():
     full = target_shards("")
     assert set(full) == {*registered_school_slugs(), NATIONAL_SHARD}
     assert len(full) == len(registered_school_slugs()) + 1
+
+
+def test_every_scheduled_day_reads_the_internship_list_and_only_sunday_the_rest_of_national():
+    """National.json had one day of the week, and the internship list closes
+    listings every day: on 2026-11-20 main showed 5,133 internships open, read
+    on 2026-11-01, and the list no longer held 1,546 of them (M193)."""
+    from src.collectors.refresh_contract import (
+        NATIONAL_SOURCES,
+        expected_sources,
+        national_campus_sources,
+    )
+
+    national = NATIONAL_SOURCES | national_campus_sources()
+    for day in range(1, 7):
+        shard = scheduled_shard(day)
+        daily = daily_national_sources(shard)
+        assert daily == ("simplify_internships",), day
+        read = expected_sources(set(shard.split(",")), national=False, deep=True, national_sources=set(daily))
+        assert set(read) & national == {"simplify_internships"}, day
+    # Sunday's run is the national shard's: it reads the list with every other national source.
+    assert scheduled_shard(7) == NATIONAL_SHARD and daily_national_sources(NATIONAL_SHARD) == ()
+    assert national <= set(expected_sources(None, national=True, deep=True))
+
+    assert _cli("--day", "5", "--daily-sources").stdout == "simplify_internships\n"
+    assert _cli("--day", "7", "--daily-sources").stdout == "\n"
+    assert _cli("--schools", scheduled_shard(2), "--daily-sources").stdout == "simplify_internships\n"
+
+
+def test_a_run_that_also_read_the_internship_list_is_authorized_for_national_json():
+    assert target_shards("uw,wisc", ("simplify_internships",)) == ("uw", "wisc", "national")
+    assert target_shards("national", ("simplify_internships",)) == ("national",)
+    with pytest.raises(ValueError, match="not a national source a school shard can refresh"):
+        target_shards("uw,wisc", ("nsf_reu",))
+
+    out = _cli("--schools", "uw,wisc", "--allow-full", "--targets", "--national-sources", "simplify_internships")
+    assert (out.returncode, out.stdout) == (0, "uw,wisc,national\n"), out.stderr
+    assert _cli("--schools", "uw,wisc", "--allow-full", "--targets").stdout == "uw,wisc\n"
+    assert _cli("--schools", "uw", "--allow-full", "--targets", "--national-sources", "nsf_reu").returncode != 0
 
 
 class TestBrowserDetection:
@@ -528,6 +567,34 @@ class TestSupersededRefreshPrs:
     def test_any_other_file_under_the_shard_directory_keeps_it(self):
         pr = _data_pr(1174, _FRIDAY_RUN, ["cmu/extra", "cmu.json"])
         assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, set(_FRIDAY)) == []
+
+    def test_a_day_that_read_only_the_internship_list_keeps_a_pr_of_the_national_shard(self):
+        # Sunday's PR holds SRO, NSF REU and the open programs; Friday's run read one list.
+        sunday = _data_pr(1190, _FRIDAY_RUN, ["national"])
+        assert superseded_refresh_prs([sunday], _NEXT_FRIDAY_RUN, set(_FRIDAY), {"national"}) == []
+        # The national shard's own next run does supersede it.
+        assert superseded_refresh_prs([sunday], _NEXT_FRIDAY_RUN, {"national"}) == [1190]
+
+    def test_a_later_run_of_the_same_day_closes_a_pr_that_also_holds_the_internship_list(self):
+        last_friday = _data_pr(1174, _FRIDAY_RUN, [*_FRIDAY, "national"])
+        assert superseded_refresh_prs([last_friday], _NEXT_FRIDAY_RUN, set(_FRIDAY), {"national"}) == [1174]
+        # Not when this run withheld national, nor from another day's schools.
+        assert superseded_refresh_prs([last_friday], _NEXT_FRIDAY_RUN, set(_FRIDAY)) == []
+        assert superseded_refresh_prs([last_friday], _NEXT_FRIDAY_RUN, set(_SATURDAY), {"national"}) == []
+
+    def test_cli_counts_national_as_published_in_part_when_the_run_read_national_sources(self, tmp_path):
+        prs = json.dumps([_data_pr(7, 5, ["uw", "national"]), _data_pr(8, 5, ["national"]), _data_pr(9, 5, ["uw"])])
+        record = tmp_path / "retained-shards"
+        record.write_text("")
+        args = ("--superseded-prs", "--run-id", "6", "--retained-file", str(record))
+        out = _cli(*args, "--published", "uw,national", "--national-sources", "simplify_internships", stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "7\n9\n"), out.stderr
+        # The verdict withheld national: only the PR of uw alone is superseded.
+        out = _cli(*args, "--published", "uw", "--national-sources", "simplify_internships", stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "9\n"), out.stderr
+        # Without the option national.json is published whole, as on the national shard's day.
+        out = _cli(*args, "--published", "uw,national", stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "7\n8\n9\n"), out.stderr
 
     def test_cli_reads_gh_pr_list_output(self, tmp_path):
         prs = json.dumps([_data_pr(7, 5, ["uw", "wisc"]), _data_pr(8, 9, ["uw"]), _data_pr(9, 4, ["yale"])])
