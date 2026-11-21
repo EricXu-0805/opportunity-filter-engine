@@ -100,8 +100,9 @@ jobs:
       # stop. Only manual runs used to check, so on 2026-10-02 a cron that fired
       # 5.5 h late ran for two hours beside a manual dispatch of the same
       # shard. The decision is overlap_decision() in scripts/refresh_rotation.py,
-      # read through the API at this run's commit: the step runs BEFORE the
-      # checkout, so a deferral costs seconds, not the checkout's minute.
+      # read through the API on this run's branch as it is now, which is what
+      # the checkout below takes: the step runs BEFORE the checkout, so a
+      # deferral costs seconds, not the checkout's minute.
       - name: Keep refresh runs from overlapping
         id: guard
         env:
@@ -109,7 +110,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
         run: |
           set -uo pipefail
           GUARD="$RUNNER_TEMP/refresh_rotation.py"
@@ -128,8 +129,8 @@ jobs:
             exit 1
           }
           gh api -H "Accept: application/vnd.github.raw+json" \
-            "repos/$REPO/contents/scripts/refresh_rotation.py?ref=$SHA" > "$GUARD" \
-            || undecided "Could not read scripts/refresh_rotation.py at $SHA."
+            "repos/$REPO/contents/scripts/refresh_rotation.py?ref=$REF" > "$GUARD" \
+            || undecided "Could not read scripts/refresh_rotation.py at $REF."
           # An empty file tells the guard the listing failed.
           gh api "repos/$REPO/actions/workflows/refresh-data.yml/runs?status=in_progress&per_page=100" \
             > "$RUNS" || : > "$RUNS"
