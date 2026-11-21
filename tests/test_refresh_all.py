@@ -2084,6 +2084,58 @@ def test_an_unread_internship_list_withholds_no_school_and_retires_no_listing(mo
     assert tracking == [True]
 
 
+def test_a_collapsed_internship_read_retires_no_listing_and_withholds_nothing(monkeypatch, tmp_path):
+    """Only an empty read was kept from retiring: a list cut to a few rows
+    closed every internship it no longer held."""
+    from src.collectors import source_health
+
+    stored = [_internship(name) for name in ("one", "two", "three", "four", "five")]
+    summary, before, after, tracking = _uw_day_with_the_internship_list(
+        monkeypatch, tmp_path, stored, [_internship("one", days_ago=0), _internship("two", days_ago=0)])
+
+    info = summary["sources"]["simplify_internships"]
+    assert (info["status"], info["fetched"], info["incomplete_reasons"]) == ("partial_failure", 2, ["list_errors"])
+    assert info["list_errors"] == [
+        "the list holds 2 internships and the corpus 5 open ones; nothing was retired on this read"]
+    assert "deactivated_stale" not in info
+    assert all(row["metadata"]["is_active"] is True for row in after.values())
+    for name in ("three", "four", "five"):
+        assert json.dumps(after[f"simplify-intern-{name}"], sort_keys=True) == before[f"simplify-intern-{name}"]
+    release = summary["release"]
+    assert release["publishable"] == ["national", "uw"]
+    assert {"kind": "partial_failure", "source": "simplify_internships",
+            "detail": "list_errors"} in release["degradations"]
+    health = source_health.load_ledger(tmp_path / "source_health.json")["sources"]["simplify_internships"]
+    assert health["status"] == source_health.FAILED and "last_success_at" not in health
+    assert tracking == [True]
+
+    # Half of the open listings is still a list: the other half is retired.
+    (tmp_path / "half").mkdir()
+    summary, _, after, _ = _uw_day_with_the_internship_list(
+        monkeypatch, tmp_path / "half", stored[:4],
+        [_internship("one", days_ago=0), _internship("two", days_ago=0)])
+    info = summary["sources"]["simplify_internships"]
+    assert (info["status"], info["deactivated_stale"]) == ("ok", 2) and "list_errors" not in info
+    assert [after[f"simplify-intern-{name}"]["metadata"]["is_active"]
+            for name in ("one", "two", "three", "four")] == [True, True, False, False]
+
+
+def test_a_collapsed_internship_read_on_the_national_day_retires_no_listing_either(monkeypatch, tmp_path):
+    from src.collectors import simplify_internships
+
+    stored = [_internship(name) for name in ("one", "two", "three")]
+    path = _stub_with_processed_file(monkeypatch, tmp_path, stored)
+    monkeypatch.setattr(refresh_all, "fetch_simplify", lambda: [_internship("one", days_ago=0)])
+    monkeypatch.setattr(refresh_all, "merge_simplify",
+                        lambda opps: simplify_internships.merge_into_processed(opps, str(path)))
+    summary = refresh_all.refresh_all(deep=True, national=True)
+
+    info = summary["sources"]["simplify_internships"]
+    assert info["status"] == "partial_failure" and "deactivated_stale" not in info
+    assert all(row["metadata"]["is_active"] is True for row in json.loads(path.read_text()))
+    assert "national" in summary["release"]["publishable"]
+
+
 def test_a_withheld_school_does_not_withhold_the_internships(monkeypatch, tmp_path):
     stored = [_internship("still-open"), _internship("closed-since")]
     summary, _, after, tracking = _uw_day_with_the_internship_list(

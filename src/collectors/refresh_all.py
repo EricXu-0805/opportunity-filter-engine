@@ -1535,7 +1535,15 @@ def refresh_all(
         logger.info("Collecting from SimplifyJobs internships...")
         try:
             simplify_opps = fetch_simplify()
-            if simplify_opps:
+            # A list of fewer than half the internships the corpus holds open
+            # is a broken list, not that many closures since the last read:
+            # its rows merge, it retires nothing, and the source check is
+            # reported incomplete below. Counted before the merge, which
+            # writes every listed row as open.
+            held_open = (len(_stored_active_rows(PROCESSED_FILE, "simplify_internships"))
+                         if simplify_opps else 0)
+            collapsed = 2 * len(simplify_opps) < held_open
+            if simplify_opps and not collapsed:
                 simplify_active_ids = {o["id"] for o in simplify_opps}
                 simplify_ok = True
             added, updated = merge_simplify(simplify_opps)
@@ -1545,6 +1553,11 @@ def refresh_all(
                 "updated": updated,
                 "status": "ok",
             }
+            if collapsed:
+                summary["sources"]["simplify_internships"]["list_errors"] = [
+                    f"the list holds {len(simplify_opps)} internships and the corpus "
+                    f"{held_open} open ones; nothing was retired on this read"
+                ]
             summary["total_new"] += added
             summary["total_updated"] += updated
             logger.info(f"Simplify: {len(simplify_opps)} fetched, {added} new, {updated} updated")
