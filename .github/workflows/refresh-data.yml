@@ -677,7 +677,7 @@ jobs:
           # The internship list a scheduled day read beside its schools is named with them.
           SHARD="$SHARD${DAILY:+ + $DAILY}"
           SUBJECT="JoinALab: data refresh FAILED (shard: ${SHARD:-full})"
-          TEXT="The scheduled data refresh failed.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}The corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived)."
+          TEXT="The scheduled data refresh failed.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}The corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week.${DAILY:+ The internship list was not updated either and is read again the next day.} Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived)."
           if [ "$JOB_STATUS" = success ] && [ -n "$WITHHELD" ]; then
             # Withheld schools, or else what a published shard went without,
             # bring a run that succeeded here.

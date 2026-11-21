@@ -1067,6 +1067,15 @@ class TestAlertStep:
             assert "\n\nShard: uw + simplify_internships\nRun: " in mail["text"]
             assert mail["text"].endswith(unread or "(that is where the last 7-run outage lived).")
 
+    def test_a_failed_day_does_not_say_the_internship_list_waits_a_week(self, fake_gh, tmp_path):
+        # The rotation brings a school back in a week; every scheduled day reads the list.
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure", guard="proceed",
+                             runs=_runs((200, SCHEDULED)), daily="simplify_internships")
+        (mail,) = mails
+        assert ("Only this shard's schools missed their refresh; the rotation retries them next week. The "
+                "internship list was not updated either and is read again the next day. Repeated failures "
+                "mean the pipeline is dead") in mail["text"]
+
     # What the publish step writes when that list came back under half the size of what is held open.
     _COLLAPSED_LIST = ("Published from a list under half the size of what is held open (1); "
                        "nothing was retired and the rows it listed were updated:\n"
