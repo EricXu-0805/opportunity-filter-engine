@@ -30,7 +30,9 @@ from __future__ import annotations
 
 import logging
 import re
+import tempfile
 import time
+from pathlib import Path
 
 from .uiuc_faculty import (
     DELAY,
@@ -337,6 +339,29 @@ FAA_UNITS = [
                 "Art History", "Art Education"], "keywords": ["art and design"]},
 ]
 
+# The three sites are one server. With the Let's Encrypt certificate it has
+# sent since 2026-10-30 it sends two InCommon intermediates and not the one
+# that issued it, so a client that does not fetch a missing issuer itself
+# cannot build the chain: every list page failed verification and the units
+# read nothing after 2026-10-26. Their fetches verify against certifi plus the
+# Let's Encrypt certificates the server leaves out. Verification stays on, and
+# no other fetch uses that file.
+_FAA_CA_BUNDLE: str | None = None
+
+
+def _faa_ca_bundle() -> str:
+    """Path to a CA file = certifi's roots + letsencrypt_yr_intermediates.pem,
+    built once."""
+    global _FAA_CA_BUNDLE
+    if _FAA_CA_BUNDLE is None:
+        import certifi
+        missing = (Path(__file__).parent / "letsencrypt_yr_intermediates.pem").read_bytes()
+        fd, path = tempfile.mkstemp(suffix="-ca.pem", prefix="ofe-faa-")
+        with open(fd, "wb") as f:
+            f.write(Path(certifi.where()).read_bytes() + b"\n" + missing)
+        _FAA_CA_BUNDLE = path
+    return _FAA_CA_BUNDLE
+
 
 def _faa_card(card, unit: dict) -> dict | None:
     h2 = card.select_one("h2.linked-title") or card.select_one("h2")
@@ -369,7 +394,7 @@ def fetch_faa() -> list[dict]:
         n0 = len(out)
         for page in range(1, 16):
             url = unit["base"] + unit["path"] + ("" if page == 1 else f"page/{page}/")
-            soup = _fetch_soup(url)
+            soup = _fetch_soup(url, ca_bundle=_faa_ca_bundle())
             cards = soup.select("article.person-card") if soup else []
             if not cards:
                 break

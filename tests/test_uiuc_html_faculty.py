@@ -204,7 +204,7 @@ FAA_PAGE = """
 def test_faa_card_parses_name_title_email_and_paginates(monkeypatch):
     calls = []
 
-    def fake(url):
+    def fake(url, ca_bundle=None):
         calls.append(url)
         # page 1 has a card; page 2 is empty -> pagination stops
         return _soup(FAA_PAGE) if url.rstrip("/").endswith("faculty") else _soup("<html></html>")
@@ -219,6 +219,78 @@ def test_faa_card_parses_name_title_email_and_paginates(monkeypatch):
     # No profile is read: the unit's field is a keyword, never stated research.
     assert (music[0]["keywords"], music[0]["metadata"]["research_areas_raw"]) == (["music"], "")
     assert any(u.endswith("page/2/") for u in calls)  # paginated past page 1
+
+
+# sha256 of each certificate in letsencrypt_yr_intermediates.pem, in file order:
+# Let's Encrypt YR1, YR2, YR3, then ISRG Root YR cross-signed by ISRG Root X1.
+LETS_ENCRYPT_YR_SHA256 = [
+    "13949634d99cd6fd6aa80bc034fefacceb1969feef986586713ecdbb05758d3f",
+    "238b85a0099c65b970477d5724f1a1d475ce5058cffe4efa8733899bdb863c47",
+    "35500cb63b8d9769528d65d87220f51c069807a595acbf2fb6eca38fbe0a4bd2",
+    "072639d0b140d5bffae16ad9c3f6cc6086040621f51ee61a6d46a8915c07cf76",
+]
+
+
+def test_only_the_three_faa_sites_are_fetched_with_the_lets_encrypt_certificates(monkeypatch):
+    """music / arch / art.illinois.edu are one server that sends another CA's
+    intermediates with the Let's Encrypt certificate it has had since
+    2026-10-30: every list page failed verification and the three units' rows
+    were last read on 2026-10-26. Their fetches name the CA file that completes
+    the chain; every other unit of the collector is fetched as before."""
+    calls = []
+
+    def fake(url, **kwargs):
+        calls.append((url.split("/")[2], kwargs))
+        return _soup("<html></html>")
+    monkeypatch.setattr(h, "_fetch_soup", fake)
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    h.fetch_and_normalize()
+    completed = {host for host, kwargs in calls if kwargs}
+    assert completed == {"music.illinois.edu", "arch.illinois.edu", "art.illinois.edu"}
+    assert all(kwargs == {"ca_bundle": h._faa_ca_bundle()} for host, kwargs in calls if host in completed)
+    assert {host for host, kwargs in calls if not kwargs} == {
+        "medicine.illinois.edu", "law.illinois.edu", "ler.illinois.edu",
+        "media.illinois.edu", "vetmed.illinois.edu"}
+
+
+def test_a_fetch_verifies_against_the_ca_file_it_is_given_and_otherwise_as_before(monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    seen = []
+
+    def get(url, **kwargs):
+        seen.append(kwargs)
+        raise RuntimeError("stop after capturing the request")
+    monkeypatch.setattr(f.requests, "get", get)
+    assert f._fetch_soup("https://law.testu.edu/people/") is None
+    assert f._fetch_soup("https://music.testu.edu/people/", ca_bundle="/tmp/ca.pem") is None
+    # None is what requests.get passes on when verify is left out: certifi, verification on.
+    assert seen == [{"timeout": 20, "headers": f.HEADERS, "verify": None},
+                    {"timeout": 20, "headers": f.HEADERS, "verify": "/tmp/ca.pem"}]
+
+
+def test_the_faa_ca_file_is_certifi_plus_exactly_the_four_lets_encrypt_certificates(monkeypatch):
+    import hashlib
+    import re
+    import ssl
+    from pathlib import Path
+
+    import certifi
+
+    pem = Path(h.__file__).parent / "letsencrypt_yr_intermediates.pem"
+    blocks = re.findall(r"-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----", pem.read_text(), re.S)
+    assert [hashlib.sha256(ssl.PEM_cert_to_DER_cert(block)).hexdigest() for block in blocks] == LETS_ENCRYPT_YR_SHA256
+
+    monkeypatch.setattr(h, "_FAA_CA_BUNDLE", None)  # force a fresh build
+    bundle = h._faa_ca_bundle()
+    assert Path(bundle).read_bytes() == Path(certifi.where()).read_bytes() + b"\n" + pem.read_bytes()
+    assert h._faa_ca_bundle() == bundle  # built once
+
+    def loaded(cafile):
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.load_verify_locations(cafile=cafile)
+        return context.cert_store_stats()["x509"]
+    assert loaded(bundle) == loaded(certifi.where()) + 4
 
 
 # The listing's template: degrees after the dash in the heading, one

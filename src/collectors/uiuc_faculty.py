@@ -375,10 +375,13 @@ DEPARTMENTS = {
 }
 
 
-def _fetch_soup(url: str) -> BeautifulSoup | None:
-    """Fetch a URL and return parsed BeautifulSoup, or None on failure."""
+def _fetch_soup(url: str, ca_bundle: str | None = None) -> BeautifulSoup | None:
+    """Fetch a URL and return parsed BeautifulSoup, or None on failure.
+
+    ``ca_bundle`` names the CA file the server's certificate is verified
+    against in place of the default one; verification is on either way."""
     try:
-        resp = requests.get(url, timeout=20, headers=HEADERS)
+        resp = requests.get(url, timeout=20, headers=HEADERS, verify=ca_bundle)
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "html.parser")
     except Exception as e:
