@@ -236,3 +236,24 @@ def test_enrich_spends_no_scrape_on_a_row_no_longer_active(monkeypatch, reason):
     assert (stats["skipped_inactive"], stats["skipped_budget"], stats["scraped"]) == (1, 0, 1)
     assert gone.get("contact_email") is None
 
+
+
+def test_enrich_names_no_pi_on_an_internship_listing(monkeypatch):
+    """An internship row's "lab" is the company. On the national day, the
+    only one whose pool holds these rows, the lab-title rule took the word
+    before "Group" for a surname and stamped it; the next read of the list
+    cleared it, so the value came and went every week."""
+    fetched = _stub_page(monkeypatch, "<p>no email here</p>")
+    listing = {"source": "simplify_internships", "source_type": "internship", "pi_name": None,
+               "contact_email": None, "lab_or_program": "Example Analytics Group",
+               "url": "https://jobs.example.com/posting/1", "metadata": {"is_active": True}}
+    before = {**listing, "metadata": dict(listing["metadata"])}
+    # The rule still names the lab of a research program.
+    program = {"source": "nsf_reu", "source_type": "reu", "pi_name": None, "contact_email": None,
+               "lab_or_program": "Example Analytics Group", "url": "", "metadata": {}}
+    stats = enrich_opportunities([listing, program])
+    assert listing == before
+    assert fetched == []
+    assert (stats["skipped_program"], stats["inferred_pi"]) == (1, 1)
+    assert program["pi_name"] == "Example Analytics"
+    assert program["metadata"]["inferred_fields"] == {"pi_name": "rule:lab_title_surname"}
