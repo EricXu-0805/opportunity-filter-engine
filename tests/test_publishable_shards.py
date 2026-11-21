@@ -167,6 +167,18 @@ _UNREAD_LIST = dict(status="suspicious_zero", fetched=0, suspicious_zero_baselin
                     list_complete=False, list_errors=[{"reason": "fetch_failed"}])
 
 
+# simplify_internships as refresh_all labels a list of 2,056 internships read
+# while the corpus holds 5,133 open: merged, nothing retired, check incomplete.
+_COLLAPSED_LIST = dict(status="partial_failure", fetched=2056, new=11, updated=2045,
+                       list_errors=["the list holds 2056 internships and the corpus 5133 open ones; "
+                                    "nothing was retired on this read"],
+                       collapsed_list_baseline=5133, incomplete_reasons=["list_errors"],
+                       error="Source check incomplete: list_errors")
+_COLLAPSED_NOTE = ("Published from a list under half the size of what is held open (1); "
+                   "nothing was retired and the rows it listed were updated:\n"
+                   "- national: simplify_internships: 2056 listed, 5133 held open")
+
+
 class TestUnread:
     """What a shard published without is named to the PR and the alert.
 
@@ -207,6 +219,42 @@ class TestUnread:
 
     def test_only_authorized_shards_are_reported(self):
         assert _mod.unread(["uw"], _uiuc_status(**_ONE_DEPARTMENT)) == []
+
+    def _national_day(self, **sources) -> dict:
+        status = _national_status(**_ok(288))
+        status["sources"].update(sources)
+        status["release"] = evaluate_refresh_summary(status, schools=None, national=True, deep=True)
+        return status
+
+    def test_an_internship_list_under_half_its_size_is_named_with_its_counts(self):
+        """Such a read merges its rows, retires nothing and publishes. The
+        verdict calls it a partial failure, which neither the PR nor the
+        alert named: a list cut to 40% published as an ordinary day."""
+        status = self._national_day(simplify_internships=dict(_COLLAPSED_LIST))
+        assert status["release"]["publishable"] == ["national"]
+        assert _mod.collapsed_lists(["national"], status) == [
+            ("national", "simplify_internships: 2056 listed, 5133 held open")]
+        assert _mod.unread(["national"], status) == []
+        assert _mod.unread_notes(["national"], status) == _COLLAPSED_NOTE
+        # Beside a source that read nothing, each stands under its own heading.
+        status = self._national_day(simplify_internships=dict(_COLLAPSED_LIST), uiuc_sro=dict(_UNREAD_LIST))
+        assert _mod.unread_notes(["national"], status) == (
+            "Published without a fresh read (1), each keeping the rows it had:\n"
+            "- national: uiuc_sro: 0 records, previously 285\n\n" + _COLLAPSED_NOTE)
+
+    def test_no_other_partial_read_and_no_withheld_shard_is_named_as_a_collapsed_list(self):
+        # A list that lost one page is a partial failure too, and was never mailed.
+        lost_a_page = dict(status="partial_failure", fetched=280, list_pages_attempted=15, list_pages_loaded=14,
+                           list_pages_failed=1, list_complete=False, list_errors=[{"reason": "fetch_failed"}])
+        status = self._national_day(uiuc_sro=lost_a_page)
+        assert {"kind": "partial_failure", "source": "uiuc_sro",
+                "detail": "list_pages_failed, list_incomplete, list_errors"} in status["release"]["degradations"]
+        assert _mod.unread_notes(["national"], status) == ""
+        # A withheld shard is reported by its reasons.
+        status = self._national_day(simplify_internships=dict(_COLLAPSED_LIST),
+                                    nsf_reu={"status": "error", "error": "HTTP 500"})
+        assert status["release"]["publishable"] == []
+        assert _mod.unread_notes(["national"], status) == ""
 
 
 class TestCli:
@@ -428,6 +476,14 @@ class TestThePrNamesWhatItPublishes:
         assert read["title"].endswith("deep mode, shard: uw,wisc + simplify_internships)")
         assert read["body"].endswith("checks pass.\n\n" + unread)
         assert outputs == {"unread": unread}
+
+    def test_an_internship_list_under_half_its_size_is_reported_and_everything_publishes(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(tmp_path, **_COLLAPSED_LIST)
+        assert read["targets"] == "uw,wisc,national"
+        assert read["title"].endswith("deep mode, shard: uw,wisc + simplify_internships)")
+        assert read["body"].endswith("checks pass.\n\n" + _COLLAPSED_NOTE)
+        # The alert step runs on this output and mails it.
+        assert outputs == {"unread": _COLLAPSED_NOTE}
 
     def test_the_commit_and_the_pr_use_what_the_step_built(self):
         step = _publish_step()

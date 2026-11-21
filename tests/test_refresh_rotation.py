@@ -1017,7 +1017,7 @@ class TestAlertStep:
         _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success",
                              guard="proceed", runs=_runs((200, SCHEDULED)), unread=self._UNREAD)
         (mail,) = mails
-        assert mail["subject"] == "JoinALab: data refresh published without reading a source (shard: uw)"
+        assert mail["subject"] == "JoinALab: data refresh published without a full read of a source (shard: uw)"
         assert mail["text"].endswith("Run: https://github.com/o/r/actions/runs/200\n\n" + self._UNREAD)
         assert "withheld" not in mail["text"] and "failed" not in mail["text"]
 
@@ -1056,7 +1056,7 @@ class TestAlertStep:
         for status, unread, subject in [
             ("failure", "", "JoinALab: data refresh FAILED (shard: uw + simplify_internships)"),
             ("success", self._UNREAD_LIST,
-             "JoinALab: data refresh published without reading a source (shard: uw + simplify_internships)"),
+             "JoinALab: data refresh published without a full read of a source (shard: uw + simplify_internships)"),
         ]:
             (tmp_path / "gh.log").write_text("")
             _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status=status, guard="proceed",
@@ -1066,6 +1066,25 @@ class TestAlertStep:
             assert mail["subject"] == subject
             assert "\n\nShard: uw + simplify_internships\nRun: " in mail["text"]
             assert mail["text"].endswith(unread or "(that is where the last 7-run outage lived).")
+
+    # What the publish step writes when that list came back under half the size of what is held open.
+    _COLLAPSED_LIST = ("Published from a list under half the size of what is held open (1); "
+                       "nothing was retired and the rows it listed were updated:\n"
+                       "- national: simplify_internships: 2056 listed, 5133 held open")
+
+    def test_an_internship_list_under_half_its_size_is_mailed_with_its_counts(self, fake_gh, tmp_path):
+        # It published as an ordinary day and sent nothing: only the unread output starts this step.
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success", guard="proceed",
+                             runs=_runs((200, SCHEDULED)), unread=self._COLLAPSED_LIST, daily="simplify_internships")
+        (mail,) = mails
+        assert mail["subject"] == ("JoinALab: data refresh published without a full read of a source "
+                                   "(shard: uw + simplify_internships)")
+        # The mail's own sentences hold for a list read in part as for a source read not at all.
+        assert mail["text"] == (
+            "The data refresh finished and published its shard, but it read nothing, or only part of a list, "
+            "for the sources or departments listed below. What it did not read keeps the rows it had, with the "
+            "dates they carried, until a later refresh reads it.\n\nShard: uw + simplify_internships\n"
+            "Run: https://github.com/o/r/actions/runs/200\n\n" + self._COLLAPSED_LIST)
 
     def test_without_the_guards_copy_it_mails(self, fake_gh, tmp_path):
         # The guard could not fetch its script, so it decided nothing.

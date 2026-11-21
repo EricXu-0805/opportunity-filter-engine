@@ -492,6 +492,8 @@ jobs:
             # A school department or a national source that read nothing used
             # to withhold its shard and so reach NOTES. Its shard publishes
             # now, and this is what still tells the PR and the alert step.
+            # It also names an internship list that came back under half the
+            # size of what is held open, which retires nothing and publishes.
             UNREAD=$(python3 scripts/publishable_shards.py --authorized "$AUTHORIZED" --unread)
             if [ -n "$UNREAD" ]; then
               BODY="$BODY"$'\n\n'"$UNREAD"
@@ -632,7 +634,8 @@ jobs:
       # and 08-07 alerted nobody either. A school the release verdict withheld
       # is a failure too, though the run succeeds, and used to send nothing.
       # So is a department or national source a published shard went without:
-      # it withheld the shard until 2026-11-16 and was mailed as that.
+      # it withheld the shard until 2026-11-16 and was mailed as that. And so
+      # is an internship list that came back under half its size.
       - name: Alert operator on failure
         if: failure() || cancelled() || steps.publish.outputs.withheld != '' || steps.publish.outputs.unread != ''
         env:
@@ -681,8 +684,8 @@ jobs:
             SUBJECT="JoinALab: data refresh withheld schools (shard: ${SHARD:-full})"
             TEXT="The data refresh finished, but its release verdict withheld some of its schools, listed below. Each keeps the data last committed for it until a later refresh publishes it.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}$WITHHELD"
           elif [ "$JOB_STATUS" = success ]; then
-            SUBJECT="JoinALab: data refresh published without reading a source (shard: ${SHARD:-full})"
-            TEXT="The data refresh finished and published its shard, but it read nothing for the sources or departments listed below. Each keeps the rows it had, with the dates they carried, until a later refresh reads it.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL"
+            SUBJECT="JoinALab: data refresh published without a full read of a source (shard: ${SHARD:-full})"
+            TEXT="The data refresh finished and published its shard, but it read nothing, or only part of a list, for the sources or departments listed below. What it did not read keeps the rows it had, with the dates they carried, until a later refresh reads it.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL"
           elif [ -n "$WITHHELD" ]; then
             TEXT="$TEXT${NL}${NL}Its release verdict had also withheld schools:${NL}$WITHHELD"
           fi

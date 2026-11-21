@@ -1558,6 +1558,9 @@ def refresh_all(
                     f"the list holds {len(simplify_opps)} internships and the corpus "
                     f"{held_open} open ones; nothing was retired on this read"
                 ]
+                # What the data PR and the operator alert say of this read
+                # (scripts/publishable_shards.py --unread) is built from this.
+                summary["sources"]["simplify_internships"]["collapsed_list_baseline"] = held_open
             summary["total_new"] += added
             summary["total_updated"] += updated
             logger.info(f"Simplify: {len(simplify_opps)} fetched, {added} new, {updated} updated")

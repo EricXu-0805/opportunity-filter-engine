@@ -2097,6 +2097,8 @@ def test_a_collapsed_internship_read_retires_no_listing_and_withholds_nothing(mo
     assert (info["status"], info["fetched"], info["incomplete_reasons"]) == ("partial_failure", 2, ["list_errors"])
     assert info["list_errors"] == [
         "the list holds 2 internships and the corpus 5 open ones; nothing was retired on this read"]
+    # The data PR and the operator alert say so from this count.
+    assert info["collapsed_list_baseline"] == 5
     assert "deactivated_stale" not in info
     assert all(row["metadata"]["is_active"] is True for row in after.values())
     for name in ("three", "four", "five"):
@@ -2116,6 +2118,7 @@ def test_a_collapsed_internship_read_retires_no_listing_and_withholds_nothing(mo
         [_internship("one", days_ago=0), _internship("two", days_ago=0)])
     info = summary["sources"]["simplify_internships"]
     assert (info["status"], info["deactivated_stale"]) == ("ok", 2) and "list_errors" not in info
+    assert "collapsed_list_baseline" not in info
     assert [after[f"simplify-intern-{name}"]["metadata"]["is_active"]
             for name in ("one", "two", "three", "four")] == [True, True, False, False]
 
@@ -2132,6 +2135,7 @@ def test_a_collapsed_internship_read_on_the_national_day_retires_no_listing_eith
 
     info = summary["sources"]["simplify_internships"]
     assert info["status"] == "partial_failure" and "deactivated_stale" not in info
+    assert (info["fetched"], info["collapsed_list_baseline"]) == (1, 3)
     assert all(row["metadata"]["is_active"] is True for row in json.loads(path.read_text()))
     assert "national" in summary["release"]["publishable"]
 
