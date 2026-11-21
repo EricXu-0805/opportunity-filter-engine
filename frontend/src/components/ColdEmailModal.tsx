@@ -2580,7 +2580,7 @@ export default function ColdEmailModal({
                     />
                     {!!recipient.trim() && !validContactRecipient(recipient.trim()) && <p role="status" className="mt-1 text-xs text-amber-900">{locale === 'zh' ? '请填写一个完整邮箱，不要添加姓名或多个地址。' : 'Enter one complete email address, without a name or additional addresses.'}</p>}
                     {privateMode ? <div className="mt-2 text-xs text-amber-900">
-                      <p>{locale === 'zh' ? '请自行核对并填写一个收件邮箱。这里不会把手填邮箱标成已验证。' : 'Check the source and enter one recipient address. A manually entered address is not marked as verified.'}</p>
+                      <p>{locale === 'zh' ? '请自行核对并填写一个收件邮箱。你手填的邮箱我们不会核对。' : 'Check the source and enter one recipient address. We do not check an address you type in.'}</p>
                       <label className="mt-2 flex items-start gap-2"><input type="checkbox" checked={privateReviewed} disabled={!sourceReady || privateBlocked || !validContactRecipient(recipient.trim())}
                         onChange={event => { cancelCompose(); noteUserEdit(); setPrivateReview(event.target.checked && expectedTargetVersion ? { version: expectedTargetVersion, recipient } : null); }} />
                         {locale === 'zh' ? '我已核对当前来源的联系要求和这个收件地址。' : 'I reviewed the current source’s contact instructions and this recipient address.'}</label>

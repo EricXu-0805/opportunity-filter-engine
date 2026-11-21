@@ -56,6 +56,11 @@ describe('private email in the shared editor', () => {
     expect(screen.queryByText('coldEmail.tone.label')).toBeNull(); expect(screen.queryByTestId('cold-email-chat-history')).toBeNull();
     expect(screen.getByLabelText('coldEmail.to')).toHaveValue(''); expect(compose()).toBeDisabled();
   });
+  it('says a typed-in recipient address is not checked, without implying other addresses are marked verified', async () => {
+    await harness();
+    expect(screen.getByText('Check the source and enter one recipient address. We do not check an address you type in.')).toBeInTheDocument();
+    expect(screen.queryByText(/not marked as verified/)).toBeNull();
+  });
   it('requires a valid recipient and fresh user review, opens only after both checks, and records only explicit sent confirmation', async () => {
     const view = await harness(); enterRecipient(); expect(compose()).toBeDisabled(); review(); expect(compose()).toBeEnabled();
     fireEvent.click(compose()); await waitFor(() => expect(view.popup.location.href).toContain('person%40example.edu'));
