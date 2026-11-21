@@ -87,13 +87,28 @@ def withheld(authorized: list[str], status: dict | None) -> list[tuple[str, list
     return held
 
 
+def _named(published: list[str], status: dict | None) -> list[str]:
+    """Published shards as the title and the notes name them.
+
+    A school day that read some sources of the national shard (its request
+    lists them) publishes those and leaves the rest as committed, so the
+    shard is named by them: a bare "national" read as all of it.
+    """
+
+    request = status.get("request") if isinstance(status, dict) else None
+    sources = request.get("national_sources") if isinstance(request, dict) else None
+    if not isinstance(sources, list) or not sources:
+        return published
+    return [",".join(sources) if slug == "national" else slug for slug in published]
+
+
 def title_label(shard: str, authorized: list[str], status: dict | None) -> str:
     """The data PR title's shard part: the requested shard when all of it publishes."""
 
     held = [slug for slug, _ in withheld(authorized, status)]
     if not held:
         return f"shard: {shard or 'full'}"
-    published = publishable(authorized, status)
+    published = _named(publishable(authorized, status), status)
     # A full refresh authorizes every shard; its title would not fit them.
     shown = ",".join(published) if shard else f"{len(published)} of {len(authorized)} shards"
     return f"published: {shown}; withheld: {','.join(held)}"
@@ -105,7 +120,7 @@ def notes(authorized: list[str], status: dict | None) -> str:
     held = withheld(authorized, status)
     if not held:
         return ""
-    published = publishable(authorized, status)
+    published = _named(publishable(authorized, status), status)
     lines = [
         f"Publishable ({len(published)}): {', '.join(published) or 'none'}",
         f"Withheld ({len(held)}), each keeping the data last committed for it:",

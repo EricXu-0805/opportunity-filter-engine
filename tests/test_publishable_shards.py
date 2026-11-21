@@ -125,6 +125,22 @@ class TestWithheld:
     def test_a_full_refresh_counts_what_it_publishes(self):
         assert _mod.title_label("", AUTHORIZED, PARTIAL) == "published: 2 of 3 shards; withheld: ucsb"
 
+    def test_a_school_day_names_the_national_sources_it_read_not_the_whole_shard(self):
+        """Beside its schools such a day publishes the internship list alone,
+        and "published: ...,national" read as the whole national shard."""
+        authorized = ["ucsb", "umich", "national"]
+        status = {"request": {"national_sources": ["simplify_internships"]},
+                  "release": {**PARTIAL["release"], "publishable": ["national", "umich"]}}
+        assert _mod.title_label("ucsb,umich + simplify_internships", authorized, status) == (
+            "published: umich,simplify_internships; withheld: ucsb")
+        assert _mod.notes(authorized, status).splitlines()[0] == "Publishable (2): umich, simplify_internships"
+        # What the split is given is still the shard file's name.
+        assert _mod.publishable(authorized, status) == ["umich", "national"]
+        # The national day's own run reads every source of the shard and names it.
+        del status["request"]
+        assert _mod.title_label("ucsb,umich", authorized, status) == "published: umich,national; withheld: ucsb"
+        assert _mod.notes(authorized, status).splitlines()[0] == "Publishable (2): umich, national"
+
     def test_the_notes_list_publishable_and_withheld_shards(self):
         assert _mod.notes(AUTHORIZED, PARTIAL) == (
             "Publishable (2): umich, caltech\n"
@@ -434,10 +450,10 @@ class TestThePrNamesWhatItPublishes:
         assert read["body"].endswith("checks pass.\n\n" + notes + "\n\n" + unread)
         assert _outputs(output) == {"withheld": notes, "unread": unread}
 
-    def _day_with_the_internship_list(self, tmp_path, **list_read):
+    def _day_with_the_internship_list(self, tmp_path, wisc_faculty=None, **list_read):
         """The publish step's lines for a uw,wisc day that also read the internship list as ``list_read``."""
         sources = {"campus_graph:uw": _graph_ok(), "campus_graph:wisc": _graph_ok(),
-                   "uw_faculty": _ok(100), "wisc_faculty": _ok(100),
+                   "uw_faculty": _ok(100), "wisc_faculty": wisc_faculty or _ok(100),
                    "simplify_internships": list_read or _ok(5140)}
         status = _summary({"uw", "wisc"}, sources)
         status["request"]["national_sources"] = ["simplify_internships"]
@@ -465,6 +481,18 @@ class TestThePrNamesWhatItPublishes:
                  "- national: source simplify_internships reported error: list answered 503")
         assert read["body"].endswith("(shard: uw,wisc + simplify_internships). Merges automatically once "
                                      "Backend + Frontend checks pass.\n\n" + notes)
+        assert outputs == {"withheld": notes}
+
+    def test_a_day_that_withholds_a_school_names_the_internship_list_it_published(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(
+            tmp_path, wisc_faculty={"status": "error", "error": "roster answered 500"})
+        # The split still gets the shard file's name.
+        assert read["targets"] == "uw,national"
+        assert read["title"].endswith("deep mode, published: uw,simplify_internships; withheld: wisc)")
+        notes = ("Publishable (2): uw, simplify_internships\n"
+                 "Withheld (1), each keeping the data last committed for it:\n"
+                 "- wisc: source wisc_faculty reported error: roster answered 500")
+        assert read["body"].endswith("checks pass.\n\n" + notes)
         assert outputs == {"withheld": notes}
 
     def test_an_internship_list_that_read_empty_is_named_unread_and_everything_publishes(self, tmp_path):
