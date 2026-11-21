@@ -1922,6 +1922,181 @@ def test_national_run_touches_no_faculty(monkeypatch, tmp_path):
     assert saved["metadata"]["is_active"] is True
 
 
+# --- The internship list on a school shard's day -------------------------------
+#
+# Listings close daily and national.json was refreshed weekly, so by Saturday a
+# tenth of the internships shown as open were closed (M193). Every scheduled
+# day's run now reads that one list beside its schools.
+
+_INTERNSHIPS = frozenset({"simplify_internships"})
+
+
+def _internship(ident, active=True, days_ago=7):
+    seen = (date.today() - timedelta(days=days_ago)).isoformat() + "T00:00:00"
+    metadata = {"first_seen_at": "2026-09-01T00:00:00", "last_seen_at": seen, "is_active": active}
+    if not active:
+        metadata.update(deactivated_at="2026-10-01", deactivation_reason="no_longer_listed")
+    return {"id": f"simplify-intern-{ident}", "source": "simplify_internships",
+            "source_type": "internship", "title": f"Intern {ident}", "deadline": None,
+            "is_rolling": True, "metadata": metadata}
+
+
+def _national_row(source, ident):
+    return {"id": ident, "source": source, "source_type": "summer_program",
+            "title": f"Program {ident}", "deadline": None,
+            "metadata": {"first_seen_at": "2026-01-01T00:00:00",
+                         "last_seen_at": "2026-11-01T00:00:00", "is_active": True}}
+
+
+def _uw_day_with_the_internship_list(monkeypatch, tmp_path, stored, read, uw_fails=False):
+    """A deep uw run that also reads the internship list: ``read`` is what the
+    list answers (rows, or an exception to raise), merged into a corpus of
+    ``stored`` rows and one uw professor. uw's own sources read cleanly unless
+    ``uw_fails``. Returns the summary, the corpus rows by id and what the
+    professor tracking pass was told."""
+    from src.collectors import simplify_internships
+
+    path = _stub_with_processed_file(
+        monkeypatch, tmp_path, [_seed_faculty("uw_faculty", "uw-prof", days_ago=1), *stored])
+    # The global passes reach their fixed point first, as in the shard tests below.
+    refresh_all.refresh_all(deep=True, schools={"umich"})
+    before = {o["id"]: json.dumps(o, sort_keys=True) for o in json.loads(path.read_text())}
+
+    def fetch_uw(*a, **k):
+        if uw_fails:
+            raise RuntimeError("uw directory answered 500")
+        return [{"id": "uw-prof"}]
+
+    def fetch_internships():
+        if isinstance(read, Exception):
+            raise read
+        return [json.loads(json.dumps(row)) for row in read]
+
+    monkeypatch.setattr(refresh_all, "fetch_uw_faculty", fetch_uw)
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: (
+        [{"id": "uw-program"}],
+        {"deep": True, "crawl_sources_expected": 1, "crawl_sources_loaded": 1, "live_pages_attempted": 1,
+         "live_pages_loaded": 1, "seed_pages_expected": 1, "seed_pages_loaded": 1, "seed_pages_failed": 0,
+         "crawl_errors": []}))
+    monkeypatch.setattr(refresh_all, "fetch_simplify", fetch_internships)
+    monkeypatch.setattr(refresh_all, "merge_simplify",
+                        lambda opps: simplify_internships.merge_into_processed(opps, str(path)))
+    tracking = []
+    monkeypatch.setattr(refresh_all, "_update_professor_tracking",
+                        lambda *a, **k: tracking.append(k["refresh_ok"]))
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"}, national_sources=_INTERNSHIPS)
+    after = {o["id"]: o for o in json.loads(path.read_text())}
+    return summary, before, after, tracking
+
+
+def test_a_school_shard_asked_for_the_internship_list_reads_it_and_no_other_national_source(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"}, national_sources=_INTERNSHIPS)
+    assert set(summary["sources"]) == {"uw_faculty", "campus_graph:uw", "simplify_internships"}
+    assert summary["request"] == {"schools": ["uw"], "national": False, "deep": True,
+                                  "national_sources": ["simplify_internships"]}
+    assert summary["shard"] == {"schools": ["uw"], "national": False}
+    # Not asked, a school shard reads no national source and says nothing of one.
+    plain = refresh_all.refresh_all(deep=True, schools={"uw"})
+    assert set(plain["sources"]) == {"uw_faculty", "campus_graph:uw"}
+    assert plain["request"] == {"schools": ["uw"], "national": False, "deep": True}
+
+
+def test_only_the_internship_list_can_ride_a_school_shard(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    with pytest.raises(ValueError, match="not a national source a school shard can refresh"):
+        refresh_all.refresh_all(deep=True, schools={"uw"}, national_sources={"nsf_reu"})
+    # The national and the full run read it already.
+    for selection in ({"national": True}, {}):
+        with pytest.raises(ValueError, match="ride a school shard"):
+            refresh_all.refresh_all(deep=True, national_sources=_INTERNSHIPS, **selection)
+
+
+def test_the_cli_passes_the_national_sources_a_school_shard_also_reads(monkeypatch):
+    asked = {}
+    summary = {"timestamp": "2026-11-20T00:00:00", "sources": {}, "total_new": 0, "total_updated": 0,
+               "total_in_file": 1, "release": {"ready": True, "reasons": []}}
+    monkeypatch.setattr(refresh_all, "refresh_all", lambda **kwargs: asked.update(kwargs) or summary)
+    monkeypatch.setattr(refresh_all, "write_status", lambda _summary: None)
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    assert refresh_all.main(["--schools", "uw", "--national-sources", "simplify_internships"]) == 0
+    assert (asked["schools"], asked["national_sources"]) == ({"uw"}, _INTERNSHIPS)
+    assert refresh_all.main(["--schools", "uw"]) == 0
+    assert asked["national_sources"] == frozenset()
+
+
+def test_a_school_day_refreshes_the_internships_and_leaves_every_other_national_row_byte_identical(
+        monkeypatch, tmp_path):
+    others = [_national_row("uiuc_sro", "sro-one"), _national_row("nsf_reu", "reu-one"),
+              _national_row("manual", "manual-one"), _national_row("stanford_external_research", "open-one")]
+    stored = [*others, _internship("still-open"), _internship("closed-since"),
+              _internship("open-again", active=False)]
+    read = [_internship("still-open", days_ago=0), _internship("open-again", days_ago=0),
+            _internship("new", days_ago=0)]
+    summary, before, after, _ = _uw_day_with_the_internship_list(monkeypatch, tmp_path, stored, read)
+
+    info = summary["sources"]["simplify_internships"]
+    assert (info["status"], info["fetched"], info["new"], info["updated"]) == ("ok", 3, 1, 2)
+    assert info["deactivated_stale"] == 1
+    closed = after["simplify-intern-closed-since"]["metadata"]
+    assert (closed["is_active"], closed["deactivation_reason"]) == (False, "no_longer_listed")
+    for ident in ("still-open", "open-again", "new"):
+        assert after[f"simplify-intern-{ident}"]["metadata"]["is_active"] is True
+    # The sources that did not run are absent, not "ok, fetched 0", and their rows untouched.
+    assert set(summary["sources"]) & {"uiuc_sro", "nsf_reu", "stanford_external_research",
+                                      "ucb_external_research"} == set()
+    for row in others:
+        assert json.dumps(after[row["id"]], sort_keys=True) == before[row["id"]]
+    assert set(before) <= set(after)
+    assert summary["release"]["publishable"] == ["national", "uw"]
+
+
+@pytest.mark.parametrize("read", [RuntimeError("list answered 503"), []], ids=["failed", "empty"])
+def test_an_unread_internship_list_withholds_no_school_and_retires_no_listing(monkeypatch, tmp_path, read):
+    from src.collectors import source_health
+
+    stored = [_internship("one"), _internship("two")]
+    summary, before, after, tracking = _uw_day_with_the_internship_list(monkeypatch, tmp_path, stored, read)
+
+    release = summary["release"]
+    assert "uw" in release["publishable"] and release["by_unit"]["uw"] == {"ready": True, "reasons": []}
+    for row in stored:
+        assert json.dumps(after[row["id"]], sort_keys=True) == before[row["id"]]
+    info = summary["sources"]["simplify_internships"]
+    assert "deactivated_stale" not in info
+    health = source_health.load_ledger(tmp_path / "source_health.json")["sources"]["simplify_internships"]
+    assert (health["school"], health["consecutive_failures"]) == ("national", 1)
+    assert "last_success_at" not in health
+    if isinstance(read, Exception):
+        assert (info["status"], health["status"]) == ("error", source_health.FAILED)
+        assert release["publishable"] == ["uw"]
+        assert release["by_unit"]["national"]["reasons"] == [
+            "source simplify_internships reported error: list answered 503"]
+    else:
+        # An empty read keeps the rows and is reported, as on the national day.
+        assert (info["status"], info["suspicious_zero_baseline"]) == (source_health.SUSPICIOUS_ZERO, 2)
+        assert health["status"] == source_health.SUSPICIOUS_ZERO
+        assert release["publishable"] == ["national", "uw"]
+        assert {"kind": "suspicious_zero", "source": "simplify_internships",
+                "detail": "0 records, previously 2"} in release["degradations"]
+    # uw's professors were read in full, and tracking is told so.
+    assert tracking == [True]
+
+
+def test_a_withheld_school_does_not_withhold_the_internships(monkeypatch, tmp_path):
+    stored = [_internship("still-open"), _internship("closed-since")]
+    summary, _, after, tracking = _uw_day_with_the_internship_list(
+        monkeypatch, tmp_path, stored, [_internship("still-open", days_ago=0)], uw_fails=True)
+
+    release = summary["release"]
+    assert release["publishable"] == ["national"]
+    assert release["by_unit"]["uw"]["reasons"] == ["source uw_faculty reported error: uw directory answered 500"]
+    assert summary["sources"]["simplify_internships"]["deactivated_stale"] == 1
+    assert after["simplify-intern-closed-since"]["metadata"]["is_active"] is False
+    assert tracking == [False]
+
+
 def _unlisted_uiuc_row(ident: str) -> dict:
     """A UIUC row no roster has listed for 60 days, with a profile page of its own."""
     return {**_seed_faculty("uiuc_faculty", ident, days_ago=60),

@@ -32,6 +32,11 @@ NATIONAL_SHARD = "national"
 NATIONAL_SOURCES = frozenset(
     {"uiuc_sro", "nsf_reu", "simplify_internships"}
 )
+# National sources a school shard's run may refresh beside its schools. The
+# internship list closes about a tenth of its open listings in a week, so the
+# scheduled run of every day reads it (scripts/refresh_rotation.py); the rest
+# of national.json is refreshed by the national shard's run alone.
+DAILY_NATIONAL_SOURCES = frozenset({"simplify_internships"})
 
 
 def national_campus_sources() -> frozenset[str]:
@@ -143,8 +148,13 @@ def expected_sources(
     *,
     national: bool,
     deep: bool,
+    national_sources: set[str] | frozenset[str] = frozenset(),
 ) -> dict[str, SourcePolicy]:
-    """Return the exact mandatory external source policies for this request."""
+    """Return the exact mandatory external source policies for this request.
+
+    ``national_sources`` are the national sources a school shard's run also
+    refreshes (DAILY_NATIONAL_SOURCES).
+    """
 
     if national and schools is not None:
         raise ValueError("national and school shards are mutually exclusive")
@@ -154,6 +164,8 @@ def expected_sources(
     if national or schools is None:
         for key in NATIONAL_SOURCES | national_campus_sources():
             policies[key] = SourcePolicy(key, None, "deep" if deep else "quick")
+    for key in national_sources:
+        policies[key] = SourcePolicy(key, None, "deep" if deep else "quick")
 
     graph_slugs = {
         config["school_slug"]
@@ -352,6 +364,7 @@ def evaluate_refresh_summary(
     national: bool,
     deep: bool,
     require_tracking: bool = True,
+    national_sources: set[str] | frozenset[str] = frozenset(),
 ) -> dict:
     """Return a serializable release verdict without raising.
 
@@ -359,6 +372,10 @@ def evaluate_refresh_summary(
     does not mean every downstream feature is launch-ready; professor updates
     expose their own ``release_ready`` marker and are hidden separately when
     that narrower contract is unmet.
+
+    ``national_sources`` are the national sources a school shard's run also
+    refreshed. They are judged as the ``national`` unit, so they and the run's
+    schools publish or are withheld independently.
     """
 
     reasons: list[str] = []
@@ -389,7 +406,8 @@ def evaluate_refresh_summary(
         targets = frozenset()
         reasons.append("national and school shards are mutually exclusive")
     else:
-        policies = expected_sources(schools, national=national, deep=deep)
+        policies = expected_sources(
+            schools, national=national, deep=deep, national_sources=national_sources)
         targets = _target_schools(schools, national=national)
         if "ucd" in targets and not deep:
             block(
@@ -454,6 +472,8 @@ def evaluate_refresh_summary(
         "national": national,
         "deep": deep,
     }
+    if national_sources:
+        expected_request["national_sources"] = sorted(national_sources)
     if summary.get("request") != expected_request:
         reasons.append(
             f"summary request does not match invocation: "
@@ -890,7 +910,7 @@ def evaluate_refresh_summary(
     units = set(unit_reasons)
     if not (national and schools is not None):
         units |= set(targets)
-        if national or schools is None:
+        if national or schools is None or national_sources:
             units.add(NATIONAL_SHARD)
     by_unit = {
         unit: {
