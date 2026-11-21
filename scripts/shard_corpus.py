@@ -110,12 +110,29 @@ def _restore_keyword_stamps(records: list[dict],
     return restored
 
 
+def _national_for_sources(committed: list[dict], fresh: list[dict],
+                          sources: set[str]) -> list[dict]:
+    """The committed national shard with the rows of ``sources`` taken from
+    ``fresh``, the work file's national rows.
+
+    For a run that refreshed only those sources. Every other row is the
+    committed one, in its place, whatever the work file holds for it; a row of
+    ``sources`` the work file lost stays as committed; and the rows ``fresh``
+    adds go last, where a full split puts them.
+    """
+    taken = {r.get("id"): r for r in fresh if r.get("source") in sources}
+    kept = [taken.pop(r.get("id"), r) if r.get("source") in sources else r
+            for r in committed]
+    return kept + list(taken.values())
+
+
 def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
           keep_ratio: float = SHRINK_KEEP_RATIO,
           guard_floor: int = SHRINK_GUARD_FLOOR,
           prune: bool = False,
           only_shards: set[str] | None = None,
-          retained_out: set[str] | None = None) -> dict[str, int]:
+          retained_out: set[str] | None = None,
+          national_sources: set[str] | None = None) -> dict[str, int]:
     """Work file -> minified per-school shard files. Returns {shard: count}.
 
     Upsert-only by default: writes/updates a shard for every school PRESENT in
@@ -141,6 +158,12 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     keeps the one its committed row of the same id carries when the keywords
     are unchanged apart from case and punctuation (``_restore_keyword_stamps``);
     the count is printed per shard.
+
+    ``national_sources``: the run refreshed only those sources of the national
+    shard (the internship list, on a school shard's day), so national.json is
+    written as its committed rows with those sources' rows replaced
+    (``_national_for_sources``). It needs the committed shard, and fails
+    without one instead of writing a national shard of those sources alone.
     """
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
     from minify_corpus import prune_duplicate_raw
@@ -183,6 +206,10 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
             slug: by_school[slug]
             for slug in sorted(only_shards)
         }
+    if national_sources and NATIONAL in by_school:
+        with open(shards_dir / f"{NATIONAL}.json", encoding="utf-8") as f:
+            by_school[NATIONAL] = _national_for_sources(
+                json.load(f), by_school[NATIONAL], national_sources)
     shards_dir.mkdir(parents=True, exist_ok=True)
     # Only a deliberate full rebuild (prune=True) removes shards for schools
     # absent from the work file. A partial/scheduled split leaves them alone so
@@ -344,6 +371,11 @@ def main(argv: list[str] | None = None) -> int:
         "--retained-file",
         help="Write the comma-separated shards the shrink guard kept to this file",
     )
+    split_parser.add_argument(
+        "--national-sources",
+        help="Comma-separated sources: replace only their rows in national.json "
+             "and keep its other rows as committed",
+    )
     assemble_parser = subparsers.add_parser("assemble")
     assemble_parser.add_argument("--force", action="store_true")
     assemble_parser.add_argument(
@@ -360,12 +392,18 @@ def main(argv: list[str] | None = None) -> int:
             if any(not value for value in values) or len(values) != len(set(values)):
                 parser.error("--only-shards must contain unique non-empty slugs")
             only_shards = set(values)
+        national_sources = None
+        if args.national_sources is not None:
+            national_sources = set(args.national_sources.split(","))
+            if "" in national_sources:
+                parser.error("--national-sources must contain non-empty source names")
         retained: set[str] = set()
         try:
             counts = split(
                 prune=args.prune,
                 only_shards=only_shards,
                 retained_out=retained,
+                national_sources=national_sources,
             )
         except ValueError as exc:
             parser.error(str(exc))
