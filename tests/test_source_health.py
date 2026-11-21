@@ -537,6 +537,59 @@ class TestSchoolAggregation:
         assert school["stale_shard_count"] == 2
         assert school["total_shard_count"] == 3
 
+    _WEEKLY_NATIONAL = ("nsf_reu", "uiuc_sro", "ucb_external_research")
+
+    def _national(self, weekly_age: int, list_age: int) -> dict:
+        return _ledger_with({
+            **{source: ("national", weekly_age, sh.SUCCESS_NONZERO) for source in self._WEEKLY_NATIONAL},
+            "simplify_internships": ("national", list_age, sh.SUCCESS_NONZERO),
+        })
+
+    def test_the_national_shard_is_judged_without_the_list_every_day_reads(self):
+        """Every scheduled day reads the internship list beside its schools,
+        so it is always fresh. Counted, it kept the national shard out of the
+        stale schools while the weekly run that reads the rest had stopped."""
+        eligible = monitored_sources()
+        assert {*self._WEEKLY_NATIONAL, "simplify_internships"} <= eligible
+        ledger = self._national(weekly_age=20, list_age=0)
+        school = sh.school_rows(ledger, NOW, eligible)[0]
+        assert school["fully_stale"] is True
+        assert school["state"] == "fully_stale"
+        report = sh.corpus_report(ledger, NOW, eligible)
+        assert report["fully_stale_schools"] == ["national"]
+        assert report["partially_degraded_school_count"] == 0
+        # The list is still counted, and reported as the fresh source it is.
+        assert (school["fresh_shard_count"], school["stale_shard_count"], school["total_shard_count"]) == (1, 3, 4)
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, eligible)}
+        assert rows["simplify_internships"]["freshness"] == "fresh"
+
+    def test_fresh_weekly_sources_keep_the_national_shard_out_of_the_stale_schools(self):
+        eligible = monitored_sources()
+        school = sh.school_rows(self._national(weekly_age=4, list_age=0), NOW, eligible)[0]
+        assert (school["fully_stale"], school["state"]) == (False, "fully_fresh")
+        # One of them is enough, as one fresh department is for a school.
+        ledger = self._national(weekly_age=20, list_age=0)
+        sh.record_attempt(ledger, source="nsf_reu", school="national", outcome=sh.SUCCESS_NONZERO,
+                          emitted=10, baseline=10, now=NOW)
+        school = sh.school_rows(ledger, NOW, eligible)[0]
+        assert (school["fully_stale"], school["state"]) == (False, "partially_degraded")
+
+    def test_a_stale_internship_list_alone_does_not_make_the_national_shard_fully_stale(self):
+        eligible = monitored_sources()
+        ledger = self._national(weekly_age=4, list_age=30)
+        school = sh.school_rows(ledger, NOW, eligible)[0]
+        assert (school["fully_stale"], school["state"]) == (False, "partially_degraded")
+        # Its own staleness is reported as before.
+        assert school["stale_shard_count"] == 1
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, eligible)}
+        assert rows["simplify_internships"]["freshness"] == "stale"
+
+    def test_a_national_shard_holding_only_the_internship_list_is_judged_by_it(self):
+        eligible = monitored_sources()
+        for age, stale in ((0, False), (30, True)):
+            ledger = _ledger_with({"simplify_internships": ("national", age, sh.SUCCESS_NONZERO)})
+            assert sh.school_rows(ledger, NOW, eligible)[0]["fully_stale"] is stale
+
 
 # ------------------------------------------------- public school freshness --
 OCT18 = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)

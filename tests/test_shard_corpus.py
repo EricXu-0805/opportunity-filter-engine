@@ -240,6 +240,107 @@ def test_retained_shard_gets_no_publish_timestamp(tmp_path, monkeypatch):
     assert "beta" not in shards
 
 
+def _minified(rows: list[dict]) -> str:
+    """Rows as a committed shard holds them."""
+    return json.dumps(rows, ensure_ascii=False, separators=(",", ":"))
+
+
+def _national(source: str, rid: str, **fields) -> dict:
+    return {"school": None, "id": rid, "source": source, "title": f"Listing {rid}", **fields}
+
+
+def _a_school_day_that_also_read_the_internship_list(tmp_path):
+    """Main's national shard, and the work file of a run that started before
+    main's last change to it, refreshed alpha and read the internship list."""
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    committed = [
+        _national("uiuc_sro", "sro-1", title="Corrected on main during the run"),
+        _national("simplify_internships", "intern-open", metadata={"is_active": True}),
+        _national("nsf_reu", "reu-1", organization="Université de Montréal", stipend=6000.0),
+        _national("simplify_internships", "intern-closed", metadata={"is_active": True}),
+        _national("simplify_internships", "intern-lost", metadata={"is_active": True}),
+        _national("manual", "manual-1"),
+        _national("nsf_reu", "reu-added-on-main"),
+    ]
+    (sd / "national.json").write_text(_minified(committed), encoding="utf-8")
+    (sd / "alpha.json").write_text(_minified(_recs("alpha", 2)), encoding="utf-8")
+    _write(wf, _recs("alpha", 3) + [
+        _national("uiuc_sro", "sro-1", title="As the run started", metadata={"touched": "by a corpus-wide pass"}),
+        _national("simplify_internships", "intern-open", metadata={"is_active": True, "last_seen_at": "today"}),
+        _national("nsf_reu", "reu-1", organization="Université de Montréal", stipend=6000.0, keywords=["added"]),
+        _national("simplify_internships", "intern-closed",
+                  metadata={"is_active": False, "deactivation_reason": "no_longer_listed"}),
+        _national("manual", "manual-1"),
+        _national("simplify_internships", "intern-new", metadata={"is_active": True}),
+    ])
+    return wf, sd, committed
+
+
+def test_a_split_for_the_internship_list_alone_leaves_every_other_national_row_as_committed(tmp_path):
+    """A school shard's day reads the internship list too, and national.json
+    holds four other sources' rows it did not read: they are main's, byte for
+    byte, whatever the run-start work file says of them."""
+    wf, sd, committed = _a_school_day_that_also_read_the_internship_list(tmp_path)
+    work_rows = {row["id"]: row for row in json.loads(wf.read_text(encoding="utf-8"))}
+
+    counts = split(wf, sd, only_shards={"alpha", "national"}, national_sources={"simplify_internships"})
+
+    written = (sd / "national.json").read_text(encoding="utf-8")
+    assert written == _minified([
+        committed[0],
+        work_rows["intern-open"],
+        committed[2],
+        work_rows["intern-closed"],
+        committed[4],               # the work file lost it: kept, never deleted
+        committed[5],
+        committed[6],               # added on main after the run started
+        work_rows["intern-new"],
+    ])
+    for row in committed:
+        if row["source"] != "simplify_internships":
+            assert _minified([row])[1:-1] in written
+    assert counts == {"alpha": 3, "national": 8}
+    assert _shard_count(sd, "alpha") == 3
+
+
+def test_a_split_for_the_internship_list_alone_needs_the_committed_national_shard(tmp_path):
+    wf, sd, _ = _a_school_day_that_also_read_the_internship_list(tmp_path)
+    (sd / "national.json").unlink()
+    alpha_before = (sd / "alpha.json").read_text(encoding="utf-8")
+
+    # Written from the work file's internships alone, it would drop every other source.
+    with pytest.raises(FileNotFoundError):
+        split(wf, sd, only_shards={"alpha", "national"}, national_sources={"simplify_internships"})
+
+    assert not (sd / "national.json").exists()
+    assert (sd / "alpha.json").read_text(encoding="utf-8") == alpha_before
+
+
+def test_the_split_cli_takes_the_sources_it_may_replace_in_the_national_shard(tmp_path, monkeypatch):
+    import shard_corpus
+
+    wf, sd, committed = _a_school_day_that_also_read_the_internship_list(tmp_path)
+    monkeypatch.setattr(shard_corpus, "split", functools.partial(shard_corpus.split, wf, sd))
+    record = tmp_path / "retained-shards"
+    before = (sd / "national.json").read_text(encoding="utf-8")
+
+    # The verdict withheld national: the option names sources, it selects no shard.
+    assert shard_corpus.main(["split", "--only-shards", "alpha", "--retained-file", str(record),
+                              "--national-sources", "simplify_internships"]) == 0
+    assert (sd / "national.json").read_text(encoding="utf-8") == before
+
+    assert shard_corpus.main(["split", "--only-shards", "alpha,national", "--retained-file", str(record),
+                              "--national-sources", "simplify_internships"]) == 0
+    rows = {row["id"]: row for row in json.loads((sd / "national.json").read_text(encoding="utf-8"))}
+    assert rows["sro-1"] == committed[0] and "intern-new" in rows
+    assert rows["intern-closed"]["metadata"]["is_active"] is False
+    assert record.read_text(encoding="utf-8") == ""
+
+    with pytest.raises(SystemExit):
+        shard_corpus.main(["split", "--only-shards", "alpha,national", "--national-sources", ""])
+
+
 def test_record_school_slug_cannot_escape_shards_directory(tmp_path):
     wf, sd = tmp_path / "work.json", tmp_path / "shards"
     _write(

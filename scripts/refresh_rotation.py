@@ -291,14 +291,42 @@ def shard_needs_browser(shard: str) -> bool:
     return bool(set(normalized.split(",")) & browser_schools())
 
 
-def target_shards(shard: str) -> tuple[str, ...]:
-    """Return the exact committed shard names a run is authorized to replace."""
+def daily_national_sources(shard: str) -> tuple[str, ...]:
+    """The national sources a scheduled run of ``shard`` reads beside it.
 
+    The internship list closes listings every day and national.json has one
+    day of the week, so by Saturday a tenth of the internships shown as open
+    were closed. Every scheduled day reads that one list (the owner's choice,
+    2026-11-20). The national shard's own run reads every national source, so
+    it adds none.
+    """
+    from src.collectors.refresh_contract import DAILY_NATIONAL_SOURCES
+
+    if normalize_requested_shard(shard) == NATIONAL_SHARD:
+        return ()
+    return tuple(sorted(DAILY_NATIONAL_SOURCES))
+
+
+def target_shards(shard: str, national_sources: tuple[str, ...] = ()) -> tuple[str, ...]:
+    """Return the exact committed shard names a run is authorized to replace.
+
+    ``national_sources`` are the national sources a school shard's run also
+    read. Their rows publish in national.json, so that shard is authorized
+    too, for those rows alone (shard_corpus.py split --national-sources).
+    """
+    if national_sources:
+        from src.collectors.refresh_contract import DAILY_NATIONAL_SOURCES
+
+        unknown = sorted(set(national_sources) - DAILY_NATIONAL_SOURCES)
+        if unknown:
+            raise ValueError(f"not a national source a school shard can refresh: {unknown}")
     normalized = normalize_requested_shard(shard, allow_full=True)
     if normalized == "":
         return tuple(sorted((*registered_school_slugs(), NATIONAL_SHARD)))
     if normalized == NATIONAL_SHARD:
         return (NATIONAL_SHARD,)
+    if national_sources:
+        return (*normalized.split(","), NATIONAL_SHARD)
     return tuple(normalized.split(","))
 
 
@@ -428,7 +456,8 @@ def alert_decision(event_name: str, run_id: int, job_status: str, guard_outcome:
     return AlertDecision(True)
 
 
-def superseded_refresh_prs(prs: list, run_id: int, published: set[str]) -> list[int]:
+def superseded_refresh_prs(prs: list, run_id: int, published: set[str],
+                           partly: set[str] | frozenset[str] = frozenset()) -> list[int]:
     """Open data-refresh PRs from runs older than ``run_id`` that this run supersedes.
 
     ``prs`` is ``gh pr list --json number,headRefName,files,changedFiles``
@@ -444,10 +473,17 @@ def superseded_refresh_prs(prs: list, run_id: int, published: set[str]) -> list[
     when every shard file it changes is one of ``published``; the shared
     ledgers do not count. A PR whose file list is incomplete stays open: gh
     lists at most 100 files, and an unlisted one could be a shard.
+
+    ``partly`` names the shards this run publishes for some of their sources
+    only: national.json, on a day whose run read the internship list beside
+    its schools. That does not supersede a PR holding the national shard's own
+    scrape, so such a shard counts only for a PR that also changes a shard in
+    ``published``, as an earlier day's run of the same schools does.
     """
     if not isinstance(prs, list):
         raise ValueError("expected a list of pull requests")
     replaced = {f"{_SHARD_DIR}{shard}.json" for shard in published}
+    in_part = {f"{_SHARD_DIR}{shard}.json" for shard in partly}
     stale = []
     for pr in prs:
         match = _REFRESH_BRANCH.fullmatch(str(pr.get("headRefName", "")))
@@ -456,7 +492,9 @@ def superseded_refresh_prs(prs: list, run_id: int, published: set[str]) -> list[
         files = pr.get("files")
         if not isinstance(files, list) or pr.get("changedFiles") != len(files):
             continue
-        if all(entry["path"] in replaced for entry in files if entry["path"].startswith(_SHARD_DIR)):
+        shards = [entry["path"] for entry in files if entry["path"].startswith(_SHARD_DIR)]
+        if all(path in replaced or path in in_part for path in shards) and (
+                not shards or any(path in replaced for path in shards)):
             stale.append(int(pr["number"]))
     return sorted(stale)
 
@@ -516,6 +554,12 @@ def main() -> int:
         help="Print the open refresh PRs older runs left whose shards this run publishes, "
              "from gh pr list JSON on stdin (needs --run-id, --published and --retained-file)",
     )
+    parser.add_argument(
+        "--national-sources",
+        help="Comma-separated national sources a school shard's run also read. With --targets, "
+             "national is authorized too; with --superseded-prs, national counts as published "
+             "for those sources only",
+    )
     parser.add_argument("--event", help="This run's github.event_name")
     parser.add_argument("--run-id", type=int, help="This run's github.run_id")
     parser.add_argument(
@@ -554,6 +598,11 @@ def main() -> int:
         action="store_true",
         help="Require a bounded canonical publication unit for --schools",
     )
+    parser.add_argument(
+        "--daily-sources",
+        action="store_true",
+        help="Print the national sources a scheduled run of the selected shard also reads",
+    )
     args = parser.parse_args()
 
     if args.overlap:
@@ -573,8 +622,10 @@ def main() -> int:
             parser.error(f"unreadable list of retained shards: {exc}")
         # A shard the split kept from main is not published, though $TARGETS names it.
         published = {shard for shard in args.published.split(",") if shard} - kept
+        partly = {NATIONAL_SHARD} & published if args.national_sources else set()
         try:
-            stale = superseded_refresh_prs(json.load(sys.stdin), args.run_id, published)
+            stale = superseded_refresh_prs(
+                json.load(sys.stdin), args.run_id, published - partly, partly)
         except (ValueError, TypeError, KeyError, AttributeError) as exc:
             parser.error(f"unreadable pull request list: {exc}")
         for number in stale:
@@ -600,8 +651,13 @@ def main() -> int:
                 )
         if args.needs_browser:
             print("true" if shard_needs_browser(shard) else "false")
+        elif args.daily_sources:
+            print(",".join(daily_national_sources(shard)))
+        elif args.targets:
+            sources = tuple(s for s in (args.national_sources or "").split(",") if s)
+            print(",".join(target_shards(shard, sources)))
         else:
-            print(",".join(target_shards(shard)) if args.targets else shard)
+            print(shard)
     except ValueError as exc:
         parser.error(str(exc))
     return 0

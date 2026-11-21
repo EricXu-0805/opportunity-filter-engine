@@ -25,6 +25,8 @@ included, and a withheld school sent no mail.
 national source that read nothing this run and keeps the rows it had. Each
 withheld its whole shard until 2026-11-16, so it reached the operator as a
 withheld shard; now that the shard publishes, this is what still says so.
+It also names an internship list that came back under half the size of what
+the corpus holds open: such a read retires nothing and still publishes.
 
 Usage:
     python3 scripts/publishable_shards.py --authorized "uw,wisc,national"
@@ -85,13 +87,28 @@ def withheld(authorized: list[str], status: dict | None) -> list[tuple[str, list
     return held
 
 
+def _named(published: list[str], status: dict | None) -> list[str]:
+    """Published shards as the title and the notes name them.
+
+    A school day that read some sources of the national shard (its request
+    lists them) publishes those and leaves the rest as committed, so the
+    shard is named by them: a bare "national" read as all of it.
+    """
+
+    request = status.get("request") if isinstance(status, dict) else None
+    sources = request.get("national_sources") if isinstance(request, dict) else None
+    if not isinstance(sources, list) or not sources:
+        return published
+    return [",".join(sources) if slug == "national" else slug for slug in published]
+
+
 def title_label(shard: str, authorized: list[str], status: dict | None) -> str:
     """The data PR title's shard part: the requested shard when all of it publishes."""
 
     held = [slug for slug, _ in withheld(authorized, status)]
     if not held:
         return f"shard: {shard or 'full'}"
-    published = publishable(authorized, status)
+    published = _named(publishable(authorized, status), status)
     # A full refresh authorizes every shard; its title would not fit them.
     shown = ",".join(published) if shard else f"{len(published)} of {len(authorized)} shards"
     return f"published: {shown}; withheld: {','.join(held)}"
@@ -103,13 +120,34 @@ def notes(authorized: list[str], status: dict | None) -> str:
     held = withheld(authorized, status)
     if not held:
         return ""
-    published = publishable(authorized, status)
+    published = _named(publishable(authorized, status), status)
     lines = [
         f"Publishable ({len(published)}): {', '.join(published) or 'none'}",
         f"Withheld ({len(held)}), each keeping the data last committed for it:",
     ]
     lines += [f"- {slug}: {'; '.join(reasons)}" for slug, reasons in held]
     return "\n".join(lines)
+
+
+def _published_degradations(authorized: list[str], status: dict | None) -> list[tuple[str, dict]]:
+    """The verdict's degradations of the shards this run publishes: (shard, degradation)."""
+
+    release = status.get("release") if isinstance(status, dict) else None
+    release = release if isinstance(release, dict) else {}
+    policies = release.get("policies") if isinstance(release.get("policies"), list) else []
+    shard_of = {
+        policy["summary_key"]: policy.get("school") or "national"
+        for policy in policies
+        if isinstance(policy, dict) and isinstance(policy.get("summary_key"), str)
+    }
+    earned = set(publishable(authorized, status))
+    degradations = release.get("degradations") if isinstance(release.get("degradations"), list) else []
+    return [
+        (shard_of[item["source"]], item)
+        for item in degradations
+        if isinstance(item, dict) and isinstance(item.get("source"), str)
+        and shard_of.get(item["source"]) in earned
+    ]
 
 
 def unread(authorized: list[str], status: dict | None) -> list[tuple[str, str]]:
@@ -124,40 +162,50 @@ def unread(authorized: list[str], status: dict | None) -> list[tuple[str, str]]:
     of a withheld shard, which is reported by its reasons.
     """
 
-    release = status.get("release") if isinstance(status, dict) else None
-    release = release if isinstance(release, dict) else {}
-    policies = release.get("policies") if isinstance(release.get("policies"), list) else []
-    shard_of = {
-        policy["summary_key"]: policy.get("school") or "national"
-        for policy in policies
-        if isinstance(policy, dict) and isinstance(policy.get("summary_key"), str)
-    }
-    earned = set(publishable(authorized, status))
-    degradations = release.get("degradations") if isinstance(release.get("degradations"), list) else []
     found = []
-    for item in degradations:
-        if not isinstance(item, dict) or not isinstance(item.get("source"), str):
-            continue
-        shard = shard_of.get(item["source"])
+    for shard, item in _published_degradations(authorized, status):
         kind = item.get("kind")
-        if shard not in earned or not (
-            kind == "empty_department" or (kind == "suspicious_zero" and shard == "national")
-        ):
+        if not (kind == "empty_department" or (kind == "suspicious_zero" and shard == "national")):
             continue
         detail = " ".join(str(item.get("detail") or "").split())
         found.append((shard, f"{item['source']}: {detail}" if detail else item["source"]))
     return list(dict.fromkeys(found))
 
 
+def collapsed_lists(authorized: list[str], status: dict | None) -> list[tuple[str, str]]:
+    """A published shard's lists that came back under half their size: (shard, source and counts).
+
+    refresh_all merges such a list's rows and retires nothing, and marks the
+    source ``collapsed_list_baseline``: the internships the corpus held open.
+    The verdict records it as a ``partial_failure`` like any other, so
+    without this the PR and the alert said nothing of it.
+    """
+
+    sources = status.get("sources") if isinstance(status, dict) else None
+    sources = sources if isinstance(sources, dict) else {}
+    found = []
+    for shard, item in _published_degradations(authorized, status):
+        info = sources.get(item["source"])
+        baseline = info.get("collapsed_list_baseline") if isinstance(info, dict) else None
+        if item.get("kind") == "partial_failure" and isinstance(baseline, int):
+            found.append((shard, f"{item['source']}: {info.get('fetched')} listed, {baseline} held open"))
+    return list(dict.fromkeys(found))
+
+
 def unread_notes(authorized: list[str], status: dict | None) -> str:
     """What published shards went without, for the PR body and the alert; empty when nothing."""
 
+    blocks = []
     gaps = unread(authorized, status)
-    if not gaps:
-        return ""
-    lines = [f"Published without a fresh read ({len(gaps)}), each keeping the rows it had:"]
-    lines += [f"- {shard}: {text}" for shard, text in gaps]
-    return "\n".join(lines)
+    if gaps:
+        lines = [f"Published without a fresh read ({len(gaps)}), each keeping the rows it had:"]
+        blocks.append("\n".join(lines + [f"- {shard}: {text}" for shard, text in gaps]))
+    collapsed = collapsed_lists(authorized, status)
+    if collapsed:
+        lines = [f"Published from a list under half the size of what is held open ({len(collapsed)}); "
+                 "nothing was retired and the rows it listed were updated:"]
+        blocks.append("\n".join(lines + [f"- {shard}: {text}" for shard, text in collapsed]))
+    return "\n\n".join(blocks)
 
 
 def _read_status(path: Path) -> dict | None:

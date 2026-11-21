@@ -410,6 +410,14 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         if _is_ucb_program_record(opp):
             stats["skipped_program"] += 1
             continue
+        # An internship listing is a company's job posting: it has no PI and
+        # no person to write to. Its "lab" is the company, and the lab-title
+        # rule below took the word before "Group" in it for a surname. Only
+        # the national day's pool holds these rows and every read of the list
+        # resets them, so the value came back each Sunday.
+        if opp.get("source") == "simplify_internships":
+            stats["skipped_program"] += 1
+            continue
         # A hand-exported snapshot row states its own contact route, including
         # "write to the students named above" with no single address; its
         # listing page would only yield whatever address that page shows.

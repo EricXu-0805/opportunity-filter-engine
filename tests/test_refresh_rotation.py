@@ -20,6 +20,7 @@ from refresh_rotation import (  # noqa: E402
     NATIONAL_SHARD,
     WEEKLY_ROTATION,
     alert_decision,
+    daily_national_sources,
     normalize_publication_unit,
     normalize_requested_shard,
     overlap_decision,
@@ -107,6 +108,47 @@ def test_target_shards_are_bounded_to_the_authorized_selection():
     full = target_shards("")
     assert set(full) == {*registered_school_slugs(), NATIONAL_SHARD}
     assert len(full) == len(registered_school_slugs()) + 1
+
+
+def test_every_scheduled_day_reads_the_internship_list_and_only_sunday_the_rest_of_national():
+    """National.json had one day of the week, and the internship list closes
+    listings every day: on 2026-11-20 main showed 5,133 internships open, read
+    on 2026-11-01, and the list no longer held 1,546 of them (M193)."""
+    from src.collectors.refresh_all import validate_shard_selection
+    from src.collectors.refresh_contract import (
+        NATIONAL_SOURCES,
+        expected_sources,
+        national_campus_sources,
+    )
+
+    national = NATIONAL_SOURCES | national_campus_sources()
+    for day in range(1, 7):
+        shard = scheduled_shard(day)
+        daily = daily_national_sources(shard)
+        assert daily == ("simplify_internships",), day
+        # What the rotation names is what the refresh takes, and all it then reads of national.
+        validate_shard_selection(set(shard.split(",")), national_sources=set(daily))
+        read = expected_sources(set(shard.split(",")), national=False, deep=True, national_sources=set(daily))
+        assert set(read) & national == {"simplify_internships"}, day
+    # Sunday's run is the national shard's: it reads the list with every other national source.
+    assert scheduled_shard(7) == NATIONAL_SHARD and daily_national_sources(NATIONAL_SHARD) == ()
+    assert national <= set(expected_sources(None, national=True, deep=True))
+
+    assert _cli("--day", "5", "--daily-sources").stdout == "simplify_internships\n"
+    assert _cli("--day", "7", "--daily-sources").stdout == "\n"
+    assert _cli("--schools", scheduled_shard(2), "--daily-sources").stdout == "simplify_internships\n"
+
+
+def test_a_run_that_also_read_the_internship_list_is_authorized_for_national_json():
+    assert target_shards("uw,wisc", ("simplify_internships",)) == ("uw", "wisc", "national")
+    assert target_shards("national", ("simplify_internships",)) == ("national",)
+    with pytest.raises(ValueError, match="not a national source a school shard can refresh"):
+        target_shards("uw,wisc", ("nsf_reu",))
+
+    out = _cli("--schools", "uw,wisc", "--allow-full", "--targets", "--national-sources", "simplify_internships")
+    assert (out.returncode, out.stdout) == (0, "uw,wisc,national\n"), out.stderr
+    assert _cli("--schools", "uw,wisc", "--allow-full", "--targets").stdout == "uw,wisc\n"
+    assert _cli("--schools", "uw", "--allow-full", "--targets", "--national-sources", "nsf_reu").returncode != 0
 
 
 class TestBrowserDetection:
@@ -529,6 +571,34 @@ class TestSupersededRefreshPrs:
         pr = _data_pr(1174, _FRIDAY_RUN, ["cmu/extra", "cmu.json"])
         assert superseded_refresh_prs([pr], _NEXT_FRIDAY_RUN, set(_FRIDAY)) == []
 
+    def test_a_day_that_read_only_the_internship_list_keeps_a_pr_of_the_national_shard(self):
+        # Sunday's PR holds SRO, NSF REU and the open programs; Friday's run read one list.
+        sunday = _data_pr(1190, _FRIDAY_RUN, ["national"])
+        assert superseded_refresh_prs([sunday], _NEXT_FRIDAY_RUN, set(_FRIDAY), {"national"}) == []
+        # The national shard's own next run does supersede it.
+        assert superseded_refresh_prs([sunday], _NEXT_FRIDAY_RUN, {"national"}) == [1190]
+
+    def test_a_later_run_of_the_same_day_closes_a_pr_that_also_holds_the_internship_list(self):
+        last_friday = _data_pr(1174, _FRIDAY_RUN, [*_FRIDAY, "national"])
+        assert superseded_refresh_prs([last_friday], _NEXT_FRIDAY_RUN, set(_FRIDAY), {"national"}) == [1174]
+        # Not when this run withheld national, nor from another day's schools.
+        assert superseded_refresh_prs([last_friday], _NEXT_FRIDAY_RUN, set(_FRIDAY)) == []
+        assert superseded_refresh_prs([last_friday], _NEXT_FRIDAY_RUN, set(_SATURDAY), {"national"}) == []
+
+    def test_cli_counts_national_as_published_in_part_when_the_run_read_national_sources(self, tmp_path):
+        prs = json.dumps([_data_pr(7, 5, ["uw", "national"]), _data_pr(8, 5, ["national"]), _data_pr(9, 5, ["uw"])])
+        record = tmp_path / "retained-shards"
+        record.write_text("")
+        args = ("--superseded-prs", "--run-id", "6", "--retained-file", str(record))
+        out = _cli(*args, "--published", "uw,national", "--national-sources", "simplify_internships", stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "7\n9\n"), out.stderr
+        # The verdict withheld national: only the PR of uw alone is superseded.
+        out = _cli(*args, "--published", "uw", "--national-sources", "simplify_internships", stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "9\n"), out.stderr
+        # Without the option national.json is published whole, as on the national shard's day.
+        out = _cli(*args, "--published", "uw,national", stdin=prs)
+        assert (out.returncode, out.stdout) == (0, "7\n8\n9\n"), out.stderr
+
     def test_cli_reads_gh_pr_list_output(self, tmp_path):
         prs = json.dumps([_data_pr(7, 5, ["uw", "wisc"]), _data_pr(8, 9, ["uw"]), _data_pr(9, 4, ["yale"])])
         record = tmp_path / "retained-shards"
@@ -818,12 +888,12 @@ class TestAlertStep:
     """The alert step itself, as the runner runs it after a failure or a cancel."""
 
     def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, withheld="",
-             unread="", extra_env=None, **scenario):
+             unread="", daily="", extra_env=None, **scenario):
         if guard_copy:
             shutil.copy(_SCRIPT, tmp_path / "refresh_rotation.py")
         step = _workflow_step("Alert operator")
         env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard, "WITHHELD": withheld,
-               "UNREAD": unread,
+               "UNREAD": unread, "DAILY": daily,
                "RESEND_API_KEY": "not-a-key", "OPERATOR_EMAIL": "operator@example.com", "SHARD": "uw"}
         assert set(step["env"]) <= {*env, "GH_TOKEN", "REPO"}
         result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env, **(extra_env or {}))
@@ -947,7 +1017,7 @@ class TestAlertStep:
         _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success",
                              guard="proceed", runs=_runs((200, SCHEDULED)), unread=self._UNREAD)
         (mail,) = mails
-        assert mail["subject"] == "JoinALab: data refresh published without reading a source (shard: uw)"
+        assert mail["subject"] == "JoinALab: data refresh published without a full read of a source (shard: uw)"
         assert mail["text"].endswith("Run: https://github.com/o/r/actions/runs/200\n\n" + self._UNREAD)
         assert "withheld" not in mail["text"] and "failed" not in mail["text"]
 
@@ -977,6 +1047,54 @@ class TestAlertStep:
             "retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality "
             "gate step first (that is where the last 7-run outage lived).")
 
+    # What the publish step writes when the internship list a school day also read came back empty.
+    _UNREAD_LIST = ("Published without a fresh read (1), each keeping the rows it had:\n"
+                    "- national: simplify_internships: 0 records, previously 5133")
+
+    def test_a_day_that_also_read_the_internship_list_names_it_in_the_mails_it_already_sends(self, fake_gh, tmp_path):
+        assert _workflow_step("Alert operator")["env"]["DAILY"] == "${{ steps.shard.outputs.daily }}"
+        for status, unread, subject in [
+            ("failure", "", "JoinALab: data refresh FAILED (shard: uw + simplify_internships)"),
+            ("success", self._UNREAD_LIST,
+             "JoinALab: data refresh published without a full read of a source (shard: uw + simplify_internships)"),
+        ]:
+            (tmp_path / "gh.log").write_text("")
+            _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status=status, guard="proceed",
+                                 runs=_runs((200, SCHEDULED)), unread=unread, daily="simplify_internships")
+            # One mail, of a kind the run already sent.
+            (mail,) = mails
+            assert mail["subject"] == subject
+            assert "\n\nShard: uw + simplify_internships\nRun: " in mail["text"]
+            assert mail["text"].endswith(unread or "(that is where the last 7-run outage lived).")
+
+    def test_a_failed_day_does_not_say_the_internship_list_waits_a_week(self, fake_gh, tmp_path):
+        # The rotation brings a school back in a week; every scheduled day reads the list.
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure", guard="proceed",
+                             runs=_runs((200, SCHEDULED)), daily="simplify_internships")
+        (mail,) = mails
+        assert ("Only this shard's schools missed their refresh; the rotation retries them next week. The "
+                "internship list was not updated either and is read again the next day. Repeated failures "
+                "mean the pipeline is dead") in mail["text"]
+
+    # What the publish step writes when that list came back under half the size of what is held open.
+    _COLLAPSED_LIST = ("Published from a list under half the size of what is held open (1); "
+                       "nothing was retired and the rows it listed were updated:\n"
+                       "- national: simplify_internships: 2056 listed, 5133 held open")
+
+    def test_an_internship_list_under_half_its_size_is_mailed_with_its_counts(self, fake_gh, tmp_path):
+        # It published as an ordinary day and sent nothing: only the unread output starts this step.
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success", guard="proceed",
+                             runs=_runs((200, SCHEDULED)), unread=self._COLLAPSED_LIST, daily="simplify_internships")
+        (mail,) = mails
+        assert mail["subject"] == ("JoinALab: data refresh published without a full read of a source "
+                                   "(shard: uw + simplify_internships)")
+        # The mail's own sentences hold for a list read in part as for a source read not at all.
+        assert mail["text"] == (
+            "The data refresh finished and published its shard, but it read nothing, or only part of a list, "
+            "for the sources or departments listed below. What it did not read keeps the rows it had, with the "
+            "dates they carried, until a later refresh reads it.\n\nShard: uw + simplify_internships\n"
+            "Run: https://github.com/o/r/actions/runs/200\n\n" + self._COLLAPSED_LIST)
+
     def test_without_the_guards_copy_it_mails(self, fake_gh, tmp_path):
         # The guard could not fetch its script, so it decided nothing.
         _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
@@ -1004,9 +1122,9 @@ class TestSupersededPrStep:
         self.record = tmp_path / "retained-shards"
         self.record.write_text("")
 
-    def _closed(self, fake_gh, prs, run_id, targets, authorized=None, timeout=None, **scenario):
+    def _closed(self, fake_gh, prs, run_id, targets, authorized=None, timeout=None, daily="", **scenario):
         result, calls = fake_gh(_stale_close_snippet(run_id, timeout), {"prs": prs, **scenario}, cwd=_REPO,
-                                AUTHORIZED=",".join(authorized or targets), TARGETS=",".join(targets))
+                                AUTHORIZED=",".join(authorized or targets), TARGETS=",".join(targets), DAILY=daily)
         assert result.returncode == 0, result.stderr
         self.calls = calls
         self.warnings = [line for line in result.stdout.splitlines() if line.startswith("::warning::")]
@@ -1041,6 +1159,15 @@ class TestSupersededPrStep:
         self.record.write_text("cmu")
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY)]
         assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, _FRIDAY) == []
+
+    def test_a_day_that_also_read_the_internship_list_keeps_the_national_shards_own_pr(self, fake_gh, tmp_path):
+        # #1190 holds Sunday's scrape of every national source; #1174 last Friday's schools and list.
+        prs = [_data_pr(1190, _FRIDAY_RUN + 1, ["national"]), _data_pr(1174, _FRIDAY_RUN, [*_FRIDAY, "national"])]
+        targets = [*_FRIDAY, "national"]
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, targets, daily="simplify_internships") == [1174]
+        # Published whole, as on the national shard's own day, national.json supersedes both.
+        (tmp_path / "gh.log").write_text("")
+        assert self._closed(fake_gh, prs, _NEXT_FRIDAY_RUN, targets) == [1174, 1190]
 
     def test_an_incomplete_file_list_keeps_it(self, fake_gh):
         prs = [_data_pr(1174, _FRIDAY_RUN, _FRIDAY, changed=21)]
@@ -1092,9 +1219,104 @@ class TestSupersededPrStep:
     def test_the_close_reads_the_record_this_attempts_split_writes(self):
         script = str(_workflow_step("merge once required checks pass")["run"])
         record = '--retained-file "$RUNNER_TEMP/retained-shards"'
-        split = script.index(f'python3 scripts/shard_corpus.py split --only-shards "$TARGETS" {record}\n')
+        split = script.index(f'python3 scripts/shard_corpus.py split --only-shards "$TARGETS" {record} '
+                             '${DAILY:+--national-sources "$DAILY"}\n')
         assert script.count(record) == 2
         assert split < script.index("STALE=$(") < script.rindex(record)
+
+
+class TestTheInternshipListRidesEveryScheduledDay:
+    """M193: the steps that decide a scheduled day also reads the internship
+    list, and hand that to the refresh, the authorization and the split."""
+
+    def _shard_step(self, fake_gh, tmp_path, *, event, weekday="", schools=""):
+        script = str(_workflow_step("Determine shard")["run"])
+        for expression, value in {"github.event_name": event, "inputs.schools": schools}.items():
+            script = script.replace("${{ " + expression + " }}", value)
+        assert "${{" not in script
+        date = tmp_path / "bin" / "date"
+        date.write_text(f"#!/bin/sh\necho {weekday}\n")
+        date.chmod(0o755)
+        (tmp_path / "github_output").write_text("")
+        result, _ = fake_gh(script, {}, cwd=_REPO)
+        assert result.returncode == 0, result.stderr
+        return dict(line.split("=", 1) for line in (tmp_path / "github_output").read_text().splitlines())
+
+    def test_a_scheduled_school_day_reads_it_and_sunday_and_a_dispatch_read_what_they_did(self, fake_gh, tmp_path):
+        for day in range(1, 7):
+            assert self._shard_step(fake_gh, tmp_path, event=SCHEDULED, weekday=str(day)) == {
+                "shard": scheduled_shard(day), "daily": "simplify_internships"}
+        assert self._shard_step(fake_gh, tmp_path, event=SCHEDULED, weekday="7") == {"shard": "national", "daily": ""}
+        for schools in ("uw,wisc", "national", ""):
+            assert self._shard_step(fake_gh, tmp_path, event=MANUAL, schools=schools) == {"shard": schools, "daily": ""}
+
+    def test_the_refresh_is_asked_for_it_beside_the_days_schools(self):
+        script = str(_workflow_step("Run data refresh")["run"])
+        head = script[:script.index('if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then')]
+        for shard, daily, args in [
+            ("uw,wisc", "simplify_internships", "--schools uw,wisc --national-sources simplify_internships"),
+            ("uw,wisc", "", "--schools uw,wisc"),
+            ("national", "", "--national"),
+            ("", "", ""),
+        ]:
+            filled = head.replace("${{ steps.shard.outputs.shard }}", shard).replace(
+                "${{ steps.shard.outputs.daily }}", daily)
+            assert "${{" not in filled
+            result = subprocess.run(["bash", "-e", "-c", filled + 'printf %s "$ARGS"'], capture_output=True, text=True)
+            assert (result.returncode, result.stdout) == (0, args), result.stderr
+        # Both modes pass what was built.
+        assert script.count("$ARGS\n") == 2
+
+    @staticmethod
+    def _python_calls(tmp_path, snippet, **env):
+        """What a line of the publish step hands python3, word for word."""
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        log = tmp_path / "python.log"
+        log.write_text("")
+        (bin_dir / "python3").write_text(
+            f'#!{sys.executable}\nimport json, os, sys\n'
+            'open(os.environ["CALLS"], "a").write(json.dumps(sys.argv[1:]) + "\\n")\n')
+        (bin_dir / "python3").chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-c", "set -euo pipefail\n" + snippet], capture_output=True, text=True,
+            env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "CALLS": str(log),
+                 "RUNNER_TEMP": str(tmp_path), **env})
+        assert result.returncode == 0, result.stderr
+        return [json.loads(line) for line in log.read_text().splitlines()]
+
+    def test_the_publish_step_authorizes_national_and_splits_it_for_that_list_alone(self, tmp_path):
+        script = str(_workflow_step("merge once required checks pass")["run"])
+        assert 'DAILY="${{ steps.shard.outputs.daily }}"' in script
+        start = script.index("AUTHORIZED=$(python3 scripts/refresh_rotation.py")
+        authorize = script[start:script.index("\n", script.index("--targets", start))]
+        split = next(line for line in script.splitlines() if "shard_corpus.py split" in line)
+        retained = ["--retained-file", f"{tmp_path}/retained-shards"]
+
+        ridden = {"SHARD": "uw,wisc", "TARGETS": "uw,wisc,national", "DAILY": "simplify_internships"}
+        assert self._python_calls(tmp_path, authorize, **ridden) == [[
+            "scripts/refresh_rotation.py", "--schools", "uw,wisc", "--allow-full", "--targets",
+            "--national-sources", "simplify_internships"]]
+        assert self._python_calls(tmp_path, split, **ridden) == [[
+            "scripts/shard_corpus.py", "split", "--only-shards", "uw,wisc,national", *retained,
+            "--national-sources", "simplify_internships"]]
+        # Sunday and a dispatch: no such option, and no empty word in its place.
+        for plain in ({"DAILY": ""}, {}):
+            env = {"SHARD": "national", "TARGETS": "national", **plain}
+            assert self._python_calls(tmp_path, authorize, **env) == [[
+                "scripts/refresh_rotation.py", "--schools", "national", "--allow-full", "--targets"]]
+            assert self._python_calls(tmp_path, split, **env) == [[
+                "scripts/shard_corpus.py", "split", "--only-shards", "national", *retained]]
+
+    def test_what_the_step_asks_for_is_what_the_rotation_authorizes(self):
+        script = str(_workflow_step("merge once required checks pass")["run"])
+        start = script.index("AUTHORIZED=$(python3 scripts/refresh_rotation.py")
+        authorize = script[start:script.index("\n", script.index("--targets", start))]
+        for daily, authorized in (("simplify_internships", "uw,wisc,national"), ("", "uw,wisc")):
+            result = subprocess.run(
+                ["bash", "-c", "set -euo pipefail\n" + authorize + '\nprintf %s "$AUTHORIZED"'], cwd=_REPO,
+                capture_output=True, text=True, env={**os.environ, "SHARD": "uw,wisc", "DAILY": daily})
+            assert (result.returncode, result.stdout) == (0, authorized), result.stderr
 
 
 class TestBrowserInstallStep:

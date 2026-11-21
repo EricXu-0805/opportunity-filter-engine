@@ -69,6 +69,8 @@ from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .refresh_contract import (
     CONFIRMED_EMPTY_SOURCES,
+    DAILY_NATIONAL_SOURCES,
+    NATIONAL_SHARD,
     NATIONAL_SOURCES,
     UIUC_EMPTY_DEPARTMENT_KIND,
     evaluate_refresh_summary,
@@ -590,6 +592,7 @@ def validate_shard_selection(
     schools: set[str] | frozenset[str] | None,
     *,
     national: bool = False,
+    national_sources: set[str] | frozenset[str] = frozenset(),
 ) -> None:
     """Raise ValueError for a shard request refresh_all would refuse.
 
@@ -600,6 +603,15 @@ def validate_shard_selection(
     """
     if national and schools is not None:
         raise ValueError("national and school shards are mutually exclusive")
+    if national_sources:
+        if schools is None:
+            raise ValueError("national sources ride a school shard; the national "
+                             "and full runs already refresh them")
+        unknown = set(national_sources) - DAILY_NATIONAL_SOURCES
+        if unknown:
+            raise ValueError(
+                f"not a national source a school shard can refresh: {sorted(unknown)}; "
+                f"known: {sorted(DAILY_NATIONAL_SOURCES)}")
     if schools is not None:
         if not schools:
             raise ValueError("schools shard must name at least one school slug")
@@ -645,13 +657,16 @@ def refresh_all(
     time_budget_minutes: float | None = None,
     condition_max_requests: int = 100,
     condition_max_pages: int = 100,
+    national_sources: set[str] | frozenset[str] = frozenset(),
 ) -> dict:
     """Run enabled collectors and merge results.
 
     ``schools`` shards the run to collectors belonging to those school slugs;
     ``national`` selects the school-less sources (SRO catalog, NSF REU,
     Simplify, and the campus programs open to every school). Neither flag =
-    full run. Skipped collectors write NOTHING into
+    full run. ``national_sources`` adds those national sources, and no other,
+    to a ``schools`` run (DAILY_NATIONAL_SOURCES: the internship list, which
+    every scheduled day reads). Skipped collectors write NOTHING into
     ``summary["sources"]`` — deactivate_stale_faculty only considers sources
     reporting "ok" in this run's summary, so a shard run provably cannot
     deactivate another school's records.
@@ -663,7 +678,7 @@ def refresh_all(
 
     Returns a summary dict with counts per source and totals.
     """
-    validate_shard_selection(schools, national=national)
+    validate_shard_selection(schools, national=national, national_sources=national_sources)
     for name, value in (("condition_max_requests", condition_max_requests),
                         ("condition_max_pages", condition_max_pages)):
         if type(value) is not int or not 0 <= value <= 10000:
@@ -697,6 +712,8 @@ def refresh_all(
         "total_updated": 0,
         "total_in_file": 0,
     }
+    if national_sources:
+        summary["request"]["national_sources"] = sorted(national_sources)
     if provenance is not None:
         summary["provenance"] = dict(provenance)
     if sharded:
@@ -1508,16 +1525,25 @@ def refresh_all(
                 summary["sources"]["ucsb_urca_projects"] = {"status": "error", "error": str(e)}
 
     # 5c. SimplifyJobs internships (autonomous GitHub raw fetch — no auth).
-    # National source; when skipped, simplify_ok stays False so the
-    # deactivate_simplify_stale pass below cannot run on a shard day.
+    # National source, and the one a school shard's run reads too when asked
+    # (national_sources); when skipped, simplify_ok stays False so the
+    # deactivate_simplify_stale pass below cannot run.
     simplify_active_ids: set[str] = set()
     simplify_ok = False
-    if selected(None):
+    if selected(None) or "simplify_internships" in national_sources:
         logger.info("=" * 50)
         logger.info("Collecting from SimplifyJobs internships...")
         try:
             simplify_opps = fetch_simplify()
-            if simplify_opps:
+            # A list of fewer than half the internships the corpus holds open
+            # is a broken list, not that many closures since the last read:
+            # its rows merge, it retires nothing, and the source check is
+            # reported incomplete below. Counted before the merge, which
+            # writes every listed row as open.
+            held_open = (len(_stored_active_rows(PROCESSED_FILE, "simplify_internships"))
+                         if simplify_opps else 0)
+            collapsed = 2 * len(simplify_opps) < held_open
+            if simplify_opps and not collapsed:
                 simplify_active_ids = {o["id"] for o in simplify_opps}
                 simplify_ok = True
             added, updated = merge_simplify(simplify_opps)
@@ -1527,6 +1553,14 @@ def refresh_all(
                 "updated": updated,
                 "status": "ok",
             }
+            if collapsed:
+                summary["sources"]["simplify_internships"]["list_errors"] = [
+                    f"the list holds {len(simplify_opps)} internships and the corpus "
+                    f"{held_open} open ones; nothing was retired on this read"
+                ]
+                # What the data PR and the operator alert say of this read
+                # (scripts/publishable_shards.py --unread) is built from this.
+                summary["sources"]["simplify_internships"]["collapsed_list_baseline"] = held_open
             summary["total_new"] += added
             summary["total_updated"] += updated
             logger.info(f"Simplify: {len(simplify_opps)} fetched, {added} new, {updated} updated")
@@ -1780,7 +1814,8 @@ def refresh_all(
             ledger_path = source_health.ledger_path_for(PROCESSED_FILE.parent)
             ledger = source_health.load_ledger(ledger_path)
             now = datetime.now(UTC)
-            required = expected_sources(schools, national=national, deep=deep)
+            required = expected_sources(schools, national=national, deep=deep,
+                                        national_sources=national_sources)
             for name, info in summary["sources"].items():
                 if not isinstance(info, dict):
                     continue
@@ -2143,6 +2178,7 @@ def refresh_all(
             national=national,
             deep=deep,
             require_tracking=False,
+            national_sources=national_sources,
         )
         # Two gates, deliberately different widths. The opportunity corpus
         # publishes on a degraded verdict - withholding a whole school
@@ -2152,11 +2188,16 @@ def refresh_all(
         # today, so a mandatory producer that emitted nothing is not a
         # successful producing refresh for it, even though the corpus is
         # still safe to publish.
+        #
+        # A national source that rode a school shard lists no professor, so
+        # neither its empty read nor its withheld shard is tracking's: the
+        # run's schools are judged without it.
         suspicious = [
             item["source"]
             for item in preliminary_release.get("degradations") or ()
             if item.get("kind") in (source_health.SUSPICIOUS_ZERO, "partial_failure",
                                     UIUC_EMPTY_DEPARTMENT_KIND)
+            and item.get("source") not in national_sources
         ]
         if suspicious:
             logger.warning(
@@ -2164,10 +2205,17 @@ def refresh_all(
                 "%d source(s) were empty or incompletely checked (%s)",
                 len(suspicious), ", ".join(sorted(suspicious)[:8]),
             )
+        tracking_ready = preliminary_release["ready"]
+        if national_sources:
+            tracking_ready = not preliminary_release["structural_reasons"] and all(
+                verdict["ready"]
+                for unit, verdict in preliminary_release["by_unit"].items()
+                if unit != NATIONAL_SHARD
+            )
         _update_professor_tracking(
             all_opps,
             summary,
-            refresh_ok=preliminary_release["ready"] and not suspicious,
+            refresh_ok=tracking_ready and not suspicious,
         )
 
         summary["sources"]["deactivate_past"] = {
@@ -2209,6 +2257,7 @@ def refresh_all(
         national=national,
         deep=deep,
         require_tracking=False,
+        national_sources=national_sources,
     )
     return summary
 
@@ -2281,6 +2330,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Run only the national (school-less) sources: SRO catalog, NSF REU, Simplify, "
              "and the campus programs open to every school",
     )
+    parser.add_argument(
+        "--national-sources",
+        help="With --schools: comma-separated national sources this run also refreshes, "
+             "and no other (the internship list, which every scheduled day reads)",
+    )
     args = parser.parse_args(argv)
 
     provenance_values = (args.base_sha, args.run_id, args.run_attempt)
@@ -2307,6 +2361,8 @@ def main(argv: list[str] | None = None) -> int:
         schools = {s.strip().lower() for s in args.schools.split(",") if s.strip()}
         if not schools:
             parser.error("--schools requires at least one school slug")
+    national_sources = frozenset(
+        s.strip() for s in (args.national_sources or "").split(",") if s.strip())
 
     start = time.time()
     try:
@@ -2318,6 +2374,7 @@ def main(argv: list[str] | None = None) -> int:
             time_budget_minutes=args.time_budget_minutes,
             condition_max_requests=args.condition_max_requests,
             condition_max_pages=args.condition_max_pages,
+            national_sources=national_sources,
         )
     except Exception as e:
         elapsed = time.time() - start
@@ -2327,6 +2384,7 @@ def main(argv: list[str] | None = None) -> int:
                 "schools": sorted(schools) if schools is not None else None,
                 "national": args.national,
                 "deep": not args.no_deep,
+                **({"national_sources": sorted(national_sources)} if national_sources else {}),
             },
             "sources": {},
             "total_new": 0,

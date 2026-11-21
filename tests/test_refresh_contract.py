@@ -348,6 +348,72 @@ def test_an_open_campus_program_crawl_is_judged_against_the_national_shard():
     assert verdict["by_unit"]["national"]["ready"] is False
 
 
+def _school_day_with_the_internship_list(**sources) -> dict:
+    """A deep uw,wisc run that also read the internship list, every source clean but ``sources``."""
+    summary = _summary({"uw", "wisc"}, {
+        "campus_graph:uw": _graph_ok(), "campus_graph:wisc": _graph_ok(),
+        "uw_faculty": _ok(100), "wisc_faculty": _ok(100),
+        "simplify_internships": _ok(5140),
+        **sources,
+    })
+    summary["request"]["national_sources"] = ["simplify_internships"]
+    return summary
+
+
+def _judged_with_the_internship_list(summary: dict) -> dict:
+    return evaluate_refresh_summary(summary, schools={"uw", "wisc"}, national=False, deep=True,
+                                    national_sources={"simplify_internships"})
+
+
+def test_a_school_shard_that_also_read_the_internship_list_requires_it_and_no_other_national_source():
+    with_list = expected_sources({"uw"}, national=False, deep=True,
+                                 national_sources={"simplify_internships"})
+    assert set(with_list) - set(expected_sources({"uw"}, national=False, deep=True)) == {"simplify_internships"}
+    assert with_list["simplify_internships"].school is None
+
+    verdict = _judged_with_the_internship_list(_school_day_with_the_internship_list())
+    assert verdict["ready"] is True
+    assert verdict["publishable"] == ["national", "uw", "wisc"]
+
+    missing = _school_day_with_the_internship_list()
+    del missing["sources"]["simplify_internships"]
+    verdict = _judged_with_the_internship_list(missing)
+    assert verdict["publishable"] == ["uw", "wisc"]
+    assert verdict["by_unit"]["national"]["reasons"] == ["required source missing: simplify_internships"]
+
+
+def test_the_internship_list_and_the_days_schools_are_withheld_independently():
+    failed_list = _judged_with_the_internship_list(_school_day_with_the_internship_list(
+        simplify_internships={"status": "error", "error": "list answered 503"}))
+    assert failed_list["publishable"] == ["uw", "wisc"]
+    assert failed_list["structural_reasons"] == []
+    assert failed_list["by_unit"]["national"] == {
+        "ready": False, "reasons": ["source simplify_internships reported error: list answered 503"]}
+
+    failed_school = _judged_with_the_internship_list(_school_day_with_the_internship_list(
+        uw_faculty={"status": "error", "error": "HTTP 500"}))
+    assert failed_school["publishable"] == ["national", "wisc"]
+    assert failed_school["by_unit"]["national"] == {"ready": True, "reasons": []}
+
+    empty_list = _judged_with_the_internship_list(_school_day_with_the_internship_list(
+        simplify_internships={"status": "suspicious_zero", "fetched": 0, "suspicious_zero_baseline": 5133}))
+    assert empty_list["publishable"] == ["national", "uw", "wisc"]
+    assert {"kind": "suspicious_zero", "source": "simplify_internships",
+            "detail": "0 records, previously 5133"} in empty_list["degradations"]
+
+
+def test_a_summary_is_judged_only_as_the_run_it_records():
+    # A run that read the internship list is not a plain school shard's, nor the reverse.
+    with_list = _school_day_with_the_internship_list()
+    plain = evaluate_refresh_summary(with_list, schools={"uw", "wisc"}, national=False, deep=True)
+    assert plain["publishable"] == [] and plain["structural_reasons"]
+
+    without = _school_day_with_the_internship_list()
+    del without["request"]["national_sources"]
+    verdict = _judged_with_the_internship_list(without)
+    assert verdict["publishable"] == [] and verdict["structural_reasons"]
+
+
 def test_uiuc_and_ucb_special_source_sets_are_explicit():
     uiuc = set(expected_sources({"uiuc"}, national=False, deep=True))
     assert {

@@ -125,6 +125,22 @@ class TestWithheld:
     def test_a_full_refresh_counts_what_it_publishes(self):
         assert _mod.title_label("", AUTHORIZED, PARTIAL) == "published: 2 of 3 shards; withheld: ucsb"
 
+    def test_a_school_day_names_the_national_sources_it_read_not_the_whole_shard(self):
+        """Beside its schools such a day publishes the internship list alone,
+        and "published: ...,national" read as the whole national shard."""
+        authorized = ["ucsb", "umich", "national"]
+        status = {"request": {"national_sources": ["simplify_internships"]},
+                  "release": {**PARTIAL["release"], "publishable": ["national", "umich"]}}
+        assert _mod.title_label("ucsb,umich + simplify_internships", authorized, status) == (
+            "published: umich,simplify_internships; withheld: ucsb")
+        assert _mod.notes(authorized, status).splitlines()[0] == "Publishable (2): umich, simplify_internships"
+        # What the split is given is still the shard file's name.
+        assert _mod.publishable(authorized, status) == ["umich", "national"]
+        # The national day's own run reads every source of the shard and names it.
+        del status["request"]
+        assert _mod.title_label("ucsb,umich", authorized, status) == "published: umich,national; withheld: ucsb"
+        assert _mod.notes(authorized, status).splitlines()[0] == "Publishable (2): umich, national"
+
     def test_the_notes_list_publishable_and_withheld_shards(self):
         assert _mod.notes(AUTHORIZED, PARTIAL) == (
             "Publishable (2): umich, caltech\n"
@@ -167,6 +183,18 @@ _UNREAD_LIST = dict(status="suspicious_zero", fetched=0, suspicious_zero_baselin
                     list_complete=False, list_errors=[{"reason": "fetch_failed"}])
 
 
+# simplify_internships as refresh_all labels a list of 2,056 internships read
+# while the corpus holds 5,133 open: merged, nothing retired, check incomplete.
+_COLLAPSED_LIST = dict(status="partial_failure", fetched=2056, new=11, updated=2045,
+                       list_errors=["the list holds 2056 internships and the corpus 5133 open ones; "
+                                    "nothing was retired on this read"],
+                       collapsed_list_baseline=5133, incomplete_reasons=["list_errors"],
+                       error="Source check incomplete: list_errors")
+_COLLAPSED_NOTE = ("Published from a list under half the size of what is held open (1); "
+                   "nothing was retired and the rows it listed were updated:\n"
+                   "- national: simplify_internships: 2056 listed, 5133 held open")
+
+
 class TestUnread:
     """What a shard published without is named to the PR and the alert.
 
@@ -207,6 +235,42 @@ class TestUnread:
 
     def test_only_authorized_shards_are_reported(self):
         assert _mod.unread(["uw"], _uiuc_status(**_ONE_DEPARTMENT)) == []
+
+    def _national_day(self, **sources) -> dict:
+        status = _national_status(**_ok(288))
+        status["sources"].update(sources)
+        status["release"] = evaluate_refresh_summary(status, schools=None, national=True, deep=True)
+        return status
+
+    def test_an_internship_list_under_half_its_size_is_named_with_its_counts(self):
+        """Such a read merges its rows, retires nothing and publishes. The
+        verdict calls it a partial failure, which neither the PR nor the
+        alert named: a list cut to 40% published as an ordinary day."""
+        status = self._national_day(simplify_internships=dict(_COLLAPSED_LIST))
+        assert status["release"]["publishable"] == ["national"]
+        assert _mod.collapsed_lists(["national"], status) == [
+            ("national", "simplify_internships: 2056 listed, 5133 held open")]
+        assert _mod.unread(["national"], status) == []
+        assert _mod.unread_notes(["national"], status) == _COLLAPSED_NOTE
+        # Beside a source that read nothing, each stands under its own heading.
+        status = self._national_day(simplify_internships=dict(_COLLAPSED_LIST), uiuc_sro=dict(_UNREAD_LIST))
+        assert _mod.unread_notes(["national"], status) == (
+            "Published without a fresh read (1), each keeping the rows it had:\n"
+            "- national: uiuc_sro: 0 records, previously 285\n\n" + _COLLAPSED_NOTE)
+
+    def test_no_other_partial_read_and_no_withheld_shard_is_named_as_a_collapsed_list(self):
+        # A list that lost one page is a partial failure too, and was never mailed.
+        lost_a_page = dict(status="partial_failure", fetched=280, list_pages_attempted=15, list_pages_loaded=14,
+                           list_pages_failed=1, list_complete=False, list_errors=[{"reason": "fetch_failed"}])
+        status = self._national_day(uiuc_sro=lost_a_page)
+        assert {"kind": "partial_failure", "source": "uiuc_sro",
+                "detail": "list_pages_failed, list_incomplete, list_errors"} in status["release"]["degradations"]
+        assert _mod.unread_notes(["national"], status) == ""
+        # A withheld shard is reported by its reasons.
+        status = self._national_day(simplify_internships=dict(_COLLAPSED_LIST),
+                                    nsf_reu={"status": "error", "error": "HTTP 500"})
+        assert status["release"]["publishable"] == []
+        assert _mod.unread_notes(["national"], status) == ""
 
 
 class TestCli:
@@ -317,7 +381,7 @@ def _outputs(text: str) -> dict:
 class TestThePrNamesWhatItPublishes:
     """The publish step's own lines, run under bash against a run's verdict."""
 
-    def _run(self, tmp_path, status, shard="ucsb,umich,caltech", authorized="ucsb,umich,caltech"):
+    def _run(self, tmp_path, status, shard="ucsb,umich,caltech", authorized="ucsb,umich,caltech", daily=""):
         (tmp_path / "scripts").mkdir()
         shutil.copy(_SCRIPT, tmp_path / "scripts" / "publishable_shards.py")
         (tmp_path / "data" / "processed").mkdir(parents=True)
@@ -328,7 +392,7 @@ class TestThePrNamesWhatItPublishes:
             ["bash", "-c", "set -euo pipefail\n" + _naming_snippet()
              + 'printf %s "$TARGETS" > targets; printf %s "$MSG" > title; printf %s "$BODY" > body\n'],
             cwd=tmp_path, capture_output=True, text=True,
-            env={**os.environ, "AUTHORIZED": authorized, "SHARD": shard, "MODE": "deep",
+            env={**os.environ, "AUTHORIZED": authorized, "SHARD": shard, "MODE": "deep", "DAILY": daily,
                  "COUNTS": "10 total, 5 emails, 1 inactive, deep mode", "GITHUB_OUTPUT": str(output)},
         )
         assert result.returncode == 0, result.stdout + result.stderr
@@ -385,6 +449,69 @@ class TestThePrNamesWhatItPublishes:
         assert read["targets"] == "uiuc"
         assert read["body"].endswith("checks pass.\n\n" + notes + "\n\n" + unread)
         assert _outputs(output) == {"withheld": notes, "unread": unread}
+
+    def _day_with_the_internship_list(self, tmp_path, wisc_faculty=None, **list_read):
+        """The publish step's lines for a uw,wisc day that also read the internship list as ``list_read``."""
+        sources = {"campus_graph:uw": _graph_ok(), "campus_graph:wisc": _graph_ok(),
+                   "uw_faculty": _ok(100), "wisc_faculty": wisc_faculty or _ok(100),
+                   "simplify_internships": list_read or _ok(5140)}
+        status = _summary({"uw", "wisc"}, sources)
+        status["request"]["national_sources"] = ["simplify_internships"]
+        status["release"] = evaluate_refresh_summary(
+            status, schools={"uw", "wisc"}, national=False, deep=True, national_sources={"simplify_internships"})
+        read, output = self._run(tmp_path, status, shard="uw,wisc", authorized="uw,wisc,national",
+                                 daily="simplify_internships")
+        return read, _outputs(output), status
+
+    def test_a_day_that_also_read_the_internship_list_says_so_in_the_title_and_the_body(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(tmp_path)
+        assert read["targets"] == "uw,wisc,national"
+        assert read["title"] == ("chore: auto-refresh opportunity data (10 total, 5 emails, 1 inactive, "
+                                 "deep mode, shard: uw,wisc + simplify_internships)")
+        assert read["body"] == ("Automated deep data refresh (shard: uw,wisc + simplify_internships). Merges "
+                                "automatically once Backend + Frontend checks pass.")
+        assert outputs == {}
+
+    def test_an_internship_list_that_failed_is_named_withheld_and_the_schools_publish(self, tmp_path):
+        read, outputs, status = self._day_with_the_internship_list(
+            tmp_path, status="error", error="list answered 503")
+        assert read["targets"] == "uw,wisc"
+        assert read["title"].endswith("deep mode, published: uw,wisc; withheld: national)")
+        notes = ("Publishable (2): uw, wisc\nWithheld (1), each keeping the data last committed for it:\n"
+                 "- national: source simplify_internships reported error: list answered 503")
+        assert read["body"].endswith("(shard: uw,wisc + simplify_internships). Merges automatically once "
+                                     "Backend + Frontend checks pass.\n\n" + notes)
+        assert outputs == {"withheld": notes}
+
+    def test_a_day_that_withholds_a_school_names_the_internship_list_it_published(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(
+            tmp_path, wisc_faculty={"status": "error", "error": "roster answered 500"})
+        # The split still gets the shard file's name.
+        assert read["targets"] == "uw,national"
+        assert read["title"].endswith("deep mode, published: uw,simplify_internships; withheld: wisc)")
+        notes = ("Publishable (2): uw, simplify_internships\n"
+                 "Withheld (1), each keeping the data last committed for it:\n"
+                 "- wisc: source wisc_faculty reported error: roster answered 500")
+        assert read["body"].endswith("checks pass.\n\n" + notes)
+        assert outputs == {"withheld": notes}
+
+    def test_an_internship_list_that_read_empty_is_named_unread_and_everything_publishes(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(
+            tmp_path, status="suspicious_zero", fetched=0, suspicious_zero_baseline=5133)
+        unread = ("Published without a fresh read (1), each keeping the rows it had:\n"
+                  "- national: simplify_internships: 0 records, previously 5133")
+        assert read["targets"] == "uw,wisc,national"
+        assert read["title"].endswith("deep mode, shard: uw,wisc + simplify_internships)")
+        assert read["body"].endswith("checks pass.\n\n" + unread)
+        assert outputs == {"unread": unread}
+
+    def test_an_internship_list_under_half_its_size_is_reported_and_everything_publishes(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(tmp_path, **_COLLAPSED_LIST)
+        assert read["targets"] == "uw,wisc,national"
+        assert read["title"].endswith("deep mode, shard: uw,wisc + simplify_internships)")
+        assert read["body"].endswith("checks pass.\n\n" + _COLLAPSED_NOTE)
+        # The alert step runs on this output and mails it.
+        assert outputs == {"unread": _COLLAPSED_NOTE}
 
     def test_the_commit_and_the_pr_use_what_the_step_built(self):
         step = _publish_step()
