@@ -200,8 +200,15 @@ jobs:
               --schools "${{ inputs.schools }}" --allow-full)
           else
             SHARD=$(python3 scripts/refresh_rotation.py --day "$(date -u +%u)")
+            # The internship list closes listings every day and national.json
+            # has one day of the week, so every scheduled day reads that one
+            # list beside its schools (M193): in this run and this data PR,
+            # as a second run would have to wait for this one or work from a
+            # tree this one's PR has moved. A dispatch reads what it names.
+            DAILY=$(python3 scripts/refresh_rotation.py --schools "$SHARD" --daily-sources)
           fi
           echo "shard=$SHARD" >> $GITHUB_OUTPUT
+          echo "daily=${DAILY:-}" >> $GITHUB_OUTPUT
 
       - name: Determine scrape mode
         id: mode
@@ -222,6 +229,10 @@ jobs:
             ARGS="--national"
           elif [[ -n "$SHARD" ]]; then
             ARGS="--schools $SHARD"
+          fi
+          DAILY="${{ steps.shard.outputs.daily }}"
+          if [[ -n "$DAILY" ]]; then
+            ARGS="$ARGS --national-sources $DAILY"
           fi
           if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then
             echo "Running DEEP refresh (shard: ${SHARD:-full})"
@@ -368,6 +379,7 @@ jobs:
 
           MODE="${{ steps.mode.outputs.deep == 'true' && 'deep' || 'quick' }}"
           SHARD="${{ steps.shard.outputs.shard }}"
+          DAILY="${{ steps.shard.outputs.daily }}"
           TOTAL=$(python3 -c "import json; print(len(json.load(open('data/processed/opportunities.json'))))")
           EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
           INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
@@ -447,8 +459,11 @@ jobs:
             # records), with no conflict and a PR title naming only this shard.
             # refresh_rotation --targets answers exactly which committed shards a
             # run is authorized to replace.
+            # On a day that also read the internship list ($DAILY), national
+            # is authorized too, and the split below replaces that list's
+            # rows in it and no other.
             AUTHORIZED=$(python3 scripts/refresh_rotation.py \
-              --schools "$SHARD" --allow-full --targets)
+              --schools "$SHARD" --allow-full --targets ${DAILY:+--national-sources "$DAILY"})
             # ...and publishable_shards answers which of those it earned. The
             # verdict is per shard file now, so a school whose source errored
             # keeps its previously committed data while its siblings publish —
@@ -459,9 +474,9 @@ jobs:
             # name the requested shard, withheld schools included. The alert
             # step mails the withheld ones with the verdict's reasons.
             MSG="chore: auto-refresh opportunity data ($COUNTS, $(python3 scripts/publishable_shards.py \
-              --authorized "$AUTHORIZED" --label --shard "$SHARD"))"
+              --authorized "$AUTHORIZED" --label --shard "$SHARD${DAILY:+ + $DAILY}"))"
             NOTES=$(python3 scripts/publishable_shards.py --authorized "$AUTHORIZED" --notes)
-            BODY="Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
+            BODY="Automated ${MODE} data refresh (shard: ${SHARD:-full}${DAILY:+ + $DAILY}). Merges automatically once Backend + Frontend checks pass."
             if [ -n "$NOTES" ]; then
               BODY="$BODY"$'\n\n'"$NOTES"
               # Random, so no line of the verdict's error text can end the value early.
@@ -477,7 +492,7 @@ jobs:
               END="UNREAD_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
               { echo "unread<<$END"; echo "$UNREAD"; echo "$END"; } >> "$GITHUB_OUTPUT"
             fi
-            python3 scripts/shard_corpus.py split --only-shards "$TARGETS" --retained-file "$RUNNER_TEMP/retained-shards"
+            python3 scripts/shard_corpus.py split --only-shards "$TARGETS" --retained-file "$RUNNER_TEMP/retained-shards" ${DAILY:+--national-sources "$DAILY"}
 
             # ...and the cost of that guarantee, paid here. Deadlines pass on
             # the calendar's schedule, not the rotation's: the work-file pass
@@ -534,7 +549,7 @@ jobs:
               STALE=$(timeout 60 gh pr list --state open --json number,headRefName,files,changedFiles \
                 | python3 scripts/refresh_rotation.py --superseded-prs \
                     --run-id "${{ github.run_id }}" --published "$TARGETS" \
-                    --retained-file "$RUNNER_TEMP/retained-shards") \
+                    --retained-file "$RUNNER_TEMP/retained-shards" ${DAILY:+--national-sources "$DAILY"}) \
                 || { STALE=""; echo "::warning::The open data PRs could not be listed or read; no older data PR was closed this run."; }
               for PR in $STALE; do
                 echo "closing superseded refresh PR #$PR"
@@ -618,6 +633,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
           SHARD: ${{ steps.shard.outputs.shard }}
+          DAILY: ${{ steps.shard.outputs.daily }}
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           RUN_ID: ${{ github.run_id }}
@@ -649,6 +665,8 @@ jobs:
           fi
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           NL=$'\n'
+          # The internship list a scheduled day read beside its schools is named with them.
+          SHARD="$SHARD${DAILY:+ + $DAILY}"
           SUBJECT="JoinALab: data refresh FAILED (shard: ${SHARD:-full})"
           TEXT="The scheduled data refresh failed.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}The corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived)."
           if [ "$JOB_STATUS" = success ] && [ -n "$WITHHELD" ]; then

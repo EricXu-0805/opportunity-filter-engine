@@ -317,7 +317,7 @@ def _outputs(text: str) -> dict:
 class TestThePrNamesWhatItPublishes:
     """The publish step's own lines, run under bash against a run's verdict."""
 
-    def _run(self, tmp_path, status, shard="ucsb,umich,caltech", authorized="ucsb,umich,caltech"):
+    def _run(self, tmp_path, status, shard="ucsb,umich,caltech", authorized="ucsb,umich,caltech", daily=""):
         (tmp_path / "scripts").mkdir()
         shutil.copy(_SCRIPT, tmp_path / "scripts" / "publishable_shards.py")
         (tmp_path / "data" / "processed").mkdir(parents=True)
@@ -328,7 +328,7 @@ class TestThePrNamesWhatItPublishes:
             ["bash", "-c", "set -euo pipefail\n" + _naming_snippet()
              + 'printf %s "$TARGETS" > targets; printf %s "$MSG" > title; printf %s "$BODY" > body\n'],
             cwd=tmp_path, capture_output=True, text=True,
-            env={**os.environ, "AUTHORIZED": authorized, "SHARD": shard, "MODE": "deep",
+            env={**os.environ, "AUTHORIZED": authorized, "SHARD": shard, "MODE": "deep", "DAILY": daily,
                  "COUNTS": "10 total, 5 emails, 1 inactive, deep mode", "GITHUB_OUTPUT": str(output)},
         )
         assert result.returncode == 0, result.stdout + result.stderr
@@ -385,6 +385,49 @@ class TestThePrNamesWhatItPublishes:
         assert read["targets"] == "uiuc"
         assert read["body"].endswith("checks pass.\n\n" + notes + "\n\n" + unread)
         assert _outputs(output) == {"withheld": notes, "unread": unread}
+
+    def _day_with_the_internship_list(self, tmp_path, **list_read):
+        """The publish step's lines for a uw,wisc day that also read the internship list as ``list_read``."""
+        sources = {"campus_graph:uw": _graph_ok(), "campus_graph:wisc": _graph_ok(),
+                   "uw_faculty": _ok(100), "wisc_faculty": _ok(100),
+                   "simplify_internships": list_read or _ok(5140)}
+        status = _summary({"uw", "wisc"}, sources)
+        status["request"]["national_sources"] = ["simplify_internships"]
+        status["release"] = evaluate_refresh_summary(
+            status, schools={"uw", "wisc"}, national=False, deep=True, national_sources={"simplify_internships"})
+        read, output = self._run(tmp_path, status, shard="uw,wisc", authorized="uw,wisc,national",
+                                 daily="simplify_internships")
+        return read, _outputs(output), status
+
+    def test_a_day_that_also_read_the_internship_list_says_so_in_the_title_and_the_body(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(tmp_path)
+        assert read["targets"] == "uw,wisc,national"
+        assert read["title"] == ("chore: auto-refresh opportunity data (10 total, 5 emails, 1 inactive, "
+                                 "deep mode, shard: uw,wisc + simplify_internships)")
+        assert read["body"] == ("Automated deep data refresh (shard: uw,wisc + simplify_internships). Merges "
+                                "automatically once Backend + Frontend checks pass.")
+        assert outputs == {}
+
+    def test_an_internship_list_that_failed_is_named_withheld_and_the_schools_publish(self, tmp_path):
+        read, outputs, status = self._day_with_the_internship_list(
+            tmp_path, status="error", error="list answered 503")
+        assert read["targets"] == "uw,wisc"
+        assert read["title"].endswith("deep mode, published: uw,wisc; withheld: national)")
+        notes = ("Publishable (2): uw, wisc\nWithheld (1), each keeping the data last committed for it:\n"
+                 "- national: source simplify_internships reported error: list answered 503")
+        assert read["body"].endswith("(shard: uw,wisc + simplify_internships). Merges automatically once "
+                                     "Backend + Frontend checks pass.\n\n" + notes)
+        assert outputs == {"withheld": notes}
+
+    def test_an_internship_list_that_read_empty_is_named_unread_and_everything_publishes(self, tmp_path):
+        read, outputs, _ = self._day_with_the_internship_list(
+            tmp_path, status="suspicious_zero", fetched=0, suspicious_zero_baseline=5133)
+        unread = ("Published without a fresh read (1), each keeping the rows it had:\n"
+                  "- national: simplify_internships: 0 records, previously 5133")
+        assert read["targets"] == "uw,wisc,national"
+        assert read["title"].endswith("deep mode, shard: uw,wisc + simplify_internships)")
+        assert read["body"].endswith("checks pass.\n\n" + unread)
+        assert outputs == {"unread": unread}
 
     def test_the_commit_and_the_pr_use_what_the_step_built(self):
         step = _publish_step()
