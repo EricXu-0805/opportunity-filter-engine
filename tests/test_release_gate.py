@@ -1361,6 +1361,29 @@ class TestFullyStaleSchoolGate:
         assert result["evidence"]["partially_degraded_school_count"] == 1
         assert result["evidence"]["stale_shard_count"] == 1
 
+    def test_the_daily_internship_list_does_not_pass_a_national_shard_whose_weekly_run_stopped(
+        self, monkeypatch, tmp_path,
+    ):
+        """Every scheduled day reads the internship list beside its schools,
+        so it is fresh while the weekly run that reads the rest of the
+        national shard may have been dead for weeks."""
+        weekly = {"nsf_reu": 20, "uiuc_sro": 27}
+        result = self._run(monkeypatch, tmp_path, _health({
+            **{source: _row("national", age) for source, age in weekly.items()},
+            "simplify_internships": _row("national", 0),
+            "yale_faculty": _row("yale", 1),
+        }))
+        assert result["status"] == gate.FAIL
+        assert result["evidence"]["fully_stale_schools"] == ["national"]
+        # Once that run reads them again the shard passes, whatever the list's age.
+        result = self._run(monkeypatch, tmp_path, _health({
+            **{source: _row("national", 1) for source in weekly},
+            "simplify_internships": _row("national", 30),
+            "yale_faculty": _row("yale", 1),
+        }))
+        assert result["status"] == gate.PASS
+        assert result["evidence"]["fully_stale_school_count"] == 0
+
     def test_fresh_campus_programs_do_not_hide_a_school_with_no_fresh_faculty(
         self, monkeypatch, tmp_path,
     ):

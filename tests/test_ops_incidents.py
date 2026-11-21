@@ -1486,6 +1486,32 @@ class TestOpsScanSourceHealth:
         assert payload["p_scope"] == "colgate"
         assert payload["p_failure_state"] == "failed"
 
+    def test_the_national_shard_is_escalated_while_only_its_daily_internship_list_is_fresh(
+        self, monkeypatch, tmp_path,
+    ):
+        # Every scheduled day reads the list; the weekly run reads the rest.
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "nsf_reu": ("national", "2026-08-09T06:00:00+00:00", "success_nonzero", 758),
+                "uiuc_sro": ("national", "2026-08-02T06:00:00+00:00", "success_nonzero", 306),
+                "simplify_internships": ("national", "2026-09-02T06:00:00+00:00",
+                                         "success_nonzero", 5138),
+            }),
+        )
+        body = _run_scan().json()
+        detector = body["detectors"]["source_health"]
+        assert detector["fully_stale_schools"] == ["national"]
+        # The two unread sources are stale; the list is not.
+        assert detector["stale"] == 2
+        payload = _incident_for(calls, "collector_failure:fully_stale_school:national")
+        assert payload["p_priority"] == "urgent"
+        assert not [c for c in _rpcs(calls, "record_ops_incident")
+                    if c["p_dedup_key"] == "collector_failure:stale_shard:simplify_internships"]
+
     def test_repeated_failure_raises_the_priority(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
         calls: list = []

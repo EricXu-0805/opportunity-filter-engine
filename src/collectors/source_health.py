@@ -540,6 +540,12 @@ def school_rows(
     source is stale even if the shard file was rewritten today, because a
     rewrite that carried only retained records forward is not a refresh.
 
+    The national shard is judged without the sources every scheduled day
+    reads (``DAILY_NATIONAL_SOURCES``, the internship list): fresh each day,
+    one would keep the shard out of ``fully_stale`` while the weekly national
+    run and all it reads had stopped. Its counts still include them, and a
+    shard holding no other source is judged by what it has.
+
     ``no_fresh_faculty`` is the same question asked of the school's faculty
     sources (:func:`faculty_source_names`) alone: true when it has at least
     one and every one is stale or emitted zero rows on its latest attempt.
@@ -572,6 +578,8 @@ def school_rows(
       negative delta is the records the school's degraded sources no longer
       confirm.
     """
+    from .refresh_contract import DAILY_NATIONAL_SOURCES, NATIONAL_SHARD
+
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     shards = ledger.get("shards") or {}
     faculty = faculty_source_names()
@@ -606,6 +614,11 @@ def school_rows(
         never_succeeded = len(rows) - len(successes)
         faculty_rows = [r for r in rows if r["source"] in faculty]
         fresh_faculty = sum(1 for r in faculty_rows if _delivers_faculty(r))
+        # A source read every day does not vouch for the weekly national run.
+        judged = rows
+        if school == NATIONAL_SHARD:
+            judged = [r for r in rows if r["source"] not in DAILY_NATIONAL_SOURCES] or rows
+        fully_stale = not any(r["freshness"] in {"fresh", "warn"} for r in judged)
         coverage_current = 0
         coverage_last_good = 0
         for r in rows:
@@ -644,9 +657,9 @@ def school_rows(
             # No fresh source anywhere in the school. Note this is computed
             # from earned per-source successes, never from the publish
             # timestamp, so republishing retained data cannot clear it.
-            "fully_stale": fresh == 0 and warn == 0,
+            "fully_stale": fully_stale,
             "state": (
-                "fully_stale" if fresh == 0 and warn == 0
+                "fully_stale" if fully_stale
                 else "partially_degraded" if stale or degraded
                 else "fully_fresh"
             ),
