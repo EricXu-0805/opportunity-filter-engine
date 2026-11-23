@@ -1475,6 +1475,24 @@ def _write_shard(tmp_path, monkeypatch, schools: dict[str, list[tuple[bool, int]
     monkeypatch.setattr(gate, "corpus_freshness_policy", lambda: (95.0, 14.0))
 
 
+def _write_listing_shard(tmp_path, name: str, weekly_age: int | None, list_ages: list[int]) -> None:
+    """Three records of the sources the weekly national run alone reads
+    (none when ``weekly_age`` is None) and one internship listing per entry
+    of ``list_ages``, by days since each was last seen."""
+    now = datetime.now(UTC)
+    ages = {"simplify_internships": list_ages}
+    if weekly_age is not None:
+        ages.update({"nsf_reu": [weekly_age] * 2, "uiuc_sro": [weekly_age]})
+    records = [
+        {"id": f"{source}-{i}", "source": source,
+         "metadata": {"is_active": True,
+                      "last_seen_at": (now - timedelta(days=age)).isoformat()}}
+        for source, each in ages.items() for i, age in enumerate(each)
+    ]
+    (tmp_path / "data" / "processed" / "shards" / f"{name}.json").write_text(
+        json.dumps(records))
+
+
 class TestCorpusFreshnessIsEnforced:
     def test_below_the_configured_floor_is_fail_not_unverified(
             self, monkeypatch, tmp_path):
@@ -1539,6 +1557,62 @@ class TestCorpusFreshnessIsEnforced:
         assert got["evidence"]["fully_stale_schools"] == ["barnard"]
         assert got["evidence"]["no_fresh_faculty_schools"] == ["barnard"]
         assert got["detail"].count("barnard") == 1
+
+    def test_fresh_internship_listings_do_not_hide_a_national_shard_whose_weekly_records_are_stale(
+            self, monkeypatch, tmp_path):
+        """Every scheduled day re-observes the internship list, so its records
+        are always fresh; the weekly national run alone re-observes the rest
+        of national.json, and may have been dead for weeks."""
+        _write_shard(tmp_path, monkeypatch, {"big": [(True, 1)] * 5000})
+        _write_listing_shard(tmp_path, "national", 40, [0] * 5)
+        got = gate.check_corpus_freshness()
+        assert got["evidence"]["freshness_percent"] > 99
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "fully_stale_schools"
+        assert got["evidence"]["fully_stale_schools"] == ["national"]
+        # It holds fresh records, and the reason says which are not.
+        assert "no fresh record at all" not in got["detail"]
+        assert got["detail"] == ("national has no fresh record outside the "
+                                 "internship list every scheduled day reads")
+        # The listings are still counted, as the fresh records they are.
+        national = gate.corpus_freshness_report()["schools"]["national"]
+        assert (national["state"], national["fresh"], national["active"]) == (
+            "fully_stale", 5, 8)
+
+    def test_fresh_weekly_records_keep_the_national_shard_out_of_the_stale_schools(
+            self, monkeypatch, tmp_path):
+        _write_shard(tmp_path, monkeypatch, {"big": [(True, 1)] * 5000})
+        _write_listing_shard(tmp_path, "national", 1, [0] * 5)
+        assert gate.check_corpus_freshness()["status"] == gate.PASS
+        # Whatever the list's age: stale listings alone are stale records,
+        # not a dead shard.
+        _write_listing_shard(tmp_path, "national", 1, [40] * 5)
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.PASS
+        assert got["evidence"]["fully_stale_school_count"] == 0
+        assert got["evidence"]["partially_stale_school_count"] == 1
+
+    def test_a_national_shard_holding_only_internship_listings_is_judged_by_them(
+            self, monkeypatch, tmp_path):
+        _write_shard(tmp_path, monkeypatch, {"big": [(True, 1)] * 5000})
+        for ages, state in (([0] * 5, "fully_fresh"), ([0, 40], "partially_stale"),
+                            ([40] * 5, "fully_stale")):
+            _write_listing_shard(tmp_path, "national", None, ages)
+            report = gate.corpus_freshness_report()
+            assert report["schools"]["national"]["state"] == state
+        got = gate.check_corpus_freshness()
+        assert "1 school(s) have no fresh record at all: national" in got["detail"]
+
+    def test_a_school_is_judged_by_every_record_it_holds(
+            self, monkeypatch, tmp_path):
+        """Only the national shard is judged without the list: the same
+        records in a school's shard leave it partially stale, as before."""
+        _write_shard(tmp_path, monkeypatch, {"big": [(True, 1)] * 5000})
+        _write_listing_shard(tmp_path, "yale", 40, [0] * 5)
+        report = gate.corpus_freshness_report()
+        assert report["fully_stale_schools"] == []
+        assert report["schools"]["yale"]["state"] == "partially_stale"
+        assert gate.check_corpus_freshness()["status"] == gate.PASS
 
     def test_at_or_above_the_floor_with_no_dead_school_passes(
             self, monkeypatch, tmp_path):
