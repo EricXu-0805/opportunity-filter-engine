@@ -707,6 +707,9 @@ def check_no_fully_stale_school() -> dict:
     try:
         sys.path.insert(0, str(_REPO))
         from src.collectors import source_health  # noqa: PLC0415
+        from src.collectors.refresh_contract import (  # noqa: PLC0415
+            NATIONAL_SHARD,
+        )
         report = source_health.corpus_report(source_health.load_ledger(path))
     except Exception as exc:  # noqa: BLE001
         return _gate("no_fully_stale_school", CANNOT_VERIFY,
@@ -728,9 +731,19 @@ def check_no_fully_stale_school() -> dict:
     }
     failures = []
     if count:
-        failures.append(
-            f"{count} school(s) have no fresh source at all: "
-            f"{', '.join(report['fully_stale_schools'][:10])}")
+        # The national shard is judged without the internship list every
+        # scheduled day reads (source_health.school_rows), which may be fresh.
+        national = NATIONAL_SHARD in report["fully_stale_schools"]
+        schools = [s for s in report["fully_stale_schools"]
+                   if s != NATIONAL_SHARD]
+        if schools or not national:
+            failures.append(
+                f"{count - national} school(s) have no fresh source at all: "
+                f"{', '.join(schools[:10])}")
+        if national:
+            failures.append(
+                f"{NATIONAL_SHARD} has no fresh source outside the "
+                "internship list every scheduled day reads")
     # A school with no fresh source has no fresh faculty source either and is
     # already named above.
     faculty_only = [s for s in no_faculty

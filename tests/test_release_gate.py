@@ -1343,7 +1343,7 @@ class TestFullyStaleSchoolGate:
         assert result["evidence"]["fully_stale_schools"] == ["ucb"]
         # No fresh source means no fresh faculty source either; named once.
         assert result["evidence"]["no_fresh_faculty_schools"] == ["ucb"]
-        assert result["detail"].count("ucb") == 1
+        assert result["detail"] == "1 school(s) have no fresh source at all: ucb"
 
     def test_one_stale_department_among_fresh_ones_passes(
         self, monkeypatch, tmp_path,
@@ -1375,6 +1375,19 @@ class TestFullyStaleSchoolGate:
         }))
         assert result["status"] == gate.FAIL
         assert result["evidence"]["fully_stale_schools"] == ["national"]
+        # The list is a fresh source, and national is not a school.
+        assert result["detail"] == ("national has no fresh source outside the "
+                                    "internship list every scheduled day reads")
+        # Beside a school with no fresh source, each keeps its own sentence.
+        result = self._run(monkeypatch, tmp_path, _health({
+            **{source: _row("national", age) for source, age in weekly.items()},
+            "simplify_internships": _row("national", 0),
+            "yale_faculty": _row("yale", 30),
+        }))
+        assert result["evidence"]["fully_stale_school_count"] == 2
+        assert result["detail"] == (
+            "1 school(s) have no fresh source at all: yale; national has no "
+            "fresh source outside the internship list every scheduled day reads")
         # Once that run reads them again the shard passes, whatever the list's age.
         result = self._run(monkeypatch, tmp_path, _health({
             **{source: _row("national", 1) for source in weekly},

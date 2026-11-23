@@ -1631,13 +1631,27 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
         )
 
     report = source_health.corpus_report(ledger, now)
+    # After the report, which loads this module itself: an import that failed
+    # up front would skip the stale and zero-output incidents recorded above.
+    from src.collectors.refresh_contract import NATIONAL_SHARD
+
     for school in report["fully_stale_schools"]:
         summary["scanned"] += 1
+        # The national shard is judged without the internship list every
+        # scheduled day reads (source_health.school_rows), which may be fresh.
+        national = school == NATIONAL_SHARD
         await rec.record(
             kind="collector_failure",
             dedup_key=f"collector_failure:fully_stale_school:{school}",
-            title=f"'{school}' has no fresh source at all",
+            title=(
+                f"'{school}' has no fresh source outside the internship list"
+                if national else f"'{school}' has no fresh source at all"
+            ),
             summary=(
+                "every source the weekly national run alone reads is stale - "
+                "that run has stopped refreshing; the internship list, read "
+                "every scheduled day, is not counted"
+                if national else
                 "every source for this school is stale - the school has "
                 "stopped refreshing, not merely one department"
             ),
