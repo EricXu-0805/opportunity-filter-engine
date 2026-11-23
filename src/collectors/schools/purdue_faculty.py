@@ -145,8 +145,13 @@ def _poly(short: str, name: str, majors: list[str], code: str, node_title: str) 
 # Mitchell E. Daniels Jr. School of Business: one legacy directory filtered by
 # academic area (view.php?search=FacArea&FacAreaList=<id>); name + rank + public
 # email on the listing. The ladder gate drops staff without a professorial title.
+# A person is the row whose own cell holds the mailto: link. The directory table
+# sits in a row of a layout table and each person row holds two tables of its
+# own, so the card is that row at its own depth (rows up to six tables deep),
+# not every row around it.
 _DANIELS_SEL = {
-    "card": "tr:has(> td > a[href^='mailto:'])",
+    "card": ", ".join(f"{row}:has(a[href^='mailto:']:is({row} > td > *))"
+                      for row in faculty_graph.at_each_depth("tr", 6)),
     "name": "strong",
     "link": "a[href^='bio.php?username=']",
     "title": "td:has(> strong)",

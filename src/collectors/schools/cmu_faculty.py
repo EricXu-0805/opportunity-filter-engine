@@ -58,9 +58,12 @@ def _filt(short: str, name: str, majors: list[str], url: str, **extra) -> dict:
 # person in a div[id]; the other three use anonymous divs. Both legs require
 # an inline mailto: so the site-header block (div#sitename, whose h2 is the
 # college name) can never land as a phantom "Mellon College of Science" card.
+# The second leg is a div whose own <p> holds the mailto: (divs up to sixteen
+# deep, faculty_graph.at_each_depth).
 _MCS_SELECTORS = {
-    "card": ("div[id]:has(> h2):has(a[href^='mailto:']), "
-             "div:has(> h2):has(> p a[href^='mailto:'])"),
+    "card": ", ".join(["div[id]:has(> h2):has(a[href^='mailto:'])", *(
+        f"{div}:has(> h2):has(a[href^='mailto:']:is({div} > p a))"
+        for div in faculty_graph.at_each_depth("div", 16))]),
     "name": "h2",
     "link": "a[href$='.html']",
     "email": "a[href^='mailto:']",
@@ -177,7 +180,11 @@ SCHOOL: dict = {
          "majors": ["Electrical Engineering", "Computer Engineering"],
          "directory_url": "https://www.ece.cmu.edu/directory/faculty.html",
          "scrape": {"url": "https://www.ece.cmu.edu/directory/faculty.html",
-                    "selectors": {"card": "div:has(> h2 a[href*='bios/'])",
+                    # The div whose own h2 holds the bio link (divs up to
+                    # sixteen deep).
+                    "selectors": {"card": ", ".join(
+                                      f"{div}:has(a[href*='bios/']:is({div} > h2 a))"
+                                      for div in faculty_graph.at_each_depth("div", 16)),
                                   "name": "h2 a", "link": "h2 a",
                                   "title": "h3"},
                     "ladder_filter": {"drop": r"emerit|adjunct|courtesy|special faculty"}}},

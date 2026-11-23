@@ -28,35 +28,22 @@ import soupsieve as sv
 from bs4 import BeautifulSoup
 
 import src.collectors.schools as schools
+from src.collectors import faculty_graph as fg
 
 COLLECTORS_DIR = Path(schools.__file__).resolve().parent.parent
 
 # Keys inside ``selectors`` that hold a regex or a tag name, not a CSS selector.
 _NOT_CSS = re.compile(r"(?:_re|_re_text|_strip|_strip_after|_unglue|title_sibling)$")
 
-# Rejected selectors left in place, each with the reason. Shrink only: an entry
-# that compiles again fails ``test_known_rejections_are_still_rejected``.
-_UNVERIFIED = ("rejected by soupsieve 3; an equivalent selector must be checked "
-               "on the live page before it replaces this one")
-
-
-def _cards(module: str, shorts: str, reason: str) -> dict[str, str]:
-    return {f"{module}.{s}.scrape.selectors.card": reason for s in shorts.split()}
-
-
-_KNOWN_REJECTED: dict[str, str] = {
-    **_cards("cmu_faculty", "BIO CHEM ECE MATH PHYS", _UNVERIFIED),
-    **_cards("fsu_faculty", "BIO", _UNVERIFIED),
-    **_cards("purdue_faculty", "ACCT ECON FIN MIS MKTG OBHR QM SCMO STRAT", _UNVERIFIED),
-    **_cards("utk_faculty", "ADPR CSW MABE SIS", _UNVERIFIED),
-}
-
 # What each rewritten card selector replaced: a path inside ``:has()``. soupsieve
 # 3+ still parses these with NOSTRICT and older soupsieve parses them as they
 # are, so each rewrite is checked against the path it stands for. One row per
 # distinct selector: a config that uses it, the old selector, the card's open
-# tag, markup that holds the path, and markup that holds its last step without it.
+# tag, markup that holds the path, markup that holds its last step without it,
+# and (where cards nest through something other than a div) the wrapper.
 _NOSTRICT = getattr(sv, "NOSTRICT", 0)
+_MAILTO = '<a href="mailto:x@example.edu">x</a>'
+_GROUP = '<div class="wp-block-group">'
 _REPLACED = [
     ("clemson_faculty.ACCT", 'div.columns:has(h4 a[href*="/profiles/"])', '<div class="columns">',
      '<h4><a href="/profiles/x">N</a></h4>', '<a href="/profiles/x">N</a><h4>T</h4>'),
@@ -84,17 +71,33 @@ _REPLACED = [
       for held in ('<p><a href="x"><strong>N</strong></a></p>', '<p><strong><a href="x">N</a></strong></p>')],
     ("vt_faculty.SBIO", "div.vt-col:has(p strong)", '<div class="vt-col">',
      "<p><strong>N</strong></p>", "<strong>N</strong><p>T</p>"),
+    ("purdue_faculty.ACCT", "tr:has(> td > a[href^='mailto:'])", "<tr>",
+     f"<td>{_MAILTO}</td><td><table><tr><td>N</td></tr></table></td>", f"<td><b>{_MAILTO}</b></td>",
+     "<td><table>{}</table></td>"),
+    ("fsu_faculty.BIO", "div.row:has(> div.col-sm-9 > div.faculty-sm-text)", '<div class="row">',
+     '<div class="col-sm-9"><div class="faculty-sm-text">N</div></div>',
+     '<div class="col-sm-9"><div><div class="faculty-sm-text">N</div></div></div>'),
+    ("cmu_faculty.BIO", "div[id]:has(> h2):has(a[href^='mailto:']), div:has(> h2):has(> p a[href^='mailto:'])",
+     "<div>", f"<h2>N</h2><p>{_MAILTO}</p>", f"<h2>T</h2><p>t</p><span>{_MAILTO}</span>"),
+    ("cmu_faculty.ECE", "div:has(> h2 a[href*='bios/'])", "<div>",
+     '<h2><a href="bios/x.html">N</a></h2>', '<h2>T</h2><a href="bios/x.html">N</a>'),
+    ("utk_faculty.ADPR", "div.wp-block-group:has(> div > h3.wp-block-heading)", _GROUP,
+     f'{_GROUP}<h3 class="wp-block-heading">N</h3></div>{_GROUP}<p>t</p></div>',
+     '<h3 class="wp-block-heading">N</h3>', _GROUP + "{}</div>"),
+    ("utk_faculty.MABE", "div.wp-block-group:has(> div > h2.wp-block-heading.has-large-font-size)", _GROUP,
+     f'{_GROUP}<h2 class="wp-block-heading has-large-font-size">N</h2></div>{_GROUP}<p>t</p></div>',
+     '<h2 class="wp-block-heading has-large-font-size">N</h2>', _GROUP + "{}</div>"),
 ]
 
 
-def _nesting_page(card: str, held: str, loose: str) -> str:
+def _nesting_page(card: str, held: str, loose: str, wrap: str = "<div>{}</div>") -> str:
     """Cards beside, inside and around each other, with and without the path."""
     end = f"</{card[1:-1].split()[0]}>"
     one = f"{card}{held}{end}"
     return (f'<div id="page">{loose}{one}{card}{loose}{end}'
-            f"{card}{held}<div>{one}</div>{end}"
-            f"{card}{loose}<div>{one}{one}</div>{end}"
-            f"<div><div>{one}</div></div></div>")
+            f"{card}{held}{wrap.format(one)}{end}"
+            f"{card}{loose}{wrap.format(one + one)}{end}"
+            f"{wrap.format(wrap.format(one))}</div>")
 
 
 def _is_css(parent: str, key: str, value: str) -> bool:
@@ -219,19 +222,11 @@ def test_the_walk_finds_the_selectors_it_must_guard():
 
 
 def test_every_config_selector_compiles_strictly():
-    rejected = {k: v for k, v in _rejected(config_selectors()).items()
-                if k not in _KNOWN_REJECTED}
-    assert rejected == {}
+    assert _rejected(config_selectors()) == {}
 
 
 def test_every_literal_selector_in_collector_code_compiles_strictly():
     assert _rejected(code_selectors()) == {}
-
-
-def test_known_rejections_are_still_rejected():
-    found = config_selectors()
-    stale = [k for k in _KNOWN_REJECTED if k not in found or strict_error(found[k]) is None]
-    assert stale == []
 
 
 @pytest.mark.parametrize("row", _REPLACED, ids=[row[0] for row in _REPLACED])
@@ -242,6 +237,16 @@ def test_a_rewritten_card_selector_picks_what_its_path_picked(row):
     picked = sv.select(path, soup, flags=_NOSTRICT)
     assert len(picked) >= 4
     assert [id(el) for el in soup.select(rewrite)] == [id(el) for el in picked]
+
+
+def test_an_element_nested_past_the_pinned_depths_is_not_selected():
+    # at_each_depth trades the path's any-depth reach for a fixed number of levels.
+    rows = fg.at_each_depth("tr", 2)
+    assert rows == ["tr:not(tr *)", "tr:is(tr *):not(tr tr *)"]
+    card = ", ".join(f"{row}:has(a:is({row} > td > *))" for row in rows)
+    deep = "<tr id='r{0}'><td><a>x</a></td><td><table>{1}</table></td></tr>"
+    soup = BeautifulSoup(deep.format(1, deep.format(2, deep.format(3, ""))), "html.parser")
+    assert [el["id"] for el in soup.select(card)] == ["r1", "r2"]
 
 
 def test_the_strict_has_rules_are_enforced_on_any_soupsieve():

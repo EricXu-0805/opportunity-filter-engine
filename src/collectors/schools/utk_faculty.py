@@ -150,8 +150,15 @@ _ISE_SEL = {
 }
 
 # ---- MAE nested wp-block-group (Tickle College) -----------------------------
+# The card is the group whose own child div holds the heading. Groups nest above
+# it and inside it, so it is taken at its own depth (groups up to ten deep).
+def _group_over(heading: str) -> str:
+    return ", ".join(f"{group}:has({heading}:is({group} > div > *))"
+                     for group in faculty_graph.at_each_depth("div.wp-block-group", 10))
+
+
 _MAE_SEL = {
-    "card": "div.wp-block-group:has(> div > h2.wp-block-heading.has-large-font-size)",
+    "card": _group_over("h2.wp-block-heading.has-large-font-size"),
     "name": "h2.wp-block-heading.has-large-font-size",
     "link": "p.is-style-utkwds-single-link a",
     "title": "p.wp-block-paragraph",
@@ -319,7 +326,7 @@ SCHOOL: dict = {
         # ==== College of Social Work =====================================
         _dept("CSW", "College of Social Work", ["Social Work"],
               "https://csw.utk.edu/about/directory/",
-              _wpblk_sel("div.wp-block-group:has(> div > h3.wp-block-heading)"),
+              _wpblk_sel(_group_over("h3.wp-block-heading")),
               field=_WPBLK_FIELD),
         # ==== Natalie L. Haslam College of Music =========================
         _dept("MUSIC", "Natalie L. Haslam College of Music",
@@ -331,12 +338,12 @@ SCHOOL: dict = {
         _dept("ADPR", "Tombras School of Advertising and Public Relations",
               ["Advertising", "Public Relations"],
               "https://cci.utk.edu/adpr/about/directory/",
-              _wpblk_sel("div.wp-block-group:has(> div > h3.wp-block-heading)"),
+              _wpblk_sel(_group_over("h3.wp-block-heading")),
               field=_WPBLK_FIELD),
         _dept("SIS", "School of Information Sciences",
               ["Information Sciences"],
               "https://cci.utk.edu/sis/about/directory/",
-              _wpblk_sel("div.wp-block-group:has(> div > h3.wp-block-heading)"),
+              _wpblk_sel(_group_over("h3.wp-block-heading")),
               field=_WPBLK_FIELD),
         # ==== College of Architecture & Design ===========================
         # The directory paints only the first page server-side and loads the rest
