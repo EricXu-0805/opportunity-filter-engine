@@ -23,7 +23,9 @@ import pkgutil
 import re
 from pathlib import Path
 
+import pytest
 import soupsieve as sv
+from bs4 import BeautifulSoup
 
 import src.collectors.schools as schools
 
@@ -36,7 +38,6 @@ _NOT_CSS = re.compile(r"(?:_re|_re_text|_strip|_strip_after|_unglue|title_siblin
 # that compiles again fails ``test_known_rejections_are_still_rejected``.
 _UNVERIFIED = ("rejected by soupsieve 3; an equivalent selector must be checked "
                "on the live page before it replaces this one")
-_ELSEWHERE = "rejected by soupsieve 3; this school's configs are fixed in their own work"
 
 
 def _cards(module: str, shorts: str, reason: str) -> dict[str, str]:
@@ -44,18 +45,56 @@ def _cards(module: str, shorts: str, reason: str) -> dict[str, str]:
 
 
 _KNOWN_REJECTED: dict[str, str] = {
-    **_cards("clemson_faculty", "ACCT ECON FIN MGT MKT", _UNVERIFIED),
     **_cards("cmu_faculty", "BIO CHEM ECE MATH PHYS", _UNVERIFIED),
-    **_cards("columbia_faculty", "MESAAS", _UNVERIFIED),
     **_cards("fsu_faculty", "BIO", _UNVERIFIED),
-    **_cards("georgetown_faculty", "CLSS GERM GOVT HLTH LING MCCT MSBA MSBF MSBK "
-             "MSBM MSBO MSBS NURS PSYC SPAN STIA", _ELSEWHERE),
     **_cards("purdue_faculty", "ACCT ECON FIN MIS MKTG OBHR QM SCMO STRAT", _UNVERIFIED),
-    **_cards("stanford_faculty", "COMPLIT FRENCHITAL GERMAN IBERLAC SLAVIC", _UNVERIFIED),
-    **_cards("udel_faculty", "BME MSEG", _UNVERIFIED),
     **_cards("utk_faculty", "ADPR CSW MABE SIS", _UNVERIFIED),
-    **_cards("vt_faculty", "ENGE FREC GEOG SBIO", _UNVERIFIED),
 }
+
+# What each rewritten card selector replaced: a path inside ``:has()``. soupsieve
+# 3+ still parses these with NOSTRICT and older soupsieve parses them as they
+# are, so each rewrite is checked against the path it stands for. One row per
+# distinct selector: a config that uses it, the old selector, the card's open
+# tag, markup that holds the path, and markup that holds its last step without it.
+_NOSTRICT = getattr(sv, "NOSTRICT", 0)
+_REPLACED = [
+    ("clemson_faculty.ACCT", 'div.columns:has(h4 a[href*="/profiles/"])', '<div class="columns">',
+     '<h4><a href="/profiles/x">N</a></h4>', '<a href="/profiles/x">N</a><h4>T</h4>'),
+    ("columbia_faculty.MESAAS", "div.col-sm-6:has(b a)", '<div class="col-sm-6">',
+     '<b><a href="x">N</a></b>', '<a href="x">N</a><b>T</b>'),
+    ("georgetown_faculty.CLSS", "div.gu-block-profile-card:has(p.gu-block-profile-title a)",
+     '<div class="gu-block-profile-card">', '<p class="gu-block-profile-title"><a href="x">N</a></p>',
+     '<p class="gu-block-profile-title">T</p><a href="x">N</a>'),
+    ("georgetown_faculty.MCCT", "div.gu-profile:has(p.gu-profile-title a)", '<div class="gu-profile">',
+     '<p class="gu-profile-title"><a href="x">N</a></p>', '<p class="gu-profile-title">T</p><a href="x">N</a>'),
+    *[(f"stanford_faculty.{short}", f"div.hb-card:has(.views-field-custm-department-s- a[href*='{dept}'])",
+       '<div class="hb-card">', f'<div class="views-field-custm-department-s-"><a href="/{dept}">D</a></div>',
+       f'<a href="/{dept}">D</a><div class="views-field-custm-department-s-"><a href="/other">O</a></div>')
+      for short, dept in [("COMPLIT", "comparative-literature"), ("FRENCHITAL", "french-and-italian"),
+                          ("GERMAN", "german-studies"), ("IBERLAC", "iberian-and-latin-american"),
+                          ("SLAVIC", "slavic")]],
+    ("udel_faculty.BME", "div.et_pb_text_inner:has(h4 a)", '<div class="et_pb_text_inner">',
+     '<h4><a href="x">N</a></h4>', '<a href="x">N</a><h4>T</h4>'),
+    ("vt_faculty.ENGE", "div.vt-text:has(p strong a)", '<div class="vt-text">',
+     '<p><strong><a href="x">N</a></strong></p>', '<strong><a href="x">N</a></strong><p><a href="x">N</a></p>'),
+    ("vt_faculty.FREC", "div.vt-text:has(p strong)", '<div class="vt-text">',
+     "<p><strong>N</strong></p>", "<strong>N</strong><p>T</p>"),
+    *[("vt_faculty.GEOG", "div.vt-col:has(p a strong), div.vt-col:has(p strong a)", '<div class="vt-col">',
+       held, '<a href="x"><strong>N</strong></a><p><a href="x">N</a><strong>T</strong></p>')
+      for held in ('<p><a href="x"><strong>N</strong></a></p>', '<p><strong><a href="x">N</a></strong></p>')],
+    ("vt_faculty.SBIO", "div.vt-col:has(p strong)", '<div class="vt-col">',
+     "<p><strong>N</strong></p>", "<strong>N</strong><p>T</p>"),
+]
+
+
+def _nesting_page(card: str, held: str, loose: str) -> str:
+    """Cards beside, inside and around each other, with and without the path."""
+    end = f"</{card[1:-1].split()[0]}>"
+    one = f"{card}{held}{end}"
+    return (f'<div id="page">{loose}{one}{card}{loose}{end}'
+            f"{card}{held}<div>{one}</div>{end}"
+            f"{card}{loose}<div>{one}{one}</div>{end}"
+            f"<div><div>{one}</div></div></div>")
 
 
 def _is_css(parent: str, key: str, value: str) -> bool:
@@ -193,6 +232,16 @@ def test_known_rejections_are_still_rejected():
     found = config_selectors()
     stale = [k for k in _KNOWN_REJECTED if k not in found or strict_error(found[k]) is None]
     assert stale == []
+
+
+@pytest.mark.parametrize("row", _REPLACED, ids=[row[0] for row in _REPLACED])
+def test_a_rewritten_card_selector_picks_what_its_path_picked(row):
+    unit, path, *page = row
+    rewrite = config_selectors()[f"{unit}.scrape.selectors.card"]
+    soup = BeautifulSoup(_nesting_page(*page), "html.parser")
+    picked = sv.select(path, soup, flags=_NOSTRICT)
+    assert len(picked) >= 4
+    assert [id(el) for el in soup.select(rewrite)] == [id(el) for el in picked]
 
 
 def test_the_strict_has_rules_are_enforced_on_any_soupsieve():

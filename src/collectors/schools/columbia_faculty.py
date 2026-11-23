@@ -193,7 +193,7 @@ SCHOOL: dict = {
             "scrape": {
                 "url": "https://mesaas.columbia.edu/faculty-directory/",
                 # The rank is a bare text node between <br>s — no wrapper element.
-                "selectors": {"card": "div.col-sm-6:has(b a)", "name": "b a",
+                "selectors": {"card": "div.col-sm-6:has(a:is(div.col-sm-6 b a))", "name": "b a",
                               "link": "b a",
                               "title_re": (r"\b((?:Senior |Adjunct |Visiting |Associate "
                                            r"|Assistant )?(?:Professor|Lecturer)"

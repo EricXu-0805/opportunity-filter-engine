@@ -128,7 +128,7 @@ _CCEE_SEL = {
 
 # --- MSEG / BME: Divi text grid (name link + mailto, no rank line) -----------
 _ENGR_TEXT_SEL = {
-    "card": "div.et_pb_text_inner:has(h4 a)",
+    "card": "div.et_pb_text_inner:has(a:is(div.et_pb_text_inner h4 a))",
     "name": "h4 a",
     "link": "h4 a",
     "email": "a[href^='mailto:']",
