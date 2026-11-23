@@ -1,5 +1,5 @@
 import { contactReceiptForRequest } from './email-contact-receipt';
-import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request } from '@playwright/test';
 import type { ExperienceEntry, ProfileData, ProfileRequest } from '../src/lib/types';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
@@ -239,7 +239,11 @@ test.describe('Foreground profile refresh', () => {
       await expectManual(page);
       const done = page.waitForResponse(response => new URL(response.url()).pathname === '/api/cold-email/stream'
         && response.request().postDataJSON().style === 'warm');
-      late.release(); await (await done).finished();
+      // The page's reader cancels the body once it holds the final frame. When that comes before the transport
+      // ends, the request ends as failed and response.finished() never settles. Either ending means it is over.
+      const over = new Set<Request>();
+      page.on('requestfinished', request => over.add(request)); page.on('requestfailed', request => over.add(request));
+      late.release(); const response = await done; await expect.poll(() => over.has(response.request())).toBe(true);
       // Let the genuine fetch/SSE consumer and React commit run after transport completion.
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await expectManual(page);
