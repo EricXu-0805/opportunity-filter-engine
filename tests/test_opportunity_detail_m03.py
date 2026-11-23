@@ -505,6 +505,15 @@ class TestCollectorTemplates:
         fields = _fields(_CASES["simplify_internship_template"])
         assert _where(fields["professor_or_lab"], "lab_or_program") == "unknown"
 
+    def test_a_word_from_the_company_is_not_a_principal_investigator(self):
+        # Unstamped on 47 internship listings retired June to August 2026.
+        record = copy.deepcopy(_CASES["simplify_internship_template"])
+        record.update(organization="Example Analytics Group", lab_or_program="Example Analytics Group",
+                      pi_name="Example Analytics")
+        payload, fields = _detail(record)
+        assert "pi_name" not in payload
+        assert _where(fields["professor_or_lab"], "principal_investigator") == "unknown"
+
 
 class TestOldRecordsDegradeSafely:
     @pytest.mark.parametrize("shape", [
