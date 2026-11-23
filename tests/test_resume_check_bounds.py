@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import gc
 import itertools
 import random
 import re
@@ -220,12 +221,32 @@ LARGE_INPUTS = {
 }
 
 
+def _timed(check):
+    """The check's result and the processor time the check took.
+
+    Wall-clock time also counts what the check does not do. On CI one of these
+    calls, about 0.05 s of work, once took 3.2 s. The collector stays off for
+    the call, so a full collection of what the earlier tests left in the
+    process cannot fall inside it, and processor time leaves out a runner that
+    pauses.
+    """
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        started = time.process_time()
+        result = check()
+        return result, time.process_time() - started
+    finally:
+        if was_enabled:
+            gc.enable()
+
+
 @pytest.mark.parametrize("shape", LARGE_INPUTS)
 def test_large_inputs_decide_as_recorded_within_budget(shape):
     check, expected = LARGE_INPUTS[shape]
-    started = time.perf_counter()
-    assert check() == expected
-    assert time.perf_counter() - started < BUDGET_SECONDS
+    result, seconds = _timed(check)
+    assert result == expected
+    assert seconds < BUDGET_SECONDS
 
 
 _LAB = {"master_id": "m", "master_revision": 1, "section": "activities", "id": "a1",
@@ -247,9 +268,9 @@ PAST_THE_LIMIT = {
 
 @pytest.mark.parametrize("shape", PAST_THE_LIMIT)
 def test_check_past_the_work_limit_fails_closed_early(shape):
-    started = time.perf_counter()
-    assert PAST_THE_LIMIT[shape]() == [SIZE_FINDING]
-    assert time.perf_counter() - started < BUDGET_SECONDS
+    result, seconds = _timed(PAST_THE_LIMIT[shape])
+    assert result == [SIZE_FINDING]
+    assert seconds < BUDGET_SECONDS
 
 
 def test_size_finding_is_not_handed_to_the_reviser_and_keeps_the_original():
