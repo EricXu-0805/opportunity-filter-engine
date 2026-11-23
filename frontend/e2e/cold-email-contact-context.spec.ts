@@ -1,4 +1,4 @@
-import { test, expect, request as apiRequest, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { test, expect, request as apiRequest, type APIRequestContext, type Locator, type Page, type Request } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { normalizeEmailContactContext, serializeEmailContactContext } from '../src/lib/email-contact-context';
@@ -201,7 +201,11 @@ for (const kind of ['stream', 'refine'] as const) {
       await expect(regenerate(page)).toBeEnabled(); await kept(page);
       expect(model.state.calls).toHaveLength(count);
       const returned = page.waitForResponse(response => pathOf(response.url()) === '/api/cold-email/' + kind);
-      release(); const response = await returned; await response.finished();
+      // The stream reader cancels the body once it holds the final frame. When that comes before the transport
+      // ends, the request ends as failed and response.finished() never settles. Either ending means it is over.
+      const over = new Set<Request>();
+      page.on('requestfinished', request => over.add(request)); page.on('requestfailed', request => over.add(request));
+      release(); const response = await returned; await expect.poll(() => over.has(response.request())).toBe(true);
       await expect.poll(() => model.state.heldCompleted).toBe(true);
       // A user event after the completed response also exercises the still-live editor.
       await fields(page).body.click(); await kept(page);
