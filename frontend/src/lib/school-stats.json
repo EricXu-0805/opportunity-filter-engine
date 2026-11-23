@@ -105,9 +105,9 @@
     },
     "cmc": {
       "listing_count": 9,
-      "faculty_contact_count": 157,
+      "faculty_contact_count": 158,
       "unreviewed_count": 0,
-      "total_count": 166
+      "total_count": 167
     },
     "cmu": {
       "listing_count": 44,
@@ -177,9 +177,9 @@
     },
     "emory": {
       "listing_count": 5,
-      "faculty_contact_count": 1441,
+      "faculty_contact_count": 1442,
       "unreviewed_count": 0,
-      "total_count": 1446
+      "total_count": 1447
     },
     "fsu": {
       "listing_count": 3,
@@ -297,9 +297,9 @@
     },
     "ncsu": {
       "listing_count": 5,
-      "faculty_contact_count": 2321,
+      "faculty_contact_count": 2322,
       "unreviewed_count": 0,
-      "total_count": 2326
+      "total_count": 2327
     },
     "nd": {
       "listing_count": 7,
@@ -393,9 +393,9 @@
     },
     "rutgers": {
       "listing_count": 7,
-      "faculty_contact_count": 2038,
+      "faculty_contact_count": 2039,
       "unreviewed_count": 0,
-      "total_count": 2045
+      "total_count": 2046
     },
     "sbu": {
       "listing_count": 6,
@@ -441,9 +441,9 @@
     },
     "tufts": {
       "listing_count": 5,
-      "faculty_contact_count": 2120,
+      "faculty_contact_count": 2121,
       "unreviewed_count": 0,
-      "total_count": 2125
+      "total_count": 2126
     },
     "ucb": {
       "listing_count": 71,
@@ -530,10 +530,10 @@
       "total_count": 936
     },
     "uiuc": {
-      "listing_count": 18,
-      "faculty_contact_count": 2996,
+      "listing_count": 5,
+      "faculty_contact_count": 2946,
       "unreviewed_count": 0,
-      "total_count": 3014
+      "total_count": 2951
     },
     "uky": {
       "listing_count": 3,
@@ -609,9 +609,9 @@
     },
     "utexas": {
       "listing_count": 22,
-      "faculty_contact_count": 2218,
+      "faculty_contact_count": 2217,
       "unreviewed_count": 0,
-      "total_count": 2240
+      "total_count": 2239
     },
     "utk": {
       "listing_count": 4,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5670
+  "national_count": 5636
 }
