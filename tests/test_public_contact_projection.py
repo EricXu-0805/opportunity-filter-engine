@@ -1332,6 +1332,31 @@ class TestADerivedPiNameIsNotServed:
         served = project_public_opportunity_payload(dict(record), record)
         assert served["pi_name"] == "Spring Harbor"
 
+    @pytest.mark.parametrize("projector", [_redact, _list_card, _match_card])
+    @pytest.mark.parametrize("active", [True, False])
+    def test_an_internship_listing_shows_no_pi_stamped_or_not(self, projector, active):
+        """An internship listing is a company's posting. 47 retired between
+        June and August 2026 carry the word before "Group" in the company as
+        pi_name with no stamp, and the closed listing's page printed it."""
+        listing = {
+            "id": "simplify-intern-example", "source": "simplify_internships",
+            "source_type": "internship", "opportunity_type": "internship",
+            "title": "Data Analyst Intern", "organization": "Example Analytics Group",
+            "lab_or_program": "Example Analytics Group", "pi_name": "Example Analytics",
+            "eligibility": {}, "application": {}, "metadata": {"is_active": active},
+        }
+        assert "pi_name" not in projector(listing)
+        # The rule is the source's: an unstamped name on a research program stays.
+        program = {**listing, "source": "nsf_reu", "source_type": "reu",
+                   "opportunity_type": "summer_program"}
+        assert projector(program)["pi_name"] == "Example Analytics"
+        # One Handshake internship posting carries the same word; a research
+        # job posted there can name a real PI.
+        assert "pi_name" not in projector({**listing, "source": "handshake"})
+        job = {**listing, "source": "handshake", "source_type": "job",
+               "opportunity_type": "research"}
+        assert projector(job)["pi_name"] == "Example Analytics"
+
 
 @pytest.mark.parametrize("projector", [_redact, _list_card, _match_card])
 def test_multisource_ledger_is_private_in_each_public_shape(projector):

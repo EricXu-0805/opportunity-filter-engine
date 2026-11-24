@@ -941,7 +941,8 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # cold-email builder already ignores it and addresses the Program
     # Coordinator instead; this gives every other reader of the wire the same
     # protection. The same goes for a name pi_enricher scraped onto a campus
-    # program row, stamped or not (`pi_name_basis`).
+    # program row, and for any name on an internship listing, stamped or not
+    # (`pi_name_basis`).
     if opportunity_detail.pi_name_basis(canonical_record):
         projected.pop("pi_name", None)
 

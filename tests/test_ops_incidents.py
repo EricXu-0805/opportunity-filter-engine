@@ -1485,6 +1485,11 @@ class TestOpsScanSourceHealth:
         assert payload["p_priority"] == "urgent"
         assert payload["p_scope"] == "colgate"
         assert payload["p_failure_state"] == "failed"
+        assert payload["p_title"] == "'colgate' has no fresh source at all"
+        assert payload["p_summary"] == (
+            "every source for this school is stale - the school has "
+            "stopped refreshing, not merely one department"
+        )
 
     def test_the_national_shard_is_escalated_while_only_its_daily_internship_list_is_fresh(
         self, monkeypatch, tmp_path,
@@ -1511,6 +1516,13 @@ class TestOpsScanSourceHealth:
         assert payload["p_priority"] == "urgent"
         assert not [c for c in _rpcs(calls, "record_ops_incident")
                     if c["p_dedup_key"] == "collector_failure:stale_shard:simplify_internships"]
+        # The list is fresh, so the incident does not say every source is stale.
+        assert payload["p_title"] == "'national' has no fresh source outside the internship list"
+        assert payload["p_summary"] == (
+            "every source the weekly national run alone reads is stale - that "
+            "run has stopped refreshing; the internship list, read every "
+            "scheduled day, is not counted"
+        )
 
     def test_repeated_failure_raises_the_priority(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)

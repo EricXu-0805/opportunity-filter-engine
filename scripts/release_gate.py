@@ -707,6 +707,9 @@ def check_no_fully_stale_school() -> dict:
     try:
         sys.path.insert(0, str(_REPO))
         from src.collectors import source_health  # noqa: PLC0415
+        from src.collectors.refresh_contract import (  # noqa: PLC0415
+            NATIONAL_SHARD,
+        )
         report = source_health.corpus_report(source_health.load_ledger(path))
     except Exception as exc:  # noqa: BLE001
         return _gate("no_fully_stale_school", CANNOT_VERIFY,
@@ -728,9 +731,19 @@ def check_no_fully_stale_school() -> dict:
     }
     failures = []
     if count:
-        failures.append(
-            f"{count} school(s) have no fresh source at all: "
-            f"{', '.join(report['fully_stale_schools'][:10])}")
+        # The national shard is judged without the internship list every
+        # scheduled day reads (source_health.school_rows), which may be fresh.
+        national = NATIONAL_SHARD in report["fully_stale_schools"]
+        schools = [s for s in report["fully_stale_schools"]
+                   if s != NATIONAL_SHARD]
+        if schools or not national:
+            failures.append(
+                f"{count - national} school(s) have no fresh source at all: "
+                f"{', '.join(schools[:10])}")
+        if national:
+            failures.append(
+                f"{NATIONAL_SHARD} has no fresh source outside the "
+                "internship list every scheduled day reads")
     # A school with no fresh source has no fresh faculty source either and is
     # already named above.
     faculty_only = [s for s in no_faculty
@@ -783,6 +796,14 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
     not stale data being served; they are data the pipeline has already
     retired, and counting them as stale would report a working deactivation
     pass as a freshness failure.
+
+    Whether the national shard is ``fully_stale`` is judged without the
+    records of the sources every scheduled day reads
+    (``DAILY_NATIONAL_SOURCES``, the internship list), as
+    ``source_health.school_rows`` judges it from the ledger: re-observed each
+    day, they would keep the shard out of the list while the weekly national
+    run and all it reads had stopped. Its counts still include them, and a
+    shard holding no other active record is judged by what it has.
     """
     now = now or _now()
     min_pct, stale_days = corpus_freshness_policy()
@@ -793,6 +814,10 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
         raise FileNotFoundError("data/processed/shards is missing")
 
     sys.path.insert(0, str(_REPO))
+    from src.collectors.refresh_contract import (  # noqa: PLC0415
+        DAILY_NATIONAL_SOURCES,
+        NATIONAL_SHARD,
+    )
     from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
         FACULTY_SOURCES,
     )
@@ -804,7 +829,8 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
         with path.open(encoding="utf-8") as handle:
             records = json.load(handle)
         row = {"active": 0, "fresh": 0, "faculty_active": 0,
-               "faculty_fresh": 0, "last_seen_at": None}
+               "faculty_fresh": 0, "last_seen_at": None,
+               "weekly_active": 0, "weekly_fresh": 0}
         for record in records:
             meta = record.get("metadata") or {}
             if not meta.get("is_active"):
@@ -813,6 +839,8 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             row["active"] += 1
             faculty = record.get("source") in FACULTY_SOURCES
             row["faculty_active"] += faculty
+            weekly = record.get("source") not in DAILY_NATIONAL_SOURCES
+            row["weekly_active"] += weekly
             seen = _parse_stamp(meta.get("last_seen_at"))
             if seen is not None and (row["last_seen_at"] is None
                                      or seen > row["last_seen_at"]):
@@ -820,18 +848,23 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             if seen is not None and seen >= cutoff:
                 row["fresh"] += 1
                 row["faculty_fresh"] += faculty
+                row["weekly_fresh"] += weekly
         active += row["active"]
         fresh += row["fresh"]
         schools[school] = row
 
-    def _state(row: dict) -> str:
+    def _state(name: str, row: dict) -> str:
         if row["active"] == 0:
             return "no_active_records"
         if row["fresh"] == row["active"]:
             return "fully_fresh"
-        return "partially_stale" if row["fresh"] else "fully_stale"
+        # A record read every day does not vouch for the weekly national run.
+        judged = row["fresh"]
+        if name == NATIONAL_SHARD and row["weekly_active"]:
+            judged = row["weekly_fresh"]
+        return "partially_stale" if judged else "fully_stale"
 
-    states = {name: _state(row) for name, row in schools.items()}
+    states = {name: _state(name, row) for name, row in schools.items()}
     fully_stale = sorted(n for n, st in states.items() if st == "fully_stale")
     # The faculty rule of check_no_fully_stale_school, read from the records:
     # a school holding faculty records none of which was re-observed has no
@@ -937,9 +970,21 @@ def check_corpus_freshness() -> dict:
             f"re-observed within {report['stale_days']:.0f}d, below the "
             f"{threshold}% floor")
     if report["fully_stale_school_count"]:
-        failures.append(
-            f"{report['fully_stale_school_count']} school(s) have no fresh "
-            f"record at all: {', '.join(report['fully_stale_schools'][:10])}")
+        # The national shard is judged without the internship list (see
+        # corpus_freshness_report), so it can be here holding fresh records.
+        list_only = [s for s in report["fully_stale_schools"]
+                     if (report["schools"].get(s) or {}).get("fresh")]
+        none_fresh = [s for s in report["fully_stale_schools"]
+                      if s not in list_only]
+        if none_fresh or not list_only:
+            failures.append(
+                f"{report['fully_stale_school_count'] - len(list_only)} "
+                f"school(s) have no fresh record at all: "
+                f"{', '.join(none_fresh[:10])}")
+        if list_only:
+            failures.append(
+                f"{', '.join(list_only)} has no fresh record outside the "
+                "internship list every scheduled day reads")
     faculty_only = [s for s in report["no_fresh_faculty_schools"]
                     if s not in report["fully_stale_schools"]]
     if faculty_only:
