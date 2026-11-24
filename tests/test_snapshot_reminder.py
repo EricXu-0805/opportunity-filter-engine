@@ -111,7 +111,7 @@ class TestRefreshStatus:
         assert note["priority"] == "normal"
         assert "2026-09-14" in note["subject"] and "2027-01-11" in note["subject"]
         for text in (note["text"], note["summary"]):
-            assert "Stephen Huang" in text and "CMU" in text
+            assert "a CMU student" in text and "CMU" in text
         assert SHEET in note["text"] and URO_PAGE in note["text"]
         assert "only a CMU Andrew account can open" in note["text"]
         assert "data/snapshots/cmu_uro_projects.json" in note["text"]
@@ -318,9 +318,9 @@ class TestOpsScanDetector:
         assert incident["p_priority"] == "normal"
         assert incident["p_scope"] == "cmu_uro_projects"
         assert "CMU research project list" in incident["p_title"]
-        assert "Stephen Huang" in incident["p_summary"]
+        assert "a CMU student" in incident["p_summary"]
         detail = incident["p_detail"]
-        assert detail["contributor"] == "Stephen Huang"
+        assert detail["contributor"] == "a CMU student"
         assert detail["source_sheet_url"] == SHEET
         assert any("Download the Projects List tab" in step for step in detail["how_to_refresh"])
 

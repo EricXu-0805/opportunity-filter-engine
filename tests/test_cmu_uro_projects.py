@@ -78,7 +78,7 @@ class TestSnapshotFile:
         assert meta["snapshot_date"] == "2026-09-14"
         assert meta["valid_until"] == "2027-05-15"
         assert meta["refresh_due"] == "2027-01-11"
-        assert meta["contributor"] == "Stephen Huang"
+        assert meta["contributor"] == "a CMU student"
         assert meta["public_listing_url"] == URO_PAGE
         assert meta["source_sheet_url"] == SHEET
 
@@ -155,7 +155,7 @@ class TestRecords:
             assert r["organization"] == "Carnegie Mellon University"
             assert md["is_active"] is True
             assert md["expires_at"] == "2027-05-15"
-            assert md["source_snapshot"]["contributed_by"] == "Stephen Huang"
+            assert md["source_snapshot"]["contributed_by"] == "a CMU student"
 
     def test_never_refreshed_silently(self, records):
         """A refresh re-emits the snapshot; it does not re-check the sheet."""
