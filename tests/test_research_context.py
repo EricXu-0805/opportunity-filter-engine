@@ -77,10 +77,12 @@ def test_a_snapshot_whose_newest_paper_is_over_ten_years_old_is_not_served():
     # The boundary is the calendar year, and an old list is not kept as 'stale'.
     assert context(_dated(2016), now=datetime(2026, 12, 31, 23, 59, 59, tzinfo=UTC))['status'] == 'stale'
     assert context(_dated(2016), now=datetime(2027, 1, 1, tzinfo=UTC)) == unavailable
-    # Another maintainer's school keeps its list (src/school_scope.py).
-    held, s = record(), _dated(2015)
-    held['school'], s['institution_id'] = 'unc', 'https://openalex.org/I114027177'
-    assert context(s, held)['status'] == 'available'
+    # A school another maintainer built takes the rule too (M159).
+    elsewhere, old, kept = record(), _dated(2015), _dated(2016)
+    elsewhere['school'] = 'unc'
+    old['institution_id'] = kept['institution_id'] = 'https://openalex.org/I114027177'
+    assert context(old, elsewhere) == unavailable
+    assert context(kept, elsewhere)['status'] == 'available'
 
 
 @pytest.mark.parametrize('field,value', [

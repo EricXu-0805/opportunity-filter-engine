@@ -1374,9 +1374,8 @@ def deactivate_retired_title_faculty(opps: list[dict], selected=None,
     The collectors have always dropped a card titled "Emeritus", so no row was
     stored for one; a row stored under a spelling they did not read ("Professor
     Emerit") is retired here, as ``deactivate_trainee_faculty`` retires a
-    trainee's, and keeps its id. The caller holds UIUC with the schools another
-    maintainer owns: its collector lists an emeritus title that sits beside a
-    current role or an active lab.
+    trainee's, and keeps its id. The caller holds UIUC: its collector lists an
+    emeritus title that sits beside a current role or an active lab.
     """
     return _retire_stated(
         opps, lambda opp, meta: is_retired_title(meta.get("faculty_title")),

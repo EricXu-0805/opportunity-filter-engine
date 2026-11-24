@@ -40,8 +40,6 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS
-
 VERIFIED_AUTHOR_ID = "verified_author_id"
 NAME_MATCH = "name_match"
 # Trust withdrawn pending re-judgement by the current gate. Written by the
@@ -164,11 +162,6 @@ def newest_work_is_recent(works: object, *, today: date | None = None) -> bool:
 def works_may_be_served(opp: dict, works: object, *, today: date | None = None) -> bool:
     """Whether ``works``, a non-empty paper list of ``opp``, is recent enough
     to serve (M152). Detail, cards and every writing flow ask this one function."""
-    school = opp.get("school")
-    if isinstance(school, str) and school in SEPARATELY_MAINTAINED_SCHOOLS:
-        # Another maintainer's rows stay as they are until that maintainer
-        # takes the rule (src/school_scope.py).
-        return True
     return newest_work_is_recent(works, today=today)
 
 
