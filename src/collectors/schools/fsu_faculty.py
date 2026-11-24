@@ -269,7 +269,11 @@ SCHOOL: dict = {
             "scrape": {
                 "url": "https://www.bio.fsu.edu/faculty.php",
                 "selectors": {
-                    "card": "div.row:has(> div.col-sm-9 > div.faculty-sm-text)",
+                    # The row whose own col-sm-9 holds the text block (rows
+                    # up to six deep).
+                    "card": ", ".join(
+                        f"{row}:has(div.faculty-sm-text:is({row} > div.col-sm-9 > *))"
+                        for row in faculty_graph.at_each_depth("div.row", 6)),
                     "name": "div.faculty-sm-text h5 a",
                     "link": "div.faculty-sm-text h5 a",
                     "email": "div.faculty-sm-text a[href^='mailto:']",

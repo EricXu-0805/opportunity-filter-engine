@@ -259,7 +259,7 @@ SCHOOL: dict = {
         _grid("ENGE", "Department of Engineering Education",
               ["Engineering Education", "General Engineering"],
               "https://enge.vt.edu/People.html",
-              {"card": "div.vt-text:has(p strong a)", "name": "p strong a",
+              {"card": "div.vt-text:has(a:is(div.vt-text p strong a))", "name": "p strong a",
                "link": "p strong a", "title_re": _TITLE_RE,
                # Emails are Gmail-compose links whose address survives only in
                # the cell TEXT — read the paragraph, not the anchor href.
@@ -399,7 +399,7 @@ SCHOOL: dict = {
         _grid("FREC", "Department of Forest Resources and Environmental Conservation",
               ["Forestry", "Environmental Resources Management"],
               "https://frec.vt.edu/people/Faculty.html",
-              {"card": "div.vt-text:has(p strong)", "name": "p strong",
+              {"card": "div.vt-text:has(strong:is(div.vt-text p strong))", "name": "p strong",
                "link": "a[href*='.html']", "title_re": _TITLE_RE,
                "email": "a[href^='mailto:']",
                # The <br>-separated tail lines after the rank are clean
@@ -409,14 +409,15 @@ SCHOOL: dict = {
               section={"heading": "h3", "include": r"faculty$"}),
         _grid("GEOG", "Department of Geography", ["Geography", "Meteorology"],
               "https://geography.vt.edu/people/faculty.html",
-              {"card": "div.vt-col:has(p a strong), div.vt-col:has(p strong a)",
+              {"card": ("div.vt-col:has(strong:is(div.vt-col p a strong)), "
+                        "div.vt-col:has(a:is(div.vt-col p strong a))"),
                "name": "p a strong, p strong a", "link": "p a[href*='.html']",
                "title_re": _TITLE_RE, "email": "a[href^='mailto:']",
                "research_re": _EXPERTISE_RE}),
         _grid("SBIO", "Department of Sustainable Biomaterials",
               ["Sustainable Biomaterials", "Packaging Systems and Design"],
               "https://sbio.vt.edu/our-people/faculty.html",
-              {"card": "div.vt-col:has(p strong)", "name": "p strong",
+              {"card": "div.vt-col:has(strong:is(div.vt-col p strong))", "name": "p strong",
                "link": "a[href*='.html']", "email": "a[href^='mailto:']",
                "research_re": _EXPERTISE_RE},
               # The whole faculty grid rides under the "Department Head" h2;

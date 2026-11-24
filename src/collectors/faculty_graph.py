@@ -1251,6 +1251,24 @@ def _page_people(soup) -> set[tuple[str, str]]:
     return shown
 
 
+def at_each_depth(compound: str, depths: int) -> list[str]:
+    """``compound`` pinned to each nesting depth within its own kind, outermost first.
+
+    From 3.0 soupsieve takes one step inside ``:has()``, so a card selector cannot
+    say "the row whose own cell holds a mailto" as ``tr:has(> td > a[href^='mailto:'])``,
+    and ``tr:has(a[href^='mailto:']:is(tr > td > *))`` also takes every row around
+    that row. Two rows on one ancestor chain with equally many rows above them are
+    the same row, so pinning both ends to one depth selects what the path did::
+
+        ", ".join(f"{row}:has(a[href^='mailto:']:is({row} > td > *))"
+                  for row in at_each_depth("tr", 6))
+
+    An element with ``depths`` or more of its own kind above it is not selected.
+    """
+    return [compound + (f":is({(compound + ' ') * d}*)" if d else "")
+            + f":not({(compound + ' ') * (d + 1)}*)" for d in range(depths)]
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,

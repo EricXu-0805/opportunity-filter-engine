@@ -23,7 +23,7 @@ live-verified selector families (verified 2026-07-19):
 * ``gu_cards`` — the ``div.gu-block-profile-card`` (a.k.a. ``gu-cards-card``)
   compact card (government, psychology, linguistics, spanish&portuguese,
   german, classics, and the McDonough School of Business area rosters). Person
-  cards are gated with ``:has(p.gu-block-profile-title a)`` (the block is also
+  cards are gated on holding a ``p.gu-block-profile-title a`` (the block is also
   reused for seminar-series / event cards that must be excluded). Name +
   profile link live in ``p.gu-block-profile-title a``; the rank is an inline
   ``p.gu-block-profile-text`` sibling. These cards carry NO inline email — the
@@ -174,7 +174,8 @@ def _cards(short: str, name: str, majors: list[str], url: str) -> dict:
     profile page by the env-gated pass.
     """
     sel: dict = {
-        "card": "div.gu-block-profile-card:has(p.gu-block-profile-title a)",
+        "card": ("div.gu-block-profile-card"
+                 ":has(a:is(div.gu-block-profile-card p.gu-block-profile-title a))"),
         "name": "p.gu-block-profile-title a",
         "name_strip": _NAME_STRIP,
         "link": "p.gu-block-profile-title a",
@@ -256,7 +257,7 @@ def _guprofile(short: str, name: str, majors: list[str], url: str) -> dict:
     # comma tail here (also removes any ", S.J." order post-nominal). McCourt
     # names carry no comma, so this is a no-op there.
     sel: dict = {
-        "card": "div.gu-profile:has(p.gu-profile-title a)",
+        "card": "div.gu-profile:has(a:is(div.gu-profile p.gu-profile-title a))",
         "name": "p.gu-profile-title a",
         "name_strip": r",.*$",
         "link": "p.gu-profile-title a",

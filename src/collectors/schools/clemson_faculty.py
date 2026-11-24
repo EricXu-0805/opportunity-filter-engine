@@ -147,7 +147,7 @@ _CB_FIELD = {
 
 # ---- Powers College of Business grid ---------------------------------------
 _BIZ_SEL = {
-    "card": 'div.columns:has(h4 a[href*="/profiles/"])',
+    "card": 'div.columns:has(a[href*="/profiles/"]:is(div.columns h4 a))',
     "name": "h4 a",
     "link": "h4 a",
     "title": "p strong",

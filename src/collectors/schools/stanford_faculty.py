@@ -274,8 +274,8 @@ SCHOOL: dict = {
          'majors': ['French', 'Italian'],
          'directory_url': 'https://dlcl.stanford.edu/people/faculty',
          'scrape': {'url': 'https://dlcl.stanford.edu/people/faculty',
-                    'selectors': {'card': 'div.hb-card:has(.views-field-custm-department-s- '
-                                          "a[href*='french-and-italian'])",
+                    'selectors': {'card': "div.hb-card:has(a[href*='french-and-italian']"
+                                          ':is(div.hb-card .views-field-custm-department-s- a))',
                                   'name': '.views-field-title a',
                                   'link': '.views-field-title a'}}},
         {'short': 'COMPLIT',
@@ -283,8 +283,8 @@ SCHOOL: dict = {
          'majors': ['Comparative Literature'],
          'directory_url': 'https://dlcl.stanford.edu/people/faculty',
          'scrape': {'url': 'https://dlcl.stanford.edu/people/faculty',
-                    'selectors': {'card': 'div.hb-card:has(.views-field-custm-department-s- '
-                                          "a[href*='comparative-literature'])",
+                    'selectors': {'card': "div.hb-card:has(a[href*='comparative-literature']"
+                                          ':is(div.hb-card .views-field-custm-department-s- a))',
                                   'name': '.views-field-title a',
                                   'link': '.views-field-title a'}}},
         {'short': 'GERMAN',
@@ -292,8 +292,8 @@ SCHOOL: dict = {
          'majors': ['German Studies'],
          'directory_url': 'https://dlcl.stanford.edu/people/faculty',
          'scrape': {'url': 'https://dlcl.stanford.edu/people/faculty',
-                    'selectors': {'card': 'div.hb-card:has(.views-field-custm-department-s- '
-                                          "a[href*='german-studies'])",
+                    'selectors': {'card': "div.hb-card:has(a[href*='german-studies']"
+                                          ':is(div.hb-card .views-field-custm-department-s- a))',
                                   'name': '.views-field-title a',
                                   'link': '.views-field-title a'}}},
         {'short': 'SLAVIC',
@@ -301,8 +301,8 @@ SCHOOL: dict = {
          'majors': ['Slavic Languages and Literatures'],
          'directory_url': 'https://dlcl.stanford.edu/people/faculty',
          'scrape': {'url': 'https://dlcl.stanford.edu/people/faculty',
-                    'selectors': {'card': 'div.hb-card:has(.views-field-custm-department-s- '
-                                          "a[href*='slavic'])",
+                    'selectors': {'card': "div.hb-card:has(a[href*='slavic']"
+                                          ':is(div.hb-card .views-field-custm-department-s- a))',
                                   'name': '.views-field-title a',
                                   'link': '.views-field-title a'}}},
         {'short': 'IBERLAC',
@@ -310,8 +310,8 @@ SCHOOL: dict = {
          'majors': ['Iberian and Latin American Cultures'],
          'directory_url': 'https://dlcl.stanford.edu/people/faculty',
          'scrape': {'url': 'https://dlcl.stanford.edu/people/faculty',
-                    'selectors': {'card': 'div.hb-card:has(.views-field-custm-department-s- '
-                                          "a[href*='iberian-and-latin-american'])",
+                    'selectors': {'card': "div.hb-card:has(a[href*='iberian-and-latin-american']"
+                                          ':is(div.hb-card .views-field-custm-department-s- a))',
                                   'name': '.views-field-title a',
                                   'link': '.views-field-title a'}}},
         {'short': 'ART',
