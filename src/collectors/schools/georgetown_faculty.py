@@ -20,24 +20,24 @@ live-verified selector families (verified 2026-07-19):
   (``_RANK_RE``) since the position line has no stable element; research
   interests via ``research_re_text`` on the "Interests:" row.
 
-* ``gu_cards`` — the ``div.gu-block-profile-card`` (a.k.a. ``gu-cards-card``)
-  compact card (government, psychology, linguistics, spanish&portuguese,
-  german, classics, and the McDonough School of Business area rosters). Person
-  cards are gated on holding a ``p.gu-block-profile-title a`` (the block is also
-  reused for seminar-series / event cards that must be excluded). Name +
-  profile link live in ``p.gu-block-profile-title a``; the rank is an inline
-  ``p.gu-block-profile-text`` sibling. These cards carry NO inline email — the
+* ``gu_cards`` — the ``div.gu-block-people-profiles-card`` compact card
+  (government, psychology, linguistics, spanish&portuguese, german, classics,
+  and the McDonough School of Business area rosters). The site renamed the
+  block's classes from ``gu-block-profile-*`` between the 2026-11-03 and
+  2026-11-10 refreshes; a page's other ``gu-cards-card`` blocks (seminar
+  series, events) do not carry the people class. Name + profile link live in
+  ``p.gu-block-people-profiles-title a``; the rank is an inline
+  ``p.gu-block-people-profiles-text`` sibling. These cards carry NO inline email — the
   env-gated profile pass recovers it from the linked ``/profiles/`` page
   (on-domain depts: classics/german/msb/gov-partial). Cards linking to
   gufaculty360 (a Salesforce Lightning SPA) cannot be enriched, so email
   coverage on those depts stays partial by design.
 
-* ``gu_profile`` — the older ``div.wp-block-gu-profile`` block (computer
-  science, chemistry). CS names sit in an ``h2.wp-block-heading a`` with a
-  ``Position:``/``Email:``/``Interests:`` labelled paragraph; chemistry packs
-  everything into a single ``p.wp-block-paragraph`` whose first anchor is the
-  name and whose ``<br>``-separated tail carries rank + room + phone + a
-  mailto. Both share the rank title_re + inline mailto.
+* ``gu_profile`` — the older ``div.wp-block-gu-profile`` block (chemistry),
+  which packs everything into a single ``p.wp-block-paragraph`` whose first
+  anchor is the name and whose ``<br>``-separated tail carries rank + room +
+  phone + a mailto. Computer science used this block until its page moved to
+  gu_media (last read here 2026-08-18).
 
 * ``gu_deck`` — the ``div.wp-block-gu-profile-card`` card-deck block
   (economics). ``h3.card-title`` name, ``p.card-title`` rank, an inline mailto,
@@ -62,12 +62,16 @@ four new selector families/bespoke helpers:
   ``p.excerpt strong`` rank, inline mailto, gufaculty360 profile link.
 * Anthropology (``_deck_gu360``) — the same wp-block-gu-profile-card DECK as
   economics but linking to gufaculty360 (no inline email).
-* McCourt School of Public Policy + School of Nursing (``_guprofile``) — the newer
-  ``div.gu-profile`` filtered-post-list card (``p.gu-profile-title a`` + rank
-  ``p.gu-profile-text``); gufaculty360 / email-less ``/profiles/`` links.
-* School of Health (``_cards``) — the standard gu-block-profile-card grid.
+* School of Nursing (``_guprofile``) — the newer ``div.gu-profile``
+  filtered-post-list card (``p.gu-profile-title a`` + rank
+  ``p.gu-profile-text``); email-less ``/profiles/`` links.
+* McCourt School of Public Policy (``_person``) — the ``div.wp-block-gu-person``
+  block (schema.org Person: ``[itemprop=name] a`` + ``[itemprop=jobTitle]``);
+  email-less ``/profiles/`` links. It was built on ``_guprofile`` and has not
+  been read since that day (2026-07-21).
+* School of Health (``_cards``) — the standard compact-card grid.
 * MSB Operations-and-Analytics + Strategy/Economics/Ethics/Public-Policy — the
-  two remaining area pages now serve the standard gu-block-profile-card template
+  two remaining area pages now serve the standard compact-card template
   (previously a card-less template) and wire in via ``_cards``; the MSBA URL was
   repointed to the renamed ``/accounting-business-law/`` slug.
 
@@ -79,7 +83,7 @@ Still deferred (2026-07-20 recon, concrete proof):
   networkidle — never idles — and 12s domcontentloaded settle) still yields
   zero profile cards. SFS's PRIMARY degree faculty are reached via program
   subsites: STIA is wired above. The regional-studies centers (African/Asian/
-  Latin American/Arab/Eurasian Studies) publish gu-block-profile-card rosters
+  Latin American/Arab/Eurasian Studies) publish compact-card rosters
   too, but they are AFFILIATED cross-appointment lists (e.g. CLAS 63, African
   41) drawn from departments already covered here — folding them in would
   double-count the same professors under different (department vs center)
@@ -116,7 +120,11 @@ _RANK_RE = (
 _INTERESTS_RE = (
     r"Interests?\s*:\s*(.+?)"
     r"(?:\s+Email\b|\s+Office\s+Hours\b|\s+View\b|\s+Personal\s+Website\b"
-    r"|\s+Website\b|\s+Bio\b|$)"
+    r"|\s+Website\b|\s+Bio\b"
+    # Computer science and anthropology cards end in a "Dr. <Name>’s website"
+    # / "… Profile" link (chemistry, economics and neuroscience share this
+    # pattern and have no such link).
+    r"|\s+Dr\.\s+\S+(?:\s+\S+){0,2}?[’'`]s?\s+(?:[Ww]ebsite|[Pp]rofile)\b|$)"
 )
 
 # Faculty pages already role-scope to ladder faculty; a light drop prunes any
@@ -148,15 +156,16 @@ _ENRICH = {
 
 
 def _media(short: str, name: str, majors: list[str], url: str, *,
-           enrich: dict | None = None) -> dict:
+           enrich: dict | None = None, link: str = "a.gu-block-link-cta",
+           title_re: str = _RANK_RE) -> dict:
     """A department on the modern gu-block Media&Text component."""
     sel: dict = {
         "card": "div.gu-block-media-text",
         "name": "h2.gu-block-image-cta-text-content-heading, h2",
         "name_strip": _NAME_STRIP,
-        "link": "a.gu-block-link-cta",
+        "link": link,
         "email": "a[href^='mailto:']",
-        "title_re": _RANK_RE,
+        "title_re": title_re,
         "research_re_text": _INTERESTS_RE,
     }
     scrape: dict = {"url": url, "selectors": sel, "ladder_filter": _LADDER}
@@ -167,19 +176,18 @@ def _media(short: str, name: str, majors: list[str], url: str, *,
 
 
 def _cards(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A department on the compact gu-block Profile-Card component.
+    """A department on the compact gu-block People-Profiles card.
 
-    Name + profile link in ``p.gu-block-profile-title a``; inline rank in the
-    ``p.gu-block-profile-text`` sibling; email recovered from the linked
-    profile page by the env-gated pass.
+    Name + profile link in ``p.gu-block-people-profiles-title a``; inline rank
+    in the ``p.gu-block-people-profiles-text`` sibling; email recovered from the
+    linked profile page by the env-gated pass.
     """
     sel: dict = {
-        "card": ("div.gu-block-profile-card"
-                 ":has(a:is(div.gu-block-profile-card p.gu-block-profile-title a))"),
-        "name": "p.gu-block-profile-title a",
+        "card": "div.gu-block-people-profiles-card",
+        "name": "p.gu-block-people-profiles-title a",
         "name_strip": _NAME_STRIP,
-        "link": "p.gu-block-profile-title a",
-        "title": "p.gu-block-profile-text",
+        "link": "p.gu-block-people-profiles-title a",
+        "title": "p.gu-block-people-profiles-text",
     }
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url,
@@ -188,7 +196,7 @@ def _cards(short: str, name: str, majors: list[str], url: str) -> dict:
 
 
 def _wp(short: str, name: str, majors: list[str], url: str, name_sel: str) -> dict:
-    """A department on the legacy wp-block-gu-profile block (CS/chemistry)."""
+    """A department on the legacy wp-block-gu-profile block (chemistry)."""
     sel: dict = {
         "card": "div.wp-block-gu-profile",
         "name": name_sel,
@@ -243,25 +251,41 @@ def _deck_gu360(short: str, name: str, majors: list[str], url: str) -> dict:
 
 def _guprofile(short: str, name: str, majors: list[str], url: str) -> dict:
     """The newer ``div.gu-profile`` (a.k.a. ``gu-block gu-container gu-profile``)
-    filtered-post-list card used by the McCourt School of Public Policy and the
-    School of Nursing full-time rosters. Name + profile link live in
-    ``p.gu-profile-title a`` (the ``title-link``); the rank is the sibling
-    ``p.gu-profile-text``. The CTA points at either the gufaculty360 Salesforce
-    record (McCourt) or an on-domain ``/profiles/`` page that carries no public
-    email (Nursing) — so no profile-enrich pass is wired and these records land
-    name+rank only. Emeritus/adjunct pruned by the shared ladder filter.
+    filtered-post-list card used by the School of Nursing full-time roster.
+    Name + profile link live in ``p.gu-profile-title a`` (the ``title-link``);
+    the rank is the sibling ``p.gu-profile-text``. The CTA points at an
+    on-domain ``/profiles/`` page that carries no public email — so no
+    profile-enrich pass is wired and these records land name+rank only.
+    Emeritus/adjunct pruned by the shared ladder filter.
     """
     # Nursing lists every name with a long, comma-separated credential train
     # ("Intima Alrimawi, PhD, MSN, MPH, BSN (RN), FAAN") — the engine's generic
     # credential stripper trips on the "(RN)" parenthetical, so peel the whole
-    # comma tail here (also removes any ", S.J." order post-nominal). McCourt
-    # names carry no comma, so this is a no-op there.
+    # comma tail here (also removes any ", S.J." order post-nominal).
     sel: dict = {
         "card": "div.gu-profile:has(a:is(div.gu-profile p.gu-profile-title a))",
         "name": "p.gu-profile-title a",
         "name_strip": r",.*$",
         "link": "p.gu-profile-title a",
         "title": "p.gu-profile-text",
+    }
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": url,
+            "scrape": {"url": url, "selectors": sel, "ladder_filter": _LADDER}}
+
+
+def _person(short: str, name: str, majors: list[str], url: str) -> dict:
+    """The ``div.wp-block-gu-person`` block (schema.org Person) of the McCourt
+    School of Public Policy roster: name + ``/profiles/`` link in
+    ``[itemprop=name] a``, rank in ``[itemprop=jobTitle]``. The profile pages
+    carry no public email, so these records land name+rank only.
+    """
+    sel: dict = {
+        "card": "div.wp-block-gu-person",
+        "name": "[itemprop='name'] a",
+        "name_strip": _NAME_STRIP,
+        "link": "[itemprop='name'] a",
+        "title": "[itemprop='jobTitle']",
     }
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url,
@@ -356,9 +380,17 @@ SCHOOL: dict = {
         "on the arrangement; ask the professor."
     ),
     "departments": [
-        # ---- Georgetown College — natural sciences (legacy gu-profile) ------
-        _wp("CS", "Department of Computer Science", ["Computer Science"],
-            "https://cs.georgetown.edu/faculty/", "h2.wp-block-heading a"),
+        # ---- Georgetown College — natural sciences -------------------------
+        # Moved here from the legacy block; its button is the person's own
+        # site or gufaculty360 record, under another class than "Bio". Each
+        # card labels its lines, so the title is the whole "Position:" line:
+        # the shared rank pattern keeps "Associate Professor" of "Associate
+        # Professor Emeritus", which then passes the ladder filter.
+        {**_media("CS", "Department of Computer Science", ["Computer Science"],
+                  "https://cs.georgetown.edu/faculty/",
+                  link="a.gu-block-image-text-cta-text-content-link",
+                  title_re=r"Position\s*:\s*([\s\S]+?)(?=\s+(?:E-?mail|Interests?)\s*:|$)"),
+         "id_names": {"Balasubramanian Kalyanasundaram": "Bala Kalyanasundaram"}},
         _wp("CHEM", "Department of Chemistry", ["Chemistry"],
             "https://chemistry.georgetown.edu/faculty/",
             "p.wp-block-paragraph a:first-of-type"),
@@ -431,9 +463,25 @@ SCHOOL: dict = {
         _deck_gu360("ANTH", "Department of Anthropology", ["Anthropology"],
                     "https://anthropology.georgetown.edu/people/"),
         # ---- McCourt School of Public Policy -------------------------------
-        _guprofile("MCCT", "McCourt School of Public Policy",
+        # The new page writes ten stored people another way (a middle
+        # initial dropped or added, a first name in another form). Each
+        # surname is the only one of its kind on the page and in the stored
+        # rows, with the same rank.
+        {**_person("MCCT", "McCourt School of Public Policy",
                    ["Public Policy"],
                    "https://mccourt.georgetown.edu/people/faculty/mccourt-faculty/"),
+         "id_names": {
+             "Andreas Kern": "Andreas T. Kern",
+             "Day Manoli": "Dayanand Manoli",
+             "Eugene Dionne": "Eugene J. Dionne",
+             "Harry Holzer": "Harry J. Holzer",
+             "James Habyarimana": "James P. Habyarimana",
+             "Jonathan Ladd": "Jonathan M. Ladd",
+             "Meredith Wimberly": "Meri Wimberly",
+             "Nada Eissa": "Nada O. Eissa",
+             "Paul C. Treacy": "Paul Treacy",
+             "Wesley Joe": "Wesley Y. Joe",
+         }},
         # ---- School of Nursing / School of Health --------------------------
         _guprofile("NURS", "School of Nursing", ["Nursing"],
                    "https://nursing.georgetown.edu/about/"
