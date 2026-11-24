@@ -1350,6 +1350,12 @@ class TestADerivedPiNameIsNotServed:
         program = {**listing, "source": "nsf_reu", "source_type": "reu",
                    "opportunity_type": "summer_program"}
         assert projector(program)["pi_name"] == "Example Analytics"
+        # One Handshake internship posting carries the same word; a research
+        # job posted there can name a real PI.
+        assert "pi_name" not in projector({**listing, "source": "handshake"})
+        job = {**listing, "source": "handshake", "source_type": "job",
+               "opportunity_type": "research"}
+        assert projector(job)["pi_name"] == "Example Analytics"
 
 
 @pytest.mark.parametrize("projector", [_redact, _list_card, _match_card])

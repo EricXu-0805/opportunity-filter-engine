@@ -361,8 +361,12 @@ def pi_name_basis(canonical: dict) -> str | None:
     # An internship listing is a company's posting and has no PI: the
     # collector writes None. A name there is the word before "Group" or "Lab"
     # in the company, which the contact pass wrote until 2026-11-21 — with no
-    # stamp on 47 listings retired that June to August.
-    if canonical.get("source") == "simplify_internships" and canonical.get("pi_name"):
+    # stamp on 47 listings retired that June to August. One Handshake
+    # internship posting carries the same; a research job posted there can
+    # name a real PI and is left alone.
+    internship_posting = canonical.get("source") == "simplify_internships" or (
+        canonical.get("source") == "handshake" and canonical.get("source_type") == "internship")
+    if internship_posting and canonical.get("pi_name"):
         return BASIS_TEXT_SCAN
     return None
 
