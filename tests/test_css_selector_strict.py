@@ -1,7 +1,7 @@
 """Every CSS selector a collector hands soupsieve must compile under its strict rules.
 
-soupsieve is not pinned (it rides in with beautifulsoup4), so CI and the refresh
-runner install its latest release. From 3.0 it parses strictly by default: a
+requirements.txt pins soupsieve 4 wherever the interpreter can run it, so CI and
+the refresh runner use it. From 3.0 it parses strictly by default: a
 relative selector inside ``:has()`` may be ONE compound after its leading
 combinator (``:has(> ul a)`` and ``:has(.name a)`` are rejected), and ``:has()``
 may not sit directly inside another ``:has()``. A rejected selector raises inside
