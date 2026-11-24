@@ -452,13 +452,14 @@ class TestRecentListsOnly:
         mixed = [{"title": "Undated"}, *_aged(3)]
         assert verified_recent_works(_verified(mixed)) == mixed
 
-    def test_separately_maintained_schools_keep_their_lists(self):
-        # Another maintainer's rows: the rule counts them and leaves them alone.
+    @pytest.mark.parametrize("school", ["bc", "emory", "georgetown", "nyu", "tufts", "uga", "unc", "uva"])
+    def test_a_school_another_maintainer_built_takes_the_rule(self, school):
+        # Until 2026-11-24 these schools' lists were served whatever their age (M159).
         from backend.lib.public_opportunity_detail import project_public_detail
-        from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS
 
-        for school in sorted(SEPARATELY_MAINTAINED_SCHOOLS):
-            opp = _verified(_aged(11), school=school)
-            assert verified_recent_works(opp) == opp["metadata"]["recent_works"], school
-            assert project_public_detail(opp)["metadata"]["recent_works"] == opp["metadata"]["recent_works"], school
-        assert verified_recent_works(_verified(_aged(11), school="uiuc")) == []
+        old = _verified(_aged(11), school=school)
+        assert verified_recent_works(old) == []
+        assert not any(key in project_public_detail(old)["metadata"] for key in _PUBLICATION_KEYS)
+        kept = _verified(_aged(10), school=school)
+        assert verified_recent_works(kept) == kept["metadata"]["recent_works"]
+        assert project_public_detail(kept)["metadata"]["recent_works"] == kept["metadata"]["recent_works"]

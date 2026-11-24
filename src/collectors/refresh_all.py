@@ -27,7 +27,7 @@ from src.normalizers.deactivate_stale_faculty import (
     finalize_unit_ledger,
     observed_profile_pages,
 )
-from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS, deactivate_unsupported_schools
+from src.school_scope import deactivate_unsupported_schools
 
 
 def _faculty_unit_ledger(scraped: list[dict]) -> dict[str, int]:
@@ -1737,14 +1737,13 @@ def refresh_all(
         # titles, then graduate students and postdocs, are retired on every
         # run, before any unit ledger counts active rows
         # (deactivate_deceased_faculty, deactivate_retired_title_faculty,
-        # deactivate_trainee_faculty). UIUC's collector decides which emeritus
-        # titles stay listed, so its rows are counted, not changed.
-        deceased = deactivate_deceased_faculty(
-            all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
+        # deactivate_trainee_faculty), in every school the run refreshes. One
+        # exception: UIUC's collector decides which emeritus titles stay
+        # listed, so the retired-title pass counts UIUC's rows and leaves them.
+        deceased = deactivate_deceased_faculty(all_opps, selected)
         retired_titles = deactivate_retired_title_faculty(
-            all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS | {"uiuc"})
-        trainees = deactivate_trainee_faculty(
-            all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
+            all_opps, selected, held=frozenset({"uiuc"}))
+        trainees = deactivate_trainee_faculty(all_opps, selected)
 
         if simplify_ok:
             simplify_stale = deactivate_simplify_stale(all_opps, simplify_active_ids)
@@ -1926,26 +1925,25 @@ def refresh_all(
         unsupported = deactivate_unsupported_schools(all_opps)
         summary["sources"]["unsupported_schools"] = {**unsupported, "status": "ok"}
         summary["sources"]["deceased_listings"] = {**deceased, "status": "ok"}
-        if deceased["deactivated"] or deceased["held"]:
+        if deceased["deactivated"]:
             logger.info(
                 "deceased_listings: retired %d row(s) whose name or title says the "
-                "person has died %s; left %s to their maintainer",
-                deceased["deactivated"], deceased["by_school"], deceased["held"],
+                "person has died %s",
+                deceased["deactivated"], deceased["by_school"],
             )
         summary["sources"]["retired_titles"] = {**retired_titles, "status": "ok"}
         if retired_titles["deactivated"] or retired_titles["held"]:
             logger.info(
                 "retired_titles: retired %d emeritus/retired row(s) %s; left %s to "
-                "their maintainer or, at UIUC, to its collector",
+                "UIUC's collector",
                 retired_titles["deactivated"], retired_titles["by_school"],
                 retired_titles["held"],
             )
         summary["sources"]["trainee_titles"] = {**trainees, "status": "ok"}
-        if trainees["deactivated"] or trainees["held"]:
+        if trainees["deactivated"]:
             logger.info(
-                "trainee_titles: retired %d graduate student/postdoc row(s) %s; "
-                "left %s to their maintainer",
-                trainees["deactivated"], trainees["by_school"], trainees["held"],
+                "trainee_titles: retired %d graduate student/postdoc row(s) %s",
+                trainees["deactivated"], trainees["by_school"],
             )
         if unsupported["deactivated"]:
             logger.info(

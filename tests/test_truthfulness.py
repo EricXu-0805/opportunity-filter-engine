@@ -44,13 +44,15 @@ from src.parsers.llm_tagger import (
     _detect_paid_from_text,
     apply_updates,
 )
-from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS
 
 SCHOOL = {
     "id_prefix": "test", "source": "test_faculty", "organization": "Test University",
     "location": "Testville, TS", "school_slug": "uiuc", "audience": "open",
 }
 DEPT = {"short": "CS", "name": "Department of Computer Science", "directory_url": "https://cs.test.edu/people"}
+# The schools another maintainer built. Until 2026-11-24 the title rules
+# counted their rows and kept their cards (M159).
+BUILT_BY_ANOTHER_MAINTAINER = ("bc", "emory", "georgetown", "nyu", "tufts", "uga", "unc", "uva")
 
 
 def _person(**kw):
@@ -177,10 +179,13 @@ class TestPositionUnknown:
         kept = fg_normalize(SCHOOL, DEPT, _person(title="Postdoctoral Fellow and Lecturer"))
         assert kept["metadata"]["is_active"] is True
 
-    def test_a_separately_maintained_school_keeps_its_trainee_rows(self):
-        maintained = {**SCHOOL, "school_slug": next(iter(SEPARATELY_MAINTAINED_SCHOOLS))}
-        rec = fg_normalize(maintained, DEPT, _person(title="Postdoctoral Scholar"))
-        assert rec["metadata"]["is_active"] is True
+    @pytest.mark.parametrize("slug", BUILT_BY_ANOTHER_MAINTAINER)
+    def test_a_school_another_maintainer_built_drops_its_trainee_cards(self, slug):
+        school = {**SCHOOL, "school_slug": slug}
+        for title in ("PhD; Major Professor: Doe", "Postdoctoral Researcher", "Post Doctoral Fellow"):
+            assert fg_normalize(school, DEPT, _person(title=title)) is None, title
+        kept = fg_normalize(school, DEPT, _person(title="Postdoctoral Fellow and Lecturer"))
+        assert kept["metadata"]["is_active"] is True
 
     @pytest.mark.parametrize("title", [
         "Professor Emeritus",
@@ -222,12 +227,13 @@ class TestPositionUnknown:
         kept = fg_normalize(SCHOOL, DEPT, _person(title="Professor of Emergency Medicine"))
         assert kept["metadata"]["is_active"] is True
 
-    def test_a_separately_maintained_school_keeps_a_misspelt_emeritus_card(self):
-        maintained = {**SCHOOL, "school_slug": next(iter(SEPARATELY_MAINTAINED_SCHOOLS))}
-        rec = fg_normalize(maintained, DEPT, _person(title="Professor Emerit"))
-        assert rec["metadata"]["is_active"] is True
-        # The spellings read before this rule are dropped there as they were.
-        assert fg_normalize(maintained, DEPT, _person(title="Professor Emeritus")) is None
+    @pytest.mark.parametrize("slug", BUILT_BY_ANOTHER_MAINTAINER)
+    def test_a_school_another_maintainer_built_drops_a_misspelt_emeritus_card(self, slug):
+        school = {**SCHOOL, "school_slug": slug}
+        for title in ("Professor Emerit", "Professor Emeritus"):
+            assert fg_normalize(school, DEPT, _person(title=title)) is None, title
+        kept = fg_normalize(school, DEPT, _person(title="Professor of Emergency Medicine"))
+        assert kept["metadata"]["is_active"] is True
 
     @pytest.mark.parametrize("name, title", [
         ("Jane Roe", "In Memoriam, Professor"),
@@ -273,10 +279,14 @@ class TestPositionUnknown:
         kept = fg_normalize(SCHOOL, DEPT, _person(title="Jane Roe Memorial Professor of History"))
         assert kept["metadata"]["is_active"] is True
 
-    def test_a_separately_maintained_school_keeps_a_card_that_says_the_person_has_died(self):
-        maintained = {**SCHOOL, "school_slug": next(iter(SEPARATELY_MAINTAINED_SCHOOLS))}
-        rec = fg_normalize(maintained, DEPT, _person(title="In Memoriam, Professor"))
-        assert rec["metadata"]["is_active"] is True
+    @pytest.mark.parametrize("slug", BUILT_BY_ANOTHER_MAINTAINER)
+    def test_a_school_another_maintainer_built_drops_a_card_that_says_the_person_has_died(self, slug):
+        school = {**SCHOOL, "school_slug": slug}
+        for person in (_person(title="In Memoriam, Professor"),
+                       _person(name="In Memoriam: Jane Doe", title="Senior Lecturer")):
+            assert fg_normalize(school, DEPT, person) is None, person
+        kept = fg_normalize(school, DEPT, _person(title="Jane Roe Memorial Professor of History"))
+        assert kept["metadata"]["is_active"] is True
 
 
 # ---------------------------------------------------------------------------

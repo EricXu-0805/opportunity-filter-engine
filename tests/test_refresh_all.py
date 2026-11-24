@@ -232,6 +232,11 @@ def _seed_faculty(source, ident, days_ago):
     }
 
 
+# The schools another maintainer built. Until 2026-11-24 the title passes
+# counted their rows and left them (M159).
+_BUILT_BY_ANOTHER_MAINTAINER = ("bc", "emory", "georgetown", "nyu", "tufts", "uga", "unc", "uva")
+
+
 def _stub_with_processed_file(monkeypatch, tmp_path, seeded):
     _stub_all_collectors(monkeypatch, tmp_path)
     processed = tmp_path / "opportunities.json"
@@ -946,9 +951,10 @@ def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
                   "Graduate Student Advisor: Professor Doe")
     professor = row("faculty-umich-earth-0000dddd", "umich", "Associate Professor")
     elsewhere = row("faculty-osu-earth-0000eeee", "osu", "Graduate Student")
-    held = row("faculty-uga-ads-0000ffff", "uga", "PhD; Major Professor: Doe")
+    built_elsewhere = [row(f"faculty-{slug}-ads-0000ffff", slug, "PhD; Major Professor: Doe")
+                       for slug in _BUILT_BY_ANOTHER_MAINTAINER]
     processed = _stub_with_processed_file(
-        monkeypatch, tmp_path, [student, professor, elsewhere, held])
+        monkeypatch, tmp_path, [student, professor, elsewhere, *built_elsewhere])
 
     active_at_ledger = []
     finalize = refresh_all.finalize_unit_ledger
@@ -966,7 +972,7 @@ def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
 
     monkeypatch.setattr(refresh_all, "finalize_unit_ledger", recording_finalize)
     monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
-    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uga"})
+    summary = refresh_all.refresh_all(deep=True, schools={"umich", *_BUILT_BY_ANOTHER_MAINTAINER})
 
     saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
     assert saved[student["id"]]["metadata"]["is_active"] is False
@@ -974,10 +980,13 @@ def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     assert saved[professor["id"]]["metadata"]["is_active"] is True
     assert saved[elsewhere["id"]]["metadata"]["is_active"] is True
     assert active_at_ledger == [False]
-    assert summary["sources"]["trainee_titles"]["by_school"] == {"umich": 1}
-    # Another maintainer's school is counted, not changed.
-    assert saved[held["id"]]["metadata"]["is_active"] is True
-    assert summary["sources"]["trainee_titles"]["held"] == {"uga": 1}
+    # The schools another maintainer built take the rule like any other.
+    for retired in built_elsewhere:
+        assert saved[retired["id"]]["metadata"]["is_active"] is False
+        assert saved[retired["id"]]["metadata"]["deactivation_reason"] == "trainee_title"
+    assert summary["sources"]["trainee_titles"]["by_school"] == {
+        "umich": 1, **dict.fromkeys(_BUILT_BY_ANOTHER_MAINTAINER, 1)}
+    assert summary["sources"]["trainee_titles"]["held"] == {}
 
 
 def test_the_refresh_retires_rows_that_say_the_person_has_died_before_the_unit_ledgers_count(
@@ -997,9 +1006,10 @@ def test_the_refresh_retires_rows_that_say_the_person_has_died_before_the_unit_l
     by_name = row("faculty-umich-earth-0001bbbb", "umich", "Professor", "Jane Roe (In Memoriam)")
     chair = row("faculty-umich-earth-0001cccc", "umich", "Jane Roe Memorial Professor")
     elsewhere = row("faculty-osu-earth-0001dddd", "osu", "Professor of History, Deceased")
-    held = row("faculty-uga-ads-0001eeee", "uga", "Professor", "In Memoriam: Jane Roe")
+    built_elsewhere = [row(f"faculty-{slug}-ads-0001eeee", slug, "Professor", "In Memoriam: Jane Roe")
+                       for slug in _BUILT_BY_ANOTHER_MAINTAINER]
     processed = _stub_with_processed_file(
-        monkeypatch, tmp_path, [by_title, by_name, chair, elsewhere, held])
+        monkeypatch, tmp_path, [by_title, by_name, chair, elsewhere, *built_elsewhere])
 
     active_at_ledger = []
     finalize = refresh_all.finalize_unit_ledger
@@ -1017,20 +1027,20 @@ def test_the_refresh_retires_rows_that_say_the_person_has_died_before_the_unit_l
 
     monkeypatch.setattr(refresh_all, "finalize_unit_ledger", recording_finalize)
     monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
-    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uga"})
+    summary = refresh_all.refresh_all(deep=True, schools={"umich", *_BUILT_BY_ANOTHER_MAINTAINER})
 
     saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
-    assert len(saved) == 5
-    for rid in (by_title["id"], by_name["id"]):
+    assert len(saved) == 12
+    # The schools another maintainer built take the rule like any other.
+    for rid in (by_title["id"], by_name["id"], *(r["id"] for r in built_elsewhere)):
         assert saved[rid]["metadata"]["is_active"] is False
         assert saved[rid]["metadata"]["deactivation_reason"] == "listed_as_deceased"
     assert saved[chair["id"]]["metadata"]["is_active"] is True
     assert saved[elsewhere["id"]]["metadata"]["is_active"] is True
     assert active_at_ledger == [False, False]
     assert summary["sources"]["deceased_listings"] == {
-        "deactivated": 2, "by_school": {"umich": 2}, "held": {"uga": 1}, "status": "ok"}
-    # Another maintainer's school is counted, not changed.
-    assert saved[held["id"]]["metadata"]["is_active"] is True
+        "deactivated": 10, "by_school": {"umich": 2, **dict.fromkeys(_BUILT_BY_ANOTHER_MAINTAINER, 1)},
+        "held": {}, "status": "ok"}
 
 
 def test_the_refresh_retires_rows_stored_under_an_emeritus_title_but_not_uiucs(
@@ -1038,8 +1048,8 @@ def test_the_refresh_retires_rows_stored_under_an_emeritus_title_but_not_uiucs(
 ):
     """A row stored under an emeritus title, in any spelling the rule reads, is
     retired on every run before the unit ledgers count. UIUC's collector lists
-    an emeritus title beside a current role, so UIUC rows are counted, not
-    changed, like another maintainer's; a row that also says the person has
+    an emeritus title beside a current role, so UIUC rows, and no other
+    school's, are counted, not changed; a row that also says the person has
     died keeps that reason."""
     def row(rid, school, title):
         seeded = _seed_faculty(f"{school}_faculty", rid, 0)
@@ -1052,10 +1062,11 @@ def test_the_refresh_retires_rows_stored_under_an_emeritus_title_but_not_uiucs(
     late = row("faculty-umich-earth-0002cccc", "umich", "In Memoriam, Professor Emertius")
     professor = row("faculty-umich-earth-0002dddd", "umich", "Professor of Emergency Medicine")
     uiuc = row("faculty-earth-0002eeee", "uiuc", "Research Professor, Professor Emeritus")
-    held = row("faculty-uga-ads-0002ffff", "uga", "Professor Emerit")
+    built_elsewhere = [row(f"faculty-{slug}-ads-0002ffff", slug, "Professor Emerit")
+                       for slug in _BUILT_BY_ANOTHER_MAINTAINER]
     elsewhere = row("faculty-osu-earth-00021111", "osu", "Professor Emerit")
     processed = _stub_with_processed_file(
-        monkeypatch, tmp_path, [emerit, emertius, late, professor, uiuc, held, elsewhere])
+        monkeypatch, tmp_path, [emerit, emertius, late, professor, uiuc, *built_elsewhere, elsewhere])
 
     active_at_ledger = []
     finalize = refresh_all.finalize_unit_ledger
@@ -1073,20 +1084,21 @@ def test_the_refresh_retires_rows_stored_under_an_emeritus_title_but_not_uiucs(
 
     monkeypatch.setattr(refresh_all, "finalize_unit_ledger", recording_finalize)
     monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
-    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uga", "uiuc"})
+    summary = refresh_all.refresh_all(
+        deep=True, schools={"umich", "uiuc", *_BUILT_BY_ANOTHER_MAINTAINER})
 
     saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
-    assert len(saved) == 7
-    for rid in (emerit["id"], emertius["id"]):
+    assert len(saved) == 14
+    for rid in (emerit["id"], emertius["id"], *(r["id"] for r in built_elsewhere)):
         assert saved[rid]["metadata"]["is_active"] is False
         assert saved[rid]["metadata"]["deactivation_reason"] == "retired_title"
     assert saved[late["id"]]["metadata"]["deactivation_reason"] == "listed_as_deceased"
     assert active_at_ledger == [False, False]
-    for rid in (professor["id"], uiuc["id"], held["id"], elsewhere["id"]):
+    for rid in (professor["id"], uiuc["id"], elsewhere["id"]):
         assert saved[rid]["metadata"]["is_active"] is True
     assert summary["sources"]["retired_titles"] == {
-        "deactivated": 2, "by_school": {"umich": 2}, "held": {"uiuc": 1, "uga": 1},
-        "status": "ok"}
+        "deactivated": 10, "by_school": {"umich": 2, **dict.fromkeys(_BUILT_BY_ANOTHER_MAINTAINER, 1)},
+        "held": {"uiuc": 1}, "status": "ok"}
     assert summary["sources"]["deceased_listings"]["by_school"] == {"umich": 1}
 
 
