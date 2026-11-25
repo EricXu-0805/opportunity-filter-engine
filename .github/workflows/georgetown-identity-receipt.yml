@@ -1,0 +1,50 @@
+name: Verify the two published Georgetown English IDs
+on:
+  push:
+    branches: [codex/m186-reconcile-published-keywords]
+    paths: [.github/workflows/georgetown-identity-receipt.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: 1ac6b2125108fe7397a58fd4c9402ce57dc4e51d
+          persist-credentials: false
+      - name: Verify the official roster and prepare the reviewed shard blob
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, re, subprocess
+          from html import unescape
+          from pathlib import Path
+          from urllib.request import urlopen
+          path=Path('data/processed/shards/georgetown.json')
+          def blob(raw): return hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+          raw=path.read_bytes()
+          assert blob(raw)=='0b20f8f7482c27350d913c2980427369928335bd'
+          doc=json.loads(raw); by_id={r['id']: r for r in doc}
+          old=by_id['faculty-georgetown-engl-9b02f5b4']; new=by_id['faculty-georgetown-engl-be9bd333']
+          url='https://english.georgetown.edu/people/full-time-faculty-2/'
+          html=unescape(urlopen(url,timeout=30).read().decode())
+          title=re.search(r'<h2[^>]*>\s*Marisa Holmes\s*</h2>',html,flags=re.I)
+          assert title is not None
+          card=html[title.start():].split('</h2>',2)
+          body='</h2>'.join(card[:2])
+          assert '003UH00000VIhW6YAL' in body and 'marisa.koulen' in body
+          assert new['url']==url and '003UH00000VIhW6YAL' in old['url']
+          old['metadata'].update(is_active=False,duplicate_of=new['id'],deactivation_reason='duplicate_of_live_record',deactivated_at='2026-11-25')
+          for field in ('url','source_url'):
+              if new.get(field)==url: new[field]=old['url']
+          if (new.get('application') or {}).get('application_url')==url: new['application']['application_url']=old['url']
+          candidate=json.dumps(doc,ensure_ascii=False,separators=(',',':')).encode()+raw[len(raw.rstrip(b'\n')):]
+          checksum=blob(candidate);assert checksum=='16d3b3c269b055862a9106c11717c00f71045b6d'
+          payload=json.dumps({'encoding':'base64','content':base64.b64encode(candidate).decode()}).encode()
+          response=subprocess.check_output(['gh','api','repos/{owner}/{repo}/git/blobs','--input','-'],input=payload)
+          assert json.loads(response)['sha']==checksum
+          print('Original rows remain resolvable:',old['id'],'->',new['id'],checksum)
+          PY
