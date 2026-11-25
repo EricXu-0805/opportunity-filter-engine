@@ -44,7 +44,36 @@ describe('legacy attachment protocol and failures', () => {
     expect(await operations.list()).toEqual([{ name: 'resume.pdf', sizeBytes: 14, mimeType: 'application/pdf', createdAt: row.created_at }]);
     expect(mocks.from).toHaveBeenCalledWith(ATTACHMENTS_BUCKET);
     expect(ATTACHMENTS_BUCKET).toBe('tracker-attachments');
-    expect(mocks.list).toHaveBeenCalledWith(`${U1}/${OPP}`, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } }, { signal: expect.any(AbortSignal) });
+    expect(mocks.list).toHaveBeenCalledWith(`${U1}/${OPP}`, { limit: 100, offset: 0, sortBy: { column: 'name', order: 'asc' } }, { signal: expect.any(AbortSignal) });
+  });
+  const namedRows = (count: number) => Array.from({ length: count }, (_, i) => {
+    const name = `file-${String(i).padStart(3, '0')}.pdf`;
+    return { ...row, name, id: name };
+  });
+  it.each([100, 101, 199, 205])('reads every file when Storage lists %i raw entries', async count => {
+    const objects = namedRows(count);
+    objects[1].created_at = '2025-01-01T00:00:00Z';
+    objects[count - 1].created_at = '2026-02-01T00:00:00Z';
+    const entries = [{ name: '.emptyFolderPlaceholder' }, ...objects.slice(1, 49),
+      { name: 'file-049', id: null, metadata: null }, ...objects.slice(50)];
+    mocks.list.mockImplementation(async (_prefix, { offset, limit }) => ({
+      data: entries.slice(offset, offset + limit), error: null,
+    }));
+    const result = await operations.list();
+    expect(result.map(file => file.name)).toEqual([objects[count - 1], ...objects.slice(2, 49),
+      ...objects.slice(50, -1), objects[1]].map(file => file.name));
+    expect(mocks.list.mock.calls.map(call => call[1].offset)).toEqual(entries.length <= 198 ? [0, 99] : [0, 99, 198]);
+  });
+  it.each(['failed', 'shifted', 'empty'])('rejects an incomplete read when the next page is %s and retries from the beginning', async failure => {
+    const objects = namedRows(101);
+    mocks.list.mockResolvedValueOnce({ data: objects.slice(0, 100), error: null });
+    if (failure === 'failed') mocks.list.mockResolvedValueOnce({ data: null, error: { statusCode: '503' } });
+    if (failure === 'shifted') mocks.list.mockResolvedValueOnce({ data: objects.slice(100), error: null });
+    if (failure === 'empty') mocks.list.mockResolvedValueOnce({ data: [], error: null });
+    await expect(operations.list()).rejects.toMatchObject({ code: 'unavailable' });
+    mocks.list.mockImplementation(async (_prefix, { offset, limit }) => ({ data: objects.slice(offset, offset + limit), error: null }));
+    expect((await operations.list()).map(file => file.name)).toEqual(objects.map(file => file.name));
+    expect(mocks.list.mock.calls.map(call => call[1].offset)).toEqual([0, 99, 0, 99]);
   });
   it('only a successful empty array means empty; absent data and SDK error are failures', async () => {
     mocks.list.mockResolvedValueOnce({ data: [], error: null }).mockResolvedValueOnce({ data: null, error: null }).mockResolvedValueOnce({ data: [], error: { message: 'private details' } });
