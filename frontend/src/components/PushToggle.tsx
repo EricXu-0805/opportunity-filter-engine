@@ -9,7 +9,8 @@ import { useT } from '@/i18n/client';
 
 export default function PushToggle() {
   const { t } = useT();
-  const [status, setStatus] = useState<PushStatus | 'loading'>('loading');
+  const [observation, setObservation] = useState<{ epoch: number; status: PushStatus | 'unreadable' } | null>(null);
+  const [readAttempt, setReadAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   // Clickable before any identity has resolved on a fresh /dashboard load —
   // a token captured then is the null sentinel and every write is refused.
@@ -34,23 +35,33 @@ export default function PushToggle() {
   const [vapidKey, setVapidKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isPushSupported()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- isPushSupported() checks navigator.serviceWorker (undefined during SSR), so the support test must run post-hydration; useState initializer would cause a hydration mismatch
-      setStatus('unsupported');
-      return;
-    }
+    if (!isPushSupported()) return;
     getVapidPublicKey().then(setVapidKey).catch(() => setVapidKey(null));
   }, []);
 
   useEffect(() => {
     if (!isPushSupported()) return;
     const token = captureOwnerToken();
-    getPushStatus().then(
-      (next) => { if (isTokenOwnerStillCurrent(token)) setStatus(next); },
-      () => { if (isTokenOwnerStillCurrent(token)) setStatus('default'); },
-    );
-  }, [ownerEpoch]);
+    let current = true;
+    const publish = (status: PushStatus | 'unreadable') => {
+      if (current && isTokenOwnerStillCurrent(token)) setObservation({ epoch: token.epoch, status });
+    };
+    getPushStatus().then(publish, () => publish('unreadable'));
+    return () => { current = false; };
+  }, [ownerEpoch, readAttempt]);
 
+  const status = observation?.epoch === ownerEpoch ? observation.status : 'loading';
+  if (status === 'unreadable') {
+    return (
+      <span className="flex flex-wrap items-center justify-end gap-2 text-xs">
+        <span role="alert" className="text-gray-600">{t('dashboard.push.unreadable')}</span>
+        <button type="button" className="rounded underline" onClick={() => {
+          setObservation(null);
+          setReadAttempt(attempt => attempt + 1);
+        }}>{t('common.retry')}</button>
+      </span>
+    );
+  }
   if (status === 'loading' || status === 'unsupported' || status === 'denied') {
     return null;
   }
@@ -69,18 +80,18 @@ export default function PushToggle() {
       if (subscribed) {
         await unsubscribeFromPush(token);
         if (!isTokenOwnerStillCurrent(token)) return;
-        setStatus('default');
+        setObservation({ epoch: token.epoch, status: 'default' });
       } else {
         const ok = await subscribeToPush(vapidKey!, token);
         if (!isTokenOwnerStillCurrent(token)) return;
-        setStatus(ok ? 'subscribed' : 'default');
+        setObservation({ epoch: token.epoch, status: ok ? 'subscribed' : 'default' });
       }
     } catch (err) {
       // A refusal after a switch paints nothing.
       if (!isTokenOwnerStillCurrent(token)) return;
       // A refusal for the same account reads as "not subscribed" rather than
       // a silent no-op.
-      if (err instanceof OwnerMismatchError) setStatus('default');
+      if (err instanceof OwnerMismatchError) setObservation({ epoch: token.epoch, status: 'default' });
       // Anything else left the subscription as it was (unsubscribe rejects
       // only while reminders can still arrive), so the toggle keeps its
       // state and says the change failed.

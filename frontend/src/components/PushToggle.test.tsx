@@ -161,6 +161,19 @@ describe('the control is bound to an account', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('hides the prior account’s on switch while reading the new account', async () => {
+    let finish: (value: string) => void = () => {};
+    getPushStatus.mockResolvedValueOnce('subscribed')
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<PushToggle />);
+    await screen.findByRole('button', { name: 'dashboard.push.on' });
+    await claimOwner(U2);
+    await waitFor(() => expect(getPushStatus).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('button')).toBeNull();
+    await act(async () => finish('default'));
+    expect(await screen.findByRole('button', { name: 'dashboard.push.enable' })).toBeEnabled();
+  });
+
   it('does not paint a status read that started under the previous account', async () => {
     let finishFirstRead: (status: string) => void = () => {};
     getPushStatus
@@ -186,6 +199,18 @@ describe('a failed change is reported, not painted as done', () => {
     await waitFor(() => expect(button).toHaveAttribute('aria-pressed', String(status === 'subscribed')));
     return button;
   }
+
+  it('offers a read-only retry after an outage and restores the existing subscription', async () => {
+    getPushStatus.mockRejectedValueOnce(new Error('cloud unavailable')).mockResolvedValueOnce('subscribed');
+    render(<PushToggle />);
+    const retry = await screen.findByRole('button', { name: 'common.retry' });
+    expect(screen.getByRole('alert')).toHaveTextContent('dashboard.push.unreadable');
+    expect(screen.queryByText('dashboard.push.enable')).toBeNull();
+    fireEvent.click(retry);
+    expect(await screen.findByRole('button', { name: 'dashboard.push.on' })).toHaveAttribute('aria-pressed', 'true');
+    expect(subscribeToPush).not.toHaveBeenCalled();
+    expect(unsubscribeFromPush).not.toHaveBeenCalled();
+  });
 
   it('keeps "on" and says so when unsubscribing fails, and a retry can still succeed', async () => {
     unsubscribeFromPush.mockRejectedValueOnce(new Error('push unsubscribe failed')).mockResolvedValueOnce(undefined);

@@ -5117,6 +5117,7 @@ export const en = {
     loading: 'Loading…',
     unknownTarget: 'Unknown opportunity',
     push: {
+      unreadable: "Couldn't check notification status.",
       on: 'Notifications on',
       enable: 'Enable notifications',
     },
@@ -10505,6 +10506,7 @@ export const zh = {
     loading: '加载中…',
     unknownTarget: '未知机会',
     push: {
+      unreadable: '暂时无法读取通知状态。',
       on: '通知已开启',
       enable: '开启通知',
     },
