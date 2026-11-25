@@ -152,7 +152,7 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
   beforeEach(() => {
     [mockSelect, mockEq, mockDelete, mockDelEq].forEach((m) => m.mockReset());
     mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert, delete: mockDelete });
-    mockSelect.mockReturnValue({ eq: mockEq });
+    mockSelect.mockReturnValue({ order: () => ({ eq: mockEq }) });
     mockDelete.mockReturnValue({ eq: mockDelEq });
     mockDelEq.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
   });
@@ -184,7 +184,40 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
     expect(readUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK)).toBe('{');
     writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["queued"]', captureOwnerToken());
     mockEq.mockResolvedValueOnce({ data: [{ opportunity_id: 'remote' }], error: null, count: 2 });
+    mockEq.mockReturnValueOnce({ gt: vi.fn().mockResolvedValue({ data: null, error: { message: 'continuation failed' } }) });
     expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['remote', 'queued']), complete: false });
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('restores all 1001 cloud saves on retry and clears a queued ID only after confirming it on the last page', async () => {
+    const old = Array.from({ length: 1000 }, (_, i) => ({ opportunity_id: String(i).padStart(4, '0') }));
+    writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["1000"]', captureOwnerToken());
+    const gt = vi.fn().mockResolvedValueOnce({ data: null, error: { message: 'offline' } })
+      .mockResolvedValueOnce({ data: [{ opportunity_id: '1000' }], count: 1, error: null });
+    const first = { data: old, count: 1001, error: null };
+    mockEq.mockResolvedValueOnce(first).mockReturnValueOnce({ gt })
+      .mockResolvedValueOnce(first).mockReturnValueOnce({ gt });
+    expect((await getFavoritesSnapshot()).complete).toBe(false);
+    expect(localMirror()).toEqual(['1000']);
+    expect(mockInsert).not.toHaveBeenCalled();
+    const recovered = await getFavoritesSnapshot();
+    expect(recovered.complete).toBe(true);
+    expect(recovered.ids.size).toBe(1001);
+    expect(recovered.ids.has('0000')).toBe(true);
+    expect(recovered.ids.has('1000')).toBe(true);
+    expect(localMirror()).toEqual([]);
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(gt.mock.calls).toEqual(Array(2).fill(['opportunity_id', '0999']));
+  });
+
+  it('discards the old account’s earlier pages if ownership changes during continuation', async () => {
+    const oldPage = { data: [{ opportunity_id: 'A' }], count: 2, error: null };
+    const gt = vi.fn(async () => {
+      fireAuth('SIGNED_OUT', null);
+      return { data: [{ opportunity_id: 'B' }], count: 1, error: null };
+    });
+    mockEq.mockResolvedValueOnce(oldPage).mockReturnValueOnce({ gt });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(), complete: false });
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
@@ -247,7 +280,7 @@ describe('getFavorites: an unverifiable read is never a confirmed empty shortlis
   beforeEach(() => {
     [mockSelect, mockEq].forEach((m) => m.mockReset());
     mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert });
-    mockSelect.mockReturnValue({ eq: mockEq });
+    mockSelect.mockReturnValue({ order: () => ({ eq: mockEq }) });
   });
 
   it('says local-only when the identity cannot be confirmed', async () => {
