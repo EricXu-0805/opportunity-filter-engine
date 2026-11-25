@@ -41,6 +41,9 @@ async def run(mode):
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
         if mode == 'urca':
             profile.update(institution='UC Santa Barbara', home_school='ucsb', major='', research_interests='', skills=[])
+        eeb = ['faculty-ucla-eeb-56b5bd06','faculty-ucla-eeb-04fc2f84','faculty-ucla-eeb-792288c6','faculty-ucla-eeb-880b1219','faculty-ucla-eeb-f529eb3c']
+        if mode == 'eeb':
+            profile.update(institution='UCLA', home_school='ucla', major='Ecology and Evolutionary Biology',research_interests='phylogenetics, evolutionary biology', skills=[])
         auth={'Authorization':'Bearer '+session['access_token']}
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
@@ -56,6 +59,8 @@ async def run(mode):
                 cors={'Access-Control-Allow-Origin':'https://joinalab.com','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers.get('access-control-request-headers','*'),'Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,HEAD,OPTIONS','Access-Control-Expose-Headers':'Content-Range,Retry-After'}
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
+                    if mode == 'eeb' and u.path == '/rest/v1/favorites' and req.method == 'GET':
+                        return await route.fulfill(status=200,headers={**cors,'Content-Range':'0-4/5'},json=[{'opportunity_id':key} for key in eeb])
                     if mode=='dashboard' and u.path=='/rest/v1/favorites' and req.method=='GET':
                         reads+=1
                         return await route.fulfill(status=503 if fail else 200,headers={**cors,'Retry-After':'0',**({} if fail else {'Content-Range':'0-0/1'})},json={'message':'controlled outage'} if fail else [{'opportunity_id':'saved-target'}])
@@ -65,7 +70,7 @@ async def run(mode):
                 if u.hostname=='joinalab.com':
                     if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
                         return await route.fulfill(json={'requested':1,'found':0,'opportunities':[]})
-                    if u.path=='/api/matches/view' and req.method=='POST' and mode in ('cache','urca'):
+                    if u.path=='/api/matches/view' and req.method=='POST' and mode in ('cache','urca','eeb'):
                         print('Real match view requested; holding',hold,flush=True)
                         if hold:
                             blocked.set();await asyncio.wait_for(release.wait(),30)
@@ -101,15 +106,21 @@ async def run(mode):
                 await expect(page.get_by_text('1 saved',exact=True)).to_be_visible()
                 assert reads>=4
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
-            elif mode == 'urca':
+            elif mode in ('urca','eeb'):
                 async with page.expect_response(lambda r: urlsplit(r.url).path == '/api/matches/view' and r.request.method == 'POST' and r.status == 200, timeout=80000) as data:
-                    await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
+                    target_tab = 'all' if mode == 'urca' else 'starred'
+                    await page.goto('https://joinalab.com/results?tab='+target_tab,wait_until='domcontentloaded')
                 payload = await (await data.value).json()
                 matches = {r['opportunity_id']: r for r in payload['results']}
-                projects = page.locator('[id^="match-card-ucsb-urca-proj-"]')
+                if mode == 'eeb' and not all(key in matches for key in eeb):
+                    async with page.expect_response(lambda r: urlsplit(r.url).path == '/api/matches/view' and r.request.method == 'POST' and r.status == 200 and bool(r.request.post_data_json.get('view',{}).get('favorite_ids')), timeout=60000) as targeted:
+                        await page.reload(wait_until='domcontentloaded')
+                    matches = {r['opportunity_id']:r for r in (await (await targeted.value).json())['results']}
+                print('Public response',mode,len(matches), list(matches)[:3],flush=True)
+                projects = page.locator('[id^="match-card-ucsb-urca-proj-"]' if mode == 'urca' else ','.join('#match-card-'+key for key in eeb))
                 await projects.first.wait_for(timeout=80000)
                 count = min(8, await projects.count())
-                assert count >= 3, count
+                assert count >= (3 if mode == 'urca' else 5), count
                 seen = []
                 reasons = 0
                 for index in range(count):
@@ -122,12 +133,16 @@ async def run(mode):
                     assert lists, await card.get_attribute('id')
                     key = (await card.get_attribute('id')).removeprefix('match-card-')
                     row = matches[key]
-                    assert row['opportunity']['source'] == 'ucsb_urca_projects'
-                    assert not any(reason and reason['key'] in ('lab_focus','research_summary') for reason in row['reasons_fit_keys'])
+                    if mode == 'urca':
+                        assert row['opportunity']['source'] == 'ucsb_urca_projects'
+                        assert not any(reason and reason['key'] in ('lab_focus','research_summary') for reason in row['reasons_fit_keys'])
+                    else:
+                        assert key in eeb and "'s focus area" not in text
+                        assert not any(reason and reason['key'] == 'interests_lab_focus' for reason in row['reasons_fit_keys'])
                     assert row['reasons_fit'] and all(reason.lower() in text for reason in row['reasons_fit'])
                     reasons += len(row['reasons_fit'])
                     seen.append(await card.get_attribute('id'))
-                print('PASS expanded real UCSB project cards', count, 'displayed lines', reasons, 'public ids', seen)
+                print('PASS expanded real cards', mode, count, 'displayed lines', reasons, 'public ids', seen)
             else:
                 await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
                 try:
@@ -166,3 +181,4 @@ async def run(mode):
 asyncio.run(run(sys.argv[1]))
 if sys.argv[1] == 'cache':
     asyncio.run(run('urca'))
+    asyncio.run(run('eeb'))
