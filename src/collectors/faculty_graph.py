@@ -1813,6 +1813,15 @@ def _scrape_directory(dept: dict) -> list[dict]:
         # so its challenge clears before the first card check (JHU BME's bme.jhu.edu).
         soup = _render_soup(base, wait_until=rw, expect_selector=sel.get("card"),
                             settle_ms=cfg.get("render_settle", 3500))
+    elif _ACTIVE_COVERAGE is not None:
+        # Scope the receipt to the directory itself. A later profile read or
+        # a transient failure followed by a successful retry cannot supply it.
+        from .ucb_common import observe_fetch_failure
+
+        with observe_fetch_failure() as receipt:
+            soup = fetch(base)
+        if soup is None and receipt.get("reason"):
+            _ACTIVE_COVERAGE["_directory_fetch_failure"] = receipt["reason"]
     else:
         soup = fetch(base)
     if soup is None:
@@ -5183,6 +5192,10 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         # not an empty department: fail closed and let the consumer preserve.
         parse_status = "ok" if ids else "zero_rows"
     cov = dict(coverage) if isinstance(coverage, dict) else None
+    directory_failure = cov.pop("_directory_fetch_failure", None) if cov is not None else None
+    if directory_failure and fetch_status == "ok" and parse_status == "zero_rows":
+        fetch_status = "failed"
+        failure_reason = directory_failure
     document_identities: list = []
     page_people: list | None = None
     listed_identities: list | None = None
@@ -5263,6 +5276,8 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "retirement_authorized": False,
         "failure_reason": failure_reason,
     }
+    if directory_failure:
+        observation["directory_fetch_failure"] = directory_failure
     if listed_identities is not None:
         # Every row a stated-total walk read, as run-keyed tokens for the
         # retirement pass. Most of these rows are staff and students the unit
