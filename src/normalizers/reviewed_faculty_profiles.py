@@ -17,6 +17,7 @@ class ProfileReview:
     roster_url: str
     reviewed_at: datetime
     title: str | None = None
+    previous_title: str | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -59,6 +60,32 @@ REVIEWS = {
         "umd", "Department of Mathematics", "Shiferaw Berhanu", "https://www-math.umd.edu/people/faculty/item/1694-sberhanu.html",
         "https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html",
         "https://www-math.umd.edu/people/faculty.html", _NOV_25),
+    # The individual directory lists Faculty Type "Emeriti"; the department
+    # spells out "Professor Emerita in History". Keep her research appointment.
+    "faculty-ucsc-hist-d64a8110": ProfileReview(
+        "ucsc", "Department of History", "Gail B Hershatter",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=gbhers",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=gbhers",
+        "https://directory.ucsc.edu/cd_detail?guid=G001719517",
+        datetime(2026, 11, 25, 17, 40, tzinfo=UTC),
+        title="Research Professor and Distinguished Professor of History Emerita",
+        previous_title="Research Professor and Distinguished Professor of History Emer."),
+    "faculty-ucsc-envs-c7e85a3f": ProfileReview(
+        "ucsc", "Department of Environmental Studies", "Gregory S Gilbert",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=ggilbert",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=ggilbert",
+        "https://envs.ucsc.edu/people/faculty/",
+        datetime(2026, 11, 25, 19, 8, tzinfo=UTC),
+        title="Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot",
+        previous_title="Distinguished Professor"),
+    "faculty-ucsc-lit-f8043691": ProfileReview(
+        "ucsc", "Department of Literature", "Jody Greene",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",
+        datetime(2026, 11, 25, 18, 2, tzinfo=UTC),
+        title="Professor Emeritx of Literature; Founding Director, Teaching and Learning Center",
+        previous_title="Professor of Literature"),
     "faculty-umd-phys-5e8e0edd": ProfileReview(
         "umd", "Department of Physics", "Elizabeth Beise", "https://umdphysics.umd.edu/people/faculty/current/item/43-beise.html",
         "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
@@ -92,7 +119,10 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
     metadata = row.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("is_active") is False:
         return False
-    update_url = row["url"] == review.previous_url and not _old_page_restored(row, review)
+    if review.previous_title and metadata.get("faculty_title") != review.previous_title:
+        return False
+    update_url = (row["url"] == review.previous_url and review.previous_url != review.profile_url
+                  and not _old_page_restored(row, review))
     # Even a successful fetch of a restored URL establishes the address only.
     # An old directory title cannot overturn the appointment on the reviewed
     # emeritus roster and profile. A different appointment URL is outside this review.

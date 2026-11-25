@@ -228,7 +228,7 @@ def is_deceased_listing(name: object, title: object) -> bool:
 # "Emergency", "Emerging" or "Emerson"; a bare "Emer." also abbreviates
 # "Emergency" and is not read.
 _EMERITUS_OR_RETIRED_RE = re.compile(
-    r"\b(?:emerit(?:us|a|i|as)?|emertius|retired)\b", re.IGNORECASE)
+    r"\b(?:emerit(?:us|a|i|as|x)?|emertius|retired)\b", re.IGNORECASE)
 
 RETIRED_TITLE_REASON = "retired_title"
 
