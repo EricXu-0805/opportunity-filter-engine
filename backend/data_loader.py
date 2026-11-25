@@ -17,6 +17,7 @@ from src.evidence import (
 from src.import_source import sanitize_import_source
 from src.normalizers.school_audience import apply_program_audience
 from src.program_windows import apply_program_window
+from src.urap_windows import apply_legacy_window
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ def _sanitize_opportunity(opp: dict) -> dict:
     # Committed shards predate a window or a reviewed audience until the
     # school's next refresh.
     apply_program_window(opp)
+    apply_legacy_window(opp)
     apply_program_audience(opp)
     import_source = sanitize_import_source(opp)
     preserve_import_raw = import_source is not None and import_source['description_source'] != 'unknown'

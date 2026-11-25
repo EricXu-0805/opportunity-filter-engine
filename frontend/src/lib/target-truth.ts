@@ -137,6 +137,7 @@ function reasonAgreesWithFields(truth: Record<string, unknown>): boolean {
 /** What the truth envelope says, once it has been checked against the record. */
 type TruthSubject = Pick<Opportunity, 'target_truth' | 'source_type'> & {
   record_kind?: string;
+  source?: string;
 };
 
 /**
@@ -148,7 +149,7 @@ type TruthSubject = Pick<Opportunity, 'target_truth' | 'source_type'> & {
  * confirmed listing, which would hide a real opening behind copy about our
  * review queue. The kind and the truth have to agree, or neither is usable.
  */
-function readTruth(opp: TruthSubject) {
+function readTruth(opp: TruthSubject): PublicTargetTruth | null {
   const truth = parseTargetTruth(opp?.target_truth);
   if (truth === null) return null;
   const kind = opportunityRecordKind(opp ?? {});
@@ -184,6 +185,13 @@ function readTruth(opp: TruthSubject) {
   if (kind === 'unknown' && truth.actionable) return null;
   if (truth.reason_code === 'record_kind_unverified' && kind !== 'unknown') return null;
   if (truth.reason_code === 'faculty_not_accepting' && kind !== 'faculty_contact') return null;
+  // An already-served URAP card has the precise deadline from its project
+  // notice. A cached card can outlive Berkeley's cutoff on the same day.
+  if (opp?.source === 'ucb_urap_projects' && truth.actionable && truth.expires_at
+    && Date.parse(truth.expires_at) <= Date.now()) {
+    return { ...truth, actionable: false, reference_only: true, listing_state: 'closed',
+      accepting_state: 'not_accepting', reason_code: 'listing_closed' };
+  }
   return truth;
 }
 
