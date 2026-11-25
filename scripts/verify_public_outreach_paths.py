@@ -86,11 +86,21 @@ def verify(mode):
         page.set_default_timeout(30000)
         evidence = []
         def matching(response):
-            if urlsplit(response.url).path == "/api/matches/view" and response.request.method == "POST" and response.status == 200:
+            path = urlsplit(response.url).path
+            if path == "/api/matches/view" and response.request.method == "POST":
+                request = response.request.post_data_json or {}
+                view = request.get("view") or {}
+                print("Production match", response.status, view.get("tab"), "selected target",
+                      oid in (view.get("favorite_ids") or []), flush=True)
+                if response.status != 200:
+                    return
                 payload = response.json()
                 assert payload.get("ai_refined") is False
                 evidence.extend(r for r in payload["results"] if r["opportunity_id"] == oid)
         page.on("response", matching)
+        page.on("requestfailed", lambda request: print("Failed request", request.method,
+                urlsplit(request.url).path, request.failure, flush=True))
+        page.on("pageerror", lambda error: print("Page error", str(error)[:240], flush=True))
         page.goto(SITE + "/dashboard", wait_until="domcontentloaded", timeout=45000)
         campus = page.get_by_test_id("university-card-" + home)
         try:
@@ -108,6 +118,7 @@ def verify(mode):
         except Exception:
             print("Match view", page.url, "headings", page.get_by_role("heading").all_text_contents()[:12],
                   "cards", page.locator('[id^="match-card-"]').count(), flush=True)
+            print("Visible status", " ".join(page.locator("main").inner_text().split())[:1500], flush=True)
             raise
         page.wait_for_timeout(100)
         assert evidence, "A real match response for this card is required"
