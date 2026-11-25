@@ -258,6 +258,39 @@ class TestScrapeLayer:
         assert people["Ada Roe"]["email"] == "aroe@example.edu"
         assert "Population ecology" in people["Kim Poe"]["research_areas"]
 
+    def test_sbu_geosciences_reads_department_faculty_and_keeps_original_ids(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "GEO")
+        base = "https://www.stonybrook.edu/geosciences/people/faculty_profiles/"
+        groups = {
+            "Department Faculty": ["Troy Rasbury", "Deanne Rogers"],
+            "Emeritus Faculty": ["Scott McLennan"],
+            "In Memoriam": ["Gilbert Hanson"],
+            "Affiliated Faculty": ["Other Professor"],
+        }
+        sections = []
+        for heading, names in groups.items():
+            cards = []
+            for name in names:
+                url = base + name.lower().replace(" ", "-") + ".html"
+                cards.append(f'<article class="dept-faculty-directory__card">'
+                             f'<a class="dept-faculty-directory__profile-link" href="{url}">'
+                             f'<span class="dept-faculty-directory__name">{name}</span></a>'
+                             '<p class="dept-faculty-directory__title">Professor</p></article>')
+            sections.append(f'<h3>{heading}</h3><div>{"".join(cards)}</div>')
+        soup = BeautifulSoup("".join(sections), "html.parser")
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url, **kwargs: soup)
+        people = fg._scrape_directory(dept)
+        assert {p["name"]: fg._normalize(SCHOOL, dept, p)["id"] for p in people} == {
+            "Troy Rasbury": "faculty-sbu-geo-77fdf238",
+            "Deanne Rogers": "faculty-sbu-geo-2392f6f1",
+        }
+        other = {"name": "Troy Rasbury", "url": base + "different-professor.html"}
+        assert fg._normalize(SCHOOL, dept, other)["id"] != "faculty-sbu-geo-77fdf238"
+
     def test_sbu_ecology_keeps_the_stored_ids_of_renamed_cards(self):
         """A card whose page now writes the name differently keeps the id its
         row was stored under (id_names), so the row updates in place."""

@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 from src.contact_instructions import contact_instruction_pages, same_source_page
 
-from .deactivate_stale_faculty import deactivate_retired_title_faculty
+from .deactivate_stale_faculty import deactivate_deceased_faculty, deactivate_retired_title_faculty
 
 
 @dataclass(frozen=True)
@@ -26,7 +26,19 @@ class ProfileReview:
 # The source runner finished reading the six identity-checked destinations at 12:01:59 UTC.
 _NOV_25 = datetime(2026, 11, 25, 12, 2, tzinfo=UTC)
 _SBU_CS = "https://www.cs.stonybrook.edu/people/index.html"
+_SBU_GEO = "https://www.stonybrook.edu/geosciences/people/faculty.html"
+_SBU_GEO_REVIEW = datetime(2026, 11, 25, 17, 19, tzinfo=UTC)
 REVIEWS = {
+    "faculty-sbu-geo-07129e92": ProfileReview(
+        "sbu", "Department of Geosciences", "Gilbert Hanson",
+        "https://www.stonybrook.edu/commcms/geosciences/people/_faculty/hanson.php",
+        "https://www.stonybrook.edu/geosciences/about/long-island-geologists/gilbert-hanson.html",
+        _SBU_GEO, _SBU_GEO_REVIEW, "In Memoriam — Distinguished Professor Emeritus"),
+    "faculty-sbu-geo-d49b7576": ProfileReview(
+        "sbu", "Department of Geosciences", "Scott McLennan",
+        "https://www.stonybrook.edu/commcms/geosciences/people/_faculty/mclennan.php",
+        "https://www.stonybrook.edu/geosciences/people/faculty_profiles/scott-mclennan.html",
+        _SBU_GEO, _SBU_GEO_REVIEW, "Distinguished Professor Emeritus"),
     "faculty-osu-fabe-1abc04a0": ProfileReview(
         "osu", "Department of Food, Agricultural and Biological Engineering", "S. Dee Jepsen",
         "https://fabe.osu.edu/our-people/s-dee-jepsen", "https://agsafety.osu.edu/people/dee-jepsen-phd",
@@ -100,6 +112,7 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
     if review.title:
         metadata["faculty_profile_review"]["previous_title"] = metadata.get("faculty_title")
         metadata["faculty_title"] = review.title
+        deactivate_deceased_faculty([row], today=review.reviewed_on)
         deactivate_retired_title_faculty([row], today=review.reviewed_on)
     return True
 
