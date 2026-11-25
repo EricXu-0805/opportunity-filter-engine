@@ -1443,6 +1443,23 @@ class TestInterestReasonDedup:
         assert any("also work" in r and "security" in r for r in fit)
         assert not any("closely matches" in r for r in fit)
 
+    def test_long_sentence_and_partial_words_do_not_become_named_interests(self):
+        profile = {"research_interests_text": "I want to study how neural circuits encode memory, smart grids"}
+        opp = self._opp(["circuits", "memory", "art", "interests"])
+        _, fit, _ = score_upside(profile, opp, precomputed_sim=0.5)
+        assert not any(line.startswith("Your interest in") for line in fit)
+        assert any("also works on circuits, memory, art" in line for line in fit)
+
+    def test_list_items_and_complete_phrases_still_name_the_students_interests(self):
+        profile = {"research_interests_text": "I want to study how neural circuits encode memory; robotics"}
+        _, fit, _ = score_upside(profile, self._opp(["neural circuits", "robotics", "memory"]), precomputed_sim=0.5)
+        assert any(line.startswith("Your interest in neural circuits, robotics closely matches") for line in fit)
+
+    def test_interests_heading_is_not_a_research_topic(self):
+        profile = {"research_interests_text": "research interests include robotics"}
+        _, fit, _ = score_upside(profile, self._opp(["interests"]), precomputed_sim=0.5)
+        assert not any("work on interests" in line or "interest in interests" in line for line in fit)
+
     def test_partially_covered_overlap_keeps_bare_reason(self):
         profile = {
             "research_interests_text": "computer vision and deep learning",
