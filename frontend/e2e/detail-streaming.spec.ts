@@ -198,7 +198,7 @@ test.describe('Production detail requests and streaming', () => {
     release(B, recommendations());
     await page.goto(`${origin}/opportunities/${A}`);
     await expectHealthyMain(page, A);
-    await expect(page).toHaveTitle(/Streaming target A/);
+    await expect(page).toHaveTitle('Streaming target A at Streaming Test University · JoinALab');
     const rail = page.getByRole('region', { name: 'Similar opportunities', exact: true });
     for (const id of suggestions) {
       const link = rail.getByRole('link', { name: new RegExp(records.get(id)!.title) });
@@ -241,7 +241,7 @@ test.describe('Production detail requests and streaming', () => {
     detailReplies.set(A, { status: 429, body: {} });
     await page.goto(`${origin}/opportunities/${A}`);
     await expect(page.getByRole('heading', { name: 'This opportunity is temporarily unavailable' })).toBeVisible();
-    await expect(page).toHaveTitle(/Opportunity — JoinALab/);
+    await expect(page).toHaveTitle('Opportunity · JoinALab');
     expect(Object.fromEntries(detailRequests)).toEqual({ [A]: 1 });
     detailReplies.delete(A);
     release(A, recommendations());
@@ -249,6 +249,15 @@ test.describe('Production detail requests and streaming', () => {
     await expectHealthyMain(page, A);
     await expect(page).toHaveTitle(/Streaming target A/);
     expect(Object.fromEntries(detailRequests)).toEqual({ [A]: 2 });
+  });
+
+  test('a missing opportunity shows the selected language in both heading and tab', async ({ page }) => {
+    await page.goto(`${origin}/opportunities/missing-stream-fixture`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunity not found' })).toBeVisible();
+    await expect(page).toHaveTitle('Opportunity not found · JoinALab');
+    await page.getByRole('button', { name: '切换到中文' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: '未找到机会' })).toBeVisible();
+    await expect(page).toHaveTitle('未找到机会 · JoinALab');
   });
 
   test('metadata and content share one read for an encoded record id', async ({ page }) => {
