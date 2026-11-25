@@ -592,6 +592,7 @@ def test_a_berkeley_name_variant_its_richer_department_dropped_gives_way():
 
 
 @pytest.mark.parametrize("school,unit,display,full,profile,original_id", [
+    ("georgetown", "ENGL", "Marisa Koulen", "Marisa Holmes", "gufaculty360.georgetown.edu/s/contact/003uh00000vihw6yal/marisa-koulen", "faculty-georgetown-engl-be9bd333"),
     ("colostate", "BUS", "Steve Kofford", "Steven Kofford", "biz.colostate.edu/about/directory/c838568788", "faculty-colostate-bus-9d210abe"),
     ("osu", "DESIGN", "Matt Lewis", "Matthew Lewis", "design.osu.edu/people/lewis.239", "faculty-osu-design-73e460f2"),
     ("purdue", "BSC", "Kyu Kang", "Kyubyung Kang", "polytechnic.purdue.edu/profile/kyukang", "faculty-purdue-bsc-e4bf6c5d"),
