@@ -10,8 +10,12 @@ from src.normalizers.reviewed_faculty_profiles import REVIEWS, apply_reviewed_fa
 AS_OF = date(2026, 11, 25)
 BEISE = "faculty-umd-phys-5e8e0edd"
 HERSHATTER = "faculty-ucsc-hist-d64a8110"
-UCSC_TITLE = "Research Professor and Distinguished Professor of History Emer."
+UCSC_PREVIOUS_TITLES = {
+    HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
+    "faculty-ucsc-lit-f8043691": "Professor of Literature",
+}
 ARCHIVED = {
+    "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),
     HERSHATTER: ("Research Professor and Distinguished Professor of History Emerita", "retired_title"),
     BEISE: ("Professor Emerita", "retired_title"),
     "faculty-sbu-geo-d49b7576": ("Distinguished Professor Emeritus", "retired_title"),
@@ -26,7 +30,7 @@ def _old(oid):
         "source_type": "faculty_research", "source": f"{review.school}_faculty",
         "url": review.previous_url, "source_url": review.previous_url,
         "application": {"application_url": review.previous_url},
-        "metadata": {"faculty_title": UCSC_TITLE if oid == HERSHATTER else "Professor", "last_verified": "2026-07-25",
+        "metadata": {"faculty_title": UCSC_PREVIOUS_TITLES.get(oid, "Professor"), "last_verified": "2026-07-25",
                      "last_seen_at": "2026-07-25", "is_active": True},
     }
 
@@ -44,7 +48,7 @@ def test_reviewed_urls_and_title_replay_once_without_freshening_other_evidence()
         if row["id"] in ARCHIVED:
             title, reason = ARCHIVED[row["id"]]
             assert md["faculty_title"] == title
-            assert md["faculty_profile_review"]["previous_title"] == (UCSC_TITLE if row["id"] == HERSHATTER else "Professor")
+            assert md["faculty_profile_review"]["previous_title"] == UCSC_PREVIOUS_TITLES.get(row["id"], "Professor")
             assert md["is_active"] is False and md["deactivation_reason"] == reason
             assert md["deactivated_at"] == AS_OF.isoformat()
         else:

@@ -70,6 +70,14 @@ REVIEWS = {
         datetime(2026, 11, 25, 17, 40, tzinfo=UTC),
         title="Research Professor and Distinguished Professor of History Emerita",
         previous_title="Research Professor and Distinguished Professor of History Emer."),
+    "faculty-ucsc-lit-f8043691": ProfileReview(
+        "ucsc", "Department of Literature", "Jody Greene",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",
+        datetime(2026, 11, 25, 18, 2, tzinfo=UTC),
+        title="Professor Emeritx of Literature; Founding Director, Teaching and Learning Center",
+        previous_title="Professor of Literature"),
     "faculty-umd-phys-5e8e0edd": ProfileReview(
         "umd", "Department of Physics", "Elizabeth Beise", "https://umdphysics.umd.edu/people/faculty/current/item/43-beise.html",
         "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
