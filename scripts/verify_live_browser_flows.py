@@ -166,17 +166,20 @@ async def run(mode):
                             await retry.click(timeout=2500)
                         except Exception:
                             await expect(keep[index]).to_be_visible(timeout=7500)
+                messages = []
                 for index,tab in enumerate(tabs):
                     await expect(keep[index]).to_be_visible(timeout=30000)
                     expected = 'Changed somewhere else' if lang == 'en' else '在别处改过了'
-                    await expect(tab.get_by_text(expected,exact=False)).to_be_visible()
+                    message = await tab.locator('#profile-save-status').inner_text()
+                    messages.append(expected in message)
+                    print('Open choice',lang,index,repr(message),flush=True)
                     if lang == 'zh':
                         dims=await keep[index].evaluate("(b)=>({width:innerWidth,height:b.getBoundingClientRect().height,line:parseFloat(getComputedStyle(b).lineHeight),pad:parseFloat(getComputedStyle(b).paddingTop)+parseFloat(getComputedStyle(b).paddingBottom)})")
                         assert dims['width'] == 390 and dims['height']-dims['pad'] <= dims['line']*2+3,dims
-                    await tab.evaluate("""() => {window.receiptViews=[];new MutationObserver(()=>{
+                    await tab.evaluate("""() => {window.receiptViews=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]'))window.receiptClicks++},true);new MutationObserver(()=>{
                         const s = document.querySelector('[data-testid="conflict-stale"]');
                         const retry=document.querySelector('[data-testid="retry-sync"]');
-                        const failed=/Saved on this device only|仅保存在本设备|没能同步/.test(document.body.innerText);
+                        const failed=/Saved on this device only|仅保存在本设备|没能同步/.test((document.querySelector('#profile-save-status')?.innerText || ''));
                         if(s || retry || failed) window.receiptViews.push({stale:!!s,retry:!!retry,failed});
                     }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}""")
                 outcomes.clear()
@@ -197,7 +200,9 @@ async def run(mode):
                         await expect(campus_picker).to_be_hidden(timeout=15000)
                     await expect(tab.locator('#major')).to_have_value(major)
                 print('Concurrent answers',lang,major,'write outcomes',outcomes,'observed stale/retry/failure', [[any(v[k] for v in vs) for k in ('stale','retry','failed')] for vs in views],flush=True)
-                assert outcomes == ['applied'] and any(any(v['stale'] for v in vs) for vs in views)
+                clicks = [await tab.evaluate('window.receiptClicks') for tab in tabs]
+                print('Click receipts',clicks,'approved conflict explanation present',messages,flush=True)
+                assert clicks == [1,1] and outcomes == ['applied'] and any(any(v['stale'] for v in vs) for vs in views)
                 assert not any(v['retry'] or v['failed'] for vs in views for v in vs)
                 await receiver.reload(wait_until='domcontentloaded')
                 await expect(receiver.locator('#major')).to_have_value(major,timeout=45000)
