@@ -56,6 +56,7 @@ async def run(mode):
                                'text':'I recorded an independent control measurement.',
                                'source':{'kind':'manual'}}])
         listing = mode in ('listingen', 'listingzh')
+        error_page = mode in ('erroren', 'errorzh')
         listing_id = 'purdue-2d597d3a3d77'
         if listing:
             profile.update(institution='Purdue University', home_school='purdue', major='English', grade='Freshman',
@@ -69,11 +70,11 @@ async def run(mode):
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
             browser=await pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
-            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode.startswith('racezh') or mode=='listingzh' else 1280,'height':900})
+            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode.startswith('racezh') or mode in ('listingzh','errorzh') else 1280,'height':900})
             init="""if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_receipt_seed')){for(const [k,v] of Object.entries(VALUES))localStorage.setItem(k,v);localStorage.setItem('oe_receipt_seed','1')}"""
             values={'ofe_auth':json.dumps(session),'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_profile':json.dumps(profile)}
-            if mode.startswith('race') or listing:
-                values['ofe_lang'] = mode[-2:] if listing else mode.removeprefix('race').split('-')[0]
+            if mode.startswith('race') or listing or error_page:
+                values['ofe_lang'] = mode[-2:] if listing or error_page else mode.removeprefix('race').split('-')[0]
                 await context.set_extra_http_headers({'Accept-Language':values['ofe_lang']})
                 if values['ofe_lang'] == 'zh':
                     await context.add_cookies([{'name':'ofe_lang','value':'zh','url':'https://joinalab.com'}])
@@ -82,6 +83,8 @@ async def run(mode):
             await context.add_init_script(init.replace('VALUES',json.dumps(values)))
             fail=True; reads=0; hold=False; blocked=asyncio.Event(); release=asyncio.Event()
             receiver = None
+            failed_assets = []
+            blocked_assets = set()
             outage = False
             outcomes = []
             async def intercept(route):
@@ -114,6 +117,9 @@ async def run(mode):
                         outcomes.append(json.loads(body).get('reason',json.loads(body).get('status')))
                     return await route.fulfill(status=code,body=body,content_type=ct,headers=cors)
                 if u.hostname=='joinalab.com':
+                    if req.url in blocked_assets:
+                        failed_assets.append(req.url)
+                        return await route.abort('failed')
                     if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
                         return await route.fulfill(json={'requested':1,'found':0,'opportunities':[]})
                     if u.path=='/api/matches/view' and req.method=='POST' and (mode in ('cache','urca','eeb') or listing):
@@ -363,6 +369,44 @@ async def run(mode):
                 await expect(receiver.locator('#student_name')).to_have_value('Synthetic retained edit')
                 assert 'merged_away' in outcomes and 'unavailable' in outcomes, outcomes
                 print('PASS deployed two-tab guest merge, failed edit retained, both stale, neither offered retry or claimed saved:',outcomes)
+            elif error_page:
+                zh = mode.endswith('zh')
+                healthy = await context.new_page()
+                assets = set()
+                async def find_uploader(response):
+                    if response.request.resource_type == 'script' and '/_next/' in response.url:
+                        try:
+                            code = await response.body()
+                        except Exception:
+                            return
+                        if b'resume.errOnlyPdf' in code and b'resume.uploadAria' in code:
+                            assets.add(response.url)
+                healthy.on('response', find_uploader)
+                await healthy.goto('https://joinalab.com/',wait_until='domcontentloaded')
+                await expect(healthy.locator('#resume-upload')).to_have_count(1,timeout=40000)
+                for _ in range(40):
+                    if assets: break
+                    await asyncio.sleep(.1)
+                assert len(assets)==1, assets
+                blocked_assets.update(assets)
+                broken = await context.new_page()
+                await broken.goto('https://joinalab.com/',wait_until='domcontentloaded')
+                heading = '这个页面出了点问题。' if zh else 'Something went wrong on this page.'
+                await expect(broken.get_by_role('heading',name=heading)).to_be_visible(timeout=45000)
+                hint = '可以重试；如果问题仍然存在，请刷新页面。' if zh else 'You can retry, or reload the page if the problem persists.'
+                await expect(broken.get_by_text(hint,exact=True)).to_be_visible()
+                retry = broken.get_by_role('button',name='重试' if zh else 'Try again',exact=True)
+                await expect(retry).to_be_visible()
+                await expect(broken.get_by_role('link',name='返回首页' if zh else 'Back home',exact=True)).to_have_attribute('href','/')
+                await broken.get_by_text('技术详情' if zh else 'Technical details',exact=True).click()
+                await expect(broken.locator('details[open] pre')).to_be_visible()
+                assert failed_assets, 'The controlled local asset failure did not occur'
+                print('PASS official error boundary',mode,'heading',heading,'hint',hint,'isolated failed asset count',len(failed_assets),flush=True)
+                blocked_assets.clear()
+                await broken.reload(wait_until='domcontentloaded')
+                await expect(broken.locator('#resume-upload')).to_have_count(1,timeout=45000)
+                await expect(broken.get_by_role('heading',name=heading)).to_have_count(0)
+                print('PASS healthy reload after restoring the asset',mode,flush=True)
             elif listing:
                 zh = mode.endswith('zh')
                 await page.goto('https://joinalab.com/results?tab=starred',wait_until='domcontentloaded')
