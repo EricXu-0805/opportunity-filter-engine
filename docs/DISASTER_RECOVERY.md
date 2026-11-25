@@ -96,7 +96,7 @@ are included), retention window, and owner (who can perform a restore). Include
 `observed_at` — undated evidence is refused.
 
 At the recovery point, the backup owner captures the source schema while the
-public schema and migration history are frozen across the backup and capture.
+public and private application schemas and migration history are frozen across the backup and capture.
 Run from the candidate checkout with a verified direct database connection.
 Use a project-specific password file and the project's database CA certificate.
 
@@ -107,11 +107,12 @@ PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$SOURCE_PGSSLROOTCERT" \
 ```
 
 Retain the SHA-256 of the capture file with the backup receipt. The capture
-hashes public column definitions and the applied migration ledger in one
-read-only PostgreSQL statement. It stores counts, hashes, the recovery point,
-project ref and timestamp. It covers public column shape and migration history.
-RLS behavior has a separate test. If the selected backup has no capture,
-its schema comparison stays `UNVERIFIED`.
+compares public columns, applied migrations, and definitions of indexes, table
+constraints, user triggers, functions and procedures in the public and private
+schemas. PostgreSQL computes the DDL digest on the server in the same read-only
+statement. The capture stores counts, hashes, recovery point, project ref and
+timestamp. RLS behavior has a separate test. Backups with a missing capture or
+an earlier columns-only receipt remain `UNVERIFIED` for schema equivalence.
 
 The separate storage backup must supply its full private inventory and a
 SHA-256 retained with the backup receipt. Each bucket contains a list of
