@@ -1696,25 +1696,33 @@ export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
     return { ids: local, complete: !SUPABASE_CONFIGURED && queue.complete };
   }
 
-  const { data, error, count } = await supabase
-    .from('favorites')
+  const query = () => supabase.from('favorites')
     .select('opportunity_id', { count: 'exact' })
+    .order('opportunity_id', { ascending: true })
     .eq('device_id', deviceId);
-  if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
-
-  if (error || !Array.isArray(data) || data.some(row => typeof row?.opportunity_id !== 'string' || !row.opportunity_id)) {
-    console.warn('[ofe] getFavorites failed, using local fallback:', error?.message);
-    setStorageStatus('local-only', error?.message ?? null);
-    return { ids: local, complete: false };
-  }
-
-  const remote = new Set(data.map((r: { opportunity_id: string }) => r.opportunity_id));
-
-  if (typeof count === 'number' && count !== data.length) {
-    // PostgREST can cap a successful result. Backfilling against a partial
-    // page could re-insert a row outside the response and clear its queue.
-    setStorageStatus('local-only', 'The full saved list could not be checked.');
+  const remote = new Set<string>();
+  const incomplete = (reason: string): FavoriteSnapshot => {
+    setStorageStatus('local-only', reason);
     return { ids: new Set([...remote, ...local]), complete: false };
+  };
+  let page = await query();
+  const total = page.count;
+  for (;;) {
+    if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
+    const { data, error, count } = page;
+    if (error || !Array.isArray(data) || data.some(row => !row?.opportunity_id || typeof row.opportunity_id !== 'string')
+      || (typeof total === 'number' && count !== total - remote.size)) {
+      return incomplete(error?.message ?? 'The full saved list could not be checked.');
+    }
+
+    const previousSize = remote.size;
+    for (const row of data) remote.add(row.opportunity_id);
+    if (remote.size - previousSize !== data.length || (typeof total === 'number' && remote.size > total)) {
+      return incomplete('The full saved list could not be checked.');
+    }
+    if (total == null || remote.size === total) break;
+    if (!data.length) return incomplete('The full saved list could not be checked.');
+    page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
   }
 
   const toPush = Array.from(local).filter(id => !remote.has(id));

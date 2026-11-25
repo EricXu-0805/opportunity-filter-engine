@@ -490,7 +490,7 @@ describe('late local-fallback writes re-validate the SAME token immediately befo
 
     const select = vi.fn();
     const insert = vi.fn();
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: select }), insert }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq: select }) }), insert }));
 
     // getFavorites captures its own token under U1 and reaches
     // ensureAnonSession's getSession() call, which is now pending.
@@ -518,7 +518,7 @@ describe('late local-fallback writes re-validate the SAME token immediately befo
       liveAuthCallback?.('SIGNED_IN', session(U2).data.session);
       return Promise.resolve({ error: null });
     });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: select }), insert }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq: select }) }), insert }));
 
     const result = await getFavorites();
     expect(insert).toHaveBeenCalledTimes(1);
@@ -761,7 +761,7 @@ describe('getFavorites: safe one-time re-read after first-owner priming (READ-on
 
     mockGetSession.mockResolvedValue(session(U1)); // ensureAnonSession resolves to a real, fresh identity
     const eq = vi.fn().mockResolvedValue({ data: [{ opportunity_id: OPP }], error: null });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq }) }) }));
 
     const result = await getFavorites();
     expect(eq).toHaveBeenCalled(); // the remote query genuinely ran under the fresh identity
@@ -774,7 +774,7 @@ describe('getFavorites: safe one-time re-read after first-owner priming (READ-on
     mockGetSession.mockResolvedValue(session(U2)); // resolves to a DIFFERENT identity — a genuine switch, not a first resolution
     const select = vi.fn();
     const insert = vi.fn();
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: select }), insert }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq: select }) }), insert }));
 
     const result = await getFavorites();
     expect(select).not.toHaveBeenCalled();
@@ -787,7 +787,7 @@ describe('sanity: getFavorites is unaffected by the owner-token signature change
   it('still reads favorites without requiring a token, when nothing races', async () => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue({ data: [{ opportunity_id: OPP }], error: null });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq }) }) }));
     const set = await getFavorites();
     expect(set.has(OPP)).toBe(true);
   });
