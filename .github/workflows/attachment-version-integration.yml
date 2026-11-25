@@ -1,0 +1,59 @@
+name: Verify Tracker UI and upgrade on disposable Supabase
+on:
+  push:
+    branches: [codex/diagnose-m53-immutable-ui]
+    paths: ['.github/workflows/attachment-version-integration.yml', 'frontend/scripts/verify-immutable-tracker-browser.mjs', 'supabase/tests/fixtures/previous-tracker-guard.sql']
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Install the repository's locked JavaScript SDK
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install isolated Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium > /tmp/immutable-browser-install.log 2>&1
+      - name: Replay the original preview guard followed by the candidate upgrade
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/ofe-m53-storage"
+          mkdir -p "$fixture"
+          cd "$fixture"
+          supabase init
+          mkdir -p supabase/migrations
+          cp "$GITHUB_WORKSPACE/supabase/migrations/008_tracker_attachments_storage.sql" supabase/migrations/
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
+          cp "$GITHUB_WORKSPACE/supabase/tests/fixtures/previous-tracker-guard.sql" supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261125183000_tracker_attachment_versions.sql" supabase/migrations/
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
+            exit 1
+          fi
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'storage-api|supabase/postgres:'
+      - name: Provision a private version bucket through Storage
+        run: |
+          python3 -m pip install --quiet httpx
+          fixture="$RUNNER_TEMP/ofe-m53-storage/status.json"
+          SUPABASE_URL="$(jq -r .API_URL "$fixture")" SUPABASE_SERVICE_ROLE_KEY="$(jq -r .SERVICE_ROLE_KEY "$fixture")" python3 scripts/configure_tracker_attachment_versions.py
+      - name: Verify real Storage writes, receipts, guards and downloaded bytes
+        run: node frontend/scripts/verify-immutable-tracker-attachments.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json"
+      - name: Verify the database upgrade removed the managed-schema triggers
+        run: |
+          fixture="$RUNNER_TEMP/ofe-m53-storage/status.json"
+          test "$(psql "$(jq -r .DB_URL "$fixture")" -XAtc "select count(*) from pg_trigger where tgrelid='storage.objects'::regclass and tgname in ('tracker_attachment_reject_recreation','tracker_attachment_check_revision')")" = 0
+      - name: Open the real Tracker panel, replace, lose a receipt and verify signed bytes
+        run: node frontend/scripts/verify-immutable-tracker-browser.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json"
