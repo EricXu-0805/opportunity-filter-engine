@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS storage.objects (
   bucket_id  text,
   name       text,
   owner      uuid,
+  metadata jsonb,
+  user_metadata jsonb,
+  version text,
+  updated_at timestamptz DEFAULT now(),
   created_at timestamptz DEFAULT now()
 );
 
