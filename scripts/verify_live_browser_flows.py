@@ -80,6 +80,10 @@ async def run(mode):
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
                     if mode.startswith('race') and u.path.endswith('/commit_profile_patch_cas'):
+                        patch = req.post_data_json or {}
+                        print('Observed save', 'second' if req.frame.page==receiver else 'first',
+                              'outage',outage,'expected rev',patch.get('p_expected_revision'),
+                              'patch major',(patch.get('p_patch') or {}).get('major'),flush=True)
                         if outage:
                             return await route.fulfill(status=503,headers=cors,json={'message':'simulated disconnected write'})
                         await asyncio.sleep(.19)
@@ -172,11 +176,13 @@ async def run(mode):
                     expected = 'Changed somewhere else' if lang == 'en' else '在别处改过了'
                     message = await tab.locator('#profile-save-status').inner_text()
                     messages.append(expected in message)
-                    print('Open choice',lang,index,repr(message),flush=True)
+                    print('Open choice',lang,index,'visible major',await tab.locator('#major').input_value(),repr(message),flush=True)
                     if lang == 'zh':
                         dims=await keep[index].evaluate("(b)=>({width:innerWidth,height:b.getBoundingClientRect().height,line:parseFloat(getComputedStyle(b).lineHeight),pad:parseFloat(getComputedStyle(b).paddingTop)+parseFloat(getComputedStyle(b).paddingBottom)})")
                         assert dims['width'] == 390 and dims['height']-dims['pad'] <= dims['line']*2+3,dims
-                    await tab.evaluate("""() => {window.receiptViews=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]')){window.receiptClicks++;window.receiptClickTime=Date.now()}},true);new MutationObserver(()=>{
+                    await tab.evaluate("""() => {window.receiptViews=[];window.statusHistory=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]')){window.receiptClicks++;window.receiptClickTime=Date.now()}},true);new MutationObserver(()=>{
+                        const msg=document.querySelector('#profile-save-status')?.innerText;
+                        if(msg && window.statusHistory.at(-1)!==msg && window.statusHistory.length<30) window.statusHistory.push(msg);
                         const s = document.querySelector('[data-testid="conflict-stale"]');
                         const retry=document.querySelector('[data-testid="retry-sync"]');
                         const failed=/Saved on this device only|仅保存在本设备|没能同步/.test((document.querySelector('#profile-save-status')?.innerText || ''));
@@ -188,6 +194,8 @@ async def run(mode):
                 if staggered:
                     await keep[0].click()
                     await asyncio.sleep(.8)
+                    for i,t in enumerate(tabs):
+                        print('Before second attempt',i,await t.locator('#major').input_value(),repr(await t.locator('#profile-save-status').inner_text()),flush=True)
                     second_available = await keep[1].is_visible()
                     if second_available:
                         try:
@@ -219,6 +227,7 @@ async def run(mode):
                 print('Click receipts',clicks,'approved conflict explanation present',messages,flush=True)
                 times = [await tab.evaluate('window.receiptClickTime ?? null') for tab in tabs]
                 print('Click interval in ms', times[1]-times[0] if all(times) else None, flush=True)
+                print('Ordered status history', [[v.replace('\n',' / ') for v in await tab.evaluate('window.statusHistory')] for tab in tabs],flush=True)
                 assert clicks == [1,int(second_available)] and outcomes == ['applied']
                 if second_available:
                     assert any(any(v['stale'] for v in vs) for vs in views)
