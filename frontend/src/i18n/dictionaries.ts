@@ -3531,6 +3531,7 @@ export const en = {
         high: 'High',
         openLink: 'Open application page',
       },
+      seeApplicationWindow: 'See the source’s application window.',
       unknownHint: {
         international_students: 'Not stated — this does not mean you are ineligible.',
         citizenship: 'Not stated — check the source before ruling yourself in or out.',
@@ -8941,6 +8942,7 @@ export const zh = {
         high: '高',
         openLink: '打开申请页面',
       },
+      seeApplicationWindow: '查看来源给出的申请时间说明。',
       unknownHint: {
         international_students: '未说明——这并不表示你没有资格。',
         citizenship: '未说明——请先查看来源，再判断是否符合条件。',
