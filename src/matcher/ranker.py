@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 
-from backend.lib.contact_visibility import send_target_strength, verified_send_target
+from backend.lib.contact_visibility import send_target_strength
 from backend.lib.opportunity_detail import (
     SIMPLIFY_NO_SPONSORSHIP_LABEL,
     SIMPLIFY_NO_SPONSORSHIP_NOTE,
@@ -32,7 +32,6 @@ from ..evidence import (
     collector_constant_keywords,
     configured_fact,
     configured_value_unstated,
-    faculty_availability_status,
     faculty_contact_claims_unverified,
     faculty_positive_major_labels,
     faculty_profile_summary_fields,
@@ -140,14 +139,7 @@ def _is_actionable(opportunity: dict, now: datetime | None = None) -> bool:
     two bars can never drift apart again. Freshness is judged at the end of
     the server's day (_contact_checked_at), never more kindly than the reveal
     flow judges it at any moment of that day."""
-    if verified_send_target(
-        opportunity, now=now or _contact_checked_at(date.today())
-    ):
-        return True
-    app = opportunity.get("application") or {}
-    if app.get("contact_method") == "email":
-        return False
-    return bool(app.get("application_url"))
+    return _evidence_rank(opportunity, now) > 0
 
 
 def _evidence_rank(opportunity: dict, now: datetime | None = None) -> int:
@@ -160,8 +152,12 @@ def _evidence_rank(opportunity: dict, now: datetime | None = None) -> int:
     strength = send_target_strength(
         opportunity, now=now or _contact_checked_at(date.today())
     )
-    if strength:
-        return strength
+    return _action_evidence_rank(opportunity, strength)
+
+
+def _action_evidence_rank(opportunity: dict, send_strength: int) -> int:
+    if send_strength:
+        return send_strength
     app = opportunity.get("application") or {}
     if app.get("contact_method") == "email":
         return 0
@@ -395,6 +391,9 @@ def _major_lookup_keys(major_upper: str) -> list[str]:
 
 def _normalize_major(major: str) -> str:
     major_upper = major.upper().strip()
+    exact = _MAJOR_ALIAS_LOOKUP.get(major_upper)
+    if exact is not None:
+        return exact
     for key in _major_lookup_keys(major_upper):
         group = _MAJOR_ALIAS_LOOKUP.get(key)
         if group is not None:
@@ -4057,7 +4056,9 @@ def _rank_opportunity_unlocked(
         # the "This lab focuses on …" framing is a category error there, and the
         # keyword/interest reasons already convey relevance, so skip it.
 
-    next_steps = _generate_next_steps(profile, opportunity, all_gap, contact_checked_at)
+    send_strength = send_target_strength(opportunity, now=contact_checked_at)
+    evidence_rank = _action_evidence_rank(opportunity, send_strength)
+    next_steps = _generate_next_steps(profile, opportunity, all_gap, has_send_target=bool(send_strength))
 
     # Field-relevant = the opportunity topically matches the student's stated
     # interests OR their major-derived field. Drives the "N strong matches in
@@ -4079,8 +4080,8 @@ def _rank_opportunity_unlocked(
         reasons_gap=all_gap,
         next_steps=next_steps,
         field_relevant=field_relevant,
-        actionable=_is_actionable(opportunity, contact_checked_at),
-        evidence_rank=_evidence_rank(opportunity, contact_checked_at),
+        actionable=bool(evidence_rank),
+        evidence_rank=evidence_rank,
         unknowns=_decision_unknowns(profile, opportunity),
         opportunity_type=_normalize_type_key(opportunity.get("opportunity_type") or ""),
     )
@@ -4163,7 +4164,8 @@ def _generate_next_steps(
     profile: dict,
     opportunity: dict,
     gaps: list[str],
-    contact_checked_at: datetime,
+    *,
+    has_send_target: bool,
 ) -> list[str]:
     """Generate actionable next steps based on gaps."""
     steps = []
@@ -4186,7 +4188,7 @@ def _generate_next_steps(
     # neutralized. A verified target can still produce a send-ready next step;
     # otherwise the honest action is to verify a channel on the profile.
     if is_faculty_contact and profile.get("can_cold_email"):
-        if verified_send_target(opportunity, now=contact_checked_at):
+        if has_send_target:
             steps.append("Send a brief cold email to the PI expressing interest")
         else:
             steps.append("Open the faculty profile and verify a contact channel")
@@ -4533,9 +4535,6 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     target = target_truth(opp)
     if not target.actionable:
         return target.reason_code
-    faculty_status = faculty_availability_status(opp)
-    if faculty_status == "not_accepting_undergraduates":
-        return "faculty_not_accepting"
 
     # Multi-university scope (PR #187 Phase 1): another school's campus-only
     # posting is not actionable for this user, so it always drops. The rest of
