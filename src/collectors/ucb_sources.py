@@ -124,6 +124,8 @@ def _prog(
     international_friendly: str = "unknown",
     deadline_note: str = "",
     contact_email: str | None = None,
+    min_gpa: float | None = None,
+    citizenship_required: bool | None = None,
     reference_only: bool = False,
     keywords: list[str] | None = None,
 ) -> dict:
@@ -145,6 +147,8 @@ def _prog(
         "international_friendly": international_friendly,
         "deadline_note": deadline_note,
         "contact_email": contact_email,
+        **({"min_gpa": min_gpa} if min_gpa is not None else {}),
+        **({"citizenship_required": citizenship_required} if citizenship_required is not None else {}),
         **({"reference_only": True} if reference_only else {}),
         "keywords": keywords or [],
     }
@@ -354,11 +358,11 @@ UCB_SOURCES: list[dict] = [
         ],
     },
     {
-        "source_name": "ucb_external_fellowships",
+        "source_name": "ucb_haas_scholars",
         "source_type": PROGRAM,
-        "emit": EMIT_OPEN,
+        "emit": EMIT_CAMPUS,
         "seeds": [
-            "https://research.berkeley.edu/our/scholarships-and-honors/",
+            "https://research.berkeley.edu/haas-scholars/",
         ],
         "crawl": STATIC,
         "update": MONTHLY,
@@ -370,13 +374,16 @@ UCB_SOURCES: list[dict] = [
                 "Twenty Haas Scholars are selected each year to pursue a self-designed "
                 "research or creative project across any discipline during their "
                 "senior year, with a faculty mentor and a substantial research grant. "
-                "Highly selective; open to all majors with financial need.",
+                "The 2026–27 cohort is for Berkeley undergraduates with financial need and a Berkeley GPA "
+                "of at least 3.450, graduating in fall 2026 or spring or summer 2027. The program accepts "
+                "eligible undocumented students, permanent residents and US citizens.",
                 lab_or_program="Haas Scholars",
                 opportunity_type="research",
                 paid="stipend",
-                compensation="Research grant (~$13,800)",
-                preferred_year=["junior"],
-                deadline_note="Annual cycle — applications due in the spring of junior year.",
+                compensation="Up to $14,800 in financial support",
+                min_gpa=3.45, citizenship_required=False, international_friendly="no",
+                preferred_year=["junior", "senior"],
+                deadline_note="Application deadline: Friday, March 13, 2026 at 12:00 PM Noon Pacific Time.",
                 keywords=["fellowship", "thesis", "research grant", "undergraduate research"],
             ),
         ],

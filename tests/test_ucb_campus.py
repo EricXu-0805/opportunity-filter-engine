@@ -113,13 +113,13 @@ class TestSeedNormalization:
             assert o.get("pi_name") is None
             assert o.get("contact_email") is None
 
-    def test_rolling_with_no_deadline(self, seed_records):
-        """No structured deadlines (cycles live in the description), so every
-        record must be rolling — otherwise deactivate_past can't reason about it
-        and the UI shows a blank timing block."""
-        for o in seed_records:
-            assert o.get("deadline") is None
-            assert o.get("is_rolling") is True
+    def test_rolling_unless_a_program_has_a_reviewed_close(self, seed_records):
+        from src.program_windows import reviewed_window
+
+        for row in seed_records:
+            window = reviewed_window(row)
+            assert row.get("deadline") == (window.closes_on.isoformat() if window else None)
+            assert row["is_rolling"] is (window is None)
 
     def test_clear_separation_of_levels(self, seed_records):
         """Program / lab / department / career / announcement must each be

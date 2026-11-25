@@ -46,6 +46,7 @@ from urllib.parse import urljoin, urlsplit
 
 from src.contact_instructions import same_source_page as _same_page_url
 from src.normalizers.ucb_dedup import dedupe_against_existing
+from src.program_windows import apply_program_window
 
 from . import ucb_sources as reg
 from .application_status import detect_application_status
@@ -140,7 +141,7 @@ def _normalize_program(
         + [source["source_type"]]
     ))
 
-    return {
+    record = {
         "id": _hash_id(src_value, program["key"]),
         "source": src_value,
         # `source_type` is the matcher-facing field; keep it descriptive but
@@ -171,9 +172,8 @@ def _normalize_program(
         "opportunity_type": program.get("opportunity_type", "research"),
         "paid": program.get("paid", "unknown"),
         "compensation_details": program.get("compensation", ""),
-        # Rolling: these are program/hub pages, not single dated postings. No
-        # structured deadline (the cycle note lives in the description) so
-        # deactivate_past never wrongly retires them.
+        # Program and hub pages default to rolling unless a reviewed window
+        # below supplies an actual deadline for this specific program.
         "deadline": None,
         "is_rolling": True,
         "posted_date": None,
@@ -181,12 +181,12 @@ def _normalize_program(
         "duration": None,
         "eligibility": {
             "preferred_year": program.get("preferred_year", ["sophomore", "junior", "senior"]),
-            "min_gpa": None,
+            "min_gpa": program.get("min_gpa"),
             "majors": program.get("eligibility_majors", []),
             "skills_required": [],
             "skills_preferred": [],
             # Tri-state (M03): an unknown intl answer is not "no requirement".
-            "citizenship_required": True if intl == "no" else (False if intl == "yes" else None),
+            "citizenship_required": program.get("citizenship_required", {"no": True, "yes": False}.get(intl)),
             "international_friendly": intl,
             "work_auth_notes": "",
             "eligibility_text_raw": (program.get("deadline_note", "") or "")[:300],
@@ -225,6 +225,8 @@ def _normalize_program(
             "seed_page_verified": seed_page_verified,
         },
     }
+    apply_program_window(record)
+    return record
 
 
 def _normalize_discovered(source: dict, title: str, url: str, snippet: str) -> dict:

@@ -34,6 +34,7 @@ class ProgramWindow:
 
 
 _REVIEWED = date(2026, 11, 5)
+_HAAS = "https://research.berkeley.edu/haas-scholars/"
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
 _SFP = "https://sfp.caltech.edu/undergraduate-research/programs/"
 _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
@@ -42,6 +43,10 @@ _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 # deadline.") names the cycle elsewhere on the same page ("View the 2027
 # program flyer!", "SURF 2027 application portal"); that is the year here.
 WINDOWS: dict[tuple[str, str], ProgramWindow] = {
+    ("ucb", "haas_scholars"): ProgramWindow(
+        _HAAS, _HAAS + "how-to-apply/", date(2026, 11, 25), date(2026, 3, 13),
+        "Application deadline: Friday, March 13, 2026 at 12:00 PM Noon Pacific Time.",
+    ),
     ("northwestern", "nu_tgs_srop"): ProgramWindow(
         _SROP, _SROP + "srop-faq.html", _REVIEWED, date(2027, 2, 10),
         "The official BTAA application opens November 1, 2026 and closes Tuesday, February 10, 2027.",
@@ -94,6 +99,10 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     if not isinstance(metadata, dict) or metadata.get("discovered"):
         return None
     school, key = metadata.get("collector_school"), metadata.get("collector_key")
+    # Berkeley's dedicated registry encodes its owner in its emitted source.
+    # Both the old national row and its campus replacement carry the same key.
+    if school is None and record.get("source") in {"ucb_external_research", "ucb_research_programs"}:
+        school = "ucb"
     if not isinstance(school, str) or not isinstance(key, str):
         return None
     window = WINDOWS.get((school, key))

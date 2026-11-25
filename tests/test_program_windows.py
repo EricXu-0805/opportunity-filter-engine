@@ -14,6 +14,7 @@ from backend.lib.opportunity_detail import build_detail_fields
 from backend.lib.public_projection import neutralize_lifecycle_title, project_public_opportunity_payload
 from src import evidence
 from src.collectors import campus_graph as cg
+from src.collectors import ucb_campus, ucb_sources
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.program_windows import WINDOWS, apply_program_window, reviewed_window
 
@@ -27,7 +28,7 @@ def _schools() -> dict[str, dict]:
 
 
 def _spec(school_slug: str, key: str) -> tuple[dict, dict, dict]:
-    school = _schools()[school_slug]
+    school = {"sources": ucb_sources.UCB_SOURCES} if school_slug == "ucb" else _schools()[school_slug]
     for source in school["sources"]:
         for spec in source.get("programs", []):
             if spec["key"] == key:
@@ -37,6 +38,8 @@ def _spec(school_slug: str, key: str) -> tuple[dict, dict, dict]:
 
 def _row(school_slug: str, key: str) -> dict:
     school, source, spec = _spec(school_slug, key)
+    if school_slug == "ucb":
+        return ucb_campus._normalize_program(source, spec)
     return cg._normalize_program(school, source, spec)
 
 
@@ -293,3 +296,18 @@ def test_every_window_zone_resolves_from_the_shipped_tz_database():
     assert zones
     for zone in zones:
         assert resources.files("tzdata.zoneinfo").joinpath(*zone.split("/")).is_file(), zone
+
+def test_berkeley_haas_closed_cycle_in_old_national_and_new_campus_rows(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
+    campus = _row("ucb", "haas_scholars")
+    assert (campus["school"], campus["audience"]) == ("ucb", "campus")
+    assert campus["eligibility"]["min_gpa"] == 3.45
+    assert campus["eligibility"]["international_friendly"] == "no"
+    assert campus["eligibility"]["citizenship_required"] is False
+    old = copy.deepcopy(campus)
+    old.update(id="ucb-b701ddbcd6157b", school=None, audience="open", source="ucb_external_research",
+               deadline=None, is_rolling=True)
+    old["metadata"]["collector_source"] = "ucb_external_fellowships"
+    for row in (campus, data_loader._sanitize_opportunity(old)):
+        assert row["deadline"] == "2026-03-13" and row["is_rolling"] is False
+        assert not evidence.target_truth(row).actionable

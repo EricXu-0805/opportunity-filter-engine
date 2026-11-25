@@ -1460,7 +1460,7 @@ def test_a_config_edit_to_an_open_program_reaches_national_json_on_schedule(monk
               if row["school"] is None]
     stored += [row for row in ucb_campus.fetch_and_normalize() if row["school"] is None]
     edited = {"ssrp_amgen_scholars", "dsi_summer_lab", "ede_plus", "amgen_scholars_ucla",
-              "singh_reu", "haas_scholars"}
+              "singh_reu", "lbl_suli"}
     assert edited <= {row["metadata"]["collector_key"] for row in stored}
     processed = _stub_with_processed_file(monkeypatch, tmp_path, stored)
     shards = tmp_path / "shards"
