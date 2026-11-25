@@ -2178,7 +2178,8 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.25"
+# w12.26 requires a recipient to confirm shared-profile skills before naming them.
+COLD_EMAIL_PIPELINE_VERSION = "w12.26"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a

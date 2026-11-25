@@ -63,7 +63,7 @@ def test_plan_reads_complete_experiences_and_target(target):
     assert f"- Description: {target['description_clean']}\n" in prompt and "excerpt" not in prompt
     # A failed plan leaves the rollback floor intact, including the tail's limitation.
     assert response.json()["sections"][0]["bullets"][0]["base_text"] == text
-    assert response.json()["pipeline_version"] == "w14.4"
+    assert response.json()["pipeline_version"] == "w14.5"
 
 
 def test_all_hundred_bullets_reach_the_plan_with_their_tails(target):
