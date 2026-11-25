@@ -1,0 +1,48 @@
+name: Reconcile stored faculty keyword fragments
+on:
+  push:
+    branches: [codex/m186-reconcile-published-keywords]
+    paths: [.github/workflows/m186-keyword-reconciliation.yml]
+permissions:
+  contents: write
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and prepare the historical correction
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from src.evidence import is_research_clause_fragment
+          total = 0
+          for path in sorted(Path("data/processed/shards").glob("*.json")):
+              raw = path.read_text()
+              rows = json.loads(raw)
+              removed = 0
+              for row in rows:
+                  if row.get("source_type") != "faculty_research":
+                      continue
+                  keywords = row.get("keywords") or []
+                  kept = [k for k in keywords if not (isinstance(k, str) and is_research_clause_fragment(k))]
+                  if len(kept) != len(keywords):
+                      print(row["id"], [k for k in keywords if k not in kept])
+                      row["keywords"] = kept
+                      removed += len(keywords) - len(kept)
+              if removed:
+                  old = json.loads(raw)
+                  assert [r["id"] for r in old] == [r["id"] for r in rows]
+                  for before, after in zip(old, rows):
+                      assert {k:v for k,v in before.items() if k!="keywords"} == {k:v for k,v in after.items() if k!="keywords"}
+                  encode = lambda v: json.dumps(v, ensure_ascii=False, separators=(",", ":"))
+                  assert raw.rstrip("\n") == encode(old), path
+                  path.write_text(encode(rows) + raw[len(raw.rstrip("\n")):])
+                  total += removed
+          assert total == 16, total
+          PY
+          git add -- data/processed/shards/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Remove 16 verified clause fragments from stored faculty keyword lists'
+          git push origin HEAD:refs/heads/codex/m186-reconcile-published-keywords
