@@ -8,6 +8,7 @@ from src.evidence import (
     is_professor_rank,
     is_research_clause_fragment,
     keywords_are_source_topics,
+    record_kind,
 )
 from src.lab_context import lab_context_for, validate_public_lab_context
 from src.matcher.ranker import _BROAD_FIELDS
@@ -1006,6 +1007,9 @@ def _common_parts(
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
+        is_posted_internship=record_kind(opportunity) == "listing" and (
+            opp_type == "internship" or opportunity.get("source_type") == "internship"
+        ),
         faculty_is_professor=faculty_is_professor,
         # A listing whose source states no topics: the template opener names
         # it by its title (_p1_research_hook). research_topic is unchanged.
@@ -1102,6 +1106,10 @@ def _contact_template(email: str, p: dict) -> str:
 
 
 def _subject(p: dict, style: str = "") -> str:
+    if p.get("is_posted_internship"):
+        title = p.get("posting_name")
+        return _cap_subject(f"Subject: Internship inquiry — {title}") if title else "Subject: Internship inquiry"
+
     lab = p["lab"]
     area = p["research_area"]
     lab_type = p.get("lab_type", "dry")

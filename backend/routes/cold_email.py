@@ -2362,6 +2362,8 @@ def _neutral_inquiry(parts: dict, opp: dict) -> str:
     greeting = f"Dear {recipient}," if recipient else "Hello,"
     context_lines = [parts.get(key) or "" for key in ("contact_opening", "contact_reply_line", "contact_paper_reading")]
     ask = parts.get("target_conditions_template_request") or (
+        "Could you let me know the next step for this internship application?"
+        if parts.get("is_posted_internship") else
         "Could you let me know the best next step for this inquiry?"
         if parts.get("contact_purpose") == "follow_up" and not parts.get("is_faculty") else
         "Could I ask whether you have any current or upcoming research openings? "
@@ -2391,7 +2393,8 @@ def _guard_email_output(
     if subject.strip() and body.strip() and not any(_email_grounding_findings(
             f"{subject}\n{body}", parts, opp, deterministic=deterministic)):
         return subject, body, False
-    return required_email_subject(opp) or "Research inquiry", redact_embedded_emails(_neutral_inquiry(parts, opp)), True
+    neutral_subject = "Internship inquiry" if parts.get("is_posted_internship") else "Research inquiry"
+    return required_email_subject(opp) or neutral_subject, redact_embedded_emails(_neutral_inquiry(parts, opp)), True
 
 
 def _source_freshness(opp: dict) -> str:
