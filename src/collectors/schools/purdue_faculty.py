@@ -402,7 +402,9 @@ SCHOOL: dict = {
               "satt", "SATT Directory"),
         _poly("BSC", "Bowen School of Construction",
               ["Construction Management Technology"],
-              "bsc", "Bowen School of Construction Directory"),
+              "bsc", "Bowen School of Construction Directory") | {
+            "profile_id_names": {"polytechnic.purdue.edu/profile/kyukang": ("Kyu Kang", "Kyubyung Kang")},
+        },
         _poly("TLI", "Department of Technology Leadership & Innovation",
               ["Technology Leadership and Innovation"],
               "tli", "TLI Directory"),

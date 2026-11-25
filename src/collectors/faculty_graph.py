@@ -669,6 +669,12 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # ``id_names``, so the record keeps its id rather than being retired and
     # minted again.
     id_name = (dept.get("id_names") or {}).get(name, name)
+    # A reviewed nickname belongs to this person only on their own profile.
+    # The same spelling from a different directory card keeps its normal ID.
+    if reviewed_names := dept.get("profile_id_names"):
+        alias = reviewed_names.get(canonical_profile_url(person.get("url")))
+        if alias and name == alias[0]:
+            id_name = alias[1]
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
     marker = dept.get("cross_listing_marker")
     listing = ""
