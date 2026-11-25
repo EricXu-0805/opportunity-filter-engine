@@ -22,31 +22,33 @@ CREATE SCHEMA IF NOT EXISTS private;
 CREATE TABLE private.tracker_attachment_edits (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id uuid NOT NULL,
-  path text NOT NULL,
-  anchor_id uuid NOT NULL,
-  expected_revision text NOT NULL,
-  mime text NOT NULL,
-  byte_size integer NOT NULL CHECK (byte_size BETWEEN 0 AND 5242880),
+  path text,
+  anchor_id uuid,
+  expected_revision text,
+  mime text,
+  byte_size integer CHECK (byte_size BETWEEN 0 AND 5242880),
   state text NOT NULL DEFAULT 'staged' CHECK (state IN ('staged','current','retired','garbage')),
   physical_revision text,
-  cleanup_after timestamptz NOT NULL DEFAULT now() + interval '1 day'
+  cleanup_after timestamptz NOT NULL DEFAULT now() + interval '1 day',
+  CHECK (state='garbage' OR (path IS NOT NULL AND anchor_id IS NOT NULL AND expected_revision IS NOT NULL
+    AND mime IS NOT NULL AND byte_size IS NOT NULL))
 );
 CREATE UNIQUE INDEX tracker_attachment_current ON private.tracker_attachment_edits(owner_id, path, anchor_id)
   WHERE state = 'current';
 CREATE INDEX tracker_attachment_cleanup ON private.tracker_attachment_edits(cleanup_after);
 CREATE INDEX tracker_attachment_owner_stage ON private.tracker_attachment_edits(owner_id, state);
 CREATE TABLE private.tracker_attachment_deletions (
-  owner_id uuid NOT NULL, path text NOT NULL, anchor_id uuid NOT NULL,
-  PRIMARY KEY (owner_id, path, anchor_id)
+  owner_id uuid NOT NULL, path_hash bytea NOT NULL, anchor_id uuid NOT NULL,
+  PRIMARY KEY (owner_id, path_hash, anchor_id)
 );
 REVOKE ALL ON private.tracker_attachment_edits, private.tracker_attachment_deletions FROM PUBLIC, anon, authenticated;
 ALTER TABLE private.tracker_attachment_edits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE private.tracker_attachment_deletions ENABLE ROW LEVEL SECURITY;
 
-CREATE FUNCTION private.tracker_object_revision(o storage.objects) RETURNS text
-LANGUAGE sql STABLE SET search_path = '' AS $$
-  SELECT o.id::text || ':' || coalesce(o.version, '') || ':' ||
-         coalesce(extract(epoch FROM o.updated_at)::text, '') || ':' || coalesce(o.metadata->>'eTag','')
+CREATE FUNCTION private.tracker_object_revision(p_id uuid,p_version text,p_updated_at timestamptz,p_etag text) RETURNS text
+LANGUAGE sql IMMUTABLE SET search_path = '' AS $$
+  SELECT p_id::text || ':' || coalesce(p_version, '') || ':' ||
+         coalesce(extract(epoch FROM p_updated_at)::text, '') || ':' || coalesce(p_etag,'')
 $$;
 
 CREATE FUNCTION private.tracker_attachment_view(u uuid, p text) RETURNS jsonb
@@ -56,17 +58,17 @@ BEGIN
   IF u IS NULL OR split_part(p,'/',1) <> u::text THEN RAISE EXCEPTION 'invalid attachment owner'; END IF;
   SELECT * INTO a FROM storage.objects WHERE bucket_id='tracker-attachments' AND name=p;
   IF NOT FOUND OR EXISTS(SELECT 1 FROM private.tracker_attachment_deletions
-    WHERE owner_id=u AND path=p AND anchor_id=a.id) THEN RETURN NULL; END IF;
+    WHERE owner_id=u AND path_hash=sha256(convert_to(p,'UTF8')) AND anchor_id=a.id) THEN RETURN NULL; END IF;
   SELECT * INTO edit FROM private.tracker_attachment_edits
     WHERE owner_id=u AND path=p AND anchor_id=a.id AND state='current';
   IF FOUND THEN
     SELECT * INTO physical FROM storage.objects WHERE bucket_id='tracker-attachment-versions'
       AND name=u::text||'/'||edit.id::text;
-    IF NOT FOUND OR private.tracker_object_revision(physical) IS DISTINCT FROM edit.physical_revision
+    IF NOT FOUND OR private.tracker_object_revision(physical.id,physical.version,physical.updated_at,physical.metadata->>'eTag') IS DISTINCT FROM edit.physical_revision
       THEN RAISE EXCEPTION 'attachment version unavailable'; END IF;
     rev := 'v:'||edit.id::text;
   ELSE
-    physical := a; rev := 'o:'||private.tracker_object_revision(a);
+    physical := a; rev := 'o:'||private.tracker_object_revision(a.id,a.version,a.updated_at,a.metadata->>'eTag');
   END IF;
   RETURN jsonb_build_object('path',p,'anchorId',a.id,'revision',rev,'storageBucket',physical.bucket_id,
     'storagePath',physical.name,'sizeBytes',coalesce((physical.metadata->>'size')::bigint,0),
@@ -125,7 +127,7 @@ BEGIN
     THEN RAISE EXCEPTION 'uploaded attachment unavailable'; END IF;
   UPDATE private.tracker_attachment_edits SET state='retired',cleanup_after=now()+interval '1 day'
     WHERE owner_id=u AND path=e.path AND anchor_id=e.anchor_id AND state='current';
-  UPDATE private.tracker_attachment_edits SET state='current',physical_revision=private.tracker_object_revision(obj)
+  UPDATE private.tracker_attachment_edits SET state='current',physical_revision=private.tracker_object_revision(obj.id,obj.version,obj.updated_at,obj.metadata->>'eTag')
     WHERE id=p_id;
   RETURN true;
 END $$;
@@ -137,7 +139,7 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended(p_path,279));
   v:=private.tracker_attachment_view(u,p_path);
   IF v IS NULL OR v->>'revision' IS DISTINCT FROM p_revision THEN RETURN false; END IF;
-  INSERT INTO private.tracker_attachment_deletions VALUES (u,p_path,(v->>'anchorId')::uuid);
+  INSERT INTO private.tracker_attachment_deletions VALUES (u,sha256(convert_to(p_path,'UTF8')),(v->>'anchorId')::uuid);
   UPDATE private.tracker_attachment_edits SET state='retired',cleanup_after=now()+interval '1 day'
     WHERE owner_id=u AND path=p_path AND anchor_id=(v->>'anchorId')::uuid AND state='current';
   RETURN true;
@@ -148,8 +150,8 @@ END $$;
 CREATE FUNCTION public.tracker_anchor_removable(p_path text,p_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT split_part(p_path,'/',1)=auth.uid()::text AND (
-    EXISTS(SELECT 1 FROM private.tracker_attachment_deletions WHERE owner_id=auth.uid() AND path=p_path AND anchor_id=p_id)
-    OR NOT EXISTS(SELECT 1 FROM private.tracker_attachment_deletions WHERE owner_id=auth.uid() AND path=p_path))
+    EXISTS(SELECT 1 FROM private.tracker_attachment_deletions WHERE owner_id=auth.uid() AND path_hash=sha256(convert_to(p_path,'UTF8')) AND anchor_id=p_id)
+    OR NOT EXISTS(SELECT 1 FROM private.tracker_attachment_deletions WHERE owner_id=auth.uid() AND path_hash=sha256(convert_to(p_path,'UTF8'))))
 $$;
 CREATE POLICY tracker_delete_incarnation ON storage.objects AS RESTRICTIVE FOR DELETE TO authenticated
   USING (bucket_id<>'tracker-attachments' OR public.tracker_anchor_removable(name,id));
@@ -180,11 +182,12 @@ LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
         WHERE o.bucket_id='tracker-attachment-versions' AND o.name=e.owner_id::text||'/'||e.id::text))
     ORDER BY e.cleanup_after LIMIT least(greatest(p_limit,0),20) FOR UPDATE OF e SKIP LOCKED
   ), claimed AS (
-    UPDATE private.tracker_attachment_edits e SET state='garbage',cleanup_after=now()+interval '10 minutes'
+    UPDATE private.tracker_attachment_edits e SET state='garbage', path=NULL, anchor_id=NULL,
+      expected_revision=NULL, mime=NULL, byte_size=NULL, physical_revision=NULL, cleanup_after=now()+interval '10 minutes'
       FROM candidates c WHERE e.id=c.id RETURNING e.owner_id,e.id)
   SELECT jsonb_build_object('jobs',coalesce(jsonb_agg(jsonb_build_object('owner_id',owner_id,'id',id)), '[]'::jsonb)) FROM claimed
 $$;
-REVOKE ALL ON FUNCTION private.tracker_object_revision(storage.objects), private.tracker_attachment_view(uuid,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION private.tracker_object_revision(uuid,text,timestamptz,text), private.tracker_attachment_view(uuid,text) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.resolve_tracker_attachment_versions(text[]), public.stage_tracker_attachment(text,text,text,integer),
  public.publish_tracker_attachment(uuid), public.delete_tracker_attachment(text,text), public.tracker_anchor_removable(text,uuid),
  public.tracker_version_access(text,boolean), public.claim_tracker_attachment_cleanup(integer) FROM PUBLIC,anon,authenticated,service_role;
@@ -200,7 +203,7 @@ BEGIN
     OR EXISTS(SELECT 1 FROM unnest(p_paths) p WHERE split_part(p,'/',1) IS DISTINCT FROM auth.uid()::text)
     THEN RAISE EXCEPTION 'invalid attachment request'; END IF;
   RETURN ARRAY(SELECT a.name FROM storage.objects a JOIN private.tracker_attachment_deletions d
-    ON d.owner_id=auth.uid() AND d.path=a.name AND d.anchor_id=a.id
+    ON d.owner_id=auth.uid() AND d.path_hash=sha256(convert_to(a.name,'UTF8')) AND d.anchor_id=a.id
     WHERE a.bucket_id='tracker-attachments' AND a.name=ANY(p_paths));
 END $$;
 REVOKE ALL ON FUNCTION public.pending_tracker_attachment_deletions(text[]) FROM PUBLIC,anon,authenticated,service_role;
