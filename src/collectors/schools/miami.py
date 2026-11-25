@@ -4,8 +4,8 @@ Curated seed records of the University of Miami's undergraduate-research
 landscape, centered on the Office of Undergraduate Research (ugr.miami.edu) — its
 office hub plus the named programs it runs: MUSE (Mentors for Undergraduate
 Scholarship Enrichment), SPARK (Sylvester Program for Academic Research &
-Knowledge), UConnect, and the Open Research Positions board. URLs curl-verified
-live (HTTP 200) on 2026-07-19.
+Knowledge) and the Open Research Positions board. UConnect is a student
+network listed as a reference.
 
 Emit buckets → (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -90,20 +90,17 @@ SCHOOL: dict = {
                 ),
                 program(
                     "miami_uconnect",
-                    "UConnect research matching (University of Miami)",
-                    "https://ugr.miami.edu/programs/uconnect/index.html",
-                    "UConnect is the University of Miami's program for connecting "
-                    "undergraduates with research and experiential-learning "
-                    "opportunities across campus. Students can explore faculty "
-                    "projects and match with mentors whose work aligns with their "
-                    "interests — a starting point for finding a lab or research "
-                    "team to join.",
+                    "UConnect student research network (University of Miami)",
+                    "https://events.miami.edu/group/uconnect_u_connect",
+                    "UConnect is a student organization for networking with peers "
+                    "and researchers across disciplines at the University of Miami. "
+                    "Its university group page lists events and ways to connect.",
                     organization="University of Miami",
                     lab_or_program="UConnect",
+                    reference_only=True,
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    keywords=["research matching", "finding a mentor",
-                              "faculty projects", "getting involved"],
+                    keywords=["peer networking", "student organization", "undergraduate research"],
                 ),
                 program(
                     "miami_open_research_positions",

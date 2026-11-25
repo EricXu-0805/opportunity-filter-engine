@@ -261,7 +261,7 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": [
                 "https://careeradvancement.uchicago.edu/student-opportunities/month-long-programs/jeff-metcalf-internship-program/",
-                "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/",
+                "https://uchicago.joinhandshake.com/login",
             ],
             "crawl": STATIC,
             "programs": [
@@ -283,10 +283,11 @@ SCHOOL: dict = {
                 program(
                     "uchicago_handshake",
                     "UChicago Handshake (Career Advancement)",
-                    "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/",
-                    "The central job and internship board for UChicago College students and alumni within five years of graduation, hosting external postings, campus recruiting, and all Metcalf internship listings. Requires a CNetID login, so postings are visible only to enrolled students.",
+                    "https://uchicago.joinhandshake.com/login",
+                    "UChicago Career Advancement directs students to this job board to find internships, including Metcalf internships. Sign in to browse jobs and apply to individual postings.",
                     organization="UChicago Career Advancement",
                     lab_or_program="UChicago Handshake",
+                    reference_only=True,
                     opportunity_type="internship",
                     paid="unknown",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],

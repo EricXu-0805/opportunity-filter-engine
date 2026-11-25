@@ -9,7 +9,7 @@ the Schwarzman College of Computing, all selectors live-verified 2026-07-15:
   ``data-email`` — the engine's ``_decode_b64email`` recovers them on listing
   AND profile), Physics/EAPS (OPUS-WP teaser family), Chemistry, Biology
   (no rank text and no personal emails anywhere — dept policy), BCS (Drupal).
-* School of Engineering: AeroAstro (tile links), BE/DMSE (faculty-teaser),
+* School of Engineering: AeroAstro (WordPress faculty cards), BE/DMSE (faculty-teaser),
   ChemE (rank encoded in card CLASSES — the card selector unions the ladder
   ranks), CEE (self-link cards with a one-line research intro), EECS (the one
   big directory WITH emails + research tags), MechE ("Last, First" names;
@@ -56,6 +56,8 @@ _LADDER = {
 # Departments whose roster is already faculty-only (class-filtered cards or a
 # faculty-scoped URL): keep everyone except emeriti stragglers.
 _LADDER_LIGHT = {"drop": r"emerit|post-tenure|in memoriam|visiting"}
+
+_AA_PROFILE_LINK = "a:is([href^='/people/'], [href^='https://aeroastro.mit.edu/people/'])"
 
 
 def _dept(short: str, name: str, majors: list[str], url: str, selectors: dict,
@@ -134,9 +136,22 @@ SCHOOL: dict = {
         _dept("AA", "Department of Aeronautics and Astronautics",
               ["Aeronautics and Astronautics", "Aerospace Engineering"],
               "https://aeroastro.mit.edu/faculty/",
-              {"card": "a.tile__link", "name": ".tile__title", "link": ":self",
-               "title": ".tile__description"},
-              enrich={"email_selector": ".people__contact-details-value a[href^='mailto:']",
+              {"card": "main .cp-post-box-link", "name": "h2.wp-block-heading",
+               # The directory repeats Wardle's link on Win's card. Keep both
+               # rows and let Win use the roster until his link is corrected.
+               "link": (f"h2 > {_AA_PROFILE_LINK}"
+                        ":not([href*='/people/brian-l-wardle']:-soup-contains('Moe Z. Win'))"),
+               # A card can have just a research paragraph in the rank's place.
+               "title": "h2 + p", "title_strip_after": r"(?i)\bResearch Areas?:",
+               "research_re_text": r"\bResearch Areas?:\s*(.+)$"},
+              ladder={**_LADDER, "drop": _LADDER["drop"] + r"|\bpost\s+tenure\b"},
+              # Below the name, require a rank paragraph or, on a rankless
+              # research card, a link to a person in MIT's own directory.
+              field_filter={"selector": ("h2 + p:not(:-soup-contains('Research Area')), "
+                                         f"h2:has(> {_AA_PROFILE_LINK}) + p"),
+                            "require_present": True},
+              enrich={"profile_url_re": r"^https://aeroastro\.mit\.edu/people/[^/?#]+/?$",
+                      "email_selector": ".people__contact-details-value a[href^='mailto:']",
                       "email_drop": r"^[^@]*$",
                       "research_selector": ".person-header__research-areas"}),
         _dept("BE", "Department of Biological Engineering", ["Biological Engineering"],

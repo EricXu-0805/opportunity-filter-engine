@@ -932,7 +932,7 @@ SCHOOL: dict = {
             "seeds": [
                 "https://undergraduateresearch.duke.edu/amgen-scholars-program-duke",
                 "https://undergraduateresearch.duke.edu/opportunity/duke-engineering-research-opportunities-through-pratt-school",
-                "https://nicholas.duke.edu/marinelab/research/reu",
+                "https://scholars.duke.edu/grant/284673",
                 "https://ousf.duke.edu/award/goldwater-scholarship/",
             ],
             "crawl": STATIC,
@@ -986,26 +986,18 @@ SCHOOL: dict = {
                 ),
                 program(
                     "marine_lab_reu",
-                    "Duke University Marine Laboratory NSF REU (Beaufort, NC)",
-                    "https://nicholas.duke.edu/marinelab/research/reu",
-                    "An NSF Research Experience for Undergraduates at the Duke Marine Lab in "
-                    "Beaufort supporting ~9 students for a 10-week independent research project "
-                    "in estuarine and coastal marine systems (sensory "
-                    "physiology/ecology/behavior, molecular biology/genetics, or "
-                    "coastal/estuarine physical processes), with seminars, field trips, and "
-                    "training in scientific writing and ethics. Open to rising "
-                    "sophomores\u2013seniors (US citizens/permanent residents); includes stipend, "
-                    "dorm housing, and meals. Confirm whether a cohort is offered this year.",
+                    "Duke Marine Laboratory NSF REU — historical grant",
+                    "https://scholars.duke.edu/grant/284673",
+                    "Duke records a National Science Foundation award for undergraduate "
+                    "research in estuarine and coastal marine systems, funded from "
+                    "June 2021 through May 2025. This grant record provides background "
+                    "on the Marine Lab program.",
                     organization="Duke University / National Science Foundation",
                     department="Nicholas School of the Environment / Duke Marine Lab",
                     lab_or_program="Marine Lab REU",
                     opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="Stipend + dormitory housing + meals (10 weeks)",
-                    eligibility_majors=["marine science", "biology", "ecology", "oceanography", "environmental science"],
-                    preferred_year=["sophomore", "junior", "senior"],
-                    international_friendly="no",
-                    deadline_note="NSF REU: US citizens/permanent residents. No 2026 cohort per NSF listing \u2014 confirm current status.",
+                    reference_only=True,
+                    deadline_note="A current application cycle has not been verified.",
                     keywords=["NSF REU", "marine science", "coastal", "estuarine", "Beaufort"],
                 ),
                 program(

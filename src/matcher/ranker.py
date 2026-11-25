@@ -23,10 +23,10 @@ from backend.lib.opportunity_detail import (
     SIMPLIFY_NO_SPONSORSHIP_NOTE,
     simplify_no_sponsorship_only,
     skills_basis,
+    stated_pi_name,
 )
 
 from ..evidence import (
-    CAMPUS_PROGRAM_SUFFIXES,
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
     collector_constant_keywords,
@@ -2826,26 +2826,8 @@ def _extract_research_focus_from_desc(desc: str) -> str:
     return ""
 
 
-_BAD_PI_NAMES = frozenset({"learn more", "none", "n/a", "and robotics", "unknown", ""})
-
-
-def _line_pi(opportunity: dict) -> str:
-    """The pi_name a line may name: none for a placeholder, or for a name the
-    detail page removes (backend.lib.opportunity_detail.pi_name_basis). That
-    is one an inference stamp marks, like the word before "Group" in a
-    company's name, or one a page scan put on a campus program row (M171)."""
-    pi = opportunity.get("pi_name") or ""
-    if (
-        pi.lower().strip() in _BAD_PI_NAMES
-        or is_inferred(opportunity, "pi_name")
-        or str(opportunity.get("source") or "").endswith(CAMPUS_PROGRAM_SUFFIXES)
-    ):
-        return ""
-    return pi
-
-
 def _summarize_research(opportunity: dict) -> str:
-    pi = _line_pi(opportunity)
+    pi = stated_pi_name(opportunity)
     metadata = opportunity.get("metadata") or {}
     stated_rank = metadata.get("faculty_title") or opportunity.get("faculty_title") or ""
     # "Prof." is an academic-rank claim, not a generic synonym for anyone in
@@ -3199,7 +3181,7 @@ def _cut_name(text: str, name: str) -> str:
     return "".join(pieces)
 
 
-def _own_words(opp: dict) -> tuple[str, ...]:
+def _own_words(opp: dict, pi_name: str) -> tuple[str, ...]:
     """A row's title and the research text the detail page shows as the
     source's (``_research_content`` in backend/lib/opportunity_detail.py, which
     reads the same placeholders as absent), lower-cased and kept apart so that
@@ -3216,7 +3198,7 @@ def _own_words(opp: dict) -> tuple[str, ...]:
         stated = text(areas) if isinstance(areas, str) else ", ".join(
             t for t in map(text, areas if isinstance(areas, list) else []) if t)
     title = text(opp.get("title"))
-    if title.casefold() == str(opp.get("pi_name") or "").strip().casefold():
+    if title.casefold() == pi_name.casefold():
         title = ""
     return tuple(t.lower().translate(_GAP_FOLD) for t in (title, stated) if t)
 
@@ -3379,7 +3361,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     )
 
     lab = faculty_safe_lab_or_program(opp)
-    clean_pi = _line_pi(opp)
+    clean_pi = stated_pi_name(opp)
     stated_rank = (
         (opp.get("metadata") or {}).get("faculty_title")
         or opp.get("faculty_title")
@@ -3403,7 +3385,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         kw_inferred=kw_inferred,
         topics_ours=topics_ours,
         kw_labels=kw_labels,
-        own_words=_own_words(opp) if topics_ours else (),
+        own_words=_own_words(opp, clean_pi) if topics_ours else (),
         ov_kws=ov_kws,
         course_signals=course_signals,
         first_exp=(
@@ -3470,7 +3452,7 @@ def _build_static_text(opp: dict) -> tuple[int, int, bool, bool, str, str]:
     # title/lab text, and the text is normalized to space-padded words so the
     # bonus can require a word boundary at the start of each hit.
     keywords = opp.get("keywords", []) or []
-    pi_name = opp.get("pi_name", "")
+    pi_name = stated_pi_name(opp)
     signal_parts = [opp.get("title", ""), " ".join(keywords), faculty_safe_lab_or_program(opp) or ""]
     if pi_name:
         signal_parts = [_cut_name(part, pi_name) for part in signal_parts]
@@ -4033,7 +4015,7 @@ def _rank_opportunity_unlocked(
 
     research_summary = st.research_summary
     if research_summary:
-        pi = _line_pi(opportunity)
+        pi = stated_pi_name(opportunity)
         # The lab's focus-areas headline reads as context, not personal fit —
         # it slots AFTER a student-specific topical tie when one exists.
         at = 1 if all_fit and _reason_priority(all_fit[0]) == 0 else 0
