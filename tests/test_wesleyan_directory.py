@@ -36,7 +36,8 @@ def test_central_sighting_preserves_ids_fields_and_department_evidence(monkeypat
     calls = _response(monkeypatch, {"items": {"H": [
         _person("amhughes", "Meredith Hughes"), _person("emoran", "Another Person"),
         _person("sredfield", "Seth Redfield", "Professor Emeritus of Astronomy"),
-        _person("unlisted", "An Additional Professor"),
+        _person("unlisted", "An Additional Professor"), _person("iharjito", "I. Harjito"),
+        _person("sumarsam", "Sumarsam"),
     ]}})
     offline_ledger, online_ledger = {}, {}
     offline = wesleyan.fetch_and_normalize(deep=False, unit_ledger=offline_ledger)
@@ -47,7 +48,7 @@ def test_central_sighting_preserves_ids_fields_and_department_evidence(monkeypat
     assert calls[0][1]["allow_redirects"] is False
     assert {r["id"] for r in online} == {r["id"] for r in offline}
     witnessed = [r for r in online if r["metadata"].get("listing_seen_on_source")]
-    assert [r["pi_name"] for r in witnessed] == ["Meredith Hughes"]
+    assert {r["pi_name"] for r in witnessed} == {"Meredith Hughes", "I. Harjito", "Sumarsam"}
     seen = witnessed[0]["metadata"]["last_seen_at"]
     assert seen and all(r["metadata"]["last_verified"] is None for r in online)
     assert all(r["metadata"]["verification_scope"] == "curated" for r in online)
@@ -63,7 +64,15 @@ def test_central_sighting_preserves_ids_fields_and_department_evidence(monkeypat
     _response(monkeypatch, {}, status=429)
     wesleyan.merge_into_processed(wesleyan.fetch_and_normalize())
     retained = [r for r in json.loads(corpus.read_text()) if r["metadata"].get("listing_seen_on_source")]
-    assert [(r["id"], r["metadata"]["last_seen_at"]) for r in retained] == [(witnessed[0]["id"], seen)]
+    assert {r["id"]: r["metadata"]["last_seen_at"] for r in retained} == {r["id"]: seen for r in witnessed}
+
+    # Reassignment of a personal URL cannot preserve a mononym's sighting.
+    prior = next(r for r in witnessed if r["pi_name"] == "Sumarsam")
+    corpus.write_text(json.dumps([prior]))
+    changed = next(r for r in offline if r["id"] == prior["id"])
+    changed["url"] = "https://www.wesleyan.edu/about/directory/profile.html?id=another"
+    wesleyan.merge_into_processed([changed])
+    assert json.loads(corpus.read_text())[0]["metadata"]["last_seen_at"] is None
 
 
 @pytest.mark.parametrize("bad_title", ["Visiting Professor", "Adjunct Professor", "Professor Emerita",
