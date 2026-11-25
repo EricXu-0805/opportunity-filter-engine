@@ -302,6 +302,22 @@ class TestScrapeLayer:
         # The row stored on 2026-07-18 under the spelling without the accent.
         assert ids == {"faculty-sbu-eeb-aebbec37"}
 
+    @pytest.mark.parametrize(("unit", "uid", "name", "saved_id"), [
+        ("LALS", "mdohara", "Matt O'Hara", "faculty-ucsc-lals-c5e0a095"),
+        ("HIST", "gomalley", "Gregory O'Malley", "faculty-ucsc-hist-7835742d"),
+        ("FMST", "reardon1", "Jenny Reardon", "faculty-ucsc-fmst-929c275c"),
+        ("CRES", "svaccari", "Sylvane Vaccarino", "faculty-ucsc-cres-c73c11c6"),
+    ])
+    def test_ucsc_directory_name_changes_keep_ids_only_at_the_reviewed_uid(self, unit, uid, name, saved_id):
+        from src.collectors.schools.ucsc_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == unit)
+        url = "https://campusdirectory.ucsc.edu/cd_detail?uid="
+        current = fg._normalize(SCHOOL, dept, {"name": name, "url": url + uid})
+        assert (current["pi_name"], current["id"]) == (name, saved_id)
+        assert fg._normalize(SCHOOL, dept, {"name": name, "url": url + "another-person"})["id"] != saved_id
+        assert fg._normalize(SCHOOL, dept, {"name": "Another Person", "url": url + uid})["id"] != saved_id
+
     def test_sbu_ecology_is_read_after_the_units_its_program_faculty_belong_to(self):
         """EEB's Program Faculty are cross-listed professors whose home units
         (Anthropology, the SoMAS divisions) list them too. A person is read once
