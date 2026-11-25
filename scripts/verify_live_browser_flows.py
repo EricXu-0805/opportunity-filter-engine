@@ -58,11 +58,11 @@ async def run(mode):
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
             browser=await pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
-            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode=='racezh' else 1280,'height':900})
+            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode.startswith('racezh') else 1280,'height':900})
             init="""if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_receipt_seed')){for(const [k,v] of Object.entries(VALUES))localStorage.setItem(k,v);localStorage.setItem('oe_receipt_seed','1')}"""
             values={'ofe_auth':json.dumps(session),'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_profile':json.dumps(profile)}
             if mode.startswith('race'):
-                values['ofe_lang'] = mode.removeprefix('race')
+                values['ofe_lang'] = mode.removeprefix('race').split('-')[0]
                 await context.set_extra_http_headers({'Accept-Language':values['ofe_lang']})
                 if values['ofe_lang'] == 'zh':
                     await context.add_cookies([{'name':'ofe_lang','value':'zh','url':'https://joinalab.com'}])
@@ -137,7 +137,7 @@ async def run(mode):
                 assert reads>=4
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
             elif mode.startswith('race'):
-                lang = mode.removeprefix('race')
+                lang = mode.removeprefix('race').split('-')[0]
                 await page.goto('https://joinalab.com/',wait_until='domcontentloaded')
                 receiver = await context.new_page()
                 await receiver.goto('https://joinalab.com/',wait_until='domcontentloaded')
@@ -176,14 +176,29 @@ async def run(mode):
                     if lang == 'zh':
                         dims=await keep[index].evaluate("(b)=>({width:innerWidth,height:b.getBoundingClientRect().height,line:parseFloat(getComputedStyle(b).lineHeight),pad:parseFloat(getComputedStyle(b).paddingTop)+parseFloat(getComputedStyle(b).paddingBottom)})")
                         assert dims['width'] == 390 and dims['height']-dims['pad'] <= dims['line']*2+3,dims
-                    await tab.evaluate("""() => {window.receiptViews=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]'))window.receiptClicks++},true);new MutationObserver(()=>{
+                    await tab.evaluate("""() => {window.receiptViews=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]')){window.receiptClicks++;window.receiptClickTime=Date.now()}},true);new MutationObserver(()=>{
                         const s = document.querySelector('[data-testid="conflict-stale"]');
                         const retry=document.querySelector('[data-testid="retry-sync"]');
                         const failed=/Saved on this device only|仅保存在本设备|没能同步/.test((document.querySelector('#profile-save-status')?.innerText || ''));
                         if(s || retry || failed) window.receiptViews.push({stale:!!s,retry:!!retry,failed});
                     }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}""")
                 outcomes.clear()
-                await asyncio.gather(*(button.click(timeout=3000) for button in keep))
+                staggered = mode.endswith('-staggered')
+                second_available = True
+                if staggered:
+                    await keep[0].click()
+                    await asyncio.sleep(.8)
+                    second_available = await keep[1].is_visible()
+                    if second_available:
+                        try:
+                            await keep[1].click(timeout=500)
+                        except Exception:
+                            if await keep[1].is_visible():
+                                raise
+                            second_available = False
+                    print('Choice still actionable after 0.8s', lang, second_available, flush=True)
+                else:
+                    await asyncio.gather(*(button.click(timeout=3000) for button in keep))
                 for button in keep:
                     await expect(button).to_have_count(0,timeout=15000)
                 await asyncio.sleep(2)
@@ -202,7 +217,13 @@ async def run(mode):
                 print('Concurrent answers',lang,major,'write outcomes',outcomes,'observed stale/retry/failure', [[any(v[k] for v in vs) for k in ('stale','retry','failed')] for vs in views],flush=True)
                 clicks = [await tab.evaluate('window.receiptClicks') for tab in tabs]
                 print('Click receipts',clicks,'approved conflict explanation present',messages,flush=True)
-                assert clicks == [1,1] and outcomes == ['applied'] and any(any(v['stale'] for v in vs) for vs in views)
+                times = [await tab.evaluate('window.receiptClickTime ?? null') for tab in tabs]
+                print('Click interval in ms', times[1]-times[0] if all(times) else None, flush=True)
+                assert clicks == [1,int(second_available)] and outcomes == ['applied']
+                if second_available:
+                    assert any(any(v['stale'] for v in vs) for vs in views)
+                if staggered:
+                    assert major == 'Electrical Engineering'
                 assert not any(v['retry'] or v['failed'] for vs in views for v in vs)
                 await receiver.reload(wait_until='domcontentloaded')
                 await expect(receiver.locator('#major')).to_have_value(major,timeout=45000)
@@ -317,7 +338,3 @@ if sys.argv[1] == 'cache':
 
 if sys.argv[1] == 'dashboard':
     asyncio.run(run('merged'))
-
-if sys.argv[1] == 'dashboard':
-    asyncio.run(run('raceen'))
-    asyncio.run(run('racezh'))
