@@ -41,8 +41,8 @@ false of the project, which is exactly the gap this section closed.
   so the worst-case RPO is ~24h, and a bad migration applied at 09:00 UTC
   costs everything written since ~07:30 UTC.
 - **Storage objects are excluded** from database backups — the database holds
-  only their metadata. The drill checks the private `tracker-attachments` and
-  `application-materials` buckets against an independent storage backup inventory.
+  only their metadata. The drill checks the private Tracker, versioned Tracker
+  and application-material buckets against an independent storage backup inventory.
 - **Restore has a first-class path**: the dashboard's *Restore to new project*
   (BETA) restores any retained point into a **separate** project, which is
   precisely the non-destructive drill §3 requires. It provisions a new billed
@@ -118,12 +118,17 @@ The separate storage backup must supply its full private inventory and a
 SHA-256 retained with the backup receipt. Each bucket contains a list of
 objects. Each object has a key, byte length and lowercase SHA-256 of the
 backed-up bytes. For example, this inventory describes one 3-byte synthetic
-object containing `abc`.
+object containing `abc`. Include every object in `tracker-attachment-versions`
+when that bucket existed at the recovery point. An existing empty bucket has
+an empty list. For a pre-rollout backup, use JSON `null` only when the independent
+source bucket catalogue confirms the bucket was absent. The drill then checks
+the complete scratch bucket catalogue. Two-bucket historical receipts remain
+readable and need this additional evidence to clear the current gate.
 
 ```json
 {"version":1,"source_backup_id":"example-point","source_environment":"source-ref","buckets":{
   "tracker-attachments":[{"key":"example.pdf","size":3,"sha256":"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}],
-  "application-materials":[]}}
+  "application-materials":[], "tracker-attachment-versions":null}}
 ```
 
 Keep the inventory and both backup receipts private. Restore the storage

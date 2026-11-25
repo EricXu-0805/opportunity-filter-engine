@@ -117,9 +117,9 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
     source_path.write_bytes(schema.manifest_bytes(part))
     body = b"synthetic"
     bucket = "tracker-attachments"
-    manifest = {"version": 1, "source_environment": "source", "source_backup_id": "point", "buckets": {
+    manifest = {"version": 2, "source_environment": "source", "source_backup_id": "point", "buckets": {
         bucket: [{"key": "private.txt", "size": len(body), "sha256": hashlib.sha256(body).hexdigest()}],
-        "application-materials": []}}
+        "application-materials": [], "tracker-attachment-versions": []}}
     inventory = tmp_path / "inventory.json"
     inventory.write_text(json.dumps(manifest))
     requests = []
