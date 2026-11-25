@@ -94,11 +94,15 @@ from ..contact_instructions import (
     same_source_page,
 )
 from ..evidence import (
+    DEPARTMENT_FIELD_METHOD,
     FACULTY_MAJOR_LABELS_MARKER,
     is_deceased_listing,
+    is_directory_discipline,
     is_professor_rank,
+    is_research_clause_fragment,
     is_retired_title,
     is_trainee_title,
+    stamp_inferred,
 )
 from .import_document import ImportDocumentError, parse_import_html
 from .ucb_common import (
@@ -663,6 +667,8 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         email = None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
+    if is_directory_discipline(school["source"], dept_name, research_areas):
+        research_areas = ""
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     # A unit whose page now writes a stored person's name another way (a
     # dropped middle initial) maps today's name to the stored one in
@@ -723,6 +729,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "curated": True,
         FACULTY_MAJOR_LABELS_MARKER: list(dept.get("majors") or []),
     }
+    if not research_areas and keywords and all(
+        is_directory_discipline(school["source"], dept_name, k) for k in keywords
+    ):
+        stamp_inferred(metadata, "keywords", DEPARTMENT_FIELD_METHOD)
     # Additive provenance from the harvest path (fetch_and_normalize tags
     # curated-vs-discovered, _apply_profile_enrich upgrades to "profile" after
     # a successful individual-page fetch). Absent hints — every legacy record,
@@ -4042,8 +4052,8 @@ def clean_corpus_faculty_keywords(opps: list[dict]) -> int:
     return changed
 
 
-def drop_publication_heading_keywords(record: dict) -> dict:
-    """Drop a faculty row's publication-heading keywords in place; return record.
+def drop_non_topic_keywords(record: dict) -> dict:
+    """Drop publication headings and fragments of relative clauses from legacy faculty keywords.
 
     Run at load, so rows stored before the hygiene dropped them are served
     without them until their school's next refresh rewrites them. The stored
@@ -4051,7 +4061,9 @@ def drop_publication_heading_keywords(record: dict) -> dict:
     name as its title."""
     keywords = record.get("keywords")
     if record.get("source_type") == "faculty_research" and isinstance(keywords, list):
-        record["keywords"] = [k for k in keywords if not (isinstance(k, str) and is_publication_heading(k))]
+        record["keywords"] = [k for k in keywords if not (
+            isinstance(k, str) and (is_publication_heading(k) or is_research_clause_fragment(k))
+        )]
     return record
 
 
