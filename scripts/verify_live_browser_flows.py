@@ -416,7 +416,13 @@ async def saved_faculty_links():
         for lang, label in [('en','View current faculty record'), ('zh','查看当前教师档案')]:
             ctx = await browser.new_context(viewport={'width':390 if lang == 'zh' else 1280,'height':900})
             await ctx.add_cookies([{'name':'ofe_lang','value':lang,'url':site}])
+            # The affected entry point is a returning visitor opening a saved URL.
+            await ctx.add_init_script("localStorage.setItem('ofe_onboarding_seen','1')")
             page = await ctx.new_page()
+            async def choose_campus():
+                await page.get_by_test_id('university-card-uiuc').click()
+                await page.get_by_test_id('switcher-confirm').click()
+            await page.add_locator_handler(page.get_by_test_id('university-card-uiuc'), choose_campus)
             for old, current in pairs:
                 await page.goto(site + '/opportunities/' + old, wait_until='domcontentloaded')
                 link = page.get_by_role('link', name=label, exact=True)
@@ -424,9 +430,10 @@ async def saved_faculty_links():
                 await expect(link).to_have_attribute('href', '/opportunities/' + current)
                 await link.click()
                 await expect(page).to_have_url(site + '/opportunities/' + current, timeout=30000)
-                name = await page.get_by_role('heading',level=1).inner_text()
+                heading = page.get_by_role('heading',level=1)
                 expected = 'Taram' if 'purdue' in old else 'Holmes'
-                assert expected in name, (current,name)
+                await expect(heading).to_contain_text(expected,timeout=30000)
+                name = await heading.inner_text()
                 print('PASS official archived faculty link clicked', lang, old, current, name, flush=True)
             await ctx.close()
         await browser.close()
