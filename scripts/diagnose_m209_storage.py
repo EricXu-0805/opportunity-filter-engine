@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 import httpx
 
-from scripts.restore_attachment_evidence import BUCKETS, validate_attachments
+from scripts.restore_attachment_evidence import BUCKETS, VERSION_BUCKET, validate_attachments
 
 fixture = Path(sys.argv[1])
 status = json.loads((fixture / 'status.json').read_bytes())
@@ -42,8 +42,8 @@ def sha(data):
 def verify(objects, expected):
     global download_count, pages_past_100
     download_count = pages_past_100 = 0
-    document = {'version': 1, 'source_environment': 'synthetic-source', 'source_backup_id': 'point-1',
-                'buckets': {b: [{'key': k, 'size': len(v), 'sha256': sha(v)} for k, v in rows.items()]
+    document = {'version': 2, 'source_environment': 'synthetic-source', 'source_backup_id': 'point-1',
+                'buckets': {VERSION_BUCKET: None} | {b: [{'key': k, 'size': len(v), 'sha256': sha(v)} for k, v in rows.items()]
                             for b, rows in objects.items()}}
     backup = fixture / 'source-manifest.json'
     raw = json.dumps(document, sort_keys=True).encode()
@@ -93,3 +93,18 @@ with httpx.Client(headers=headers, trust_env=False, timeout=15) as direct:
     corrupt = verify(source, 'FAIL')
     assert download_count == 103 and corrupt[materials]['mismatched'] == 1 and corrupt[tracker]['verified'] == 102
     print('PASS equal-length corruption rejected after a real PUT and 103 fresh downloads.', flush=True)
+
+    # An independent legacy backup declares that no revisions bucket existed.
+    store('PUT', 'object/' + materials + '/' + path, content=original, headers={'Content-Type': 'application/pdf'})
+    store('POST', 'bucket', json={'id': VERSION_BUCKET, 'name': VERSION_BUCKET, 'public': False})
+    verify(source, 'FAIL')
+    version_key = 'owner/revision'
+    blob = b'version-2'
+    source[VERSION_BUCKET] = {version_key: blob}
+    store('POST', 'object/' + VERSION_BUCKET + '/' + version_key, content=blob, headers={'Content-Type': 'text/plain'})
+    validated = verify(source, 'PASS')
+    assert download_count == 104 and validated[VERSION_BUCKET]['verified'] == 1
+    store('PUT', 'object/' + VERSION_BUCKET + '/' + version_key, content=b'version-X', headers={'Content-Type': 'text/plain'})
+    corrupted = verify(source, 'FAIL')
+    assert download_count == 104 and corrupted[VERSION_BUCKET]['mismatched'] == 1
+    print('PASS third-bucket absence, 104 restored downloads and equal-length replacement corruption.', flush=True)

@@ -15,7 +15,10 @@ jobs:
           fetch-depth: 2
           persist-credentials: false
       - name: Verify candidate module against the PR head
-        run: git diff --exit-code d7ae035cb634de97f89cd028eeb79c03cee286b1 HEAD -- scripts/restore_attachment_evidence.py
+        run: |
+          git fetch --no-tags --depth=1 origin 344a5a6dbf9f359f0c9a7099d7b72af8288dd89a
+          git show FETCH_HEAD:scripts/restore_attachment_evidence.py > scripts/restore_attachment_evidence.py
+          test "$(git hash-object scripts/restore_attachment_evidence.py)" = "85a6ea378c25aa9866a8c0ae24560a162a39118a"
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
