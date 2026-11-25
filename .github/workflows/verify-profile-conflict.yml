@@ -1,0 +1,19 @@
+name: Verify deployed profile conflict recovery
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths:
+      - .github/workflows/verify-profile-conflict.yml
+      - scripts/verify_m212_browser.py
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
+      - run: python -u scripts/verify_m212_browser.py
