@@ -39,6 +39,8 @@ async def run(mode):
             except OSError: await asyncio.sleep(.1)
         session=rpc('/auth/v1/signup',{}); uid=session['user']['id']
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
+        if mode == 'merged':
+            profile.update(institution='UIUC',home_school='uiuc',college='Grainger College of Engineering',major='Computer Science',skills=[])
         if mode == 'urca':
             profile.update(institution='UC Santa Barbara', home_school='ucsb', major='', research_interests='', skills=[])
         eeb = ['faculty-ucla-eeb-56b5bd06','faculty-ucla-eeb-04fc2f84','faculty-ucla-eeb-792288c6','faculty-ucla-eeb-880b1219','faculty-ucla-eeb-f529eb3c']
@@ -51,6 +53,8 @@ async def run(mode):
             context=await browser.new_context(service_workers='block')
             init="""if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_receipt_seed')){for(const [k,v] of Object.entries(VALUES))localStorage.setItem(k,v);localStorage.setItem('oe_receipt_seed','1')}"""
             values={'ofe_auth':json.dumps(session),'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_profile':json.dumps(profile)}
+            if mode == 'merged':
+                values.pop('ofe_profile')
             await context.add_init_script(init.replace('VALUES',json.dumps(values)))
             fail=True; reads=0; hold=False; blocked=asyncio.Event(); release=asyncio.Event()
             receiver = None
@@ -64,6 +68,7 @@ async def run(mode):
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
                     if mode == 'merged' and u.path.endswith('/commit_profile_patch_cas') and outage and req.frame.page == receiver:
                         outcomes.append('unavailable')
+                        print('Synthetic guest write unavailable',flush=True)
                         return await route.fulfill(status=503,headers=cors,json={'message':'temporary fixture outage'})
                     if mode == 'eeb' and u.path == '/rest/v1/favorites' and req.method == 'GET':
                         return await route.fulfill(status=200,headers={**cors,'Content-Range':'0-4/5'},json=[{'opportunity_id':key} for key in eeb])
@@ -125,7 +130,12 @@ async def run(mode):
                     await expect(tab.locator('#grade')).to_have_value('Sophomore')
                 outage = True
                 await receiver.locator('#student_name').fill('Synthetic retained edit')
-                await expect(receiver.get_by_test_id('retry-sync')).to_be_visible(timeout=30000)
+                await receiver.locator('#student_name').press('Tab')
+                try:
+                    await expect(receiver.get_by_text('Saved on this device only',exact=False)).to_be_visible(timeout=25000)
+                except AssertionError:
+                    print('Receiver save states',outcomes,(await receiver.locator('body').inner_text())[-1300:],flush=True)
+                    raise
                 proof = 'M138 isolated guest transfer'
                 grant = rpc('/rest/v1/rpc/mint_merge_grant',{'p_secret_hash':hashlib.sha256(proof.encode()).hexdigest()},auth)
                 dest = rpc('/auth/v1/signup',{'email':'m138@example.invalid','password':'local-only-fixture'})
