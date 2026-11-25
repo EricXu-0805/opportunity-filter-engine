@@ -4299,8 +4299,8 @@ function sameCandidateSet(
  *
  * Caller holds the lock. Everything is recomputed here — the row, the pending
  * instance, the live operations, the receipts that have already answered
- * something — and compared against what was rendered. Anything that does not
- * match exactly means the person answered a question that is gone.
+ * something — and compared against what was rendered. Journal operations name
+ * edits across pending writes. Candidates without operations belong to one write.
  */
 function sameQuestion(
   rendered: readonly ProfileConflict[],
@@ -4361,8 +4361,16 @@ function sameQuestion(
     if (!current) return false;
     if (!sameValue(shown.remote, current.remote)) return false;
     if (shown.remoteRevision !== current.remoteRevision) return false;
-    if (shown.mutationId !== current.mutationId) return false;
     if (!sameCandidateSet(shown.candidates, current.candidates)) return false;
+    if (shown.mutationId !== current.mutationId) {
+      // Staging a second tab's edit can repackage the same journal operations
+      // under a new pending write. Each side must still identify its exact
+      // operations and the two original writers before accepting the answer.
+      const candidates = shown.candidates;
+      if (!shown.mutationId || !current.mutationId
+        || candidates.some((candidate) => !candidate.lineage || candidate.opIds.length === 0)
+        || new Set(candidates.map((candidate) => candidate.lineage)).size < 2) return false;
+    }
     // A candidate naming no operations has no journal provenance at all — a
     // legacy working copy, a server-side disagreement. Its only durable
     // identity is the field version, and without one there is nothing to
