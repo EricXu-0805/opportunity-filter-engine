@@ -17,7 +17,13 @@ const contents=n=>Buffer.from('%PDF-1.4\nattachment '+n+'\n%%EOF');
 const original=api.storage.from('tracker-attachments');
 assert.ok(!(await original.upload(path,new Blob([contents(0)],{type:mime}),{contentType:mime})).error);
 const signedOriginal=(await original.createSignedUrl(path,300)).data.signedUrl;
-const backend=createServer((_q,r)=>{r.writeHead(200,{'content-type':'application/json'});r.end(JSON.stringify({status:'ok',last_updated_at:new Date().toISOString()}));});
+const opportunity = {id:target,title:'Synthetic opportunity for Tracker acceptance',source_type:'campus_program',record_kind:'listing',
+  target_truth:{listing_state:'open',reference_only:false,actionable:true,accepting_state:'accepting',reason_code:null,verified_at:null,expires_at:null}};
+const backend=createServer((req,res)=>{
+  const path=new URL(req.url,'http://127.0.0.1:8100').pathname;
+  const data=path==='/api/opportunities/'+target ? opportunity : path.endsWith('/similar') ? {opportunities:[]} : {status:'ok',last_updated_at:new Date().toISOString()};
+  res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(data));
+});
 await new Promise(resolve=>backend.listen(8100,'127.0.0.1',resolve));
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--webpack','--hostname','127.0.0.1','--port','3100'],
   {cwd:'frontend',env:{...process.env,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:url,NEXT_PUBLIC_SUPABASE_ANON_KEY:anon,BACKEND_URL:'http://127.0.0.1:8100'},stdio:'ignore'});
@@ -40,7 +46,8 @@ try{
    return route.continue();
  });
  const page=await ctx.newPage();page.setDefaultTimeout(45000);await page.goto(site+'/opportunities/'+target);
- const toggle=page.getByRole('button',{name:'Records, notes & reminders'});
+ await page.getByRole('heading',{name:opportunity.title}).first().waitFor();
+ const toggle=page.getByRole('button',{name:/Records, notes & reminders/});
  if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
  const panel=page.getByTestId('tracker-attachments');
  async function replace(n){const chooser=page.waitForEvent('filechooser');await panel.getByRole('button',{name:'Replace '+name}).click();await(await chooser).setFiles({name:'revised.pdf',mimeType:mime,buffer:contents(n)});}

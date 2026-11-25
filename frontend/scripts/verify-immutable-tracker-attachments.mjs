@@ -93,6 +93,8 @@ for (const id of garbageOps) assert.match(id,/^[a-f0-9-]{36}$/);
 db("UPDATE private.tracker_attachment_edits SET cleanup_after = now() - interval '2 days'");
 const jobs = data(await admin.rpc('claim_tracker_attachment_cleanup',{p_limit:20})).jobs;
 assert.deepEqual(jobs.map(job=>job.id).sort(),garbageOps.sort());
+const retained = execFileSync('psql',[dbUrl,'-XAtc',"SELECT count(*) FROM private.tracker_attachment_edits WHERE state='garbage' AND (path IS NOT NULL OR mime IS NOT NULL OR expected_revision IS NOT NULL)"],{encoding:'utf8'});
+assert.equal(retained.trim(),'0');
 for(const job of jobs) {
   const k=job.owner_id+'/'+job.id;
   data(await admin.storage.from(versionBucket).remove([k]));

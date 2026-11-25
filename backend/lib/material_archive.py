@@ -29,10 +29,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _PIPE_CHUNK_BYTES = 1024 * 1024
 
 
-def settings() -> tuple[str, str]:
+def settings(*, for_storage_cleanup: bool = False) -> tuple[str, str]:
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    if not url or not key or os.environ.get("OFE_MATERIAL_ARCHIVE_ENABLED", "1") != "1":
+    if not url or not key or (not for_storage_cleanup and os.environ.get("OFE_MATERIAL_ARCHIVE_ENABLED", "1") != "1"):
         raise MaterialError("material_not_configured", 503)
     return url, key
 

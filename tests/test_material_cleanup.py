@@ -270,3 +270,23 @@ def test_tracker_cleanup_accepts_only_version_keys_and_verifies_physical_absence
 
     assert asyncio.run(check()) == {"claimed": 1, "succeeded": 1, "failed": 0}
     assert len(calls) == 3
+
+
+def test_tracker_cleanup_runs_when_the_legacy_pdf_archive_is_paused(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "https://test.invalid")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "synthetic")
+    monkeypatch.setenv("OFE_MATERIAL_ARCHIVE_ENABLED", "0")
+    calls = []
+
+    async def tracker(_service):
+        calls.append("tracker")
+        return {"claimed": 1, "succeeded": 0, "failed": 1}
+
+    async def archive(_service):
+        raise AssertionError("paused PDF archive")
+
+    monkeypatch.setattr(MaterialService, "cleanup_tracker_versions", tracker)
+    monkeypatch.setattr(MaterialService, "cleanup", archive)
+    assert worker.configured()
+    assert asyncio.run(worker.cleanup_once()) == {"claimed": 1, "succeeded": 0, "failed": 1}
+    assert calls == ["tracker"]
