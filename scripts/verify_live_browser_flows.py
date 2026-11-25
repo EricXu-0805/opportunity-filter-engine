@@ -284,6 +284,7 @@ async def run(mode):
                 times = [await tab.evaluate('window.receiptClickTime ?? null') for tab in tabs]
                 print('Click interval in ms', times[1]-times[0] if all(times) else None, flush=True)
                 print('Ordered status history', [[v.replace('\n',' / ') for v in await tab.evaluate('window.statusHistory')] for tab in tabs],flush=True)
+                assert all(messages), messages
                 assert clicks == [1,int(second_available)] and outcomes == ['applied']
                 if second_available:
                     assert any(any(v['stale'] for v in vs) for vs in views)
