@@ -25,26 +25,15 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
   const [state, setState] = useState<UploadState>('idle');
   const [fileName, setFileName] = useState<string | null>(null);
 
-  // Set by a removal, cleared by the next upload: without it the effect
+  // Set by a removal until the parent confirms it or a new upload is accepted: without it the effect
   // below immediately re-renders "résumé on file" from the parent prop that
   // has not been re-rendered yet, and the remove button looks broken.
   const removedRef = useRef(false);
+  const previousPresenceRef = useRef(!!alreadyUploaded);
   // A parsed replacement is only a proposal until the parent accepts it.
   // Preserve the last accepted badge across a rejected upload/removal.
   const acceptedUploadRef = useRef<{ fileName: string; hasUnreadablePages: boolean } | null>(null);
 
-  useEffect(() => {
-    if (alreadyUploaded && state === 'idle' && !removedRef.current) {
-      // alreadyUploaded arrives async from the parent's loadProfile(), so
-      // the value isn't available at mount for a useState initializer.
-      // Both setState calls flush together so the UI flips from "drop your
-      // resume here" to "✓ resume on file" in one paint.
-      const savedName = t('resume.savedFallback');
-      acceptedUploadRef.current = { fileName: savedName, hasUnreadablePages: false };
-      setState('success');
-      setFileName(savedName);
-    }
-  }, [alreadyUploaded, state, t]);
   const [error, setError] = useState<string | null>(null);
   const [hasUnreadablePages, setHasUnreadablePages] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -57,6 +46,37 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
   // at. Only the newest parse may touch state or call onParsed.
   const parseRequestRef = useRef(0);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const present = !!alreadyUploaded;
+    const changed = previousPresenceRef.current !== present;
+    previousPresenceRef.current = present;
+    if (changed) {
+      removedRef.current = false;
+      if (!present) {
+        acceptedUploadRef.current = null;
+        // A replacement being parsed still owns its progress and filename.
+        if (state === 'success') {
+          setState('idle');
+          setFileName(null);
+          setHasUnreadablePages(false);
+          setError(null);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      }
+    }
+    if (present && !removedRef.current && (changed || state === 'idle')) {
+      const accepted = acceptedUploadRef.current ?? {
+        fileName: t('resume.savedFallback'), hasUnreadablePages: false,
+      };
+      acceptedUploadRef.current = accepted;
+      if (state === 'idle') {
+        setState('success');
+        setFileName(accepted.fileName);
+        setHasUnreadablePages(accepted.hasUnreadablePages);
+      }
+    }
+  }, [alreadyUploaded, state, t]);
 
   const restoreRejectedChange = useCallback(() => {
     const accepted = acceptedUploadRef.current;

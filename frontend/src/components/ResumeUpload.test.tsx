@@ -98,6 +98,27 @@ describe('ResumeUpload — alreadyUploaded prop', () => {
     expect(screen.getByText('resume.savedFallback')).toBeInTheDocument();
   });
 
+  it('clears a stored attachment when the other tab deletes it', async () => {
+    const props = { onParsed: vi.fn(), onRemove: vi.fn() };
+    const { rerender } = render(<ResumeUpload {...props} alreadyUploaded />);
+    await screen.findByLabelText('resume.removeAria');
+    rerender(<ResumeUpload {...props} alreadyUploaded={false} />);
+    expect(screen.queryByLabelText('resume.removeAria')).toBeNull();
+    expect(screen.getByText('resume.dropHere')).toBeInTheDocument();
+    expect(props.onRemove).not.toHaveBeenCalled();
+  });
+
+  it('restores the stored attachment when a peer settles a local removal', async () => {
+    const props = { onParsed: vi.fn(), onRemove: vi.fn() };
+    const { rerender } = render(<ResumeUpload {...props} alreadyUploaded />);
+    fireEvent.click(await screen.findByLabelText('resume.removeAria'));
+    expect(screen.queryByLabelText('resume.removeAria')).toBeNull();
+    rerender(<ResumeUpload {...props} alreadyUploaded={false} />);
+    rerender(<ResumeUpload {...props} alreadyUploaded />);
+    expect(await screen.findByText('resume.savedFallback')).toBeInTheDocument();
+    expect(props.onRemove).toHaveBeenCalledTimes(1);
+  });
+
   it('stays in idle when alreadyUploaded is false / omitted', () => {
     render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} />);
     expect(screen.queryByText(/resume.success/)).toBeNull();
