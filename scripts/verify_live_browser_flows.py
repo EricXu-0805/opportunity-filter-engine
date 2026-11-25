@@ -39,6 +39,8 @@ async def run(mode):
             except OSError: await asyncio.sleep(.1)
         session=rpc('/auth/v1/signup',{}); uid=session['user']['id']
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
+        if mode == 'urca':
+            profile.update(institution='UC Santa Barbara', home_school='ucsb', major='', research_interests='', skills=[])
         auth={'Authorization':'Bearer '+session['access_token']}
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
@@ -63,7 +65,7 @@ async def run(mode):
                 if u.hostname=='joinalab.com':
                     if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
                         return await route.fulfill(json={'requested':1,'found':0,'opportunities':[]})
-                    if u.path=='/api/matches/view' and req.method=='POST' and mode=='cache':
+                    if u.path=='/api/matches/view' and req.method=='POST' and mode in ('cache','urca'):
                         print('Real match view requested; holding',hold,flush=True)
                         if hold:
                             blocked.set();await asyncio.wait_for(release.wait(),30)
@@ -73,7 +75,7 @@ async def run(mode):
             await context.route('**/*',intercept)
             page=await context.new_page();page.set_default_timeout(45000)
             await page.goto('https://joinalab.com/dashboard',wait_until='domcontentloaded')
-            campus=page.get_by_test_id('university-card-ucb')
+            campus=page.get_by_test_id('university-card-'+profile['home_school'])
             try:
                 await campus.wait_for(timeout=9000)
             except Exception:
@@ -99,6 +101,33 @@ async def run(mode):
                 await expect(page.get_by_text('1 saved',exact=True)).to_be_visible()
                 assert reads>=4
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
+            elif mode == 'urca':
+                async with page.expect_response(lambda r: urlsplit(r.url).path == '/api/matches/view' and r.request.method == 'POST' and r.status == 200, timeout=80000) as data:
+                    await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
+                payload = await (await data.value).json()
+                matches = {r['opportunity_id']: r for r in payload['results']}
+                projects = page.locator('[id^="match-card-ucsb-urca-proj-"]')
+                await projects.first.wait_for(timeout=80000)
+                count = min(8, await projects.count())
+                assert count >= 3, count
+                seen = []
+                reasons = 0
+                for index in range(count):
+                    card = projects.nth(index)
+                    await card.get_by_role('button', name='Show details').click()
+                    await expect(card.get_by_role('button', name='Hide details')).to_be_visible()
+                    text = (await card.inner_text()).lower()
+                    assert 'this lab focuses on' not in text and 'urca undergraduate research directory' not in text
+                    lists = await card.locator('h4 + ul li').all_inner_texts()
+                    assert lists, await card.get_attribute('id')
+                    key = (await card.get_attribute('id')).removeprefix('match-card-')
+                    row = matches[key]
+                    assert row['opportunity']['source'] == 'ucsb_urca_projects'
+                    assert not any(reason and reason['key'] in ('lab_focus','research_summary') for reason in row['reasons_fit_keys'])
+                    assert row['reasons_fit'] and all(reason.lower() in text for reason in row['reasons_fit'])
+                    reasons += len(row['reasons_fit'])
+                    seen.append(await card.get_attribute('id'))
+                print('PASS expanded real UCSB project cards', count, 'displayed lines', reasons, 'public ids', seen)
             else:
                 await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
                 try:
@@ -135,3 +164,5 @@ async def run(mode):
     finally:
         proc.terminate();proc.wait()
 asyncio.run(run(sys.argv[1]))
+if sys.argv[1] == 'cache':
+    asyncio.run(run('urca'))
