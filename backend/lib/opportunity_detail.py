@@ -371,6 +371,17 @@ def pi_name_basis(canonical: dict) -> str | None:
     return None
 
 
+def stated_pi_name(record: dict) -> str:
+    """The name that a match or draft may use for a person."""
+    name = record.get("pi_name")
+    if not isinstance(name, str):
+        return ""
+    name = name.strip()
+    if name.lower() in {"learn more", "none", "n/a", "and robotics", "unknown", ""}:
+        return ""
+    return name if pi_name_basis(record) is None else ""
+
+
 # ---------------------------------------------------------------------------
 # Value hygiene
 # ---------------------------------------------------------------------------

@@ -24,10 +24,10 @@ from __future__ import annotations
 
 import pytest
 
-from backend.lib.opportunity_detail import pi_name_basis
+from backend.lib.opportunity_detail import pi_name_basis, stated_pi_name
 from src.evidence import stamp_inferred
 from src.matcher.config import MATCHER_VERSION
-from src.matcher.ranker import _OUR_TOPICS, _line_pi, _summarize_research, rank_opportunity, score_upside
+from src.matcher.ranker import _OUR_TOPICS, _summarize_research, rank_opportunity, score_upside
 from src.matcher.reason_keys import reason_keys
 
 # (source, source_type, opportunity_type). A row with no source_type is of no
@@ -131,9 +131,9 @@ def test_a_stamped_listing_keeps_the_line_that_says_its_tags_are_ours():
 @pytest.mark.parametrize("kind", LISTINGS)
 def test_a_listing_whose_tags_name_no_topic_keeps_the_focus_area(kind, keywords):
     """No tag is named, so the similarity rests on the listing's description.
-    A campus row's pi_name is a page scan the detail page removes, so the
-    program labels its line."""
-    label = "Field Robotics Program" if LISTINGS[kind][0].endswith("_research_programs") else "Prof. Pat Lee"
+    The program labels a campus or Simplify row whose PI the detail page withholds."""
+    has_scanned_name = kind in {"campus_program", "campus_department", "ucb_department", "simplify"}
+    label = "Field Robotics Program" if has_scanned_name else "Prof. Pat Lee"
     _, fit, _ = score_upside(_profile(TEXTS["no overlap"]), _listing(kind, keywords=keywords), precomputed_sim=0.5)
     assert f"Your research interests align with {label}'s focus area" in fit
 
@@ -261,6 +261,15 @@ def test_a_pi_name_derived_from_the_company_heads_no_line_about_the_tags():
     assert "Matches your interests: data science" in fit
 
 
+def test_a_guessed_company_name_cannot_erase_the_topic_in_the_posting_title():
+    row = _listing("simplify", title="Robotics", keywords=["robotics"], lab="Robotics Group", pi="Robotics")
+    profile = _profile("robotics", ["robotics"])
+    result = rank_opportunity(profile, row, precomputed_sim=0.5)
+    no_pi = rank_opportunity(profile, {**row, "pi_name": ""}, precomputed_sim=0.5)
+    assert "Matches your interests: robotics" in result.reasons_fit
+    assert result.final_score == no_pi.final_score
+
+
 def _pi_stamped(row, method):
     stamp_inferred(row["metadata"], "pi_name", method)
     return row
@@ -272,6 +281,9 @@ ROLE_ONLY = ["undergraduate research"]
 # "Laboratory" in an SRO lab, a heading a page scan took for a name, and any
 # name on a campus program row.
 REMOVED_PI = {
+    "unstamped internship": (_listing("simplify", keywords=ROLE_ONLY, pi="Legacy Holdings"), "Field Robotics Program"),
+    "Handshake internship": ({**_listing("simplify", keywords=ROLE_ONLY, pi="Legacy Holdings"),
+                              "source": "handshake"}, "Field Robotics Program"),
     "company word": (_pi_stamped(_listing("simplify", keywords=ROLE_ONLY, lab="Example Analytics Group", pi="Example"),
                                  "rule:lab_title_surname"), "Example Analytics Group"),
     "sro lab words": (_pi_stamped(_sro_twin(_listing("nsf_reu", keywords=ROLE_ONLY, lab="Example Nuclear Laboratory",
@@ -320,11 +332,12 @@ def test_the_sros_work_line_names_its_lab_and_not_the_word_taken_from_it(text):
       for source in ("duke_labs", "duke_external_research")),
     (_pi_stamped(_listing("manual"), "llm:contact_extraction"), ""),
     (_listing("nsf_reu"), "Pat Lee"),
+    ({**_listing("nsf_reu"), "source": "handshake", "source_type": "job"}, "Pat Lee"),
     (_sro_twin(_listing("nsf_reu")), "Pat Lee"),
     (_faculty(), "Pat Lee"),
-], ids=[*REMOVED_PI, "lab suffix", "external suffix", "any stamp", "nsf award", "sro", "faculty"])
+], ids=[*REMOVED_PI, "lab suffix", "external suffix", "any stamp", "nsf award", "Handshake research", "sro", "faculty"])
 def test_a_line_names_the_pi_the_detail_page_shows_and_no_other(row, named):
-    assert _line_pi(row) == named
+    assert stated_pi_name(row) == named
     assert (pi_name_basis(row) is None) == bool(named)
 
 
@@ -337,4 +350,4 @@ def test_a_placeholder_pi_name_names_no_one(placeholder):
 
 
 def test_the_matcher_version_moved_for_the_sentences():
-    assert int(MATCHER_VERSION.split(".")[0]) >= 38
+    assert int(MATCHER_VERSION.split(".")[0]) >= 40

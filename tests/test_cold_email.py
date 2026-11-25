@@ -648,9 +648,18 @@ class TestCourseworkDatePollution:
 
 
 class TestRecipientJunkNameCE6:
+    def test_raw_campus_record_does_not_greet_a_navigation_heading(self):
+        opportunity = {
+            "source": "boulder_research_programs",
+            "source_type": "campus_announcement",
+            "title": "Start Applying",
+            "pi_name": "Team ProjectsGroup Conference Travel",
+        }
+        assert _common_parts({}, opportunity)["pi_name"] == ""
+        assert "\n\nHello,\n\n" in generate_cold_email({}, opportunity)
+
     def test_untrusted_pi_name_uses_neutral_greeting_for_non_faculty_listing(self):
-        # CE-6: "N/A" (in the matcher's _BAD_PI_NAMES) must neither render as
-        # a name nor manufacture a professor recipient for a generic listing.
+        # A placeholder must not manufacture a professor on a generic listing.
         for junk in ("N/A", "n/a", "Unknown", ""):
             opportunity = {
                 "pi_name": junk,

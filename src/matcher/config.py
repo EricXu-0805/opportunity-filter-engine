@@ -409,7 +409,9 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # the keyword has two words or more, so "i want to study how neural circuits
 # encode memory" no longer matches a row through "memory" (checklist M174). A
 # match rule no hashed knob sees.
-_MATCHER_VERSION_BASE = "39"
+# 40: match reasons and explanation prompts use the detail page's PI rule
+# for unstamped internship and campus records too (M203).
+_MATCHER_VERSION_BASE = "40"
 
 
 def _matcher_fingerprint() -> str:

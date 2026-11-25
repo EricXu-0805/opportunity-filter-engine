@@ -1,5 +1,6 @@
 import re
 
+from backend.lib.opportunity_detail import stated_pi_name
 from src.evidence import (
     faculty_contact_claims_unverified,
     inferred_method,
@@ -7,7 +8,7 @@ from src.evidence import (
     keywords_are_source_topics,
 )
 from src.lab_context import lab_context_for, validate_public_lab_context
-from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
+from src.matcher.ranker import _BROAD_FIELDS
 from src.publication_trust import verified_recent_works
 
 # Tokenizer for skill matching: a letter followed by letters/digits/+/#/. so
@@ -890,12 +891,7 @@ def _common_parts(
     scholar_url = profile.get("scholar_url", "")
 
     is_faculty = faculty_contact_claims_unverified(opportunity)
-    # pi_enricher derives a surname from the lab title when none was scraped
-    # and stamps it precisely so this generator can see it was never read off
-    # a page. Cold Spring Harbor Laboratory's program inbox was receiving
-    # "Dear Spring Harbor,". The fallbacks below already handle the empty
-    # case, and for these records that is "Program Coordinator".
-    pi_name = "" if inferred_method(opportunity, "pi_name") else (opportunity.get("pi_name") or "")
+    pi_name = stated_pi_name(opportunity)
     lab = "" if inferred_method(opportunity, "lab_or_program") else opportunity.get("lab_or_program", "")
     title = opportunity.get("title", "")
     opp_type = opportunity.get("opportunity_type", "")
@@ -917,17 +913,13 @@ def _common_parts(
     stated_rank = meta.get("faculty_title") or ""
     faculty_is_professor = is_faculty and is_professor_rank(stated_rank)
 
-    # CE-6: reuse the matcher's junk-name set (adds "n/a" and "") as the single
-    # source of truth, so a non-faculty source emitting "N/A" can't render
-    # "Dear Professor N/A".
-    #
     # Truthfulness W11: "Professor <name>" is a rank claim made on the
     # student's behalf — earned only by a stated professor rank (legacy
     # records whose rank was never scraped carry the historical "Professor"
     # stamp and keep the convention). A stated non-professor rank (Lecturer,
     # Research Scientist) or an explicitly-unknown rank ("") gets the neutral
     # full-name greeting — never a wrong honorific.
-    if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES:
+    if pi_name:
         if pi_name.lower().startswith(("prof", "dr")):
             recipient = pi_name
         elif is_professor_rank(stated_rank):
