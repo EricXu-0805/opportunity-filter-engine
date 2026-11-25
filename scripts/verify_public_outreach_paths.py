@@ -155,6 +155,15 @@ def verify(mode, score_phase=None, locale="en"):
                 assert toggle.locator("..").locator("li").all_text_contents() == expected
             for step in row["next_steps"]:
                 expect(card.get_by_text(step,exact=True)).to_be_visible()
+            if score_phase == "after":
+                state = "可联系教师咨询 · 是否招人待确认" if locale == "zh" else badge
+                expect(card.get_by_text(state, exact=True)).to_be_visible()
+                assert row["opportunity"]["record_kind"] == "faculty_contact"
+                assert not row["opportunity"]["application"].get("application_url")
+                page.goto(SITE + "/opportunities/" + oid, wait_until="domcontentloaded")
+                expect(page.get_by_role("heading", level=1)).to_contain_text(query)
+                expect(page.get_by_text(state, exact=True).first).to_be_visible()
+                print("Same target and opening status on the expanded result and detail:", oid, state, flush=True)
             print("PASS released match", score_phase, locale, oid, page.locator("html").get_attribute("data-release-sha"),
                   row["final_score"], row["unknowns"], row["next_steps"],flush=True)
             browser.close()
