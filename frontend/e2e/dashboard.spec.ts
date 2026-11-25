@@ -61,7 +61,12 @@ test.describe('Dashboard', () => {
     await page.route('**/rest/v1/favorites?**', route => {
       expect(route.request().method()).toBe('GET');
       reads++;
-      if (fail) return route.fulfill({ status: 503, json: { message: 'controlled read failure' } });
+      if (fail) return route.fulfill({
+        status: 503,
+        // Exercise all SDK retries before the assertion deadline.
+        headers: { 'Retry-After': '0', 'Access-Control-Expose-Headers': 'Retry-After' },
+        json: { message: 'controlled read failure' },
+      });
       return route.fulfill({ json: [{ opportunity_id: 'saved-target' }], headers: { 'Content-Range': '0-0/1' } });
     });
     await page.route('**/api/opportunities/batch', route => route.fulfill({
