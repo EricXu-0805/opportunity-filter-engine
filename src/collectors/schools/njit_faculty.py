@@ -1,40 +1,15 @@
 """New Jersey Institute of Technology faculty config (via the faculty_graph engine).
 
-FULL campus coverage — all five colleges, every department NJIT publishes a
-faculty roster for (17 departments). Every one of them serves the SAME
-campus-standard Drupal "faculty-cards" directory component — server-rendered,
-no WAF, no JS render needed (every recon fetch returned a clean static 200
-through the proxy). One person is an ``a.column`` profile link
-(protocol-relative ``//people.njit.edu/profile/<uid>``, which ``urljoin``
-resolves to ``https://people.njit.edu/profile/<uid>``) wrapping a
-``div.faculty-staff-profile-card`` that holds:
+All 17 department rosters publish an inverted display name and rank on an
+individual profile link. The newer people-list template puts the link in a
+``li.person``. The older faculty-cards template uses an ``a.column`` wrapping
+``h1.name`` and two copies of ``p.title``. Both templates use the same
+``people.njit.edu/profile/<uid>`` identity for profile enrichment and deduplication.
 
-* an ``h1.name`` with the display name inverted "Last, First" (``name_flip``
-  un-inverts it to "First Last");
-* a ``p.title`` with the rank — emitted TWICE per card (a duplicate node), so
-  ``select_one`` correctly takes the first and both the gate and the record read
-  the same rank.
-
-Because the component is uniform campus-wide, ONE shared selector set + one
-title gate + one enrichment block covers all seventeen departments. The card
-selector keys off the profile-link href so it can never match unrelated
-``a.column`` grid furniture elsewhere on a page.
-
-Title gate (``field_filter``, require ``professor|lecturer``): every listing
-mixes ladder faculty with adjunct instructors (the single largest bucket on
-Chemistry / Civil / Math / HSS), postdocs, lab technicians, program
-coordinators, administrative assistants, department chairs/deans, fabrication
-staff (Hillier), librarians, and emeriti. A ``field_filter`` (not
-``ladder_filter``) is used so a title-less card can't fall through the engine's
-default-to-"Professor": ``require_present`` reads the first ``p.title`` directly
-and drops the card when it is absent/empty, then ``include`` keeps only
-Professor/Lecturer ranks (tenure-track + research + distinguished professors,
-and university lecturers). Emeriti are additionally dropped by the engine's own
-retired-title guard. A handful of real professors listed only by an
-administrative role ("Chair", "Dean") or an abbreviated "Prof" are dropped by
-the gate — accuracy over recall, so no adjunct/postdoc/staff rows leak in. The
-gate does real work: it drops 86→36 on Hillier (a directory that is mostly
-fabrication/marketing/center staff), 111→40 on HSS, and 23→7 on History.
+Each listing mixes professors and university lecturers with other roles such as
+chairs, deans, postdocs, adjunct instructors, staff and emeriti. The title field
+must contain Professor or Lecturer. A missing title is skipped, and the shared
+retired-title guard excludes emeriti.
 
 EMAIL is absent from every listing (no mailto, no obfuscation on the cards).
 Each person's own profile page (``people.njit.edu/profile/<uid>``) carries a
@@ -89,29 +64,18 @@ from __future__ import annotations
 
 from .. import faculty_graph
 
-# The shared NJIT Drupal "faculty-cards" component — identical markup on every
-# department host. The card IS the profile anchor (a.column), scoped to the
-# people.njit.edu/profile/ href so no unrelated grid column can match; the name
-# h1 is "Last, First" (flipped); p.title is emitted twice so select_one takes the
-# first. No email element exists on the listing — it is recovered per-profile.
+# In both Drupal components the anchor wraps the person's name and academic rank.
 _SEL = {
-    "card": "a.column[href*='people.njit.edu/profile/']",
-    "name": "h1.name",
+    "card": ("a.column[href*='people.njit.edu/profile/'], "
+             "li.person > a[href*='people.njit.edu/profile/']"),
+    "name": "h1.name, .text-container > div.name",
     "link": ":self",
-    "title": "p.title",
+    "title": "p.title, .text-container > ul.title-container",
 }
 
-# Keep Professors (tenure-track + research + distinguished) and University
-# Lecturers; drop the adjunct instructors, postdocs, lab/technical staff,
-# fabrication and marketing staff, librarians, program coordinators,
-# administrative assistants, chairs/deans-by-role, and emeriti the directories
-# mix in. field_filter (not ladder_filter) so a title-less card can't fall
-# through the engine's default-to-"Professor": require_present reads the first
-# p.title directly and drops the card when it is absent; include then keeps only
-# Professor/Lecturer ranks. Emeriti are additionally dropped by the engine's
-# retired-title gate.
+# The title gate reads the same first matching field that the record stores.
 _FIELD = {
-    "selector": "p.title",
+    "selector": _SEL["title"],
     "require_present": True,
     "include": r"professor|lecturer",
 }
@@ -133,10 +97,12 @@ _ENRICH = {
 }
 
 
-def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A department on the shared NJIT faculty-cards component."""
+def _dept(short: str, name: str, majors: list[str], url: str, *,
+          id_names: dict[str, str] | None = None) -> dict:
+    """A department publishing an NJIT profile-link roster."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
+        "id_names": id_names or {},
         "scrape": {
             "url": url,
             "selectors": _SEL,
@@ -199,7 +165,8 @@ SCHOOL: dict = {
         _dept("CHEM", "Department of Chemistry and Environmental Science",
               ["Chemistry", "Environmental Science", "Biochemistry",
                "Forensic Science"],
-              "https://chemistry.njit.edu/people"),
+              "https://chemistry.njit.edu/people",
+              id_names={"Farnaz Shakib": "Farnaz Alipour Shakib"}),
         _dept("MATH", "Department of Mathematical Sciences",
               ["Mathematical Sciences", "Applied Mathematics", "Statistics"],
               "https://math.njit.edu/our-people"),
@@ -210,7 +177,8 @@ SCHOOL: dict = {
               ["Communication and Media", "Psychology",
                "Science, Technology and Society",
                "Theatre Arts and Technology", "Law, Technology and Culture"],
-              "https://hss.njit.edu/people"),
+              "https://hss.njit.edu/people",
+              id_names={"Yelda Semizer": "Yelda Semizer Kaplan"}),
         _dept("HIST", "Federated Department of History",
               ["History", "Science, Technology and Society"],
               "https://history.njit.edu/people"),
