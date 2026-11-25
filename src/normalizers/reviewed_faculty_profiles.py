@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from src.contact_instructions import contact_instruction_pages, same_source_page
+from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method, stamp_inferred
 
 from .deactivate_stale_faculty import deactivate_deceased_faculty, deactivate_retired_title_faculty
 
@@ -18,6 +19,7 @@ class ProfileReview:
     reviewed_at: datetime
     title: str | None = None
     previous_title: str | None = None
+    previous_department_label: str | None = None
 
     @property
     def reviewed_on(self) -> date:
@@ -30,6 +32,12 @@ _SBU_CS = "https://www.cs.stonybrook.edu/people/index.html"
 _SBU_GEO = "https://www.stonybrook.edu/geosciences/people/faculty.html"
 _SBU_GEO_REVIEW = datetime(2026, 11, 25, 17, 19, tzinfo=UTC)
 REVIEWS = {
+    "faculty-utexas-neuro-ed6d4734": ProfileReview(
+        "utexas", "Department of Neuroscience", "Harold Zakon",
+        "https://neuroscience.utexas.edu/directory/harold-zakon",
+        "https://research.utexas.edu/profiles/harold-zakon",
+        "https://catalog.utexas.edu/graduate/gsc-committees/",
+        datetime(2026, 11, 25, 21, 35, 18, tzinfo=UTC), previous_department_label="Neuroscience"),
     "faculty-sbu-geo-07129e92": ProfileReview(
         "sbu", "Department of Geosciences", "Gilbert Hanson",
         "https://www.stonybrook.edu/commcms/geosciences/people/_faculty/hanson.php",
@@ -126,6 +134,14 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
     # Even a successful fetch of a restored URL establishes the address only.
     # An old directory title cannot overturn the appointment on the reviewed
     # emeritus roster and profile. A different appointment URL is outside this review.
+    # The replacement profile identifies this as its department. Drop the old
+    # label when replacing its source, preserving independently read research.
+    label = review.previous_department_label
+    if update_url and label and metadata.get("research_areas_raw") == label:
+        if row.get("keywords") == [label] and not inferred_method(row, "keywords"):
+            stamp_inferred(metadata, "keywords", DEPARTMENT_FIELD_METHOD)
+        metadata["research_areas_raw"] = ""
+        metadata.pop("research_areas_verified_at", None)
     if not update_url and not review.title:
         return False
     if update_url:
