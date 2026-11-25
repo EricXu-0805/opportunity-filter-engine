@@ -2,7 +2,7 @@ name: Verify released opportunity and profile flows
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/released-flows.yml','scripts/verify_live_browser_flows.py','scripts/verify_live_public_flows.py']
+    paths: ['.github/workflows/released-flows.yml','scripts/verify_live_browser_flows.py','scripts/verify_live_public_flows.py','scripts/verify_isolated_request_lane.py']
 permissions:
   contents: read
 jobs:
@@ -15,11 +15,37 @@ jobs:
           persist-credentials: false
       - run: python -m pip install --disable-pip-version-check beautifulsoup4==4.13.4
       - run: python -u scripts/verify_live_public_flows.py
+  capacity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Read the official backend release
+        id: release
+        run: |
+          sha=$(curl -fsS --max-time 20 https://joinalab.com/api/health | jq -er '.release_sha | select(test("^[0-9a-f]{40}$"))')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Public backend release $sha"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs.sha }}
+          path: released
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check -r released/requirements.txt
+        working-directory: .
+      - name: Verify HTTP refusal and recovery on the isolated release
+        working-directory: released
+        run: PYTHONPATH=. python ../scripts/verify_isolated_request_lane.py
   browser:
     strategy:
       fail-fast: false
       matrix:
-        flow: [raceen-resume-followup-keep, racezh-resume-followup-keep, raceen-resume-followup-other, racezh-resume-followup-other]
+        flow: [listingen, listingzh]
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:

@@ -55,6 +55,11 @@ async def run(mode):
                                'id':'prior-independent-entry','revision':1,'status':'confirmed',
                                'text':'I recorded an independent control measurement.',
                                'source':{'kind':'manual'}}])
+        listing = mode in ('listingen', 'listingzh')
+        listing_id = 'purdue-2d597d3a3d77'
+        if listing:
+            profile.update(institution='Purdue University', home_school='purdue', major='English', grade='Freshman',
+                           research_interests='history', college='', seeking_types=['research','summer_program'])
         if mode == 'urca':
             profile.update(institution='UC Santa Barbara', home_school='ucsb', major='', research_interests='', skills=[])
         eeb = ['faculty-ucla-eeb-56b5bd06','faculty-ucla-eeb-04fc2f84','faculty-ucla-eeb-792288c6','faculty-ucla-eeb-880b1219','faculty-ucla-eeb-f529eb3c']
@@ -64,11 +69,11 @@ async def run(mode):
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
             browser=await pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
-            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode.startswith('racezh') else 1280,'height':900})
+            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode.startswith('racezh') or mode=='listingzh' else 1280,'height':900})
             init="""if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_receipt_seed')){for(const [k,v] of Object.entries(VALUES))localStorage.setItem(k,v);localStorage.setItem('oe_receipt_seed','1')}"""
             values={'ofe_auth':json.dumps(session),'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_profile':json.dumps(profile)}
-            if mode.startswith('race'):
-                values['ofe_lang'] = mode.removeprefix('race').split('-')[0]
+            if mode.startswith('race') or listing:
+                values['ofe_lang'] = mode[-2:] if listing else mode.removeprefix('race').split('-')[0]
                 await context.set_extra_http_headers({'Accept-Language':values['ofe_lang']})
                 if values['ofe_lang'] == 'zh':
                     await context.add_cookies([{'name':'ofe_lang','value':'zh','url':'https://joinalab.com'}])
@@ -97,8 +102,9 @@ async def run(mode):
                         outcomes.append('unavailable')
                         print('Synthetic guest write unavailable',flush=True)
                         return await route.fulfill(status=503,headers=cors,json={'message':'temporary fixture outage'})
-                    if mode == 'eeb' and u.path == '/rest/v1/favorites' and req.method == 'GET':
-                        return await route.fulfill(status=200,headers={**cors,'Content-Range':'0-4/5'},json=[{'opportunity_id':key} for key in eeb])
+                    if (mode == 'eeb' or listing) and u.path == '/rest/v1/favorites' and req.method == 'GET':
+                        ids = [listing_id] if listing else eeb
+                        return await route.fulfill(status=200,headers={**cors,'Content-Range':f'0-{len(ids)-1}/{len(ids)}'},json=[{'opportunity_id':key} for key in ids])
                     if mode=='dashboard' and u.path=='/rest/v1/favorites' and req.method=='GET':
                         reads+=1
                         return await route.fulfill(status=503 if fail else 200,headers={**cors,'Retry-After':'0',**({} if fail else {'Content-Range':'0-0/1'})},json={'message':'controlled outage'} if fail else [{'opportunity_id':'saved-target'}])
@@ -110,7 +116,7 @@ async def run(mode):
                 if u.hostname=='joinalab.com':
                     if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
                         return await route.fulfill(json={'requested':1,'found':0,'opportunities':[]})
-                    if u.path=='/api/matches/view' and req.method=='POST' and mode in ('cache','urca','eeb'):
+                    if u.path=='/api/matches/view' and req.method=='POST' and (mode in ('cache','urca','eeb') or listing):
                         print('Real match view requested; holding',hold,flush=True)
                         if hold:
                             blocked.set();await asyncio.wait_for(release.wait(),30)
@@ -357,6 +363,17 @@ async def run(mode):
                 await expect(receiver.locator('#student_name')).to_have_value('Synthetic retained edit')
                 assert 'merged_away' in outcomes and 'unavailable' in outcomes, outcomes
                 print('PASS deployed two-tab guest merge, failed edit retained, both stale, neither offered retry or claimed saved:',outcomes)
+            elif listing:
+                zh = mode.endswith('zh')
+                await page.goto('https://joinalab.com/results?tab=starred',wait_until='domcontentloaded')
+                card = page.locator('#match-card-'+listing_id)
+                await card.get_by_role('button',name='展开详情' if zh else 'Show details').click(timeout=85000)
+                warning = '项目页面未确认' if zh else 'not confirmed on the program page'
+                reason = card.locator('li').filter(has_text=warning).filter(has_text='computer science').first
+                await expect(reason).to_be_visible(timeout=15000)
+                line = await reason.inner_text()
+                assert ('我们列表里的信息提示偏向' if zh else 'Our listing suggests') in line, line
+                print('PASS public matched card', listing_id, mode, line, flush=True)
             elif mode in ('urca','eeb'):
                 async with page.expect_response(lambda r: urlsplit(r.url).path == '/api/matches/view' and r.request.method == 'POST' and r.status == 200, timeout=80000) as data:
                     target_tab = 'all' if mode == 'urca' else 'starred'
