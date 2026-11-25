@@ -1,0 +1,30 @@
+name: Verify released opportunity and profile flows
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/released-flows.yml','scripts/verify_live_browser_flows.py','scripts/verify_live_public_flows.py']
+permissions:
+  contents: read
+jobs:
+  published:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check beautifulsoup4==4.13.4
+      - run: python -u scripts/verify_live_public_flows.py
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        flow: [cache, dashboard]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
+      - run: python -u scripts/verify_live_browser_flows.py ${{ matrix.flow }}
