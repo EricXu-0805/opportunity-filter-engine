@@ -759,6 +759,21 @@ describe('two tabs pressing "Keep what I typed" at the same moment (M179)', () =
     expect(b.hook.result.current.profile.major).toBe('Mathematics');
   });
 
+  it('identifies the other tab’s answer after its save completed but before the next outbox read', async () => {
+    const { a, b } = await twoTabsDisagreeOnMajor();
+    replyAfter190ms(apply);
+    const sent = service.commit.mock.calls.length;
+    writer = 'A';
+    act(() => { a.hook.result.current.keepMyChanges(); });
+    await steps(800);
+    expect(remote.major).toBe('Mathematics');
+    expect(b.hook.result.current.conflicts.map((q) => q.key)).toEqual(['major']);
+
+    await as(b, (f) => f.keepMyChanges());
+    expect(sentSince(sent)).toEqual([[7, { major: 'Mathematics' }]]);
+    expect(shown(b)).toEqual({ status: 'conflict-stale', retry: false, asked: [], major: 'Mathematics' });
+  });
+
   it('the tab whose answer comes second sends nothing, never says it could not sync, and offers no Retry', async () => {
     const { a, b } = await twoTabsDisagreeOnMajor();
     replyAfter190ms(apply);
