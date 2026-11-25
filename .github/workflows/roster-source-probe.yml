@@ -1,0 +1,19 @@
+name: Read official roster structures
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths:
+      - ".github/workflows/roster-source-probe.yml"
+      - "scripts/probe_roster_structure.py"
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip --disable-pip-version-check --retries 0 --timeout 12 install beautifulsoup4==4.13.4
+      - run: python scripts/probe_roster_structure.py
