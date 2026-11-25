@@ -20,3 +20,44 @@ jobs:
           persist-credentials: false
       - run: python -m pip install --disable-pip-version-check playwright==1.55.0
       - run: python -u scripts/verify_public_outreach_paths.py ${{ matrix.target }}
+  school-freshness:
+    name: Published November 25 freshness for all 115 schools
+    if: startsWith(github.event.head_commit.message, 'Verify M204 production snapshot')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Compare public status and success times to the published report projection
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import time
+          from urllib.request import urlopen
+
+          def read(path):
+              url = "https://joinalab.com/api/" + path + "?snapshot=" + str(time.time_ns())
+              with urlopen(url, timeout=30) as response:
+                  return json.load(response)
+
+          def digest(value):
+              canonical = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+              return hashlib.sha256(canonical).hexdigest()
+
+          release = read("health")["release_sha"]
+          schools = read("opportunities/freshness")["schools"]
+          assert read("health")["release_sha"] == release, "Release changed during the read"
+          print("Render release:", release)
+          dates = {school: value["last_checked_at"] for school, value in schools.items()}
+          print("Schools:", len(schools), "public digest:", digest(schools), "times digest:", digest(dates))
+          assert len(schools) == 115
+          # Independently projected from #1275 and #1276. All success times agree.
+          assert digest(dates) == "7bea5dba39be0f59574e4fe7adc841769b46446fd2f0702786e021d4b0f2152a"
+          assert digest(schools) == "0e4413838c14d7b703aff1da0528c21c08ece26c6ae780e10c7c8273984b7544"
+          changed = "buffalo casewestern cmu georgetown grinnell iastate middlebury ncsu nd njit oregonstate osu uconn udel uiuc utk".split()
+          for school in changed:
+              print(school, schools[school])
+              assert schools[school]["status"] == "partly_unchecked"
+          prior = {school: dict(value) for school, value in schools.items()}
+          for school in changed:
+              prior[school]["status"] = "current"
+          assert digest(prior) == "08749d3ad410ed8c4936fc48136719299d18ce88977149d9e109292a0d8a2558"
