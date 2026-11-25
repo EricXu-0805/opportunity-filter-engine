@@ -16,11 +16,4 @@ jobs:
         with:
           persist-credentials: false
       - run: python -m pip --disable-pip-version-check --retries 0 --timeout 12 install beautifulsoup4==4.13.4
-      - run: python scripts/probe-public-acceptance.py
-      - uses: actions/checkout@v6
-        with:
-          ref: 024a1725927dd9e02800e116e25cc9cddf928ff4
-          path: wesleyan-candidate
-          persist-credentials: false
-      - run: python -m pip --disable-pip-version-check --retries 0 --timeout 12 install requests
-      - run: PYTHONPATH=wesleyan-candidate python scripts/probe-wesleyan-candidate.py
+      - run: python scripts/verify_match_reasons.py
