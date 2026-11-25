@@ -132,9 +132,11 @@ _RESEARCH_ENRICH = {
 }
 
 
-def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
+def _dept(short: str, name: str, majors: list[str], url: str, *,
+          profile_id_names: dict[str, tuple[str, str]] | None = None) -> dict:
     """A department on the shared UCSC h-card component."""
     return {
+        **({"profile_id_names": profile_id_names} if profile_id_names else {}),
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
                    "profile_enrich": _RESEARCH_ENRICH},
@@ -205,13 +207,17 @@ SCHOOL: dict = {
               "https://envs.ucsc.edu/people/faculty/"),
         _dept("LALS", "Department of Latin American and Latino Studies",
               ["Latin American and Latino Studies"],
-              "https://lals.ucsc.edu/people/faculty/"),
+              "https://lals.ucsc.edu/people/faculty/",
+              profile_id_names={"https://campusdirectory.ucsc.edu/cd_detail?uid=mdohara":
+                                ("Matt O'Hara", "Matt O’Hara")}),
         _dept("EDUC", "Department of Education",
               ["Education, Democracy, and Justice", "Education"],
               "https://education.ucsc.edu/people/faculty/"),
         # ---- Humanities -----------------------------------------------------
         _dept("HIST", "Department of History", ["History", "Classical Studies"],
-              "https://history.ucsc.edu/people/"),
+              "https://history.ucsc.edu/people/",
+              profile_id_names={"https://campusdirectory.ucsc.edu/cd_detail?uid=gomalley":
+                                ("Gregory O'Malley", "Gregory O’Malley")}),
         _dept("PHIL", "Department of Philosophy", ["Philosophy"],
               "https://philosophy.ucsc.edu/people/faculty/"),
         _dept("LIT", "Department of Literature", ["Literature"],
@@ -219,10 +225,14 @@ SCHOOL: dict = {
         _dept("LING", "Department of Linguistics", ["Linguistics", "Language Studies"],
               "https://linguistics.ucsc.edu/people/faculty/"),
         _dept("FMST", "Department of Feminist Studies", ["Feminist Studies"],
-              "https://feministstudies.ucsc.edu/people/"),
+              "https://feministstudies.ucsc.edu/people/",
+              profile_id_names={"https://campusdirectory.ucsc.edu/cd_detail?uid=reardon1":
+                                ("Jenny Reardon", "Jennifer E Reardon")}),
         _dept("CRES", "Department of Critical Race and Ethnic Studies",
               ["Critical Race and Ethnic Studies"],
-              "https://cres.ucsc.edu/people-in-cres/"),
+              "https://cres.ucsc.edu/people-in-cres/",
+              profile_id_names={"https://campusdirectory.ucsc.edu/cd_detail?uid=svaccari":
+                                ("Sylvane Vaccarino", "Sylvane Vaccarino-Ruiz")}),
         # ---- Arts Division --------------------------------------------------
         _dept("ART", "Department of Art",
               ["Art", "Art and Design: Games and Playable Media"],

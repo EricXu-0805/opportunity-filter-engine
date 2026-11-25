@@ -679,7 +679,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # A reviewed nickname belongs to this person only on their own profile.
     # The same spelling from a different directory card keeps its normal ID.
     if reviewed_names := dept.get("profile_id_names"):
-        alias = reviewed_names.get(canonical_profile_url(person.get("url")))
+        # Some universities identify the person only in a query parameter.
+        # Try the complete reviewed URL before the path-based aliases.
+        url = person.get("url")
+        alias = reviewed_names.get(url) or reviewed_names.get(canonical_profile_url(url))
         if alias and name == alias[0]:
             id_name = alias[1]
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
