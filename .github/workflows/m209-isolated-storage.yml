@@ -1,0 +1,42 @@
+name: Verify restore evidence against isolated Supabase Storage
+on:
+  push:
+    branches: [codex/diagnose-m209-storage-bytes]
+    paths: ['.github/workflows/m209-isolated-storage.yml', 'scripts/diagnose_m209_storage.py']
+permissions:
+  contents: read
+jobs:
+  real-storage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify candidate module against the PR head
+        run: git diff --exit-code d7ae035cb634de97f89cd028eeb79c03cee286b1 HEAD -- scripts/restore_attachment_evidence.py
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Install the HTTP client used by the restore verifier
+        run: python -m pip install --disable-pip-version-check httpx==0.28.1
+      - name: Start runner-local Supabase Storage with no linked project
+        run: |
+          set -euo pipefail
+          umask 077
+          fixture="$RUNNER_TEMP/ofe-m209-storage"
+          mkdir -p "$fixture"
+          cd "$fixture"
+          supabase init
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            echo 'Fresh Supabase stack could not start.'
+            exit 1
+          fi
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'storage-api|supabase/postgres:'
+      - name: Check real object listings, streamed downloads and same-size corruption
+        run: python -m scripts.diagnose_m209_storage "$RUNNER_TEMP/ofe-m209-storage"
