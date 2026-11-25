@@ -311,3 +311,14 @@ def test_berkeley_haas_closed_cycle_in_old_national_and_new_campus_rows(monkeypa
     for row in (campus, data_loader._sanitize_opportunity(old)):
         assert row["deadline"] == "2026-03-13" and row["is_rolling"] is False
         assert not evidence.target_truth(row).actionable
+
+
+def test_berkeley_lab_suli_keeps_its_id_and_uses_the_doe_application():
+    row = _row("ucb", "lbl_suli")
+    assert row["id"] == "ucb-b923a71f6ac423"
+    assert row["school"] is None and row["audience"] == "open"
+    assert row["application"]["application_url"] == "https://science.osti.gov/wdts/suli/How-to-Apply"
+    assert (row["deadline"], row["is_rolling"]) == ("2027-01-06", False)
+    assert row["eligibility"]["min_gpa"] == 3.0
+    assert row["eligibility"]["citizenship_required"] is True
+    assert row["eligibility"]["preferred_year"] == []

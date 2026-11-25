@@ -34,6 +34,8 @@ class ProgramWindow:
 
 
 _REVIEWED = date(2026, 11, 5)
+_SUPERB = "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/"
+_SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
 _HAAS = "https://research.berkeley.edu/haas-scholars/"
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
 _SFP = "https://sfp.caltech.edu/undergraduate-research/programs/"
@@ -43,6 +45,14 @@ _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 # deadline.") names the cycle elsewhere on the same page ("View the 2027
 # program flyer!", "SURF 2027 application portal"); that is the year here.
 WINDOWS: dict[tuple[str, str], ProgramWindow] = {
+    ("ucb", "eecs_sure"): ProgramWindow(
+        _SUPERB, _SUPERB, date(2026, 11, 25), date(2025, 1, 25),
+        "Application deadline: January 25th 2025, 11:59 PM ET",
+    ),
+    ("ucb", "lbl_suli"): ProgramWindow(
+        _SULI, _SULI, date(2026, 11, 25), date(2027, 1, 6),
+        "Applications are due January 6, 2027 at 5:00 PM ET.",
+    ),
     ("ucb", "haas_scholars"): ProgramWindow(
         _HAAS, _HAAS + "how-to-apply/", date(2026, 11, 25), date(2026, 3, 13),
         "Application deadline: Friday, March 13, 2026 at 12:00 PM Noon Pacific Time.",

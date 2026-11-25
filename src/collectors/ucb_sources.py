@@ -143,7 +143,7 @@ def _prog(
         "paid": paid,
         "compensation": compensation,
         "eligibility_majors": eligibility_majors or [],
-        "preferred_year": preferred_year or ["sophomore", "junior", "senior"],
+        "preferred_year": ["sophomore", "junior", "senior"] if preferred_year is None else preferred_year,
         "international_friendly": international_friendly,
         "deadline_note": deadline_note,
         "contact_email": contact_email,
@@ -326,7 +326,7 @@ UCB_SOURCES: list[dict] = [
         "source_type": PROGRAM,
         "emit": EMIT_OPEN,
         "seeds": [
-            "https://eecs.berkeley.edu/resources/undergrads/research/sure",
+            "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/",
             "https://www2.eecs.berkeley.edu/Research/Areas/",
         ],
         "crawl": STATIC,
@@ -334,26 +334,18 @@ UCB_SOURCES: list[dict] = [
         "programs": [
             _prog(
                 "eecs_sure",
-                "SUPERB / SURE — EECS Summer Undergraduate Research (UC Berkeley)",
-                "https://eecs.berkeley.edu/resources/undergrads/research/sure",
-                "EECS summer research experiences (SUPERB-ITS and related SURE "
-                "tracks) place undergraduates in Berkeley EECS labs for an "
-                "intensive summer of mentored research in AI, systems, circuits, "
-                "and theory. Stipend + housing for admitted scholars; designed for "
-                "students considering graduate study, including those from other "
-                "institutions.",
+                "SUPERB-AI4E — Berkeley EECS Summer Research (2025)",
+                "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/",
+                "Berkeley EECS lists its 2025 summer research program in artificial intelligence "
+                "for engineering. The department reports that applications for that cycle closed.",
                 organization="EECS, UC Berkeley",
                 department="Electrical Engineering and Computer Sciences",
-                lab_or_program="SUPERB / SURE",
-                opportunity_type="summer_program",
-                paid="stipend",
-                compensation="Summer stipend + housing",
-                eligibility_majors=["Computer Science", "Electrical Engineering",
-                                    "Computer Engineering", "EECS"],
-                preferred_year=["sophomore", "junior"],
-                international_friendly="no",
-                deadline_note="Summer REU-style cycle — typically due winter/early spring.",
-                keywords=["summer research", "reu", "machine learning", "systems", "circuits"],
+                lab_or_program="SUPERB-AI4E",
+                opportunity_type="summer_program", paid="stipend",
+                compensation="Stipend, housing and meals",
+                min_gpa=3.0, preferred_year=["junior", "senior"], international_friendly="no",
+                deadline_note="The 2025 application closed January 25, 2025 at 11:59 PM ET.",
+                keywords=["summer research", "artificial intelligence", "engineering"],
             ),
         ],
     },
@@ -957,6 +949,7 @@ UCB_SOURCES: list[dict] = [
         "source_type": PROGRAM,
         "emit": EMIT_OPEN,
         "seeds": [
+            "https://science.osti.gov/wdts/suli/How-to-Apply",
             "https://education.lbl.gov/internships/",
             "https://math.berkeley.edu/undergraduate/undergraduate-research-opportunities",
             "https://physics.berkeley.edu/academics/undergraduate-research/research-opportunities-board",
@@ -965,33 +958,23 @@ UCB_SOURCES: list[dict] = [
         "update": SEASONAL,
         "programs": [
             _prog("lbl_suli", "Berkeley Lab SULI — DOE Undergraduate Internship",
-                  "https://education.lbl.gov/internships/",
-                  "Lawrence Berkeley National Laboratory's Science Undergraduate "
-                  "Laboratory Internship (SULI, DOE-funded) places undergraduates from "
-                  "across the U.S. into Berkeley Lab research for a paid 10-16 week term, "
-                  "mentored by lab scientists. Strong REU-style pipeline alongside campus.",
+                  "https://science.osti.gov/wdts/suli/How-to-Apply",
+                  "Apply through the DOE Science Undergraduate Laboratory Internships program and "
+                  "select Berkeley Lab as a laboratory choice. The summer research term lasts "
+                  "10 weeks. Applicants must be U.S. citizens or lawful permanent residents.",
                   organization="Lawrence Berkeley National Laboratory",
                   lab_or_program="Berkeley Lab SULI",
                   opportunity_type="summer_program", paid="yes",
-                  compensation="Weekly stipend + possible travel/housing",
-                  eligibility_majors=["Physics", "Chemistry", "Engineering", "Computer Science", "Biology"],
-                  preferred_year=["sophomore", "junior", "senior"],
-                  international_friendly="no",
-                  deadline_note="DOE cycles — typically due Jan (summer) and earlier for other terms.",
-                  keywords=["summer research", "reu", "national laboratory", "stipend"]),
-            _prog("lbl_experiences", "Berkeley Lab Undergraduate Research Experiences",
-                  "https://education.lbl.gov/internships/programs/",
-                  "Beyond SULI, Berkeley Lab hosts additional undergraduate research "
-                  "experiences (CCI, BLUR, and program-specific internships) across "
-                  "computing, energy, biosciences, and physics.",
+                  min_gpa=3.0, preferred_year=[], international_friendly="no",
+                  deadline_note="Summer 2027 applications are due January 6, 2027 at 5:00 PM ET.",
+                  keywords=["summer research", "national laboratory", "internship"]),
+            _prog("lbl_experiences", "Berkeley Lab Internship Programs",
+                  "https://education.lbl.gov/internships/",
+                  "Berkeley Lab lists its internship programs, including Community College "
+                  "Internships and the Computing Sciences Area Summer Program. Follow an individual "
+                  "program for eligibility and application instructions.",
                   organization="Lawrence Berkeley National Laboratory",
-                  lab_or_program="Berkeley Lab",
-                  opportunity_type="summer_program", paid="yes",
-                  compensation="Stipend",
-                  preferred_year=["sophomore", "junior", "senior"],
-                  international_friendly="no",
-                  deadline_note="Varies by program; mostly spring deadlines for summer.",
-                  keywords=["summer research", "reu", "national laboratory", "computing"]),
+                  preferred_year=[], reference_only=True, keywords=["internship directory"]),
             _prog("math_reu", "Berkeley Mathematics Undergraduate Research Opportunities",
                   "https://math.berkeley.edu/undergraduate/undergraduate-research-opportunities",
                   "The mathematics department lists research programs and links to their individual requirements.",

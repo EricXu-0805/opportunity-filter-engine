@@ -1249,8 +1249,8 @@ def test_ucb_crawl_domain_boundary_rejects_suffix_spoofing():
     )
 
 
-@pytest.mark.parametrize("key", ["math_reu", "physics_reu"])
-def test_department_resource_board_keeps_old_id_without_applications(processed, key):
+@pytest.mark.parametrize("key", ["math_reu", "physics_reu", "lbl_experiences"])
+def test_resource_board_keeps_old_id_without_applications(processed, key):
     from src.evidence import target_truth
 
     source = next(src for src in reg.UCB_SOURCES if src["source_name"] == "ucb_external_reu")
