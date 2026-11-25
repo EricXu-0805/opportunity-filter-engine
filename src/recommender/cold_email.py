@@ -4,7 +4,9 @@ from backend.lib.opportunity_detail import stated_pi_name
 from src.evidence import (
     faculty_contact_claims_unverified,
     inferred_method,
+    is_directory_discipline,
     is_professor_rank,
+    is_research_clause_fragment,
     keywords_are_source_topics,
 )
 from src.lab_context import lab_context_for, validate_public_lab_context
@@ -891,6 +893,20 @@ def _posting_name(opportunity: dict) -> str:
 def _common_parts(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None
 ) -> dict:
+    # The offline app can pass a raw shard record without the API's load-time
+    # cleanup. Keep these fields out of the draft inputs without changing that record.
+    if faculty_contact_claims_unverified(opportunity):
+        metadata = opportunity.get("metadata") or {}
+        source, dept = opportunity.get("source"), opportunity.get("department")
+        raw = metadata.get("research_areas_raw")
+        affiliation = is_directory_discipline(source, dept, raw)
+        keywords = opportunity.get("keywords") or []
+        topics = [k for k in keywords if isinstance(k, str) and not is_research_clause_fragment(k)
+                  and not ((affiliation or not raw) and is_directory_discipline(source, dept, k))]
+        if affiliation or topics != keywords:
+            opportunity = {**opportunity, "keywords": topics}
+            if affiliation:
+                opportunity["metadata"] = {**metadata, "research_areas_raw": ""}
     name = profile.get("name") or "Student"
     year = profile.get("year", "undergraduate")
     major = profile.get("major", "")

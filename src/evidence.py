@@ -1068,6 +1068,38 @@ _FACULTY_AVAILABILITY_SCAN_VERSION = 1
 # Internal corpus field shared by collectors, the serve-time neutralizer and
 # the ranker. Public projections remove it before serialization.
 FACULTY_MAJOR_LABELS_MARKER = "_faculty_major_labels"
+
+# These specific directory components put affiliation or position labels in the
+# field used for research. A matching word in a personal "Research Areas" block
+# is still source evidence (e.g. Mathematics at UT Austin).
+_LSU_DESIGN_UNITS = {
+    "School of Architecture", "School of Art", "School of Interior Design",
+    "Robert Reich School of Landscape Architecture",
+}
+_LSU_DESIGN_DISCIPLINES = {"architecture", "art", "interior design", "landscape architecture"}
+
+
+def is_directory_discipline(source: str | None, department: str | None, value: object) -> bool:
+    if not isinstance(value, str) or source not in {"lsu_faculty", "macalester_faculty"}:
+        return False
+    label = " ".join(value.casefold().split())
+    if source == "lsu_faculty":
+        if department == "School of Animal Sciences":
+            return label in {"school of animal science", "school of animal sciences"}
+        if department in _LSU_DESIGN_UNITS:
+            labels = label.removeprefix("college of art & design ").split("/")
+            return all(part.strip() in _LSU_DESIGN_DISCIPLINES for part in labels)
+    return (source == "macalester_faculty"
+            and department == "Department of Mathematics, Statistics, and Computer Science"
+            and label in {"mathematics", "statistics", "computer science"})
+
+
+def is_research_clause_fragment(keyword: str) -> bool:
+    """A relative clause or predicate left by splitting research prose into tags."""
+    return bool(re.match(
+        r"^(?:which(?:$|\s+(?!(?:path|way)\b))|takes? place (?:in|on|at)\b)",
+        keyword.strip(), re.I,
+    ))
 # The verb set is corpus-derived, not speculative.  Keep the object bounded so
 # an unrelated later mention of students cannot turn a general negation into
 # an outreach block. Object semantics are checked separately below: explicit
