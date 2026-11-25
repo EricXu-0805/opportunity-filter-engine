@@ -205,3 +205,19 @@ def test_refresh_of_old_umd_directory_without_a_live_personal_page(tmp_path, mon
         assert merged[0]["metadata"]["faculty_title"] == "Professor Emerita"
         assert merged[0]["url"] == review.profile_url
         path.write_text(json.dumps(merged))
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("Neuroscience", ""), ("Sensory systems", "Sensory systems")])
+def test_texas_profile_labels_department_and_preserves_other_readings(raw, expected):
+    oid = "faculty-utexas-neuro-ed6d4734"
+    row = _old(oid)
+    row["metadata"].update(research_areas_raw=raw, research_areas_verified_at="2026-08-06")
+    row["keywords"] = ["Neuroscience"]
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert row["url"] == "https://research.utexas.edu/profiles/harold-zakon"
+    assert row["metadata"]["research_areas_raw"] == expected
+    assert ("research_areas_verified_at" in row["metadata"]) == bool(expected)
+    public = _sanitize_opportunity(deepcopy(row))
+    assert ("Research areas:" in public["description_clean"]) == bool(expected)
+    assert row["metadata"]["last_seen_at"] == "2026-07-25"
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 0
