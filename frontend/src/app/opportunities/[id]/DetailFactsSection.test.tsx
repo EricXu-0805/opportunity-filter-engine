@@ -309,6 +309,44 @@ describe('DetailFactsSection', () => {
     expect(row('timing', 'rolling').getAttribute('data-state')).toBe('unknown');
   });
 
+  it.each(['en', 'zh'] as const)('points the deadline row to the source wording for the Caltech exchange (%s)', locale => {
+    const note = 'Application due by March 1, 2027, 5:00 pm';
+    const quote = 'A completed application, personal statement, two faculty recommendations, and an unofficial transcript are due by March 1, 2027, 5:00 pm.';
+    const fields = readDetailFields({ detail_fields: {
+      version: DETAIL_FIELDS_VERSION, fields: { timing: {
+        state: 'source', explicit: { application_window: note }, inferred: {},
+        quotes: { application_window: { text: quote, source_url: 'https://sfp.caltech.edu/undergraduate-research/programs/exchange_programs', observed_at: '2026-11-21' } },
+        unknown: ['deadline', 'rolling'],
+      } },
+    } })!;
+    render(<DetailFactsSection fields={fields} isFaculty={false} t={(key) => translate(locale, key)} />);
+    const deadline = row('timing', 'deadline');
+    const windowRow = row('timing', 'application_window');
+    const link = within(deadline).getByRole('link');
+    expect(link).toHaveTextContent(translate(locale, 'detail.facts.seeApplicationWindow'));
+    expect(link.getAttribute('href')).toBe(`#${windowRow.id}`);
+    expect(deadline).not.toHaveTextContent(translate(locale, 'detail.facts.state.unknown'));
+    expect(windowRow).toHaveTextContent(note);
+    expect(windowRow).toHaveTextContent(quote);
+    expect(row('timing', 'rolling')).toHaveAttribute('data-state', 'unknown');
+  });
+
+  it('keeps inferred timing, confirmed rolling and independently recorded deadlines distinct', () => {
+    const timing = (explicit: object, inferred: object) => readDetailFields({ detail_fields: {
+      version: DETAIL_FIELDS_VERSION, fields: { timing: { state: 'source', explicit, inferred } },
+    } })!;
+    const renderTiming = (fields: ReturnType<typeof timing>) =>
+      <DetailFactsSection fields={fields} isFaculty={false} t={t} />;
+    const { rerender } = render(renderTiming(timing({}, { application_window: { value: 'Due in March', basis: 'configured' } })));
+    expect(row('timing', 'deadline')).toHaveTextContent('detail.facts.unknownHint.deadline');
+    rerender(renderTiming(timing({ application_window: 'Applications reviewed on a rolling basis', rolling: true }, {})));
+    expect(row('timing', 'rolling')).toHaveTextContent('detail.facts.values.rolling');
+    expect(row('timing', 'deadline')).not.toHaveTextContent('detail.facts.unknownHint.deadline');
+    rerender(renderTiming(timing({ application_window: 'Applications open in February', deadline: '2027-03-01' }, {})));
+    expect(row('timing', 'deadline')).toHaveTextContent('2027-03-01');
+    expect(within(row('timing', 'deadline')).queryByRole('link')).toBeNull();
+  });
+
   it('does not use the school location as the opportunity location', () => {
     renderCase('curated_campus_program');
     const location = row('location', 'location');
