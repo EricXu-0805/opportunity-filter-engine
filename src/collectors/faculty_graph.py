@@ -4172,7 +4172,15 @@ def _carry_sighting(survivor: dict, loser: dict,
     same_unit = all(survivor.get(k) == loser.get(k) for k in ("source", "department")) \
         and _unit_id_of(survivor) == _unit_id_of(loser) \
         and _one_person([survivor.get("pi_name"), loser.get("pi_name")])
-    if same_page or same_unit:
+    # A fallback can revisit the identical stored row for someone with a
+    # mononym or initial (Wesleyan Music). Word count cannot establish that
+    # identity, but its stable id, exact name, source URL and address agree.
+    same_stored_identity = (
+        bool(survivor.get("id") and survivor.get("pi_name") and survivor.get("source") and survivor.get("url"))
+        and all(survivor.get(k) == loser.get(k) for k in ("id", "pi_name", "source", "url"))
+        and bool(_key_email(survivor)) and _key_email(survivor) == _key_email(loser)
+    )
+    if same_page or same_unit or same_stored_identity:
         from .uiuc_faculty import _carry_newest_liveness
         _carry_newest_liveness(survivor, loser)
 
