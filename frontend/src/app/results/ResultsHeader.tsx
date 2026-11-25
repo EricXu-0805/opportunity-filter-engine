@@ -96,6 +96,9 @@ export function ResultsHeader({
               )
               : null}
         </p>
+        {!loading && data && counts.all > 0 && (
+          <p className="mt-1 text-[13px] text-gray-600">{t('results.scoreMeaning')}</p>
+        )}
         {!loading && data && typeof data.field_relevant_count === 'number' && data.field_relevant_count > 0 && (
           <p className="mt-1 text-[12px] sm:text-[13px] font-medium text-indigo-700">
             {data.field_relevant_count === 1
