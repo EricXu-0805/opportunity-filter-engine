@@ -34,9 +34,17 @@ def rpc(path, data, auth={}):
 async def run(mode):
     proc = subprocess.Popen(['node','frontend/e2e/supabase-stub.mjs'],env={**os.environ,'E2E_SUPABASE_PORT':'51432'},stdout=subprocess.DEVNULL)
     try:
-        for _ in range(50):
-            try: fetch(stub+'/health'); break
-            except OSError: await asyncio.sleep(.1)
+        for _ in range(120):
+            if proc.poll() is not None:
+                raise RuntimeError(f'Isolated account service exited with {proc.returncode}')
+            try:
+                fetch(stub + '/health')
+                break
+            except OSError:
+                await asyncio.sleep(.25)
+        else:
+            raise RuntimeError('Isolated account service not ready after 30 seconds')
+        print('Isolated account service ready:',mode,flush=True)
         session=rpc('/auth/v1/signup',{'email':'m179@example.invalid','password':'local-fixture-only'} if mode.startswith('race') else {}); uid=session['user']['id']
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
         if mode == 'merged' or mode.startswith('race'):
