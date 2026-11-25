@@ -90,9 +90,16 @@ def skill_may_be_named(raw: object) -> bool:
     skill keeps the repo field that named it (``evidence`` as the profile
     stores it, ``evidenced`` as the browser sends it). Until the student
     confirms one without it, it is still scored but never named. A
-    re-import that names it again attaches its evidence.
+    re-import that names it again attaches its evidence. A shared profile only
+    establishes what the sender listed. The recipient must confirm a shared
+    skill before a writer names it in their voice.
     """
-    if isinstance(raw, str) or _field(raw, "source") != "github" or _field(raw, "confirmed") is True:
+    if isinstance(raw, str) or _field(raw, "confirmed") is True:
+        return True
+    source = _field(raw, "source")
+    if source == "shared":
+        return False
+    if source != "github":
         return True
     evidence = _field(raw, "evidence")
     return _field(raw, "evidenced") is True or (isinstance(evidence, str) and bool(evidence.strip()))

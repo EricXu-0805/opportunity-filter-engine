@@ -2656,7 +2656,7 @@ _LOW_SIGNAL_ALIGN_TOKENS: frozenset[str] = frozenset({
 _ROLE_PROCESS_TOKENS = frozenset({
     "undergraduate research", "research assistant", "summer research",
     "research experience", "research opportunity", "reu", "fellowship",
-    "paid", "our", "portal",
+    "paid", "our", "portal", "interest", "interests", "research interest", "research interests",
 })
 
 
@@ -3779,6 +3779,31 @@ class _InText(dict):
         return found
 
 
+class _NamedInterestText(dict[str, bool]):
+    """Cache which displayed topics a student's own interest text can support."""
+
+    def __init__(self, text: str) -> None:
+        super().__init__()
+        self.text = text
+        self.parts = [
+            (part, _word_count(part) >= _SENTENCE_WORDS)
+            for part in re.split(r"[,;，；、\n]+", text) if part.strip()
+        ]
+
+    def __missing__(self, phrase: str) -> bool:
+        term = phrase.strip().lower()
+        found = False
+        if term and term in self.text:
+            pattern = _word_re(term)
+            multiple_words = _word_count(term) >= 2
+            found = any(
+                (multiple_words or not sentence) and pattern.search(part)
+                for part, sentence in self.parts
+            )
+        self[phrase] = found
+        return found
+
+
 class _ProfileInterests:
     """What interest matching reads from the profile alone, in the forms the
     per-row code compares, prepared once per ranking instead of on every
@@ -3795,7 +3820,7 @@ class _ProfileInterests:
         self.chips = _ChipMatch(self.desired, _kw_word_re)
         text = profile.get("research_interests_text")
         self.research_text = (text or "").lower()
-        self.in_research_text = _InText(self.research_text)
+        self.in_research_text = _NamedInterestText(self.research_text)
         bonus_text = str(text or "").strip()
         self.bonus_tokens = _interest_bonus_tokens(bonus_text) if len(bonus_text) >= 4 else frozenset()
         topic_text = (text or "").strip().lower()

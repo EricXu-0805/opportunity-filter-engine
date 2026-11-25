@@ -11,6 +11,7 @@ import os
 import re
 import threading
 import time
+from bisect import bisect_right
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -118,6 +119,7 @@ from src.student_evidence import (
     course_entries,
     skill_level_is_the_students_own,
 )
+from src.urap_windows import project_cutoff
 
 router = APIRouter(route_class=BoundedJSONRoute)
 
@@ -859,6 +861,7 @@ class _MatchSnapshot:
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
 _active_corpus_identity: int | None = None
+_project_cutoffs: tuple[float, ...] = ()
 # id(record) → view row for the active corpus generation. Records are
 # immutable between reloads (as the ranker's statics assume); a row is reused
 # only for the very record it was built from, and the table is emptied when a
@@ -874,6 +877,7 @@ class _MatchUniverse:
     utc_day: date
     fellowships: bool
     opportunities: list[dict]
+    cutoff_count: int = 0
 
 
 _match_universe: _MatchUniverse | None = None
@@ -1164,7 +1168,7 @@ def _ranked_with(responsiveness: dict | None) -> str:
 
     The ranker reads the calendar (a deadline that has just passed costs a
     record its place, and a contact stamp is judged at the end of the day) and
-    the professor-signals map. It reads no finer clock than the day. Every
+    the professor-signals map and any exact project deadlines. Every
     worker reads the same day, and the same map within a signals window, but
     a stored snapshot freezes the values it was ranked with. Serving it only
     while they still hold makes a worker re-rank when the day or the window
@@ -1188,7 +1192,11 @@ def _ranked_with(responsiveness: dict | None) -> str:
             json.dumps(responsiveness, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
     )
-    return f"{date.today().isoformat()}|{evidence_module._today().isoformat()}|{signals}"
+    return f"{date.today().isoformat()}|{evidence_module._today().isoformat()}|{_passed_project_cutoffs()}|{signals}"
+
+
+def _passed_project_cutoffs() -> int:
+    return bisect_right(_project_cutoffs, time.time())
 
 
 def _store_snapshot(key: str, snap: _MatchSnapshot) -> _MatchSnapshot:
@@ -1220,11 +1228,14 @@ def _activate_corpus_generation(corpus: list[dict]) -> int:
     corpus list. Clearing the previous generation as soon as a reload is
     observed prevents the ten-minute snapshot TTL from keeping it alive.
     """
-    global _active_corpus_identity, _match_universe
+    global _active_corpus_identity, _match_universe, _project_cutoffs
     corpus_identity = id(corpus)
     with _match_inflight_lock:
         if corpus_identity != _active_corpus_identity:
             _active_corpus_identity = corpus_identity
+            _project_cutoffs = tuple(sorted({
+                cutoff.timestamp() for row in corpus if (cutoff := project_cutoff(row)) is not None
+            }))
             _match_snapshots.clear()
             _match_view_rows.clear()
             # Drop the old generation's survivors without waiting for a
@@ -1248,18 +1259,21 @@ def _release_universe(corpus: list[dict]) -> list[dict]:
     answer. They read nothing but the records, whether fellowships are
     released, and in target_truth the UTC day a stated deadline is read
     against. So the survivors are kept for one corpus generation, UTC day and
-    release, and callers compute them off the event loop; concurrent callers
+    release and number of exact project deadlines already passed. Callers compute
+    them off the event loop; concurrent callers
     wait for the first instead of filtering twice.
     """
     global _match_universe
     with _match_universe_lock:
         utc_day = evidence_module._today()
+        cutoff_count = _passed_project_cutoffs()
         fellowships = release_scope.feature_enabled("fellowships")
         cached = _match_universe
         if (
             cached is not None
             and cached.corpus is corpus
             and cached.utc_day == utc_day
+            and cached.cutoff_count == cutoff_count
             and cached.fellowships == fellowships
         ):
             return cached.opportunities
@@ -1269,8 +1283,9 @@ def _release_universe(corpus: list[dict]) -> list[dict]:
         # generation a reload retired while it was filtered, which would pin
         # the old corpus until the next miss.
         with _match_inflight_lock:
-            if evidence_module._today() == utc_day and id(corpus) == _active_corpus_identity:
-                _match_universe = _MatchUniverse(corpus, utc_day, fellowships, opportunities)
+            if (evidence_module._today() == utc_day and _passed_project_cutoffs() == cutoff_count
+                    and id(corpus) == _active_corpus_identity):
+                _match_universe = _MatchUniverse(corpus, utc_day, fellowships, opportunities, cutoff_count)
         return opportunities
 
 

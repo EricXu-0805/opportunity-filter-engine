@@ -101,7 +101,7 @@ from backend.schemas import (
     ExperienceEvidence,
     ProfileRequest,
 )
-from src.evidence import faculty_availability_status
+from src.evidence import faculty_availability_status, source_verified_at
 from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
     _common_parts,
@@ -2178,7 +2178,8 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.25"
+# w12.26 requires a recipient to confirm shared-profile skills before naming them.
+COLD_EMAIL_PIPELINE_VERSION = "w12.26"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2406,7 +2407,7 @@ def _source_freshness(opp: dict) -> str:
     md = opp.get("metadata") or {}
     if md.get("is_active") is False:
         return "inactive"
-    raw = md.get("last_verified")
+    raw = source_verified_at(opp)
     if not isinstance(raw, str) or not raw:
         return "unknown"
     try:

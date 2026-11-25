@@ -9,7 +9,7 @@ import { courseFields, coursesWithoutResume, importResumeCourses } from '@/lib/c
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
-import { skillsWithResume } from '@/lib/skill-evidence';
+import { skillsWithResume, withGitHubImportEvidence } from '@/lib/skill-evidence';
 import {
   browserMarkerNames,
   captureOwnerToken,
@@ -273,14 +273,9 @@ export interface UseProfileFormResult {
  * it takes that import's evidence, and nothing else about it changes. */
 function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): SkillWithLevel[] {
   const names = new Set(existing.map((s) => s.name));
-  const githubEvidence = new Map(
-    incoming.filter((s) => s.source === 'github' && s.evidence).map((s) => [s.name, s.evidence]),
-  );
-  const kept = existing.map((s) => (
-    s.source === 'github' && !s.evidence?.trim() && githubEvidence.has(s.name)
-      ? { ...s, evidence: githubEvidence.get(s.name) }
-      : s
-  ));
+  const githubSkills = new Map(incoming.filter((s) => s.source === 'github' && s.evidence?.trim())
+    .map((s) => [s.name, s]));
+  const kept = existing.map((s) => withGitHubImportEvidence(s, githubSkills.get(s.name)));
   return [...kept, ...incoming.filter((s) => !names.has(s.name))];
 }
 

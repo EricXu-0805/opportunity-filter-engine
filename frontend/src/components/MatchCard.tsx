@@ -53,6 +53,7 @@ import {
   targetStatusReason,
   type TargetStatusReason,
 } from '@/lib/target-truth';
+import { facultyOutreachLabel } from '@/lib/record-kind';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useResultModalHistory, type ModalCloseRequest } from '@/app/results/use-result-modal-history';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
@@ -376,7 +377,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
             <Badge variant="red">{t(CARD_STATUS_KEY[statusReason])}</Badge>
           )}
           {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
-            <Badge variant="orange">{t('card.facultyContactUnconfirmed')}</Badge>
+            <Badge variant="orange">{t(facultyOutreachLabel(opp))}</Badge>
           )}
           {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
             <Badge variant="red">{t('card.facultyNotAcceptingUndergraduates')}</Badge>

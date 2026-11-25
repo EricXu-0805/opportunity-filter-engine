@@ -83,6 +83,7 @@ from src.evidence import (
     keywords_are_source_labels,
     keywords_are_source_topics,
     record_kind,
+    source_last_seen_at,
 )
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
@@ -728,6 +729,13 @@ def _timing(payload: dict, canonical: dict, source: str) -> _Field:
         if window is not None and deadline == window.closes_on.isoformat():
             quote = {"text": window.closes_quote, "source_url": public_projection.safe_public_http_url(window.page),
                      "observed_at": window.reviewed_on.isoformat()}
+        if source == "ucb_urap_projects":
+            notice = _dict(_dict(canonical.get("metadata")).get("urap_window"))
+            excerpt = _text(notice.get("deadline_quote"))
+            if (excerpt and (_date(notice.get("deadline_at")) or "")[:10] == deadline
+                    and notice.get("source_url") == canonical.get("source_url")):
+                quote = {"text": excerpt, "source_url": public_projection.safe_public_http_url(notice["source_url"]),
+                         "observed_at": _text(notice.get("observed_at"))}
         field.put("deadline", deadline, basis, quote)
     note = _text(_dict(payload.get("metadata")).get("deadline_note"))
     if note:
@@ -873,7 +881,7 @@ def last_seen_listed(canonical: dict) -> str | None:
     """
     if record_kind(canonical) != "faculty_contact":
         return None
-    seen = _date(_dict(canonical.get("metadata")).get("last_seen_at"))
+    seen = _date(source_last_seen_at(canonical))
     return seen[:10] if seen else None
 
 

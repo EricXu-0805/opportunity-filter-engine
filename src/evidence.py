@@ -45,6 +45,8 @@ from functools import lru_cache
 from src.contact_instructions import SOURCE_KEY as CONTACT_SOURCE_KEY
 from src.contact_instructions import _source_time as contact_source_time
 from src.contact_instructions import _url as contact_url
+from src.urap_windows import SOURCE as URAP_PROJECT_SOURCE
+from src.urap_windows import window_phase
 
 # ---------------------------------------------------------------------------
 # 1. Observed vs synthesized (email provenance)
@@ -1857,6 +1859,52 @@ def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
     return first_open if first_open is not None else (None, None)
 
 
+# These four units formerly labeled rows read from committed JSON exports
+# as "directory". Profile fetches and genuine sightings keep their own proof.
+_FILE_ROSTER_UNITS = {
+    "jhu_faculty": {"faculty-jhu-bsph", "faculty-jhu-som"},
+    "northwestern_faculty": {"faculty-northwestern-kellogg", "faculty-northwestern-feinberg"},
+}
+
+
+def legacy_file_roster(source: str, record_id: str) -> bool:
+    if not isinstance(source, str) or source not in _FILE_ROSTER_UNITS or not isinstance(record_id, str):
+        return False
+    unit, _, digest = record_id.rpartition("-")
+    return unit in _FILE_ROSTER_UNITS[source] and re.fullmatch(r"[0-9a-f]{8}", digest) is not None
+
+
+def _record_metadata(record: dict) -> dict:
+    metadata = record.get("metadata") if isinstance(record, dict) else None
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def faculty_verification_scope(record: dict) -> str | None:
+    metadata = _record_metadata(record)
+    scope = metadata.get("verification_scope")
+    if (scope == "directory" and metadata.get("listing_seen_on_source") is not True
+            and legacy_file_roster(record.get("source"), record.get("id"))):
+        return "curated"
+    return scope
+
+
+def source_last_seen_at(record: dict) -> str | None:
+    """A source sighting, excluding the run clock on historical offline faculty seeds."""
+    metadata = _record_metadata(record)
+    if faculty_verification_scope(record) == "curated" and metadata.get("listing_seen_on_source") is not True:
+        return None
+    seen = metadata.get("last_seen_at")
+    return seen if isinstance(seen, str) else None
+
+
+def source_verified_at(record: dict) -> str | None:
+    """A page-read timestamp. Re-emitting configured faculty fields reads no page."""
+    if faculty_verification_scope(record) == "curated":
+        return None
+    verified = _record_metadata(record).get("last_verified")
+    return verified if isinstance(verified, str) else None
+
+
 def target_truth(record: dict) -> TargetTruth:
     """Decide, in O(1) and without touching ``record``, whether it is actionable.
 
@@ -1870,16 +1918,21 @@ def target_truth(record: dict) -> TargetTruth:
     overnight, so a cached answer is only as current as the day it was
     computed on.
     """
-    metadata = record.get("metadata") if isinstance(record, dict) else None
-    if not isinstance(metadata, dict):
-        metadata = {}
-
-    verified_at = metadata.get("last_verified")
-    verified_at = verified_at if isinstance(verified_at, str) else None
+    metadata = _record_metadata(record)
+    verified_at = source_verified_at(record)
     expires_at = metadata.get("expires_at")
     expires_at = expires_at if isinstance(expires_at, str) else None
 
     status, status_key = _listing_status(metadata)
+    # A project read while recruiting can stay in memory past the exact local
+    # cutoff. The date-only grace period is for sources that did not state a time.
+    source = record.get("source") if isinstance(record, dict) else None
+    window = metadata.get("urap_window")
+    if source == URAP_PROJECT_SOURCE and isinstance(window, dict):
+        verified_at = window.get("observed_at") or verified_at
+        expires_at = window.get("deadline_at") or expires_at
+        if status in _OPEN_LISTING_STATUSES and window_phase(window) == "closed":
+            status, status_key = "closed", "urap_window"
     if status in _CLOSED_LISTING_STATUSES:
         listing_state = "closed"
     elif status in _OPEN_LISTING_STATUSES:
@@ -1887,7 +1940,6 @@ def target_truth(record: dict) -> TargetTruth:
     else:
         listing_state = "unknown"
 
-    source = record.get("source") if isinstance(record, dict) else None
     source_publishes_reference = (
         isinstance(source, str)
         and source.strip().lower() in _REFERENCE_CONTRACT_SOURCES

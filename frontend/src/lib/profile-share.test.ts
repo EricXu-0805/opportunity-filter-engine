@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { encodeProfile, decodeProfile, decodeProfileResult, buildShareUrl, profileShareUrlFits, PROFILE_SHARE_MAX_URL_CHARACTERS } from './profile-share';
 import type { ProfileData } from './types';
+import { toProfileRequest } from './api';
 
 // The course list's release switch, as this branch ships it unless a test
 // turns it off.
@@ -28,6 +29,15 @@ const FULL_PROFILE: ProfileData = {
 };
 
 describe('profile-share encode/decode roundtrip', () => {
+  it('sends an inherited legacy GitHub skill as shared until the recipient confirms it', () => {
+    const sharer: ProfileData = { ...FULL_PROFILE, skills: [{ name: 'PyTorch', level: 'beginner', source: 'github' }] };
+    const recipient = { ...FULL_PROFILE, ...decodeProfile(encodeProfile(sharer)) };
+    const shared = { name: 'PyTorch', level: 'beginner', source: 'shared' };
+    expect(toProfileRequest(recipient).hard_skills).toEqual([shared]);
+    recipient.skills = recipient.skills.map((skill) => ({ ...skill, confirmed: true }));
+    expect(toProfileRequest(recipient).hard_skills).toEqual([{ ...shared, confirmed: true }]);
+  });
+
   it('preserves all core fields', () => {
     const encoded = encodeProfile(FULL_PROFILE);
     const decoded = decodeProfile(encoded);

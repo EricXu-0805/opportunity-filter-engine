@@ -21,22 +21,25 @@ performed_at              ISO-8601 UTC
 source_backup_id          the recovery point, as the dashboard names it
 source_environment        production project ref the backup came from
 scratch_environment       project ref it was restored INTO (never production)
-source_schema_version     migration-set identity at the source
-restored_schema_version   migration-set identity observed after the restore
+source_schema_version     catalogue, migration and project evidence captured with the backup
+source_schema_manifest_sha256  SHA-256 retained with the source backup receipt
+restored_schema_version   independently captured scratch catalogue and migration evidence
 restore_started_at        when the dashboard restore began
 restore_completed_at      when validation ran
 schema_validation         PASS | FAIL
 data_validation           PASS | FAIL
 rls_validation            PASS | FAIL
 application_smoke         PASS | PARTIAL | FAIL
+attachment_manifest_sha256  SHA-256 retained with the storage backup receipt
+attachment_validation     PASS | FAIL | UNVERIFIED; aggregate byte proof in evidence.attachments
 issues_found              list; empty on a clean drill
-final_result              PASS | FAIL
+final_result              PASS | FAIL | UNVERIFIED
 ```
 
 No credential of any kind belongs in these files. They name *which* project was
 used, never how to reach it.
 
 **This directory is empty because no restore drill has ever been completed.**
-That is why the release gate reports `restore_drill: UNVERIFIED` and the
+That is why the release gate reports `restore_drill: BLOCKED` and the
 release is NO-GO. See `docs/DISASTER_RECOVERY.md` §5 for the 2026-09-04
 attempt and what blocked it.

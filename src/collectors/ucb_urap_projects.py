@@ -6,19 +6,9 @@ faculty-posted research projects open to undergraduates. ``ucb_urap.py`` emits
 only a static *program overview* and explicitly deferred scraping this DB; this
 collector fills that gap.
 
-Seasonal, by design: URAP projects are only posted during the application window
-(Fall projects post in late summer). Off-window, ``status=Open`` returns zero
-projects — so this collector legitimately yields 0 *open* records most of the
-year and auto-populates (hundreds of projects) once the window opens.
-
-Two statuses are collected:
-  * ``status=Open``  — live, actionable projects currently recruiting apprentices.
-  * ``status=Closed`` — the ~860 past/full projects. These are seeded (``past=True``)
-    with honest, non-actionable messaging as a *reference* for the kind of
-    undergraduate research each lab offers — valuable off-season when Open is
-    empty, and a durable map of which faculty take URAP undergraduates. They are
-    flagged ``is_rolling=False`` + ``metadata.urap_status="closed"`` so the UI and
-    ranking can deprioritize them relative to live openings.
+The Open list supplies candidates. Their individual detail pages publish the
+semester and dated application notice. A list flag alone cannot establish an
+active window. Closed projects are retained as non-actionable references.
 
 Page structure (validated against the live closed listing):
   * ``list.php?status=Open&skip=N`` — paginated 50/page via a ``skip`` offset.
@@ -51,7 +41,9 @@ import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urljoin
+
+from src.collectors.atomic_json import atomic_write_json
+from src.urap_windows import SOURCE, apply_legacy_window, parse_project_notice, window_phase
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +68,6 @@ _MAX_PAGES = 40        # safety cap (40*50 = 2000 projects); Open is far smaller
 _TIMEOUT = 30
 _PAGE_DELAY = 1.0      # politeness between page fetches
 
-SOURCE = "ucb_urap_projects"
 
 # "Faculty Name - Job Title, Department" — the mentor line on each row.
 _FACULTY_RE = re.compile(r"^\s*(.+?)\s+-\s+(.+?),\s+(.+?)\s*$")
@@ -133,7 +124,7 @@ def parse_list_page(soup) -> list[dict]:
         projects.append({
             "id": pid,
             "title": title,
-            "url": urljoin(BASE_URL + "/", href),
+            "url": f"{BASE_URL}/detail.php?id={pid}",
             **fields,
         })
     return projects
@@ -248,30 +239,14 @@ def _row_states_closed(status: object) -> bool:
     return head == "closed"
 
 
-def normalize_project(raw: dict, past: bool = False) -> dict:
-    """Normalize one URAP project row.
-
-    ``past=True`` marks a record scraped from the *Closed* listing: a project
-    that is no longer recruiting, seeded as a reference for the kind of
-    undergraduate research a lab offers (URAP posts fresh projects each
-    application cycle, and the live ``status=Open`` collector picks those up).
-
-    A past project is excluded from the actionable universe, not merely ranked
-    lower: it emits ``metadata.is_active=False`` alongside the ``urap_status``
-    marker, and carries no ``application_url``, because the only URL URAP
-    offers is the program-wide portal — presenting that as this project's
-    application is an invitation to apply to something that closed. The
-    project page stays reachable through ``url``/``source_url`` as reference.
-
-    A row whose own parsed ``status`` states it is closed is treated as past no
-    matter which page it arrived on. ``?status=Open`` is a query, not a
-    guarantee: URAP re-labels projects mid-cycle, and trusting only the
-    caller's flag writes such a row back as open and actionable on the very
-    next refresh. Only the parsed status field is consulted — never the
-    description prose, which would be guesswork.
-    """
-    past = past or _row_states_closed(raw.get("status"))
-    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
+def normalize_project(raw: dict, past: bool = False, *, now: datetime | None = None) -> dict:
+    """Publish availability from a dated project notice or an explicit closure."""
+    now = now or datetime.now(UTC)
+    window = raw.get("detail") or {}
+    phase = "closed" if past or _row_states_closed(raw.get("status")) else window_phase(window, now)
+    past = phase == "closed"
+    open_now = phase == "open"
+    observed = now.astimezone(UTC).replace(tzinfo=None).isoformat()
     opp_id = "ucb-urap-proj-" + hashlib.md5(raw["id"].encode()).hexdigest()[:12]
     faculty = raw.get("faculty", "")
     dept = raw.get("department", "")
@@ -297,10 +272,7 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
             "credit; this particular project is not currently accepting applications."
         )
     else:
-        desc_parts.append(
-            "Open to matriculated UC Berkeley undergraduates for academic credit "
-            "(URAP). Apply through the URAP application portal."
-        )
+        desc_parts.append("URAP is for matriculated UC Berkeley undergraduates seeking academic credit.")
     description = " ".join(desc_parts)[:1500]
 
     lab = f"Prof. {faculty}'s URAP project" if faculty else "URAP project"
@@ -330,11 +302,9 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
         # URAP is for academic credit, not pay (per the program overview).
         "paid": "no",
         "compensation_details": "Academic credit (URAP)",
-        # No per-project structured deadline is exposed; projects post per
-        # application cycle. Open projects are rolling (no fixed deadline); past
-        # projects are not currently recruiting, so they are not marked rolling.
-        "deadline": None,
-        "is_rolling": not past,
+        "deadline": window["deadline_at"][:10] if window.get("deadline_at") else None,
+        "is_rolling": False,
+        **({"deadline_is_estimate": False} if window.get("deadline_at") else {}),
         "posted_date": None,
         "start_date": None,
         "duration": "Semester or academic year",
@@ -359,7 +329,7 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
             "application_effort": "medium",
-            "application_url": None if past else APPLICATION_URL,
+            "application_url": APPLICATION_URL if open_now else None,
         },
         "description": description,
         "description_raw": description,
@@ -369,10 +339,10 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
         "audience": "campus",
         "metadata": {
             "confidence_score": 0.5 if past else 0.6,
-            "last_verified": now,
-            "first_seen_at": now,
-            "last_seen_at": now,
-            "is_active": not past,
+            "last_verified": observed,
+            "first_seen_at": observed,
+            "last_seen_at": observed,
+            "is_active": open_now,
             "manually_reviewed": False,
             "notes": (
                 "Auto-imported from URAP project database "
@@ -381,14 +351,27 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
                 "Auto-imported from URAP project database (urapprojects.berkeley.edu)"
             ),
             "urap_project_id": raw["id"],
-            "urap_status": "closed" if past else "open",
+            "urap_status": phase,
+            **({"urap_window": window} if window else {}),
+            **({"deadline_note": window["deadline_quote"]} if window.get("deadline_quote") else {}),
         },
     }
 
 
 def fetch_and_normalize(status: str = "Open") -> list[dict]:
     past = status.strip().lower() == "closed"
-    return [normalize_project(r, past=past) for r in scrape_projects(status=status)]
+    records = []
+    fetched_detail = False
+    for row in scrape_projects(status=status):
+        if not past and not _row_states_closed(row.get("status")):
+            if fetched_detail:
+                time.sleep(_PAGE_DELAY)
+            fetched_detail = True
+            soup = _fetch(f"{BASE_URL}/detail.php", {"id": row["id"]})
+            detail = parse_project_notice(soup, row["title"], row["url"], datetime.now(UTC))
+            row = {**row, "detail": detail}
+        records.append(normalize_project(row, past=past))
+    return records
 
 
 def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
@@ -405,7 +388,19 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     added = updated = 0
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            prior = index[opp["id"]]
+            apply_legacy_window(prior)
+            old_meta = prior.get("metadata") or {}
+            if opp["metadata"]["urap_status"] == "unknown" and (
+                old_meta.get("urap_window") or old_meta.get("urap_status") == "closed"
+            ):
+                # A failed read cannot refresh the detail's evidence date or
+                # erase a known close. Recheck its finite window on every read.
+                if old_meta.get("urap_status") == "open" and window_phase(old_meta["urap_window"]) == "closed":
+                    old_meta.update(urap_status="closed", is_active=False)
+                    prior["application"]["application_url"] = None
+                continue
+            opp["metadata"]["first_seen_at"] = prior.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
             index[opp["id"]].update(opp)
             updated += 1
@@ -413,8 +408,7 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
             existing.append(opp)
             index[opp["id"]] = opp
             added += 1
-    with PROCESSED_FILE.open("w", encoding="utf-8") as f:
-        json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
+    atomic_write_json(PROCESSED_FILE, existing)
     return (added, updated)
 
 

@@ -15,8 +15,10 @@ from src.evidence import (
     stamp_collector_templates,
 )
 from src.import_source import sanitize_import_source
+from src.normalizers.reviewed_faculty_profiles import apply_reviewed_faculty_profile
 from src.normalizers.school_audience import apply_program_audience
 from src.program_windows import apply_program_window
+from src.urap_windows import apply_legacy_window
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,7 @@ def _strip_html(text: str) -> str:
 
 
 def _sanitize_opportunity(opp: dict) -> dict:
+    apply_reviewed_faculty_profile(opp)
     # First, so the stamp below judges the keywords that are served.
     drop_publication_heading_keywords(opp)
     # Before the faculty description is rebuilt below, which leaves keywords
@@ -87,6 +90,7 @@ def _sanitize_opportunity(opp: dict) -> dict:
     # Committed shards predate a window or a reviewed audience until the
     # school's next refresh.
     apply_program_window(opp)
+    apply_legacy_window(opp)
     apply_program_audience(opp)
     import_source = sanitize_import_source(opp)
     preserve_import_raw = import_source is not None and import_source['description_source'] != 'unknown'

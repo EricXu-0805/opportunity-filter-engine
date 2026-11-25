@@ -107,3 +107,15 @@ def test_a_respelled_name_maps_to_one_stored_spelling_and_back_to_none():
         for today, stored in names.items():
             assert fg._id_tail(dept["short"], stored) != fg._id_tail(dept["short"], today)
 
+
+
+def test_english_uses_the_bio_link_within_each_faculty_card(monkeypatch):
+    html = """
+    <div class="gu-block-media-text"><h2>Ada Quill</h2>
+      <p><strong>Assistant Teaching Professor</strong></p>
+      <a href="/seminars/">Seminars</a>
+      <a class="gu-block-image-text-cta-text-content-link" href="/bio/quill/">View bio</a>
+    </div>
+    """
+    people = _read(monkeypatch, "ENGL", html)
+    assert people["Ada Quill"]["url"] == "https://english.georgetown.edu/bio/quill/"

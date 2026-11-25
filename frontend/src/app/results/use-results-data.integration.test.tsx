@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
+import { resultRequestKey } from '@/lib/result-session';
+import { facultyOutreachLabel } from '@/lib/record-kind';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import {
   MATCH_VIEW_CONTRACT_VERSION,
@@ -137,6 +139,36 @@ describe('useResultsData x match-cache integration: a stale write never corrupts
     localStorage.clear();
     mocks.getMatchView.mockReset();
     mocks.trackOnce.mockReset();
+  });
+
+  it('waits for fresh outreach evidence when a seven-day faculty card lacks the contact status', async () => {
+    const uid = 'returning-faculty-reader';
+    advanceOwnerEpoch(uid);
+    await syncLocalIdentityOwner(uid);
+    const key = resultRequestKey(profile, false, baseView);
+    const oldPage = response('faculty-berkeley-example');
+    const oldFaculty = oldPage.results[0].opportunity;
+    Object.assign(oldFaculty, {
+      source_type: 'faculty_research', record_kind: 'faculty_contact',
+      target_truth: { ...oldFaculty.target_truth, listing_state: 'unknown', accepting_state: 'unknown' },
+    });
+    expect(writeMatchCacheRaw(key, false, oldPage, captureOwnerToken())).toBe(true);
+    const cached = readMatchCache(key, false)!.results[0].opportunity;
+    expect(cached.contact_email_status).toBeUndefined();
+    expect(facultyOutreachLabel(cached)).toBe('card.facultyContactUnconfirmed');
+
+    let finish!: (page: MatchesResponse) => void;
+    mocks.getMatchView.mockImplementation(() => new Promise<MatchesResponse>(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+    expect(result.current.data).toBeNull();
+
+    const freshPage = structuredClone(oldPage);
+    freshPage.results[0].opportunity.contact_email_status = 'sign_in_required';
+    await act(async () => finish(freshPage));
+    const shown = result.current.data!.results[0].opportunity;
+    expect(facultyOutreachLabel(shown)).toBe('card.facultyInquiryUnconfirmed');
+    expect(readMatchCache(key, false)?.results[0].opportunity.contact_email_status).toBe('sign_in_required');
   });
 
   it('a deferred U1 response, arriving after U2 has already written their own real cache, is silently dropped by the real primitive without touching U2\'s entry', async () => {
