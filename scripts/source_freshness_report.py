@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Corpus freshness, per department source and per school.
 
-Two jobs, deliberately in one place so the numbers cannot disagree:
-
 ``report``    print the acceptance figures (school counts by state, stale and
               failed shard counts) from data/processed/source_health.json.
 
@@ -11,6 +9,10 @@ Two jobs, deliberately in one place so the numbers cannot disagree:
               refresh run, and each run touches one day's shard, so without
               this a corpus-wide answer would take a full rotation to exist
               and would report every unvisited school as never-successful.
+
+``backfill-units`` replay saved collector_status.json files to recover known
+              gaps inside faculty sources. Only reports from the recorded
+              source attempt apply. No collection or publication takes place.
 
 The bootstrap derives ``last_success_at`` from the newest ``last_seen_at``
 among a source's ACTIVE records: the timestamp a real harvest stamped on the
@@ -23,6 +25,7 @@ Usage:
     python3 scripts/source_freshness_report.py report
     python3 scripts/source_freshness_report.py report --json
     python3 scripts/source_freshness_report.py bootstrap [--dry-run]
+    python3 scripts/source_freshness_report.py backfill-units STATUS [STATUS ...] [--dry-run]
 """
 
 from __future__ import annotations
@@ -195,7 +198,31 @@ def main(argv: list[str] | None = None) -> int:
     boot_parser = sub.add_parser("bootstrap")
     boot_parser.add_argument("--dry-run", action="store_true")
 
+    unit_parser = sub.add_parser("backfill-units")
+    unit_parser.add_argument("reports", type=Path, nargs="+")
+    unit_parser.add_argument("--ledger", type=Path, default=source_health.LEDGER_FILE)
+    unit_parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "backfill-units":
+        ledger = source_health.load_ledger(args.ledger)
+        if not ledger["sources"]:
+            parser.error(f"{args.ledger}: no recorded source attempts in a readable ledger")
+        changed = 0
+        for path in args.reports:
+            try:
+                summary = json.loads(path.read_text(encoding="utf-8"))
+                generated = datetime.fromisoformat(summary["source_health"]["generated_at"])
+                if generated.tzinfo is None or not isinstance(summary["sources"], dict):
+                    raise ValueError("expected a timezone-aware refresh timestamp and source reports")
+                changed += source_health.record_faculty_unit_checks(ledger, summary["sources"], generated)
+            except (OSError, ValueError, TypeError, KeyError) as exc:
+                parser.error(f"{path}: {exc}")
+        if changed and not args.dry_run:
+            source_health.save_ledger(ledger, args.ledger)
+        print(f"{changed} source(s) with changed faculty unit evidence"
+              + (" (dry run)" if args.dry_run else ""))
+        return 0
+
     ledger = source_health.load_ledger()
 
     if args.command == "bootstrap":

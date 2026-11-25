@@ -94,7 +94,9 @@ const UNKNOWN_HINT_FACETS = new Set([
   'location',
 ]);
 
-function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldText, t }: {
+const SOURCE_WINDOW_ID = 'source-application-window';
+
+function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldText, seeApplicationWindow, t }: {
   field: string;
   facet: string;
   truth: FacetTruth;
@@ -103,6 +105,7 @@ function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldTe
   // Said in place of the application link while the program's stated
   // opening is ahead: the link waits, as Apply does.
   heldText?: string;
+  seeApplicationWindow?: boolean;
   t: TFunc;
 }) {
   const label = t(`detail.facts.facets.${facet}`);
@@ -117,15 +120,20 @@ function FacetRow({ field, facet, truth, noSponsorship, sourceProvenance, heldTe
   return (
     <div
       className="flex flex-col gap-1 py-2 border-b border-gray-50 last:border-b-0"
+      id={facet === 'application_window' && truth.state === 'source' ? SOURCE_WINDOW_ID : undefined}
       data-testid={`fact-${field}-${facet}`}
       data-state={truth.state}
     >
       <dt className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-gray-500 uppercase tracking-wider">{label}</span>
-        <StateTag truth={truth} t={t} />
+        {!seeApplicationWindow && <StateTag truth={truth} t={t} />}
       </dt>
       <dd className={`text-[14px] break-words ${truth.state === 'unknown' ? 'text-gray-500 italic' : 'text-gray-800'}`}>
-        {truth.state === 'unknown'
+        {seeApplicationWindow ? (
+          <a href={`#${SOURCE_WINDOW_ID}`} className="text-indigo-600 hover:underline">
+            {t('detail.facts.seeApplicationWindow')}
+          </a>
+        ) : truth.state === 'unknown'
           ? (UNKNOWN_HINT_FACETS.has(facet)
             ? t(`detail.facts.unknownHint.${facet}`)
             : t('detail.facts.state.unknown'))
@@ -206,6 +214,8 @@ export function DetailFactsSection({
   opening?: ApplicationOpening | null;
   t: TFunc;
 }) {
+  const hasSourceWindow = fields.timing.facets.some(({ facet, truth }) =>
+    facet === 'application_window' && truth.state === 'source' && typeof truth.value === 'string');
   return (
     <Section title={t('detail.facts.title')}>
       <p className="text-[12px] text-gray-500 mb-2">{t('detail.facts.legend')}</p>
@@ -236,6 +246,7 @@ export function DetailFactsSection({
                     facet={facet}
                     truth={truth}
                     noSponsorship={noSponsorship}
+                    seeApplicationWindow={facet === 'deadline' && truth.state === 'unknown' && hasSourceWindow}
                     sourceProvenance={hasExternalResearch ? field : undefined}
                     heldText={name === 'application_method' && opening
                       ? t('badges.applicationsOpenOn', { date: opening.text }) : undefined}

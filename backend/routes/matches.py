@@ -34,6 +34,7 @@ from backend.lib.blocking import (
 )
 from backend.lib.build_info import release_sha
 from backend.lib.llm import _resolve, chat_completion
+from backend.lib.opportunity_detail import stated_pi_name
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_budget import PromptInputTooLarge, check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
@@ -2282,7 +2283,7 @@ def _llm_explanation(
     }, ensure_ascii=False)
     opp_title = _sanitize_field(opportunity.get("title", ""), max_len=120)
     opp_lab = _sanitize_field(opportunity.get("lab_or_program", ""), max_len=120)
-    opp_pi = _sanitize_field(opportunity.get("pi_name", "") or "", max_len=120)
+    opp_pi = _sanitize_field(stated_pi_name(opportunity), max_len=120)
 
     system = (
         "You write short, personalized fit summaries for a student looking at a "

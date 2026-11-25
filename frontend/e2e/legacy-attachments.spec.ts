@@ -13,14 +13,14 @@ function gate() { let release!: () => void; const promise = new Promise<void>(re
 type Audit = { pageErrors: string[]; external: string[]; responses: { path: string; status: number; injected: string | null }[]; console: { type: string; text: string }[] };
 const audits = new WeakMap<Page, Audit>();
 
-async function setup(page: Page, owner: Owner, options: { failure?: number; holdFirst?: ReturnType<typeof gate>; locale?: 'en' | 'zh' } = {}) {
+async function setup(page: Page, owner: Owner, options: { failure?: number; holdFirst?: ReturnType<typeof gate>; locale?: 'en' | 'zh'; files?: string[] } = {}) {
   await seed(page, owner, options.locale); const injected = new WeakMap<Request, string>();
   const audit: Audit = { pageErrors: [], external: [], responses: [], console: [] }; audits.set(page, audit);
   page.on('pageerror', error => audit.pageErrors.push(error.message));
   page.on('console', message => { if (['warning', 'error'].includes(message.type())) audit.console.push({ type: message.type(), text: message.text() }); });
   page.on('response', response => { if (response.status() >= 400) audit.responses.push({ path: new URL(response.url()).pathname, status: response.status(), injected: injected.get(response.request()) ?? null }); });
   await page.context().route('**/*', route => { const url = new URL(route.request().url()); if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) { audit.external.push(url.origin); return route.abort('blockedbyclient'); } return route.continue(); });
-  const state = { owner, reads: [] as string[], uploads: 0, deletes: 0, signings: 0, failure: options.failure ?? 0, failAfterWrite: false, unknownWrite: false, emptyDeleteReceipt: false, files: new Map<string, string[]>([[owner.session.user.id + '/' + TARGET, ['original.pdf']]]) };
+  const state = { owner, reads: [] as string[], uploads: 0, deletes: 0, signings: 0, failure: options.failure ?? 0, failAfterWrite: false, unknownWrite: false, emptyDeleteReceipt: false, files: new Map<string, string[]>([[owner.session.user.id + '/' + TARGET, options.files ?? ['original.pdf']]]) };
   const fault = (route: Route, code: number, label: string) => { injected.set(route.request(), label); return route.fulfill({ status: code, json: { statusCode: String(code), error: 'controlled fixture', message: label } }); };
   await page.route('**/auth/v1/user', route => route.fulfill({ json: state.owner.session.user }));
   await page.route('**/rest/v1/interactions**', route => {
@@ -30,11 +30,14 @@ async function setup(page: Page, owner: Owner, options: { failure?: number; hold
   });
   for (const table of ['contact_events', 'application_events', 'interaction_status_changes']) await page.route(`**/rest/v1/${table}?**`, route => route.fulfill({ json: [] }));
   await page.route(listing, async route => {
-    expect(route.request().method()).toBe('POST'); const prefix = route.request().postDataJSON().prefix as string; state.reads.push(prefix);
+    expect(route.request().method()).toBe('POST');
+    const { prefix, offset, limit } = route.request().postDataJSON();
+    state.reads.push(prefix);
     const snapshot = [...(state.files.get(prefix) ?? [])];
     if (options.holdFirst && state.reads.length === 1) await options.holdFirst.promise;
     if (state.failure) { await fault(route, state.failure, 'injected attachment list failure'); return; }
-    try { await route.fulfill({ json: [...snapshot.map(row), { name: 'folder', id: null, metadata: null }] }); }
+    const entries = [{ name: 'folder', id: null, metadata: null }, ...snapshot.sort().map(row)];
+    try { await route.fulfill({ json: entries.slice(offset, offset + limit) }); }
     catch (error) { if (!/abort|cancel/i.test(route.request().failure()?.errorText ?? '')) throw error; }
   });
   await page.route('**/storage/v1/object/tracker-attachments/**', async route => {
@@ -69,6 +72,19 @@ const deleteFile = (page: Page, name = 'original.pdf') => panel(page).getByRole(
 
 test.describe('Legacy Tracker attachment recovery', () => {
   test.afterEach(async ({ page }, info) => { const audit = audits.get(page); if (!audit) return; await info.attach('legacy-attachment-network-audit', { body: JSON.stringify(audit, null, 2), contentType: 'application/json' }); expect(audit.pageErrors).toEqual([]); expect(audit.external).toEqual([]); expect(audit.responses.filter(row => row.status >= 500 && !row.injected)).toEqual([]); });
+
+  test('shows and opens files past the first hundred in the same target', async ({ page }) => {
+    const owner = await account();
+    try {
+      const files = Array.from({ length: 205 }, (_, i) => `file-${String(i).padStart(3, '0')}.pdf`);
+      const state = await setup(page, owner, { files });
+      await expect(panel(page).getByRole('listitem')).toHaveCount(files.length);
+      await expect(openFile(page, 'file-100.pdf')).toBeEnabled();
+      await openFile(page, 'file-204.pdf').click();
+      await expect.poll(() => state.signings).toBe(1);
+      expect(state.reads).toEqual(Array(3).fill(owner.session.user.id + '/' + TARGET));
+    } finally { await owner.http.dispose(); }
+  });
 
   for (const locale of ['en', 'zh'] as const) test(`${locale} list failure stays distinct from empty and keyboard retry restores files`, async ({ page }, info) => {
     const owner = await account(); try {
@@ -119,9 +135,37 @@ test.describe('Legacy Tracker attachment recovery', () => {
   test('upload success remains explicit when the following list fails; retry never uploads twice', async ({ page }) => {
     const owner = await account(); try {
       const state = await setup(page, owner); await expect(openFile(page)).toBeEnabled(); state.failAfterWrite = true;
-      await panel(page).locator('input[type=file]').setInputFiles({ name: 'new-file.pdf', mimeType: 'application/pdf', buffer: PDF });
+      await panel(page).getByLabel(dict().addButton, { exact: true }).setInputFiles({ name: 'new-file.pdf', mimeType: 'application/pdf', buffer: PDF });
       await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().uploaded.replace('{name}', 'new-file.pdf')); await expect(page.getByTestId('tracker-attachments-error')).toBeVisible(); await expect(openFile(page)).toBeDisabled(); await expect(page.getByTestId('tracker-attachments-empty')).toHaveCount(0);
       state.failure = 0; await retry(page).click(); await expect(openFile(page, 'new-file.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('selected replacement uses the guarded PUT on the original key', async ({ page }) => {
+    const owner = await account();
+    try {
+      const state = await setup(page, owner);
+      const path = owner.session.user.id + '/' + TARGET + '/original.pdf';
+      await page.route('**/rest/v1/rpc/tracker_attachment_replace_version', route => {
+        expect(route.request().postDataJSON()).toMatchObject({ p_path: path, p_id: 'original.pdf', p_mime: 'application/pdf' });
+        return route.fulfill({ json: 'original-version' });
+      });
+      let writes = 0;
+      await page.route('**/storage/v1/object/tracker-attachments/**', route => {
+        expect(route.request().method()).toBe('PUT');
+        expect(decodeURIComponent(new URL(route.request().url()).pathname)).toBe('/storage/v1/object/tracker-attachments/' + path);
+        expect(route.request().postDataBuffer()?.toString()).toContain('"version":"original-version"');
+        writes++;
+        return route.fulfill({ json: { Key: 'tracker-attachments/' + path, Id: 'original.pdf' } });
+      });
+      const picker = page.waitForEvent('filechooser');
+      await panel(page).getByRole('button', { name: dict().replaceAria.replace('{name}', 'original.pdf') }).click();
+      await (await picker).setFiles({ name: 'revised.pdf', mimeType: 'application/pdf', buffer: PDF });
+      await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().replaced.replace('{name}', 'original.pdf'));
+      await expect(openFile(page)).toBeEnabled();
+      expect(writes).toBe(1);
+      expect(state.uploads).toBe(0);
+      expect(state.deletes).toBe(0);
     } finally { await owner.http.dispose(); }
   });
 
@@ -136,8 +180,8 @@ test.describe('Legacy Tracker attachment recovery', () => {
   test('an unknown committed upload can only be checked before another write', async ({ page }) => {
     const owner = await account(); try {
       const state = await setup(page, owner); await expect(openFile(page)).toBeEnabled(); state.unknownWrite = true;
-      await panel(page).locator('input[type=file]').setInputFiles({ name: 'unknown.pdf', mimeType: 'application/pdf', buffer: PDF }); await expect(panel(page)).toContainText(dict().uploadUnknown);
-      await expect(panel(page).locator('input[type=file]')).toBeDisabled(); await retry(page).click(); await expect(openFile(page, 'unknown.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
+      await panel(page).getByLabel(dict().addButton, { exact: true }).setInputFiles({ name: 'unknown.pdf', mimeType: 'application/pdf', buffer: PDF }); await expect(panel(page)).toContainText(dict().uploadUnknown);
+      await expect(panel(page).getByLabel(dict().addButton, { exact: true })).toBeDisabled(); await retry(page).click(); await expect(openFile(page, 'unknown.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
     } finally { await owner.http.dispose(); }
   });
 

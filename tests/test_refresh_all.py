@@ -934,6 +934,34 @@ def test_the_berkeley_collapse_keeps_the_date_of_a_duplicate_listed_again(monkey
     assert summary["sources"]["faculty_joint_collapse"]["duplicates_archived"] == 0
 
 
+def test_refresh_persists_a_retained_department_for_public_freshness(monkeypatch, tmp_path):
+    from datetime import UTC, datetime
+
+    from src.collectors import source_health
+
+    chem = _seed_faculty("umich_faculty", "faculty-umich-chem-0000cccc", 60)
+    bio = _seed_faculty("umich_faculty", "faculty-umich-bio-0000dddd", 0)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [chem, bio])
+
+    def fetch(unit_ledger):
+        unit_ledger["chem"] = {
+            "source": "umich_faculty", "unit_id": "chem", "fetch_status": "ok",
+            "parse_status": "zero_rows", "validation_status": "ok", "observed_count": 0,
+            "observed_entity_ids": [], "observed_identities": [],
+        }
+        return [dict(bio)]
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    ledger = source_health.load_ledger(tmp_path / "source_health.json")
+    assert summary["sources"]["umich_faculty"]["status"] == "ok"
+    assert ledger["sources"]["umich_faculty"]["unchecked_faculty_units"] == ["chem"]
+    assert source_health.public_school_freshness(ledger, datetime.now(UTC), {"umich_faculty"})[
+        "umich"]["status"] == "partly_unchecked"
+    saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert saved[chem["id"]]["metadata"]["last_seen_at"] == chem["metadata"]["last_seen_at"]
+
+
 def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     monkeypatch, tmp_path,
 ):

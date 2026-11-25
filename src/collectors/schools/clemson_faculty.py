@@ -51,7 +51,8 @@ Live-verified 2026-07-24.
 * **Powers College of Business grid — Economics, Finance, Management,
   School of Accountancy, Marketing.**
   A ``div.columns`` info-column per person (paired with a photo column): name in
-  ``h4 > a[href*=/profiles/]`` (First Last), rank in the first ``p > strong``,
+  ``h4 > a[href*=/profiles/]`` (First Last), or a ``p.cu-oversize`` profile
+  link on the updated Accountancy roster. Rank is in the first ``p > strong``,
   a "Fields:"/office/mailto block below. The gate requires
   ``professor|lecturer|chair`` (business rosters title endowed/interim chairs
   without the word "professor") and drops the lone admin-coordinator card.
@@ -161,6 +162,17 @@ _BIZ_FIELD = {
     "selector": "p strong",
     "require_present": True,
     "include": r"professor|lecturer|chair",
+}
+
+# Accountancy changed its name heading while retaining each person's profile
+# URL, rank and email. Other business departments still use the h4 layout.
+_ACCT_NAME = 'p.cu-oversize a[href*="/profiles/"], h4 a[href*="/profiles/"]'
+_ACCT_SEL = {
+    **_BIZ_SEL,
+    "card": _BIZ_SEL["card"] + ", div.columns:has(> p.cu-oversize)",
+    "name": _ACCT_NAME,
+    "link": _ACCT_NAME,
+    "email": 'a[href^="mailto:"], a[href="#"][title^="Email "]',
 }
 
 
@@ -280,11 +292,11 @@ def _cbshs(short: str, name: str, majors: list[str], url: str) -> dict:
     }
 
 
-def _business(short: str, name: str, majors: list[str], url: str) -> dict:
+def _business(short: str, name: str, majors: list[str], url: str, *, selectors: dict = _BIZ_SEL) -> dict:
     """A Powers College of Business department on its info-column grid."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _BIZ_SEL, "field_filter": _BIZ_FIELD,
+        "scrape": {"url": url, "selectors": selectors, "field_filter": _BIZ_FIELD,
                    "profile_enrich": _BIZ_ENRICH},
     }
 
@@ -375,7 +387,8 @@ SCHOOL: dict = {
                   "https://www.clemson.edu/business/academics/management/faculty-staff.html"),
         _business("ACCT", "School of Accountancy",
                   ["Accounting"],
-                  "https://www.clemson.edu/business/academics/accountancy/faculty-staff.html"),
+                  "https://www.clemson.edu/business/academics/accountancy/faculty-staff.html",
+                  selectors=_ACCT_SEL),
         _business("MKT", "Department of Marketing",
                   ["Marketing"],
                   "https://www.clemson.edu/business/academics/marketing/faculty-staff.html"),

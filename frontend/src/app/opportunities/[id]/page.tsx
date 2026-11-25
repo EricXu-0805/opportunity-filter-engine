@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { tServer } from '@/i18n/server';
 import { decodeRouteId, fetchOpportunityDetail } from '@/lib/api-server';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
@@ -32,12 +33,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const result = await fetchOpportunityDetail(id);
   if (result.status === 'not-found') {
-    return { title: 'Opportunity not found — JoinALab' };
+    return { title: await tServer('detail.notFound.title') };
   }
   // An infrastructure failure is not "not found" — a generic title avoids
   // telling search engines / link previews the record doesn't exist.
   if (result.status === 'unavailable') {
-    return { title: 'Opportunity — JoinALab' };
+    return { title: await tServer('results.opportunityFallback') };
   }
   const opp = result.opportunity;
 
@@ -88,7 +89,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const shared = description || fallbackDescription;
 
   return {
-    title: `${title} — JoinALab`,
+    title,
     description: shared,
     keywords: keywords.length > 0 ? keywords : undefined,
     openGraph: {

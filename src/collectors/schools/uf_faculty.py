@@ -623,17 +623,18 @@ SCHOOL: dict = {
                                   "drop": r"emerit"},
             },
         },
-        # English: the rank isn't published (card-text is the specialty area,
-        # kept as the research tag); emeriti live on a separate, unfetched page.
+        # English uses the UF faculty card but publishes the specialty in the
+        # second paragraph. The active roster has a separate emeriti directory.
         {
             "short": "ENG", "name": "Department of English",
             "majors": ["English", "Creative Writing"],
             "directory_url": "https://english.ufl.edu/faculty-listing/",
             "scrape": {
                 "url": "https://english.ufl.edu/faculty-listing/",
-                "selectors": {"card": ".card.news-card", "name": "h3.card-title",
-                              "link": "a.news-card-link",
-                              "research": ".card-text"},
+                "selectors": {"card": ".faculty-listing-item",
+                              "name": ".faculty-listing-bio p:first-child",
+                              "link": ".faculty-listing-bio > a[href]",
+                              "research": ".faculty-listing-bio p:nth-of-type(2)"},
             },
         },
         # ---- Professional colleges ----------------------------------------

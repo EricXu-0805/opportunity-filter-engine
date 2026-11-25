@@ -50,6 +50,24 @@ def payload(skill, level="experienced", evidence=()):
 
 
 @pytest.mark.parametrize("path", ["/cold-email", "/cold-email/variants"])
+def test_short_student_interest_list_reaches_the_deterministic_draft(client, path):
+    request = {
+        "engine": "template",
+        "profile": {**PROFILE, "research_interests_text":
+                    "condensed matter physics, evolutionary biology, planetary science"},
+        "opportunity_id": OPP["id"],
+    }
+    response = client.post(f"/api{path}", json=request)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    bodies = ([v["body"] for v in data["variants"] if v["id"] in {"balanced", "skills"}]
+              if "variants" in data else [data["body"]])
+    assert len(bodies) == (2 if path.endswith("/variants") else 1)
+    for body in bodies:
+        assert "I am interested in condensed matter physics, evolutionary biology, and planetary science." in body
+
+
+@pytest.mark.parametrize("path", ["/cold-email", "/cold-email/variants"])
 @pytest.mark.parametrize("level,allowed", [
     ("beginner", "foundational exposure to PyTorch"),
     ("experienced", "experience with PyTorch"),

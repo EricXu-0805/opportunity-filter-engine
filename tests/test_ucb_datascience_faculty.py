@@ -7,6 +7,8 @@ uses a fixture mirroring that heading structure. No network.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from src.collectors import ucb_datascience_faculty as ds
@@ -71,6 +73,23 @@ class TestNormalize:
 
     def test_source_default_registered(self):
         assert SOURCE_DEFAULTS["ucb_datascience_faculty"] == ("ucb", "unknown")
+
+
+def test_refresh_keeps_cdss_faculty_until_an_active_home_department_covers_them(tmp_path, monkeypatch):
+    corpus = tmp_path / "opportunities.json"
+    monkeypatch.setattr(ds.ucb_common, "PROCESSED_FILE", corpus)
+    monkeypatch.setattr(ds, "fetch_soup", lambda url: _soup(HEADING_FIXTURE))
+
+    previous = ds.fetch_and_normalize()
+    assert {row["pi_name"] for row in previous} == {"Dennis Feehan", "Michael Boots"}
+    home = {"source": "ucb_ib_faculty", "source_type": "faculty_research",
+            "pi_name": "Michael A. Boots", "metadata": {"is_active": False}}
+    corpus.write_text(json.dumps([*previous, home]))
+    assert {row["id"] for row in ds.fetch_and_normalize()} == {row["id"] for row in previous}
+
+    home["metadata"]["is_active"] = True
+    corpus.write_text(json.dumps([*previous, home]))
+    assert [row["pi_name"] for row in ds.fetch_and_normalize()] == ["Dennis Feehan"]
 
 
 class TestDedupKeepRicher:
