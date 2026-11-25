@@ -217,6 +217,7 @@ SCHOOL: dict = {
         # --- College of Science ---
         {
             "short": "CS",
+            "profile_id_names": {"cs.purdue.edu/people/faculty/mtaram.html": ("Kazem Taram", "Mohammadkazem Taram")},
             "name": "Department of Computer Science",
             "majors": ["Computer Science", "Data Science"],
             "directory_url": "https://www.cs.purdue.edu/people/faculty/index.html",
