@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 3
+          fetch-depth: 4
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
@@ -24,11 +24,11 @@ jobs:
           npx playwright install --with-deps chromium >"$RUNNER_TEMP/browser-install.log" 2>&1
       - name: Observe the reported zero on the previous source with an injected 503
         run: |
-          git restore --source HEAD~2 -- frontend/src
+          git restore --source cb681c12ed5d3c12fde3e7f4f80c9c01dd68b2f6 -- frontend/src
           cd frontend
           npx playwright test --config=m51-isolated.config.ts e2e/m51-baseline.spec.ts
       - name: Verify both pages recover on the candidate with the same synthetic failure
         run: |
-          git restore --source HEAD^ -- frontend/src
+          git restore --source e2451123f3644e47da560eb644a463a3fbd3c5e9 -- frontend/src
           cd frontend
           npx playwright test --config=m51-isolated.config.ts e2e/dashboard.spec.ts --grep 'a favorites read outage'

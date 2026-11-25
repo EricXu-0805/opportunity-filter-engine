@@ -2,9 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e', timeout: 60000, retries: 0, workers: 1, reporter: 'list',
-  globalSetup: './e2e/global-setup.ts',
+  globalSetup: './e2e/m51-demo-session.ts', expect: { timeout: 30000 },
   use: { baseURL: 'http://127.0.0.1:3100', storageState: './e2e/.storage-state.json' },
   webServer: [
+    { command: "node -e \"require('node:http').createServer((req,res)=>{res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({status:'ok',last_updated_at:new Date().toISOString()}))}).listen(8100,'127.0.0.1')\"", url:'http://127.0.0.1:8100/api/health' },
     { command: 'node e2e/supabase-stub.mjs', url: 'http://127.0.0.1:54321/health' },
     { command: 'node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100',
       url: 'http://127.0.0.1:3100/dashboard', timeout: 120000,

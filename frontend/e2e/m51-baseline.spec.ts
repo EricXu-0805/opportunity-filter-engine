@@ -6,6 +6,7 @@ test('the previous account dashboard rendered a confirmed zero and no saves afte
     return route.fulfill({ status:503, json:{ message:'synthetic favorites read outage' } });
   });
   await page.goto('/dashboard');
+  await expect.poll(() => failed).toBeGreaterThan(0);
   const saved=page.getByTestId('saved-summary');
   await expect(saved).toHaveAttribute('data-state','ready');
   await expect(saved).toContainText('0');
