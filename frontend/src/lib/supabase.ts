@@ -2781,31 +2781,48 @@ export async function uploadAttachment(
   });
 }
 
+const ATTACHMENT_LIST_PAGE_SIZE = 100;
+
 export async function listAttachments(opportunityId: string, token = captureOwnerToken(),
   options: AttachmentRequestOptions = {}): Promise<Attachment[]> {
   return runAttachmentRequest(token, options, async request => {
     const deviceId = await attachmentOwner(token, request);
-    request.check();
-    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
-      .list(`${deviceId}/${opportunityId}`, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } }, { signal: request.signal }));
-    assertAttachmentOwner(token, deviceId);
-    checkAttachmentError(error);
-    if (!Array.isArray(data)) throw new AttachmentRequestError('unavailable');
-    return data.filter(item => {
-      if (!item || typeof item.name !== 'string') throw new AttachmentRequestError('unavailable');
-      // Storage lists virtual directories too; they have neither id nor metadata.
-      return item.name && !item.name.endsWith('/') && item.name !== '.emptyFolderPlaceholder'
-        && !(item.id === null && item.metadata === null);
-    }).map(item => {
-      const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string };
-      if (item.name.includes('/') || item.name.includes('\\')
-        || (meta.size !== undefined && (!Number.isFinite(meta.size) || meta.size < 0))) {
+    const bucket = supabase.storage.from(ATTACHMENTS_BUCKET);
+    const files: Attachment[] = [];
+    let boundary: { name: string; id: string | null } | undefined;
+    // Storage's offset can move during a concurrent write. Re-read the last
+    // raw entry of each full page so that a shifted result goes through retry.
+    for (let offset = 0; ; offset += ATTACHMENT_LIST_PAGE_SIZE - 1) {
+      request.check();
+      const { data, error } = await request.wait(bucket.list(`${deviceId}/${opportunityId}`,
+        { limit: ATTACHMENT_LIST_PAGE_SIZE, offset, sortBy: { column: 'name', order: 'asc' } },
+        { signal: request.signal }));
+      assertAttachmentOwner(token, deviceId);
+      checkAttachmentError(error);
+      if (!Array.isArray(data) || (boundary && (boundary.name !== data[0]?.name || boundary.id !== data[0]?.id))) {
         throw new AttachmentRequestError('unavailable');
       }
-      return { name: item.name, sizeBytes: meta.size ?? 0,
-        mimeType: typeof meta.mimetype === 'string' ? meta.mimetype : 'application/octet-stream',
-        createdAt: item.created_at ?? item.updated_at ?? '' };
-    });
+      for (const item of data.slice(boundary ? 1 : 0)) {
+        if (!item || typeof item.name !== 'string') throw new AttachmentRequestError('unavailable');
+        // Storage lists virtual directories too; they have neither id nor metadata.
+        if (!item.name || item.name.endsWith('/') || item.name === '.emptyFolderPlaceholder'
+          || (item.id === null && item.metadata === null)) continue;
+        const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string };
+        if (item.name.includes('/') || item.name.includes('\\')
+          || (meta.size !== undefined && (!Number.isFinite(meta.size) || meta.size < 0))) {
+          throw new AttachmentRequestError('unavailable');
+        }
+        files.push({ name: item.name, sizeBytes: meta.size ?? 0,
+          mimeType: typeof meta.mimetype === 'string' ? meta.mimetype : 'application/octet-stream',
+          createdAt: item.created_at ?? item.updated_at ?? '' });
+      }
+      if (data.length < ATTACHMENT_LIST_PAGE_SIZE) break;
+      boundary = data[data.length - 1];
+    }
+    // The panel shows newest first. Name order makes paging deterministic even
+    // for legacy files with identical or missing timestamps.
+    const timestamp = (file: Attachment) => Date.parse(file.createdAt) || 0;
+    return files.sort((a, b) => timestamp(b) - timestamp(a));
   });
 }
 
