@@ -572,6 +572,22 @@ def _faculty_unit_checks(source: str, info: dict) -> tuple[set[str], set[str]]:
             ):
                 unchecked.add(unit)
             continue
+        identities_checked = missed == [] or entry.get("completeness_status") == "complete"
+        if "live_roster_count" in entry or "retained_only_count" in entry:
+            live_count = _count(entry.get("live_roster_count"))
+            retained_count = _count(entry.get("retained_only_count"))
+            if live_count is None or retained_count is None:
+                continue
+            # Some online directory families don't enumerate page links. The
+            # finalizer can still show that every baseline identity was read.
+            all_matched = (baseline is not None
+                           and _count(entry.get("baseline_identity_count")) == baseline
+                           and _count(entry.get("matched_identity_count")) == baseline)
+            if retained_count or (baseline and live_count == 0):
+                unchecked.add(unit)
+            elif baseline == 0 or (live_count and (identities_checked or all_matched)):
+                resolved.add(unit)
+            continue
         count = _count(entry.get("observed_count"))
         # A person read in this unit can be emitted by a sibling after
         # cross-department deduplication. The collector keeps their id here.
@@ -581,7 +597,6 @@ def _faculty_unit_checks(source: str, info: dict) -> tuple[set[str], set[str]]:
         has_people = (count or 0) > 0 or (isinstance(ids, list) and bool(ids))
         # Configured faculty seeds can also emit records and ids when the
         # directory was unread. Only a positive roster read resolves a gap.
-        identities_checked = missed == [] or entry.get("completeness_status") == "complete"
         if baseline == 0 or (has_people and parsed_rows and identities_checked):
             resolved.add(unit)
         elif parsed == "zero_rows" and count == 0 and not has_people and baseline:
