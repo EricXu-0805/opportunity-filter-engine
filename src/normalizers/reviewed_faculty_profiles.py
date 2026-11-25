@@ -70,6 +70,14 @@ REVIEWS = {
         datetime(2026, 11, 25, 17, 40, tzinfo=UTC),
         title="Research Professor and Distinguished Professor of History Emerita",
         previous_title="Research Professor and Distinguished Professor of History Emer."),
+    "faculty-ucsc-envs-c7e85a3f": ProfileReview(
+        "ucsc", "Department of Environmental Studies", "Gregory S Gilbert",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=ggilbert",
+        "https://campusdirectory.ucsc.edu/cd_detail?uid=ggilbert",
+        "https://envs.ucsc.edu/people/faculty/",
+        datetime(2026, 11, 25, 19, 8, tzinfo=UTC),
+        title="Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot",
+        previous_title="Distinguished Professor"),
     "faculty-ucsc-lit-f8043691": ProfileReview(
         "ucsc", "Department of Literature", "Jody Greene",
         "https://campusdirectory.ucsc.edu/cd_detail?uid=jgreene",

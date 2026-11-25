@@ -11,10 +11,12 @@ AS_OF = date(2026, 11, 25)
 BEISE = "faculty-umd-phys-5e8e0edd"
 HERSHATTER = "faculty-ucsc-hist-d64a8110"
 UCSC_PREVIOUS_TITLES = {
+    "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
     "faculty-ucsc-lit-f8043691": "Professor of Literature",
 }
 ARCHIVED = {
+    "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),
     HERSHATTER: ("Research Professor and Distinguished Professor of History Emerita", "retired_title"),
     BEISE: ("Professor Emerita", "retired_title"),
