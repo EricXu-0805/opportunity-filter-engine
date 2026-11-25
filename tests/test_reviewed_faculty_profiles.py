@@ -9,7 +9,10 @@ from src.normalizers.reviewed_faculty_profiles import REVIEWS, apply_reviewed_fa
 
 AS_OF = date(2026, 11, 25)
 BEISE = "faculty-umd-phys-5e8e0edd"
+HERSHATTER = "faculty-ucsc-hist-d64a8110"
+UCSC_TITLE = "Research Professor and Distinguished Professor of History Emer."
 ARCHIVED = {
+    HERSHATTER: ("Research Professor and Distinguished Professor of History Emerita", "retired_title"),
     BEISE: ("Professor Emerita", "retired_title"),
     "faculty-sbu-geo-d49b7576": ("Distinguished Professor Emeritus", "retired_title"),
     "faculty-sbu-geo-07129e92": ("In Memoriam — Distinguished Professor Emeritus", "listed_as_deceased"),
@@ -23,7 +26,7 @@ def _old(oid):
         "source_type": "faculty_research", "source": f"{review.school}_faculty",
         "url": review.previous_url, "source_url": review.previous_url,
         "application": {"application_url": review.previous_url},
-        "metadata": {"faculty_title": "Professor", "last_verified": "2026-07-25",
+        "metadata": {"faculty_title": UCSC_TITLE if oid == HERSHATTER else "Professor", "last_verified": "2026-07-25",
                      "last_seen_at": "2026-07-25", "is_active": True},
     }
 
@@ -41,7 +44,7 @@ def test_reviewed_urls_and_title_replay_once_without_freshening_other_evidence()
         if row["id"] in ARCHIVED:
             title, reason = ARCHIVED[row["id"]]
             assert md["faculty_title"] == title
-            assert md["faculty_profile_review"]["previous_title"] == "Professor"
+            assert md["faculty_profile_review"]["previous_title"] == (UCSC_TITLE if row["id"] == HERSHATTER else "Professor")
             assert md["is_active"] is False and md["deactivation_reason"] == reason
             assert md["deactivated_at"] == AS_OF.isoformat()
         else:
@@ -78,6 +81,14 @@ def test_directory_timestamps_cannot_restore_old_urls_or_appointments(seen, veri
     retired = next(row for row in rows if row["id"] == BEISE)
     assert retired["metadata"]["is_active"] is False
     assert retired["metadata"]["faculty_title"] == "Professor Emerita"
+
+
+def test_a_changed_ucsc_appointment_is_outside_the_review():
+    row = _old(HERSHATTER)
+    row["metadata"]["faculty_title"] = "Research Professor of History"
+    before = deepcopy(row)
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 0
+    assert row == before
 
 
 def test_unrelated_archive_is_preserved():
