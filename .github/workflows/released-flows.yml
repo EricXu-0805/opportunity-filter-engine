@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   outreach:
-    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists')"
+    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match')"
     name: Public match, actions and unsent template (${{ matrix.target }})
     runs-on: ubuntu-24.04
     timeout-minutes: 6
@@ -81,3 +81,22 @@ jobs:
         env:
           TARGET: ${{ matrix.table }}
           PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M51 large lists after') && 'after' || 'before' }}
+
+  match-evidence:
+    name: Released match evidence (${{ matrix.locale }})
+    if: startsWith(github.event.head_commit.message, 'Verify M23 released match')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [en, zh]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
+      - run: python -u scripts/verify_public_outreach_paths.py "score-$PHASE-$LOCALE"
+        env:
+          LOCALE: ${{ matrix.locale }}
+          PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M23 released match after') && 'after' || 'before' }}

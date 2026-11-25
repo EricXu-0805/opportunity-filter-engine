@@ -67,7 +67,7 @@ def install_account(context, oid):
     context.route("https://*.supabase.co/**", route_account)
 
 
-def verify(mode):
+def verify(mode, score_phase=None, locale="en"):
     oid, home, school, major, interests, query, badge = CASES[mode]
     college = {"caltech": "Division of Physics, Mathematics and Astronomy",
                "ucb": "College of Computing, Data Science, and Society", "uiuc": "Grainger College of Engineering"}[home]
@@ -78,9 +78,11 @@ def verify(mode):
     with account_fixture(profile) as session, sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=os.environ.get("CHROME_BIN", "/usr/bin/google-chrome"),
                                      args=["--disable-dev-shm-usage", "--no-sandbox"])
-        context = browser.new_context(service_workers="block", locale="en-US")
+        context = browser.new_context(service_workers="block", locale="zh-CN" if locale == "zh" else "en-US")
         install_account(context, oid)
-        values = {"ofe_auth": json.dumps(session), "ofe_profile": json.dumps(profile), "ofe_onboarding_seen": "1", "ofe_lang": "en"}
+        values = {"ofe_auth": json.dumps(session), "ofe_profile": json.dumps(profile), "ofe_onboarding_seen": "1", "ofe_lang": locale}
+        if locale == "zh":
+            context.add_cookies([{"name":"ofe_lang","value":"zh","url":SITE}])
         context.add_init_script("if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_seeded')){"
                                 "for(const [k,v] of Object.entries(" + json.dumps(values) + "))localStorage.setItem(k,v);"
                                 "localStorage.setItem('oe_seeded','1')}")
@@ -124,8 +126,39 @@ def verify(mode):
             raise
         page.wait_for_timeout(100)
         assert evidence, "A real match response for this card is required"
-        card.get_by_role("button", name="Show details").click()
+        card.get_by_role("button", name="展开详情" if locale == "zh" else "Show details").click()
         row = evidence[-1]
+        if score_phase:
+            heading = "需要核实的条件" if locale == "zh" else "What to verify"
+            meaning = ("匹配分用于按你的资料排列推荐顺序。系统不估算录取或收到回复的概率。" if locale == "zh" else
+                       "The match score ranks opportunities for your profile. It does not predict admission or a reply.")
+            assert row.get("unknowns") and row.get("next_steps")
+            if score_phase == "before":
+                expect(card.get_by_text(heading,exact=True)).to_have_count(0)
+                expect(page.get_by_text(meaning,exact=True)).to_have_count(0)
+            else:
+                expect(page.get_by_text(meaning,exact=True)).to_be_visible()
+                toggle = card.locator("summary").filter(has_text=heading)
+                toggle.click()
+                labels = {
+                    "profile.year": ("Your class year","你的年级"), "profile.major": ("Your major","你的专业"),
+                    "opportunity.preferred_year": ("Eligible class years","可申请的年级"),
+                    "opportunity.majors": ("Eligible majors","可申请的专业"),
+                    "opportunity.international_friendly": ("Eligibility for international students","国际学生申请资格"),
+                    "opportunity.paid": ("Compensation","报酬"),
+                    "opportunity.application_effort": ("Application effort","申请所需投入"),
+                    "opportunity.on_campus": ("Whether the work is on campus","是否需要到校"),
+                    "opportunity.deadline": ("Application deadline","申请截止日期"),
+                    "profile.gpa": ("Whether your GPA meets the listed minimum","你的 GPA 是否达到所列最低要求"),
+                }
+                expected = [labels[k][locale == "zh"] for k in row["unknowns"]]
+                assert toggle.locator("..").locator("li").all_text_contents() == expected
+            for step in row["next_steps"]:
+                expect(card.get_by_text(step,exact=True)).to_be_visible()
+            print("PASS released match", score_phase, locale, oid, page.locator("html").get_attribute("data-release-sha"),
+                  row["final_score"], row["unknowns"], row["next_steps"],flush=True)
+            browser.close()
+            return
         link = card.get_by_role("link", name="Apply now", exact=True)
         if badge:
             expect(card.get_by_text(badge, exact=True)).to_be_visible()
@@ -164,4 +197,8 @@ def verify(mode):
 
 
 if __name__ == "__main__":
-    verify(sys.argv[1])
+    if sys.argv[1].startswith("score-"):
+        _, phase, locale = sys.argv[1].split("-")
+        verify("inquiry", phase, locale)
+    else:
+        verify(sys.argv[1])
