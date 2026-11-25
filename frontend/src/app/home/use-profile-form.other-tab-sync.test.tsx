@@ -730,6 +730,35 @@ describe('two tabs pressing "Keep what I typed" at the same moment (M179)', () =
   // "Retry sync" is drawn for a failed status with Retry armed and no question open (SubmitRow).
   const retryDrawn = (view: string) => /^(cloud-failed|device-failed|error)\|retry=true\|asked=$/.test(view);
 
+  it('keeps the first answer when the same two edits were repackaged after a failed sync', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(a, (f) => f.update('major', 'Mathematics'));
+    await as(b, (f) => f.update('major', 'Finance'), 1500);
+    online = true;
+    expect(shown(a)).toMatchObject({ status: 'cloud-failed', asked: ['major'], major: 'Mathematics' });
+    expect(shown(b)).toMatchObject({ status: 'conflict', asked: ['major'], major: 'Finance' });
+    replyAfter190ms(apply);
+    const sent = service.commit.mock.calls.length;
+
+    writer = 'A';
+    act(() => { a.hook.result.current.keepMyChanges(); });
+    await steps(800);
+    writer = 'B';
+    if (b.hook.result.current.conflicts.length) {
+      act(() => { b.hook.result.current.keepMyChanges(); });
+    }
+    await steps(3000);
+    writer = null;
+    await drain();
+    expect(sentSince(sent)).toEqual([[7, { major: 'Mathematics' }]]);
+    expect(remote.major).toBe('Mathematics');
+    expect(a.hook.result.current.conflicts).toEqual([]);
+    expect(b.hook.result.current.conflicts).toEqual([]);
+    expect(b.hook.result.current.profile.major).toBe('Mathematics');
+  });
+
   it('the tab whose answer comes second sends nothing, never says it could not sync, and offers no Retry', async () => {
     const { a, b } = await twoTabsDisagreeOnMajor();
     replyAfter190ms(apply);
