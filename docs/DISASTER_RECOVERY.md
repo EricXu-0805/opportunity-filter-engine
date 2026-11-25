@@ -41,9 +41,8 @@ false of the project, which is exactly the gap this section closed.
   so the worst-case RPO is ~24h, and a bad migration applied at 09:00 UTC
   costs everything written since ~07:30 UTC.
 - **Storage objects are excluded** from database backups — the database holds
-  only their metadata. Today that is one 21.9 KB object in the private
-  `tracker-attachments` bucket (migration 008), so the exposure is small, but
-  it grows with every attachment a student uploads and nothing else covers it.
+  only their metadata. The drill checks the private `tracker-attachments` and
+  `application-materials` buckets against an independent storage backup inventory.
 - **Restore has a first-class path**: the dashboard's *Restore to new project*
   (BETA) restores any retained point into a **separate** project, which is
   precisely the non-destructive drill §3 requires. It provisions a new billed
@@ -79,11 +78,11 @@ step 3, after the billed project has already been provisioned.
 | The scratch project's `service_role` key | schema + data validation | produced by the restore |
 | The scratch project's `anon` key | the RLS leg — the one a service-role probe cannot make | produced by the restore |
 | Python 3.11+ with `requirements.txt` installed | `scripts/restore_drill.py` | anyone |
-| Optionally, a backend pointed at the scratch project | turns the app leg from PARTIAL into PASS | release operator |
+| A backend pointed at the scratch project | proves the application leg | release operator |
+| Backup-bound catalogue capture and private storage inventory, with their SHA-256 digests retained independently | identifies what a full restore must contain | backup owner |
+| `psql`, TLS root certificate and read access to the scratch database catalogue | observes restored columns and applied migrations | release operator |
 
-Nothing here needs production database credentials, and the drill never uses
-them: `scripts/restore_drill.py` refuses to run when `DRILL_SUPABASE_URL`
-names the source environment.
+The drill takes scratch credentials. The backup owner supplies the separately captured source evidence.
 
 ## 3. Required before any release containing a migration
 
@@ -95,6 +94,39 @@ dashboard: identifier / recovery point, timestamp (UTC), environment
 (production project ref), scope (which schemas/tables; whether storage objects
 are included), retention window, and owner (who can perform a restore). Include
 `observed_at` — undated evidence is refused.
+
+At the recovery point, the backup owner captures the source schema while the
+public schema and migration history are frozen across the backup and capture.
+Run from the candidate checkout with a verified direct database connection.
+Use a project-specific password file and the project's database CA certificate.
+
+```bash
+PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$SOURCE_PGSSLROOTCERT" \
+  python -m scripts.restore_schema_evidence --project-ref "$SOURCE_REF" \
+    --source-backup-id "$RECOVERY_POINT" --out "$PRIVATE_DIR/source-schema.json"
+```
+
+Retain the SHA-256 of the capture file with the backup receipt. The capture
+hashes public column definitions and the applied migration ledger in one
+read-only PostgreSQL statement. It stores counts, hashes, the recovery point,
+project ref and timestamp. It covers public column shape and migration history.
+RLS behavior has a separate test. If the selected backup has no capture,
+its schema comparison stays `UNVERIFIED`.
+
+The separate storage backup must supply its full private inventory and a
+SHA-256 retained with the backup receipt. Each bucket contains a list of
+objects. Each object has a key, byte length and lowercase SHA-256 of the
+backed-up bytes. For example, this inventory describes one 3-byte synthetic
+object containing `abc`.
+
+```json
+{"version":1,"source_backup_id":"example-point","source_environment":"source-ref","buckets":{
+  "tracker-attachments":[{"key":"example.pdf","size":3,"sha256":"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}],
+  "application-materials":[]}}
+```
+
+Keep the inventory and both backup receipts private. Restore the storage
+backup into the scratch project before running step 3.
 
 ### Step 2 — Restore into a scratch project
 
@@ -113,21 +145,26 @@ Run the drill against the **scratch** project:
 export DRILL_SUPABASE_URL=https://<scratch-ref>.supabase.co
 export DRILL_SERVICE_ROLE_KEY=<scratch service role key>
 export DRILL_ANON_KEY=<scratch anon key>
+export PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$SCRATCH_PGSSLROOTCERT"
 
 python scripts/restore_drill.py \
     --source-backup-id "<recovery point as the dashboard names it>" \
     --source-environment mjpirkyduibkakvlbdko \
     --scratch-environment <scratch-ref> \
     --restore-started-at "<when step 2 began>" \
+    --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
+    --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
+    --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
+    --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
     --api-base https://<backend pointed at the scratch project>
 ```
 
-It performs the four validations this section has always required, and writes
+The command writes
 `data/releases/drills/<drill_id>.json` — which `release_gate.py` reads clause
 by clause. That file is the deliverable; the markdown row in §4 is a human
 index of it, not the evidence itself.
 
-1. **Schema**: every table the application requires is present and reachable.
+1. **Schema**: every required table is reachable. The drill compares independently observed public columns and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
 2. **Data**: representative user-owned tables came back populated. An empty
    restore satisfies every schema check and none of the point of one.
 3. **RLS**: an anonymous caller sees no user-owned rows. This is the leg a
@@ -136,10 +173,17 @@ index of it, not the evidence itself.
    every student's rows to the internet.
 4. **Application**: the restored data plane answers, and with `--api-base`,
    `/api/ready` returns 200 against it.
+5. **Attachment bytes**: both scratch buckets must match the complete backup
+   inventory. Every expected object must have the same length and SHA-256
+   after download. The public drill record contains aggregate counts and a
+   receipt digest. If either receipt is missing, the affected evidence is
+   unverified and the drill cannot pass.
 
 Without `--api-base` the application leg records `PARTIAL`, not `PASS`, and the
 drill's `final_result` is `FAIL` — deliberately. A drill that did not boot the
 application did not prove the application recovers.
+
+Historical drill records remain readable. Their former pair of checkout fingerprints cannot establish either database observation. A fresh drill can supply the missing evidence.
 
 ### Step 4 — Record and tear down
 
@@ -154,6 +198,7 @@ either way, and must be committed either way.
 | What failed | What it means | Next |
 |---|---|---|
 | `schema_validation` | the restore did not bring back the full schema | do not release; treat the backup as unproven and escalate to Supabase |
+| `attachment_validation` | private objects differ or verification is incomplete | check the independent storage backup and rerun in scratch |
 | `data_validation` | tables restored empty | wrong recovery point, or the backup is not capturing data — re-run against another point before drawing conclusions |
 | `rls_validation` | policies did not survive the restore | **the most serious outcome**: recovery would expose user data. Release stays NO-GO until the procedure includes reapplying policies, verified by a re-run |
 | `application_smoke` | app cannot run against the restored database | recovery is incomplete even though the data is intact; find the missing piece (env, extension, role) and document it here |
