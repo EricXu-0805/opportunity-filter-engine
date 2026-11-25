@@ -4520,6 +4520,11 @@ def _filter_context(profile: dict) -> _FilterCtx:
     )
 
 
+def _outside_home_scope(opp: dict, home_school: str) -> bool:
+    school = opp.get("school")
+    return school is not None and school != home_school and opp.get("opportunity_type") != "summer_program"
+
+
 def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     """THE hard eligibility filter: the single reason-coded implementation of
     every rule that drops a record from a profile's result universe. rank_all
@@ -4547,7 +4552,7 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     if opp_school is not None and opp_school != ctx.home_school:
         if not is_faculty_contact and opp.get("audience") == "campus":
             return "other_school_campus"
-        if ctx.hide_cross_school and opp.get("opportunity_type") != "summer_program":
+        if ctx.hide_cross_school and _outside_home_scope(opp, ctx.home_school):
             return "cross_school_hidden"
 
     if ctx.international_student:
@@ -4648,7 +4653,13 @@ def _iter_scored_results_unlocked(
             if result.final_score >= min_threshold:
                 yield result
 
-    for opp in opportunities:
+    # Ranking only needs survivors. A home-only request can discard these rows
+    # before reading their contact and lifecycle evidence; an individual
+    # explanation still runs hard_exclusion in its original reason order.
+    candidates = opportunities
+    if ctx.hide_cross_school:
+        candidates = (opp for opp in opportunities if not _outside_home_scope(opp, ctx.home_school))
+    for opp in candidates:
         if hard_exclusion(opp, ctx) is not None:
             continue
 
