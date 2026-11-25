@@ -4311,7 +4311,8 @@ def collapse_same_person_faculty(opps: list[dict],
                                  person_pages: frozenset[str] = frozenset(),
                                  published_ids: frozenset[str] = frozenset(),
                                  today: date | None = None,
-                                 archived: dict[str, dict] | None = None) -> dict:
+                                 archived: dict[str, dict] | None = None,
+                                 unlisted_profile_ids: frozenset[str] = frozenset()) -> dict:
     """Collapse duplicate ACTIVE faculty for the same person at one school and
     prevent recreation on the next merge.
 
@@ -4355,6 +4356,12 @@ def collapse_same_person_faculty(opps: list[dict],
     dropped: dict[int, tuple[dict, dict, str]] = {}
     nulled_by_school: Counter = Counter()
 
+    def merge_fields(survivor: dict, loser: dict) -> None:
+        # Another department's read cannot renew a row whose own roster
+        # demonstrably dropped it, even when both link the same personal page.
+        allowed = frozenset() if survivor.get("id") in unlisted_profile_ids else pages
+        _merge_faculty_fields(survivor, loser, allowed)
+
     def drop(survivor: dict, o: dict, school) -> None:
         dropped[id(o)] = (o, survivor, school)
 
@@ -4381,7 +4388,7 @@ def collapse_same_person_faculty(opps: list[dict],
         for o in group:
             if o is survivor:
                 continue
-            _merge_faculty_fields(survivor, o, pages)
+            merge_fields(survivor, o)
             drop(survivor, o, school)
 
     # Same profile SLUG syndicated across two department sites (Caltech CMS +
@@ -4418,7 +4425,7 @@ def collapse_same_person_faculty(opps: list[dict],
             # keyword-less records on different hosts (Stanford ME + BioE
             # stubs) carry no evidence either way and stay.
             if skw and okw <= skw:
-                _merge_faculty_fields(survivor, o, pages)
+                merge_fields(survivor, o)
                 drop(survivor, o, school)
 
     by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
@@ -4437,7 +4444,7 @@ def collapse_same_person_faculty(opps: list[dict],
             for o in group:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o, pages)
+                merge_fields(survivor, o)
                 drop(survivor, o, school)
         else:
             for o in group:
@@ -4470,7 +4477,7 @@ def collapse_same_person_faculty(opps: list[dict],
         survivor, loser = roster, seed
         if len(_faculty_specific_keywords(seed)) > len(_faculty_specific_keywords(roster)):
             survivor, loser = seed, roster
-        _merge_faculty_fields(survivor, loser, pages)
+        merge_fields(survivor, loser)
         labels = list((survivor.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or [])
         for label in (loser.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or []:
             if label not in labels:
@@ -4509,7 +4516,7 @@ def collapse_same_person_faculty(opps: list[dict],
             for o in dgroup:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o, pages)
+                merge_fields(survivor, o)
                 drop(survivor, o, school)
         group = [o for o in group if id(o) not in dropped]
         if len(group) < 2:
@@ -4527,7 +4534,7 @@ def collapse_same_person_faculty(opps: list[dict],
             continue
         survivor = _pick_richer(specific_recs, umbrella)
         for o in umbrella_recs:
-            _merge_faculty_fields(survivor, o, pages)
+            merge_fields(survivor, o)
             drop(survivor, o, school)
 
     # Drop inactive tombstones that duplicate a surviving ACTIVE record. The

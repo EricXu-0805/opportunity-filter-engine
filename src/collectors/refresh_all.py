@@ -2110,6 +2110,7 @@ def refresh_all(
         # the retirement pass above counted as observed.
         collapse = collapse_same_person_faculty(
             all_opps, person_pages=observed_profile_pages(faculty_fetched),
+            unlisted_profile_ids=frozenset(stale_faculty["unlisted_profile_ids"]),
             published_ids=published_ids, archived=archive_stamps)
         all_opps = collapse["kept"]
         removed_dupes = sum(collapse["removed_by_school"].values())
