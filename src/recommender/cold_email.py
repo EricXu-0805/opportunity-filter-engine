@@ -345,17 +345,37 @@ def _clean_research_interests(text: str) -> str:
     return text.strip().rstrip(".")
 
 
+_INTEREST_SENTENCE_START = re.compile(r"^(?:I\b|I['’]|My\b|我)", re.I)
+_INTEREST_CONTINUATION = re.compile(
+    r"^(?:and|or|but|not|especially|particularly|including|such as|e\.g\.|for example|in particular|"
+    r"specifically|with|where|when|which|while|if|although|because|rather|instead|"
+    r"except|without|mostly|mainly|I|my)(?:\s|$)", re.I,
+)
+
+
 def _short_interest(interests: str) -> str:
-    """A clean, short rendering of the student's interests for an email hook:
-    the first one or two comma-delimited phrases, never a mid-word character
-    slice (CE: `interests[:80]` cut "...vision-language models, dee" mid-word)."""
-    phrases = [p.strip() for p in (interests or "").split(",") if p.strip()]
-    if not phrases:
-        return ""
-    out = phrases[0]
-    if len(phrases) > 1 and len(out) < 40:
-        out = f"{out}, {phrases[1]}"
-    return out.rstrip(".")
+    """Render a compact topic list, preserving the punctuation of student prose."""
+    # The profile is free text. Later sentences can describe coursework rather
+    # than interests; the opening only needs the student's first thought.
+    text = (interests or "").strip().rstrip(".")
+    text = re.split(r"(?<=[.!?。！？])\s+(?=I\b|I['’]|My\b|我)", text, maxsplit=1)[0].rstrip(".")
+    # Leave room for the conjunction. Cut a long field at a comma, never
+    # inside a label, and keep the first label whole even when it alone is long.
+    if len(text) > 156:
+        boundary = text.rfind(",", 0, 157)
+        text = text[:boundary] if boundary >= 0 else text.partition(",")[0]
+    phrases = [part.strip() for part in text.split(",") if part.strip()]
+    if len(phrases) < 2:
+        return "".join(phrases)
+    # A comma before a qualification, an alternative, or a clause is the
+    # student's punctuation. Adding "and" could change what they meant.
+    if (_INTEREST_SENTENCE_START.match(text) or re.search(r"[().;:!?。！？]|\d,\d", text)
+            or any(_INTEREST_CONTINUATION.match(part) for part in phrases[1:])
+            or re.search(r"\b(?:and|or)\b", phrases[-1], re.I)):
+        return text
+    if len(phrases) == 2:
+        return " and ".join(phrases)
+    return f"{', '.join(phrases[:-1])}, and {phrases[-1]}"
 
 
 _TOPIC_WORD_RE = re.compile(r"[a-z0-9]+")
@@ -1457,7 +1477,7 @@ def _p1_research_hook(p: dict) -> str:
     if interest:
         # A complete user sentence cannot be inserted as the object of "in".
         # Quote it as an interest, not evidence that its contents happened.
-        if re.match(r"^(?:I\b|I['’]|My\b|我)", interest, re.I):
+        if _INTEREST_SENTENCE_START.match(interest):
             ending = "" if interest.endswith((".", "!", "?", "。", "！", "？")) else "."
             sentences.append(f'My research interest is: “{interest}{ending}”')
         else:

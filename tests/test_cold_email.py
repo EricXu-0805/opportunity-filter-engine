@@ -733,8 +733,35 @@ class TestShortInterestCE_C1:
     def test_no_midword_truncation(self):
         s = _short_interest(self._LONG)
         assert not s.endswith("dee")
-        # ends on a whole phrase, not a mid-word character slice
-        assert s == "AI systems and machine learning, computer vision and vision-language models"
+        assert s == (
+            "AI systems and machine learning, computer vision and vision-language models, "
+            "deep learning, and superconductor materials science"
+        )
+
+    def test_two_short_labels_get_a_conjunction(self):
+        assert _short_interest("robotics, optics") == "robotics and optics"
+
+    def test_preserves_existing_conjunctions_and_prose(self):
+        for text in (
+            "robotics, optics, and materials",
+            "robotics, optics or materials",
+            "robotics, particularly medical robots",
+            "robotics, not surveillance",
+            "I want to study motion, vision, and perception",
+            "how robots move, especially in water",
+            "neural activity at 1,000 Hz",
+            "microbes (e.g. fungi, bacteria)",
+        ):
+            assert _short_interest(text) == text
+
+    def test_coursework_after_the_interest_sentence_is_not_another_topic(self):
+        text = "healthcare, particularly medical image analysis. I've taken courses in probability, data structures, and ML."
+        assert _short_interest(text) == "healthcare, particularly medical image analysis"
+
+    def test_omits_overlength_labels_whole(self):
+        long_label = "advanced " * 20 + "robotics"
+        assert _short_interest(f"vision, optics, {long_label}") == "vision and optics"
+        assert _short_interest(f"{long_label}, optics") == long_label
 
     def test_single_phrase_passthrough(self):
         assert _short_interest("robotics") == "robotics"
