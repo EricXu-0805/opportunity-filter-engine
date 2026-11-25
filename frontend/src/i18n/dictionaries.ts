@@ -2394,6 +2394,13 @@ export const en = {
     'Web & Information Systems': 'Web & Information Systems',
   },
   account: {
+    attachmentExport: {
+      title: 'Tracker attachments', description: 'Download all your Tracker files, including attachments from older opportunities. The ZIP includes their original paths and SHA-256 checksums.',
+      start: 'Download attachments as ZIP', preparing: 'Checking your files…', progress: 'Preparing {done} of {total} files…',
+      cancel: 'Cancel export', empty: 'There are no Tracker attachments in this account.',
+      retry: 'Retry export', failed: 'The export could not be verified. Try again for a complete copy.',
+      complete: 'Download started for {count} files. To verify the extracted files, run the command below in the extracted folder.',
+    },
     title: 'Your account',
     subtitle: 'Profile, activity, and plan',
     loading: 'Loading your account…',
@@ -7859,6 +7866,13 @@ export const zh = {
     'Web & Information Systems': '网络与信息系统',
   },
   account: {
+    attachmentExport: {
+      title: '申请追踪附件', description: '下载本账号在申请追踪中保存的全部附件，包括旧机会下的文件。ZIP 内附原始路径和每个文件的 SHA-256 校验值。',
+      start: '下载附件 ZIP', preparing: '正在检查附件…', progress: '正在准备文件（{done}/{total}）…',
+      cancel: '取消导出', empty: '这个账号没有申请追踪附件。',
+      retry: '重试导出', failed: '未能核实导出内容。请重试以获取完整副本。',
+      complete: '已开始下载 {count} 个文件。解压后可在解压目录运行下方命令验证文件。',
+    },
     title: '我的账户',
     subtitle: '资料、动态与套餐',
     loading: '正在加载你的账户…',
