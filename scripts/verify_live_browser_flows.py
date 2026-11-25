@@ -171,7 +171,7 @@ async def run(mode):
                     outage = True
                     await editor.locator('textarea').fill(note)
                     await editor.get_by_role('button').click()
-                    await expect(page.locator('#experience-library').get_by_text(note,exact=True)).to_be_visible(timeout=15000)
+                    await expect(page.locator('#experience-library summary').get_by_text(note,exact=True)).to_be_visible(timeout=15000)
                     await remove.click()
                     await expect(remove).to_be_hidden(timeout=15000)
                     await context.set_offline(False)
