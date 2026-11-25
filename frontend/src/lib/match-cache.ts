@@ -153,6 +153,10 @@ function projectOpportunity(opp: Opportunity): Opportunity {
     for (const k of APP_FIELDS) if (app[k] !== undefined) a[k] = app[k];
     out.application = a;
   }
+  // Cache only anonymous evidence, even if passed a signed-in detail payload.
+  if (opp.contact_email_status === 'sign_in_required' || opp.contact_email_status === 'unavailable') {
+    out.contact_email_status = opp.contact_email_status;
+  }
   const dc = src.description_clean;
   if (typeof dc === 'string') out.description_clean = dc.slice(0, DESC_CHARS);
   return out as unknown as Opportunity;

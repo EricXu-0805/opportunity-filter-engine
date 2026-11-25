@@ -916,6 +916,18 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # source-type table, and so "we could not confirm what this is" is a fact
     # on the wire rather than an inference from an absent field.
     projected["record_kind"] = kind
+    # A faculty profile becomes an outreach lead only when the same evidence
+    # used by the ranker and authenticated reveal allows a personal address.
+    # Lists and caches get only the anonymous status. A detail request can
+    # reveal the address later through its existing authenticated path.
+    projected.pop("contact_email_status", None)
+    if kind == "faculty_contact":
+        from backend.lib.contact_visibility import STATUS_UNAVAILABLE, contact_email_status
+
+        projected["contact_email_status"] = (
+            contact_email_status(canonical_record, authenticated=False)[0]
+            if truth["actionable"] else STATUS_UNAVAILABLE
+        )
     # Where the keywords came from, on the wire, for the same reason
     # `publication_attribution_status` is: a client cannot re-derive it, and
     # without it a topic this pipeline INFERRED renders identically to one

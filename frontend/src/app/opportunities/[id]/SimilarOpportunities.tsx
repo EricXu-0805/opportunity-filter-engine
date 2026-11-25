@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Building2 } from 'lucide-react';
 import type { SimilarOpportunity } from '@/lib/api-server';
-import { opportunityRecordKind } from '@/lib/record-kind';
+import { facultyOutreachLabel, opportunityRecordKind } from '@/lib/record-kind';
 import { targetPosture } from '@/lib/target-truth';
 import { DetailBadge } from './DetailBadge';
 import { typeLabel } from '@/app/results/types';
@@ -47,7 +47,7 @@ export function SimilarOpportunities({
                   {isListing
                     ? typeLabel(s.opportunity_type, t)
                     : t(kind === 'faculty_contact'
-                      ? 'card.facultyContactUnconfirmed'
+                      ? facultyOutreachLabel(s)
                       : 'card.recordTypeUnconfirmed')}
                 </DetailBadge>
                 {isListing && s.paid === 'yes' && (

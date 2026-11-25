@@ -3,7 +3,7 @@ import { importSuggestions } from '@/lib/import-suggestions';
 import type { CustomImport } from '@/lib/custom-imports';
 import type { SavedSearch, SavedSearchDigest } from '@/lib/saved-searches';
 import { humanizeTime } from '@/lib/humanize-time';
-import type { FacultyAvailabilityStatus, PublicTargetTruth } from '@/lib/types';
+import type { ContactEmailStatus, FacultyAvailabilityStatus, PublicTargetTruth } from '@/lib/types';
 
 export interface Opp {
   id: string;
@@ -35,6 +35,7 @@ export interface Opp {
   // `unknown`, which suspends them.
   target_truth?: PublicTargetTruth | null;
   faculty_availability_status?: FacultyAvailabilityStatus;
+  contact_email_status?: ContactEmailStatus;
   school?: string;
   on_campus?: boolean | null;
   deadline?: string;

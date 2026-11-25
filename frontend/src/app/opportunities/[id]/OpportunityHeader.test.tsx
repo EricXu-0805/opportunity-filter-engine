@@ -191,6 +191,17 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByText('unaccepted-professor-signal')).not.toBeInTheDocument();
   });
 
+  it.each([
+    [undefined, 'Faculty profile · openings not confirmed'],
+    ['unavailable', 'Faculty profile · openings not confirmed'],
+    ['sign_in_required', 'Faculty contact for inquiries · openings not confirmed'],
+    ['revealed', 'Faculty contact for inquiries · openings not confirmed'],
+  ] as const)('separates a readable faculty profile from an inquiry channel (%s)', (status, label) => {
+    renderHeader({ opp: facultyOpp({ contact_email_status: status }), t: key => translate('en', key) });
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
+  });
+
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
     renderHeader({
       opp: facultyOpp({
