@@ -347,3 +347,34 @@ if sys.argv[1] == 'cache':
 
 if sys.argv[1] == 'dashboard':
     asyncio.run(run('merged'))
+
+
+async def saved_faculty_links():
+    pairs = (
+        ('faculty-purdue-cs-412c3ce0', 'faculty-purdue-cs-bb6831d2'),
+        ('faculty-georgetown-engl-9b02f5b4', 'faculty-georgetown-engl-be9bd333'),
+    )
+    site = 'https://joinalab.com'
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
+        for lang, label in [('en','View current faculty record'), ('zh','查看当前教师档案')]:
+            ctx = await browser.new_context(viewport={'width':390 if lang == 'zh' else 1280,'height':900})
+            await ctx.add_cookies([{'name':'ofe_lang','value':lang,'url':site}])
+            page = await ctx.new_page()
+            for old, current in pairs:
+                await page.goto(site + '/opportunities/' + old, wait_until='domcontentloaded')
+                link = page.get_by_role('link', name=label, exact=True)
+                await expect(link).to_be_visible(timeout=35000)
+                await expect(link).to_have_attribute('href', '/opportunities/' + current)
+                await link.click()
+                await expect(page).to_have_url(site + '/opportunities/' + current, timeout=30000)
+                name = await page.get_by_role('heading',level=1).inner_text()
+                expected = 'Taram' if 'purdue' in old else 'Holmes'
+                assert expected in name, (current,name)
+                print('PASS official archived faculty link clicked', lang, old, current, name, flush=True)
+            await ctx.close()
+        await browser.close()
+
+
+if sys.argv[1] == 'dashboard':
+    asyncio.run(saved_faculty_links())

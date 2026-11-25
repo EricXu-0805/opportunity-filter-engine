@@ -49,3 +49,35 @@ material()
 with ThreadPoolExecutor(max_workers=3) as pool:list(pool.map(reviewed,{'faculty-osu-fabe-1abc04a0': 'https://agsafety.osu.edu/people/dee-jepsen-phd', 'faculty-sbu-cs-7c922688': 'https://researchconnect.stonybrook.edu/en/persons/paola-cascante-bonilla/', 'faculty-sbu-cs-890dcd54': 'https://alps-lab.github.io/', 'faculty-tamu-inta-c32e8252': 'https://bush.tamu.edu/directory/john-schuessler/', 'faculty-umd-math-1516d149': 'https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html', 'faculty-umd-phys-5e8e0edd': 'https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html'}.items()))
 berkeley()
 clauses({'faculty-amherst-math-b56770ee': ['which combines techniques from analysis'], 'faculty-amherst-fren-7b776710': ['which analyzes the relationship between vision'], 'faculty-amherst-thda-511b2f0c': ['which were transmitted through storytelling'], 'faculty-dartmouth-clas-aee33fc6': ['which combines these themes'], 'faculty-dartmouth-engl-43ac6fab': ['which include psychoanalysis'], 'faculty-dartmouth-envs-6c04e1f8': ['which features discussions of the lives'], 'faculty-dartmouth-govt-a845067b': ['which examines the history of CEDAW'], 'faculty-dartmouth-ascl-93db6d36': ['which looks at how individual artists'], 'faculty-dartmouth-lalacs-407368ef': ['which spans film history'], 'faculty-ncsu-mbs-a727f59b': ['which began in 2016'], 'faculty-ncsu-bae-3ead0841': ['which include autonomous navigation'], 'faculty-nd-ceees-064cb01e': ['which recognizes the best design'], 'faculty-nd-phys-ad75cb28': ['takes place in novae and supernovae', 'which'], 'faculty-northwestern-psych-668331e4': ['which can guide their identities'], 'faculty-vanderbilt-math-aca9b9bb': ['which may be quite complicated. But']})
+
+
+def verify_saved_faculty(old, current):
+    archived = detail(old)
+    assert archived['id'] == old
+    assert archived['metadata']['duplicate_of'] == current
+    assert archived['current_faculty_id'] == current
+    assert archived['target_truth']['reason_code'] == 'inactive'
+    assert not archived['target_truth']['actionable']
+    for lang, label in [('en', 'View current faculty record'), ('zh', '查看当前教师档案')]:
+        headers = {'Cookie': 'ofe_lang=' + lang}
+        old_url = base + '/opportunities/' + old
+        with urlopen(Request(old_url, headers=headers), timeout=35) as response:
+            page = BeautifulSoup(response.read(), 'html.parser')
+        links = [a for a in page.select('a[href]') if a.get_text(strip=True) == label]
+        assert len(links) == 1, (old, lang, len(links))
+        assert links[0]['href'] == '/opportunities/' + current
+        with urlopen(Request(base + links[0]['href'], headers=headers), timeout=35) as response:
+            target = BeautifulSoup(response.read(), 'html.parser')
+            assert target.select_one('h1') and response.status == 200
+        print('PASS saved ID', old, lang, label, current, target.select_one('h1').get_text(strip=True), flush=True)
+    destination = detail(current)
+    assert destination['id'] == current and destination['target_truth']['actionable']
+
+
+with ThreadPoolExecutor(max_workers=2) as pool:
+    checks = [pool.submit(verify_saved_faculty, old, current) for old, current in [
+        ('faculty-georgetown-engl-9b02f5b4', 'faculty-georgetown-engl-be9bd333'),
+        ('faculty-purdue-cs-412c3ce0', 'faculty-purdue-cs-bb6831d2'),
+    ]]
+    for check in checks:
+        check.result()
