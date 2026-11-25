@@ -409,7 +409,8 @@ SCHOOL: dict = {
                "https://theology.georgetown.edu/people/ft-faculty/"),
         _media("ENGL", "Department of English", ["English"],
                "https://english.georgetown.edu/people/full-time-faculty-2/",
-               enrich=_ENRICH),
+               enrich=_ENRICH,
+               link="a.gu-block-image-text-cta-text-content-link[href], a.gu-block-link-cta[href]"),
         # ---- Georgetown College — gu_cards Profile-Card ---------------------
         _cards("GOVT", "Department of Government",
                ["Government", "Political Science", "International Politics"],
