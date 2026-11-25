@@ -710,11 +710,14 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     honorific = "Prof. " if professor_rank else ""
     unit = f" — {short}" if dept_name else ""
     opp_title = f"{honorific}{name}{unit}{research_summary}"
+    scope = person.get("_verification_scope")
+    curated = scope == "curated"
+    listed = person.get("_listing_seen_on_source") is True
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
-        "last_verified": now,
+        "last_verified": None if curated else now,
         "first_seen_at": now,
-        "last_seen_at": now,
+        "last_seen_at": now if not curated or listed else None,
         "is_active": True,
         "manually_reviewed": False,
         "notes": f"Curated from {dept_name or dept['name']} faculty directory ({school['organization']})",
@@ -744,7 +747,8 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         if " ".join(str(capture.get("identity_name") or "").casefold().split()) == " ".join((person.get("name") or "").casefold().split()):
             capture["identity_name"] = name
         metadata[CAPTURE_KEY] = capture
-    scope = person.get("_verification_scope")
+    if curated and listed:
+        metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
     email_source = person.get("_email_source")
@@ -5347,9 +5351,12 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         specs = [dict(person, _verification_scope="curated")
                  for person in dept.get("faculty", [])]
         if deep:
-            seen_urls_local = {u for p in specs
-                               if (u := (p.get("url") or "").strip().lower())
-                               and u not in listing_urls}
+            seeds_by_url = defaultdict(list)
+            for spec in specs:
+                url = (spec.get("url") or "").strip().lower()
+                if url and url not in listing_urls:
+                    seeds_by_url[url].append(spec)
+            seen_urls_local = set(seeds_by_url)
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
                                + _fetch_worx_ajax(dept)
@@ -5363,6 +5370,11 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 discovered.setdefault("_verification_scope", "directory")
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
+                    # Keep the seed's richer fields, but credit a listing only if
+                    # the directory actually returned this person at this URL.
+                    for seed in seeds_by_url.get(key, ()):
+                        if _one_person([seed.get("name"), discovered.get("name")]):
+                            seed["_listing_seen_on_source"] = True
                     continue
                 if key and key not in listing_urls:
                     seen_urls_local.add(key)
@@ -5450,6 +5462,11 @@ def merge_into_processed(new_opps: list[dict]):
             cur = index[opp["id"]]
             opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            if (opp["metadata"].get("verification_scope") == "curated"
+                    and (cur.get("metadata") or {}).get("verification_scope") in ("directory", "profile", "curated")):
+                # A failed directory read can fall back to a seed with this
+                # stable id. Keep any earlier genuine sighting of the person.
+                _carry_sighting(opp, cur)
             # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
             # enrichment on the same stable id.
             _carry_forward_enrichment(cur, opp)

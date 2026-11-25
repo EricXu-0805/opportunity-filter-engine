@@ -3806,8 +3806,50 @@ class TestIdentityProvenance:
 
     def test_curated_seeds_tagged_curated(self, recs):
         assert all(r["metadata"]["verification_scope"] == "curated" for r in recs)
+        assert all(r["metadata"]["last_verified"] is None and r["metadata"]["last_seen_at"] is None for r in recs)
         # and the curated tag never leaks the internal hint key into records
         assert all("_verification_scope" not in r for r in recs)
+
+    def test_directory_sighting_of_a_seed_survives_offline_reruns(self, monkeypatch, tmp_path):
+        import json
+
+        from src.collectors import ucb_common
+
+        person = {"name": "Grace Hopper", "url": "https://x.edu/hopper", "title": "Professor"}
+        dept = {"name": "Engineering", "short": "ENG", "directory_url": "https://x.edu/eng", "faculty": [person]}
+        school = {**SCHOOL, "departments": [dept]}
+        saved = tmp_path / "opportunities.json"
+        saved.write_text("[]")
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", saved)
+        monkeypatch.setattr(fg, "_scrape_directory", lambda _: [person.copy()])
+        [live] = fg.fetch_and_normalize(school, deep=True)
+        assert live["metadata"]["last_verified"] is None
+        seen = live["metadata"]["last_seen_at"]
+        assert seen and live["metadata"]["listing_seen_on_source"] is True
+        fg.merge_into_processed([live])
+
+        for _ in range(2):
+            [fallback] = fg.fetch_and_normalize(school, deep=False)
+            fg.merge_into_processed([fallback])
+            [stored] = json.loads(saved.read_text())
+            assert stored["metadata"]["listing_seen_on_source"] is True
+            assert stored["metadata"]["last_seen_at"] == seen
+            assert stored["metadata"]["last_verified"] is None
+
+        # Older curated rows carry the run clock with no sighting evidence.
+        del stored["metadata"]["listing_seen_on_source"]
+        stored["metadata"]["last_verified"] = seen
+        saved.write_text(json.dumps([stored]))
+        [fallback] = fg.fetch_and_normalize(school, deep=False)
+        fg.merge_into_processed([fallback])
+        [stored] = json.loads(saved.read_text())
+        assert stored["metadata"]["last_seen_at"] is None
+        assert stored["metadata"]["last_verified"] is None
+
+        # A directory URL now naming a different professor cannot date the seed.
+        monkeypatch.setattr(fg, "_scrape_directory", lambda _: [{**person, "name": "Jane Doe"}])
+        [mismatch] = fg.fetch_and_normalize(school, deep=True)
+        assert mismatch["metadata"]["last_seen_at"] is None
 
     def test_seed_configs_not_mutated_by_harvest(self):
         dept = SCHOOL["departments"][0]

@@ -779,6 +779,17 @@ class TestLastSeenListed:
         assert observed - {None} == {self._VERIFIED}
         assert "last_seen_at" not in body["metadata"]
 
+    @pytest.mark.parametrize("witnessed", [False, True])
+    def test_curated_fields_do_not_turn_the_run_date_into_a_page_read(self, monkeypatch, witnessed):
+        metadata = {"verification_scope": "curated"}
+        if witnessed:
+            metadata["listing_seen_on_source"] = True
+        body = self._get(monkeypatch, self._faculty(**metadata))
+        assert body["last_seen_listed_at"] == ("2026-11-04" if witnessed else None)
+        assert body["target_truth"]["verified_at"] is None
+        assert all(f["provenance"]["observed_at"] is None for f in body["detail_fields"]["fields"].values())
+        assert "listing_seen_on_source" not in body["metadata"]
+
     def test_a_deactivated_faculty_row_still_says_when_it_was_last_listed(self, monkeypatch):
         body = self._get(monkeypatch, self._faculty(is_active=False))
         assert body["target_truth"]["reason_code"] == "inactive"
