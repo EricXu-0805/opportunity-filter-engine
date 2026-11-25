@@ -238,6 +238,7 @@ async def run(mode):
                     assert re.findall(r'\d+', label) == [expected], label
                     assert not large_list_writes, large_list_writes
                     assert True in continuation_calls and False in continuation_calls, continuation_calls
+                    await expect(retry).to_have_count(0)
                 print('PASS', mode, 'release', await page.locator('html').get_attribute('data-release-sha'),
                       'state', await tile.get_attribute('data-state'), 'tile', await tile.inner_text(),
                       'reads', reads, 'continuations', continuation_calls, flush=True)
