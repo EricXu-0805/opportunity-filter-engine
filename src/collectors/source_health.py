@@ -572,17 +572,28 @@ def _faculty_unit_checks(source: str, info: dict) -> tuple[set[str], set[str]]:
             ):
                 unchecked.add(unit)
             continue
+        all_matched = (baseline is not None
+                       and _count(entry.get("baseline_identity_count")) == baseline
+                       and _count(entry.get("matched_identity_count")) == baseline)
+        # Successfully parsing some cards cannot settle the missing people if
+        # other cards/pages were unread, or the source itself omits faculty.
+        coverage = entry.get("coverage")
+        loss_counters = ("unparsed_rows", "ambiguous_rows", "identity_match_failures",
+                         "parser_errors", "partial_render_rows")
+        read_loss = entry.get("roster_is_partial") is True or (
+            isinstance(coverage, dict)
+            and any((_count(coverage.get(key)) or 0) > 0 for key in loss_counters)
+        )
+        if read_loss and baseline != 0 and not all_matched:
+            if baseline is not None:
+                unchecked.add(unit)
+            continue
         identities_checked = missed == [] or entry.get("completeness_status") == "complete"
         if "live_roster_count" in entry or "retained_only_count" in entry:
             live_count = _count(entry.get("live_roster_count"))
             retained_count = _count(entry.get("retained_only_count"))
             if live_count is None or retained_count is None:
                 continue
-            # Some online directory families don't enumerate page links. The
-            # finalizer can still show that every baseline identity was read.
-            all_matched = (baseline is not None
-                           and _count(entry.get("baseline_identity_count")) == baseline
-                           and _count(entry.get("matched_identity_count")) == baseline)
             if retained_count or (baseline and live_count == 0):
                 unchecked.add(unit)
             elif baseline == 0 or (live_count and (identities_checked or all_matched)):
@@ -592,7 +603,6 @@ def _faculty_unit_checks(source: str, info: dict) -> tuple[set[str], set[str]]:
         # A person read in this unit can be emitted by a sibling after
         # cross-department deduplication. The collector keeps their id here.
         ids = entry.get("observed_entity_ids")
-        coverage = entry.get("coverage")
         parsed_rows = _count(coverage.get("parsed_faculty_rows")) if isinstance(coverage, dict) else None
         has_people = (count or 0) > 0 or (isinstance(ids, list) and bool(ids))
         # Configured faculty seeds can also emit records and ids when the
