@@ -202,10 +202,10 @@ async def run(mode):
                         other_tab = page if answer_tab is receiver else receiver
                         await other_tab.bring_to_front()
                         button = other_tab.get_by_role('button',name='Remove file' if lang=='en' else '移除文件',exact=True)
-                        if data.get('resume_text'):
-                            await expect(button).to_be_visible()
-                        else:
-                            await expect(button).to_have_count(0)
+                        await asyncio.sleep(2)
+                        painted_resume = await button.is_visible()
+                        print('Resume before independent edit', mode, 'account', bool(data.get('resume_text')),
+                              'other tab displays attachment', painted_resume, flush=True)
                         follow = other_tab.locator('#experience-library details').last
                         if not await follow.locator('textarea').is_visible():
                             await follow.locator('summary').click()
@@ -225,6 +225,7 @@ async def run(mode):
                         print('PASS other tab follow-up before reload',mode,'old revision',stored['revision'],
                               'new revision',after['revision'],'resume retained',bool(data.get('resume_text')),
                               'unchanged coursework',after['profile_data'].get('coursework'),flush=True)
+                        assert painted_resume==bool(data.get('resume_text')), 'Peer still displays the superseded attachment state'
                         stored=after
                         data=after['profile_data']
                     for tab in tabs:
