@@ -78,7 +78,7 @@ async def run(mode):
                 assert '0' not in (await saved.inner_text())
                 await expect(page.get_by_text("Couldn't load your saved deadlines.",exact=True)).to_be_visible()
                 await expect(page.get_by_test_id('applied-summary')).to_have_attribute('data-state','ready')
-                fail=False;await page.get_by_text("Couldn't load your saved opportunities.",exact=True).locator('..').get_by_role('button').click()
+                fail=False;await page.locator('p').filter(has_text="Couldn't load your saved opportunities.").get_by_role('button').click()
                 await expect(saved).to_have_attribute('data-state','ready');assert '1' in (await saved.inner_text())
                 fail=True;await page.goto('https://joinalab.com/favorites',wait_until='domcontentloaded')
                 alert=page.get_by_role('alert').filter(has_text="Couldn't load your favorites")
@@ -89,16 +89,30 @@ async def run(mode):
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
             else:
                 await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
-                await page.wait_for_function("JSON.parse(localStorage.getItem('ofe_match_results_v7')||'{}').results?.length > 0",timeout=80000)
-                snapshot=await page.evaluate("""()=>{const key='ofe_match_results_v7';const c=JSON.parse(localStorage.getItem(key));const n=c.results.length;for(const r of c.results){r.opportunity.title='M188 previous browser-only result';r.reasons_fit=['Your interest in memory closely matches the old cached result'];}c.matcher_version='40-old';localStorage.setItem(key,JSON.stringify(c));return n}""")
-                await page.add_init_script("""window.oldMatchPainted=false;new MutationObserver(()=>{if(document.body?.innerText.includes('M188 previous browser-only result'))window.oldMatchPainted=true}).observe(document,{subtree:true,childList:true,characterData:true});""")
-                hold=True
-                await page.reload(wait_until='domcontentloaded')
+                await page.locator('[id^="match-card-"]').first.wait_for(timeout=80000)
+                for _ in range(20):
+                    state=await context.storage_state()
+                    item=next((row for site in state['origins'] if site['origin']=='https://joinalab.com'
+                               for row in site['localStorage'] if row['name']=='ofe_match_results_v7'),None)
+                    if item is not None:break
+                    await asyncio.sleep(.25)
+                assert item is not None, 'fresh account did not store a match page'
+                cached=json.loads(item['value']);snapshot=len(cached['results']);assert snapshot>0
+                for row in cached['results']:
+                    row['opportunity']['title']='M188 previous browser-only result'
+                    row['reasons_fit']=['Your interest in memory closely matches the old cached result']
+                cached['matcher_version']='40-old';item['value']=json.dumps(cached)
+                await context.close();hold=True
+                context=await browser.new_context(storage_state=state,service_workers='block')
+                await context.route('**/*',intercept)
+                await context.add_init_script("""new MutationObserver(()=>{if(document.body?.innerText.includes('M188 previous browser-only result'))document.documentElement.dataset.oldMatchPainted='yes'}).observe(document,{subtree:true,childList:true,characterData:true});""")
+                page=await context.new_page()
+                await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
                 await asyncio.wait_for(blocked.wait(),35)
                 assert await page.locator('[id^="match-card-"]').count()==0
-                assert not await page.evaluate('window.oldMatchPainted')
+                assert await page.locator('html').get_attribute('data-old-match-painted') is None
                 release.set();await page.locator('[id^="match-card-"]').first.wait_for(timeout=65000)
-                assert not await page.evaluate('window.oldMatchPainted')
+                assert await page.locator('html').get_attribute('data-old-match-painted') is None
                 assert not await page.get_by_text('M188 previous browser-only result',exact=True).count()
                 print('PASS',snapshot,'old cached matches retained while real response withheld, none painted; fresh cards then displayed.')
             await browser.close()
