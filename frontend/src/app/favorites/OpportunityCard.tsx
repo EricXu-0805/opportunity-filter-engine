@@ -232,7 +232,7 @@ export function OpportunityCard({
                 {t('favorites.customBadge')}
               </Badge>
             )}
-            {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+            {isFaculty && statusReason !== 'inactive' && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
               <Badge variant="orange">{t(facultyOutreachLabel(opp))}</Badge>
             )}
             {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
