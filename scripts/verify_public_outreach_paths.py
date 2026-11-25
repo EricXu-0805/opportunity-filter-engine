@@ -1,4 +1,5 @@
 """Check the public match card, detail actions and deterministic unsent draft for three targets."""
+import csv
 import json
 import os
 import subprocess
@@ -47,7 +48,7 @@ def account_fixture(profile):
         process.wait(timeout=5)
 
 
-def install_account(context, oid):
+def install_account(context, oid, extra_favorites=()):
     def route_account(route):
         req = route.request
         url = urlsplit(req.url)
@@ -58,7 +59,9 @@ def install_account(context, oid):
         if req.method == "OPTIONS":
             return route.fulfill(status=204, headers=cors)
         if url.path == "/rest/v1/favorites" and req.method == "GET":
-            return route.fulfill(status=200, headers={**cors, "Content-Range": "0-0/1"}, json=[{"opportunity_id": oid}])
+            ids = sorted({oid, *extra_favorites})
+            return route.fulfill(status=200, headers={**cors, "Content-Range": f"0-{len(ids)-1}/{len(ids)}"},
+                                 json=[{"opportunity_id": key} for key in ids])
         headers = {"Content-Type": "application/json", **{k: v for k, v in req.headers.items()
                    if k in ("authorization", "prefer", "range", "accept")}}
         code, ct, body = fetch(stub + url.path + ("?" + url.query if url.query else ""),
@@ -67,7 +70,7 @@ def install_account(context, oid):
     context.route("https://*.supabase.co/**", route_account)
 
 
-def verify(mode, score_phase=None, locale="en"):
+def verify(mode, score_phase=None, locale="en", export_phase=None):
     oid, home, school, major, interests, query, badge = CASES[mode]
     college = {"caltech": "Division of Physics, Mathematics and Astronomy",
                "ucb": "College of Computing, Data Science, and Society", "uiuc": "Grainger College of Engineering"}[home]
@@ -79,7 +82,7 @@ def verify(mode, score_phase=None, locale="en"):
         browser = pw.chromium.launch(executable_path=os.environ.get("CHROME_BIN", "/usr/bin/google-chrome"),
                                      args=["--disable-dev-shm-usage", "--no-sandbox"])
         context = browser.new_context(service_workers="block", locale="zh-CN" if locale == "zh" else "en-US")
-        install_account(context, oid)
+        install_account(context, oid, [CASES["profile"][0]] if export_phase else [])
         values = {"ofe_auth": json.dumps(session), "ofe_profile": json.dumps(profile), "ofe_onboarding_seen": "1", "ofe_lang": locale}
         if locale == "zh":
             context.add_cookies([{"name":"ofe_lang","value":"zh","url":SITE}])
@@ -115,7 +118,8 @@ def verify(mode, score_phase=None, locale="en"):
             campus.click()
             page.get_by_test_id("switcher-confirm").click()
             expect(campus).to_be_hidden()
-        page.goto(SITE + "/results?tab=starred&ai=0", wait_until="domcontentloaded")
+        page.goto(SITE + ("/results?tab=all&ai=0&q=Ahmed%20Alaa" if export_phase else "/results?tab=starred&ai=0"),
+                  wait_until="domcontentloaded")
         card = page.locator("#match-card-" + oid)
         try:
             expect(card).to_be_visible(timeout=85000)
@@ -126,6 +130,20 @@ def verify(mode, score_phase=None, locale="en"):
             raise
         page.wait_for_timeout(100)
         assert evidence, "A real match response for this card is required"
+        if export_phase:
+            label = 'Export 2 starred CSV' if export_phase == 'before' else 'Export favorites in this view (CSV)'
+            button = page.get_by_role('button', name=label, exact=True)
+            expect(button).to_be_visible()
+            with page.expect_download() as download:
+                button.click()
+            with open(download.value.path(), encoding='utf-8-sig', newline='') as f:
+                rows = list(csv.DictReader(f))
+            assert len(rows) == 1 and rows[0]['Title'] == evidence[-1]['opportunity']['title'], rows
+            assert query in rows[0]['Title'], rows
+            print('PASS', export_phase, 'saved in account: 2, CSV rows: 1, actual title:', rows[0]['Title'],
+                  'button:', label, 'frontend:', page.locator('html').get_attribute('data-release-sha'), flush=True)
+            browser.close()
+            return
         card.get_by_role("button", name="展开详情" if locale == "zh" else "Show details").click()
         row = evidence[-1]
         if score_phase:
@@ -206,7 +224,9 @@ def verify(mode, score_phase=None, locale="en"):
 
 
 if __name__ == "__main__":
-    if sys.argv[1].startswith("score-"):
+    if sys.argv[1].startswith("export-"):
+        verify("inquiry", export_phase=sys.argv[1].split("-")[1])
+    elif sys.argv[1].startswith("score-"):
         _, phase, locale = sys.argv[1].split("-")
         verify("inquiry", phase, locale)
     else:
