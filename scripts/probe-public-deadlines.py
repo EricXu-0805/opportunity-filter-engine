@@ -3,11 +3,7 @@ import json
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 
-CASES = {
-    'Rolling': 'sro-7012b0e4',
-    'Fixed': 'sro-01bb5fcb',
-    'Upcoming': 'wisc-f3428f4e91a6',
-}
+CASES = {'OpeningOnly': 'northwestern-c94730fc1a01'}
 for school, target in CASES.items():
     for locale in ('en','zh'):
         request=Request("https://joinalab.com/opportunities/"+target,headers={"User-Agent":"JoinALab/1.0 (public page check)", "Cookie":"ofe_lang="+locale, "Accept-Language":"zh-CN" if locale=="zh" else "en-US"})

@@ -16,4 +16,4 @@ jobs:
         with:
           persist-credentials: false
       - run: python -m pip --disable-pip-version-check --retries 0 --timeout 12 install beautifulsoup4==4.13.4
-      - run: python scripts/probe-forty-older-records.py
+      - run: python scripts/probe-public-deadlines.py
