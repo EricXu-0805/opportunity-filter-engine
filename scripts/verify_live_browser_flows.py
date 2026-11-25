@@ -196,6 +196,37 @@ async def run(mode):
                     assert any(x.get('id')=='prior-independent-entry' for x in data['experience_entries'])
                     if mode.endswith('keep'):
                         assert not data.get('resume_text'),data.get('resume_text')
+                    if '-followup-' in mode:
+                        # Leave both forms mounted. An edit from the other tab must use the
+                        # chosen resume, even before a navigation can reload the account.
+                        other_tab = page if answer_tab is receiver else receiver
+                        await other_tab.bring_to_front()
+                        button = other_tab.get_by_role('button',name='Remove file' if lang=='en' else '移除文件',exact=True)
+                        if data.get('resume_text'):
+                            await expect(button).to_be_visible()
+                        else:
+                            await expect(button).to_have_count(0)
+                        follow = other_tab.locator('#experience-library details').last
+                        if not await follow.locator('textarea').is_visible():
+                            await follow.locator('summary').click()
+                        new_note = 'I repeated the independent control measurement.'
+                        await follow.locator('textarea').fill(new_note)
+                        await follow.get_by_role('button').click()
+                        await expect(other_tab.locator('#experience-library summary').get_by_text(new_note,exact=True)).to_be_visible()
+                        for _ in range(60):
+                            after = saved_resume()
+                            if any(x.get('text')==new_note for x in after['profile_data'].get('experience_entries',[])):
+                                break
+                            await asyncio.sleep(.25)
+                        assert any(x.get('text')==new_note for x in after['profile_data']['experience_entries'])
+                        assert after['profile_data'].get('resume_text')==data.get('resume_text')
+                        assert after['profile_data'].get('coursework')==data.get('coursework')
+                        assert after['revision']>stored['revision']
+                        print('PASS other tab follow-up before reload',mode,'old revision',stored['revision'],
+                              'new revision',after['revision'],'resume retained',bool(data.get('resume_text')),
+                              'unchanged coursework',after['profile_data'].get('coursework'),flush=True)
+                        stored=after
+                        data=after['profile_data']
                     for tab in tabs:
                         await tab.reload(wait_until='domcontentloaded')
                         await expect(tab.locator('#student_name')).to_have_value(profile['name'],timeout=35000)
