@@ -103,3 +103,14 @@ def test_clause_fragments_never_become_email_subjects_and_leave_the_statement_in
     assert all("which" not in mail.splitlines()[0].lower() for mail in _emails(record))
     good = ["which-path interferometry", "which way information", "nuclear astrophysics"]
     assert fg._clean_keywords({"keywords": [*fragments, *good]}) == good
+
+
+@pytest.mark.parametrize(("source", "department", "raw", "keywords"), [
+    ("lsu_faculty", "School of Architecture", "Architecture", ["Architecture"]),
+    ("nd_faculty", "Department of Physics and Astronomy", "", ["which", "takes place in novae and supernovae"]),
+])
+def test_drafts_accepting_a_raw_shard_use_the_same_evidence_without_mutation(source, department, raw, keywords):
+    record = _row(source, department, raw, keywords)
+    before = deepcopy(record)
+    assert all(mail.splitlines()[0] == "Subject: Research inquiry" for mail in _emails(record))
+    assert record == before
