@@ -185,11 +185,21 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(onKeepMyChanges, 'and the question is still answerable').toHaveBeenCalledTimes(1);
   });
 
+  it.each(['cloud-failed', 'saved', 'idle'] as const)(
+    'explains the pending choice after the latest save status becomes %s', (saveStatus) => {
+      renderRow({ saveStatus, hasConflict: true });
+      expect(screen.getByText('home.actions.profileConflict')).toBeVisible();
+      expect(screen.getByTestId('conflict-keep-mine')).toBeVisible();
+      expect(screen.getByTestId('conflict-use-cloud')).toBeVisible();
+    },
+  );
+
   it('SR-conflict-retired: no controls once the question itself is gone', () => {
     // The complement of the two above: `hasConflict` is what draws them, so a
     // saveStatus that still says 'conflict' after the list was retired must
     // not leave buttons bound to nothing.
     renderRow({ saveStatus: 'conflict', hasConflict: false });
+    expect(screen.queryByText('home.actions.profileConflict')).toBeNull();
     expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
     expect(screen.queryByTestId('conflict-use-cloud')).toBeNull();
   });
@@ -220,6 +230,7 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
   it('a Keep refused because other tabs typed different values keeps the question answerable', () => {
     const onUseCloudVersion = vi.fn();
     renderRow({ saveStatus: 'conflict-several-typed', hasConflict: true, onUseCloudVersion });
+    expect(screen.queryByText('home.actions.profileConflict')).toBeNull();
     expect(screen.getByTestId('conflict-several-typed').textContent)
       .toContain('home.actions.profileConflictSeveralTyped');
     fireEvent.click(screen.getByTestId('conflict-use-cloud'));
@@ -229,6 +240,7 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
 
   it('a question a newer version of the page asked shows the reload message, once, instead of the two buttons', () => {
     renderRow({ saveStatus: 'conflict-newer-build', hasConflict: true, conflictHeldForNewerBuild: true, canRetrySync: true });
+    expect(screen.queryByText('home.actions.profileConflict')).toBeNull();
     expect(screen.getAllByTestId('conflict-newer-build').map((node) => node.textContent))
       .toEqual(['home.actions.profileConflictNewerBuild']);
     expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
@@ -238,6 +250,7 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
 
   it('keeps the reload message on screen while the status line says something else', () => {
     renderRow({ saveStatus: 'cloud-failed', hasConflict: true, conflictHeldForNewerBuild: true, canRetrySync: true });
+    expect(screen.queryByText('home.actions.profileConflict')).toBeNull();
     expect(screen.getAllByTestId('conflict-newer-build').map((node) => node.textContent))
       .toEqual(['home.actions.profileConflictNewerBuild']);
     expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();

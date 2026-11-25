@@ -208,12 +208,6 @@ export function SubmitRow({
             )}
           </span>
         )}
-        {saveStatus === 'conflict' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
-            <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
-            {t('home.actions.profileConflict')}
-          </span>
-        )}
         {/* The question is gone — answered in another tab ('conflict-stale'),
             or settled without an answer, by the row coming to agree or a
             load ('conflict-gone'). Nothing was sent and there is nothing to
@@ -303,6 +297,12 @@ export function SubmitRow({
           <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700" data-testid="conflict-newer-build">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileConflictNewerBuild')}
+          </span>
+        )}
+        {hasConflict && !conflictHeldForNewerBuild && saveStatus !== 'conflict-several-typed' && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
+            <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('home.actions.profileConflict')}
           </span>
         )}
         {hasConflict && !conflictHeldForNewerBuild && (
