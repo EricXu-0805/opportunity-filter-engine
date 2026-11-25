@@ -69,7 +69,9 @@ def install_account(context, oid):
 
 def verify(mode):
     oid, home, school, major, interests, query, badge = CASES[mode]
-    profile = {"name": "Sample Student", "institution": school, "home_school": home,
+    college = {"caltech": "Division of Physics, Mathematics and Astronomy",
+               "ucb": "College of Computing, Data Science, and Society", "uiuc": "Grainger College of Engineering"}[home]
+    profile = {"college": college, "name": "Sample Student", "institution": school, "home_school": home,
                "grade": "Junior", "major": major, "research_interests": interests,
                "skills": ["Python", "SQL", "statistics"], "seeking_types": ["internship" if mode == "listing" else "research"],
                "coursework": [], "is_international": False, "can_cold_email": True}
