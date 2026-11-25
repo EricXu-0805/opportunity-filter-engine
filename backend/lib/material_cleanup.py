@@ -21,7 +21,10 @@ def configured() -> bool:
 async def cleanup_once() -> dict:
     url, key = settings()
     async with new_client() as client:
-        return await MaterialService(client, url, key).cleanup()
+        service = MaterialService(client, url, key)
+        archive = await service.cleanup()
+        tracker = await service.cleanup_tracker_versions()
+        return {field: archive[field] + tracker[field] for field in archive}
 
 
 async def run_forever(stop: asyncio.Event) -> None:

@@ -17,9 +17,11 @@ const OPP = 'faculty-old-opportunity';
 const path = `${U1}/${OPP}/resume.pdf`;
 const file = () => new File(['original bytes'], 'resume.pdf', { type: 'application/pdf' });
 const session = (uid: string | null = U1, guest = false) => ({ data: { session: uid ? { user: { id: uid, is_anonymous: guest }, access_token: 'token' } : null }, error: null });
-const row = { name: 'resume.pdf', id: 'object-id', metadata: { size: 14, mimetype: 'application/pdf' }, created_at: '2026-01-01T00:00:00Z' };
+const OBJECT = '33333333-3333-4333-8333-333333333333';
+const OP = '44444444-4444-4444-8444-444444444444';
+const row = { name: 'resume.pdf', id: OBJECT, metadata: { size: 14, mimetype: 'application/pdf' }, created_at: '2026-01-01T00:00:00Z' };
 const target = { name: 'resume.pdf', sizeBytes: 14, mimeType: 'application/pdf', createdAt: row.created_at,
-  revision: { id: row.id, etag: '"original"', updatedAt: null } };
+  revision: 'o:observed' };
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (cause: unknown) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 async function until(check: () => boolean) { for (let i = 0; i < 100 && !check(); i++) await Promise.resolve(); expect(check()).toBe(true); }
@@ -29,7 +31,15 @@ beforeEach(async () => {
   mocks.session.mockReset().mockResolvedValue(session());
   mocks.list.mockReset().mockResolvedValue({ data: [row], error: null });
   mocks.upload.mockReset().mockImplementation(async (uploadedPath: string) => ({ data: { path: uploadedPath, id: 'object-id' }, error: null }));
-  mocks.rpc.mockReset().mockResolvedValue({ data: 'old-version', error: null });
+  mocks.rpc.mockReset().mockImplementation(async (name: string, args: Record<string, string[]>) => {
+    if (name === 'resolve_tracker_attachment_versions') return { error: null, data: Object.fromEntries(args.p_paths.map(p => {
+      const fallback = p.endsWith('/old.txt');
+      return [p, { path: p, anchorId: OBJECT, revision: target.revision, storageBucket: ATTACHMENTS_BUCKET,
+        storagePath: p, sizeBytes: fallback ? 0 : 14, mimeType: fallback ? 'application/octet-stream' : 'application/pdf',
+        etag: null, updatedAt: null }];
+    })) };
+    return { data: name === 'stage_tracker_attachment' ? OP : true, error: null };
+  });
   mocks.replace.mockReset().mockResolvedValue({ data: { path, id: row.id }, error: null });
   mocks.remove.mockReset().mockResolvedValue({ data: [{ name: path }], error: null });
   mocks.signed.mockReset().mockResolvedValue({ data: { signedUrl: 'https://test.supabase.co/original.pdf' }, error: null });
@@ -46,14 +56,14 @@ const operations = {
 
 describe('legacy attachment protocol and failures', () => {
   it('uses the old bucket/prefix and preserves actual metadata', async () => {
-    expect(await operations.list()).toEqual([{ name: 'resume.pdf', sizeBytes: 14, mimeType: 'application/pdf', createdAt: row.created_at }]);
+    expect(await operations.list()).toEqual([{ name: 'resume.pdf', sizeBytes: 14, mimeType: 'application/pdf', createdAt: row.created_at, revision: target.revision }]);
     expect(mocks.from).toHaveBeenCalledWith(ATTACHMENTS_BUCKET);
     expect(ATTACHMENTS_BUCKET).toBe('tracker-attachments');
     expect(mocks.list).toHaveBeenCalledWith(`${U1}/${OPP}`, { limit: 100, offset: 0, sortBy: { column: 'name', order: 'asc' } }, { signal: expect.any(AbortSignal) });
   });
   const namedRows = (count: number) => Array.from({ length: count }, (_, i) => {
     const name = `file-${String(i).padStart(3, '0')}.pdf`;
-    return { ...row, name, id: name };
+    return { ...row, name, id: OBJECT };
   });
   it.each([100, 101, 199, 205])('reads every file when Storage lists %i raw entries', async count => {
     const objects = namedRows(count);
@@ -87,8 +97,8 @@ describe('legacy attachment protocol and failures', () => {
     await expect(operations.list()).rejects.toMatchObject({ code: 'unavailable', message: 'Attachment request could not be completed' });
   });
   it('ignores storage virtual directories/placeholders but keeps old metadata-light files without inventing dates', async () => {
-    mocks.list.mockResolvedValue({ data: [{ name: 'folder', id: null, metadata: null }, { name: '.emptyFolderPlaceholder' }, { name: 'trailing/' }, { name: 'old.txt', id: 'old-id', metadata: null }], error: null });
-    expect(await operations.list()).toEqual([{ name: 'old.txt', sizeBytes: 0, mimeType: 'application/octet-stream', createdAt: '' }]);
+    mocks.list.mockResolvedValue({ data: [{ name: 'folder', id: null, metadata: null }, { name: '.emptyFolderPlaceholder' }, { name: 'trailing/' }, { name: 'old.txt', id: OBJECT, metadata: null }], error: null });
+    expect(await operations.list()).toEqual([{ name: 'old.txt', sizeBytes: 0, mimeType: 'application/octet-stream', createdAt: '', revision: target.revision }]);
   });
   it.each([null, { name: 12 }, { name: 'wrong/target.pdf' }, { name: 'size.pdf', metadata: { size: -1 } }])('malformed row cannot become successful empty or a usable file (%j)', async bad => {
     mocks.list.mockResolvedValue({ data: [bad], error: null });
@@ -157,9 +167,9 @@ for (const [kind, request] of Object.entries(operations)) describe(`${kind}: bou
     await owner(U2); pending.resolve(session(U2)); await rejected; expect(mocks.from).not.toHaveBeenCalled();
   });
   it('owner changes while storage is pending: no old result is accepted', async () => {
-    const pending = deferred<never>(); mocks[kind as keyof typeof operations].mockReturnValue(pending.promise);
+    const pending = deferred<never>(); mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mockReturnValue(pending.promise);
     const read = request(); const rejected = expect(read).rejects.toBeInstanceOf(OwnerMismatchError);
-    await until(() => mocks[kind as keyof typeof operations].mock.calls.length === 1);
+    await until(() => mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mock.calls.length === 1);
     await owner(U2); pending.reject(new Error('late private error')); await rejected;
   });
   it('stalled auth times out; resolving it later never starts the storage operation', async () => {
@@ -170,39 +180,37 @@ for (const [kind, request] of Object.entries(operations)) describe(`${kind}: bou
   });
   it('one deadline spans auth and storage; no timeout retries the operation', async () => {
     vi.useFakeTimers(); const auth = deferred<ReturnType<typeof session>>(); mocks.session.mockReturnValue(auth.promise);
-    const pending = deferred<never>(); mocks[kind as keyof typeof operations].mockReturnValue(pending.promise);
+    const pending = deferred<never>(); mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mockReturnValue(pending.promise);
     const read = request(); const rejected = expect(read).rejects.toMatchObject({ code: 'timeout' });
-    await vi.advanceTimersByTimeAsync(20_000); auth.resolve(session()); await until(() => mocks[kind as keyof typeof operations].mock.calls.length === 1);
+    await vi.advanceTimersByTimeAsync(20_000); auth.resolve(session()); await until(() => mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mock.calls.length === 1);
     await vi.advanceTimersByTimeAsync(10_000); await rejected;
-    pending.reject(new Error('late SDK rejection')); await Promise.resolve(); expect(mocks[kind as keyof typeof operations]).toHaveBeenCalledTimes(1);
+    pending.reject(new Error('late SDK rejection')); await Promise.resolve(); expect(mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations]).toHaveBeenCalledTimes(1);
   });
   it('caller cancellation settles promptly and ignores late failures', async () => {
-    const pending = deferred<never>(); mocks[kind as keyof typeof operations].mockReturnValue(pending.promise);
+    const pending = deferred<never>(); mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mockReturnValue(pending.promise);
     const controller = new AbortController(); const read = request(controller.signal); const rejected = expect(read).rejects.toMatchObject({ name: 'AbortError' });
-    await until(() => mocks[kind as keyof typeof operations].mock.calls.length === 1); controller.abort(); await rejected;
-    pending.reject(new Error('late')); await Promise.resolve(); expect(mocks[kind as keyof typeof operations]).toHaveBeenCalledTimes(1);
+    await until(() => mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mock.calls.length === 1); controller.abort(); await rejected;
+    pending.reject(new Error('late')); await Promise.resolve(); expect(mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations]).toHaveBeenCalledTimes(1);
   });
   it('SDK 401 is session-required; SDK 403 is unavailable, not empty/success', async () => {
-    mocks[kind as keyof typeof operations].mockResolvedValueOnce({ data: null, error: { statusCode: '401' } }).mockResolvedValueOnce({ data: null, error: { statusCode: '403' } });
+    mocks[kind === 'replace' ? 'upload' : kind as keyof typeof operations].mockResolvedValueOnce({ data: null, error: { statusCode: '401' } }).mockResolvedValueOnce({ data: null, error: { statusCode: '403' } });
     await expect(request()).rejects.toMatchObject({ code: 'unauthenticated' });
     await expect(request()).rejects.toMatchObject({ code: 'unavailable' });
   });
 });
 
 describe('conditional attachment replacement', () => {
-  it('retains list evidence for the selected file and sends new bytes to its original path', async () => {
-    mocks.list.mockResolvedValue({ data: [{ ...row, metadata: { ...row.metadata, eTag: '"original"' } }], error: null });
+  it('publishes only after a create-only upload under a generated version key', async () => {
     const [selection] = await operations.list();
-    expect(selection.revision).toEqual(target.revision);
+    expect(selection.revision).toBe(target.revision);
     const next = new File(['new bytes'], 'revised.PDF', { type: 'application/pdf' });
     expect(await replaceAttachment(OPP, selection, next, captureOwnerToken())).toEqual({ ok: true, name: row.name });
-    expect(mocks.rpc).toHaveBeenCalledWith('tracker_attachment_replace_version', {
-      p_path: path, p_id: row.id, p_etag: '"original"', p_updated_at: null, p_mime: 'application/pdf',
+    expect(mocks.rpc).toHaveBeenCalledWith('stage_tracker_attachment', {
+      p_path: path, p_revision: target.revision, p_mime: next.type, p_size: next.size,
     });
-    expect(mocks.replace).toHaveBeenCalledWith(path, next, {
-      contentType: 'application/pdf', metadata: { ofe_replace: { id: row.id, version: 'old-version', mime: 'application/pdf' } },
-    });
-    expect(mocks.upload).not.toHaveBeenCalled(); expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.upload).toHaveBeenCalledWith(U1 + '/' + OP, next, { contentType: next.type, upsert: false });
+    expect(mocks.rpc).toHaveBeenCalledWith('publish_tracker_attachment', { p_id: OP });
+    expect(mocks.replace).not.toHaveBeenCalled(); expect(mocks.remove).not.toHaveBeenCalled();
   });
   it.each([['wrong.png', 'application/pdf'], ['wrong.pdf', 'image/png'], ['no-extension', 'application/pdf']])(
     'refuses an inconsistent new file %s/%s before any storage access', async (name, type) => {
@@ -228,7 +236,15 @@ describe('conditional attachment replacement', () => {
     expect(mocks.replace).not.toHaveBeenCalled();
   });
   it('rejects a receipt for a different object at the same path', async () => {
-    mocks.replace.mockResolvedValue({ data: { path, id: 'another-id' }, error: null });
+    mocks.upload.mockResolvedValue({ data: { path, id: 'another-id' }, error: null });
     await expect(operations.replace()).rejects.toMatchObject({ code: 'unavailable' });
+    expect(mocks.rpc).not.toHaveBeenCalledWith('publish_tracker_attachment', expect.anything());
+  });
+  it('does not sign a physical path from another owner or a retired version', async () => {
+    const view = { path, anchorId: OBJECT, revision: 'v:' + OP, storageBucket: 'tracker-attachment-versions',
+      storagePath: U2 + '/' + OP, sizeBytes: 1, mimeType: 'application/pdf', etag: null, updatedAt: null };
+    mocks.rpc.mockResolvedValueOnce({ data: { [path]: view }, error: null });
+    await expect(operations.signed()).rejects.toMatchObject({ code: 'unavailable' });
+    expect(mocks.signed).not.toHaveBeenCalled();
   });
 });

@@ -244,3 +244,29 @@ def test_fallback_network_and_interrupted_error_stream_never_ack_success():
     provider = CleanupProvider(head_status=400, fallback_stream=stream)
     assert cleanup(provider)["failed"] == 1
     assert stream.closed and provider.acks[0]["p_success"] is False
+
+
+def test_tracker_cleanup_accepts_only_version_keys_and_verifies_physical_absence():
+    owner_id = "22222222-2222-4222-8222-222222222222"
+    version_id = "33333333-3333-4333-8333-333333333333"
+    object_path = f"/storage/v1/object/tracker-attachment-versions/{owner_id}/{version_id}"
+    calls = []
+
+    def provider(request):
+        calls.append((request.method, request.url.path))
+        if request.url.path == "/rest/v1/rpc/claim_tracker_attachment_cleanup":
+            return httpx.Response(200, json={"jobs": [{"id": version_id, "owner_id": owner_id}]})
+        if request.method == "DELETE":
+            assert request.url.path == "/storage/v1/object/tracker-attachment-versions"
+            assert json.loads(request.content) == {"prefixes": [f"{owner_id}/{version_id}"]}
+            return httpx.Response(200, json=[])
+        assert request.method == "HEAD" and request.url.path == object_path
+        return httpx.Response(404)
+
+    async def check():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(provider)) as client:
+            service = MaterialService(client, "https://test.invalid", "synthetic")
+            return await service.cleanup_tracker_versions()
+
+    assert asyncio.run(check()) == {"claimed": 1, "succeeded": 1, "failed": 0}
+    assert len(calls) == 3
