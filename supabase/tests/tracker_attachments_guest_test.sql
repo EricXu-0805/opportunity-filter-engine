@@ -48,3 +48,41 @@ INSERT INTO storage.objects(bucket_id, name) VALUES
   ('tracker-attachments', '3a000000-0000-4000-8000-000000000002/opp-2/no-claim.pdf');
 RESET ROLE;
 \echo PASS tracker_attachments_guest_test
+
+-- Future database rebuilds and previously upgraded previews must not retain
+-- application triggers on Supabase-managed storage objects.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='storage.objects'::regclass
+    AND tgname IN ('tracker_attachment_reject_recreation','tracker_attachment_check_revision')) THEN
+    RAISE EXCEPTION 'unexpected retired tracker storage trigger';
+  END IF;
+END $$;
+
+DO $$
+DECLARE u uuid:='3a000000-0000-4000-8000-000000000002'; a uuid:=gen_random_uuid();
+ p text:=u::text||'/opp-2/revision.pdf'; op uuid; other_op uuid; initial jsonb; selected jsonb;
+BEGIN
+  PERFORM set_config('test.uid',u::text,false);
+  INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+    VALUES ('tracker-attachment-versions','tracker-attachment-versions',false,5242880,ARRAY['application/pdf'])
+    ON CONFLICT (id) DO NOTHING;
+  INSERT INTO storage.objects(id,bucket_id,name,metadata,version)
+    VALUES (a,'tracker-attachments',p,'{"mimetype":"application/pdf","size":8}',gen_random_uuid()::text);
+  initial:=public.resolve_tracker_attachment_versions(ARRAY[p])->p;
+  op:=public.stage_tracker_attachment(p,initial->>'revision','application/pdf',9);
+  other_op:=public.stage_tracker_attachment(p,initial->>'revision','application/pdf',9);
+  IF op=other_op OR op IS NULL OR other_op IS NULL THEN RAISE EXCEPTION 'expected two distinct private keys'; END IF;
+  INSERT INTO storage.objects(bucket_id,name,metadata,version)
+    VALUES('tracker-attachment-versions',u::text||'/'||op::text,'{"mimetype":"application/pdf","size":9}',gen_random_uuid()::text);
+  IF NOT public.publish_tracker_attachment(op) OR public.publish_tracker_attachment(other_op)
+    THEN RAISE EXCEPTION 'expected only one publication for a selected revision'; END IF;
+  selected:=public.resolve_tracker_attachment_versions(ARRAY[p])->p;
+  IF selected->>'storageBucket'<>'tracker-attachment-versions' OR selected->>'anchorId'<>a::text
+    OR selected->>'revision' IS NOT DISTINCT FROM initial->>'revision' OR (selected->>'sizeBytes')::int<>9
+    THEN RAISE EXCEPTION 'unexpected published attachment'; END IF;
+  IF public.delete_tracker_attachment(p,initial->>'revision') THEN RAISE EXCEPTION 'stale delete was accepted'; END IF;
+  IF NOT public.delete_tracker_attachment(p,selected->>'revision') THEN RAISE EXCEPTION 'selected delete was refused'; END IF;
+  IF (public.resolve_tracker_attachment_versions(ARRAY[p])->p) IS DISTINCT FROM 'null'::jsonb
+    OR NOT public.tracker_anchor_removable(p,a) OR public.tracker_anchor_removable(p,gen_random_uuid())
+    THEN RAISE EXCEPTION 'expected deletion of one selected incarnation'; END IF;
+END $$;

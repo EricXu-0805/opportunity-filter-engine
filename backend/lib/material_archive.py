@@ -29,10 +29,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _PIPE_CHUNK_BYTES = 1024 * 1024
 
 
-def settings() -> tuple[str, str]:
+def settings(*, for_storage_cleanup: bool = False) -> tuple[str, str]:
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    if not url or not key or os.environ.get("OFE_MATERIAL_ARCHIVE_ENABLED", "1") != "1":
+    if not url or not key or (not for_storage_cleanup and os.environ.get("OFE_MATERIAL_ARCHIVE_ENABLED", "1") != "1"):
         raise MaterialError("material_not_configured", 503)
     return url, key
 
@@ -297,8 +297,8 @@ class MaterialService:
             raise MaterialError("material_invalid_receipt", 502)
         return {"version": 1, "record": record}
 
-    async def object_absent(self, key: str) -> bool:
-        url = f"{self.url}/storage/v1/object/{BUCKET}/{key}"
+    async def object_absent(self, key: str, bucket: str = BUCKET) -> bool:
+        url = f"{self.url}/storage/v1/object/{bucket}/{key}"
         check = await self.client.head(url, headers=self.headers())
         if check.status_code == 404:
             return True
@@ -358,3 +358,26 @@ class MaterialService:
             else:
                 failed += 1
         return {"claimed": len(jobs), "succeeded": succeeded, "failed": failed}
+
+    async def cleanup_tracker_versions(self) -> dict:
+        bucket = "tracker-attachment-versions"
+        result = await self.rpc("claim_tracker_attachment_cleanup", {"p_limit": 20}, user=False)
+        jobs = result.get("jobs")
+        if set(result) != {"jobs"} or not isinstance(jobs, list) or len(jobs) > 20:
+            raise MaterialError("material_invalid_receipt", 502)
+        succeeded = 0
+        for job in jobs:
+            try:
+                if not isinstance(job, dict) or set(job) != {"owner_id", "id"}:
+                    raise ValueError
+                key = uuid_text(job["owner_id"]) + "/" + uuid_text(job["id"])
+            except (KeyError, TypeError, ValueError):
+                raise MaterialError("material_invalid_receipt", 502) from None
+            try:
+                response = await self.client.request("DELETE", f"{self.url}/storage/v1/object/{bucket}",
+                                                     headers=self.headers(), json={"prefixes": [key]})
+                if response.status_code == 200 and isinstance(response.json(), list) and await self.object_absent(key, bucket):
+                    succeeded += 1
+            except (httpx.HTTPError, ValueError):
+                pass  # The database reclaims remaining objects after the lease.
+        return {"claimed": len(jobs), "succeeded": succeeded, "failed": len(jobs) - succeeded}

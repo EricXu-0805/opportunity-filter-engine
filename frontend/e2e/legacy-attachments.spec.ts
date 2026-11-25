@@ -8,7 +8,7 @@ const OTHER = 'purdue-74a073b99827';
 const listing = '**/storage/v1/object/list/tracker-attachments';
 const panel = (page: Page) => page.getByTestId('tracker-attachments');
 const dict = (locale: 'en' | 'zh' = 'en') => (locale === 'zh' ? zh : en).detail.attachments;
-const row = (name: string) => ({ name, id: name, created_at: '2026-09-25T12:00:00Z', updated_at: '2026-09-25T12:00:00Z', metadata: { size: PDF.length, mimetype: 'application/pdf' } });
+const row = (name: string) => ({ name, id: '33333333-3333-4333-8333-333333333333', created_at: '2026-09-25T12:00:00Z', updated_at: '2026-09-25T12:00:00Z', metadata: { size: PDF.length, mimetype: 'application/pdf' } });
 function gate() { let release!: () => void; const promise = new Promise<void>(resolve => { release = resolve; }); return { release, promise }; }
 type Audit = { pageErrors: string[]; external: string[]; responses: { path: string; status: number; injected: string | null }[]; console: { type: string; text: string }[] };
 const audits = new WeakMap<Page, Audit>();
@@ -29,6 +29,13 @@ async function setup(page: Page, owner: Owner, options: { failure?: number; hold
     return route.fulfill({ json: [{ device_id: state.owner.session.user.id, opportunity_id: target, interaction_type: 'contacted', notes: null, remind_at: null, last_contacted_at: '2026-09-25T12:00:00Z', updated_at: '2026-09-25T12:00:00Z' }] });
   });
   for (const table of ['contact_events', 'application_events', 'interaction_status_changes']) await page.route(`**/rest/v1/${table}?**`, route => route.fulfill({ json: [] }));
+  await page.route('**/rest/v1/rpc/resolve_tracker_attachment_versions', route => {
+    const paths: string[] = route.request().postDataJSON().p_paths;
+    return route.fulfill({ json: Object.fromEntries(paths.map(path => [path, { path, anchorId: row('').id,
+      revision: 'o:fixture', storageBucket: 'tracker-attachments', storagePath: path, sizeBytes: PDF.length,
+      mimeType: 'application/pdf', etag: null, updatedAt: null }])) });
+  });
+  await page.route('**/rest/v1/rpc/delete_tracker_attachment', route => route.fulfill({ json: true }));
   await page.route(listing, async route => {
     expect(route.request().method()).toBe('POST');
     const { prefix, offset, limit } = route.request().postDataJSON();
@@ -135,9 +142,43 @@ test.describe('Legacy Tracker attachment recovery', () => {
   test('upload success remains explicit when the following list fails; retry never uploads twice', async ({ page }) => {
     const owner = await account(); try {
       const state = await setup(page, owner); await expect(openFile(page)).toBeEnabled(); state.failAfterWrite = true;
-      await panel(page).locator('input[type=file]').setInputFiles({ name: 'new-file.pdf', mimeType: 'application/pdf', buffer: PDF });
+      await panel(page).getByLabel(dict().addButton, { exact: true }).setInputFiles({ name: 'new-file.pdf', mimeType: 'application/pdf', buffer: PDF });
       await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().uploaded.replace('{name}', 'new-file.pdf')); await expect(page.getByTestId('tracker-attachments-error')).toBeVisible(); await expect(openFile(page)).toBeDisabled(); await expect(page.getByTestId('tracker-attachments-empty')).toHaveCount(0);
       state.failure = 0; await retry(page).click(); await expect(openFile(page, 'new-file.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('selected replacement stages private bytes and commits the logical revision', async ({ page }) => {
+    const owner = await account();
+    try {
+      const state = await setup(page, owner);
+      const path = owner.session.user.id + '/' + TARGET + '/original.pdf';
+      const op = '44444444-4444-4444-8444-444444444444';
+      const storagePath = owner.session.user.id + '/' + op;
+      await page.route('**/rest/v1/rpc/stage_tracker_attachment', route => {
+        expect(route.request().postDataJSON()).toMatchObject({ p_path: path, p_revision: 'o:fixture', p_mime: 'application/pdf' });
+        return route.fulfill({ json: op });
+      });
+      let writes = 0;
+      await page.route('**/storage/v1/object/tracker-attachment-versions/**', route => {
+        expect(route.request().method()).toBe('POST');
+        expect(decodeURIComponent(new URL(route.request().url()).pathname)).toBe('/storage/v1/object/tracker-attachment-versions/' + storagePath);
+        writes++;
+        return route.fulfill({ json: { Key: 'tracker-attachment-versions/' + storagePath, Id: row('').id } });
+      });
+      await page.route('**/rest/v1/rpc/publish_tracker_attachment', route => {
+        expect(writes).toBe(1);
+        expect(route.request().postDataJSON()).toEqual({ p_id: op });
+        return route.fulfill({ json: true });
+      });
+      const picker = page.waitForEvent('filechooser');
+      await panel(page).getByRole('button', { name: dict().replaceAria.replace('{name}', 'original.pdf') }).click();
+      await (await picker).setFiles({ name: 'revised.pdf', mimeType: 'application/pdf', buffer: PDF });
+      await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().replaced.replace('{name}', 'original.pdf'));
+      await expect(openFile(page)).toBeEnabled();
+      expect(writes).toBe(1);
+      expect(state.uploads).toBe(0);
+      expect(state.deletes).toBe(0);
     } finally { await owner.http.dispose(); }
   });
 
@@ -152,8 +193,8 @@ test.describe('Legacy Tracker attachment recovery', () => {
   test('an unknown committed upload can only be checked before another write', async ({ page }) => {
     const owner = await account(); try {
       const state = await setup(page, owner); await expect(openFile(page)).toBeEnabled(); state.unknownWrite = true;
-      await panel(page).locator('input[type=file]').setInputFiles({ name: 'unknown.pdf', mimeType: 'application/pdf', buffer: PDF }); await expect(panel(page)).toContainText(dict().uploadUnknown);
-      await expect(panel(page).locator('input[type=file]')).toBeDisabled(); await retry(page).click(); await expect(openFile(page, 'unknown.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
+      await panel(page).getByLabel(dict().addButton, { exact: true }).setInputFiles({ name: 'unknown.pdf', mimeType: 'application/pdf', buffer: PDF }); await expect(panel(page)).toContainText(dict().uploadUnknown);
+      await expect(panel(page).getByLabel(dict().addButton, { exact: true })).toBeDisabled(); await retry(page).click(); await expect(openFile(page, 'unknown.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
     } finally { await owner.http.dispose(); }
   });
 

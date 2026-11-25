@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { AttachmentRequestError } from '@/lib/attachment-request';
-import { Paperclip, Trash2, Upload, ExternalLink, Loader2 } from 'lucide-react';
+import { Paperclip, Trash2, Upload, ExternalLink, Loader2, Replace } from 'lucide-react';
 import { ATTACHMENTS_ALLOWED_MIME, ATTACHMENTS_MAX_BYTES, deleteAttachment, getAttachmentSignedUrl,
-  listAttachments, onAuthChange, uploadAttachment, type Attachment } from '@/lib/supabase';
+  listAttachments, onAuthChange, replaceAttachment, uploadAttachment, type Attachment } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
 import { useAuthModal } from '@/lib/auth-modal-context';
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
+type ActionKind = 'upload' | 'delete' | 'open' | 'replace';
 type Message = { key: string; vars?: Record<string, string | number> };
 interface Props { opportunityId: string }
 function formatBytes(n: number, t: Replier): string {
@@ -39,7 +40,7 @@ function AttachmentFiles({ opportunityId }: Props) {
   const [ownerToken] = useState(captureOwnerToken);
   const [files, setFiles] = useState<Attachment[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'signed-out'>('loading');
-  const [action, setAction] = useState<{ kind: 'upload' | 'delete' | 'open'; name: string } | null>(null);
+  const [action, setAction] = useState<{ kind: ActionKind; name: string } | null>(null);
   const [error, setError] = useState<Message | null>(null);
   const [notice, setNotice] = useState<Message | null>(null);
   // Files live under the session's uid. Signing a guest in to an account it
@@ -48,6 +49,8 @@ function AttachmentFiles({ opportunityId }: Props) {
   const { openModal } = useAuthModal();
   const [guest, setGuest] = useState<boolean | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
+  const replaceTarget = useRef<Attachment | null>(null);
   const active = useRef(false);
   const pendingAction = useRef(false);
   const controllers = useRef(new Set<AbortController>());
@@ -87,7 +90,7 @@ function AttachmentFiles({ opportunityId }: Props) {
     return () => { active.current = false; requests.forEach(controller => controller.abort()); requests.clear(); };
   }, [refresh]);
 
-  const runAction = async (kind: 'upload' | 'delete' | 'open', name: string, file?: File) => {
+  const runAction = async (kind: ActionKind, name: string, file?: File, target?: Attachment) => {
     if (pendingAction.current || status !== 'ready' || !isTokenOwnerStillCurrent(ownerToken)
       || ownerToken.generation !== captureOwnerToken().generation) return;
     pendingAction.current = true;
@@ -103,23 +106,26 @@ function AttachmentFiles({ opportunityId }: Props) {
         if (!current(controller, token)) return;
         if (!url) throw new Error('No file URL');
         window.open(url, '_blank', 'noopener,noreferrer');
-      } else if (kind === 'upload' && file) {
-        const result = await uploadAttachment(opportunityId, file, token, { signal: controller.signal });
+      } else if (file && (kind === 'upload' || (kind === 'replace' && target))) {
+        const options = { signal: controller.signal };
+        const result = target ? await replaceAttachment(opportunityId, target, file, token, options)
+          : await uploadAttachment(opportunityId, file, token, options);
         if (!current(controller, token)) return;
         if (!result.ok) {
           // The prompt already says it; a guest gets no second message as an error.
           if (result.reason === 'guest') { setGuest(true); return; }
           const key = { too_large: 'errTooLarge', wrong_type: 'errWrongType', duplicate: 'errDuplicate',
-            unauthenticated: 'errUnauth', unknown: 'uploadUnknown' }[result.reason];
+            format: 'replaceFormat', changed: 'replaceChanged', replace_unavailable: 'replaceUnavailable',
+            unauthenticated: 'errUnauth', unknown: kind === 'replace' ? 'replaceUnknown' : 'uploadUnknown' }[result.reason];
           setError({ key, vars: { name } });
-          if (result.reason === 'unknown') setStatus('error');
+          if (result.reason === 'unknown' || result.reason === 'changed') setStatus('error');
           else if (result.reason === 'unauthenticated') { setFiles([]); setStatus('signed-out'); }
           return;
         }
-        setNotice({ key: 'uploaded', vars: { name: result.name } });
+        setNotice({ key: kind === 'replace' ? 'replaced' : 'uploaded', vars: { name: result.name } });
         await refresh();
       } else if (kind === 'delete') {
-        const ok = await deleteAttachment(opportunityId, name, token, { signal: controller.signal });
+        const ok = await deleteAttachment(opportunityId, name, token, { signal: controller.signal, revision: target?.revision });
         if (!current(controller, token)) return;
         if (!ok) throw new Error('No deletion receipt');
         setFiles(previous => previous.filter(item => item.name !== name));
@@ -129,7 +135,8 @@ function AttachmentFiles({ opportunityId }: Props) {
     } catch (cause) {
       if (!current(controller, token)) return;
       const unauthenticated = cause instanceof AttachmentRequestError && cause.code === 'unauthenticated';
-      setError({ key: unauthenticated ? 'errUnauth' : kind === 'open' ? 'errOpen' : kind === 'upload' ? 'uploadUnknown' : 'deleteUnknown', vars: { name } });
+      const failureKey = { open: 'errOpen', upload: 'uploadUnknown', replace: 'replaceUnknown', delete: 'deleteUnknown' }[kind];
+      setError({ key: unauthenticated ? 'errUnauth' : failureKey, vars: { name } });
       if (unauthenticated) { setFiles([]); setStatus('signed-out'); }
       else if (kind !== 'open') setStatus('error');
     } finally {
@@ -155,6 +162,14 @@ function AttachmentFiles({ opportunityId }: Props) {
             aria-label={t('detail.attachments.addButton')} className="hidden" onChange={event => {
               const file = event.target.files?.[0]; event.target.value = '';
               if (file) void runAction('upload', file.name, file);
+            }} />
+          <input ref={replaceInput} type="file" disabled={disabled}
+            aria-label={t('detail.attachments.chooseReplacement')} className="hidden" onChange={event => {
+              const file = event.target.files?.[0];
+              const target = replaceTarget.current;
+              event.target.value = '';
+              replaceTarget.current = null;
+              if (file && target) void runAction('replace', target.name, file, target);
             }} />
         </>}
       </div>
@@ -182,7 +197,19 @@ function AttachmentFiles({ opportunityId }: Props) {
             <span className="truncate text-gray-700">{file.name}</span>
             <span className="ml-auto text-[10px] text-gray-500 shrink-0 tabular-nums">{formatBytes(file.sizeBytes, t)}</span>
           </button>
-          <button type="button" onClick={() => void runAction('delete', file.name)} disabled={disabled}
+          {guest === false && <button type="button" onClick={() => {
+            if (!replaceInput.current) return;
+            replaceTarget.current = file;
+            replaceInput.current.accept = file.mimeType;
+            replaceInput.current.click();
+          }} disabled={disabled} className={buttonClass}
+            aria-label={t('detail.attachments.replaceAria', { name: file.name })}>
+            {action?.kind === 'replace' && action.name === file.name
+              ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+              : <Replace className="w-3 h-3" aria-hidden="true" />}
+            {t('detail.attachments.replaceButton')}
+          </button>}
+          <button type="button" onClick={() => void runAction('delete', file.name, undefined, file)} disabled={disabled}
             className="text-gray-500 hover:text-red-500 p-2 min-h-9 rounded disabled:opacity-50" aria-label={t('detail.attachments.deleteAria', { name: file.name })}>
             {action?.kind === 'delete' && action.name === file.name ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3 h-3" aria-hidden="true" />}
           </button>

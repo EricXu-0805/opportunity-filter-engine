@@ -12,16 +12,34 @@ logger = logging.getLogger("ofe.material_cleanup")
 
 def configured() -> bool:
     try:
-        settings()
+        settings(for_storage_cleanup=True)
         return True
     except MaterialError:
         return False
 
 
 async def cleanup_once() -> dict:
-    url, key = settings()
+    url, key = settings(for_storage_cleanup=True)
     async with new_client() as client:
-        return await MaterialService(client, url, key).cleanup()
+        service = MaterialService(client, url, key)
+        jobs = [service.cleanup_tracker_versions()]
+        try:
+            settings()
+        except MaterialError:
+            pass  # Original-PDF archiving has its own feature switch.
+        else:
+            jobs.append(service.cleanup())
+        results = await asyncio.gather(*jobs, return_exceptions=True)
+        counts = {"claimed": 0, "succeeded": 0, "failed": 0}
+        for result in results:
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning("storage_cleanup_source_unavailable")
+                continue
+            for key in counts:
+                counts[key] += result[key]
+        return counts
 
 
 async def run_forever(stop: asyncio.Event) -> None:

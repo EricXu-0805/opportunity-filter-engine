@@ -33,8 +33,9 @@ jobs:
           mkdir -p supabase/migrations
           cp "$GITHUB_WORKSPACE/supabase/migrations/008_tracker_attachments_storage.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql" supabase/migrations/
           cp "$GITHUB_WORKSPACE/supabase/migrations/20261125183000_tracker_attachment_versions.sql" supabase/migrations/
-          test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD^)" = a506c74bb784bb8b6e0ff9b680384c4b6ca18345
+          test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD^2)" = 568faf626d5b197a8223b3ba605de8380ea8b3a1
           if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
             grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
             exit 1

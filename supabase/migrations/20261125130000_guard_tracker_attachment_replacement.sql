@@ -1,0 +1,3 @@
+-- Migration number retained for installations that replayed the short-lived
+-- replacement guard. The student-facing replacement now uses private version
+-- objects and an application-owned transaction (20261125183000).
