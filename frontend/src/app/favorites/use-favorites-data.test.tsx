@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/supabase', () => ({
-  getFavorites: mocks.getFavorites,
+  getFavoritesSnapshot: async () => {
+    const value = await mocks.getFavorites();
+    return value instanceof Set ? { ids: value, complete: true } : value;
+  },
   toggleFavorite: mocks.toggleFavorite,
   getAuthState: mocks.getAuthState,
   onAuthChange: mocks.onAuthChange,
@@ -63,6 +66,15 @@ describe('useFavoritesData — loading / true-empty / error+retry', () => {
     expect(result.current.serverOpportunities).toEqual([]);
     expect(result.current.unavailableCount).toBe(0);
     expect(mocks.getShortlistOpportunities).not.toHaveBeenCalled(); // no ids, nothing to batch-fetch
+  });
+
+  it('shows known queued favorites and labels the incomplete account list for retry', async () => {
+    mocks.getFavorites.mockResolvedValue({ ids: new Set(['queued']), complete: false });
+    mocks.getShortlistOpportunities.mockResolvedValue({ opportunities: [opp('queued')], unavailableIds: [] });
+    const { result } = renderHook(() => useFavoritesData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe(true);
+    expect(result.current.serverOpportunities).toEqual([opp('queued')]);
   });
 
   it('a getFavorites failure surfaces as error+retry, never a false empty shortlist', async () => {

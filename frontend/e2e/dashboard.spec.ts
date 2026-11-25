@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { en } from '../src/i18n/dictionaries';
 
 test.describe('Dashboard', () => {
   test('shows the personal activity summary instead of database-wide stats', async ({ page }) => {
@@ -52,6 +53,40 @@ test.describe('Dashboard', () => {
     await expect(row).toContainText('Imported in this browser. Check this date on the posting.');
     await expect(row).toHaveAttribute('href', '/favorites');
     await expect(page.getByText('No deadlines among your saved opportunities')).toHaveCount(0);
+  });
+
+  test('a favorites read outage keeps account totals and deadlines unknown until a successful retry on each page', async ({ page }) => {
+    let fail = true;
+    let reads = 0;
+    await page.route('**/rest/v1/favorites?**', route => {
+      expect(route.request().method()).toBe('GET');
+      reads++;
+      if (fail) return route.fulfill({ status: 503, json: { message: 'controlled read failure' } });
+      return route.fulfill({ json: [{ opportunity_id: 'saved-target' }], headers: { 'Content-Range': '0-0/1' } });
+    });
+    await page.route('**/api/opportunities/batch', route => route.fulfill({
+      json: { requested: 1, found: 0, opportunities: [] },
+    }));
+    await page.goto('/dashboard');
+    const saved = page.getByTestId('saved-summary');
+    await expect(saved).toHaveAttribute('data-state', 'error');
+    await expect(saved).not.toHaveText(/0/);
+    await expect(page.getByText(en.dashboard.deadlines.errorTitle)).toBeVisible();
+    await expect(page.getByText(en.dashboard.deadlines.noSavesTitle)).toHaveCount(0);
+    await expect(page.getByTestId('applied-summary')).toHaveAttribute('data-state', 'ready');
+    fail = false;
+    await page.getByText(en.dashboard.saved.errorTitle).locator('..').getByRole('button').click();
+    await expect(saved).toHaveAttribute('data-state', 'ready');
+    await expect(saved).toContainText('1');
+    await expect(page.getByTestId('dashboard-unavailable-note')).toBeVisible();
+
+    fail = true;
+    await page.goto('/favorites');
+    await expect(page.getByText(en.favorites.loadError)).toBeVisible();
+    fail = false;
+    await page.getByRole('alert').filter({ hasText: en.favorites.loadError }).getByRole('button').click();
+    await expect(page.getByText(en.favorites.count.replace('{count}', '1'), { exact: true })).toBeVisible();
+    expect(reads).toBeGreaterThanOrEqual(4);
   });
 
   test('a fresh visitor sees honest empty states, not fabricated activity', async ({ page }) => {
