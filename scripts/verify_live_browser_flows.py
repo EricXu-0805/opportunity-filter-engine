@@ -38,7 +38,7 @@ async def run(mode):
             try: fetch(stub+'/health'); break
             except OSError: await asyncio.sleep(.1)
         session=rpc('/auth/v1/signup',{}); uid=session['user']['id']
-        profile={'name':'Synthetic Student','institution':'UC Berkeley','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
+        profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
         auth={'Authorization':'Bearer '+session['access_token']}
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
@@ -64,6 +64,7 @@ async def run(mode):
                     if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
                         return await route.fulfill(json={'requested':1,'found':0,'opportunities':[]})
                     if u.path=='/api/matches/view' and req.method=='POST' and mode=='cache':
+                        print('Real match view requested; holding',hold,flush=True)
                         if hold:
                             blocked.set();await asyncio.wait_for(release.wait(),30)
                         return await route.continue_()
@@ -71,6 +72,17 @@ async def run(mode):
                 return await route.abort()
             await context.route('**/*',intercept)
             page=await context.new_page();page.set_default_timeout(45000)
+            await page.goto('https://joinalab.com/dashboard',wait_until='domcontentloaded')
+            campus=page.get_by_test_id('university-card-ucb')
+            try:
+                await campus.wait_for(timeout=9000)
+            except Exception:
+                pass
+            if await campus.is_visible():
+                await campus.click()
+                await page.get_by_test_id('switcher-confirm').click()
+                await expect(campus).to_be_hidden(timeout=20000)
+                print('Campus confirmed through the deployed campus picker',flush=True)
             if mode=='dashboard':
                 await page.goto('https://joinalab.com/dashboard',wait_until='domcontentloaded')
                 saved=page.get_by_test_id('saved-summary')
@@ -89,7 +101,11 @@ async def run(mode):
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
             else:
                 await page.goto('https://joinalab.com/results',wait_until='domcontentloaded')
-                await page.locator('[id^="match-card-"]').first.wait_for(timeout=80000)
+                try:
+                    await page.locator('[id^="match-card-"]').first.wait_for(timeout=80000)
+                except Exception:
+                    print('Results surface:',page.url,(await page.locator('body').inner_text())[:850],flush=True)
+                    raise
                 for _ in range(20):
                     state=await context.storage_state()
                     item=next((row for site in state['origins'] if site['origin']=='https://joinalab.com'
