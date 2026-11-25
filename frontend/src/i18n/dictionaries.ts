@@ -2577,15 +2577,15 @@ export const en = {
   home: {
     walkthrough: {
       title: 'How JoinALab works',
-      subtitle: 'From profile to confirmed application tracking — the steps of the release product.',
+      subtitle: 'Build a profile, review your matches and track the steps you take.',
       steps: {
         profile: {
           title: 'Tell us your background',
           caption: 'Major, year, interests, skills — or import them from your résumé or GitHub in one click.',
         },
         matches: {
-          title: 'Get ranked, honest matches',
-          caption: 'Thousands of live opportunities scored against your profile, with international-student eligibility called out.',
+          title: 'Review your matches',
+          caption: 'Explore faculty profiles, research programs and internships that fit your background. Check the listing for recruiting status and international-student eligibility.',
         },
         compare: {
           title: 'Compare your shortlist',
@@ -2597,11 +2597,11 @@ export const en = {
         },
         email: {
           title: 'Draft a grounded cold email',
-          caption: 'A personalized draft citing the professor’s actual research, with tone controls, refine chat, and mistakes to avoid.',
+          caption: 'Draft a message using your experience and the information available about the opportunity. Review the draft before opening your email app.',
         },
         tracker: {
-          title: 'Track every outreach and application',
-          caption: 'A board of everyone you’ve contacted and everything you’ve applied to — statuses, notes, and reminders so no reply falls through.',
+          title: 'Track your outreach and applications',
+          caption: 'Record when you contact someone or submit an application. Add notes and set reminders for the follow-ups you plan.',
         },
       },
     },
@@ -4572,7 +4572,7 @@ export const en = {
   about: {
     heroLine1: 'Connecting Students',
     heroLine2: 'with Opportunities',
-    heroSubtitle: 'An evidence-based tool that helps students discover research and internships that match their background.',
+    heroSubtitle: 'JoinALab checks university directories and research and internship listings on a schedule. Select your school on the profile form to see when its sources were last checked.',
     howItWorks: 'How it works',
     builtWith: 'Built with',
     viewOnGithub: 'View on GitHub',
@@ -8050,15 +8050,15 @@ export const zh = {
   home: {
     walkthrough: {
       title: 'JoinALab 如何工作',
-      subtitle: '从填写档案到确认申请并进入追踪——发布版产品的使用步骤。',
+      subtitle: '填写个人资料，查看匹配结果，记录联系和申请进度。',
       steps: {
         profile: {
           title: '填写你的背景',
           caption: '专业、年级、兴趣、技能——也可以一键从简历或 GitHub 导入。',
         },
         matches: {
-          title: '获得诚实的匹配排名',
-          caption: '数千条实时机会按你的背景打分排序，国际学生资格清晰标注。',
+          title: '查看匹配结果',
+          caption: '查看与你背景匹配的教授、研究项目和实习，打开详情核对招募状态和国际学生资格。',
         },
         compare: {
           title: '并排比较候选',
@@ -8070,11 +8070,11 @@ export const zh = {
         },
         email: {
           title: '生成有据可依的冷邮件',
-          caption: '引用教授真实研究方向的个性化草稿，支持语气切换、对话式润色，并提示常见错误。',
+          caption: '根据你的经历和已知的机会信息起草邮件，核对草稿后再打开邮箱。',
         },
         tracker: {
-          title: '跟踪每一份申请',
-          caption: '看板式管理所有申请——状态、笔记、提醒，不漏掉任何回复。',
+          title: '记录联系和申请',
+          caption: '联系对方或提交申请后，在看板记录进度、添加笔记，并为下次跟进设置提醒。',
         },
       },
     },
@@ -9965,7 +9965,7 @@ export const zh = {
   about: {
     heroLine1: '连接学生',
     heroLine2: '与机会',
-    heroSubtitle: '一个基于证据的工具，帮助学生发现契合自身背景的研究与实习机会。',
+    heroSubtitle: 'JoinALab 定期核对高校名录、研究项目和实习信息。在个人资料中选好学校，即可查看最近一次核对来源的时间。',
     howItWorks: '工作流程',
     builtWith: '技术栈',
     viewOnGithub: '在 GitHub 查看',
