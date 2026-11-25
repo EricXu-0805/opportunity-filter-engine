@@ -45,6 +45,8 @@ from functools import lru_cache
 from src.contact_instructions import SOURCE_KEY as CONTACT_SOURCE_KEY
 from src.contact_instructions import _source_time as contact_source_time
 from src.contact_instructions import _url as contact_url
+from src.urap_windows import SOURCE as URAP_PROJECT_SOURCE
+from src.urap_windows import window_phase
 
 # ---------------------------------------------------------------------------
 # 1. Observed vs synthesized (email provenance)
@@ -1922,6 +1924,15 @@ def target_truth(record: dict) -> TargetTruth:
     expires_at = expires_at if isinstance(expires_at, str) else None
 
     status, status_key = _listing_status(metadata)
+    # A project read while recruiting can stay in memory past the exact local
+    # cutoff. The date-only grace period is for sources that did not state a time.
+    source = record.get("source") if isinstance(record, dict) else None
+    window = metadata.get("urap_window")
+    if source == URAP_PROJECT_SOURCE and isinstance(window, dict):
+        verified_at = window.get("observed_at") or verified_at
+        expires_at = window.get("deadline_at") or expires_at
+        if status in _OPEN_LISTING_STATUSES and window_phase(window) == "closed":
+            status, status_key = "closed", "urap_window"
     if status in _CLOSED_LISTING_STATUSES:
         listing_state = "closed"
     elif status in _OPEN_LISTING_STATUSES:
@@ -1929,7 +1940,6 @@ def target_truth(record: dict) -> TargetTruth:
     else:
         listing_state = "unknown"
 
-    source = record.get("source") if isinstance(record, dict) else None
     source_publishes_reference = (
         isinstance(source, str)
         and source.strip().lower() in _REFERENCE_CONTRACT_SOURCES

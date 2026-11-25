@@ -708,6 +708,7 @@ _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     "is_active",
     "listing_status",
     "urap_status",
+    "urap_window",
     "reference_only",
     # Superseded rather than secret: target_truth.verified_at / .expires_at
     # carry these, and two copies of a timestamp is two things to disagree.

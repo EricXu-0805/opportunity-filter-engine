@@ -40,7 +40,7 @@ const KEY = STORAGE_KEYS.MATCH_RESULTS;
 // `*_attribution` flag, so a restored card printed an inferred stipend as a
 // plain "Stipend" and a host-school city as the listing's location.
 const CACHE_VERSION =
-  'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1';
+  'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1-project-deadline-v1';
 // Exactly the wire this backend speaks — `MATCH_VIEW_CONTRACT_VERSION` in
 // backend/routes/matches.py — and nothing else. A version string nobody
 // emits is not forward compatibility; it is a promise accepted in advance
