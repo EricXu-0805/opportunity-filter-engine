@@ -145,6 +145,7 @@ def test_known_partial_department_never_authorizes_departure():
         finalize_unit_ledger(ledger, [present, missing], "ucsc_faculty")
         assert unit["observed_entity_ids"] == [present["id"]]
         assert unit["retirement_authorized"] is False
+        assert unit["failure_reason"] == "known_partial_roster"
         assert unit_retirement_authority(unit, 2) == (False, "known_partial_roster")
         result = deactivate_stale_faculty([present, missing], {"ucsc_faculty": ledger}, today=TODAY)
         assert not result["newly_deactivated"]
