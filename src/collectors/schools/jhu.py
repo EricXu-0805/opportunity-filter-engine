@@ -440,15 +440,11 @@ SCHOOL: dict = {
                     "propel",
                     "Hopkins Engineering PROPEL Summer Research Program \u2014 Johns Hopkins University",
                     "https://engineering.jhu.edu/about/outreach-and-belonging/hopkins-engineering-propel/",
-                    "Fully funded eight-week residential summer research program (May 27 \u2013 "
-                    "July 24, 2026) at the Whiting School for undergraduates from other U.S. "
-                    "colleges, providing faculty-mentored research, graduate-school "
-                    "preparation workshops, housing, meal plan, competitive stipend, and "
-                    "round-trip travel. Priority to rising juniors and seniors with a 3.0+ "
-                    "GPA; students from under-resourced backgrounds and institutions with "
-                    "limited research opportunities are strongly encouraged. F-1 "
-                    "international students already enrolled at U.S. universities are "
-                    "eligible alongside U.S. citizens and permanent residents.",
+                    "Summer engineering research and graduate-school preparation at the Whiting "
+                    "School. Applicants must have a GPA of at least 3.4, be enrolled full-time at a "
+                    "U.S. college or university, and have undergraduate study remaining. F-1 "
+                    "students already living and studying in the United States can also apply. "
+                    "Housing, meals, a stipend and travel are provided.",
                     organization="Johns Hopkins University",
                     department="Whiting School of Engineering",
                     lab_or_program="PROPEL",
@@ -458,7 +454,7 @@ SCHOOL: dict = {
                     eligibility_majors=["engineering", "computer science", "materials science", "biomedical engineering", "STEM"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="2026 applications closed; opens each winter with decisions by early April",
+                    deadline_note="The school plans to release 2027 application information in November 2026. It has not announced the program dates or a submission deadline.",
                     keywords=["PROPEL", "summer research", "visiting students", "graduate school prep", "fully funded"],
                 ),
                 program(
@@ -576,22 +572,19 @@ SCHOOL: dict = {
                     "som_summer_internship_program",
                     "Johns Hopkins School of Medicine Summer Internship Program (SIP)",
                     "https://www.hopkinsmedicine.org/som/pathway/summer-internship-program",
-                    "Umbrella of ~10-week, full-time summer biomedical research internships "
-                    "at the School of Medicine (2026: May 24\u2013August 1) with stipends of "
-                    "$3,000\u2013$5,750 and free housing. Sub-programs include BSI-SIP basic "
-                    "science tracks, NeuroSIP, SUPerKS kidney science (U.S. citizens/PR, 3.0+ "
-                    "GPA), CSM SIP for low-income/first-generation students, and ICM "
-                    "computational medicine. Open to current undergraduates at U.S. colleges; "
-                    "concurrent coursework or employment is prohibited.",
+                    "Full-time summer research through the Johns Hopkins School of Medicine. Most "
+                    "2027 divisions run May 30 through August 6. Applicants must be U.S. citizens "
+                    "or permanent residents attending college in the United States. Research "
+                    "divisions have their own eligibility requirements and stipend rates.",
                     organization="Johns Hopkins University School of Medicine",
                     department="School of Medicine Pathway Programs",
                     lab_or_program="Summer Internship Program (SIP)",
                     opportunity_type="summer_program",
                     paid="stipend",
-                    compensation="$3,000\u2013$5,750 stipend plus free housing",
+                    compensation="Division-specific stipend and housing at no cost to participants",
                     eligibility_majors=["biology", "neuroscience", "chemistry", "biomedical engineering", "public health", "computer science"],
                     preferred_year=["sophomore", "junior"],
-                    deadline_note="2026 applications closed; cycles typically open in fall with winter deadlines",
+                    deadline_note="Applications open November 1, 2026 and close February 1, 2027 at 11:59 p.m. Eastern.",
                     keywords=["biomedical research", "SIP", "medical school", "summer internship", "stipend"],
                 ),
                 program(
@@ -648,7 +641,7 @@ SCHOOL: dict = {
             "emit": "lab",
             "seeds": [
                 "https://inbt.jhu.edu/nanobio-reu/",
-                "https://lcsr.jhu.edu/reu/",
+                "https://lcsr.jhu.edu/education/summer-reu-program/",
                 "https://bioethics.jhu.edu/education-training/mentorship/",
                 "https://snfagora.jhu.edu/curricular-programs/ba-in-moral-political-economy/undergraduate-summer-internship-program/",
                 "https://snfagora.jhu.edu/for-students/research-assistants-program/",
@@ -680,26 +673,23 @@ SCHOOL: dict = {
                 ),
                 program(
                     "lcsr_csmr_reu",
-                    "Computational Sensing and Medical Robotics (CSMR) REU \u2014 Johns Hopkins LCSR",
-                    "https://lcsr.jhu.edu/reu/",
-                    "Intensive ten-week NSF-funded summer REU (2026: May 26\u2013August 1) in the "
-                    "Laboratory for Computational Sensing and Robotics, pairing each student "
-                    "with a faculty supervisor and graduate mentor on projects in surgical "
-                    "robotics, medical imaging, and assistive devices across ECE, MechE, BME, "
-                    "and CS. Historically provides a $5,000 stipend plus summer housing, with "
-                    "training in technical communication and research ethics. Open to U.S. "
-                    "citizens/permanent residents who have completed freshman year with at "
-                    "least one semester of engineering coursework.",
+                    "AI-CARE Summer REU — Johns Hopkins LCSR",
+                    "https://lcsr.jhu.edu/education/summer-reu-program/",
+                    "The 2027 AI-CARE program pairs engineering students with LCSR faculty for "
+                    "research in AI, sensing, robotics and healthcare from June 1 through August 6. "
+                    "U.S. citizens or permanent residents enrolled at a U.S. institution must "
+                    "finish freshman year and at least one semester of engineering coursework "
+                    "before the program. Students graduating by spring 2027 are ineligible.",
                     organization="Johns Hopkins University",
                     department="Laboratory for Computational Sensing and Robotics",
-                    lab_or_program="CSMR REU",
+                    lab_or_program="AI-CARE Summer REU",
                     opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="$5,000 stipend plus summer housing (NSF-funded)",
+                    paid="unknown",
+                    compensation="",
                     eligibility_majors=["electrical engineering", "mechanical engineering", "biomedical engineering", "computer science"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="2026 cycle closed; 2027 applications open fall 2026",
+                    deadline_note="Applications open December 1, 2026 and close February 1, 2027.",
                     keywords=["robotics", "REU", "medical robotics", "computational sensing", "surgical"],
                 ),
                 program(

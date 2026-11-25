@@ -492,9 +492,13 @@ class TestEveryConfiguredNoteTheRuleReads:
                             "Fellowship (deadline March 12, 2027)",
         "sbu/velay_fellowship": "Centralized URECA summer application, deadline March 12, 2027",
         "stanford/biox_usrp":
-            "Faculty mentor must be Bio-X affiliated; recent application cycle closed January 21, 2026.",
+            "Application deadline January 12, 2027 at 8:00 a.m. PST. Faculty mentors must complete the confirmation form within three days of submission.",
         "stanford/chappell_lougee": "Application deadline Tuesday, December 1, 2026, 11:59pm PST; faculty mentor "
                                     "letter due December 8, 2026; project execution Summer 2027.",
+        "uchicago/dsi_summer_lab": "Applications close January 11, 2027 at 11:59 p.m. Central.",
+        "uchicago/quad_summer_scholars": "Priority deadline January 31, 2027; final deadline March 31, 2027.",
+        "uchicago/quad_year_scholars": "Academic-year deadlines: October 5, 2026 and December 18, 2026. "
+                                      "Faculty letters are due with the application.",
         "uchicago/ede_plus": "Annual program; 2026 cohort application closed Feb 16, 2026; details of the EDE+ 2027 "
                              "application are not posted yet.",
         "ucla/amgen_scholars_ucla":
@@ -505,8 +509,7 @@ class TestEveryConfiguredNoteTheRuleReads:
                               "is not posted yet",
         "uf/suirp":
             "Applications closed February 15, 2026 at 11:59 PM; dates for the next cycle are not posted yet.",
-        # Its page, read 2026-10-17, still gives only "The application deadline is March 25, 2026."
-        "upenn/wharton_spur": "Application deadline was March 25, 2026; the 2027 deadline is not posted yet",
+        "upenn/wharton_spur": "Application deadline is March 22, 2027",
         "utexas/ts_research_forum": "Next forum: April 16, 2027, Welch Hall Grand Concourse",
         "washu/dbbs_amgen_scholars": "2026 application deadline was February 2, 2026; the page has not posted a "
                                      "2027 Amgen Scholars application yet",
@@ -526,10 +529,9 @@ class TestEveryConfiguredNoteTheRuleReads:
         assert {key: note for key, note in self._notes().items() if evidence.configured_note_dates(note)} == self._READ
 
     @pytest.mark.parametrize("key", [
-        "stanford/small_grant", "uchicago/quad_faculty_research_grant", "uchicago/quad_year_scholars",
+        "stanford/small_grant", "uchicago/quad_faculty_research_grant",
     ])
-    def test_recurring_notes_are_not_read(self, key):
-        # Review M90 r3: "Quarterly deadlines", "one cycle per year" and per-quarter deadlines name a cycle
-        # whose next date may already be set, so these no longer read.
+    def test_notes_without_a_specific_deadline_are_not_read(self, key):
+        # A repeating cycle or a closed academic year does not establish a specific deadline.
         note = self._notes()[key]
         assert note and evidence.configured_note_dates(note) is None
