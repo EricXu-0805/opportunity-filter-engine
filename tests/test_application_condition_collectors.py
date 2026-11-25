@@ -230,6 +230,58 @@ def _checks(states):
     return check, asked
 
 
+@pytest.mark.parametrize('organization,preferred,alias', [
+    ('University of Wisconsin-Madison', 'sro-595e912d', 'sro-3c378261'),
+    ('Boston University', 'sro-60f60fbd', 'sro-bc33bc08'),
+])
+def test_sro_duplicate_keeps_one_program_and_promotes_relisted_alias(tmp_path, organization, preferred, alias):
+    path = tmp_path / 'opportunities.json'
+    first, second, unrelated = [_sro_row(URL + '/' + key) for key in (preferred, alias, 'another')]
+    first.update(id=preferred, organization=organization)
+    second.update(id=alias, organization=organization)
+    unrelated.update(organization=organization)  # same title and host alone are insufficient
+    archived = _sro_row(URL + '/old', is_active=False, deactivation_reason='no_longer_listed')
+    archived.update(id='sro-51c40e5b', organization='Boston University')
+    path.write_text(json.dumps([archived]))
+
+    def records():
+        return {row['id']: row for row in json.loads(path.read_text())}
+
+    sro.merge_into_processed([deepcopy(row) for row in (second, unrelated, first)], str(path))
+    rows = records()
+    assert rows[preferred]['metadata']['is_active'] and rows[unrelated['id']]['metadata']['is_active']
+    original = rows[alias]['metadata']
+    assert original['is_active'] is False and original['duplicate_of'] == preferred
+    assert original['deactivation_reason'] == 'duplicate_of_live_record'
+    assert rows[archived['id']] == archived
+
+    # A partial read, even one that sees only the alias, is not evidence the
+    # preferred entry disappeared. A successful full retirement is.
+    rows[alias]['metadata']['deactivated_at'] = '2026-10-01'
+    path.write_text(json.dumps(list(rows.values())))
+    sro.merge_into_processed([deepcopy(second)], str(path))
+    rows = records()
+    assert rows[alias]['metadata']['deactivated_at'] == '2026-10-01'
+    kept_ids = {alias, unrelated['id']}
+    check, _ = _checks({second['url']: 'live', first['url']: 'gone'})
+    sro.deactivate_unlisted(list(rows.values()), kept_ids, second['url'], today='2026-11-25', check=check)
+    assert rows[preferred]['metadata']['deactivation_reason'] == 'no_longer_listed'
+    assert rows[alias]['metadata']['is_active'] is True
+    assert 'duplicate_of' not in rows[alias]['metadata']
+    assert 'deactivated_at' not in rows[alias]['metadata']
+    assert rows[archived['id']] == archived
+
+    path.write_text(json.dumps(list(rows.values())))
+    sro.merge_into_processed([deepcopy(first)], str(path))
+    rows = records()
+    assert rows[preferred]['metadata']['is_active'] and rows[alias]['metadata']['duplicate_of'] == preferred
+    # A directory ID now documenting another organization is its own entry.
+    second['organization'] = 'Another university'
+    second['metadata']['detail_page_verified'] = True
+    sro.merge_into_processed([second], str(path))
+    assert records()[alias]['metadata']['is_active'] is True
+
+
 def test_sro_unlisted_rows_retire_only_when_their_page_is_gone():
     listed = _sro_row(URL)
     renamed, taken_down = _sro_row(URL + '-old-title'), _sro_row(URL + '-withdrawn')
