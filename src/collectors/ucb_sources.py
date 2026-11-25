@@ -124,6 +124,7 @@ def _prog(
     international_friendly: str = "unknown",
     deadline_note: str = "",
     contact_email: str | None = None,
+    reference_only: bool = False,
     keywords: list[str] | None = None,
 ) -> dict:
     """Build one curated opportunity spec. Kept terse so the registry below
@@ -144,6 +145,7 @@ def _prog(
         "international_friendly": international_friendly,
         "deadline_note": deadline_note,
         "contact_email": contact_email,
+        **({"reference_only": True} if reference_only else {}),
         "keywords": keywords or [],
     }
 
@@ -965,7 +967,8 @@ UCB_SOURCES: list[dict] = [
         "emit": EMIT_OPEN,
         "seeds": [
             "https://education.lbl.gov/internships/",
-            "https://math.berkeley.edu/programs/undergraduate/reu",
+            "https://math.berkeley.edu/undergraduate/undergraduate-research-opportunities",
+            "https://physics.berkeley.edu/academics/undergraduate-research/research-opportunities-board",
         ],
         "crawl": STATIC,
         "update": SEASONAL,
@@ -998,31 +1001,16 @@ UCB_SOURCES: list[dict] = [
                   international_friendly="no",
                   deadline_note="Varies by program; mostly spring deadlines for summer.",
                   keywords=["summer research", "reu", "national laboratory", "computing"]),
-            _prog("math_reu", "Berkeley Mathematics REU / Summer Research",
-                  "https://math.berkeley.edu/programs/undergraduate/reu",
-                  "Berkeley Math's pointers to summer REU and research opportunities in "
-                  "pure and applied mathematics, including the department's own summer "
-                  "research and national REU programs.",
+            _prog("math_reu", "Berkeley Mathematics Undergraduate Research Opportunities",
+                  "https://math.berkeley.edu/undergraduate/undergraduate-research-opportunities",
+                  "The mathematics department lists research programs and links to their individual requirements.",
                   organization="Department of Mathematics, UC Berkeley",
-                  lab_or_program="Math REU",
-                  opportunity_type="summer_program",
-                  eligibility_majors=["Mathematics", "Applied Mathematics", "Statistics"],
-                  preferred_year=["sophomore", "junior"],
-                  international_friendly="no",
-                  deadline_note="REU cycle — most deadlines Feb-March for summer.",
-                  keywords=["summer research", "reu", "mathematics"]),
-            _prog("physics_reu", "Berkeley Physics Summer Research / REU pointers",
-                  "https://physics.berkeley.edu/academics/undergraduate/summer-research",
-                  "Berkeley Physics' compiled summer research and REU options for "
-                  "physics undergraduates, on campus and at partner institutions.",
+                  reference_only=True, keywords=["research resources", "mathematics"]),
+            _prog("physics_reu", "Berkeley Physics Research Opportunities Board",
+                  "https://physics.berkeley.edu/academics/undergraduate-research/research-opportunities-board",
+                  "The physics department lists research programs, funding and application resources for undergraduates.",
                   organization="Department of Physics, UC Berkeley",
-                  lab_or_program="Physics REU",
-                  opportunity_type="summer_program",
-                  eligibility_majors=["Physics", "Astrophysics", "Engineering Physics"],
-                  preferred_year=["sophomore", "junior"],
-                  international_friendly="no",
-                  deadline_note="REU cycle — most deadlines Feb-March for summer.",
-                  keywords=["summer research", "reu", "physics", "astrophysics"]),
+                  reference_only=True, keywords=["research resources", "physics"]),
         ],
     },
 

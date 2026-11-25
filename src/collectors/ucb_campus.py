@@ -44,6 +44,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
+from src.contact_instructions import same_source_page as _same_page_url
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from . import ucb_sources as reg
@@ -124,6 +125,9 @@ def _normalize_program(
         description = f"{description}\n\nFrom the program page: {extra_desc}"
     description = description[:_DESC_CAP]
 
+    reference_only = program.get("reference_only") is True
+    if reference_only:
+        status = "unknown"
     title = program["title"]
     if status == "open":
         title = f"{title} (applications open)"
@@ -194,7 +198,7 @@ def _normalize_program(
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
             "application_effort": "medium",
-            "application_url": program["url"],
+            "application_url": None if reference_only else program["url"],
         },
         "description": description,
         "description_raw": description,
@@ -208,6 +212,7 @@ def _normalize_program(
             "first_seen_at": now,
             "last_seen_at": now,
             "is_active": status != "closed",
+            **({"reference_only": True} if reference_only else {}),
             "manually_reviewed": False,
             "notes": f"Auto-imported from {source['source_name']} ({source['source_type']})",
             "collector_key": program["key"],
@@ -844,6 +849,9 @@ def merge_into_processed(
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
             )
+            if unverified_seed and existing_metadata.get("reference_only") is True:
+                opp["metadata"].update(reference_only=True, status="unknown")
+                opp["application"]["application_url"] = None
             ambiguous_status = opp["metadata"].get("status") == "unknown"
             if unverified_seed or ambiguous_status:
                 # A quick or failed fetch read nothing, so the row keeps what
@@ -852,13 +860,15 @@ def merge_into_processed(
                 # rule.
                 carried = ("status", "is_active")
                 stored_status = existing_metadata.get("status")
-                if not unverified_seed and stored_status in {"open", "closed"}:
+                if opp["metadata"].get("reference_only") is True:
+                    carried = ()
+                elif not unverified_seed and stored_status in {"open", "closed"}:
                     retired = stored_status == "open" and existing_metadata.get("is_active") is False
                     carried = ("is_active",) if retired else ()
                 for key in carried:
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
-                if unverified_seed:
+                if unverified_seed and _same_page_url(existing_opp.get("url"), opp.get("url")):
                     if "last_verified" in existing_metadata:
                         opp["metadata"]["last_verified"] = existing_metadata[
                             "last_verified"
