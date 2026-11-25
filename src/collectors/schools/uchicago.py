@@ -87,7 +87,7 @@ SCHOOL: dict = {
                 "https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi",
                 "https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars",
                 "https://ccrf.uchicago.edu/office-undergraduate-research/quad-undergraduate-research-scholars-program",
-                "https://ccrf.uchicago.edu/undergraduate-research/college-research-fellows-program",
+                "https://ccrf.uchicago.edu/office-undergraduate-research/quad-faculty-research-grant-program",
             ],
             "crawl": STATIC,
             "programs": [
@@ -118,7 +118,7 @@ SCHOOL: dict = {
                     compensation="$5,500 stipend (to the student; not for supplies)",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     international_friendly="unknown",
-                    deadline_note="Priority deadline Feb 16, 2026; rolling review through Mar 30, 2026.",
+                    deadline_note="Priority deadline January 31, 2027; final deadline March 31, 2027.",
                     keywords=["faculty mentor", "summer research", "any discipline", "stipend", "research symposium"],
                 ),
                 program(
@@ -133,13 +133,13 @@ SCHOOL: dict = {
                     compensation="Quarterly research grant",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     international_friendly="unknown",
-                    deadline_note="Autumn-quarter deadline Oct 6, 2025; Winter-quarter deadline Jan 8, 2026.",
+                    deadline_note="Academic-year deadlines: October 5, 2026 and December 18, 2026. Faculty letters are due with the application.",
                     keywords=["faculty mentor", "academic year research", "quarterly grant", "research symposium", "any discipline"],
                 ),
                 program(
                     "quad_faculty_research_grant",
                     "Quad Faculty Research Grant Program",
-                    "https://ccrf.uchicago.edu/undergraduate-research/college-research-fellows-program",
+                    "https://ccrf.uchicago.edu/office-undergraduate-research/quad-faculty-research-grant-program",
                     "Faculty of any rank (and senior scholars at UChicago institutes) receive funding to hire an early-career College undergraduate with no prior paid research experience for academic-year research at a uniform hourly rate — a designed entry point into a first paid research position (formerly the College Research Fellows program). Students work 10-13 hours per week and are hired through participating faculty; federal work-study students are prioritized.",
                     organization="UChicago College Center for Research and Fellowships",
                     lab_or_program="Quad Faculty Research Grant Program",
@@ -148,7 +148,7 @@ SCHOOL: dict = {
                     compensation="Hourly, up to $5,000 per academic year",
                     preferred_year=["freshman", "sophomore"],
                     international_friendly="unknown",
-                    deadline_note="Faculty application deadline Oct 13, 2025 (one cycle per year).",
+                    deadline_note="The faculty application for the 2026–27 academic year is closed.",
                     keywords=["first research job", "paid research", "early-career", "faculty hiring", "work-study"],
                 ),
             ],
@@ -168,7 +168,10 @@ SCHOOL: dict = {
                     "dsi_summer_lab",
                     "DSI Summer Lab (Data Science Institute)",
                     "https://datascience.uchicago.edu/education/summerlab/",
-                    "An immersive eight-week paid summer research program (2026: June 15-August 7) pairing undergraduates from any institution — plus Chicago-area high school students — with data-science mentors across computer science, social science, climate and energy policy, materials science, and biomedical research. No prior research experience required; programming familiarity preferred. Free optional housing for college students; international students are eligible if US work-authorized.",
+                    "The 2027 Data Science Institute Summer Lab runs June 14 through August 6 and "
+                    "pairs undergraduates and Chicago-area high school students with research "
+                    "mentors. Paid projects span computing, social science, climate, public policy, "
+                    "materials and biomedical research. Prior research experience is not required.",
                     organization="UChicago Data Science Institute",
                     lab_or_program="DSI Summer Lab",
                     opportunity_type="summer_program",
@@ -176,7 +179,7 @@ SCHOOL: dict = {
                     compensation="$5,600 stipend for 8 weeks (2026), plus free optional housing",
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="The 2026 program has concluded; the 2027 program application is not posted yet (the page says to check back in fall 2026). Graduating college seniors are not eligible.",
+                    deadline_note="Applications close January 11, 2027 at 11:59 p.m. Central.",
                     keywords=["data science", "mentored research", "machine learning", "open to all institutions", "summer research"],
                 ),
                 program(
