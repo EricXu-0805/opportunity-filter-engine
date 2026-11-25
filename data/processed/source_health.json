@@ -495,7 +495,24 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "arizona",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "acbs",
+        "anth",
+        "bme",
+        "caem",
+        "chem",
+        "cs",
+        "ece",
+        "mcb",
+        "mge",
+        "mse",
+        "nurs",
+        "pbhl",
+        "sie",
+        "snre",
+        "soc"
+      ]
     },
     "asu_faculty": {
       "baseline_count": 2448,
@@ -508,7 +525,10 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "asu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "semte"
+      ]
     },
     "barnard_faculty": {
       "baseline_count": 213,
@@ -547,7 +567,12 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "bc",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "cs",
+        "poli",
+        "stm"
+      ]
     },
     "boulder_faculty": {
       "baseline_count": 1601,
@@ -560,7 +585,30 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "boulder",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aero",
+        "alc",
+        "anth",
+        "atoc",
+        "bus",
+        "chbe",
+        "cs",
+        "cven",
+        "ecee",
+        "educ",
+        "engl",
+        "geog",
+        "geol",
+        "gsll",
+        "law",
+        "me",
+        "mus",
+        "psci",
+        "psyc",
+        "soc",
+        "thdn"
+      ]
     },
     "boulder_labs": {
       "baseline_count": 4,
@@ -598,7 +646,14 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "brown",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "eas",
+        "econ",
+        "grmn",
+        "hiaa",
+        "phys"
+      ]
     },
     "brynmawr_faculty": {
       "baseline_count": 155,
@@ -611,7 +666,12 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "brynmawr",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "chem",
+        "dsci",
+        "thea"
+      ]
     },
     "bu_faculty": {
       "baseline_count": 1965,
@@ -646,7 +706,13 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "buffalo",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "art",
+        "cse",
+        "ear",
+        "geog"
+      ]
     },
     "caltech_external_research": {
       "baseline_count": 13,
@@ -672,7 +738,10 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "caltech",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aphms"
+      ]
     },
     "caltech_labs": {
       "baseline_count": 8,
@@ -2163,7 +2232,15 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "carleton",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "biol",
+        "cogs",
+        "engl",
+        "fren",
+        "posc",
+        "soan"
+      ]
     },
     "casewestern_faculty": {
       "baseline_count": 726,
@@ -2176,7 +2253,11 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "casewestern",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "engl",
+        "phys"
+      ]
     },
     "cincinnati_faculty": {
       "baseline_count": 1058,
@@ -2189,7 +2270,15 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "cincinnati",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bme",
+        "cheme",
+        "cj",
+        "daap",
+        "fin",
+        "psyc"
+      ]
     },
     "clemson_faculty": {
       "baseline_count": 912,
@@ -2202,7 +2291,13 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "clemson",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aue",
+        "bioe",
+        "biosci",
+        "eees"
+      ]
     },
     "cmc_faculty": {
       "baseline_count": 159,
@@ -2215,7 +2310,10 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "cmc",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "govt"
+      ]
     },
     "cmu_faculty": {
       "baseline_count": 934,
@@ -2228,7 +2326,12 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "cmu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bme",
+        "csd",
+        "mse"
+      ]
     },
     "cmu_uro_projects": {
       "baseline_count": 38,
@@ -2310,7 +2413,13 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "colostate",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "danc",
+        "engl",
+        "mus",
+        "thtr"
+      ]
     },
     "columbia_faculty": {
       "baseline_count": 1071,
@@ -2323,7 +2432,32 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "columbia",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aaads",
+        "anth",
+        "arth",
+        "biol",
+        "chem",
+        "e3b",
+        "ealac",
+        "ee",
+        "eesc",
+        "engl",
+        "fren",
+        "germ",
+        "ieor",
+        "ital",
+        "laic",
+        "musi",
+        "phil",
+        "phys",
+        "psyc",
+        "reli",
+        "slav",
+        "soci",
+        "stat"
+      ]
     },
     "cornell_faculty": {
       "baseline_count": 1750,
@@ -2336,7 +2470,15 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "cornell",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bme",
+        "cheme",
+        "cs",
+        "eas",
+        "entom",
+        "stat"
+      ]
     },
     "dartmouth_faculty": {
       "baseline_count": 1015,
@@ -2384,10 +2526,12 @@
       "school": "drexel",
       "status": "success_nonzero",
       "unchecked_faculty_units": [
+        "arch",
         "chem",
         "cs",
         "fash",
         "lebow",
+        "musi",
         "soc"
       ]
     },
@@ -2458,7 +2602,18 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "emory",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anth",
+        "arth",
+        "dsci",
+        "eng",
+        "gbs",
+        "mus",
+        "phil",
+        "thea",
+        "wgss"
+      ]
     },
     "fsu_faculty": {
       "baseline_count": 668,
@@ -2471,7 +2626,13 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "fsu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "comm",
+        "econ",
+        "isch",
+        "stat"
+      ]
     },
     "gatech_external_research": {
       "baseline_count": 2,
@@ -2497,7 +2658,19 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "gatech",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ae",
+        "arch",
+        "biosci",
+        "chbe",
+        "cs",
+        "ece",
+        "ic",
+        "id",
+        "math",
+        "me"
+      ]
     },
     "gatech_labs": {
       "baseline_count": 1,
@@ -2522,7 +2695,12 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "georgetown",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "chem",
+        "engl",
+        "msbs"
+      ]
     },
     "grinnell_faculty": {
       "baseline_count": 246,
@@ -2535,7 +2713,12 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "grinnell",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "dgst",
+        "eust",
+        "psyc"
+      ]
     },
     "hamilton_faculty": {
       "baseline_count": 236,
@@ -2564,7 +2747,9 @@
       "status": "success_nonzero",
       "unchecked_faculty_units": [
         "gse",
-        "math"
+        "hls",
+        "math",
+        "seas"
       ]
     },
     "haverford_faculty": {
@@ -2591,7 +2776,21 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "houston",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "acct",
+        "bio",
+        "bme",
+        "chee",
+        "cive",
+        "cs",
+        "disc",
+        "fina",
+        "ie",
+        "mana",
+        "mark",
+        "me"
+      ]
     },
     "iastate_faculty": {
       "baseline_count": 671,
@@ -2604,7 +2803,12 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "iastate",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "engl",
+        "pols",
+        "psych"
+      ]
     },
     "indiana_faculty": {
       "baseline_count": 1680,
@@ -2623,7 +2827,8 @@
         "kelley",
         "kin",
         "mus",
-        "nsci"
+        "nsci",
+        "oneill"
       ]
     },
     "jhu_external_research": {
@@ -2649,7 +2854,42 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "jhu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anth",
+        "bio",
+        "biophys",
+        "carey",
+        "chem",
+        "clas",
+        "cogsci",
+        "econ",
+        "engl",
+        "eps",
+        "hart",
+        "hist",
+        "hos",
+        "math",
+        "mll",
+        "nes",
+        "neuro",
+        "pbs",
+        "phil",
+        "phys",
+        "pols",
+        "sais",
+        "soc",
+        "soe",
+        "writ",
+        "wse-ams",
+        "wse-bme",
+        "wse-cee",
+        "wse-chembe",
+        "wse-ece",
+        "wse-ehe",
+        "wse-me",
+        "wse-mse"
+      ]
     },
     "jhu_labs": {
       "baseline_count": 7,
@@ -2676,7 +2916,8 @@
       "school": "kenyon",
       "status": "success_nonzero",
       "unchecked_faculty_units": [
-        "intl"
+        "intl",
+        "phil"
       ]
     },
     "lehigh_faculty": {
@@ -2714,7 +2955,30 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "lsu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "acct",
+        "agec",
+        "ansc",
+        "biosci",
+        "cee",
+        "cm",
+        "cmst",
+        "comd",
+        "des",
+        "docs",
+        "econ",
+        "engl",
+        "fren",
+        "geol",
+        "hist",
+        "mc",
+        "mie",
+        "phys",
+        "sdeis",
+        "soci",
+        "wllc"
+      ]
     },
     "macalester_faculty": {
       "baseline_count": 204,
@@ -2727,7 +2991,14 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "macalester",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anth",
+        "envi",
+        "geog",
+        "hist",
+        "reli"
+      ]
     },
     "manual": {
       "baseline_count": 16,
@@ -2765,7 +3036,15 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "middlebury",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "econ",
+        "ecsc",
+        "edst",
+        "fren",
+        "glhl",
+        "igst"
+      ]
     },
     "mit_faculty": {
       "baseline_count": 1529,
@@ -2778,7 +3057,18 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "mit",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aa",
+        "be",
+        "cee",
+        "dmse",
+        "eecs",
+        "mta",
+        "phil",
+        "phys",
+        "sloan"
+      ]
     },
     "msu_faculty": {
       "baseline_count": 1050,
@@ -2791,7 +3081,21 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "msu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bmb",
+        "cas",
+        "chem",
+        "cmse",
+        "ece",
+        "ees",
+        "ibio",
+        "math",
+        "mgi",
+        "phys",
+        "psl",
+        "stat"
+      ]
     },
     "ncsu_faculty": {
       "baseline_count": 2327,
@@ -2804,7 +3108,13 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "ncsu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "cbe",
+        "ise",
+        "mae",
+        "mse"
+      ]
     },
     "nd_faculty": {
       "baseline_count": 1289,
@@ -2817,7 +3127,17 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "nd",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ame",
+        "cbe",
+        "ceees",
+        "chem",
+        "cse",
+        "ee",
+        "hist",
+        "mendoza"
+      ]
     },
     "neu_faculty": {
       "baseline_count": 2185,
@@ -2830,7 +3150,13 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "neu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bouve",
+        "cee",
+        "cssh",
+        "dmsb"
+      ]
     },
     "njit_faculty": {
       "baseline_count": 504,
@@ -2843,7 +3169,23 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "njit",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bme",
+        "cee",
+        "chem",
+        "cme",
+        "cs",
+        "ece",
+        "hcad",
+        "hist",
+        "hss",
+        "info",
+        "math",
+        "mgmt",
+        "mie",
+        "phys"
+      ]
     },
     "northwestern_faculty": {
       "baseline_count": 2826,
@@ -2856,7 +3198,19 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "northwestern",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "comm-csd",
+        "comm-thea",
+        "math",
+        "mcc-cee",
+        "mcc-chbe",
+        "mcc-cs",
+        "mcc-ece",
+        "mcc-mse",
+        "sesp",
+        "spanport"
+      ]
     },
     "northwestern_labs": {
       "baseline_count": 9,
@@ -2894,7 +3248,35 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "nyu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anth",
+        "bio",
+        "chem",
+        "cns",
+        "complit",
+        "cs",
+        "econ",
+        "engl",
+        "fren",
+        "germ",
+        "hist",
+        "ir",
+        "ital",
+        "ling",
+        "mus",
+        "phil",
+        "phys",
+        "pol",
+        "psych",
+        "sca",
+        "silver",
+        "soc",
+        "stein",
+        "stern",
+        "tcs",
+        "wag"
+      ]
     },
     "oregonstate_faculty": {
       "baseline_count": 612,
@@ -2907,7 +3289,25 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "oregonstate",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "actg",
+        "bana",
+        "bb",
+        "bis",
+        "cla",
+        "dsgn",
+        "fin",
+        "for",
+        "ib",
+        "ie",
+        "math",
+        "mgmt",
+        "micro",
+        "mktg",
+        "sclm",
+        "stat"
+      ]
     },
     "osu_faculty": {
       "baseline_count": 2524,
@@ -2920,7 +3320,38 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "osu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ansci",
+        "astro",
+        "avn",
+        "bme",
+        "cbe",
+        "ceg",
+        "chem",
+        "cse",
+        "csw",
+        "earth",
+        "ece",
+        "eed",
+        "engl",
+        "fabe",
+        "fisher",
+        "fst",
+        "glenn",
+        "ise",
+        "know",
+        "mae",
+        "math",
+        "mse",
+        "nurs",
+        "optom",
+        "pharm",
+        "phys",
+        "plpath",
+        "soc",
+        "stat"
+      ]
     },
     "pitt_faculty": {
       "baseline_count": 1137,
@@ -2933,7 +3364,22 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "pitt",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bme",
+        "cee",
+        "che",
+        "chem",
+        "cs",
+        "econ",
+        "fmst",
+        "germ",
+        "hist",
+        "ling",
+        "phys",
+        "sart",
+        "sci"
+      ]
     },
     "pomona_faculty": {
       "baseline_count": 280,
@@ -2946,7 +3392,12 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "pomona",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ea",
+        "engl",
+        "neur"
+      ]
     },
     "princeton_faculty": {
       "baseline_count": 616,
@@ -2959,7 +3410,28 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "princeton",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ant",
+        "art",
+        "astro",
+        "cbe",
+        "cee",
+        "com",
+        "cs",
+        "ece",
+        "eeb",
+        "eng",
+        "his",
+        "mae",
+        "orfe",
+        "phi",
+        "phy",
+        "pni",
+        "psy",
+        "qcb",
+        "soc"
+      ]
     },
     "princeton_labs": {
       "baseline_count": 4,
@@ -2984,7 +3456,19 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "psu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aa",
+        "acctg",
+        "ag",
+        "chem",
+        "fin",
+        "math",
+        "mgmt",
+        "mktg",
+        "rm",
+        "scis"
+      ]
     },
     "purdue_external_research": {
       "baseline_count": 6,
@@ -3099,7 +3583,13 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "rutgers",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bme",
+        "cee",
+        "ento",
+        "math"
+      ]
     },
     "sbu_faculty": {
       "baseline_count": 916,
@@ -3112,7 +3602,24 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "sbu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bcb",
+        "bme",
+        "bus",
+        "chem",
+        "cs",
+        "ece",
+        "est",
+        "geo",
+        "hist",
+        "me",
+        "msce",
+        "phil",
+        "phy",
+        "pol",
+        "wgss"
+      ]
     },
     "simplify_internships": {
       "baseline_count": 5060,
@@ -3164,7 +3671,28 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "stanford",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "aa",
+        "biochem",
+        "bioe",
+        "cee",
+        "cheme",
+        "educ",
+        "ee",
+        "eps",
+        "esos",
+        "esys",
+        "geophysics",
+        "history",
+        "law",
+        "ling",
+        "mcp",
+        "me",
+        "msande",
+        "mse",
+        "oceans"
+      ]
     },
     "stanford_labs": {
       "baseline_count": 1,
@@ -3189,7 +3717,14 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "stevens",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bus",
+        "cal",
+        "chem",
+        "cs",
+        "me"
+      ]
     },
     "swarthmore_faculty": {
       "baseline_count": 234,
@@ -3214,7 +3749,16 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "syracuse",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bmce",
+        "cee",
+        "econ",
+        "eecs",
+        "mae",
+        "soc",
+        "wrt"
+      ]
     },
     "tamu_faculty": {
       "baseline_count": 3284,
@@ -3227,7 +3771,21 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "tamu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "agec",
+        "arch",
+        "cosc",
+        "inta",
+        "laup",
+        "mays",
+        "mtde",
+        "nurs",
+        "pols",
+        "psaa",
+        "pvfa",
+        "rwfm"
+      ]
     },
     "tufts_faculty": {
       "baseline_count": 2121,
@@ -3240,7 +3798,23 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "tufts",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "bio",
+        "cogs",
+        "cs",
+        "data",
+        "dent",
+        "ece",
+        "econ",
+        "fletch",
+        "fms",
+        "ilcs",
+        "mus",
+        "pols",
+        "psyc",
+        "vet"
+      ]
     },
     "ucb_anthro_faculty": {
       "baseline_count": 26,
@@ -3950,7 +4524,10 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "ucf",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "mgmt"
+      ]
     },
     "uchicago_external_research": {
       "baseline_count": 3,
@@ -3976,7 +4553,19 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "uchicago",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "booth",
+        "crown",
+        "ecev",
+        "econ",
+        "harris",
+        "law",
+        "ling",
+        "musi",
+        "rll",
+        "taps"
+      ]
     },
     "uchicago_labs": {
       "baseline_count": 1,
@@ -4001,7 +4590,18 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "uci",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "art",
+        "dance",
+        "dcb",
+        "eeb",
+        "mbb",
+        "mus",
+        "nbb",
+        "pharm",
+        "pubhlth"
+      ]
     },
     "uci_labs": {
       "baseline_count": 2,
@@ -4039,7 +4639,27 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "ucla",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "arch",
+        "classics",
+        "complit",
+        "econ",
+        "eeb",
+        "engl",
+        "gender",
+        "law",
+        "ling",
+        "math",
+        "mcdb",
+        "nurs",
+        "phys",
+        "pubpol",
+        "soc",
+        "socwel",
+        "spanport",
+        "urp"
+      ]
     },
     "ucla_labs": {
       "baseline_count": 1,
@@ -4064,7 +4684,18 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "uconn",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ahs",
+        "dpp",
+        "eeb",
+        "engl",
+        "math",
+        "mcb",
+        "neag",
+        "plsc",
+        "pnb"
+      ]
     },
     "ucr_faculty": {
       "baseline_count": 1173,
@@ -4103,7 +4734,16 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "ucsb",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "blkst",
+        "comm",
+        "cs",
+        "frit",
+        "ling",
+        "math",
+        "polsci"
+      ]
     },
     "ucsb_labs": {
       "baseline_count": 2,
@@ -4154,7 +4794,21 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "ucsd",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "che",
+        "chem",
+        "cogsci",
+        "comm",
+        "ethn",
+        "hdsi",
+        "math",
+        "nano",
+        "phys",
+        "poli",
+        "sio",
+        "tdps"
+      ]
     },
     "ucsd_labs": {
       "baseline_count": 3,
@@ -4179,7 +4833,12 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "udel",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anfs",
+        "chem",
+        "ece"
+      ]
     },
     "uf_faculty": {
       "baseline_count": 2125,
@@ -4192,7 +4851,21 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "uf",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "ant",
+        "che",
+        "cop",
+        "cop2",
+        "cop3",
+        "ece",
+        "eng",
+        "essie",
+        "geo",
+        "gly",
+        "mae",
+        "phy"
+      ]
     },
     "uga_faculty": {
       "baseline_count": 2196,
@@ -4205,7 +4878,21 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "uga",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "art",
+        "cap",
+        "ecam",
+        "ento",
+        "hort",
+        "intl",
+        "law",
+        "math",
+        "padp",
+        "pbs",
+        "vetph",
+        "warnell"
+      ]
     },
     "uiowa_faculty": {
       "baseline_count": 933,
@@ -4243,7 +4930,11 @@
       "last_nonzero_at": "2026-11-23T21:22:13.400204+00:00",
       "last_success_at": "2026-11-23T21:22:13.400204+00:00",
       "school": "uiuc",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "Department of Anthropology",
+        "Department of Communication"
+      ]
     },
     "uiuc_other": {
       "baseline_count": 7,
@@ -4346,7 +5037,15 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "umass",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "chemistry",
+        "complit",
+        "ece",
+        "education",
+        "spp",
+        "stockbridge"
+      ]
     },
     "umd_faculty": {
       "baseline_count": 1411,
@@ -4368,6 +5067,7 @@
         "biol",
         "cs",
         "ece",
+        "enst",
         "entm",
         "geog",
         "jour",
@@ -4401,7 +5101,44 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "umich",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "alc",
+        "amcult",
+        "anthro",
+        "aphys",
+        "astro",
+        "biophys",
+        "bme",
+        "chem",
+        "classics",
+        "comm",
+        "complit",
+        "cscs",
+        "daas",
+        "earth",
+        "eeb",
+        "english",
+        "ftvm",
+        "german",
+        "histart",
+        "history",
+        "judaic",
+        "ling",
+        "me",
+        "mideast",
+        "mse",
+        "nativeam",
+        "neurosci",
+        "orgstudies",
+        "phil",
+        "polisci",
+        "rll",
+        "slavic",
+        "soc",
+        "stats",
+        "wgs"
+      ]
     },
     "umich_labs": {
       "baseline_count": 3,
@@ -4426,7 +5163,22 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "umn",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "agron",
+        "amstud",
+        "ansci",
+        "anth",
+        "cems",
+        "econ",
+        "entom",
+        "forest",
+        "fwcb",
+        "hort",
+        "hsjmc",
+        "soc",
+        "stat"
+      ]
     },
     "unc_faculty": {
       "baseline_count": 596,
@@ -4458,7 +5210,34 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "unl",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "alec",
+        "bios",
+        "bse",
+        "chem",
+        "chme",
+        "clas",
+        "comm",
+        "cse",
+        "cyaf",
+        "eas",
+        "ece",
+        "edad",
+        "edps",
+        "jomc",
+        "law",
+        "math",
+        "nhs",
+        "phys",
+        "pols",
+        "psyc",
+        "secd",
+        "sgis",
+        "stat",
+        "tlte",
+        "tmfd"
+      ]
     },
     "upenn_external_research": {
       "baseline_count": 9,
@@ -4484,7 +5263,25 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "upenn",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "arch",
+        "asc",
+        "cpln",
+        "dent",
+        "engl",
+        "fnar",
+        "hspv",
+        "hss",
+        "larp",
+        "math",
+        "mehp",
+        "mse",
+        "psci",
+        "soci",
+        "sp2",
+        "stat"
+      ]
     },
     "upenn_labs": {
       "baseline_count": 2,
@@ -4509,7 +5306,17 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "usc",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anth",
+        "comm",
+        "earth",
+        "educ",
+        "engl",
+        "phil",
+        "phys",
+        "psyc"
+      ]
     },
     "usf_faculty": {
       "baseline_count": 804,
@@ -4522,7 +5329,19 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "usf",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "anth",
+        "comm",
+        "coph",
+        "cse",
+        "geo",
+        "ib",
+        "info",
+        "math",
+        "nurs",
+        "sigs"
+      ]
     },
     "utah_faculty": {
       "baseline_count": 1127,
@@ -4535,7 +5354,12 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "utah",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "art",
+        "cs",
+        "pols"
+      ]
     },
     "utdallas_faculty": {
       "baseline_count": 1102,
@@ -4548,7 +5372,20 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "utdallas",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "acct",
+        "atec",
+        "bio",
+        "cs",
+        "econ",
+        "hist",
+        "math",
+        "pa",
+        "phys",
+        "slh",
+        "vpa"
+      ]
     },
     "utexas_external_research": {
       "baseline_count": 1,
@@ -4574,7 +5411,25 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "utexas",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "art",
+        "ci",
+        "elp",
+        "frit",
+        "germanic",
+        "hop",
+        "law",
+        "me",
+        "music",
+        "nurs",
+        "pts",
+        "rtf",
+        "sds",
+        "slavic",
+        "soa",
+        "td"
+      ]
     },
     "utk_faculty": {
       "baseline_count": 1060,
@@ -4587,7 +5442,10 @@
       "last_nonzero_at": "2026-11-21T17:27:32.920730+00:00",
       "last_success_at": "2026-11-21T17:27:32.920730+00:00",
       "school": "utk",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "cbe"
+      ]
     },
     "uva_faculty": {
       "baseline_count": 1662,
@@ -4600,7 +5458,21 @@
       "last_nonzero_at": "2026-11-24T20:15:14.141888+00:00",
       "last_success_at": "2026-11-24T20:15:14.141888+00:00",
       "school": "uva",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "arch",
+        "bme",
+        "cee",
+        "che",
+        "cs",
+        "ece",
+        "edhd",
+        "engs",
+        "mae",
+        "math",
+        "mse",
+        "nesc"
+      ]
     },
     "uw_external_research": {
       "baseline_count": 1,
@@ -4632,12 +5504,15 @@
         "amath",
         "asianll",
         "astr",
+        "cee",
         "chid",
+        "cse",
         "engl",
         "evans",
         "foster",
         "germ",
         "ischool",
+        "mse",
         "music",
         "pharm",
         "scand",
@@ -4668,7 +5543,17 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "vanderbilt",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "cms",
+        "engl",
+        "frit",
+        "gres",
+        "phys",
+        "rlst",
+        "span",
+        "thtr"
+      ]
     },
     "vassar_faculty": {
       "baseline_count": 262,
@@ -4698,7 +5583,18 @@
       "last_nonzero_at": "2026-11-19T17:09:51.035240+00:00",
       "last_success_at": "2026-11-19T17:09:51.035240+00:00",
       "school": "vt",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "biol",
+        "cee",
+        "cs",
+        "ece",
+        "hnfe",
+        "htm",
+        "mgmt",
+        "psyc",
+        "stat"
+      ]
     },
     "washu_faculty": {
       "baseline_count": 1095,
@@ -4711,7 +5607,11 @@
       "last_nonzero_at": "2026-11-20T18:01:04.932305+00:00",
       "last_success_at": "2026-11-20T18:01:04.932305+00:00",
       "school": "washu",
-      "status": "success_nonzero"
+      "status": "success_nonzero",
+      "unchecked_faculty_units": [
+        "devbio",
+        "law"
+      ]
     },
     "wellesley_faculty": {
       "baseline_count": 288,
@@ -4904,8 +5804,12 @@
       "school": "yale",
       "status": "success_nonzero",
       "unchecked_faculty_units": [
+        "cgsc",
         "clss",
+        "eeb",
         "fren",
+        "hist",
+        "hshm",
         "mdvl",
         "phys"
       ]
