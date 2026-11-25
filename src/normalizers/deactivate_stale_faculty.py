@@ -915,12 +915,12 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
         if entry.get("fetch_status") != _OK or entry.get("parse_status") != _OK:
             entry["completeness_status"] = "unknown"
             entry["retirement_authorized"] = False
-            entry["failure_reason"] = entry.get("failure_reason") or "fetch_or_parse_failed"
+            entry.setdefault("failure_reason", "fetch_or_parse_failed")
             continue
         if seen is None:
             entry["completeness_status"] = "unknown"
             entry["retirement_authorized"] = False
-            entry["failure_reason"] = entry.get("failure_reason") or "observed_identities_missing"
+            entry.setdefault("failure_reason", "observed_identities_missing")
             continue
         if not complete:
             entry["completeness_status"] = "partial"
