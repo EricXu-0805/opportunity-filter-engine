@@ -40,6 +40,7 @@ import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
 import { isCourseList } from './course-status';
+import { withGitHubImportEvidence } from './skill-evidence';
 import {
   appendJournalOp,
   getJournalOriginId,
@@ -1760,15 +1761,13 @@ function skillsAreReplaced(ops: readonly SkillOp[]): boolean {
 }
 
 function additionsOf(ops: readonly SkillOp[]): SkillWithLevel[] {
-  const out: SkillWithLevel[] = [];
-  const names = new Set<string>();
+  const byName = new Map<string, SkillWithLevel>();
   for (const op of ops) {
     if (op.kind !== 'add' || !op.skill) continue;
-    if (names.has(op.skill.name)) continue;
-    names.add(op.skill.name);
-    out.push(op.skill);
+    const existing = byName.get(op.skill.name);
+    byName.set(op.skill.name, existing ? withGitHubImportEvidence(existing, op.skill) : op.skill);
   }
-  return out;
+  return [...byName.values()];
 }
 
 /** A résumé parse or a GitHub import added these. Purely additive. */
@@ -1782,11 +1781,13 @@ export function markSkillAdditions(additions: readonly SkillWithLevel[], token: 
   ensureScope(token);
   const state = skillOpsFor(token);
   if (skillsAreReplaced(state.ops)) return; // sticky until the replace lands
-  const known = new Set(additionsOf(state.ops).map((sk) => sk.name));
+  const known = new Map(additionsOf(state.ops).map((sk) => [sk.name, sk]));
   for (const skill of additions) {
-    if (known.has(skill.name)) continue;
-    known.add(skill.name);
-    state.ops.push({ opId: newOpId(), kind: 'add', skill });
+    const existing = known.get(skill.name);
+    const addition = existing ? withGitHubImportEvidence(existing, skill) : skill;
+    if (addition === existing) continue;
+    known.set(skill.name, addition);
+    state.ops.push({ opId: newOpId(), kind: 'add', skill: addition });
   }
 }
 
@@ -5565,13 +5566,18 @@ export function mergeSkillAdditions(
   additions: readonly SkillWithLevel[],
 ): SkillWithLevel[] | null {
   if (!isSkillList(remote)) return null;
-  const byName = new Map<string, SkillWithLevel>();
-  for (const skill of remote) byName.set(skill.name, skill);
   const out = [...remote];
+  const positions = new Map(out.map((skill, index) => [skill.name, index]));
   for (const skill of additions) {
-    const existing = byName.get(skill.name);
-    if (!existing) { out.push(skill); byName.set(skill.name, skill); continue; }
+    const index = positions.get(skill.name);
+    if (index === undefined) {
+      positions.set(skill.name, out.length);
+      out.push(skill);
+      continue;
+    }
+    const existing = out[index];
     if (existing.level !== skill.level) return null;
+    out[index] = withGitHubImportEvidence(existing, skill);
   }
   return out;
 }

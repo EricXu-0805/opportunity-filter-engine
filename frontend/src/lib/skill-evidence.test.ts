@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { skillLevelIsTheStudentsOwn, skillNeedsConfirming, skillsWithResume } from './skill-evidence';
+import { skillLevelIsTheStudentsOwn, skillNeedsConfirming, skillsWithResume, withGitHubImportEvidence } from './skill-evidence';
 import type { SkillWithLevel } from './types';
 
 const s = (o: Partial<SkillWithLevel> & { name?: string }): SkillWithLevel =>
@@ -67,5 +67,21 @@ describe('skillsWithResume — checklist M18', () => {
     expect(result.onlyAdds).toBe(true);
     expect(result.skills[0]).toBe(python);
     expect(result.skills.map((skill) => skill.name)).toEqual(['Python', 'Java']);
+  });
+});
+
+describe('re-importing GitHub evidence', () => {
+  const imported = s({ source: 'github', evidence: 'repo example: language Python' });
+  it('adds only the receipt, preserving the remote level and confirmation', () => {
+    const confirmed = s({ source: 'github', level: 'expert', confirmed: true });
+    expect(withGitHubImportEvidence(confirmed, imported)).toEqual({ ...confirmed, evidence: imported.evidence });
+  });
+  it('keeps other sources, earlier evidence and unrelated names unchanged', () => {
+    for (const existing of [s({}), s({ source: 'resume' }), s({ source: 'shared' }),
+      s({ source: 'github', evidence: 'prior receipt' }), s({ source: 'github', name: 'pandas' })]) {
+      expect(withGitHubImportEvidence(existing, imported)).toBe(existing);
+    }
+    const old = s({ source: 'github' });
+    expect(withGitHubImportEvidence(old, { ...imported, evidence: ' ' })).toBe(old);
   });
 });
