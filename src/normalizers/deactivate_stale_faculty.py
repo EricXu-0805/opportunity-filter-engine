@@ -32,6 +32,7 @@ import re
 import secrets
 import unicodedata
 from datetime import date, datetime, timedelta
+from urllib.parse import parse_qs
 
 from src.evidence import (
     DECEASED_REASON,
@@ -355,6 +356,7 @@ COMPLETENESS_BLOCKING = frozenset({"partial", "unknown", "truncated", "deferred"
 # move: the canonical profile URL, then a verified email. Never the name.
 # ---------------------------------------------------------------------------
 
+_UCSC_DIRECTORY = "campusdirectory.ucsc.edu/cd_detail"
 _INDEX_SUFFIXES = ("/index.html", "/index.htm", "/index.php", "/index.aspx")
 
 
@@ -365,7 +367,7 @@ def canonical_profile_url(url: object) -> str | None:
     raw = url.strip()
     if not raw.lower().startswith(("http://", "https://")):
         return None
-    raw = raw.split("#", 1)[0].split("?", 1)[0]
+    raw, _, query = raw.split("#", 1)[0].partition("?")
     lowered = raw.lower()
     scheme, _, rest = lowered.partition("://")
     if not rest:
@@ -381,7 +383,14 @@ def canonical_profile_url(url: object) -> str | None:
     if not path:
         # A bare host is the directory itself, not a person.
         return None
-    return f"{host}{path}"
+    key = f"{host}{path}"
+    if key == _UCSC_DIRECTORY:
+        # UCSC serves hundreds of different people at this single path.
+        uids = parse_qs(query, keep_blank_values=True).get("uid", [])
+        if len(uids) != 1 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", uids[0]):
+            return None
+        return f"{key}?uid={uids[0].lower()}"
+    return key
 
 
 def canonical_listing_urls(urls) -> frozenset[str]:
@@ -661,6 +670,10 @@ def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
     coverage = entry.get("coverage")
     if not isinstance(coverage, dict):
         return False, "coverage_unreported"
+    # Earlier ledgers collapsed every UCSC directory UID to the same URL.
+    # Those observations cannot prove a particular person was absent.
+    if ("url", _UCSC_DIRECTORY) in (_observed_identities(entry) or ()):
+        return False, "ambiguous_ucsc_directory_identity"
     raw = coverage.get("raw_roster_rows")
     if not isinstance(raw, int):
         return False, "coverage_unreported"

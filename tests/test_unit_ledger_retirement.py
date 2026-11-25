@@ -26,6 +26,7 @@ from src.normalizers.deactivate_stale_faculty import (
     deactivate_stale_faculty,
     deactivate_trainee_faculty,
     finalize_unit_ledger,
+    identity_key,
     unit_retirement_authority,
 )
 
@@ -110,6 +111,23 @@ def observation(unit_id="bio", *, observed_ids=(), baseline=None,
         obs["completeness_status"] = "complete"
         obs["retirement_authorized"] = True
     return obs
+
+
+def test_ucsc_directory_preserves_the_person_in_the_uid_query():
+    endpoint = "https://campusdirectory.ucsc.edu/cd_detail"
+    record = {"url": endpoint + "?ref=dept&uid=gomalley#bio"}
+    assert identity_key(record) == ("url", "campusdirectory.ucsc.edu/cd_detail?uid=gomalley")
+    assert identity_key(record) != identity_key({"url": endpoint + "?uid=gbhers"})
+    assert identity_key({"url": endpoint + "?uid=abel.rod"}) == ("url", "campusdirectory.ucsc.edu/cd_detail?uid=abel.rod")
+    for query in ("", "?uid=", "?uid=gomalley&uid=gbhers"):
+        assert identity_key({"url": endpoint + query, "contact_email": "person@ucsc.edu"}) == (
+            "email", "person@ucsc.edu")
+
+
+def test_collapsed_ucsc_ledger_cannot_establish_absence():
+    prior = observation(identities=[["url", "campusdirectory.ucsc.edu/cd_detail"]],
+                        observed_ids=["faculty-ucsc-hist-7835742d"])
+    assert unit_retirement_authority(prior, 29) == (False, "ambiguous_ucsc_directory_identity")
 
 
 # 1. complete department scrape may authorize retirement
