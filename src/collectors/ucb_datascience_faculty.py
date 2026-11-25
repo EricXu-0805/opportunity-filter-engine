@@ -161,7 +161,7 @@ def _first_last(name: str) -> tuple[str, str] | None:
 
 
 def _drop_already_covered(records: list[dict]) -> list[dict]:
-    """Drop scraped people whose (first, last) name already appears under another
+    """Drop scraped people whose (first, last) name is active under another
     ucb_* faculty source.
 
     CDSS is a pure overlay of existing departments, so a name already in the
@@ -178,7 +178,9 @@ def _drop_already_covered(records: list[dict]) -> list[dict]:
         _first_last(o.get("pi_name") or "")
         for o in existing
         if (o.get("source") or "").startswith("ucb_")
+        and o.get("source") != CDSS_CONFIG["source"]
         and o.get("source_type") == "faculty_research"
+        and (o.get("metadata") or {}).get("is_active") is not False
         and o.get("pi_name")
     }
     covered.discard(None)

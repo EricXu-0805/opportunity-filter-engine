@@ -1103,6 +1103,9 @@ def _email_from_el(e_el) -> str | None:
     rev = _decode_reversed_email(e_el)
     if rev:
         return rev
+    # Some roster links display the address but point to the current page.
+    if e_el.get("href") == "#":
+        return _clean_email(e_el.get_text(" ", strip=True))
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
     href_addr = _clean_email(raw)
     # A hand-maintained roster row whose mailto: was copy-pasted from the row
