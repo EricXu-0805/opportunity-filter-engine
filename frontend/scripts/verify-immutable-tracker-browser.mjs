@@ -18,9 +18,17 @@ const original=api.storage.from('tracker-attachments');
 assert.ok(!(await original.upload(path,new Blob([contents(0)],{type:mime}),{contentType:mime})).error);
 const signedOriginal=(await original.createSignedUrl(path,300)).data.signedUrl;
 const opportunity = {id:target,title:'Synthetic opportunity for Tracker acceptance',source_type:'campus_program',record_kind:'listing',
+  source:'synthetic',organization:'Synthetic University',department:'Synthetic Department',lab_or_program:'Fixture',
+  opportunity_type:'Research',on_campus:true,description_clean:'Synthetic opportunity for attachment testing.',
+  school:'uiuc',audience:'campus',url:'http://127.0.0.1:8100/source',source_url:'http://127.0.0.1:8100/source',
+  location:'Synthetic Campus',remote_option:'unknown',paid:'unknown',is_rolling:true,keywords:[],
+  eligibility:{preferred_year:[],majors:[],skills_required:[],skills_preferred:[],international_friendly:'unknown'},
+  application:{contact_method:'unknown',application_effort:'unknown'},metadata:{is_active:true,confidence_score:0.9},
   target_truth:{listing_state:'open',reference_only:false,actionable:true,accepting_state:'accepting',reason_code:null,verified_at:null,expires_at:null}};
+const backendPaths=new Set();
 const backend=createServer((req,res)=>{
   const path=new URL(req.url,'http://127.0.0.1:8100').pathname;
+  backendPaths.add(path);
   const data=path==='/api/opportunities/'+target ? opportunity : path.endsWith('/similar') ? {opportunities:[]} : {status:'ok',last_updated_at:new Date().toISOString()};
   res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(data));
 });
@@ -28,6 +36,7 @@ await new Promise(resolve=>backend.listen(8100,'127.0.0.1',resolve));
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--webpack','--hostname','127.0.0.1','--port','3100'],
   {cwd:'frontend',env:{...process.env,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:url,NEXT_PUBLIC_SUPABASE_ANON_KEY:anon,BACKEND_URL:'http://127.0.0.1:8100'},stdio:'ignore'});
 const browser=await chromium.launch();
+let activePage; const pageErrors=[];
 try{
  let ready=false;for(let i=0;i<150;i++){try{const r=await fetch(site+'/opportunities/'+target);if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,1000));}
  assert.ok(ready,'normal opportunity detail entry');const ctx=await browser.newContext();let lost=false, uploads=0, publish=0,drop=false;const external=[];
@@ -45,7 +54,7 @@ try{
    if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});
    return route.continue();
  });
- const page=await ctx.newPage();page.setDefaultTimeout(45000);await page.goto(site+'/opportunities/'+target);
+ const page=await ctx.newPage();activePage=page;page.on('pageerror',e=>pageErrors.push(e.message.replace(/https?:[^ ]+|[a-zA-Z0-9_.-]{60,}/g,'[redacted]').slice(0,140)));page.setDefaultTimeout(45000);await page.goto(site+'/opportunities/'+target);
  await page.getByRole('heading',{name:opportunity.title}).first().waitFor();
  const toggle=page.getByRole('button',{name:/Records, notes & reminders/});
  if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
@@ -64,4 +73,8 @@ try{
  const old=await fetch(signedOriginal,{cache:'no-store'});assert.deepEqual(Buffer.from(await old.arrayBuffer()),contents(0));
  assert.equal(external.length,0);console.log('PASS formal account Tracker UI replaces selected file, opens current signed bytes, recovers after lost publish receipt without replay, and preserves old signed bytes');
  await ctx.close();
+} catch (error) {
+ console.log('Synthetic public request paths:',[...backendPaths].slice(0,10),'page errors:',pageErrors.slice(0,3));
+ if(activePage) console.log('Page state:',await activePage.evaluate(()=>({path:location.pathname, headings:[...document.querySelectorAll('h1,h2')].map(x=>x.textContent?.slice(0,70)).slice(0,6), buttons:[...document.querySelectorAll('button[aria-expanded]')].map(x=>x.textContent?.trim()?.slice(0,55)).slice(0,6)})));
+ throw error;
 } finally {await browser.close();server.kill('SIGTERM');backend.close();}
