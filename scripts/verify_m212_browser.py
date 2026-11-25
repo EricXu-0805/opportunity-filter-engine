@@ -1,6 +1,6 @@
 import asyncio, json, subprocess, os, urllib.request, urllib.error, time
 from urllib.parse import urlsplit
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, expect
 
 stub = "http://127.0.0.1:51432"
 
@@ -170,10 +170,7 @@ async def main():
             await page.goto(
                 "https://joinalab.com/", wait_until="domcontentloaded", timeout=80000
             )
-            await page.wait_for_function(
-                "document.querySelector('#github_url')?.value?.includes('m212-fixture')",
-                timeout=70000,
-            )
+            await expect(page.locator("#github_url")).to_have_value("https://github.com/m212-fixture", timeout=70000)
             await (
                 page.locator("#github_url")
                 .locator("..")
@@ -197,10 +194,7 @@ async def main():
                 other,
             ]
             await page.reload(wait_until="domcontentloaded")
-            await page.wait_for_function(
-                "document.querySelector('#github_url')?.value?.includes('m212-fixture')",
-                timeout=40000,
-            )
+            await expect(page.locator("#github_url")).to_have_value("https://github.com/m212-fixture", timeout=40000)
             print("fresh page loaded revision 9", read()["revision"], flush=True)
             await b.close()
     finally:
