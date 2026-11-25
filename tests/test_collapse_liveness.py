@@ -637,3 +637,76 @@ def test_reviewed_nickname_refreshes_the_published_id_only_at_its_profile(
     assert saved["id"] == original_id
     assert saved["metadata"]["first_seen_at"] == OLD
     assert saved["metadata"]["last_seen_at"] == observed["metadata"]["last_seen_at"]
+
+
+def _shared_profile_move(day):
+    page = "https://testu.edu/people/pat-smith"
+    old = _row("faculty-testu-math-0000aaaa", "Pat Smith", dept="Mathematics",
+               url=page, keywords=["geometry", "topology"], seen=_at(day))
+    current = _row("faculty-testu-stat-0000bbbb", "Pat Smith", dept="Statistics", url=page)
+    control = _row("faculty-testu-math-0000cccc", "Lee Chen", dept="Mathematics",
+                   url="https://testu.edu/people/lee-chen")
+    math = _read("math", [control], day)
+    stat = _read("stat", [current], day)
+    math["document_identities"] = math["observed_identities"].copy()
+    return old, current, control, {"testu_faculty": {"math": math, "stat": stat}}
+
+
+def test_shared_personal_page_cannot_renew_the_old_department_forever():
+    start = date(2026, 9, 1)
+    old, current, control, fetched = _shared_profile_move(start)
+    corpus = [old, control]
+    published_ids = frozenset(row["id"] for row in corpus)
+    for days in (0, 7, 14, 21, 28):
+        day = start + timedelta(days=days)
+        current["metadata"]["last_seen_at"] = _at(day)
+        _upsert(corpus, [current])
+        audit = deactivate_stale_faculty(corpus, fetched, today=day)
+        corpus = fg.collapse_same_person_faculty(
+            corpus, person_pages=observed_profile_pages(fetched),
+            published_ids=published_ids, unlisted_profile_ids=frozenset(audit["unlisted_profile_ids"]),
+            today=day)["kept"]
+        if days <= 14:
+            assert old["metadata"]["last_seen_at"] == _at(start)
+            assert old["metadata"]["is_active"] and not audit["archived_moved"]
+        else:
+            assert old["metadata"]["duplicate_of"] == current["id"]
+            assert not old["metadata"]["is_active"]
+            assert next(r for r in corpus if r["id"] == current["id"])["metadata"]["is_active"]
+        assert control["metadata"]["is_active"]
+
+
+@pytest.mark.parametrize("missing", ["old document", "still linked", "old id seen",
+                                     "unconfirmed new roster", "unobserved successor", "different name"])
+def test_profile_move_needs_positive_successor_and_negative_old_roster(missing):
+    day = date(2026, 9, 23)
+    old, current, control, fetched = _shared_profile_move(day - timedelta(days=22))
+    math, stat = fetched["testu_faculty"].values()
+    if missing == "old document":
+        math.pop("document_identities")
+    elif missing == "still linked":
+        math["document_identities"] += stat["observed_identities"]
+    elif missing == "old id seen":
+        math["observed_entity_ids"].append(old["id"])
+    elif missing == "unconfirmed new roster":
+        stat["roster_source_confirmed"] = False
+    elif missing == "unobserved successor":
+        stat["observed_entity_ids"] = []
+    else:
+        current["pi_name"] = "Pat A Smith"
+    audit = deactivate_stale_faculty([old, current, control], fetched, today=day)
+    assert old["metadata"]["is_active"]
+    assert not audit["unlisted_profile_ids"] and not audit["archived_moved"]
+
+
+def test_profile_move_audit_and_holds_do_not_change_the_published_row():
+    today = date(2026, 9, 23)
+    old, current, control, fetched = _shared_profile_move(today - timedelta(days=22))
+    rows = [old, current, control]
+    before = copy.deepcopy(rows)
+    for kwargs in ({"dry_run": True}, {"held_sources": {"testu_faculty"}}):
+        audit = deactivate_stale_faculty(rows, fetched, today=today, **kwargs)
+        assert audit["would_deactivate"] == [old["id"]]
+        assert rows == before
+        if "held_sources" in kwargs:
+            assert not audit["unlisted_profile_ids"]

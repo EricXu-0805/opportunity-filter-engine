@@ -597,6 +597,34 @@ def _read_elsewhere(opp: dict, identity: tuple[str, str], unit: str,
             and identity_key(o, listing) == identity and same_person(o)]
 
 
+def _profile_move_successor(opp: dict, identity: tuple[str, str], unit: str,
+                            active: list[dict], ledger: dict, listing) -> dict | None:
+    """Require the old roster's document and one other unit's actual row."""
+    old = ledger[unit]
+    document = _observed_identities({"observed_identities": old.get("document_identities")})
+    observed_ids = _observed_ids(old)
+    if (not document or not document.intersection(_observed_identities(old) or ())
+            or identity in document or observed_ids is None or opp.get("id") in observed_ids):
+        return None
+    if isinstance(old.get("page_people"), list | tuple) and _shown_on_page(opp, ledger, unit, (set(), set())):
+        return None
+
+    matches = _read_elsewhere(opp, identity, unit, active, ledger, listing)
+    if len(matches) != 1:
+        return None
+    other = matches[0]
+    source = ledger[_unit_id_of(other)]
+    name = _listed_name_words(opp.get("pi_name"))
+    if (not name or name != _listed_name_words(other.get("pi_name"))
+            or not opp.get("school") or opp["school"] != other.get("school")
+            or source.get("fetch_status") != "ok" or source.get("parse_status") != "ok"
+            or source.get("roster_source_confirmed") is not True
+            or source.get("validation_status") != "ok"
+            or other.get("id") not in (_observed_ids(source) or ())):
+        return None
+    return other
+
+
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
     """``({identity: [records]}, [records with no identity])``."""
     index: dict[tuple[str, str], list] = {}
@@ -1034,6 +1062,7 @@ def deactivate_stale_faculty(
         "moved": [],
         "records_archived_moved_unit": 0,
         "archived_moved": [],
+        "unlisted_profile_ids": [],
         "records_preserved_still_listed": 0,
         "units_examined": 0,
         "units_complete_by_identity": 0,
@@ -1187,6 +1216,13 @@ def deactivate_stale_faculty(
                                     opp, ledger, unit, (set(), set()))):
                             heirs = _read_elsewhere(
                                 opp, identity, unit, active, ledger, listing)
+                        if identity[0] == "url" and seen is not None:
+                            successor = _profile_move_successor(opp, identity, unit, active, ledger, listing)
+                            if successor is not None:
+                                if not held:
+                                    counts["unlisted_profile_ids"].append(opp["id"])
+                                if seen < cutoff:
+                                    heirs = [successor]
                         if len(heirs) == 1:
                             counts["archived_moved"].append({
                                 "entity_id": opp.get("id"),
