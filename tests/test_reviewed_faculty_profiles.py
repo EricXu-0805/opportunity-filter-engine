@@ -59,16 +59,63 @@ def test_review_matches_the_same_person_and_original_unit_only(key, value):
     assert row == before
 
 
-@pytest.mark.parametrize(("key", "value"), [
-    ("last_seen_at", None), ("last_seen_at", "unknown"), ("last_seen_at", "2026-11-25T23:00:00"),
-    ("last_verified", "2026-11-26"), ("is_active", False),
+@pytest.mark.parametrize(("seen", "verified"), [
+    (None, None), ("unknown", None), ("2026-11-25T12:20:00", "2026-11-25T12:20:00"),
+    ("2026-11-26", "2026-11-26"),
 ])
-def test_missing_dates_newer_evidence_and_retained_archives_are_preserved(key, value):
+def test_directory_timestamps_cannot_restore_old_urls_or_appointments(seen, verified):
+    rows = [_old(oid) for oid in REVIEWS]
+    for row in rows:
+        row["metadata"].update(last_seen_at=seen, last_verified=verified, verification_scope="directory")
+    assert apply_reviewed_faculty_profiles(rows, today=AS_OF) == 6
+    assert all(row["url"] == REVIEWS[row["id"]].profile_url for row in rows)
+    retired = next(row for row in rows if row["id"] == BEISE)
+    assert retired["metadata"]["is_active"] is False
+    assert retired["metadata"]["faculty_title"] == "Professor Emerita"
+
+
+def test_unrelated_archive_is_preserved():
     row = _old(BEISE)
-    row["metadata"][key] = value
+    row["metadata"].update(is_active=False, deactivation_reason="duplicate_of")
     before = deepcopy(row)
-    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 0
-    assert row == before
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 0 and row == before
+
+
+def _successful_profile_read(row, attempted="2026-11-25T12:03:00+00:00", **changes):
+    row["metadata"]["contact_instruction_capture"] = {
+        "version": 1, "status": "empty", "reason": None, "attempted_at": attempted,
+        "source_url": row["url"], "record_source_url": row["url"], "requested_source_url": row["url"],
+        "identity_name": row["pi_name"], **changes,
+    }
+
+
+def test_restored_link_requires_a_newer_success_for_the_same_person_and_page():
+    oid = "faculty-tamu-inta-c32e8252"
+    for changes in ({"status": "failed"}, {"identity_name": "Another Person"},
+                    {"source_url": "https://bush.tamu.edu/"}, {"requested_source_url": "https://bush.tamu.edu/"},
+                    {"attempted": "2026-11-25T11:59:00+00:00"}):
+        row = _old(oid)
+        _successful_profile_read(row, **changes)
+        assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+        assert row["url"] == REVIEWS[oid].profile_url
+    restored = _old(oid)
+    _successful_profile_read(restored)
+    assert apply_reviewed_faculty_profiles([restored], today=AS_OF) == 0
+    assert restored["url"] == REVIEWS[oid].previous_url
+
+
+@pytest.mark.parametrize("restored_url", [False, True])
+def test_reappearing_umd_roster_keeps_verified_retirement(restored_url):
+    row = _old(BEISE)
+    if restored_url:
+        _successful_profile_read(row)
+    else:
+        row["url"] = REVIEWS[BEISE].profile_url
+    url = row["url"]
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert row["url"] == url
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "retired_title"
 
 
 def test_selection_review_date_and_independent_destinations_are_respected():
@@ -95,3 +142,43 @@ def test_serving_legacy_shards_applies_the_same_retirement_and_profile_evidence(
     assert active["url"] == "https://alps-lab.github.io/"
     assert active["metadata"]["is_active"] is True
     assert active["metadata"]["last_seen_at"] == "2026-07-25"
+
+
+def test_refresh_of_old_umd_directory_without_a_live_personal_page(tmp_path, monkeypatch):
+    import json
+
+    from bs4 import BeautifulSoup
+
+    from src.collectors import faculty_graph, ucb_common
+    from src.collectors.schools.umd_faculty import SCHOOL
+
+    review = REVIEWS[BEISE]
+    dept = next(dept for dept in SCHOOL["departments"] if dept["short"] == "PHYS")
+    soup = BeautifulSoup(
+        f'<div class="itemContainer"><h4 class="catItemTitle"><a href="{review.previous_url}">'
+        'Beise, Elizabeth</a></h4><div class="catItemExtraFields">Title Professor E-mail</div></div>',
+        "html.parser",
+    )
+
+    def fetch(url, **kwargs):
+        assert url == dept["directory_url"]
+        return soup
+
+    monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
+    path = tmp_path / "opportunities.json"
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", path)
+    old = _old(BEISE)
+    apply_reviewed_faculty_profiles([old], today=AS_OF)
+    path.write_text(json.dumps([old]))
+    for _ in range(2):
+        [incoming] = faculty_graph.fetch_and_normalize({**SCHOOL, "departments": [dept]}, deep=True)
+        assert incoming["id"] == BEISE and incoming["metadata"]["verification_scope"] == "directory"
+        assert incoming["url"] == review.previous_url and incoming["metadata"]["faculty_title"] == "Professor"
+        faculty_graph.merge_into_processed([incoming])
+        merged = json.loads(path.read_text())
+        apply_reviewed_faculty_profiles(merged, lambda school: school == "umd", today=AS_OF)
+        deactivate_retired_title_faculty(merged, today=AS_OF)
+        assert merged[0]["metadata"]["is_active"] is False
+        assert merged[0]["metadata"]["faculty_title"] == "Professor Emerita"
+        assert merged[0]["url"] == review.profile_url
+        path.write_text(json.dumps(merged))

@@ -1,6 +1,8 @@
 """Apply identity-checked corrections to older individual faculty profiles."""
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
+
+from src.contact_instructions import contact_instruction_pages, same_source_page
 
 from .deactivate_stale_faculty import deactivate_retired_title_faculty
 
@@ -13,11 +15,16 @@ class ProfileReview:
     previous_url: str
     profile_url: str
     roster_url: str
-    reviewed_on: date
+    reviewed_at: datetime
     title: str | None = None
 
+    @property
+    def reviewed_on(self) -> date:
+        return self.reviewed_at.date()
 
-_NOV_25 = date(2026, 11, 25)
+
+# The source runner finished reading the six identity-checked destinations at 12:01:59 UTC.
+_NOV_25 = datetime(2026, 11, 25, 12, 2, tzinfo=UTC)
 _SBU_CS = "https://www.cs.stonybrook.edu/people/index.html"
 REVIEWS = {
     "faculty-osu-fabe-1abc04a0": ProfileReview(
@@ -47,34 +54,45 @@ REVIEWS = {
 }
 
 
+def _old_page_restored(row: dict, review: ProfileReview) -> bool:
+    """A later successful read of this person's exact old URL can restore the link."""
+    for page in contact_instruction_pages(row):
+        receipt = page.get("receipt") or {}
+        if (receipt.get("status") in {"captured", "empty"}
+                and same_source_page(page["requested_source_url"], review.previous_url)
+                and same_source_page(receipt["source_url"], review.previous_url)
+                and datetime.fromisoformat(receipt["attempted_at"]) > review.reviewed_at):
+            return True
+    return False
+
+
 def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | None = None) -> bool:
-    """Apply a matching review. A newer sighting or a different record wins."""
+    """Correct a known URL or appointment while a reset record still claims it."""
     review = REVIEWS.get(row.get("id"))
     if not review or (today or date.today()) < review.reviewed_on:
         return False
     if (row.get("school") != review.school or row.get("department") != review.department
             or row.get("source") != f"{review.school}_faculty"
             or row.get("source_type") != "faculty_research" or row.get("pi_name") != review.name
-            or row.get("url") != review.previous_url or (selected and not selected(review.school))):
+            or row.get("url") not in (review.previous_url, review.profile_url)
+            or (selected and not selected(review.school))):
         return False
     metadata = row.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("is_active") is False:
         return False
-    try:
-        seen = date.fromisoformat(str(metadata.get("last_seen_at") or "")[:10])
-        verified = date.fromisoformat(str(metadata["last_verified"])[:10]) if metadata.get("last_verified") else seen
-    except ValueError:
+    update_url = row["url"] == review.previous_url and not _old_page_restored(row, review)
+    # Even a successful fetch of a restored URL establishes the address only.
+    # An old directory title cannot overturn the appointment on the reviewed
+    # emeritus roster and profile. A different appointment URL is outside this review.
+    if not update_url and not review.title:
         return False
-    if max(seen, verified) >= review.reviewed_on:
-        # A later observation of the same old address can establish that it
-        # works again or that the person has a new appointment.
-        return False
-    row["url"] = review.profile_url
-    if row.get("source_url") == review.previous_url:
-        row["source_url"] = review.profile_url
-    application = row.get("application")
-    if isinstance(application, dict) and application.get("application_url") == review.previous_url:
-        application["application_url"] = review.profile_url
+    if update_url:
+        row["url"] = review.profile_url
+        if row.get("source_url") == review.previous_url:
+            row["source_url"] = review.profile_url
+        application = row.get("application")
+        if isinstance(application, dict) and application.get("application_url") == review.previous_url:
+            application["application_url"] = review.profile_url
     metadata["faculty_profile_review"] = {
         "previous_url": review.previous_url, "source_url": review.roster_url,
         "reviewed_on": review.reviewed_on.isoformat(),
