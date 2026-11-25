@@ -1,0 +1,43 @@
+name: Check the supported destination preconditions of Supabase Storage
+on:
+  push:
+    branches: [codex/diagnose-storage-supported-preconditions]
+    paths: ['.github/workflows/check-storage-preconditions.yml', 'frontend/scripts/check-storage-preconditions.mjs']
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Install the repository's locked JavaScript SDK
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Start a fresh, loopback-only test project with the existing supported Storage policies
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/ofe-m53-storage"
+          mkdir -p "$fixture"
+          cd "$fixture"
+          supabase init
+          mkdir -p supabase/migrations
+          cp "$GITHUB_WORKSPACE/supabase/migrations/008_tracker_attachments_storage.sql" supabase/migrations/
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
+            exit 1
+          fi
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'storage-api|supabase/postgres:'
+      - name: Observe REST and S3 destination conditions using only synthetic temporary files
+        run: node frontend/scripts/check-storage-preconditions.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json"
