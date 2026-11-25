@@ -76,7 +76,8 @@ def _passing_drill(migrations: dict | None = None) -> dict:
     now = _now_iso()
     target = migrations or gate.migration_set_identity()
     source = {"method": METHOD, "project_ref": "prod", "source_backup_id": "backup-1",
-              "observed_at": now, "columns_sha256": "a" * 64, "history_sha256": "b" * 64,
+              "observed_at": now, "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2,
+              "history_sha256": "b" * 64,
               "column_count": 23, "migration_count": target["count"], "migration_parity": True,
               "matched_filenames_digest": target["digest"]}
     counts = dict(expected=1, expected_bytes=3, listed=1, missing=0, unexpected=0,

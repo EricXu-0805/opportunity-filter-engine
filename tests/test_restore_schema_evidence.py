@@ -1,7 +1,10 @@
 import hashlib
 import json
+import os
+import shutil
 import subprocess
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
@@ -13,7 +16,7 @@ from scripts.check_migration_parity import Committed
 
 
 def test_digests_come_from_observed_columns_and_applied_migrations(monkeypatch):
-    observed = {"columns": [{"table_name": "sample", "column_name": "title"}],
+    observed = {"ddl_sha256": "d" * 64, "ddl_count": 2, "columns": [{"table_name": "sample", "column_name": "title"}],
                 "migrations": [{"version": "001", "name": "sample"}]}
     calls = []
 
@@ -46,7 +49,8 @@ def test_digests_come_from_observed_columns_and_applied_migrations(monkeypatch):
 def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp_path):
     now = datetime.now(UTC).isoformat()
     captured = {"method": schema.METHOD, "project_ref": "original", "source_backup_id": "point",
-                "observed_at": now, "columns_sha256": "a" * 64, "history_sha256": "b" * 64,
+                "observed_at": now, "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2,
+                "history_sha256": "b" * 64,
                 "column_count": 1, "migration_count": 1, "migration_parity": True,
                 "matched_filenames_digest": "c" * 16}
     path = tmp_path / "source.json"
@@ -60,6 +64,10 @@ def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp
               "source_schema_manifest_sha256": digest, "source_backup_id": "point", "source_environment": "original",
               "scratch_environment": "scratch", "restore_started_at": now, "performed_at": now}
     assert schema.schema_verdict(record, expected)[0] == "PASS"
+    different_ddl = record["restored_schema_version"] | {"ddl_sha256": "e" * 64}
+    assert schema.schema_verdict(record | {"restored_schema_version": different_ddl}, expected)[0] == "FAIL"
+    older = record["restored_schema_version"] | {"method": "postgres-public-columns-and-migrations-v1"}
+    assert schema.schema_verdict(record | {"restored_schema_version": older}, expected)[0] == "UNVERIFIED"
     assert schema.schema_verdict(record | {"source_schema_manifest_sha256": "0" * 64}, expected)[0] == "UNVERIFIED"
     assert schema.schema_verdict(record | {"source_backup_id": "other"}, expected)[0] == "UNVERIFIED"
     assert schema.schema_verdict(record | {"restored_schema_version": captured}, expected)[0] == "UNVERIFIED"
@@ -101,7 +109,8 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
     candidate = release_gate.migration_set_identity()
     at = datetime.now(UTC).isoformat()
     part = {"method": schema.METHOD, "project_ref": "source", "source_backup_id": "point",
-            "observed_at": at, "columns_sha256": "a" * 64, "history_sha256": "b" * 64,
+            "observed_at": at, "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2,
+                "history_sha256": "b" * 64,
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"]}
     source_path = tmp_path / "source-schema.json"
@@ -155,3 +164,62 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
     stored_bytes = b"different"
     assert drill.main() == 1
     assert release_gate.check_restore_drill()["status"] == "FAIL"
+
+
+def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp_path):
+    config = shutil.which("pg_config")
+    if not config or getattr(os, "geteuid", lambda: 0)() == 0:
+        pytest.skip("isolated PostgreSQL cluster needs local binaries and an unprivileged user")
+    bindir = Path(subprocess.check_output([config, "--bindir"], text=True).strip())
+    if not all((bindir / binary).is_file() for binary in ("initdb", "pg_ctl", "psql")):
+        pytest.skip("PostgreSQL server tools unavailable")
+    data = tmp_path / "db"
+    subprocess.run([bindir / "initdb", "-D", data, "-U", "drill", "-A", "trust", "--no-locale"],
+                   check=True, capture_output=True, timeout=30)
+    ctl = [bindir / "pg_ctl", "-D", data, "-w"]
+    subprocess.run([*ctl, "-o", f"-k {tmp_path} -c listen_addresses=''", "-l", tmp_path / "log", "start"],
+                   check=True, capture_output=True, timeout=30)
+    try:
+        def sql(statement):
+            return subprocess.check_output(
+                [bindir / "psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", tmp_path, "-U", "drill",
+                 "-d", "postgres", "-c", statement], text=True, timeout=15,
+            )
+
+        sql("CREATE SCHEMA supabase_migrations; CREATE TABLE supabase_migrations.schema_migrations"
+            "(version text, name text); INSERT INTO supabase_migrations.schema_migrations VALUES ('1','initial');"
+            "CREATE SCHEMA private; CREATE TABLE public.sample(n int, m int)")
+        first = previous = json.loads(sql(schema.QUERY))
+        for statement, changed in (
+            ("INSERT INTO public.sample VALUES (1,2)", False),
+            ("CREATE INDEX by_value ON public.sample(n)", True),
+            ("DROP INDEX public.by_value; CREATE INDEX by_value ON public.sample(m)", True),
+            ("ALTER TABLE public.sample ADD CONSTRAINT positive CHECK(m > 0)", True),
+            ("CREATE FUNCTION private.answer() RETURNS int LANGUAGE sql AS 'SELECT 1'", True),
+            ("CREATE OR REPLACE FUNCTION private.answer() RETURNS int LANGUAGE sql AS 'SELECT 2'", True),
+            ("CREATE FUNCTION private.capture() RETURNS trigger LANGUAGE plpgsql AS "
+             "'BEGIN RETURN NEW; END'; CREATE TRIGGER capture BEFORE INSERT ON public.sample "
+             "FOR EACH ROW EXECUTE FUNCTION private.capture()", True),
+            ("ALTER TABLE public.sample DISABLE TRIGGER capture", True),
+            ("UPDATE public.sample SET n = 3", False),
+        ):
+            sql(statement)
+            current = json.loads(sql(schema.QUERY))
+            assert current["columns"] == first["columns"]
+            assert current["migrations"] == first["migrations"]
+            assert (current["ddl_sha256"] != previous["ddl_sha256"]) == changed, statement
+            previous = current
+
+        sql("CREATE TABLE private.sample(n int); CREATE VIEW public.sample_view AS SELECT n FROM public.sample")
+        before = json.loads(sql(schema.QUERY))
+        sql("ALTER TABLE private.sample ADD COLUMN owner_id uuid")
+        after_column = json.loads(sql(schema.QUERY))
+        assert after_column["columns"] != before["columns"]
+        assert any(c["table_schema"] == "private" and c["column_name"] == "owner_id"
+                   for c in after_column["columns"])
+        sql("CREATE OR REPLACE VIEW public.sample_view AS SELECT m AS n FROM public.sample")
+        after_view = json.loads(sql(schema.QUERY))
+        assert after_view["columns"] == after_column["columns"]
+        assert after_view["ddl_sha256"] != after_column["ddl_sha256"]
+    finally:
+        subprocess.run([*ctl, "-m", "immediate", "stop"], check=True, capture_output=True, timeout=30)

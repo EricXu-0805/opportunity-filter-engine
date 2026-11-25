@@ -1,4 +1,4 @@
-"""Capture public column definitions and applied migration identities for a recovery point."""
+"""Capture application columns, DDL and applied migration identities for a recovery point."""
 from __future__ import annotations
 
 import argparse
@@ -12,15 +12,42 @@ from pathlib import Path
 
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
 
-METHOD = "postgres-public-columns-and-migrations-v1"
+METHOD = "postgres-application-ddl-and-migrations-v2"
 QUERY = """
+WITH application_schema AS (
+  SELECT oid, nspname FROM pg_namespace WHERE nspname IN ('public', 'private')
+), definitions(kind, schema_name, definition) AS (
+  SELECT 'index', n.nspname, jsonb_build_array(pg_get_indexdef(i.indexrelid), i.indisvalid, i.indisready)
+  FROM pg_index i JOIN pg_class t ON t.oid = i.indrelid
+  JOIN application_schema n ON n.oid = t.relnamespace
+  UNION ALL
+  SELECT 'view', n.nspname, jsonb_build_array(t.relkind, t.relname, pg_get_viewdef(t.oid), t.reloptions)
+  FROM pg_class t JOIN application_schema n ON n.oid = t.relnamespace
+  WHERE t.relkind IN ('v','m')
+  UNION ALL
+  SELECT 'trigger', n.nspname, jsonb_build_array(pg_get_triggerdef(g.oid), g.tgenabled)
+  FROM pg_trigger g JOIN pg_class t ON t.oid = g.tgrelid
+  JOIN application_schema n ON n.oid = t.relnamespace WHERE NOT g.tgisinternal
+  UNION ALL
+  SELECT 'routine', n.nspname, to_jsonb(pg_get_functiondef(p.oid))
+  FROM pg_proc p JOIN application_schema n ON n.oid = p.pronamespace WHERE p.prokind IN ('f','p','w')
+  UNION ALL
+  SELECT 'constraint', n.nspname, jsonb_build_array(t.relname, c.conname, pg_get_constraintdef(c.oid), c.convalidated)
+  FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
+  JOIN application_schema n ON n.oid = t.relnamespace
+)
 SELECT json_build_object(
-  'columns', (SELECT json_agg(row_to_json(c) ORDER BY table_name COLLATE "C", ordinal_position)
-    FROM (SELECT table_name, ordinal_position, column_name, is_nullable, udt_schema, udt_name,
+  'ddl_count', (SELECT count(*) FROM definitions),
+  'ddl_sha256', (SELECT encode(sha256(convert_to(COALESCE(jsonb_agg(
+    jsonb_build_array(kind, schema_name, definition)
+    ORDER BY kind COLLATE "C", schema_name COLLATE "C", definition::text COLLATE "C"
+  ), '[]'::jsonb)::text, 'UTF8')), 'hex') FROM definitions),
+  'columns', (SELECT json_agg(row_to_json(c) ORDER BY table_schema COLLATE "C", table_name COLLATE "C", ordinal_position)
+    FROM (SELECT table_schema, table_name, ordinal_position, column_name, is_nullable, udt_schema, udt_name,
                  column_default, character_maximum_length, numeric_precision, numeric_scale,
                  datetime_precision, is_identity, identity_generation, is_generated,
                  generation_expression, collation_schema, collation_name, domain_schema, domain_name
-          FROM information_schema.columns WHERE table_schema = 'public') AS c),
+          FROM information_schema.columns WHERE table_schema IN ('public', 'private')) AS c),
   'migrations', (SELECT json_agg(json_build_object('version', version, 'name', name)
                                  ORDER BY version COLLATE "C")
                  FROM supabase_migrations.schema_migrations)
@@ -43,7 +70,7 @@ def observe(project: str, backup: str) -> dict:
     env = {k: v for k, v in os.environ.items() if not k.startswith("PG")
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10",
-               PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=20000")
+               PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=20000 -c search_path=pg_catalog")
     try:
         result = subprocess.run(
             ["psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", f"db.{project}.supabase.co",
@@ -56,7 +83,12 @@ def observe(project: str, backup: str) -> dict:
     columns = catalogue["columns"]
     migrations = catalogue["migrations"]
     if not isinstance(columns, list) or not columns or not isinstance(migrations, list) or not migrations:
-        raise ValueError("public columns and the migration ledger must both be populated")
+        raise ValueError("application columns and the migration ledger must both be populated")
+    ddl_digest = catalogue.get("ddl_sha256")
+    ddl_count = catalogue.get("ddl_count")
+    if (not isinstance(ddl_digest, str) or not re.fullmatch(r"[a-f0-9]{64}", ddl_digest)
+            or type(ddl_count) is not int or ddl_count < 0):
+        raise ValueError("application DDL observation missing")
     comparison = compare(committed_migrations(), applied_rows(migrations))
     # Use only filenames matched to actually observed rows. Comparing against the
     # gate's candidate hash is meaningful only when parity was one-to-one.
@@ -64,6 +96,7 @@ def observe(project: str, backup: str) -> dict:
     return {"method": METHOD, "project_ref": project, "source_backup_id": backup,
             "observed_at": datetime.now(UTC).isoformat(),
             "columns_sha256": _digest(columns), "column_count": len(columns),
+            "ddl_sha256": ddl_digest, "ddl_count": ddl_count,
             "history_sha256": _digest(migrations), "migration_count": len(migrations),
             "migration_parity": comparison["in_parity"],
             "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16]}
@@ -88,7 +121,7 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
         return None
     # A source-supplied JSON file is private. Copy only validated metadata.
     return {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
-                                        "columns_sha256", "column_count", "history_sha256", "migration_count",
+                                        "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count",
                                         "migration_parity", "matched_filenames_digest")}
 
 
@@ -97,7 +130,8 @@ def _valid_shape(part: dict) -> bool:
         part.get("method") == METHOD and isinstance(part.get("project_ref"), str)
         and isinstance(part.get("source_backup_id"), str) and _timestamp(part.get("observed_at")) is not None
         and all(isinstance(part.get(k), str) and re.fullmatch(r"[a-f0-9]{64}", part[k])
-                for k in ("columns_sha256", "history_sha256"))
+                for k in ("columns_sha256", "ddl_sha256", "history_sha256"))
+        and type(part.get("ddl_count")) is int and part["ddl_count"] >= 0
         and all(type(part.get(k)) is int and part[k] > 0 for k in ("column_count", "migration_count"))
         and type(part.get("migration_parity")) is bool
         and isinstance(part.get("matched_filenames_digest"), str)
@@ -138,7 +172,7 @@ def schema_verdict(record: dict, expected: dict) -> tuple[str, str]:
     if any(t is None for t in times) or times != sorted(times) or times[-1] > datetime.now(UTC):
         return "UNVERIFIED", "schema_observation_time_unbound"
     if any(source[k] != restored[k] for k in (
-            "columns_sha256", "column_count", "history_sha256", "migration_count")):
+            "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count")):
         return "FAIL", "source_restored_schema_mismatch"
     if any(not part["migration_parity"] or part["matched_filenames_digest"] != expected.get("digest")
            or part["migration_count"] != expected.get("count") for part in (source, restored)):
