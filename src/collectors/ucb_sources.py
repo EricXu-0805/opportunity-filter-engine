@@ -379,22 +379,6 @@ UCB_SOURCES: list[dict] = [
                 deadline_note="Annual cycle — applications due in the spring of junior year.",
                 keywords=["fellowship", "thesis", "research grant", "undergraduate research"],
             ),
-            _prog(
-                "mcnair",
-                "McNair Scholars Program (UC Berkeley)",
-                "https://research.berkeley.edu/mcnair/",
-                "Federally funded program preparing first-generation, low-income, and "
-                "underrepresented undergraduates for PhD study through mentored "
-                "research, a summer research institute, and graduate-school advising.",
-                lab_or_program="McNair Scholars",
-                opportunity_type="research",
-                paid="stipend",
-                compensation="Summer research stipend",
-                preferred_year=["sophomore", "junior"],
-                international_friendly="no",
-                deadline_note="Annual cohort — spring application.",
-                keywords=["research", "phd preparation", "summer research", "mentorship"],
-            ),
         ],
     },
 
