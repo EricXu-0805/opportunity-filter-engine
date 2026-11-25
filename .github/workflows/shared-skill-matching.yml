@@ -1,0 +1,16 @@
+name: Verify inherited skills still participate in live deterministic matching
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths: ['.github/workflows/shared-skill-matching.yml','scripts/check_live_shared_skills.py']
+permissions:
+  contents: read
+jobs:
+  matching:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -u scripts/check_live_shared_skills.py
