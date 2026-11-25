@@ -81,10 +81,10 @@ def _passing_drill(migrations: dict | None = None) -> dict:
               "matched_filenames_digest": target["digest"]}
     counts = dict(expected=1, expected_bytes=3, listed=1, missing=0, unexpected=0,
                   verified=1, verified_bytes=3, mismatched=0, unreadable=0, inventory_complete=True)
-    attachments = {"method": "supabase-storage-list-download-sha256-v1", "source_backup_id": "backup-1",
+    attachments = {"method": "supabase-storage-list-download-sha256-v2", "source_backup_id": "backup-1",
                    "source_environment": "prod", "scratch_environment": "scratch",
                    "manifest_sha256": "c" * 64, "result": "PASS", "observed_at": now,
-                   "buckets": {key: counts.copy() for key in ("tracker-attachments", "application-materials")}}
+                   "buckets": {key: counts.copy() for key in ("tracker-attachments", "application-materials", "tracker-attachment-versions")}}
     return {
         "drill_id": "drill-2026-09-04-a", "performed_at": now, "restore_started_at": now,
         "source_backup_id": "backup-1", "source_environment": "prod", "scratch_environment": "scratch",
