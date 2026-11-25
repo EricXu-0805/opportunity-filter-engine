@@ -149,13 +149,17 @@ def verify(mode):
         draft = context.request.post(SITE+"/api/cold-email", data={"engine":"template", "opportunity_id":oid,
                    "profile":{"name":"Sample Student","year":"junior","major":major,"school":school,"hard_skills":[]}})
         assert draft.ok, draft.status
-        body = draft.json()["body"]
+        template = draft.json()
+        body = template["body"]
+        subject = template["subject"]
+        expected_subject = "Research inquiry" if badge else "Internship inquiry — Data Engineer Intern"
+        assert subject == expected_subject, subject
         if badge:
             assert "?" in body and not any(x in body.lower() for x in ("your open position","you are hiring"))
         else:
             assert "data engineer intern" in body.lower()
         print(mode, oid, row["opportunity"]["record_kind"], row["opportunity"].get("contact_email_status"),
-              "card, next steps, detail action and unsent template verified", flush=True)
+              "card, next steps, detail action and unsent template verified", subject, flush=True)
         browser.close()
 
 
