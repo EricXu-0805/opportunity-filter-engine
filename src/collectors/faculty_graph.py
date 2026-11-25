@@ -1297,7 +1297,8 @@ def at_each_depth(compound: str, depths: int) -> list[str]:
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
-                 field_filter: dict | None = None) -> list[dict]:
+                 field_filter: dict | None = None, *,
+                 unit_filter: dict | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
@@ -1322,7 +1323,18 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                 _page_people(soup))
         except Exception:  # noqa: BLE001 — diagnostics must never break a scrape
             _cover("parser_errors")
-    for card in soup.select(sel.get("card", "")):
+    cards = soup.select(sel.get("card", ""))
+    if unit_filter and not cards:
+        _cover("partial_render_rows")
+    for card in cards:
+        if unit_filter:
+            field = card.select_one(unit_filter["selector"])
+            if field is None or not field.get_text(strip=True):
+                # An unscoped row on a shared campus page could belong to this unit.
+                _cover("unparsed_rows")
+                continue
+            if not _passes_field(card, unit_filter):
+                continue
         if not _passes_section(card, section_filter):
             # Out of this unit's scope entirely (another role heading) — not a
             # roster row we failed to read.
@@ -1933,13 +1945,16 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 logger.warning(
                     "faculty_graph: %s roster page(s) %s were not read; the unit "
                     "retires nobody this run", dept.get("short"), sorted(not_read))
-        for _extra_url in cfg.get("extra_urls", []):
+        for extra in cfg.get("extra_urls", []):
+            _extra_url = extra["url"] if isinstance(extra, dict) else extra
+            unit_filter = extra.get("unit_filter") if isinstance(extra, dict) else None
             # Sibling roster pages of the SAME department that share one theme —
             # rank-split med-school galleries, art-history + studio art, core +
             # teaching faculty — merged under this department's short/name (dedup
             # on name+url). Each hit is throttled like the base fetch so a
             # multi-page department stays under a burst-rate WAF's threshold.
             if _source_budget_spent():
+                _cover("partial_render_rows")
                 break
             if cfg.get("pre_delay"):
                 import time
@@ -1952,7 +1967,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 continue
             _seen = {(p["name"], p["url"]) for p in people}
             people.extend(
-                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff)
+                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff, unit_filter=unit_filter)
                 if (p["name"], p["url"]) not in _seen)
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
@@ -4619,6 +4634,9 @@ def _listing_urls(school: dict) -> set[str]:
         for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
+                for page in cfg.get("extra_urls", []):
+                    url = page["url"] if isinstance(page, dict) else page
+                    urls.add(url.strip().lower())
                 for k in ("url", "base"):
                     v = (cfg.get(k) or "").strip().lower()
                     if v:
@@ -5323,6 +5341,8 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "retirement_authorized": False,
         "failure_reason": failure_reason,
     }
+    if dept.get("roster_is_partial"):
+        observation["roster_is_partial"] = True
     if directory_failure:
         observation["directory_fetch_failure"] = directory_failure
     if listed_identities is not None:

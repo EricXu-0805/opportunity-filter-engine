@@ -5156,3 +5156,39 @@ def test_ucsc_leadership_title_needs_a_current_person_profile(monkeypatch, unit,
     assert calls == [url]
     monkeypatch.setattr(ucb_common, "fetch_soup", lambda *args, **kwargs: None)
     assert fg._apply_profile_enrich([dict(candidate), regular], settings) == [regular]
+
+
+def test_ucsc_cs_supplement_scopes_people_and_withholds_unread_roster(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.ucsc_faculty import SCHOOL as ucsc
+
+    dept = next(d for d in ucsc["departments"] if d["short"] == "CS")
+    extra = dept["scrape"]["extra_urls"][0]["url"]
+    assert extra in fg._listing_urls(ucsc)
+
+    def card(name, uid, unit, rank="Associate Professor"):
+        return (f'<div class="section-item h-card wrap"><h3 class="item-name">'
+                f'<a class="u-url" href="https://campusdirectory.ucsc.edu/cd_detail?uid={uid}">'
+                f'<span class="p-name">{name}</span></a></h3><ul class="item-info">'
+                f'<li><strong>Title</strong><ul class="inline-list"><li>{rank}</li></ul></li>'
+                f'<li><strong>Department</strong><ul><li>{unit}</li></ul></li></ul></div>')
+
+    unit = "Computer Science and Engineering"
+    primary = card("Common Professor", "common", unit)
+    mixed = (primary + card("Ian Lane", "ialane", unit) + card("Other Person", "other", "Linguistics")
+             + card("Local Student", "student", unit, "Graduate Student"))
+    pages = {dept["directory_url"]: primary, extra: mixed}
+    monkeypatch.setattr(ucb_common, "fetch_soup",
+                        lambda url, **kwargs: BeautifulSoup(pages[url], "html.parser") if pages[url] else None)
+    monkeypatch.setattr(fg, "_apply_profile_enrich", lambda people, cfg: people)
+    for html, blocked in ((mixed, False), (mixed + card("Unknown Person", "unknown", ""), True),
+                          ("<h1>Directory</h1>", True), ("", True)):
+        pages[extra] = html
+        cov = fg._new_coverage()
+        monkeypatch.setattr(fg, "_ACTIVE_COVERAGE", cov)
+        people = fg._scrape_directory(dept)
+        expected = ["Common Professor", "Ian Lane"] if html.startswith(primary) else ["Common Professor"]
+        assert [person["name"] for person in people] == expected
+        assert bool(cov["partial_render_rows"] or cov["unparsed_rows"]) == blocked

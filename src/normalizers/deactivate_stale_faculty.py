@@ -667,6 +667,9 @@ def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
     keeps every collector family that cannot yet report it from quietly
     becoming retirement authority.
     """
+    # Resolving every card on a known partial directory still cannot establish departure.
+    if entry.get("roster_is_partial"):
+        return False, "known_partial_roster"
     coverage = entry.get("coverage")
     if not isinstance(coverage, dict):
         return False, "coverage_unreported"
@@ -1007,7 +1010,7 @@ def _bucket_for(reason: str) -> tuple[str, str]:
             "roster_source_unconfirmed", "producer_withheld_authority",
             "unrecognised_ledger_entry"):
         return "records_preserved_failed_source", "units_blocked_missing_lineage"
-    if reason.startswith("shared_roster_"):
+    if reason == "known_partial_roster" or reason.startswith("shared_roster_"):
         return "records_preserved_partial", "units_blocked_partial_fetch"
     if reason in ("partial_scrape",) or reason.startswith("completeness_"):
         return "records_preserved_partial", "units_blocked_unparsed_rows"

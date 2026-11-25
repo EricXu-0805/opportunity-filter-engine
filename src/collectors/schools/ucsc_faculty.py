@@ -134,6 +134,8 @@ _RESEARCH_ENRICH = {
 
 def _dept(short: str, name: str, majors: list[str], url: str, *,
           leadership_title: str | None = None,
+          extra_rosters: list[dict] | None = None,
+          roster_is_partial: bool = False,
           profile_id_names: dict[str, tuple[str, str]] | None = None) -> dict:
     """A department on the shared UCSC h-card component."""
     field = _FIELD
@@ -150,9 +152,11 @@ def _dept(short: str, name: str, majors: list[str], url: str, *,
             "ladder_recheck": {"require": "professor|lecturer", "require_present": True},
         }} if leadership_title else {}),
         **({"profile_id_names": profile_id_names} if profile_id_names else {}),
+        **({"roster_is_partial": True} if roster_is_partial else {}),
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SEL, "field_filter": field,
-                   "profile_enrich": _RESEARCH_ENRICH},
+                   "profile_enrich": _RESEARCH_ENRICH,
+                   **({"extra_urls": extra_rosters} if extra_rosters else {})},
     }
 
 
@@ -172,7 +176,19 @@ SCHOOL: dict = {
         _dept("CS", "Department of Computer Science and Engineering",
               ["Computer Science", "Computer Engineering"],
               "https://engineering.ucsc.edu/departments/computer-science-and-engineering/people/",
-              leadership_title="Chair"),
+              leadership_title="Chair",
+              # Xiang Yue appears in the 2026–27 CSE faculty catalog but no
+              # longer has a directory card. Preserve absentees until reconciled.
+              roster_is_partial=True,
+              # The Baskin CSE page omits some current Silicon Valley faculty.
+              # The NLP program labels each participant's home department.
+              extra_rosters=[{
+                  "url": "https://nlp.ucsc.edu/people/",
+                  "unit_filter": {
+                      "selector": 'li:has(> strong:-soup-contains-own("Department")) > ul > li',
+                      "include": "^Computer Science and Engineering$",
+                  },
+              }]),
         _dept("ECE", "Department of Electrical and Computer Engineering",
               ["Electrical Engineering", "Computer Engineering"],
               "https://engineering.ucsc.edu/departments/electrical-and-computer-engineering/people/"),
@@ -213,7 +229,10 @@ SCHOOL: dict = {
               ["Economics", "Business Management Economics", "Global Economics"],
               "https://economics.ucsc.edu/people/faculty/"),
         _dept("ANTH", "Department of Anthropology", ["Anthropology"],
-              "https://anthro.ucsc.edu/people/faculty/", leadership_title="Director of Undergraduate Studies"),
+              "https://anthro.ucsc.edu/people/faculty/", leadership_title="Director of Undergraduate Studies",
+              # The university archaeology center still identifies the ELLA lab PI
+              # with this department; the departmental faculty roster omits her.
+              roster_is_partial=True),
         _dept("POLI", "Department of Politics", ["Politics", "Legal Studies"],
               "https://politics.ucsc.edu/people/faculty/"),
         _dept("ENVS", "Department of Environmental Studies",

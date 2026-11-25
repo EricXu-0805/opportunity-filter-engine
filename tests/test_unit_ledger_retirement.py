@@ -130,6 +130,27 @@ def test_collapsed_ucsc_ledger_cannot_establish_absence():
     assert unit_retirement_authority(prior, 29) == (False, "ambiguous_ucsc_directory_identity")
 
 
+def test_known_partial_department_never_authorizes_departure():
+    from src.collectors.faculty_graph import _unit_observation
+    from src.collectors.schools.ucsc_faculty import SCHOOL
+
+    for short in ("CS", "ANTH"):
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == short)
+        present = rec(f"faculty-ucsc-{short.lower()}-00000001", seen=RECENT)
+        missing = rec(f"faculty-ucsc-{short.lower()}-00000002", seen=LONG_AGO)
+        for row in (present, missing):
+            row["source"] = "ucsc_faculty"
+        unit = _unit_observation(SCHOOL, dept, [present], "2026-11-25", coverage=coverage(1))
+        ledger = {short.lower(): unit}
+        finalize_unit_ledger(ledger, [present, missing], "ucsc_faculty")
+        assert unit["observed_entity_ids"] == [present["id"]]
+        assert unit["retirement_authorized"] is False
+        assert unit_retirement_authority(unit, 2) == (False, "known_partial_roster")
+        result = deactivate_stale_faculty([present, missing], {"ucsc_faculty": ledger}, today=TODAY)
+        assert not result["newly_deactivated"]
+        assert missing["metadata"]["is_active"]
+
+
 # 1. complete department scrape may authorize retirement
 def test_complete_unit_scrape_authorizes_retirement():
     kept = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(19)]
