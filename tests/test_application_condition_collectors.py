@@ -236,7 +236,7 @@ def _checks(states):
 ])
 def test_sro_duplicate_keeps_one_program_and_promotes_relisted_alias(tmp_path, organization, preferred, alias):
     path = tmp_path / 'opportunities.json'
-    first, second, unrelated = [_sro_row(URL + '/' + key) for key in (preferred, alias, 'another')]
+    first, second, unrelated = (_sro_row(URL + '/' + key) for key in (preferred, alias, 'another'))
     first.update(id=preferred, organization=organization)
     second.update(id=alias, organization=organization)
     unrelated.update(organization=organization)  # same title and host alone are insufficient
