@@ -87,7 +87,7 @@ async def main():
             await c.add_init_script(
                 "if(location.hostname==='joinalab.com'&&!localStorage.getItem('ofe_auth')){localStorage.setItem('ofe_auth',"
                 + json.dumps(json.dumps(session))
-                + ");localStorage.setItem('ofe_lang','en');localStorage.setItem('ofe_onboarding_seen','1')}"
+                + ");localStorage.setItem('ofe_lang','en');localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_school_confirmed',JSON.stringify({slug:'uiuc',ts:new Date().toISOString()}))}"
             )
 
             async def intercept(route):
