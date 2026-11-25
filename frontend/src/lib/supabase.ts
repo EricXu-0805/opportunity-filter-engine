@@ -19,6 +19,7 @@ import {
   OwnerNotReadyError,
   OwnerScopedLoadError,
   OwnerMismatchError,
+  readUserScopedEntry,
   readUserScopedRaw,
   syncLocalIdentityOwner,
   writeUserScopedRaw,
@@ -118,15 +119,21 @@ export function onStorageStatusChange(cb: () => void): () => void {
 // fallback show", e.g. after its own token went stale) before reaching
 // this — it reflects whichever identity is genuinely ready right now, not
 // a specific captured token.
-function readFavFallback(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  const raw = readUserScopedRaw(FAV_FALLBACK_KEY);
-  if (!raw) return new Set();
+interface FavoriteSnapshot { ids: Set<string>; complete: boolean }
+
+function readFavoriteQueue(): FavoriteSnapshot {
+  const entry = readUserScopedEntry(FAV_FALLBACK_KEY);
+  if (entry.status !== 'present') return { ids: new Set(), complete: entry.status === 'absent' };
   try {
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? new Set(arr as string[]) : new Set();
-  } catch { return new Set(); }
+    const ids: unknown = JSON.parse(entry.value);
+    if (Array.isArray(ids) && ids.every(id => typeof id === 'string' && id.length > 0)) {
+      return { ids: new Set(ids), complete: true };
+    }
+  } catch { /* An unreadable queue cannot establish a count. */ }
+  return { ids: new Set(), complete: false };
 }
+
+function readFavFallback(): Set<string> { return readFavoriteQueue().ids; }
 
 // `token` MUST be the SAME already-validated token the caller just checked
 // via isOwnerTokenValid immediately before calling this — defense in depth
@@ -1648,23 +1655,20 @@ export async function loadArchivedGuestProfile(
 // in-flight read for the current identity" — immediately before every
 // side-effecting step, exactly like a write helper.
 export async function getFavorites(): Promise<Set<string>> {
+  return (await getFavoritesSnapshot()).ids;
+}
+
+/** A readable queue can supply individual favorites when the cloud read fails.
+ * Only this request's confirmed union can establish a total or an empty state. */
+export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
   let token = captureOwnerToken();
-  let local = readFavFallback();
+
   const deviceId = await ensureAnonSession();
   if (!isOwnerTokenValid(token, deviceId)) {
     if (token.uid !== null) {
-      // A previously-KNOWN identity changed mid-flight — a genuine
-      // abandonment. Never retried here; stays local-only.
-      //
-      // And it must SAY local-only. The cloud was never queried, so the empty
-      // set this returns means "could not check", not "you have none" — but
-      // use-favorites-data stamps a zero-id load as "a true empty state" and
-      // renders "Star any opportunity from the matches page to save it here"
-      // to someone with three saved labs. The status is the only channel that
-      // separates the two, and StorageStatusBanner shows nothing for
-      // 'unknown'.
+      // Do not return another owner's fallback to an abandoned account read.
       setStorageStatus('local-only', 'this browser could not confirm which account it belongs to');
-      return readFavFallback();
+      return { ids: new Set(), complete: false };
     }
     // token.uid === null: nothing had been resolved yet at capture time,
     // so this isn't abandoning a known identity — it's the browser's
@@ -1679,37 +1683,45 @@ export async function getFavorites(): Promise<Set<string>> {
     const freshToken = captureOwnerToken();
     if (!isOwnerTokenValid(freshToken, deviceId)) {
       setStorageStatus('local-only', 'this browser could not confirm which account it belongs to');
-      return readFavFallback();
+      return { ids: new Set(), complete: false };
     }
     token = freshToken;
-    local = readFavFallback(); // re-read: identity-owner's sync may have run since the read above
   }
+  const queue = readFavoriteQueue();
+  const local = queue.ids;
   if (!deviceId) {
     // No session, so no cloud read happened. Same reason as above: the caller
     // must not read this as a confirmed empty shortlist.
     setStorageStatus('local-only', 'signed out of sync — showing what is saved on this device');
-    return local;
+    return { ids: local, complete: !SUPABASE_CONFIGURED && queue.complete };
   }
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('favorites')
-    .select('opportunity_id')
+    .select('opportunity_id', { count: 'exact' })
     .eq('device_id', deviceId);
-  if (!isOwnerTokenValid(token, deviceId)) return readFavFallback();
+  if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
 
-  if (error || !data) {
+  if (error || !Array.isArray(data) || data.some(row => typeof row?.opportunity_id !== 'string' || !row.opportunity_id)) {
     console.warn('[ofe] getFavorites failed, using local fallback:', error?.message);
     setStorageStatus('local-only', error?.message ?? null);
-    return local;
+    return { ids: local, complete: false };
   }
 
   const remote = new Set(data.map((r: { opportunity_id: string }) => r.opportunity_id));
+
+  if (typeof count === 'number' && count !== data.length) {
+    // PostgREST can cap a successful result. Backfilling against a partial
+    // page could re-insert a row outside the response and clear its queue.
+    setStorageStatus('local-only', 'The full saved list could not be checked.');
+    return { ids: new Set([...remote, ...local]), complete: false };
+  }
 
   const toPush = Array.from(local).filter(id => !remote.has(id));
   if (toPush.length > 0) {
     const rows = toPush.map(opportunity_id => ({ device_id: deviceId, opportunity_id }));
     const { error: insErr } = await supabase.from('favorites').insert(rows);
-    if (!isOwnerTokenValid(token, deviceId)) return readFavFallback();
+    if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
     if (!insErr) {
       toPush.forEach(id => remote.add(id));
       writeFavFallback(new Set(), token);
@@ -1722,7 +1734,7 @@ export async function getFavorites(): Promise<Set<string>> {
       toPush.forEach(id => remote.add(id));
       writeFavFallback(new Set(toPush), token);
       setStorageStatus('local-only', insErr.message);
-      return remote;
+      return { ids: remote, complete: queue.complete };
     }
   } else if (local.size > 0) {
     writeFavFallback(new Set(), token);
@@ -1734,7 +1746,7 @@ export async function getFavorites(): Promise<Set<string>> {
   // so the next load pushed deleted favorites back: un-star a lab, navigate,
   // and it was re-INSERTed and starred again on every device.
   setStorageStatus('synced');
-  return remote;
+  return { ids: remote, complete: queue.complete };
 }
 
 export async function toggleFavorite(
@@ -2208,14 +2220,18 @@ export async function getInteractionsFull(): Promise<Map<string, InteractionReco
     throw new Error('session-unavailable');
   }
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('interactions')
-    .select('opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at')
+    .select('opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at', { count: 'exact' })
     .eq('device_id', deviceId);
 
   if (error) throw new Error(error.message);
+  if (!Array.isArray(data) || (typeof count === 'number' && count !== data.length)
+    || data.some(row => !row || typeof row.opportunity_id !== 'string' || !row.opportunity_id || !row.interaction_type)) {
+    throw new Error('The full tracker could not be read.');
+  }
   return new Map(
-    (data ?? []).map((r: {
+    data.map((r: {
       opportunity_id: string;
       interaction_type: InteractionType;
       notes?: string;

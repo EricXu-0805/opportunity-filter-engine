@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getShortlistOpportunities } from '@/lib/api';
-import { getAuthState, getFavorites, onAuthChange, toggleFavorite } from '@/lib/supabase';
+import { getAuthState, getFavoritesSnapshot, onAuthChange, toggleFavorite } from '@/lib/supabase';
 import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { removeCustomImport, type CustomImportWriteFailureReason } from '@/lib/custom-imports';
 import type { Opp } from './types';
@@ -85,15 +85,16 @@ export function useFavoritesData(onIdentityChange?: () => void): UseFavoritesDat
   });
 
   const load = useCallback((generation: number) => {
-    getFavorites().then((favSet) => {
+    getFavoritesSnapshot().then(({ ids: favSet, complete }) => {
       if (generationRef.current !== generation) return;
       // getFavorites() unconditionally primes the shared owner primitive
       // via its own ensureAnonSession() call — only now is it safe for
       // handleRemove to capture a token that isn't the unprimed sentinel.
       setOwnerReady(true);
+      setError(!complete);
       const ids = Array.from(favSet);
       if (ids.length === 0) {
-        // A true empty state — only reachable after this successful, zero-id load.
+        // An incomplete read keeps the error state even when its local queue is empty.
         setServerOpportunities([]);
         setUnavailableCount(0);
         setLoading(false);

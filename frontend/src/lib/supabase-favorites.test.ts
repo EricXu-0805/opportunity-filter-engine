@@ -40,8 +40,8 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { captureOwnerToken, isLocalOwnerReady, readUserScopedRaw } from './identity-owner';
-import { getFavorites, getStorageStatus, onAuthChange, toggleFavorite } from './supabase';
+import { captureOwnerToken, isLocalOwnerReady, readUserScopedRaw, writeUserScopedRaw } from './identity-owner';
+import { getFavorites, getFavoritesSnapshot, getStorageStatus, onAuthChange, toggleFavorite } from './supabase';
 import { STORAGE_KEYS } from './storage-keys';
 
 const UID = '11111111-1111-4111-8111-111111111111';
@@ -159,6 +159,34 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
 
   const cloud = (...ids: string[]) =>
     mockEq.mockResolvedValueOnce({ data: ids.map((opportunity_id) => ({ opportunity_id })), error: null });
+
+  it('distinguishes a read outage from confirmed zero even if a later read updates the shared sync banner', async () => {
+    mockEq.mockResolvedValueOnce({ data: null, error: { message: 'synthetic outage' } });
+    const failed = await getFavoritesSnapshot();
+    cloud();
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(), complete: true });
+    expect(getStorageStatus().status).toBe('synced');
+    expect(failed).toEqual({ ids: new Set(), complete: false });
+  });
+  it('retains offline saves on cloud failure and reads a complete union despite pending backfill', async () => {
+    mockInsert.mockResolvedValueOnce({ error: { message: 'offline' } });
+    await toggleFavorite('queued', false, captureOwnerToken());
+    mockEq.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['queued']), complete: false });
+    cloud('cloud');
+    mockInsert.mockResolvedValueOnce({ error: { message: 'offline' } });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['cloud', 'queued']), complete: true });
+  });
+  it('preserves an unreadable local queue and never uses a capped result as a total', async () => {
+    writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '{', captureOwnerToken());
+    cloud('remote');
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['remote']), complete: false });
+    expect(readUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK)).toBe('{');
+    writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["queued"]', captureOwnerToken());
+    mockEq.mockResolvedValueOnce({ data: [{ opportunity_id: 'remote' }], error: null, count: 2 });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['remote', 'queued']), complete: false });
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
 
   it('does not resurrect a lab the student un-starred', async () => {
     cloud('A', 'B', 'C');

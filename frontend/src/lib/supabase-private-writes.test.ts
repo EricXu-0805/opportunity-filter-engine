@@ -841,6 +841,17 @@ describe('interaction reads: throw on query failure, null/empty only on a CONFIR
     await expect(getInteractionsFull()).rejects.toThrow('connection reset');
   });
 
+  it.each([
+    { data: null, error: null },
+    { data: [], error: null, count: 2 },
+    { data: [{ opportunity_id: '' }], error: null },
+  ])('rejects an incomplete Tracker payload instead of displaying zero reminders', async reply => {
+    establishIdentity(U1);
+    const eq = vi.fn().mockResolvedValue(reply);
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    await expect(getInteractionsFull()).rejects.toThrow('full tracker');
+  });
+
   it('getInteractionsFull returns an empty Map on a CONFIRMED empty result set', async () => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue({ data: [], error: null });
