@@ -1,0 +1,49 @@
+name: Read published M04 opportunity details
+on:
+  push:
+    branches: [codex/diagnose-m04-public-targets]
+    paths: ['.github/workflows/read-m04-public-targets.yml']
+permissions: {}
+jobs:
+  public-readback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Read public pages and anonymous detail contract
+        shell: python
+        run: |
+          import json, re, urllib.request
+          from html import unescape
+          from html.parser import HTMLParser
+          class Head(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.desc = ''
+              def handle_starttag(self, tag, attrs):
+                  d = dict(attrs)
+                  if tag == 'meta' and d.get('name') == 'description':
+                      self.desc = d.get('content', '')
+          def read(url):
+              req = urllib.request.Request(url, headers={'User-Agent':'JoinALab-public-acceptance/1.0', 'Accept-Language':'en'})
+              with urllib.request.urlopen(req, timeout=55) as r:
+                  assert r.status == 200
+                  data = r.read(4_000_001)
+                  assert len(data) < 4_000_001
+                  return data.decode()
+          for rid, kind, contact in [
+              ('faculty-caltech-phys-b6dd07e7','faculty_contact','unavailable'),
+              ('faculty-ucb-eecs-d683bc2c','faculty_contact','sign_in_required'),
+              ('simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95','listing','unavailable')]:
+              page = read('https://joinalab.com/opportunities/' + rid)
+              head = Head()
+              head.feed(page)
+              detail = json.loads(read('https://opportunity-filter-engine-api.onrender.com/api/opportunities/' + rid))
+              truth = detail['target_truth']
+              print(rid, json.dumps({'kind':detail['record_kind'], 'contact':detail.get('contact_email_status'),
+                    'accepting':truth['accepting_state'], 'apply':bool((detail.get('application') or {}).get('application_url')),
+                    'has_address':bool(detail.get('contact_email')), 'has_meta':bool(head.desc),
+                    'page_info':head.desc[:160] if kind == 'faculty_contact' else 'listing detail'}, ensure_ascii=True))
+              assert detail['id'] == rid and detail['record_kind'] == kind and truth['actionable']
+              assert not detail.get('contact_email') and detail.get('contact_email_status') == contact
+              assert bool((detail.get('application') or {}).get('application_url')) == (kind=='listing')
+              assert head.desc and (kind=='listing' or truth['accepting_state']=='unknown')
