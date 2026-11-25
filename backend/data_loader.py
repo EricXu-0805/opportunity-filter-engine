@@ -15,6 +15,7 @@ from src.evidence import (
     stamp_collector_templates,
 )
 from src.import_source import sanitize_import_source
+from src.normalizers.reviewed_faculty_profiles import apply_reviewed_faculty_profile
 from src.normalizers.school_audience import apply_program_audience
 from src.program_windows import apply_program_window
 
@@ -71,6 +72,7 @@ def _strip_html(text: str) -> str:
 
 
 def _sanitize_opportunity(opp: dict) -> dict:
+    apply_reviewed_faculty_profile(opp)
     # First, so the stamp below judges the keywords that are served.
     drop_publication_heading_keywords(opp)
     # Before the faculty description is rebuilt below, which leaves keywords
