@@ -37,9 +37,9 @@ async def run(mode):
         for _ in range(50):
             try: fetch(stub+'/health'); break
             except OSError: await asyncio.sleep(.1)
-        session=rpc('/auth/v1/signup',{}); uid=session['user']['id']
+        session=rpc('/auth/v1/signup',{'email':'m179@example.invalid','password':'local-fixture-only'} if mode.startswith('race') else {}); uid=session['user']['id']
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
-        if mode == 'merged':
+        if mode == 'merged' or mode.startswith('race'):
             profile.update(institution='UIUC',home_school='uiuc',college='Grainger College of Engineering',major='Computer Science',skills=[])
         if mode == 'urca':
             profile.update(institution='UC Santa Barbara', home_school='ucsb', major='', research_interests='', skills=[])
@@ -50,10 +50,15 @@ async def run(mode):
         result=rpc('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':uid,'p_expected_revision':0,'p_patch':profile},auth);assert result['status']=='applied'
         async with async_playwright() as pw:
             browser=await pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
-            context=await browser.new_context(service_workers='block')
+            context=await browser.new_context(service_workers='block',viewport={'width':390 if mode=='racezh' else 1280,'height':900})
             init="""if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_receipt_seed')){for(const [k,v] of Object.entries(VALUES))localStorage.setItem(k,v);localStorage.setItem('oe_receipt_seed','1')}"""
             values={'ofe_auth':json.dumps(session),'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_profile':json.dumps(profile)}
-            if mode == 'merged':
+            if mode.startswith('race'):
+                values['ofe_lang'] = mode.removeprefix('race')
+                await context.set_extra_http_headers({'Accept-Language':values['ofe_lang']})
+                if values['ofe_lang'] == 'zh':
+                    await context.add_cookies([{'name':'ofe_lang','value':'zh','url':'https://joinalab.com'}])
+            if mode == 'merged' or mode.startswith('race'):
                 values.pop('ofe_profile')
             await context.add_init_script(init.replace('VALUES',json.dumps(values)))
             fail=True; reads=0; hold=False; blocked=asyncio.Event(); release=asyncio.Event()
@@ -66,6 +71,10 @@ async def run(mode):
                 cors={'Access-Control-Allow-Origin':'https://joinalab.com','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers.get('access-control-request-headers','*'),'Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,HEAD,OPTIONS','Access-Control-Expose-Headers':'Content-Range,Retry-After'}
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
+                    if mode.startswith('race') and u.path.endswith('/commit_profile_patch_cas'):
+                        if outage:
+                            return await route.fulfill(status=503,headers=cors,json={'message':'simulated disconnected write'})
+                        await asyncio.sleep(.19)
                     if mode == 'merged' and u.path.endswith('/commit_profile_patch_cas') and outage and req.frame.page == receiver:
                         outcomes.append('unavailable')
                         print('Synthetic guest write unavailable',flush=True)
@@ -77,7 +86,7 @@ async def run(mode):
                         return await route.fulfill(status=503 if fail else 200,headers={**cors,'Retry-After':'0',**({} if fail else {'Content-Range':'0-0/1'})},json={'message':'controlled outage'} if fail else [{'opportunity_id':'saved-target'}])
                     h={'Content-Type':'application/json',**{k:v for k,v in req.headers.items() if k in ('authorization','prefer','accept','range')}}
                     code,ct,body=await asyncio.to_thread(fetch,stub+path,req.post_data_buffer,h,req.method)
-                    if mode == 'merged' and u.path.endswith('/commit_profile_patch_cas'):
+                    if (mode == 'merged' or mode.startswith('race')) and u.path.endswith('/commit_profile_patch_cas'):
                         outcomes.append(json.loads(body).get('reason',json.loads(body).get('status')))
                     return await route.fulfill(status=code,body=body,content_type=ct,headers=cors)
                 if u.hostname=='joinalab.com':
@@ -119,6 +128,52 @@ async def run(mode):
                 await expect(page.get_by_text('1 saved',exact=True)).to_be_visible()
                 assert reads>=4
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
+            elif mode.startswith('race'):
+                lang = mode.removeprefix('race')
+                await page.goto('https://joinalab.com/',wait_until='domcontentloaded')
+                receiver = await context.new_page()
+                await receiver.goto('https://joinalab.com/',wait_until='domcontentloaded')
+                tabs = (page,receiver)
+                for tab in tabs:
+                    await expect(tab.locator('#major')).to_have_value('Computer Science',timeout=60000)
+                outage = True
+                await page.locator('#major').select_option('Electrical Engineering')
+                await expect(page.get_by_test_id('retry-sync')).to_be_visible(timeout=25000)
+                await receiver.locator('#major').select_option('Computer Engineering')
+                keep = [tab.get_by_test_id('conflict-keep-mine') for tab in tabs]
+                outage = False
+                for index,tab in enumerate(tabs):
+                    if not await keep[index].is_visible() and await tab.get_by_test_id('retry-sync').is_visible():
+                        await tab.get_by_test_id('retry-sync').click()
+                for index,tab in enumerate(tabs):
+                    await expect(keep[index]).to_be_visible(timeout=30000)
+                    expected = 'Changed somewhere else' if lang == 'en' else '在别处改过了'
+                    await expect(tab.get_by_text(expected,exact=False)).to_be_visible()
+                    if lang == 'zh':
+                        dims=await keep[index].evaluate("(b)=>({width:innerWidth,height:b.getBoundingClientRect().height,line:parseFloat(getComputedStyle(b).lineHeight),pad:parseFloat(getComputedStyle(b).paddingTop)+parseFloat(getComputedStyle(b).paddingBottom)})")
+                        assert dims['width'] == 390 and dims['height']-dims['pad'] <= dims['line']*2+3,dims
+                    await tab.evaluate("""() => {window.receiptViews=[];new MutationObserver(()=>{
+                        const s = document.querySelector('[data-testid="conflict-stale"]');
+                        const retry=document.querySelector('[data-testid="retry-sync"]');
+                        const failed=/Saved on this device only|仅保存在本设备|没能同步/.test(document.body.innerText);
+                        if(s || retry || failed) window.receiptViews.push({stale:!!s,retry:!!retry,failed});
+                    }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}""")
+                outcomes.clear()
+                await asyncio.gather(*(button.click(timeout=3000,force=True) for button in keep))
+                for button in keep:
+                    await expect(button).to_have_count(0,timeout=15000)
+                await asyncio.sleep(2)
+                views=[await tab.evaluate("window.receiptViews") for tab in tabs]
+                saved=json.loads(fetch(stub+'/rest/v1/profiles?select=profile_data,revision&id=eq.'+uid,h=auth)[2])[0]
+                major=saved['profile_data']['major']
+                for tab in tabs:
+                    await expect(tab.locator('#major')).to_have_value(major)
+                print('Concurrent answers',lang,major,'write outcomes',outcomes,'observed stale/retry/failure', [[any(v[k] for v in vs) for k in ('stale','retry','failed')] for vs in views],flush=True)
+                assert outcomes == ['applied'] and any(any(v['stale'] for v in vs) for vs in views)
+                assert not any(v['retry'] or v['failed'] for vs in views for v in vs)
+                await receiver.reload(wait_until='domcontentloaded')
+                await expect(receiver.locator('#major')).to_have_value(major,timeout=45000)
+                print('PASS double Keep, both tabs and reopened form agree, one account write;',lang,flush=True)
             elif mode == 'merged':
                 import hashlib
                 origin = 'https://joinalab.com/'
@@ -229,3 +284,7 @@ if sys.argv[1] == 'cache':
 
 if sys.argv[1] == 'dashboard':
     asyncio.run(run('merged'))
+
+if sys.argv[1] == 'dashboard':
+    asyncio.run(run('raceen'))
+    asyncio.run(run('racezh'))
