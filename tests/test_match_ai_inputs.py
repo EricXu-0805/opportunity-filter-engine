@@ -95,6 +95,24 @@ def _explain_user(monkeypatch, profile) -> str:
     return calls[0][1]["content"]
 
 
+@pytest.mark.parametrize(("source_type", "expected"), [("internship", "(unspecified)"), ("job", "Pat Lee")])
+def test_explanation_for_another_campus_uses_the_public_pi_rule(monkeypatch, snapshot_env, source_type, expected):  # noqa: F811
+    row = snapshot_env["by_id"]["opp-00"]
+    row.update(source="handshake", source_type=source_type, pi_name="Pat Lee", school="ucb")
+    prompts = []
+
+    def provider(messages, **kwargs):
+        prompts.append(messages[1]["content"])
+        return "A controlled fit summary."
+
+    monkeypatch.setattr(matches, "_llm_explanation", REAL_EXPLANATION)
+    monkeypatch.setattr(matches, "chat_completion", provider)
+    response = TestClient(main.app).post("/api/matches/opp-00/explain?llm=true", json={**PROFILE, "home_school": "uiuc"})
+    assert response.status_code == 200, response.text
+    assert response.json()["excluded_reason"] == "other_school_campus"
+    assert f"PI: {expected}" in prompts[0].splitlines()
+
+
 def _courses_by_status(student: dict) -> dict[str, list[str]]:
     """``{"completed": [...], "in progress": [...], ...}`` from the labelled groups."""
     out: dict[str, list[str]] = {}

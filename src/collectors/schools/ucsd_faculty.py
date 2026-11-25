@@ -34,9 +34,8 @@ Bootstrap panels; Literature's bare "Last, First" link-list and Theatre &
 Dance's per-discipline link cards, whose titles/emails only exist on profile
 pages (``profile_enrich`` with ``always``/``title_selector``/``email_selector``
 + post-enrich ``ladder_recheck``); Music served from music-cms.ucsd.edu (the
-music.ucsd.edu cert fails strict verification); Mathematics via the POST-only
-campus EAH HR feed (``json_dir`` with ``method``/``field_filters`` gating job
-codes and a ``title_map`` from code → rank); Rady's roster where the ``li``
+music.ucsd.edu cert fails strict verification); Mathematics via the department's
+first-/last-name roster table and published ranks; Rady's roster where the ``li``
 CSS class is the role filter; Public Health under alphabetical h2 sections;
 and Scripps Oceanography's Drupal Views listing (verified against a snapshot —
 the host is unreachable from some local egress paths; CI collects it fine).
@@ -845,41 +844,22 @@ SCHOOL: dict = {
                        "Joint Major Mathematics & Economics",
                        "Probability and Statistics", "Mathematical Biology"],
             "directory_url": "https://math.ucsd.edu/people/faculty",
-            # The listing is a JS DataTable over the campus EAH HR feed (POST-
-            # only; GET returns an empty body). The feed lists ALL department
-            # employees once per job association — the field gates keep active
-            # Academic: Faculty in ladder/teaching/chair job codes, and the
-            # school-wide email dedup collapses multi-association repeats. The
-            # dept's own /export feed stays broken (no name field); records
-            # link to the directory page via the linkless fallback.
-            "json_dir": {
-                "url": "https://soeapp.ucsd.edu/tools/eah/department.php",
-                "method": "post",
-                "data": {"department_code[]": "000212"},
-                "name_fields": ["employee_preferred_first_name_current",
-                                "employee_preferred_last_name_current"],
-                "title_field": "job_code",
-                "title_map": {
-                    "001100": "Professor", "001143": "Professor",
-                    "001200": "Associate Professor", "001243": "Associate Professor",
-                    "001300": "Assistant Professor", "001343": "Assistant Professor",
-                    "001603": "Teaching Professor",
-                    "001607": "Associate Teaching Professor",
-                    "001680": "Assistant Teaching Professor",
-                    "001096": "Professor, Department Chair",
+            # The department publishes first/last names and rank in its
+            # six-column roster. Some faculty have no departmental profile;
+            # use the roster as the canonical fallback for those faculty.
+            "scrape": {
+                "url": "https://math.ucsd.edu/people/faculty",
+                "selectors": {
+                    "card": "table tr:has(> td:nth-of-type(6))",
+                    "name": "td:nth-of-type(1)",
+                    "name_last": "td:nth-of-type(2)",
+                    "link": "td:nth-of-type(1) a[href]",
+                    "email": "td:nth-of-type(4)",
+                    "title": "td:nth-of-type(6)",
                 },
-                "email_field": "identity_email_address_current",
-                "field_filters": [
-                    {"field": "employee_class", "include": r"^Academic: Faculty$"},
-                    {"field": "employee_status", "exclude": r"Retired|Terminated"},
-                    {"field": "job_code",
-                     "include": (r"^(001100|001143|001200|001243|001300|001343"
-                                 r"|001603|001607|001680|001096)$")},
-                ],
+                "ladder_filter": {**_LADDER, "require_present": True},
             },
-            # The dept's own /export feed is useless as a roster (no name
-            # field) but fine as an email-keyed join: field_work_email →
-            # field_primary_research_area (108/335 populated).
+            # Supplement the roster with research areas keyed by work email.
             "research_join": {
                 "url": "https://math.ucsd.edu/export/people/faculty",
                 "key": "email",

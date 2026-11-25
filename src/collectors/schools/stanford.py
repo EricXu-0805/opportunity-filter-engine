@@ -283,7 +283,7 @@ SCHOOL: dict = {
                     eligibility_majors=["Bioengineering", "Biology", "Computer Science", "Neuroscience", "Chemistry", "any department"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="unknown",
-                    deadline_note="Faculty mentor must be Bio-X affiliated; recent application cycle closed January 21, 2026.",
+                    deadline_note="Application deadline January 12, 2027 at 8:00 a.m. PST. Faculty mentors must complete the confirmation form within three days of submission.",
                     keywords=["Bio-X", "interdisciplinary biosciences", "summer research", "faculty mentor", "stipend"],
                 ),
             ],

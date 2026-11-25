@@ -6,13 +6,21 @@
 // description, the posted date, the "research opportunity at X" framing —
 // gates on the record being one we still call a live listing.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 
 // vi.hoisted, not a plain const: vi.mock factories are hoisted above every
 // top-level binding, so a factory closing over one only works while the
 // factory happens to run late. That is a property of the loader, not of this
 // file, and it turns into a temporal-dead-zone crash the moment it changes.
-const { fetchOpportunityDetail } = vi.hoisted(() => ({
+const { fetchOpportunityDetail, cookie } = vi.hoisted(() => ({
   fetchOpportunityDetail: vi.fn(),
+  cookie: { lang: undefined as string | undefined },
+}));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({
+    get: (name: string) => name === STORAGE_KEYS.LOCALE && cookie.lang
+      ? { value: cookie.lang } : undefined,
+  }),
 }));
 vi.mock('@/lib/api-server', () => ({
   fetchOpportunityDetail,
@@ -74,7 +82,28 @@ function publishedTime(meta: Meta): string | undefined {
   return (meta.openGraph as { publishedTime?: string } | undefined)?.publishedTime;
 }
 
-beforeEach(() => fetchOpportunityDetail.mockReset());
+beforeEach(() => {
+  fetchOpportunityDetail.mockReset();
+  cookie.lang = undefined;
+});
+
+describe('detail page titles inherit the site brand from the layout', () => {
+  it('uses the listing title and organization', async () => {
+    expect((await metadataFor()).title).toBe('Vision Lab RA at Test University');
+  });
+
+  it.each([
+    ['not-found', undefined, 'Opportunity not found'],
+    ['not-found', 'zh', '未找到机会'],
+    ['unavailable', undefined, 'Opportunity'],
+    ['unavailable', 'zh', '机会'],
+  ] as const)('%s, locale %s', async (status, lang, title) => {
+    cookie.lang = lang;
+    fetchOpportunityDetail.mockResolvedValue({ status });
+    const meta = await generateMetadata({ params: Promise.resolve({ id: 'opp-1' }) });
+    expect(meta.title).toBe(title);
+  });
+});
 
 describe('a live listing may describe itself', () => {
   it('uses the source description and publication date', async () => {

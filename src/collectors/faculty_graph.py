@@ -1107,6 +1107,9 @@ def _email_from_el(e_el) -> str | None:
     rev = _decode_reversed_email(e_el)
     if rev:
         return rev
+    # Some roster links display the address but point to the current page.
+    if e_el.get("href") == "#":
+        return _clean_email(e_el.get_text(" ", strip=True))
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
     href_addr = _clean_email(raw)
     # A hand-maintained roster row whose mailto: was copy-pasted from the row
@@ -5317,6 +5320,15 @@ def fetch_and_normalize(school: dict, deep: bool = False,
         _PROFILE_MEMO = outer
 
 
+def _json_dir_for_unit(dept: dict, walks: dict, held: frozenset[str]) -> list[dict]:
+    """Keep a local JSON roster distinguishable from the same family's online feeds."""
+    people = _fetch_json_dir(dept, walks, held)
+    if (dept.get("json_dir") or {}).get("file"):
+        for person in people:
+            person["_unit_snapshot"] = True
+    return people
+
+
 def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> list[dict]:
     errors = validate(school)
     if errors:
@@ -5356,6 +5368,7 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         # Copies, not the config dicts themselves: the provenance tag (and the
         # profile-enrich pass) mutate specs, and curated seeds are shared
         # module-level config.
+        live_names_by_url = defaultdict(set)
         specs = [dict(person, _verification_scope="curated")
                  for person in dept.get("faculty", [])]
         if deep:
@@ -5370,13 +5383,17 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept, json_walks, held)
+                               + _json_dir_for_unit(dept, json_walks, held)
                                + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)
                                + _fetch_sitemap_directory(dept)):
                 discovered.setdefault("_verification_scope", "directory")
                 key = (discovered.get("url") or "").strip().lower()
+                if unit_ledger is not None and not discovered.get("_unit_snapshot"):
+                    discovered["_seen_on_unit_roster"] = True
+                    if key and key not in listing_urls:
+                        live_names_by_url[key].add(discovered.get("name"))
                 if key and key not in listing_urls and key in seen_urls_local:
                     # Keep the seed's richer fields, but credit a listing only if
                     # the directory actually returned this person at this URL.
@@ -5395,10 +5412,19 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         # Rows this unit read that are left to another row with their address
         # or link: still observed by this unit (ids and identities only).
         read_not_emitted: list[dict] = []
+        live_roster_ids: set[str] = set()
+        retained_ids: set[str] = set()
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:
                 continue
+            if unit_ledger is not None:
+                key = (person.get("url") or "").strip().lower()
+                seen_here = person.get("_seen_on_unit_roster") or any(
+                    _one_person([person.get("name"), name]) for name in live_names_by_url.get(key, ())
+                )
+                unit_ids = live_roster_ids if seen_here else retained_ids
+                unit_ids.add(rec["id"])
             ek, uk = _key_email(rec), _key_url(rec)
             if uk in listing_urls:
                 uk = ""
@@ -5440,6 +5466,11 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 coverage=_ACTIVE_COVERAGE, listing_urls=listing_urls,
                 read_not_emitted=read_not_emitted,
             )
+            # Count a person even when the school's cross-unit dedup assigns
+            # their published row to a sibling. Keep emitted counts and the
+            # retirement ledger's identity contract intact.
+            unit_ledger[_unit_short]["live_roster_count"] = len(live_roster_ids)
+            unit_ledger[_unit_short]["retained_only_count"] = len(retained_ids - live_roster_ids)
         _ACTIVE_COVERAGE = None
     return [r for r in records if id(r) not in displaced]
 

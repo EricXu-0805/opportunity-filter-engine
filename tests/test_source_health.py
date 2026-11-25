@@ -636,6 +636,119 @@ def _committed_like_ledger() -> dict:
 
 
 class TestPublicSchoolFreshness:
+    def test_unit_evidence_survives_missing_reports_until_that_unit_is_read(self):
+        ledger = sh.empty_ledger()
+        source = "njit_faculty"
+        eligible = {source}
+        _attempt(ledger, source, "njit", sh.SUCCESS_NONZERO, 80, OCT18, 504)
+        unit = {
+            "source": source, "unit_id": "cs", "baseline_active_count": 40, "observed_count": 0,
+            "fetch_status": "ok", "parse_status": "zero_rows", "validation_status": "ok",
+        }
+        units = {
+            "cs": unit,
+            "new": dict(unit, unit_id="new", baseline_active_count=0),
+            "joint": dict(unit, unit_id="joint", observed_entity_ids=["faculty-id"]),
+            "legacy": dict(unit, unit_id="legacy", baseline_active_count=None),
+            "partial": dict(unit, unit_id="partial", observed_count=1, parse_status="ok",
+                            retirement_authorized=False),
+        }
+        reports = {source: {"status": "ok", "stale_unit_ledger": units}}
+        assert sh.record_faculty_unit_checks(ledger, reports, OCT18) == 1
+        assert ledger["sources"][source]["unchecked_faculty_units"] == ["cs"]
+        assert sh.public_school_freshness(ledger, OCT18, eligible)["njit"] == {
+            "last_checked_at": OCT18.isoformat(), "status": sh.PUBLIC_PARTLY_UNCHECKED,
+        }
+        assert sh.public_school_freshness(ledger, OCT18 + timedelta(days=20), eligible)["njit"]["status"] == sh.PUBLIC_STALE
+        assert sh.public_school_freshness(ledger, OCT18, set()) == {}
+        later = OCT18 + timedelta(days=7)
+        _attempt(ledger, source, "njit", sh.SUCCESS_NONZERO, 82, later, 504)
+        del units["cs"]
+        assert sh.record_faculty_unit_checks(ledger, reports, later) == 0
+        assert sh.public_school_freshness(ledger, later, eligible)["njit"]["status"] == sh.PUBLIC_PARTLY_UNCHECKED
+        units["cs"] = dict(unit, observed_count=2, parse_status="ok")
+        # Counts include locally configured faculty seeds, which do not
+        # prove this directory was read on a later run.
+        assert sh.record_faculty_unit_checks(ledger, reports, later) == 0
+        units["cs"]["coverage"] = {"parsed_faculty_rows": 2}
+        units["cs"]["missed_present_identities"] = []
+        assert sh.record_faculty_unit_checks(ledger, reports, OCT18) == 0
+        assert sh.record_faculty_unit_checks(ledger, reports, later) == 1
+        assert sh.public_school_freshness(ledger, later, eligible)["njit"]["status"] == sh.PUBLIC_CURRENT
+
+    def test_failed_stage_and_a_known_missed_person_survive_a_successful_sibling(self):
+        source = "georgetown_faculty"
+        ledger = sh.empty_ledger()
+        _attempt(ledger, source, "georgetown", sh.SUCCESS_NONZERO, 858, OCT18, 869)
+        good = {
+            "source": source, "unit_id": "bio", "baseline_active_count": 25, "observed_count": 24,
+            "fetch_status": "ok", "parse_status": "ok", "validation_status": "ok",
+            "coverage": {"parsed_faculty_rows": 24}, "missed_present_identities": [],
+            "retirement_authorized": False,
+        }
+        units = {
+            "bio": good,
+            "engl": dict(good, unit_id="engl", missed_present_identities=["url/example.edu/a"]),
+            "math": dict(good, unit_id="math", fetch_status="http_403", observed_count=0),
+            "cs": dict(good, unit_id="cs", parse_status="error", observed_count=0),
+            "ds": dict(good, unit_id="ds", validation_status="invalid", observed_count=0),
+        }
+        reports = {source: {"status": "ok", "stale_unit_ledger": units}}
+        sh.record_faculty_unit_checks(ledger, reports, OCT18)
+        assert ledger["sources"][source]["unchecked_faculty_units"] == ["cs", "ds", "engl", "math"]
+        assert sh.public_school_freshness(ledger, OCT18, {source})["georgetown"]["status"] == sh.PUBLIC_PARTLY_UNCHECKED
+        later = OCT18 + timedelta(days=7)
+        _attempt(ledger, source, "georgetown", sh.SUCCESS_NONZERO, 859, later, 869)
+        units["engl"]["missed_present_identities"] = []
+        units["cs"] = dict(good, unit_id="cs")
+        del units["math"]
+        sh.record_faculty_unit_checks(ledger, reports, later)
+        assert ledger["sources"][source]["unchecked_faculty_units"] == ["ds", "math"]
+
+    def test_backfill_uses_uiuc_empty_baselines_from_the_exact_source_run(self, tmp_path):
+        from scripts import source_freshness_report as cli
+
+        source = "uiuc_faculty"
+        ledger = sh.empty_ledger()
+        _attempt(ledger, source, "uiuc", sh.SUCCESS_NONZERO, 3676, OCT18, 3020)
+        path = tmp_path / "source_health.json"
+        sh.save_ledger(ledger, path)
+        status = tmp_path / "collector_status.json"
+        summary = {"source_health": {"generated_at": OCT18.isoformat()}, "sources": {
+            source: {"status": "ok", "stale_unit_ledger": {"Physics": 123},
+                     "empty_departments": ["Anthropology", "Communication", "New", "Unknown"],
+                     "empty_department_baselines": {"Anthropology": 38, "Communication": 34, "New": 0}},
+        }}
+        status.write_text(json.dumps(summary))
+        args = ["backfill-units", str(status), "--ledger", str(path)]
+        assert cli.main([*args, "--dry-run"]) == 0
+        assert sh.load_ledger(path) == ledger
+        assert cli.main(args) == 0
+        after = sh.load_ledger(path)
+        assert after["sources"][source]["unchecked_faculty_units"] == ["Anthropology", "Communication"]
+        assert sh.public_school_freshness(after, OCT18, {source})["uiuc"]["status"] == sh.PUBLIC_PARTLY_UNCHECKED
+        assert cli.main(args) == 0
+        assert after == sh.load_ledger(path)
+        later = OCT18 + timedelta(days=7)
+        _attempt(after, source, "uiuc", sh.SUCCESS_NONZERO, 3700, later)
+        rerun = {source: {"status": "ok", "stale_unit_ledger": {"Anthropology": 39},
+                          "empty_departments": ["Communication"], "empty_department_baselines": {"Communication": 0}}}
+        assert sh.record_faculty_unit_checks(after, rerun, later) == 1
+        assert sh.public_school_freshness(after, later, {source})["uiuc"]["status"] == sh.PUBLIC_CURRENT
+
+        # One invalid file in a batch leaves the original ledger untouched.
+        sh.save_ledger(ledger, path)
+        broken = tmp_path / "broken.json"
+        for bad in ("{", "[]", '{"source_health":{"generated_at":"2026-10-18T12:00:00"},"sources":{}}'):
+            broken.write_text(bad)
+            with pytest.raises(SystemExit):
+                cli.main([*args, str(broken)])
+            assert sh.load_ledger(path) == ledger
+        summary["source_health"]["generated_at"] = "2026-10-18T07:00:00-05:00"
+        status.write_text(json.dumps(summary))
+        assert cli.main(args) == 0
+        assert sh.load_ledger(path)["sources"][source]["unchecked_faculty_units"] == ["Anthropology", "Communication"]
+
     def test_a_school_whose_site_refuses_the_runner_is_stale_with_its_real_date(self):
         public = sh.public_school_freshness(
             _committed_like_ledger(), OCT18, monitored_sources())
