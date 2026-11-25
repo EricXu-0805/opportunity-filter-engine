@@ -638,3 +638,15 @@ describe('OpportunityHeader — M03 location and pay provenance', () => {
     expect(screen.queryByText('badges.internationalFriendlyInferred')).toBeNull();
   });
 });
+
+it('links the archived detail to the current faculty record without changing its status', () => {
+  const opp = facultyOpp({
+    current_faculty_id: 'faculty-purdue-cs-bb6831d2',
+    target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+  });
+  renderHeader({ opp });
+  expect(screen.getByText('detail.inactiveBanner')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'detail.currentFacultyRecord' }))
+    .toHaveAttribute('href', '/opportunities/faculty-purdue-cs-bb6831d2');
+  expect(screen.queryByRole('link', { name: 'detail.applyNow' })).not.toBeInTheDocument();
+});
