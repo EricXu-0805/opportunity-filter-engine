@@ -1,6 +1,6 @@
 """Replay deployed browser behavior with an isolated account. No external messages."""
 import asyncio, json, os, subprocess, sys
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from playwright.async_api import async_playwright, expect
 import urllib.request, urllib.error
 stub = "http://127.0.0.1:51432"
@@ -87,6 +87,9 @@ async def run(mode):
             blocked_assets = set()
             outage = False
             outcomes = []
+            large = mode.startswith('large-')
+            table = 'interactions' if 'tracker' in mode else 'favorites'
+            continuation_calls = []
             async def intercept(route):
                 nonlocal reads
                 req=route.request; u=urlsplit(req.url); path=u.path+('?'+u.query if u.query else '')
@@ -108,6 +111,20 @@ async def run(mode):
                     if (mode == 'eeb' or listing) and u.path == '/rest/v1/favorites' and req.method == 'GET':
                         ids = [listing_id] if listing else eeb
                         return await route.fulfill(status=200,headers={**cors,'Content-Range':f'0-{len(ids)-1}/{len(ids)}'},json=[{'opportunity_id':key} for key in ids])
+                    if large and u.path == '/rest/v1/' + table and req.method == 'GET':
+                        reads += 1
+                        query = parse_qs(u.query)
+                        cursor = query.get('opportunity_id')
+                        if cursor:
+                            assert query.get('order') == ['opportunity_id.asc'] and cursor == ['gt.0999'], query
+                            continuation_calls.append(fail)
+                            if fail:
+                                return await route.fulfill(status=503, headers={**cors, 'Retry-After': '0'}, json={'message': 'Controlled continuation outage'})
+                        entries = [{'opportunity_id': str(i).zfill(4)} for i in ([1000] if cursor else range(1000))]
+                        if table == 'interactions':
+                            for item in entries:
+                                item.update(interaction_type='applied' if cursor else 'dismissed', notes='Pre-existing note')
+                        return await route.fulfill(json=entries, headers={**cors, 'Content-Range': '0-0/1' if cursor else '0-999/1001'})
                     if mode=='dashboard' and u.path=='/rest/v1/favorites' and req.method=='GET':
                         reads+=1
                         return await route.fulfill(status=503 if fail else 200,headers={**cors,'Retry-After':'0',**({} if fail else {'Content-Range':'0-0/1'})},json={'message':'controlled outage'} if fail else [{'opportunity_id':'saved-target'}])
@@ -120,7 +137,7 @@ async def run(mode):
                     if req.url in blocked_assets:
                         failed_assets.append(req.url)
                         return await route.abort('failed')
-                    if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
+                    if u.path=='/api/opportunities/batch' and req.method=='POST' and (large or mode=='dashboard'):
                         return await route.fulfill(json={'requested':1,'found':0,'opportunities':[]})
                     if u.path=='/api/matches/view' and req.method=='POST' and (mode in ('cache','urca','eeb') or listing):
                         print('Real match view requested; holding',hold,flush=True)
@@ -142,7 +159,34 @@ async def run(mode):
                 await page.get_by_test_id('switcher-confirm').click()
                 await expect(campus).to_be_hidden(timeout=20000)
                 print('Campus confirmed through the deployed campus picker',flush=True)
-            if mode=='dashboard':
+            if large:
+                await page.goto('https://joinalab.com/dashboard', wait_until='domcontentloaded')
+                is_tracker = table == 'interactions'
+                tile = page.get_by_test_id('applied-summary' if is_tracker else 'saved-summary')
+                title = "Couldn't load your tracker." if is_tracker else "Couldn't load your saved opportunities."
+                retry = page.locator('p').filter(has_text=title).get_by_role('button')
+                await expect(tile).to_have_attribute('data-state', 'error', timeout=45000)
+                fail = False
+                old_reads = reads
+                await retry.click()
+                for _ in range(100):
+                    if reads > old_reads:
+                        break
+                    await asyncio.sleep(.1)
+                assert reads > old_reads, 'Retry did not request the list again'
+                if mode.endswith('-before'):
+                    await expect(retry).to_be_visible(timeout=15000)
+                    await expect(tile).to_have_attribute('data-state', 'error')
+                    assert not continuation_calls, continuation_calls
+                else:
+                    await expect(tile).to_have_attribute('data-state', 'ready', timeout=30000)
+                    expected = '1' if is_tracker else '1001'
+                    assert expected in (await tile.inner_text()).replace(',', ''), await tile.inner_text()
+                    assert True in continuation_calls and False in continuation_calls, continuation_calls
+                print('PASS', mode, 'release', await page.locator('html').get_attribute('data-release-sha'),
+                      'state', await tile.get_attribute('data-state'), 'tile', await tile.inner_text(),
+                      'reads', reads, 'continuations', continuation_calls, flush=True)
+            elif mode=='dashboard':
                 await page.goto('https://joinalab.com/dashboard',wait_until='domcontentloaded')
                 saved=page.get_by_test_id('saved-summary')
                 await expect(saved).to_have_attribute('data-state','error',timeout=45000)
