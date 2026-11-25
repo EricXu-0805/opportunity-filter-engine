@@ -1507,6 +1507,18 @@ def _write_listing_shard(tmp_path, name: str, weekly_age: int | None, list_ages:
 
 
 class TestCorpusFreshnessIsEnforced:
+    def test_an_offline_seed_stays_in_the_denominator_without_a_sighting(self, monkeypatch, tmp_path):
+        from scripts.source_freshness_report import observed_sources
+
+        _write_shard(tmp_path, monkeypatch, {"wesleyan": [(True, 1)] * 2})
+        path = tmp_path / "data" / "processed" / "shards" / "wesleyan.json"
+        seed, live = json.loads(path.read_text())
+        seed["metadata"]["verification_scope"] = "curated"
+        seed["source"] = live["source"] = "wesleyan_faculty"
+        path.write_text(json.dumps([seed, live]))
+        assert gate.check_corpus_freshness()["evidence"]["freshness_percent"] == 50.0
+        assert observed_sources({"wesleyan": [seed]})["wesleyan_faculty"]["newest_seen"] is None
+
     def test_below_the_configured_floor_is_fail_not_unverified(
             self, monkeypatch, tmp_path):
         """The failure this whole round is about."""
