@@ -1,4 +1,4 @@
-"""Capture public columns, application DDL and applied migration identities for a recovery point."""
+"""Capture application columns, DDL and applied migration identities for a recovery point."""
 from __future__ import annotations
 
 import argparse
@@ -21,6 +21,10 @@ WITH application_schema AS (
   FROM pg_index i JOIN pg_class t ON t.oid = i.indrelid
   JOIN application_schema n ON n.oid = t.relnamespace
   UNION ALL
+  SELECT 'view', n.nspname, jsonb_build_array(t.relkind, t.relname, pg_get_viewdef(t.oid), t.reloptions)
+  FROM pg_class t JOIN application_schema n ON n.oid = t.relnamespace
+  WHERE t.relkind IN ('v','m')
+  UNION ALL
   SELECT 'trigger', n.nspname, jsonb_build_array(pg_get_triggerdef(g.oid), g.tgenabled)
   FROM pg_trigger g JOIN pg_class t ON t.oid = g.tgrelid
   JOIN application_schema n ON n.oid = t.relnamespace WHERE NOT g.tgisinternal
@@ -38,12 +42,12 @@ SELECT json_build_object(
     jsonb_build_array(kind, schema_name, definition)
     ORDER BY kind COLLATE "C", schema_name COLLATE "C", definition::text COLLATE "C"
   ), '[]'::jsonb)::text, 'UTF8')), 'hex') FROM definitions),
-  'columns', (SELECT json_agg(row_to_json(c) ORDER BY table_name COLLATE "C", ordinal_position)
-    FROM (SELECT table_name, ordinal_position, column_name, is_nullable, udt_schema, udt_name,
+  'columns', (SELECT json_agg(row_to_json(c) ORDER BY table_schema COLLATE "C", table_name COLLATE "C", ordinal_position)
+    FROM (SELECT table_schema, table_name, ordinal_position, column_name, is_nullable, udt_schema, udt_name,
                  column_default, character_maximum_length, numeric_precision, numeric_scale,
                  datetime_precision, is_identity, identity_generation, is_generated,
                  generation_expression, collation_schema, collation_name, domain_schema, domain_name
-          FROM information_schema.columns WHERE table_schema = 'public') AS c),
+          FROM information_schema.columns WHERE table_schema IN ('public', 'private')) AS c),
   'migrations', (SELECT json_agg(json_build_object('version', version, 'name', name)
                                  ORDER BY version COLLATE "C")
                  FROM supabase_migrations.schema_migrations)
@@ -79,7 +83,7 @@ def observe(project: str, backup: str) -> dict:
     columns = catalogue["columns"]
     migrations = catalogue["migrations"]
     if not isinstance(columns, list) or not columns or not isinstance(migrations, list) or not migrations:
-        raise ValueError("public columns and the migration ledger must both be populated")
+        raise ValueError("application columns and the migration ledger must both be populated")
     ddl_digest = catalogue.get("ddl_sha256")
     ddl_count = catalogue.get("ddl_count")
     if (not isinstance(ddl_digest, str) or not re.fullmatch(r"[a-f0-9]{64}", ddl_digest)

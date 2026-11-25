@@ -209,5 +209,17 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
             assert current["migrations"] == first["migrations"]
             assert (current["ddl_sha256"] != previous["ddl_sha256"]) == changed, statement
             previous = current
+
+        sql("CREATE TABLE private.sample(n int); CREATE VIEW public.sample_view AS SELECT n FROM public.sample")
+        before = json.loads(sql(schema.QUERY))
+        sql("ALTER TABLE private.sample ADD COLUMN owner_id uuid")
+        after_column = json.loads(sql(schema.QUERY))
+        assert after_column["columns"] != before["columns"]
+        assert any(c["table_schema"] == "private" and c["column_name"] == "owner_id"
+                   for c in after_column["columns"])
+        sql("CREATE OR REPLACE VIEW public.sample_view AS SELECT m AS n FROM public.sample")
+        after_view = json.loads(sql(schema.QUERY))
+        assert after_view["columns"] == after_column["columns"]
+        assert after_view["ddl_sha256"] != after_column["ddl_sha256"]
     finally:
         subprocess.run([*ctl, "-m", "immediate", "stop"], check=True, capture_output=True, timeout=30)

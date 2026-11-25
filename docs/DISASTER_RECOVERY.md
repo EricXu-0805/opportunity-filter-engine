@@ -107,7 +107,7 @@ PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$SOURCE_PGSSLROOTCERT" \
 ```
 
 Retain the SHA-256 of the capture file with the backup receipt. The capture
-compares public columns, applied migrations, and definitions of indexes, table
+compares application columns, applied migrations, and definitions of views, indexes, table
 constraints, user triggers, functions and procedures in the public and private
 schemas. PostgreSQL computes the DDL digest on the server in the same read-only
 statement. The capture stores counts, hashes, recovery point, project ref and
@@ -165,7 +165,7 @@ The command writes
 by clause. That file is the deliverable; the markdown row in §4 is a human
 index of it, not the evidence itself.
 
-1. **Schema**: every required table is reachable. The drill compares independently observed public columns and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
+1. **Schema**: every required table is reachable. The drill compares independently observed public/private columns, application DDL and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
 2. **Data**: representative user-owned tables came back populated. An empty
    restore satisfies every schema check and none of the point of one.
 3. **RLS**: an anonymous caller sees no user-owned rows. This is the leg a
