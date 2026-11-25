@@ -2,29 +2,42 @@ name: Verify released opportunity and profile flows
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/released-flows.yml','scripts/verify_live_browser_flows.py','scripts/verify_live_public_flows.py','scripts/verify_isolated_request_lane.py']
+    paths: ['.github/workflows/released-flows.yml']
 permissions:
   contents: read
 jobs:
-  published:
+  timing:
+    name: Six sequential public first-page reads and backend release receipts
     runs-on: ubuntu-24.04
     timeout-minutes: 7
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: 62a354fd4bb56f41d377acd274dfde8117b4eeae
           persist-credentials: false
-      - run: python -m pip install --disable-pip-version-check beautifulsoup4==4.13.4
-      - run: python -u scripts/verify_live_public_flows.py
-  browser:
-    strategy:
-      fail-fast: false
-      matrix:
-        flow: [raceen, racezh, raceen-staggered, racezh-staggered, raceen-resume-followup-keep, racezh-resume-followup-keep, raceen-resume-followup-other, racezh-resume-followup-other]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
-      - run: python -u scripts/verify_live_browser_flows.py ${{ matrix.flow }}
+      - shell: python
+        env:
+          PYTHONPATH: .
+        run: |
+          import json,time
+          from scripts.measure_match_latency import HOME_PERSONAS,FIRST_PAGE_VIEW
+          from datetime import datetime,timezone
+          import urllib.request
+          base='https://joinalab.com'
+          def read_health():
+           return json.load(urllib.request.urlopen(base+'/api/health?read='+str(time.time_ns()),timeout=30))
+          start=read_health()
+          print('Before',start['release_sha'],start['started_at'],flush=True)
+          for cross in (False,True):
+           profile=dict(HOME_PERSONAS['uiuc_cs'],include_cross_school=cross,coursework=['CS 225','CS 446','ECE 385'],research_interests_text='machine learning, computer vision, robot perception, assistive sensing')
+           payload={'profile':profile,'view':dict(FIRST_PAGE_VIEW,today=datetime.now(timezone.utc).date().isoformat()),'page_size':50,'cursor':None}
+           last=None
+           for attempt in (1,2,3):
+            t=time.perf_counter()
+            request=urllib.request.Request(base+'/api/matches/view?llm=false',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
+            with urllib.request.urlopen(request,timeout=90) as response:
+             data=json.load(response);status=response.status
+            print('cross',cross,'read',attempt,'HTTP',status,'seconds',round(time.perf_counter()-t,3),'total',data.get('total'),'rows',data.get('returned_count'),'id',data.get('result_set_id'),flush=True)
+            assert status==200 and data.get('result_set_id') and (last is None or data['result_set_id']==last)
+            last=data['result_set_id']
+          end=read_health();print('After',end['release_sha'],end['started_at'],flush=True)
