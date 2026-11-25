@@ -94,6 +94,43 @@ test.describe('Dashboard', () => {
     expect(reads).toBeGreaterThanOrEqual(4);
   });
 
+  test('a failed continuation of a large tracker stays unknown until retry loads the final status', async ({ page }) => {
+    const old = Array.from({ length: 1000 }, (_, n) => ({
+      opportunity_id: String(n).padStart(4, '0'), interaction_type: 'dismissed',
+    }));
+    let fail = true;
+    let recovered = false;
+    await page.route('**/rest/v1/interactions?**', route => {
+      const params = new URL(route.request().url()).searchParams;
+      const cursor = params.get('opportunity_id');
+      if (!cursor) return route.fulfill({
+        json: old, headers: { 'Content-Range': '0-999/1001', 'Access-Control-Expose-Headers': 'Content-Range' },
+      });
+      expect(params.get('order')).toBe('opportunity_id.asc');
+      expect(cursor).toBe('gt.0999');
+      if (fail) return route.fulfill({
+        status: 503, json: { message: 'tracker continuation unavailable' },
+        headers: { 'Retry-After': '0', 'Access-Control-Expose-Headers': 'Retry-After' },
+      });
+      recovered = true;
+      return route.fulfill({
+        json: [{ opportunity_id: '1000', interaction_type: 'applied', notes: 'Existing application' }],
+        headers: { 'Content-Range': '0-0/1', 'Access-Control-Expose-Headers': 'Content-Range' },
+      });
+    });
+    await page.route('**/api/opportunities/batch', route => route.fulfill({
+      json: { requested: 1, found: 0, opportunities: [] },
+    }));
+    await page.goto('/dashboard');
+    const applied = page.getByTestId('applied-summary');
+    await expect(applied).toHaveAttribute('data-state', 'error');
+    fail = false;
+    await page.locator('p').filter({ hasText: en.dashboard.trackerSection.errorTitle }).getByRole('button').click();
+    await expect(applied).toHaveAttribute('data-state', 'ready');
+    await expect(applied).toContainText('1');
+    expect(recovered).toBe(true);
+  });
+
   test('a fresh visitor sees honest empty states, not fabricated activity', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Saved deadlines' })).toBeVisible();
