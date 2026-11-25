@@ -166,16 +166,18 @@ def test_splitting_a_config_by_shard_changes_no_record():
 
 # --- Seed normalization (driven over the whole registry) --------------------
 
-# Configured pages read on 2026-11-02 as a directory, a guide or an
-# invitation-only program rather than an application. A spec newly marked
+# Configured reference pages, including directories, student networks,
+# historical grants and invitation-only programs. A spec newly marked
 # reference_only fails TestSeedNormalization until it is listed here.
 _REFERENCE_PAGES = {
     "cincinnati": {"cincinnati_office_of_research", "cincinnati_undergraduate_research_guide"},
     "clemson": {"clemson_student_research", "clemson_scholar_programs"},
+    "duke": {"marine_lab_reu"},
     "jhu": {"imagine_internship_programs"},
-    "miami": {"miami_office_of_undergraduate_research", "miami_open_research_positions"},
+    "miami": {"miami_office_of_undergraduate_research", "miami_open_research_positions", "miami_uconnect"},
     "northwestern": {"nu_our_hub", "nu_mccormick_summer_programs", "nu_mccormick_research_hub",
                      "nu_baker_program_hub", "nu_naise_undergrad", "nu_feinberg_lurie_summer"},
+    "uchicago": {"uchicago_handshake"},
     "ucf": {"ucf_office_of_undergraduate_research", "ucf_ramp_scholar_programs", "ucf_looking_for_research"},
     "uf": {"cur_hub", "ursp"},
     "unl": {"unl_office_undergraduate_research_fellowships", "unl_research_fellowships"},
