@@ -1,0 +1,48 @@
+name: Verify Tracker export in Chromium with Supabase Storage
+on:
+  push:
+    branches: [codex/diagnose-m53-account-export]
+    paths: ['.github/workflows/attachment-export-integration.yml', 'frontend/scripts/verify-tracker-export.mjs']
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Install the repository's locked JavaScript SDK
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Start a fresh, loopback-only test project with isolated Storage policies
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/ofe-m53-storage"
+          mkdir -p "$fixture"
+          cd "$fixture"
+          supabase init
+          mkdir -p supabase/migrations
+          cp "$GITHUB_WORKSPACE/supabase/migrations/008_tracker_attachments_storage.sql" supabase/migrations/
+          cp "$GITHUB_WORKSPACE/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql" supabase/migrations/
+          test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD^)" = 91f933dababcae728ec7bcd8f0bc381ec77f7f8b
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
+            exit 1
+          fi
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'storage-api|supabase/postgres:'
+      - name: Install isolated Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium >"$RUNNER_TEMP/attachment-browser-install.log" 2>&1
+      - name: Exercise the Account page with two real test sessions and verify the downloaded ZIP
+        run: node frontend/scripts/verify-tracker-export.mjs "$RUNNER_TEMP/ofe-m53-storage/status.json"
