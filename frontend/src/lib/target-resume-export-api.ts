@@ -95,14 +95,4 @@ export async function fetchTargetResumeExport(payload: TargetResumeExportRequest
   }
 }
 
-export function downloadTargetResumeExport(file: TargetResumeExportFile): void {
-  const url = URL.createObjectURL(file.blob);
-  const link = document.createElement('a'); link.href = url; link.download = file.filename;
-  document.body.appendChild(link);
-  try { link.click(); }
-  finally {
-    link.remove();
-    // Let the browser begin reading the Blob before releasing its URL.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-}
+export { downloadBlob as downloadTargetResumeExport } from './browser-download';
