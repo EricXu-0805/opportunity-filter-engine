@@ -27,6 +27,7 @@ from src.normalizers.deactivate_stale_faculty import (
     finalize_unit_ledger,
     observed_profile_pages,
 )
+from src.normalizers.reviewed_faculty_profiles import apply_reviewed_faculty_profiles
 from src.school_scope import deactivate_unsupported_schools
 
 
@@ -1741,6 +1742,9 @@ def refresh_all(
         # exception: UIUC's collector decides which emeritus titles stay
         # listed, so the retired-title pass counts UIUC's rows and leaves them.
         deceased = deactivate_deceased_faculty(all_opps, selected)
+        reviewed_profiles = apply_reviewed_faculty_profiles(all_opps, selected)
+        if reviewed_profiles:
+            logger.info("Applied %d reviewed faculty profile corrections", reviewed_profiles)
         retired_titles = deactivate_retired_title_faculty(
             all_opps, selected, held=frozenset({"uiuc"}))
         trainees = deactivate_trainee_faculty(all_opps, selected)
