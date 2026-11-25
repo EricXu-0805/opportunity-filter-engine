@@ -1,5 +1,5 @@
 """Replay deployed browser behavior with an isolated account. No external messages."""
-import asyncio, json, os, subprocess, sys
+import asyncio, json, os, re, subprocess, sys
 from urllib.parse import parse_qs, urlsplit
 from playwright.async_api import async_playwright, expect
 import urllib.request, urllib.error
@@ -81,6 +81,24 @@ async def run(mode):
             if mode == 'merged' or mode.startswith('race'):
                 values.pop('ofe_profile')
             await context.add_init_script(init.replace('VALUES',json.dumps(values)))
+            push = mode.startswith('push-')
+            endpoint = 'https://push.example.invalid/historical-subscription'
+            if push:
+                # Simulate an existing browser subscription. The device and
+                # notification provider are never registered or contacted.
+                await context.add_init_script("""(() => {
+                  if (location.hostname !== 'joinalab.com') return;
+                  window.fixtureBrowserFails = FAILS;
+                  window.fixtureSubscriptionReads = 0;
+                  Object.defineProperty(Notification, 'permission', {get: () => 'granted'});
+                  Object.defineProperty(navigator.serviceWorker, 'getRegistration', {value: async () => ({
+                    pushManager: {getSubscription: async () => {
+                      ++window.fixtureSubscriptionReads;
+                      if (window.fixtureBrowserFails) throw new Error('controlled browser read failure');
+                      return {endpoint: ENDPOINT};
+                    }}
+                  })});
+                })()""".replace('FAILS', json.dumps('-browser-' in mode)).replace('ENDPOINT', json.dumps(endpoint)))
             fail=True; reads=0; hold=False; blocked=asyncio.Event(); release=asyncio.Event()
             receiver = None
             failed_assets = []
@@ -90,12 +108,23 @@ async def run(mode):
             large = mode.startswith('large-')
             table = 'interactions' if 'tracker' in mode else 'favorites'
             continuation_calls = []
+            large_list_writes = []
             async def intercept(route):
                 nonlocal reads
                 req=route.request; u=urlsplit(req.url); path=u.path+('?'+u.query if u.query else '')
                 cors={'Access-Control-Allow-Origin':'https://joinalab.com','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers.get('access-control-request-headers','*'),'Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,HEAD,OPTIONS','Access-Control-Expose-Headers':'Content-Range,Retry-After'}
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
+                    if push and u.path == '/rest/v1/push_subscriptions':
+                        if req.method != 'GET':
+                            outcomes.append(req.method)
+                            return await route.abort()
+                        reads += 1
+                        q = parse_qs(u.query)
+                        assert q['device_id'] == ['eq.' + uid] and q['endpoint'] == ['eq.' + endpoint], q
+                        if '-account-' in mode and fail:
+                            return await route.fulfill(status=503, headers={**cors, 'Retry-After': '0'}, json={'message':'controlled subscription read failure'})
+                        return await route.fulfill(headers=cors, json=[{'endpoint': endpoint}])
                     if mode.startswith('race') and u.path.endswith('/commit_profile_patch_cas'):
                         patch = req.post_data_json or {}
                         print('Observed save', 'second' if req.frame.page==receiver else 'first',
@@ -111,9 +140,13 @@ async def run(mode):
                     if (mode == 'eeb' or listing) and u.path == '/rest/v1/favorites' and req.method == 'GET':
                         ids = [listing_id] if listing else eeb
                         return await route.fulfill(status=200,headers={**cors,'Content-Range':f'0-{len(ids)-1}/{len(ids)}'},json=[{'opportunity_id':key} for key in ids])
+                    if large and u.path == '/rest/v1/' + table and req.method not in ('GET', 'HEAD'):
+                        large_list_writes.append(req.method)
+                        return await route.abort()
                     if large and u.path == '/rest/v1/' + table and req.method == 'GET':
                         reads += 1
                         query = parse_qs(u.query)
+                        assert query.get('device_id') == ['eq.' + uid], query
                         cursor = query.get('opportunity_id')
                         if cursor:
                             assert query.get('order') == ['opportunity_id.asc'] and cursor == ['gt.0999'], query
@@ -159,7 +192,27 @@ async def run(mode):
                 await page.get_by_test_id('switcher-confirm').click()
                 await expect(campus).to_be_hidden(timeout=20000)
                 print('Campus confirmed through the deployed campus picker',flush=True)
-            if large:
+            if push:
+                await page.goto('https://joinalab.com/dashboard', wait_until='domcontentloaded')
+                enabled = page.get_by_role('button', name='Enable notifications', exact=True)
+                fault = page.get_by_role('alert').filter(has_text="Couldn't check notification status.")
+                if mode.endswith('-before'):
+                    await expect(enabled).to_be_visible()
+                    await expect(enabled).to_have_attribute('aria-pressed', 'false')
+                    await expect(fault).to_have_count(0)
+                else:
+                    await expect(fault).to_be_visible()
+                    await expect(enabled).to_have_count(0)
+                    before = reads
+                    fail = False
+                    await page.evaluate('window.fixtureBrowserFails = false')
+                    await fault.locator('..').get_by_role('button').click()
+                    await expect(page.get_by_role('button', name='Notifications on', exact=True)).to_have_attribute('aria-pressed', 'true')
+                    assert reads > before
+                assert await page.evaluate('window.fixtureSubscriptionReads') > 0 and not outcomes
+                print('PASS', mode, 'frontend', await page.locator('html').get_attribute('data-release-sha'),
+                      'account reads', reads, 'subscription writes', outcomes, flush=True)
+            elif large:
                 await page.goto('https://joinalab.com/dashboard', wait_until='domcontentloaded')
                 is_tracker = table == 'interactions'
                 tile = page.get_by_test_id('applied-summary' if is_tracker else 'saved-summary')
@@ -181,7 +234,9 @@ async def run(mode):
                 else:
                     await expect(tile).to_have_attribute('data-state', 'ready', timeout=30000)
                     expected = '1' if is_tracker else '1001'
-                    assert expected in (await tile.inner_text()).replace(',', ''), await tile.inner_text()
+                    label = (await tile.inner_text()).replace(',', '')
+                    assert re.findall(r'\d+', label) == [expected], label
+                    assert not large_list_writes, large_list_writes
                     assert True in continuation_calls and False in continuation_calls, continuation_calls
                 print('PASS', mode, 'release', await page.locator('html').get_attribute('data-release-sha'),
                       'state', await tile.get_attribute('data-state'), 'tile', await tile.inner_text(),

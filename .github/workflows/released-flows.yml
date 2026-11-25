@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   outreach:
-    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match')"
+    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription')"
     name: Public match, actions and unsent template (${{ matrix.target }})
     runs-on: ubuntu-24.04
     timeout-minutes: 6
@@ -100,3 +100,22 @@ jobs:
         env:
           LOCALE: ${{ matrix.locale }}
           PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M23 released match after') && 'after' || 'before' }}
+
+  push-status:
+    name: Released Dashboard notification read and retry (${{ matrix.fault }})
+    if: startsWith(github.event.head_commit.message, 'Verify M48 released subscription')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        fault: [account, browser]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
+      - run: python -u scripts/verify_live_browser_flows.py "push-$FAULT-$PHASE"
+        env:
+          FAULT: ${{ matrix.fault }}
+          PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M48 released subscription after') && 'after' || 'before' }}
