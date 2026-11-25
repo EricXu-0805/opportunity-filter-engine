@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResultsHeader } from './ResultsHeader';
+import { translate } from '@/i18n/translate';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
 
 const { sendMatchesEmailMock } = vi.hoisted(() => ({
@@ -98,6 +99,16 @@ describe('ResultsHeader strong-match header', () => {
   it('uses the plural variant with the count otherwise', () => {
     renderHeader(3);
     expect(screen.getByText(/results\.fieldMatches\{count=3\}/)).toBeInTheDocument();
+  });
+
+  it('describes a sparse field result as matches when the only result is a professor profile', () => {
+    const data = {
+      total: 1, field_relevant_count: 1, thin_inventory: true,
+      results: [{ opportunity: { id: 'faculty-caltech-phys-b6dd07e7', source_type: 'faculty_research' } }],
+    } as MatchesResponse;
+    renderHeader(1, { data, t: (key, vars) => translate('en', key, vars) });
+    expect(screen.getByText(/few records matched your field/i)).toBeInTheDocument();
+    expect(screen.queryByText(/openings/i)).not.toBeInTheDocument();
   });
 
   it('hides the line entirely at zero', () => {

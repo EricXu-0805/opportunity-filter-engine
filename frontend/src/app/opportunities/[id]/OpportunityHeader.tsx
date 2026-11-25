@@ -31,6 +31,7 @@ import {
   targetStatusReason,
   type TargetStatusReason,
 } from '@/lib/target-truth';
+import { facultyOutreachLabel } from '@/lib/record-kind';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
@@ -161,7 +162,7 @@ export function OpportunityHeader({
               <DetailBadge tone="blue">{typeLabel(opp.opportunity_type, t)}</DetailBadge>
             )}
             {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
-              <DetailBadge tone="amber">{t('card.facultyContactUnconfirmed')}</DetailBadge>
+              <DetailBadge tone="amber">{t(facultyOutreachLabel(opp))}</DetailBadge>
             )}
             {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
               <DetailBadge tone="red">{t('card.facultyNotAcceptingUndergraduates')}</DetailBadge>
