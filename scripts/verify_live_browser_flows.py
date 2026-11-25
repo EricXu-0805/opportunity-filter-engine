@@ -143,16 +143,29 @@ async def run(mode):
                 await receiver.goto('https://joinalab.com/',wait_until='domcontentloaded')
                 tabs = (page,receiver)
                 for tab in tabs:
+                    await tab.bring_to_front()
+                    await expect(tab.locator('#student_name')).to_have_value(profile['name'],timeout=45000)
+                    campus_picker = tab.get_by_test_id('university-card-uiuc')
+                    if await campus_picker.is_visible():
+                        await campus_picker.click()
+                        await tab.get_by_test_id('switcher-confirm').click()
+                        await expect(campus_picker).to_be_hidden(timeout=15000)
                     await expect(tab.locator('#major')).to_have_value('Computer Science',timeout=60000)
                 outage = True
                 await page.locator('#major').select_option('Electrical Engineering')
                 await expect(page.get_by_test_id('retry-sync')).to_be_visible(timeout=25000)
                 await receiver.locator('#major').select_option('Computer Engineering')
                 keep = [tab.get_by_test_id('conflict-keep-mine') for tab in tabs]
+                await expect(receiver.get_by_test_id('retry-sync').or_(keep[1]).first).to_be_visible(timeout=20000)
                 outage = False
                 for index,tab in enumerate(tabs):
-                    if not await keep[index].is_visible() and await tab.get_by_test_id('retry-sync').is_visible():
-                        await tab.get_by_test_id('retry-sync').click()
+                    await tab.bring_to_front()
+                    retry = tab.get_by_test_id('retry-sync')
+                    if not await keep[index].is_visible() and await retry.is_visible():
+                        try:
+                            await retry.click(timeout=2500)
+                        except Exception:
+                            await expect(keep[index]).to_be_visible(timeout=7500)
                 for index,tab in enumerate(tabs):
                     await expect(keep[index]).to_be_visible(timeout=30000)
                     expected = 'Changed somewhere else' if lang == 'en' else '在别处改过了'
@@ -167,7 +180,7 @@ async def run(mode):
                         if(s || retry || failed) window.receiptViews.push({stale:!!s,retry:!!retry,failed});
                     }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}""")
                 outcomes.clear()
-                await asyncio.gather(*(button.click(timeout=3000,force=True) for button in keep))
+                await asyncio.gather(*(button.click(timeout=3000) for button in keep))
                 for button in keep:
                     await expect(button).to_have_count(0,timeout=15000)
                 await asyncio.sleep(2)
@@ -175,6 +188,13 @@ async def run(mode):
                 saved=json.loads(fetch(stub+'/rest/v1/profiles?select=profile_data,revision&id=eq.'+uid,h=auth)[2])[0]
                 major=saved['profile_data']['major']
                 for tab in tabs:
+                    await tab.bring_to_front()
+                    await expect(tab.locator('#student_name')).to_have_value(profile['name'],timeout=45000)
+                    campus_picker = tab.get_by_test_id('university-card-uiuc')
+                    if await campus_picker.is_visible():
+                        await campus_picker.click()
+                        await tab.get_by_test_id('switcher-confirm').click()
+                        await expect(campus_picker).to_be_hidden(timeout=15000)
                     await expect(tab.locator('#major')).to_have_value(major)
                 print('Concurrent answers',lang,major,'write outcomes',outcomes,'observed stale/retry/failure', [[any(v[k] for v in vs) for k in ('stale','retry','failed')] for vs in views],flush=True)
                 assert outcomes == ['applied'] and any(any(v['stale'] for v in vs) for vs in views)
