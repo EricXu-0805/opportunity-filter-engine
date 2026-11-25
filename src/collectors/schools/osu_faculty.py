@@ -322,7 +322,9 @@ SCHOOL: dict = {
         _asc("GEOG", "Department of Geography", ["Geography"], "geography"),
         _asc("HIST", "Department of History", ["History"], "history"),
         _asc("ENGL", "Department of English", ["English"], "english"),
-        _asc("DESIGN", "Department of Design", ["Design"], "design"),
+        _asc("DESIGN", "Department of Design", ["Design"], "design") | {
+            "profile_id_names": {"design.osu.edu/people/lewis.239": ("Matt Lewis", "Matthew Lewis")},
+        },
         _asc("COMM", "School of Communication", ["Communication"], "comm"),
         _asc("MUSIC", "School of Music", ["Music"], "music"),
         # ---- Fisher College of Business ------------------------------------

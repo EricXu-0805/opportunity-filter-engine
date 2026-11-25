@@ -36,6 +36,8 @@ import re
 import ssl
 import time
 import unicodedata
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, date, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urljoin, urlsplit
@@ -755,6 +757,26 @@ def _mark_fetched_soup_observation(
     return soup
 
 
+_fetch_failure_receipt: ContextVar[dict | None] = ContextVar("fetch_failure_receipt", default=None)
+
+
+@contextmanager
+def observe_fetch_failure():
+    """Capture a terminal failure for the enclosed fetch without changing its return type."""
+    receipt = {}
+    token = _fetch_failure_receipt.set(receipt)
+    try:
+        yield receipt
+    finally:
+        _fetch_failure_receipt.reset(token)
+
+
+def _fetch_failed(reason: str) -> None:
+    receipt = _fetch_failure_receipt.get()
+    if receipt is not None:
+        receipt["reason"] = reason
+
+
 def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
                timeout: int | None = None, max_retries: int | None = None,
                bounded: bool = False) -> BeautifulSoup | None:
@@ -778,10 +800,10 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
     host = (urlsplit(url).hostname or "").lower()
     if host in _rate_limited_hosts:
         logger.info(f"Skipping {url}: rate-limit circuit open for {host}")
-        return None
+        return _fetch_failed("rate_limit_circuit_open")
     if not insecure and skip_rejected_certificate(url):
         logger.info(f"Skipping {url}: its certificate was rejected earlier this run")
-        return None
+        return _fetch_failed("certificate_rejected")
     session = requests.Session()
     session.headers.update(HEADERS)
     if ua:
@@ -823,7 +845,7 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
             if note_rejected_certificate(url, e):
                 # Every retry would present the same certificate.
                 logger.warning(f"Failed to fetch {url}: {e}")
-                return None
+                return _fetch_failed("certificate_rejected")
             last_err = e
         except requests.exceptions.HTTPError as e:
             # Retry transient server errors and 429 rate-limits (a shared Varnish
@@ -832,7 +854,7 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
             status = e.response.status_code if e.response is not None else None
             if status is None or (status < 500 and status != 429):
                 logger.warning(f"Failed to fetch {url}: {e}")
-                return None
+                return _fetch_failed(f"http_{status}" if status is not None else "http_error")
             if status == 429 and host:
                 streak = _consecutive_429.get(host, 0) + 1
                 _consecutive_429[host] = streak
@@ -842,7 +864,7 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
                         f"{host}: {streak} consecutive 429s — skipping this "
                         f"host's remaining URLs for this run"
                     )
-                    return None
+                    return _fetch_failed("http_429")
                 retry_after = _retry_after_seconds(e.response)
             last_err = e
         except ImportDocumentError:
@@ -864,6 +886,12 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
     logger.warning(
         f"Failed to fetch {url} after {eff_retries} attempts: {last_err}"
     )
+    if isinstance(last_err, requests.exceptions.HTTPError) and last_err.response is not None:
+        return _fetch_failed(f"http_{last_err.response.status_code}")
+    if isinstance(last_err, requests.exceptions.Timeout):
+        return _fetch_failed("timeout")
+    if isinstance(last_err, requests.exceptions.ConnectionError):
+        return _fetch_failed("connection_failed")
     return None
 
 

@@ -102,6 +102,7 @@ from ..evidence import (
     is_research_clause_fragment,
     is_retired_title,
     is_trainee_title,
+    legacy_file_roster,
     stamp_inferred,
 )
 from .import_document import ImportDocumentError, parse_import_html
@@ -675,6 +676,12 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # ``id_names``, so the record keeps its id rather than being retired and
     # minted again.
     id_name = (dept.get("id_names") or {}).get(name, name)
+    # A reviewed nickname belongs to this person only on their own profile.
+    # The same spelling from a different directory card keeps its normal ID.
+    if reviewed_names := dept.get("profile_id_names"):
+        alias = reviewed_names.get(canonical_profile_url(person.get("url")))
+        if alias and name == alias[0]:
+            id_name = alias[1]
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
     marker = dept.get("cross_listing_marker")
     listing = ""
@@ -716,11 +723,14 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     honorific = "Prof. " if professor_rank else ""
     unit = f" — {short}" if dept_name else ""
     opp_title = f"{honorific}{name}{unit}{research_summary}"
+    scope = person.get("_verification_scope")
+    curated = scope == "curated"
+    listed = person.get("_listing_seen_on_source") is True
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
-        "last_verified": now,
+        "last_verified": None if curated else now,
         "first_seen_at": now,
-        "last_seen_at": now,
+        "last_seen_at": now if not curated or listed else None,
         "is_active": True,
         "manually_reviewed": False,
         "notes": f"Curated from {dept_name or dept['name']} faculty directory ({school['organization']})",
@@ -754,7 +764,8 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         if " ".join(str(capture.get("identity_name") or "").casefold().split()) == " ".join((person.get("name") or "").casefold().split()):
             capture["identity_name"] = name
         metadata[CAPTURE_KEY] = capture
-    scope = person.get("_verification_scope")
+    if (curated and listed) or (scope == "directory" and legacy_file_roster(school["source"], opp_id)):
+        metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
     email_source = person.get("_email_source")
@@ -1823,6 +1834,15 @@ def _scrape_directory(dept: dict) -> list[dict]:
         # so its challenge clears before the first card check (JHU BME's bme.jhu.edu).
         soup = _render_soup(base, wait_until=rw, expect_selector=sel.get("card"),
                             settle_ms=cfg.get("render_settle", 3500))
+    elif _ACTIVE_COVERAGE is not None:
+        # Scope the receipt to the directory itself. A later profile read or
+        # a transient failure followed by a successful retry cannot supply it.
+        from .ucb_common import observe_fetch_failure
+
+        with observe_fetch_failure() as receipt:
+            soup = fetch(base)
+        if soup is None and receipt.get("reason"):
+            _ACTIVE_COVERAGE["_directory_fetch_failure"] = receipt["reason"]
     else:
         soup = fetch(base)
     if soup is None:
@@ -3425,7 +3445,10 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
             logger.warning("faculty_graph: json_dir file unreadable for %s: %s",
                            dept.get("short"), cfg["file"])
             return []
-        return _json_dir_records(dept, cfg, recs)
+        people = _json_dir_records(dept, cfg, recs)
+        for person in people:
+            person["_verification_scope"] = "curated"
+        return people
     if cfg.get("render"):
         # One render serves every unit that reads the same page, and a failed
         # one is not retried per unit: 34 Colby departments share one page.
@@ -4171,7 +4194,15 @@ def _carry_sighting(survivor: dict, loser: dict,
     same_unit = all(survivor.get(k) == loser.get(k) for k in ("source", "department")) \
         and _unit_id_of(survivor) == _unit_id_of(loser) \
         and _one_person([survivor.get("pi_name"), loser.get("pi_name")])
-    if same_page or same_unit:
+    # A fallback can revisit the identical stored row for someone with a
+    # mononym or initial (Wesleyan Music). Word count cannot establish that
+    # identity, but its stable id, exact name, source URL and address agree.
+    same_stored_identity = (
+        bool(survivor.get("id") and survivor.get("pi_name") and survivor.get("source") and survivor.get("url"))
+        and all(survivor.get(k) == loser.get(k) for k in ("id", "pi_name", "source", "url"))
+        and bool(_key_email(survivor)) and _key_email(survivor) == _key_email(loser)
+    )
+    if same_page or same_unit or same_stored_identity:
         from .uiuc_faculty import _carry_newest_liveness
         _carry_newest_liveness(survivor, loser)
 
@@ -5195,6 +5226,10 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         # not an empty department: fail closed and let the consumer preserve.
         parse_status = "ok" if ids else "zero_rows"
     cov = dict(coverage) if isinstance(coverage, dict) else None
+    directory_failure = cov.pop("_directory_fetch_failure", None) if cov is not None else None
+    if directory_failure and fetch_status == "ok" and parse_status == "zero_rows":
+        fetch_status = "failed"
+        failure_reason = directory_failure
     document_identities: list = []
     page_people: list | None = None
     listed_identities: list | None = None
@@ -5275,6 +5310,8 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "retirement_authorized": False,
         "failure_reason": failure_reason,
     }
+    if directory_failure:
+        observation["directory_fetch_failure"] = directory_failure
     if listed_identities is not None:
         # Every row a stated-total walk read, as run-keyed tokens for the
         # retirement pass. Most of these rows are staff and students the unit
@@ -5320,6 +5357,15 @@ def fetch_and_normalize(school: dict, deep: bool = False,
         _PROFILE_MEMO = outer
 
 
+def _json_dir_for_unit(dept: dict, walks: dict, held: frozenset[str]) -> list[dict]:
+    """Keep a local JSON roster distinguishable from the same family's online feeds."""
+    people = _fetch_json_dir(dept, walks, held)
+    if (dept.get("json_dir") or {}).get("file"):
+        for person in people:
+            person["_unit_snapshot"] = True
+    return people
+
+
 def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> list[dict]:
     errors = validate(school)
     if errors:
@@ -5359,25 +5405,39 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         # Copies, not the config dicts themselves: the provenance tag (and the
         # profile-enrich pass) mutate specs, and curated seeds are shared
         # module-level config.
+        live_names_by_url = defaultdict(set)
         specs = [dict(person, _verification_scope="curated")
                  for person in dept.get("faculty", [])]
         if deep:
-            seen_urls_local = {u for p in specs
-                               if (u := (p.get("url") or "").strip().lower())
-                               and u not in listing_urls}
+            seeds_by_url = defaultdict(list)
+            for spec in specs:
+                url = (spec.get("url") or "").strip().lower()
+                if url and url not in listing_urls:
+                    seeds_by_url[url].append(spec)
+            seen_urls_local = set(seeds_by_url)
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept, json_walks, held)
+                               + _json_dir_for_unit(dept, json_walks, held)
                                + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)
                                + _fetch_sitemap_directory(dept)):
                 discovered.setdefault("_verification_scope", "directory")
                 key = (discovered.get("url") or "").strip().lower()
+                if unit_ledger is not None and not discovered.get("_unit_snapshot"):
+                    discovered["_seen_on_unit_roster"] = True
+                    if key and key not in listing_urls:
+                        live_names_by_url[key].add(discovered.get("name"))
                 if key and key not in listing_urls and key in seen_urls_local:
+                    # Keep the seed's richer fields, but credit a listing only if
+                    # the directory actually returned this person at this URL.
+                    for seed in seeds_by_url.get(key, ()):
+                        if (discovered["_verification_scope"] != "curated"
+                                and _one_person([seed.get("name"), discovered.get("name")])):
+                            seed["_listing_seen_on_source"] = True
                     continue
                 if key and key not in listing_urls:
                     seen_urls_local.add(key)
@@ -5390,10 +5450,19 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
         # Rows this unit read that are left to another row with their address
         # or link: still observed by this unit (ids and identities only).
         read_not_emitted: list[dict] = []
+        live_roster_ids: set[str] = set()
+        retained_ids: set[str] = set()
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:
                 continue
+            if unit_ledger is not None:
+                key = (person.get("url") or "").strip().lower()
+                seen_here = person.get("_seen_on_unit_roster") or any(
+                    _one_person([person.get("name"), name]) for name in live_names_by_url.get(key, ())
+                )
+                unit_ids = live_roster_ids if seen_here else retained_ids
+                unit_ids.add(rec["id"])
             ek, uk = _key_email(rec), _key_url(rec)
             if uk in listing_urls:
                 uk = ""
@@ -5435,6 +5504,11 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 coverage=_ACTIVE_COVERAGE, listing_urls=listing_urls,
                 read_not_emitted=read_not_emitted,
             )
+            # Count a person even when the school's cross-unit dedup assigns
+            # their published row to a sibling. Keep emitted counts and the
+            # retirement ledger's identity contract intact.
+            unit_ledger[_unit_short]["live_roster_count"] = len(live_roster_ids)
+            unit_ledger[_unit_short]["retained_only_count"] = len(retained_ids - live_roster_ids)
         _ACTIVE_COVERAGE = None
     return [r for r in records if id(r) not in displaced]
 
@@ -5465,6 +5539,11 @@ def merge_into_processed(new_opps: list[dict]):
             cur = index[opp["id"]]
             opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            if (opp["metadata"].get("verification_scope") == "curated"
+                    and (cur.get("metadata") or {}).get("verification_scope") in ("directory", "profile", "curated")):
+                # A failed directory read can fall back to a seed with this
+                # stable id. Keep any earlier genuine sighting of the person.
+                _carry_sighting(opp, cur)
             # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
             # enrichment on the same stable id.
             _carry_forward_enrichment(cur, opp)

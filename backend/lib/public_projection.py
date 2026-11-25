@@ -15,6 +15,7 @@ from src.evidence import (
     configured_note_window_passed,
     configured_value_unstated,
     faculty_safe_eligibility,
+    faculty_verification_scope,
     is_read_off_the_page,
     page_states_applications_open,
     record_kind,
@@ -716,6 +717,7 @@ _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     # would ship on every detail-shaped payload and move the writing target
     # version on each refresh that lists a person whose row was not re-read.
     "last_seen_at",
+    "listing_seen_on_source",
     # The neutralizer's own bookkeeping. `faculty_availability_status` here is
     # the internal marker the scan writes into metadata — not the top-level
     # field of the same name, which is a deliberate part of the payload and
@@ -916,6 +918,18 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # source-type table, and so "we could not confirm what this is" is a fact
     # on the wire rather than an inference from an absent field.
     projected["record_kind"] = kind
+    # A faculty profile becomes an outreach lead only when the same evidence
+    # used by the ranker and authenticated reveal allows a personal address.
+    # Lists and caches get only the anonymous status. A detail request can
+    # reveal the address later through its existing authenticated path.
+    projected.pop("contact_email_status", None)
+    if kind == "faculty_contact":
+        from backend.lib.contact_visibility import STATUS_UNAVAILABLE, contact_email_status
+
+        projected["contact_email_status"] = (
+            contact_email_status(canonical_record, authenticated=False)[0]
+            if truth["actionable"] else STATUS_UNAVAILABLE
+        )
     # Where the keywords came from, on the wire, for the same reason
     # `publication_attribution_status` is: a client cannot re-derive it, and
     # without it a topic this pipeline INFERRED renders identically to one
@@ -1082,6 +1096,8 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         projected["metadata"] = {
             k: v for k, v in metadata.items() if k not in _EVIDENCE_ONLY_METADATA_KEYS
         }
+        if metadata.get("verification_scope") == "directory" and faculty_verification_scope(canonical_record) == "curated":
+            projected["metadata"]["verification_scope"] = "curated"
 
     if kind == "unknown":
         _neutralize_unverified_kind(projected)

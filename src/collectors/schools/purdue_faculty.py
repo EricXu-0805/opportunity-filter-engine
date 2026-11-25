@@ -217,6 +217,7 @@ SCHOOL: dict = {
         # --- College of Science ---
         {
             "short": "CS",
+            "profile_id_names": {"cs.purdue.edu/people/faculty/mtaram.html": ("Kazem Taram", "Mohammadkazem Taram")},
             "name": "Department of Computer Science",
             "majors": ["Computer Science", "Data Science"],
             "directory_url": "https://www.cs.purdue.edu/people/faculty/index.html",
@@ -402,7 +403,9 @@ SCHOOL: dict = {
               "satt", "SATT Directory"),
         _poly("BSC", "Bowen School of Construction",
               ["Construction Management Technology"],
-              "bsc", "Bowen School of Construction Directory"),
+              "bsc", "Bowen School of Construction Directory") | {
+            "profile_id_names": {"polytechnic.purdue.edu/profile/kyukang": ("Kyu Kang", "Kyubyung Kang")},
+        },
         _poly("TLI", "Department of Technology Leadership & Innovation",
               ["Technology Leadership and Innovation"],
               "tli", "TLI Directory"),

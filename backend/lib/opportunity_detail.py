@@ -83,6 +83,7 @@ from src.evidence import (
     keywords_are_source_labels,
     keywords_are_source_topics,
     record_kind,
+    source_last_seen_at,
 )
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
@@ -873,7 +874,7 @@ def last_seen_listed(canonical: dict) -> str | None:
     """
     if record_kind(canonical) != "faculty_contact":
         return None
-    seen = _date(_dict(canonical.get("metadata")).get("last_seen_at"))
+    seen = _date(source_last_seen_at(canonical))
     return seen[:10] if seen else None
 
 

@@ -3806,8 +3806,85 @@ class TestIdentityProvenance:
 
     def test_curated_seeds_tagged_curated(self, recs):
         assert all(r["metadata"]["verification_scope"] == "curated" for r in recs)
+        assert all(r["metadata"]["last_verified"] is None and r["metadata"]["last_seen_at"] is None for r in recs)
         # and the curated tag never leaks the internal hint key into records
         assert all("_verification_scope" not in r for r in recs)
+
+    def test_directory_sighting_of_a_seed_survives_offline_reruns(self, monkeypatch, tmp_path):
+        import json
+
+        from src.collectors import ucb_common
+
+        person = {"name": "Grace Hopper", "url": "https://x.edu/hopper", "title": "Professor"}
+        dept = {"name": "Engineering", "short": "ENG", "directory_url": "https://x.edu/eng", "faculty": [person]}
+        school = {**SCHOOL, "departments": [dept]}
+        saved = tmp_path / "opportunities.json"
+        saved.write_text("[]")
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", saved)
+        monkeypatch.setattr(fg, "_scrape_directory", lambda _: [person.copy()])
+        [live] = fg.fetch_and_normalize(school, deep=True)
+        assert live["metadata"]["last_verified"] is None
+        seen = live["metadata"]["last_seen_at"]
+        assert seen and live["metadata"]["listing_seen_on_source"] is True
+        fg.merge_into_processed([live])
+
+        for _ in range(2):
+            [fallback] = fg.fetch_and_normalize(school, deep=False)
+            fg.merge_into_processed([fallback])
+            [stored] = json.loads(saved.read_text())
+            assert stored["metadata"]["listing_seen_on_source"] is True
+            assert stored["metadata"]["last_seen_at"] == seen
+            assert stored["metadata"]["last_verified"] is None
+
+        # Older curated rows carry the run clock with no sighting evidence.
+        del stored["metadata"]["listing_seen_on_source"]
+        stored["metadata"]["last_verified"] = seen
+        saved.write_text(json.dumps([stored]))
+        [fallback] = fg.fetch_and_normalize(school, deep=False)
+        fg.merge_into_processed([fallback])
+        [stored] = json.loads(saved.read_text())
+        assert stored["metadata"]["last_seen_at"] is None
+        assert stored["metadata"]["last_verified"] is None
+
+        # A directory URL now naming a different professor cannot date the seed.
+        monkeypatch.setattr(fg, "_scrape_directory", lambda _: [{**person, "name": "Jane Doe"}])
+        [mismatch] = fg.fetch_and_normalize(school, deep=True)
+        assert mismatch["metadata"]["last_seen_at"] is None
+
+    def test_committed_file_is_a_seed_until_a_live_source_names_the_person(self, monkeypatch, tmp_path):
+        import json
+
+        from src.collectors import ucb_common
+
+        person = {"name": "Grace Hopper", "url": "https://example.edu/hopper", "title": "Professor"}
+        snapshot = tmp_path / "snapshot.json"
+        snapshot.write_text(json.dumps([person]))
+        dept = {"name": "School of Medicine", "short": "SOM", "directory_url": "https://example.edu/faculty",
+                "json_dir": {"file": str(snapshot), "name_fields": ["name"], "link_field": "url"}}
+        school = {**SCHOOL, "source": "jhu_faculty", "id_prefix": "jhu", "departments": [dept]}
+        [row] = fg.fetch_and_normalize(school, deep=True)
+        assert row["metadata"]["verification_scope"] == "curated"
+        assert row["metadata"]["last_seen_at"] is None and row["metadata"]["last_verified"] is None
+
+        old = {**row, "metadata": {**row["metadata"], "verification_scope": "directory",
+                                  "last_seen_at": "2026-11-15", "last_verified": "2026-11-15"}}
+        corpus = tmp_path / "opportunities.json"
+        corpus.write_text(json.dumps([old]))
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", corpus)
+        fg.merge_into_processed([row])
+        [saved] = json.loads(corpus.read_text())
+        assert saved["metadata"]["last_seen_at"] is None
+
+        # The same person in the config seed and in the file is still one offline source.
+        [duplicate] = fg.fetch_and_normalize({**school, "departments": [{**dept, "faculty": [person]}]}, deep=True)
+        assert duplicate["metadata"]["last_seen_at"] is None
+
+        # A live directory that replaces the archived feed establishes a new, genuine sighting.
+        monkeypatch.setattr(fg, "_fetch_json_dir", lambda *args: [person.copy()])
+        [live] = fg.fetch_and_normalize(school, deep=True)
+        assert live["metadata"]["verification_scope"] == "directory"
+        assert live["metadata"]["listing_seen_on_source"] is True
+        assert live["metadata"]["last_seen_at"] == live["metadata"]["last_verified"]
 
     def test_seed_configs_not_mutated_by_harvest(self):
         dept = SCHOOL["departments"][0]

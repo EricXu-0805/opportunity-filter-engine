@@ -41,10 +41,13 @@ from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
     UNIT_MAILBOX_LOCALPARTS,
     dept_name_stems,
+    faculty_verification_scope,
     inferred_method,
     is_directory_discipline,
     is_research_clause_fragment,
     record_kind,
+    source_last_seen_at,
+    source_verified_at,
     stamp_inferred,
 )
 from .faculty_graph import DUPLICATE_REASON, settle_dropped_rows
@@ -1727,9 +1730,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         # Stamped with when the statement was actually observed, never with this
         # refresh's time: an availability claim derived from carried prose must
         # not be presentable as verified today.
-        observed = (existing.get("metadata") or {}).get(
-            "research_areas_verified_at"
-        ) or (existing.get("metadata") or {}).get("last_verified")
+        observed = prior_metadata.get("research_areas_verified_at") or source_verified_at(existing)
         if isinstance(observed, str) and observed.strip():
             md["research_areas_verified_at"] = observed
 
@@ -1815,7 +1816,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
 
 
 def _observed_at(record: dict) -> datetime | None:
-    raw = (record.get("metadata") or {}).get("last_seen_at")
+    raw = source_last_seen_at(record)
     if not isinstance(raw, str):
         return None
     try:
@@ -1901,6 +1902,9 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
         return
     meta = survivor.setdefault("metadata", {})
     meta["last_seen_at"] = dropped["metadata"]["last_seen_at"]
+    if faculty_verification_scope(survivor) == "curated":
+        meta["verification_scope"] = "curated"
+        meta["listing_seen_on_source"] = True
     if ("directory_section" in dropped["metadata"]
             and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")):
         # The same directory card, so the section it was read under this run.

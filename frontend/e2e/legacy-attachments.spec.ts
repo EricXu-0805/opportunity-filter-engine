@@ -135,9 +135,37 @@ test.describe('Legacy Tracker attachment recovery', () => {
   test('upload success remains explicit when the following list fails; retry never uploads twice', async ({ page }) => {
     const owner = await account(); try {
       const state = await setup(page, owner); await expect(openFile(page)).toBeEnabled(); state.failAfterWrite = true;
-      await panel(page).locator('input[type=file]').setInputFiles({ name: 'new-file.pdf', mimeType: 'application/pdf', buffer: PDF });
+      await panel(page).getByLabel(dict().addButton, { exact: true }).setInputFiles({ name: 'new-file.pdf', mimeType: 'application/pdf', buffer: PDF });
       await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().uploaded.replace('{name}', 'new-file.pdf')); await expect(page.getByTestId('tracker-attachments-error')).toBeVisible(); await expect(openFile(page)).toBeDisabled(); await expect(page.getByTestId('tracker-attachments-empty')).toHaveCount(0);
       state.failure = 0; await retry(page).click(); await expect(openFile(page, 'new-file.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('selected replacement uses the guarded PUT on the original key', async ({ page }) => {
+    const owner = await account();
+    try {
+      const state = await setup(page, owner);
+      const path = owner.session.user.id + '/' + TARGET + '/original.pdf';
+      await page.route('**/rest/v1/rpc/tracker_attachment_replace_version', route => {
+        expect(route.request().postDataJSON()).toMatchObject({ p_path: path, p_id: 'original.pdf', p_mime: 'application/pdf' });
+        return route.fulfill({ json: 'original-version' });
+      });
+      let writes = 0;
+      await page.route('**/storage/v1/object/tracker-attachments/**', route => {
+        expect(route.request().method()).toBe('PUT');
+        expect(decodeURIComponent(new URL(route.request().url()).pathname)).toBe('/storage/v1/object/tracker-attachments/' + path);
+        expect(route.request().postDataBuffer()?.toString()).toContain('"version":"original-version"');
+        writes++;
+        return route.fulfill({ json: { Key: 'tracker-attachments/' + path, Id: 'original.pdf' } });
+      });
+      const picker = page.waitForEvent('filechooser');
+      await panel(page).getByRole('button', { name: dict().replaceAria.replace('{name}', 'original.pdf') }).click();
+      await (await picker).setFiles({ name: 'revised.pdf', mimeType: 'application/pdf', buffer: PDF });
+      await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().replaced.replace('{name}', 'original.pdf'));
+      await expect(openFile(page)).toBeEnabled();
+      expect(writes).toBe(1);
+      expect(state.uploads).toBe(0);
+      expect(state.deletes).toBe(0);
     } finally { await owner.http.dispose(); }
   });
 
@@ -152,8 +180,8 @@ test.describe('Legacy Tracker attachment recovery', () => {
   test('an unknown committed upload can only be checked before another write', async ({ page }) => {
     const owner = await account(); try {
       const state = await setup(page, owner); await expect(openFile(page)).toBeEnabled(); state.unknownWrite = true;
-      await panel(page).locator('input[type=file]').setInputFiles({ name: 'unknown.pdf', mimeType: 'application/pdf', buffer: PDF }); await expect(panel(page)).toContainText(dict().uploadUnknown);
-      await expect(panel(page).locator('input[type=file]')).toBeDisabled(); await retry(page).click(); await expect(openFile(page, 'unknown.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
+      await panel(page).getByLabel(dict().addButton, { exact: true }).setInputFiles({ name: 'unknown.pdf', mimeType: 'application/pdf', buffer: PDF }); await expect(panel(page)).toContainText(dict().uploadUnknown);
+      await expect(panel(page).getByLabel(dict().addButton, { exact: true })).toBeDisabled(); await retry(page).click(); await expect(openFile(page, 'unknown.pdf')).toBeEnabled(); expect(state.uploads).toBe(1);
     } finally { await owner.http.dispose(); }
   });
 

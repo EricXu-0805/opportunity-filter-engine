@@ -589,3 +589,50 @@ def test_a_berkeley_name_variant_its_richer_department_dropped_gives_way():
         if week < 3:
             assert shown == [(person["id"], _at(start))]
     assert shown == [("faculty-ucb-me-0000bbbb", _at(day))]
+
+
+@pytest.mark.parametrize("school,unit,display,full,profile,original_id", [
+    ("colostate", "BUS", "Steve Kofford", "Steven Kofford", "biz.colostate.edu/about/directory/c838568788", "faculty-colostate-bus-9d210abe"),
+    ("osu", "DESIGN", "Matt Lewis", "Matthew Lewis", "design.osu.edu/people/lewis.239", "faculty-osu-design-73e460f2"),
+    ("purdue", "BSC", "Kyu Kang", "Kyubyung Kang", "polytechnic.purdue.edu/profile/kyukang", "faculty-purdue-bsc-e4bf6c5d"),
+    ("utexas", "LINGUISTICS", "Akshay Aitha", "Akshayraj Aitha", "liberalarts.utexas.edu/linguistics/faculty/aa225967", "faculty-utexas-linguistics-ab991fd0"),
+    ("tamu", "BME", "Jeff Reynolds", "Jeffery Reynolds", "engineering.tamu.edu/biomedical/profiles/reynolds-jeffery.html", "faculty-tamu-bme-dccdf5db"),
+    ("purdue", "CS", "Kazem Taram", "Mohammadkazem Taram", "cs.purdue.edu/people/faculty/mtaram.html", "faculty-purdue-cs-bb6831d2"),
+    ("vanderbilt", "MATH", "Chris Kapulkin", "Krzysztof Kapulkin", "as.vanderbilt.edu/math/bio/krzysztof-kapulkin", "faculty-vanderbilt-math-1d5fbacf"),
+])
+def test_reviewed_nickname_refreshes_the_published_id_only_at_its_profile(
+    school, unit, display, full, profile, original_id, tmp_path, monkeypatch,
+):
+    import json
+    from importlib import import_module
+
+    from src.collectors import ucb_common
+
+    config = import_module(f"src.collectors.schools.{school}_faculty").SCHOOL
+    department = next(d for d in config["departments"] if d["short"] == unit)
+    url = "https://" + profile
+
+    def normalize(name, directory_url):
+        return fg._normalize(config, department, fg.faculty(name, title="Associate Professor", url=directory_url))
+
+    held = normalize(full, url)
+    observed = normalize(display, url + "/")
+    assert held["id"] == observed["id"] == original_id
+    assert observed["pi_name"] == display
+    assert normalize(display, "")["id"] != original_id
+    assert normalize(display, url + "-another-person")["id"] != original_id
+    assert normalize("Other " + display.split()[-1], url)["id"] != original_id
+
+    held["metadata"].update(first_seen_at=OLD, last_seen_at=OLD)
+    path = tmp_path / "opportunities.json"
+    # A previously published short-name record may already point to the original.
+    previous_alias = normalize(display, "")
+    previous_alias["metadata"].update(is_active=False, duplicate_of=original_id)
+    path.write_text(json.dumps([held, previous_alias]))
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", path)
+    assert fg.merge_into_processed([observed]) == (0, 1)
+    saved, archived = json.loads(path.read_text())
+    assert archived == previous_alias
+    assert saved["id"] == original_id
+    assert saved["metadata"]["first_seen_at"] == OLD
+    assert saved["metadata"]["last_seen_at"] == observed["metadata"]["last_seen_at"]

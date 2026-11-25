@@ -97,3 +97,63 @@ def test_ranking_still_reads_an_old_github_skill():
     """Scoring is not a claim made to a person: the skill still counts as had."""
     gaps = analyze_gaps(profile(TYPED, OLD), OPP)
     assert "PyTorch" not in gaps["missing_skills"]
+
+
+def test_share_recipient_must_confirm_an_inherited_skill_before_writing():
+    # Sharing v1 transports the name and level, and tags the decoded row as
+    # shared. Its earlier GitHub provenance is unavailable after a round trip.
+    shared = {**OLD, "source": "shared"}
+    for row in (shared, {**shared, "evidenced": True}):
+        assert not skill_may_be_named(row)
+        for where, content in writings(TYPED, row).items():
+            assert "PyTorch" not in content and "Python" in content, where
+    assert "PyTorch" not in analyze_gaps(profile(shared), OPP)["missing_skills"]
+
+    # A recipient can still use their own typed, confirmed or supported entry
+    # for the same skill, regardless of where an inherited row sits in the list.
+    for own in ({"name": "PyTorch", "level": "expert"}, {**shared, "confirmed": True}, M12_SENT):
+        for skills in ((shared, own), (own, shared)):
+            for where, content in writings(*skills).items():
+                assert "PyTorch" in content, where
+
+
+def test_shared_skill_at_template_and_provider_boundaries(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+    target = {**OPP, "source_type": "uiuc_research", "is_active": True, "status": "open",
+              "source_url": "https://example.edu/research", "eligibility": {"skills_required": []}}
+    for module in (ce_route, tailor):
+        monkeypatch.setattr(module, "load_opportunities_by_id", lambda: {target["id"]: target})
+        monkeypatch.setattr(module, "is_configured", lambda: True)
+    monkeypatch.setattr(ce_route, "_ndraft_count", lambda: 1)
+    calls = {"email": [], "tailor": []}
+
+    def intercept(key):
+        def capture(messages, **kwargs):
+            calls[key].append(" ".join(m["content"] for m in messages if m["role"] == "user"))
+            return None
+        return capture
+
+    monkeypatch.setattr(ce_route, "chat_completion", intercept("email"))
+    monkeypatch.setattr(tailor, "chat_completion", intercept("tailor"))
+    client = TestClient(app)
+    original = "Reviewed image labels for an undergraduate project."
+    for confirmed in (False, True):
+        shared = {**OLD, "source": "shared", "confirmed": confirmed}
+        body = {"opportunity_id": target["id"], "profile": profile(shared)}
+        template = client.post("/api/cold-email", json={**body, "engine": "template"})
+        assert template.status_code == 200 and template.json()["method"] == "template"
+        assert ("PyTorch" in template.json()["body"]) is confirmed
+        assert not calls["email"] and not calls["tailor"]
+        assert client.post("/api/cold-email", json={**body, "engine": "ai"}).status_code == 200
+        response = client.post("/api/tailor", json={**body, "original_bullets": [original]})
+        assert response.status_code == 200 and response.json()["tailored_bullets"][0]["text"] == original
+        for captured in calls.values():
+            assert len(captured) == 1 and ("PyTorch" in captured[0]) is confirmed
+            captured.clear()
+
+    stated = "Used PyTorch to review image labels for the undergraduate project."
+    inherited = {"opportunity_id": target["id"], "profile": profile({**OLD, "source": "shared"})}
+    response = client.post("/api/tailor", json={**inherited, "original_bullets": [stated]})
+    assert response.status_code == 200 and response.json()["tailored_bullets"][0]["text"] == stated

@@ -325,7 +325,9 @@ SCHOOL: dict = {
                   ["Accounting", "Finance", "Real Estate", "Management",
                    "Marketing", "Computer Information Systems",
                    "Human Resource Management", "Business Administration"],
-                  "https://biz.colostate.edu/directory/"),
+                  "https://biz.colostate.edu/directory/") | {
+            "profile_id_names": {"biz.colostate.edu/about/directory/c838568788": ("Steve Kofford", "Steven Kofford")},
+        },
         # ---- College of Health & Human Sciences (shared JSON directory API) -
         _chhs("FSHN", "Department of Food Science and Human Nutrition",
               ["Food Science", "Human Nutrition", "Nutrition and Food Science"], "FSHN"),

@@ -21,6 +21,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import Card from '@/components/Card';
+import TrackerAttachmentExport from '@/components/TrackerAttachmentExport';
 import { useT } from '@/i18n/client';
 import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 import { bySlug } from '@/lib/schools';
@@ -327,6 +328,8 @@ export default function AccountPage() {
               />
             </div>
           </Card>
+
+          {auth?.user && <TrackerAttachmentExport key={auth.user.id} uid={auth.user.id} />}
 
           {/* ── Plan — pre-LLC release keeps only the no-price request path. ── */}
           <Card>
