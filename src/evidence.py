@@ -1857,6 +1857,22 @@ def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
     return first_open if first_open is not None else (None, None)
 
 
+def source_last_seen_at(metadata: dict) -> str | None:
+    """A source sighting, excluding the run clock on historical offline faculty seeds."""
+    if metadata.get("verification_scope") == "curated" and metadata.get("listing_seen_on_source") is not True:
+        return None
+    seen = metadata.get("last_seen_at")
+    return seen if isinstance(seen, str) else None
+
+
+def source_verified_at(metadata: dict) -> str | None:
+    """A page-read timestamp. Re-emitting configured faculty fields reads no page."""
+    if metadata.get("verification_scope") == "curated":
+        return None
+    verified = metadata.get("last_verified")
+    return verified if isinstance(verified, str) else None
+
+
 def target_truth(record: dict) -> TargetTruth:
     """Decide, in O(1) and without touching ``record``, whether it is actionable.
 
@@ -1874,8 +1890,7 @@ def target_truth(record: dict) -> TargetTruth:
     if not isinstance(metadata, dict):
         metadata = {}
 
-    verified_at = metadata.get("last_verified")
-    verified_at = verified_at if isinstance(verified_at, str) else None
+    verified_at = source_verified_at(metadata)
     expires_at = metadata.get("expires_at")
     expires_at = expires_at if isinstance(expires_at, str) else None
 

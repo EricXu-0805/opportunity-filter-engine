@@ -818,6 +818,7 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
         DAILY_NATIONAL_SOURCES,
         NATIONAL_SHARD,
     )
+    from src.evidence import source_last_seen_at  # noqa: PLC0415
     from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
         FACULTY_SOURCES,
     )
@@ -841,7 +842,7 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             row["faculty_active"] += faculty
             weekly = record.get("source") not in DAILY_NATIONAL_SOURCES
             row["weekly_active"] += weekly
-            seen = _parse_stamp(meta.get("last_seen_at"))
+            seen = _parse_stamp(source_last_seen_at(meta))
             if seen is not None and (row["last_seen_at"] is None
                                      or seen > row["last_seen_at"]):
                 row["last_seen_at"] = seen

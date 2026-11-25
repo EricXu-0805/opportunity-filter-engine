@@ -16,6 +16,7 @@ vi.mock('@/i18n/client', () => ({
 
 const mockList = vi.fn<(oppId: string) => Promise<Attachment[]>>();
 const mockUpload = vi.fn<(oppId: string, file: File) => Promise<AttachmentUploadResult>>();
+const mockReplace = vi.fn();
 const mockDelete = vi.fn<(oppId: string, name: string) => Promise<boolean>>();
 const mockSigned = vi.fn<(oppId: string, name: string) => Promise<string | null>>();
 
@@ -39,6 +40,7 @@ vi.mock('@/lib/supabase', () => ({
   ]),
   listAttachments: (oppId: string) => mockList(oppId),
   uploadAttachment: (oppId: string, file: File) => mockUpload(oppId, file),
+  replaceAttachment: (...args: unknown[]) => mockReplace(...args),
   deleteAttachment: (oppId: string, name: string) => mockDelete(oppId, name),
   getAttachmentSignedUrl: (oppId: string, name: string) => mockSigned(oppId, name),
 }));
@@ -70,6 +72,7 @@ beforeEach(() => {
   mockList.mockReset();
   mockUpload.mockReset();
   mockDelete.mockReset();
+  mockReplace.mockReset();
   mockSigned.mockReset();
   mockList.mockResolvedValue([]);
 });
@@ -585,5 +588,33 @@ describe('AttachmentsPanel — adding files needs a signed-in account', () => {
     await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
     expect(screen.queryByTestId('tracker-attachments-guest')).toBeNull();
     expect(screen.getByRole('button', { name: /detail.attachments.addButton/ })).toBeEnabled();
+  });
+});
+
+describe('replacing a chosen attachment', () => {
+  const items = [makeAttachment({ name: 'other.pdf' }), makeAttachment({ name: 'resume.pdf' })];
+  const newFile = fileFromMime('edited.pdf', 'application/pdf');
+  async function choose() {
+    mockList.mockResolvedValue(items);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'detail.attachments.replaceAria{name=resume.pdf}' }));
+    fireEvent.change(screen.getByLabelText('detail.attachments.chooseReplacement'), { target: { files: [newFile] } });
+  }
+  it('passes only the selected row and preserves its filename in the receipt', async () => {
+    mockReplace.mockResolvedValue({ ok: true, name: 'resume.pdf' });
+    await choose();
+    await screen.findByText('detail.attachments.replaced{name=resume.pdf}');
+    expect(mockReplace).toHaveBeenCalledWith(OPP_ID, items[1], newFile, expect.anything(), expect.anything());
+    expect(mockUpload).not.toHaveBeenCalled(); expect(mockDelete).not.toHaveBeenCalled();
+  });
+  it('requires a fresh list after an unknown outcome and never replays the replacement', async () => {
+    mockReplace.mockRejectedValue(new AttachmentRequestError('timeout'));
+    await choose();
+    await screen.findByText('detail.attachments.replaceUnknown{name=resume.pdf}');
+    expect(screen.getByRole('button', { name: 'detail.attachments.replaceAria{name=resume.pdf}' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'detail.attachments.retryList' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'detail.attachments.replaceAria{name=resume.pdf}' })).toBeEnabled());
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    expect(mockList).toHaveBeenCalledTimes(2);
   });
 });

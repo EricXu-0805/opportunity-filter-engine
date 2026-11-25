@@ -716,6 +716,7 @@ _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     # would ship on every detail-shaped payload and move the writing target
     # version on each refresh that lists a person whose row was not re-read.
     "last_seen_at",
+    "listing_seen_on_source",
     # The neutralizer's own bookkeeping. `faculty_availability_status` here is
     # the internal marker the scan writes into metadata — not the top-level
     # field of the same name, which is a deliberate part of the payload and
