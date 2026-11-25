@@ -7,11 +7,12 @@ vi.hoisted(() => {
   vi.stubGlobal('localStorage', { clear() {} });
   vi.stubGlobal('sessionStorage', { clear() {} });
 });
-const fixture = vi.hoisted(() => ({ uid: 'account', list: vi.fn(), download: vi.fn() }));
+const fixture = vi.hoisted(() => ({ uid: 'account', list: vi.fn(), download: vi.fn(), versionDownload: vi.fn(), resolve: vi.fn() }));
 vi.mock('./supabase', () => ({
   ATTACHMENTS_BUCKET: 'tracker-attachments',
   getAuthState: () => Promise.resolve({ user: { id: fixture.uid } }),
-  supabase: { storage: { from: () => fixture } },
+  resolveTrackerAttachmentVersions: fixture.resolve,
+  supabase: { storage: { from: (name: string) => name === 'tracker-attachments' ? fixture : { download: fixture.versionDownload } } },
 }));
 vi.mock('./identity-owner', () => ({
   OwnerMismatchError: class extends Error {},
@@ -23,12 +24,23 @@ const run = (signal = new AbortController().signal) => exportTrackerAttachments(
 const row = (name: string, etag = 'one') => ({ name, id: name, updated_at: '2026-11-25', metadata: { size: 3, eTag: etag } });
 const folder = (name: string) => ({ name, id: null, metadata: null });
 const ok = (data: unknown) => ({ data, error: null });
+const versionId = 'aae001be-0c8b-4de1-9a2f-e2159b02558c';
+const legacy = (path: string) => ({
+  path, anchorId: path.split('/').at(-1)!, revision: 'old revision', storageBucket: 'tracker-attachments',
+  storagePath: path, sizeBytes: 3, mimeType: 'text/plain', etag: 'one', updatedAt: '2026-11-25',
+});
+const replacement = (path: string) => ({
+  ...legacy(path), revision: 'new revision', storageBucket: 'tracker-attachment-versions',
+  storagePath: 'account/' + versionId, mimeType: 'application/pdf', sizeBytes: 7,
+});
 
 describe('Tracker attachment export', () => {
   beforeEach(() => {
     vi.stubGlobal('crypto', webcrypto);
     fixture.uid = 'account';
     fixture.list.mockReset().mockResolvedValue(ok([row('old.pdf')]));
+    fixture.resolve.mockReset().mockImplementation(async (paths: string[]) => new Map(paths.map(path => [path, legacy(path)])));
+    fixture.versionDownload.mockReset().mockImplementation(async () => ok(await new Response('current').blob()));
     fixture.download.mockReset().mockImplementation(async () => ok(await new Response('abc').blob()));
   });
 
@@ -72,6 +84,54 @@ describe('Tracker attachment export', () => {
     await expect(run()).resolves.toMatchObject({ count: 1 });
     expect(fixture.download).toHaveBeenCalledWith('account/old/old%20%23%253F%3F.pdf',
       { cacheNonce: expect.any(String) }, { cache: 'no-store', signal: expect.anything() });
+  });
+
+  it('exports only current versions under the logical names, even for retained anchors', async () => {
+    fixture.list.mockResolvedValue(ok([row('gone.pdf'), row('old.pdf'), row('replaced.pdf')]));
+    fixture.resolve.mockImplementation(async (paths: string[]) => new Map(paths.map(path => [
+      path, path.endsWith('/gone.pdf') ? null : path.endsWith('/replaced.pdf') ? replacement(path) : legacy(path),
+    ])));
+    const result = await run();
+    expect(result?.count).toBe(2);
+    expect(fixture.download.mock.calls.map(([key]) => key)).toEqual(['account/old.pdf']);
+    expect(fixture.versionDownload.mock.calls.map(([key]) => key)).toEqual(['account/' + versionId]);
+    const archive = await result!.blob.text();
+    expect(archive).toContain('"originalPath": "replaced.pdf"');
+    expect(archive).toContain('current');
+    expect(archive).not.toContain(versionId);
+    expect(archive).not.toContain('gone.pdf');
+    expect(fixture.resolve).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects versions that switch or disappear while building the ZIP', async () => {
+    const path = 'account/old.pdf';
+    fixture.resolve.mockResolvedValueOnce(new Map([[path, replacement(path)]]))
+      .mockResolvedValueOnce(new Map([[path, null]]));
+    await expect(run()).rejects.toThrow();
+    fixture.resolve.mockResolvedValueOnce(new Map([[path, replacement(path)]]))
+      .mockResolvedValueOnce(new Map([[path, { ...replacement(path), revision: 'another revision' }]]));
+    await expect(run()).rejects.toThrow();
+  });
+
+  it('distinguishes an account with only deleted files from an incomplete or foreign resolution', async () => {
+    const path = 'account/old.pdf';
+    fixture.resolve.mockResolvedValue(new Map([[path, null]]));
+    await expect(run()).resolves.toBeNull();
+    for (const invalid of [new Map(), new Map([[path, { ...legacy(path), anchorId: 'recreated' }]]),
+      new Map([[path, { ...replacement(path), storagePath: 'other/' + versionId }]])]) {
+      fixture.resolve.mockResolvedValueOnce(invalid);
+      await expect(run()).rejects.toThrow();
+    }
+    expect(fixture.versionDownload).not.toHaveBeenCalled();
+    expect(fixture.download).not.toHaveBeenCalled();
+  });
+
+  it('resolves at most 100 logical paths per call on both inventory passes', async () => {
+    const rows = Array.from({ length: 101 }, (_, i) => row(String(i).padStart(3, '0')));
+    fixture.list.mockImplementation(async (_path: string, options: { offset: number; limit: number }) =>
+      ok(rows.slice(options.offset, options.offset + options.limit)));
+    expect((await run())?.count).toBe(101);
+    expect(fixture.resolve.mock.calls.map(([paths]) => paths.length)).toEqual([100, 1, 100, 1]);
   });
 
   it('drops a late read on account switch and verifies the live session even for an empty list', async () => {
