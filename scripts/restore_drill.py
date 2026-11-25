@@ -1,41 +1,19 @@
 #!/usr/bin/env python3
 """Run a restore drill against a scratch project and record what it proved.
 
-``docs/DISASTER_RECOVERY.md`` §2 has always described the drill correctly and
-never produced anything a gate could read: the operator restored, looked at
-some tables, and wrote a sentence in a markdown table. Prose is not evidence —
-``scripts/release_gate.py`` cannot tell "restored and verified" from "restored
-and glanced at", so the ``restore`` gate stayed UNVERIFIED whatever anyone
-wrote there.
-
-This performs the four validations §2 requires against a RESTORED SCRATCH
-project and emits ``data/releases/drills/<drill_id>.json``, which the gate
-validates clause by clause. It never touches production and it never writes a
-credential into the record.
-
-    export DRILL_SUPABASE_URL=https://<scratch-ref>.supabase.co
-    export DRILL_SERVICE_ROLE_KEY=<scratch service role key>
-    export DRILL_ANON_KEY=<scratch anon key>
-    python scripts/restore_drill.py \\
-        --source-backup-id "2026-09-04T07:30:12Z" \\
-        --source-environment mjpirkyduibkakvlbdko \\
-        --scratch-environment <scratch-ref>
-
-Why PostgREST rather than psql: it is the path the application itself uses
-(``backend/lib/supabase_auth``), so "the app can read the restored database"
-is answered by asking the same way the app asks, and the drill needs no
-database driver the project does not already ship. It also means the anon-key
-leg exercises RLS exactly as an unauthenticated visitor would.
-
-Exit codes: 0 = the drill passed, 1 = it did not. A failing drill still writes
-its record — a drill that found a problem is the most valuable kind, and
-losing it would be the one outcome worth recording.
+See ``docs/DISASTER_RECOVERY.md`` §3 for the backup receipts, scratch
+credentials and command. The drill uses PostgreSQL for catalogue and migration
+identity, PostgREST and GoTrue for application reads, and Storage for object
+inventories and byte comparisons. It records the result under
+``data/releases/drills/<drill_id>.json``. An inconclusive or failed drill
+writes its record and exits with status 1.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -45,7 +23,9 @@ import httpx
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
+from scripts import restore_schema_evidence  # noqa: E402
 from scripts.release_gate import migration_set_identity  # noqa: E402
+from scripts.restore_attachment_evidence import attachment_verdict, validate_attachments  # noqa: E402
 
 # Every table the application depends on, from the committed migration set.
 # A restore that brings back the database but not these is not a recovery.
@@ -112,7 +92,7 @@ def validate_schema(client: httpx.Client, base: str, service_key: str) -> dict:
         _, status, note = _count(client, base, service_key, table)
         if status == 404 or (status == 400 and "does not exist" in note):
             missing.append(table)
-        elif status >= 400:
+        elif not 200 <= status < 300:
             errors.append({"table": table, "status": status, "note": note})
         else:
             present.append(table)
@@ -136,7 +116,7 @@ def validate_data(client: httpx.Client, base: str, service_key: str) -> dict:
     unreadable: list[str] = []
     for table in _USER_OWNED_TABLES:
         total, status, _note = _count(client, base, service_key, table)
-        if status >= 400:
+        if not 200 <= status < 300 or total is None:
             unreadable.append(table)
         counts[table] = total
     known = [v for v in counts.values() if isinstance(v, int)]
@@ -232,8 +212,8 @@ def validate_application(client: httpx.Client, base: str, anon_key: str,
 
 
 def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
-                 started_at: str) -> dict:
-    migrations = migration_set_identity()
+                 started_at: str, *, source_schema: dict | None = None,
+                 scratch_schema: dict | None = None, attachments: dict | None = None) -> dict:
     issues: list[str] = []
     if schema["result"] != "PASS":
         issues.append(f"schema: missing {schema['missing_tables']} "
@@ -246,15 +226,16 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
     if app["result"] != "PASS":
         issues.append(f"application: {app['result']} — {app.get('api_ready_status')}")
 
-    final = "PASS" if not issues else "FAIL"
-    return {
+    record = {
         "drill_id": args.drill_id,
         "performed_at": _now(),
         "source_backup_id": args.source_backup_id,
         "source_environment": args.source_environment,
         "scratch_environment": args.scratch_environment,
-        "source_schema_version": migrations,
-        "restored_schema_version": migrations,
+        "source_schema_version": source_schema,
+        "restored_schema_version": scratch_schema,
+        "source_schema_manifest_sha256": getattr(args, "source_schema_manifest_sha256", None),
+        "attachment_manifest_sha256": getattr(args, "attachment_manifest_sha256", None),
         "restore_started_at": started_at,
         "restore_completed_at": _now(),
         "schema_validation": schema["result"],
@@ -262,15 +243,29 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
         "rls_validation": rls["result"],
         "application_smoke": app["result"],
         "issues_found": issues,
-        "final_result": final,
         "operator": args.operator,
         "procedure": "docs/DISASTER_RECOVERY.md §2",
         "evidence": {"schema": schema, "data": data, "rls": rls,
-                     "application": app},
+                     "application": app, "attachments": attachments},
         # Deliberately no credential of any kind: the record names WHICH
         # project was used, never how to reach it.
         "generated_by": "scripts/restore_drill.py",
     }
+    schema_status, reason = restore_schema_evidence.schema_verdict(record, migration_set_identity())
+    storage_status = attachment_verdict(attachments, record)
+    statuses = [schema["result"], data["result"], rls["result"], app["result"], schema_status, storage_status]
+    if schema_status != "PASS":
+        issues.append(f"schema observations: {reason}")
+    if storage_status != "PASS":
+        issues.append(f"attachment bytes: {storage_status}")
+    record["attachment_validation"] = storage_status
+    if any(status in {"FAIL", "PARTIAL"} for status in statuses):
+        record["final_result"] = "FAIL"
+    elif all(status == "PASS" for status in statuses):
+        record["final_result"] = "PASS"
+    else:
+        record["final_result"] = "UNVERIFIED"
+    return record
 
 
 def main() -> int:
@@ -283,6 +278,11 @@ def main() -> int:
                     help="production project ref the backup came from")
     ap.add_argument("--scratch-environment", required=True,
                     help="project ref the backup was restored INTO (never production)")
+    ap.add_argument("--source-schema-manifest", type=Path,
+                    help="catalogue capture bound to the selected recovery point")
+    ap.add_argument("--source-schema-manifest-sha256", help="file SHA-256 retained with the backup receipt")
+    ap.add_argument("--attachment-manifest", type=Path, help="private backup object inventory")
+    ap.add_argument("--attachment-manifest-sha256", help="trusted SHA-256 of the private inventory")
     ap.add_argument("--drill-id",
                     default=f"drill-{datetime.now(UTC):%Y%m%dT%H%M%SZ}")
     ap.add_argument("--operator", default=os.environ.get("USER", "unknown"))
@@ -300,21 +300,33 @@ def main() -> int:
         print("::error::set DRILL_SUPABASE_URL, DRILL_SERVICE_ROLE_KEY and "
               "DRILL_ANON_KEY for the SCRATCH project")
         return 1
-    if args.scratch_environment in base and args.source_environment in base:
-        print("::error::scratch and source refer to the same project")
-        return 1
-    if args.source_environment in base:
-        print(f"::error::DRILL_SUPABASE_URL points at the source environment "
-              f"{args.source_environment}; a drill never runs against production")
+    if (not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.scratch_environment)
+            or args.source_environment == args.scratch_environment
+            or base != f"https://{args.scratch_environment}.supabase.co"):
+        print("::error::the REST endpoint must name the distinct scratch project")
         return 1
 
-    with httpx.Client(timeout=_TIMEOUT, follow_redirects=True) as client:
+    source_schema = restore_schema_evidence.read_source_manifest(
+        args.source_schema_manifest, args.source_schema_manifest_sha256)
+    scratch_schema = None
+    if source_schema:
+        try:
+            scratch_schema = restore_schema_evidence.observe(args.scratch_environment, args.source_backup_id)
+        except (ValueError, KeyError, TypeError):
+            print("::warning::scratch schema observation unavailable")
+    with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
         schema = validate_schema(client, base, service_key)
         data = validate_data(client, base, service_key)
         rls = validate_rls(client, base, anon_key)
         app = validate_application(client, base, anon_key, args.api_base)
 
-    record = build_record(args, schema, data, rls, app, args.restore_started_at)
+        attachments = validate_attachments(
+            client, base, service_key, manifest_path=args.attachment_manifest,
+            manifest_sha256=args.attachment_manifest_sha256, source_environment=args.source_environment,
+            source_backup_id=args.source_backup_id, scratch_environment=args.scratch_environment)
+
+    record = build_record(args, schema, data, rls, app, args.restore_started_at,
+                          source_schema=source_schema, scratch_schema=scratch_schema, attachments=attachments)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out = args.out_dir / f"{record['drill_id']}.json"
     out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
@@ -327,10 +339,11 @@ def main() -> int:
     print(f"data:      {data['result']} "
           f"({len(data['populated_tables'])} populated table(s))")
     print(f"rls:       {rls['result']}")
+    print(f"attachments: {record['attachment_validation']}")
     print(f"app smoke: {app['result']}")
     for issue in record["issues_found"]:
         print(f"  ! {issue}")
-    print(f"written:   {out.relative_to(_REPO)}")
+    print(f"written:   {out}")
     print(f"\nRESULT: {record['final_result']}")
     return 0 if record["final_result"] == "PASS" else 1
 
