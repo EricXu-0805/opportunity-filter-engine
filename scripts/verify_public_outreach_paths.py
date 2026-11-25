@@ -1,8 +1,13 @@
 """Check the public match card, detail actions and deterministic unsent draft for three targets."""
 import json
 import os
+import subprocess
 import sys
-from urllib.parse import urlencode, urlsplit
+import time
+from contextlib import contextmanager
+from urllib.parse import urlsplit
+
+from verify_live_browser_flows import fetch, rpc, stub
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -18,17 +23,62 @@ CASES = {
 }
 
 
+@contextmanager
+def account_fixture(profile):
+    process = subprocess.Popen(["node", "frontend/e2e/supabase-stub.mjs"],
+                               env={**os.environ, "E2E_SUPABASE_PORT": "51432"}, stdout=subprocess.DEVNULL)
+    try:
+        for _ in range(60):
+            if process.poll() is not None:
+                raise RuntimeError("Isolated account service exited")
+            try:
+                fetch(stub + "/health")
+                break
+            except OSError:
+                time.sleep(.2)
+        session = rpc("/auth/v1/signup", {})
+        uid = session["user"]["id"]
+        saved = rpc("/rest/v1/rpc/commit_profile_patch_cas", {"p_expected_device_id": uid,
+                    "p_expected_revision": 0, "p_patch": profile}, {"Authorization": "Bearer " + session["access_token"]})
+        assert saved["status"] == "applied"
+        yield session
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
+
+
+def install_account(context, oid):
+    def route_account(route):
+        req = route.request
+        url = urlsplit(req.url)
+        cors = {"Access-Control-Allow-Origin": SITE, "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,HEAD,OPTIONS",
+                "Access-Control-Allow-Headers": req.headers.get("access-control-request-headers", "*"),
+                "Access-Control-Expose-Headers": "Content-Range"}
+        if req.method == "OPTIONS":
+            return route.fulfill(status=204, headers=cors)
+        if url.path == "/rest/v1/favorites" and req.method == "GET":
+            return route.fulfill(status=200, headers={**cors, "Content-Range": "0-0/1"}, json=[{"opportunity_id": oid}])
+        headers = {"Content-Type": "application/json", **{k: v for k, v in req.headers.items()
+                   if k in ("authorization", "prefer", "range", "accept")}}
+        code, ct, body = fetch(stub + url.path + ("?" + url.query if url.query else ""),
+                               req.post_data_buffer, headers, req.method)
+        return route.fulfill(status=code, content_type=ct, body=body, headers=cors)
+    context.route("https://*.supabase.co/**", route_account)
+
+
 def verify(mode):
     oid, home, school, major, interests, query, badge = CASES[mode]
     profile = {"name": "Sample Student", "institution": school, "home_school": home,
                "grade": "Junior", "major": major, "research_interests": interests,
                "skills": ["Python", "SQL", "statistics"], "seeking_types": ["internship" if mode == "listing" else "research"],
                "coursework": [], "is_international": False, "can_cold_email": True}
-    with sync_playwright() as pw:
+    with account_fixture(profile) as session, sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=os.environ.get("CHROME_BIN", "/usr/bin/google-chrome"),
                                      args=["--disable-dev-shm-usage", "--no-sandbox"])
         context = browser.new_context(service_workers="block", locale="en-US")
-        values = {"ofe_profile": json.dumps(profile), "ofe_onboarding_seen": "1", "ofe_lang": "en"}
+        install_account(context, oid)
+        values = {"ofe_auth": json.dumps(session), "ofe_profile": json.dumps(profile), "ofe_onboarding_seen": "1", "ofe_lang": "en"}
         context.add_init_script("if(location.hostname==='joinalab.com'&&!localStorage.getItem('oe_seeded')){"
                                 "for(const [k,v] of Object.entries(" + json.dumps(values) + "))localStorage.setItem(k,v);"
                                 "localStorage.setItem('oe_seeded','1')}")
@@ -36,7 +86,7 @@ def verify(mode):
         page.set_default_timeout(30000)
         evidence = []
         def matching(response):
-            if urlsplit(response.url).path == "/api/matches/view" and response.status == 200:
+            if urlsplit(response.url).path == "/api/matches/view" and response.request.method == "POST" and response.status == 200:
                 payload = response.json()
                 assert payload.get("ai_refined") is False
                 evidence.extend(r for r in payload["results"] if r["opportunity_id"] == oid)
@@ -51,7 +101,7 @@ def verify(mode):
             campus.click()
             page.get_by_test_id("switcher-confirm").click()
             expect(campus).to_be_hidden()
-        page.goto(SITE + "/results?" + urlencode({"tab": "all", "q": query, "ai":"0"}), wait_until="domcontentloaded")
+        page.goto(SITE + "/results?tab=starred&ai=0", wait_until="domcontentloaded")
         card = page.locator("#match-card-" + oid)
         try:
             expect(card).to_be_visible(timeout=85000)
@@ -59,6 +109,7 @@ def verify(mode):
             print("Match view", page.url, "headings", page.get_by_role("heading").all_text_contents()[:12],
                   "cards", page.locator('[id^="match-card-"]').count(), flush=True)
             raise
+        page.wait_for_timeout(100)
         assert evidence, "A real match response for this card is required"
         card.get_by_role("button", name="Show details").click()
         row = evidence[-1]
