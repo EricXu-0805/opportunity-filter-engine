@@ -18,35 +18,28 @@ interface ResumeUploadProps {
   alreadyUploaded?: boolean;
 }
 
-type UploadState = 'idle' | 'uploading' | 'success' | 'error';
+type AcceptedResume = { fileName: string | null; hasUnreadablePages: boolean };
+type UploadPhase = 'idle' | 'uploading' | 'error';
 
 export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: ResumeUploadProps) {
   const { t } = useT();
-  const [state, setState] = useState<UploadState>('idle');
+  const present = !!alreadyUploaded;
+  const [previousPresence, setPreviousPresence] = useState(present);
+  const [accepted, setAccepted] = useState<AcceptedResume | null>(
+    present ? { fileName: null, hasUnreadablePages: false } : null,
+  );
+  const [phase, setPhase] = useState<UploadPhase>('idle');
   const [fileName, setFileName] = useState<string | null>(null);
-
-  // Set by a removal, cleared by the next upload: without it the effect
-  // below immediately re-renders "résumé on file" from the parent prop that
-  // has not been re-rendered yet, and the remove button looks broken.
-  const removedRef = useRef(false);
-  // A parsed replacement is only a proposal until the parent accepts it.
-  // Preserve the last accepted badge across a rejected upload/removal.
-  const acceptedUploadRef = useRef<{ fileName: string; hasUnreadablePages: boolean } | null>(null);
-
-  useEffect(() => {
-    if (alreadyUploaded && state === 'idle' && !removedRef.current) {
-      // alreadyUploaded arrives async from the parent's loadProfile(), so
-      // the value isn't available at mount for a useState initializer.
-      // Both setState calls flush together so the UI flips from "drop your
-      // resume here" to "✓ resume on file" in one paint.
-      const savedName = t('resume.savedFallback');
-      acceptedUploadRef.current = { fileName: savedName, hasUnreadablePages: false };
-      setState('success');
-      setFileName(savedName);
-    }
-  }, [alreadyUploaded, state, t]);
   const [error, setError] = useState<string | null>(null);
-  const [hasUnreadablePages, setHasUnreadablePages] = useState(false);
+
+  // An unchanged parent prop may lag behind a local removal. Reconcile only
+  // when the profile actually changes, without interrupting a replacement parse.
+  if (previousPresence !== present) {
+    setPreviousPresence(present);
+    if (!present) setAccepted(null);
+    else if (!accepted) setAccepted({ fileName: null, hasUnreadablePages: false });
+  }
+  const state = phase === 'idle' && accepted ? 'success' : phase;
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,10 +52,8 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const restoreRejectedChange = useCallback(() => {
-    const accepted = acceptedUploadRef.current;
-    setState(accepted ? 'success' : 'idle');
-    setFileName(accepted?.fileName ?? null);
-    setHasUnreadablePages(accepted?.hasUnreadablePages ?? false);
+    setPhase('idle');
+    setFileName(null);
     setProgress(0);
     setError(t('resume.errProfileChanged'));
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -81,21 +72,20 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
         progressIntervalRef.current = null;
       }
       setProgress(0);
-      setHasUnreadablePages(false);
 
       if (file.type !== 'application/pdf') {
         setError(t('resume.errOnlyPdf'));
-        setState('error');
+        setPhase('error');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
         setError(t('resume.errTooBig'));
-        setState('error');
+        setPhase('error');
         return;
       }
 
       setFileName(file.name);
-      setState('uploading');
+      setPhase('uploading');
       setError(null);
 
       const progressInterval = setInterval(() => {
@@ -122,11 +112,10 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
             return;
           }
           const unreadable = (data.pages_without_text?.length ?? 0) > 0;
-          acceptedUploadRef.current = { fileName: file.name, hasUnreadablePages: unreadable };
-          removedRef.current = false;
+          setAccepted({ fileName: file.name, hasUnreadablePages: unreadable });
+          if (fileInputRef.current) fileInputRef.current.value = '';
           setProgress(100);
-          setState('success');
-          setHasUnreadablePages(unreadable);
+          setPhase('idle');
         } else {
           setError(data.error_code === 'text_too_long'
             ? t('resume.errTextTooLong')
@@ -135,14 +124,14 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
               : data.error_code === 'pdf_resources_unavailable'
                 ? t('resume.errResourcesUnavailable')
                 : data.message || t('resume.errParse'));
-          setState('error');
+          setPhase('error');
         }
       } catch (err) {
         clearInterval(progressInterval);
         if (request !== parseRequestRef.current) return;
         setProgress(0);
         setError(err instanceof Error ? err.message : t('resume.errFailed'));
-        setState('error');
+        setPhase('error');
       }
     },
     [onParsed, t, restoreRejectedChange],
@@ -184,17 +173,15 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
         restoreRejectedChange();
         return;
       }
-      removedRef.current = true;
-      acceptedUploadRef.current = null;
+      setAccepted(null);
     }
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
-    setState('idle');
+    setPhase('idle');
     setFileName(null);
     setError(null);
-    setHasUnreadablePages(false);
     setProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -285,14 +272,14 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-emerald-600" />
               <span className="text-sm font-medium text-emerald-700 truncate max-w-[180px]">
-                {fileName}
+                {accepted?.fileName ?? t('resume.savedFallback')}
               </span>
               <CheckCircle className="w-4 h-4 text-emerald-500" />
             </div>
             <p className="text-xs text-emerald-700">
               {t('resume.success')}
             </p>
-            {hasUnreadablePages && (
+            {accepted?.hasUnreadablePages && (
               <p role="status" className="text-xs text-amber-700 text-center max-w-sm">
                 {t('resume.incompletePages')}
               </p>
