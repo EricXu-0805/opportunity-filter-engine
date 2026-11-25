@@ -418,7 +418,7 @@ function parseValue(value: unknown): JournalValue | null {
   return v.present ? { present: true, value: v.value } : { present: false };
 }
 
-function parseOp(raw: string | null, storageKey: string): JournalResult<JournalOp> {
+export function parseJournalOp(raw: string | null, storageKey: string): JournalResult<JournalOp> {
   if (raw === null) return { ok: false, reason: `${storageKey} disappeared mid-read` };
   if (!isKnownKey) return { ok: false, reason: 'no profile-key guard registered' };
   let parsed: unknown;
@@ -898,7 +898,7 @@ export function compactRebaseReceipts(token: OwnerToken): boolean {
   const present = new Set<string>();
   const named = new Set<string>();
   for (const storageKey of keys.value) {
-    const parsed = parseOp(readUserScopedRaw(storageKey), storageKey);
+    const parsed = parseJournalOp(readUserScopedRaw(storageKey), storageKey);
     if (!parsed.ok) return false;
     present.add(parsed.value.opId);
     for (const id of parsed.value.supersedes ?? []) named.add(id);
@@ -1091,7 +1091,7 @@ export function readOutstandingOps(): JournalResult<JournalOp[]> {
   const out: JournalOp[] = [];
   const present = new Set<string>();
   for (const storageKey of keys.value) {
-    const parsedOp = parseOp(readUserScopedRaw(storageKey), storageKey);
+    const parsedOp = parseJournalOp(readUserScopedRaw(storageKey), storageKey);
     if (!parsedOp.ok) return parsedOp;
     const id = parsedOp.value.opId;
     present.add(id);

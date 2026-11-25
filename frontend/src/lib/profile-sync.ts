@@ -43,6 +43,7 @@ import { isCourseList } from './course-status';
 import { withGitHubImportEvidence } from './skill-evidence';
 import {
   appendJournalOp,
+  parseJournalOp,
   getJournalOriginId,
   effectiveOpBase,
   getJournalLineageId,
@@ -67,6 +68,7 @@ import {
   isOwnerTokenValid,
   isTokenOwnerStillCurrent,
   logicalStorageKey,
+  physicalKey,
   OwnerNotReadyError,
   OwnerScopedLoadError,
   readUserScopedEntry,
@@ -3905,6 +3907,45 @@ export function planKeysFromJournalForTests(
   return planKeysFromJournal(ops, keys);
 }
 
+function receiptMatchesConflict(receipt: JournalOp, shown: ProfileConflict): boolean {
+  if (!(shown.key in (receipt.decisions ?? {}))) return false;
+  const shownOpIds = new Set(shown.candidates.flatMap((c) => c.opIds));
+  if (shownOpIds.size > 0) {
+    return (receipt.resolves ?? []).some((id) => shownOpIds.has(id));
+  }
+  // Zero-op: judged against the RENDERED question — its own mutation, key
+  // version, revision and remote value — not against mutable current state.
+  // Applying an answer clears `conflictRemote` once the last key is
+  // settled, so a matcher that looked at current state would stop
+  // recognising the very receipt that settled it, and an old tab's opposite
+  // click would be accepted and overwrite the answer.
+  //
+  // Both sides of this comparison are frozen — the receipt on disk and the
+  // question that was rendered — so nothing about the CURRENT outbox belongs
+  // in it. Adding a "the pending write must still say the same numbers"
+  // clause can only ever turn an answered question back into an unanswered
+  // one, which is precisely the overwrite this check exists to stop; it can
+  // never catch a case the exact tuple below misses. A stale receipt is
+  // already refused there, on its own recorded revision and base.
+  return receiptAnswersQuestion(receipt, shown.key, {
+    mutationId: shown.mutationId,
+    keyVersion: shown.keyVersion,
+    revision: shown.remoteRevision,
+    remote: shown.remote,
+  });
+}
+
+/** Remember only the receipt for a currently displayed choice. A peer may
+ * finish its write and prune that receipt before the next throttled read. */
+export function answeredByStorageEvent(event: StorageEvent, token: OwnerToken, conflicts: readonly ProfileConflict[]): ProfileConflict[] {
+  if (!conflicts.length || !event.key || !event.newValue || !isOwnerTokenValid(token, token.uid)) return [];
+  const key = logicalStorageKey(event.key);
+  if (!key.startsWith(STORAGE_KEYS.PROFILE_JOURNAL_PREFIX + 'op_') || event.key !== physicalKey(key, token.generation)) return [];
+  const parsed = parseJournalOp(event.newValue, key);
+  if (!parsed.ok || parsed.value.mode !== 'resolve' || parsed.value.lineage === getJournalLineageId()) return [];
+  return conflicts.filter((shown) => receiptMatchesConflict(parsed.value, shown));
+}
+
 /** Whether a 'storage' event's key is this module's outbox or the journal,
  *  in any generation's namespace: another tab's write a screen may need to
  *  read again (M117). */
@@ -4328,35 +4369,8 @@ function sameQuestion(
   // disagreement, and treating it as an answer here would make every later
   // question on that field permanently unanswerable.
   const receipts = ops.filter((op) => op.mode === 'resolve');
-  const alreadyAnswered = (shown: ProfileConflict): boolean => receipts.some((receipt) => {
-    if (!(shown.key in (receipt.decisions ?? {}))) return false;
-    const shownOpIds = new Set(shown.candidates.flatMap((c) => c.opIds));
-    if (shownOpIds.size > 0) {
-      return (receipt.resolves ?? []).some((id) => shownOpIds.has(id));
-    }
-    // Zero-op: judged against the RENDERED question — its own mutation, key
-    // version, revision and remote value — not against mutable current state.
-    // Applying an answer clears `conflictRemote` once the last key is
-    // settled, so a matcher that looked at current state would stop
-    // recognising the very receipt that settled it, and an old tab's opposite
-    // click would be accepted and overwrite the answer.
-    //
-    // Both sides of this comparison are frozen — the receipt on disk and the
-    // question that was rendered — so nothing about the CURRENT outbox belongs
-    // in it. Adding a "the pending write must still say the same numbers"
-    // clause can only ever turn an answered question back into an unanswered
-    // one, which is precisely the overwrite this check exists to stop; it can
-    // never catch a case the exact tuple below misses. A stale receipt is
-    // already refused there, on its own recorded revision and base.
-    return receiptAnswersQuestion(receipt, shown.key, {
-      mutationId: shown.mutationId,
-      keyVersion: shown.keyVersion,
-      revision: shown.remoteRevision,
-      remote: shown.remote,
-    });
-  });
   for (const shown of rendered) {
-    if (alreadyAnswered(shown)) return false;
+    if (receipts.some((receipt) => receiptMatchesConflict(receipt, shown))) return false;
     const current = now.get(shown.key);
     if (!current) return false;
     if (!sameValue(shown.remote, current.remote)) return false;
