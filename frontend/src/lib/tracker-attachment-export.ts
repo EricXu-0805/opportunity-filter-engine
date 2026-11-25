@@ -1,16 +1,15 @@
 import { downloadZip } from 'client-zip';
 import { assertAttachmentOwner, AttachmentRequestError, runAttachmentRequest } from './attachment-request';
 import type { OwnerToken } from './identity-owner';
-import { ATTACHMENTS_BUCKET, getAuthState, supabase } from './supabase';
+import { ATTACHMENTS_BUCKET, getAuthState, resolveTrackerAttachmentVersions, supabase, type ResolvedTrackerAttachment } from './supabase';
 
-interface SourceFile {
+interface Anchor {
   path: string;
   id: string;
-  size: number;
-  mime: string;
   etag: string | null;
   updated: string | null;
 }
+interface SourceFile { anchor: Anchor; version: ResolvedTrackerAttachment }
 interface ExportEntry { originalPath: string; archivePath: string; size: number; mime: string; sha256: string }
 type Progress = (done: number, total: number) => void;
 const pageSize = 100;
@@ -19,7 +18,7 @@ function unavailable(): never { throw new AttachmentRequestError('unavailable');
 
 async function inventory(uid: string, token: OwnerToken, signal: AbortSignal): Promise<SourceFile[]> {
   const bucket = supabase.storage.from(ATTACHMENTS_BUCKET);
-  const files: SourceFile[] = [];
+  const anchors: Anchor[] = [];
   const folders = [''];
   for (let index = 0; index < folders.length; index++) {
     const relative = folders[index];
@@ -51,13 +50,30 @@ async function inventory(uid: string, token: OwnerToken, signal: AbortSignal): P
         const etag = typeof row.metadata?.eTag === 'string' ? row.metadata.eTag : null;
         const updated = typeof row.updated_at === 'string' ? row.updated_at : null;
         if (!row.id || typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0 || !(etag || updated)) unavailable();
-        files.push({ path, id: row.id, size, etag, updated, mime: row.metadata?.mimetype || 'application/octet-stream' });
+        anchors.push({ path, id: row.id, etag, updated });
       }
       if (rows.length < pageSize) break;
       boundary = rows[rows.length - 1];
     }
   }
-  return files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  anchors.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const files: SourceFile[] = [];
+  for (let i = 0; i < anchors.length; i += pageSize) {
+    const batch = anchors.slice(i, i + pageSize);
+    const paths = batch.map(anchor => uid + '/' + anchor.path);
+    const resolved = await resolveTrackerAttachmentVersions(paths, token, { signal });
+    assertAttachmentOwner(token, uid);
+    for (const [j, anchor] of batch.entries()) {
+      const version = resolved.get(paths[j]);
+      if (version === null) continue; // Deleted files can still have a legacy Storage anchor.
+      if (!version || version.path !== paths[j] || version.anchorId !== anchor.id) unavailable();
+      if (version.storageBucket === ATTACHMENTS_BUCKET
+        ? version.storagePath !== version.path
+        : version.storageBucket !== 'tracker-attachment-versions' || !version.storagePath.startsWith(uid + '/')) unavailable();
+      files.push({ anchor, version });
+    }
+  }
+  return files;
 }
 
 function memberName(path: string, index: number) {
@@ -95,23 +111,23 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
   progress(0, files.length);
   async function* members() {
     const entries: ExportEntry[] = [];
-    const bucket = supabase.storage.from(ATTACHMENTS_BUCKET);
-    for (const [i, file] of files.entries()) {
+    for (const [i, { anchor, version }] of files.entries()) {
+      const bucket = supabase.storage.from(version.storageBucket);
       check();
       // The SDK interpolates the supplied key into a URL. Encode individual segments for legacy names.
-      const encoded = [uid, ...file.path.split('/')].map(encodeURIComponent).join('/');
+      const encoded = version.storagePath.split('/').map(encodeURIComponent).join('/');
       const bytes = await runAttachmentRequest(token, { signal }, async request => {
         const { data, error } = await request.wait(bucket.download(encoded, {
-          cacheNonce: [file.id, file.etag, file.updated].join('/'),
+          cacheNonce: [version.anchorId, version.revision, version.etag, version.updatedAt].join('/'),
         }, { signal: request.signal, cache: 'no-store' }));
-        if (error || !data || data.size !== file.size) return unavailable();
+        if (error || !data || data.size !== version.sizeBytes) return unavailable();
         return request.wait(data.arrayBuffer());
       });
       check();
-      const archivePath = memberName(file.path, i);
+      const archivePath = memberName(anchor.path, i);
       const digest = await sha256(bytes);
       check();
-      entries.push({ originalPath: file.path, archivePath, size: file.size, mime: file.mime, sha256: digest });
+      entries.push({ originalPath: anchor.path, archivePath, size: version.sizeBytes, mime: version.mimeType, sha256: digest });
       yield { name: archivePath, input: new Uint8Array(bytes) };
       progress(i + 1, files.length);
     }
