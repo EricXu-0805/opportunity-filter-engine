@@ -101,7 +101,7 @@ from backend.schemas import (
     ExperienceEvidence,
     ProfileRequest,
 )
-from src.evidence import faculty_availability_status
+from src.evidence import faculty_availability_status, source_verified_at
 from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
     _common_parts,
@@ -2406,7 +2406,7 @@ def _source_freshness(opp: dict) -> str:
     md = opp.get("metadata") or {}
     if md.get("is_active") is False:
         return "inactive"
-    raw = md.get("last_verified")
+    raw = source_verified_at(opp)
     if not isinstance(raw, str) or not raw:
         return "unknown"
     try:

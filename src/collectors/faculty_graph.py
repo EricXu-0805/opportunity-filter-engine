@@ -99,6 +99,7 @@ from ..evidence import (
     is_professor_rank,
     is_retired_title,
     is_trainee_title,
+    legacy_file_roster,
 )
 from .import_document import ImportDocumentError, parse_import_html
 from .ucb_common import (
@@ -747,7 +748,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         if " ".join(str(capture.get("identity_name") or "").casefold().split()) == " ".join((person.get("name") or "").casefold().split()):
             capture["identity_name"] = name
         metadata[CAPTURE_KEY] = capture
-    if curated and listed:
+    if (curated and listed) or (scope == "directory" and legacy_file_roster(school["source"], opp_id)):
         metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
@@ -3428,7 +3429,10 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
             logger.warning("faculty_graph: json_dir file unreadable for %s: %s",
                            dept.get("short"), cfg["file"])
             return []
-        return _json_dir_records(dept, cfg, recs)
+        people = _json_dir_records(dept, cfg, recs)
+        for person in people:
+            person["_verification_scope"] = "curated"
+        return people
     if cfg.get("render"):
         # One render serves every unit that reads the same page, and a failed
         # one is not retried per unit: 34 Colby departments share one page.
@@ -5413,7 +5417,8 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                     # Keep the seed's richer fields, but credit a listing only if
                     # the directory actually returned this person at this URL.
                     for seed in seeds_by_url.get(key, ()):
-                        if _one_person([seed.get("name"), discovered.get("name")]):
+                        if (discovered["_verification_scope"] != "curated"
+                                and _one_person([seed.get("name"), discovered.get("name")])):
                             seed["_listing_seen_on_source"] = True
                     continue
                 if key and key not in listing_urls:

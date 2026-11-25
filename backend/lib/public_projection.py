@@ -15,6 +15,7 @@ from src.evidence import (
     configured_note_window_passed,
     configured_value_unstated,
     faculty_safe_eligibility,
+    faculty_verification_scope,
     is_read_off_the_page,
     page_states_applications_open,
     record_kind,
@@ -1083,6 +1084,8 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         projected["metadata"] = {
             k: v for k, v in metadata.items() if k not in _EVIDENCE_ONLY_METADATA_KEYS
         }
+        if metadata.get("verification_scope") == "directory" and faculty_verification_scope(canonical_record) == "curated":
+            projected["metadata"]["verification_scope"] = "curated"
 
     if kind == "unknown":
         _neutralize_unverified_kind(projected)
