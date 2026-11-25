@@ -3363,6 +3363,7 @@ export const en = {
     closedBanner: 'This listing is closed and is no longer accepting applications. It is kept here for reference — check the source for current openings.',
     referenceBanner: 'This record is published as reference material, not as an open listing.',
     inactiveBanner: 'This record is no longer active.',
+    currentFacultyRecord: 'View current faculty record',
     notAcceptingBanner: 'This faculty profile states that they are not currently accepting undergraduate students, so outreach actions are paused. The profile is kept here for reference.',
     unverifiedBanner: 'We could not confirm this record’s current status, so actions are paused. Check the source for the latest.',
     // Distinct from unverifiedBanner, which is about a status we could not
@@ -8805,6 +8806,7 @@ export const zh = {
     closedBanner: '该记录已关闭，不再接收申请。此处保留供参考，最新招募请查看来源页。',
     referenceBanner: '这条记录是作为参考资料发布的，不是一个开放中的招募。',
     inactiveBanner: '这条记录已不再有效。',
+    currentFacultyRecord: '查看当前教师档案',
     notAcceptingBanner: '这位教师的主页写明目前不招收本科生，因此相关联系操作已暂停。此处保留主页供参考。',
     unverifiedBanner: '我们无法确认这条记录的当前状态，因此暂停了相关操作。请查看来源页获取最新信息。',
     kindUnverifiedBanner: '我们尚未确认这条记录属于哪一类，因此不会把它当作开放中的招募呈现，相关操作也已暂停。请查看来源页获取最新信息。',

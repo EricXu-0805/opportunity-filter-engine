@@ -382,6 +382,8 @@ export interface Opportunity {
   writing_target_version?: string;
   /** Detail only: the day a faculty row was last seen listed (YYYY-MM-DD); null on other rows. */
   last_seen_listed_at?: string | null;
+  /** Detail-only link to the public, current faculty record for an archived duplicate. */
+  current_faculty_id?: string;
   id: string;
   title: string;
   organization: string;

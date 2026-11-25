@@ -271,6 +271,14 @@ export function OpportunityHeader({
           className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
         >
           {t(STATUS_BANNER_KEY[statusReason])}
+          {statusReason === 'inactive' && opp.current_faculty_id && opp.current_faculty_id !== opp.id && (
+            <a
+              href={`/opportunities/${encodeURIComponent(opp.current_faculty_id)}`}
+              className="ml-2 font-medium underline underline-offset-2"
+            >
+              {t('detail.currentFacultyRecord')}
+            </a>
+          )}
         </div>
       )}
 

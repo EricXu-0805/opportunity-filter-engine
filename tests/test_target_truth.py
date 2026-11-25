@@ -1061,6 +1061,32 @@ def _detail(opportunity_id: str, form: str, **kwargs):
     return _BRIDGE_CLIENT.get(url, **kwargs)
 
 
+@pytest.mark.parametrize("destination, expected", [
+    ({"metadata": {"is_active": True}}, "current-id"),
+    (None, None),
+    ({"metadata": {"is_active": False}}, None),
+    ({"metadata": {}, "source_type": "campus_program"}, None),
+    ({"metadata": {"is_active": True}, "school": "elsewhere"}, None),
+    ({"metadata": {"is_active": True}, "opportunity_type": "fellowship"}, None),
+])
+def test_saved_faculty_duplicate_resolves_only_a_current_public_record(monkeypatch, destination, expected):
+    # The shared fixture opens dormant features. Exercise the deployed release scope here.
+    from backend.lib import release_scope
+    monkeypatch.setattr(release_scope, "feature_enabled", release_scope.RELEASE_SCOPE.__getitem__)
+    original = {"id": "old-id", "title": "Original profile", "school": "purdue",
+                "source_type": "faculty_research", "current_faculty_id": "unchecked",
+                "metadata": {"is_active": False, "duplicate_of": "current-id"}}
+    lookup = {original["id"]: original}
+    if destination is not None:
+        lookup["current-id"] = {**original, "id": "current-id", **destination}
+    monkeypatch.setattr(opportunities_module, "load_opportunities_by_id", lambda: lookup)
+    response = _detail("old-id", "current")
+    assert response.status_code == 200
+    result = response.json()
+    assert result["id"] == "old-id" and result["target_truth"]["reason_code"] == "inactive"
+    assert result.get("current_faculty_id") == expected
+
+
 class TestHistoricalDetailCapabilityBridge:
     @pytest.fixture
     def serve(self, monkeypatch):
