@@ -1802,6 +1802,31 @@ def refresh_all(
                 )
         summary["zero_classes"] = zero_classes
 
+        # Faculty records have no deadline, so deactivate_past never retires
+        # them; this source-specific pass deactivates professors who have been
+        # absent from their directory re-scrape past the grace window. Only
+        # sources that reported success in THIS run are eligible.
+        # Prefer the per-unit ledger wherever the collector produced one: a
+        # school-wide int can only ever prove how many rows the whole scrape
+        # yielded, which is why every aggregate source has been skipped for
+        # missing lineage on every run. The int remains the fallback, and
+        # still authorises nothing but a single-named-unit source.
+        faculty_fetched: dict[str, object] = {}
+        for name, info in summary["sources"].items():
+            if name not in FACULTY_SOURCES or info.get("status") != "ok":
+                continue
+            ledger = info.get("stale_unit_ledger")
+            if isinstance(ledger, dict) and ledger:
+                faculty_fetched[name] = finalize_unit_ledger(
+                    ledger, all_opps, name,
+                )
+                info["unit_ledger_authorized_units"] = sum(
+                    1 for e in ledger.values()
+                    if isinstance(e, dict) and e.get("retirement_authorized")
+                )
+            else:
+                faculty_fetched[name] = info.get("fetched", 0)
+
         # Fold this run into the per-source freshness ledger. This is the
         # only place last_success_at can advance, and it advances only for a
         # source that actually produced trustworthy output this run - the
@@ -1848,36 +1873,13 @@ def refresh_all(
                     now=now,
                     failure_reason=reason,
                 )
+            source_health.record_faculty_unit_checks(ledger, summary["sources"], now)
             source_health.save_ledger(ledger, ledger_path)
             summary["source_health"] = source_health.corpus_report(ledger, now)
         except Exception as e:  # noqa: BLE001
             # Diagnostic artifact: a ledger write must never lose a scrape.
             logger.warning("source_health ledger update failed: %s", e)
 
-        # Faculty records have no deadline, so deactivate_past never retires
-        # them; this source-specific pass deactivates professors who have been
-        # absent from their directory re-scrape past the grace window. Only
-        # sources that reported success in THIS run are eligible.
-        # Prefer the per-unit ledger wherever the collector produced one: a
-        # school-wide int can only ever prove how many rows the whole scrape
-        # yielded, which is why every aggregate source has been skipped for
-        # missing lineage on every run. The int remains the fallback, and
-        # still authorises nothing but a single-named-unit source.
-        faculty_fetched: dict[str, object] = {}
-        for name, info in summary["sources"].items():
-            if name not in FACULTY_SOURCES or info.get("status") != "ok":
-                continue
-            ledger = info.get("stale_unit_ledger")
-            if isinstance(ledger, dict) and ledger:
-                faculty_fetched[name] = finalize_unit_ledger(
-                    ledger, all_opps, name,
-                )
-                info["unit_ledger_authorized_units"] = sum(
-                    1 for e in ledger.values()
-                    if isinstance(e, dict) and e.get("retirement_authorized")
-                )
-            else:
-                faculty_fetched[name] = info.get("fetched", 0)
         held_sources = {"uiuc_faculty"}
         if "uiuc_faculty" in faculty_fetched:
             # The hold stands: uiuc_faculty is reported as not authorized, and

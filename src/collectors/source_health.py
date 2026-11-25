@@ -523,6 +523,107 @@ def _count(value: object) -> int | None:
     return value
 
 
+def _faculty_unit_checks(source: str, info: dict) -> tuple[set[str], set[str]]:
+    """Resolved department keys and those still carrying unread active rows."""
+    units = info.get("stale_unit_ledger")
+    if not isinstance(units, dict):
+        return set(), set()
+    resolved: set[str] = set()
+    unchecked: set[str] = set()
+    if source == "uiuc_faculty":
+        # UIUC reports counts by department name and, separately, the
+        # pre-merge active baseline for each empty static directory.
+        resolved = {unit for unit, n in units.items() if (_count(n) or 0) > 0}
+        baselines = info.get("empty_department_baselines")
+        empty = info.get("empty_departments")
+        if isinstance(baselines, dict) and isinstance(empty, list):
+            for unit in empty:
+                if not isinstance(unit, str):
+                    continue
+                baseline = _count(baselines.get(unit))
+                if baseline == 0:
+                    resolved.add(unit)
+                elif baseline:
+                    unchecked.add(unit)
+        return resolved, unchecked
+
+    for unit, entry in units.items():
+        if not isinstance(entry, dict) or entry.get("unit_id") != unit:
+            continue
+        if entry.get("source") != source:
+            continue
+        baseline = _count(entry.get("baseline_active_count"))
+        fetch = entry.get("fetch_status")
+        parsed = entry.get("parse_status")
+        validation = entry.get("validation_status")
+        missed = entry.get("missed_present_identities")
+        # The finalizer intersects identities on the page with stored active
+        # identities and removes those actually parsed. A positive sibling
+        # count cannot vouch for a person demonstrably missed in this unit.
+        if baseline and isinstance(missed, list) and any(isinstance(key, str) and key for key in missed):
+            unchecked.add(unit)
+            continue
+        if fetch != "ok" or validation != "ok" or parsed not in ("ok", "zero_rows"):
+            # Older summaries may omit fields. Only a reported unsuccessful
+            # stage establishes a new gap. Missing evidence cannot clear one.
+            if baseline and any(
+                isinstance(value, str) and value and value not in healthy
+                for value, healthy in ((fetch, ("ok",)), (validation, ("ok",)), (parsed, ("ok", "zero_rows")))
+            ):
+                unchecked.add(unit)
+            continue
+        count = _count(entry.get("observed_count"))
+        # A person read in this unit can be emitted by a sibling after
+        # cross-department deduplication. The collector keeps their id here.
+        ids = entry.get("observed_entity_ids")
+        coverage = entry.get("coverage")
+        parsed_rows = _count(coverage.get("parsed_faculty_rows")) if isinstance(coverage, dict) else None
+        has_people = (count or 0) > 0 or (isinstance(ids, list) and bool(ids))
+        # Configured faculty seeds can also emit records and ids when the
+        # directory was unread. Only a positive roster read resolves a gap.
+        identities_checked = missed == [] or entry.get("completeness_status") == "complete"
+        if baseline == 0 or (has_people and parsed_rows and identities_checked):
+            resolved.add(unit)
+        elif parsed == "zero_rows" and count == 0 and not has_people and baseline:
+            unchecked.add(unit)
+    return resolved, unchecked
+
+
+def _unchecked_unit_keys(row: dict) -> set[str]:
+    units = row.get("unchecked_faculty_units")
+    if not isinstance(units, list):
+        return set()
+    return {unit for unit in units if isinstance(unit, str) and unit}
+
+
+def record_faculty_unit_checks(ledger: dict, sources: dict, attempted_at: datetime) -> int:
+    """Fold a finalized refresh summary into the matching source attempts.
+
+    A different shard, an older report, or a missing unit cannot clear a
+    known gap. A successful department read or a confirmed zero active
+    baseline can.
+    """
+    changed = 0
+    for source in faculty_source_names().intersection(sources):
+        row = ledger["sources"].get(source)
+        info = sources[source]
+        if not isinstance(row, dict) or not isinstance(info, dict):
+            continue
+        if (_parse(row.get("last_attempt_at")) != attempted_at
+                or row.get("status") != SUCCESS_NONZERO or info.get("status") != "ok"):
+            continue
+        resolved, unchecked = _faculty_unit_checks(source, info)
+        previous = _unchecked_unit_keys(row)
+        remaining = (previous - resolved) | unchecked
+        if remaining != previous:
+            if remaining:
+                row["unchecked_faculty_units"] = sorted(remaining)
+            else:
+                row.pop("unchecked_faculty_units", None)
+            changed += 1
+    return changed
+
+
 def school_rows(
     ledger: dict,
     now: datetime | None = None,
@@ -727,8 +828,8 @@ def public_school_freshness(
 
     * ``stale`` - the release gate's rule: ``fully_stale`` or
       ``no_fresh_faculty``.
-    * ``partly_unchecked`` - not stale, but at least one monitored source is
-      stale or degraded on its latest attempt (``partially_degraded``).
+    * ``partly_unchecked`` - at least one monitored source is stale or
+      degraded, or a faculty directory with active rows still lacks a read.
     * ``current`` - otherwise.
 
     A school with no monitored source is absent (ucd, whose collectors are
@@ -741,13 +842,17 @@ def public_school_freshness(
     """
     from .refresh_contract import NATIONAL_SHARD
 
+    unchecked = {
+        row.get("school") for name, row in (ledger.get("sources") or {}).items()
+        if name in eligible and isinstance(row, dict) and _unchecked_unit_keys(row)
+    }
     out: dict[str, dict] = {}
     for row in school_rows(ledger, now, eligible):
         if row["school"] == NATIONAL_SHARD:
             continue
         if row["fully_stale"] or row["no_fresh_faculty"]:
             status = PUBLIC_STALE
-        elif row["state"] == "partially_degraded":
+        elif row["state"] == "partially_degraded" or row["school"] in unchecked:
             status = PUBLIC_PARTLY_UNCHECKED
         else:
             status = PUBLIC_CURRENT
