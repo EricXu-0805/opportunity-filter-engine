@@ -53,12 +53,18 @@ async def run(mode):
             values={'ofe_auth':json.dumps(session),'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_profile':json.dumps(profile)}
             await context.add_init_script(init.replace('VALUES',json.dumps(values)))
             fail=True; reads=0; hold=False; blocked=asyncio.Event(); release=asyncio.Event()
+            receiver = None
+            outage = False
+            outcomes = []
             async def intercept(route):
                 nonlocal reads
                 req=route.request; u=urlsplit(req.url); path=u.path+('?'+u.query if u.query else '')
                 cors={'Access-Control-Allow-Origin':'https://joinalab.com','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers.get('access-control-request-headers','*'),'Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,HEAD,OPTIONS','Access-Control-Expose-Headers':'Content-Range,Retry-After'}
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
+                    if mode == 'merged' and u.path.endswith('/commit_profile_patch_cas') and outage and req.frame.page == receiver:
+                        outcomes.append('unavailable')
+                        return await route.fulfill(status=503,headers=cors,json={'message':'temporary fixture outage'})
                     if mode == 'eeb' and u.path == '/rest/v1/favorites' and req.method == 'GET':
                         return await route.fulfill(status=200,headers={**cors,'Content-Range':'0-4/5'},json=[{'opportunity_id':key} for key in eeb])
                     if mode=='dashboard' and u.path=='/rest/v1/favorites' and req.method=='GET':
@@ -66,6 +72,8 @@ async def run(mode):
                         return await route.fulfill(status=503 if fail else 200,headers={**cors,'Retry-After':'0',**({} if fail else {'Content-Range':'0-0/1'})},json={'message':'controlled outage'} if fail else [{'opportunity_id':'saved-target'}])
                     h={'Content-Type':'application/json',**{k:v for k,v in req.headers.items() if k in ('authorization','prefer','accept','range')}}
                     code,ct,body=await asyncio.to_thread(fetch,stub+path,req.post_data_buffer,h,req.method)
+                    if mode == 'merged' and u.path.endswith('/commit_profile_patch_cas'):
+                        outcomes.append(json.loads(body).get('reason',json.loads(body).get('status')))
                     return await route.fulfill(status=code,body=body,content_type=ct,headers=cors)
                 if u.hostname=='joinalab.com':
                     if u.path=='/api/opportunities/batch' and req.method=='POST' and mode=='dashboard':
@@ -106,6 +114,32 @@ async def run(mode):
                 await expect(page.get_by_text('1 saved',exact=True)).to_be_visible()
                 assert reads>=4
                 print('PASS deployed Dashboard and Favorites: controlled 503, unknown count, retry, recovered account count 1; reads',reads)
+            elif mode == 'merged':
+                import hashlib
+                origin = 'https://joinalab.com/'
+                await page.goto(origin,wait_until='domcontentloaded')
+                receiver = await context.new_page()
+                await receiver.goto(origin,wait_until='domcontentloaded')
+                for tab in (page,receiver):
+                    await expect(tab.locator('#student_name')).to_have_value(profile['name'],timeout=45000)
+                    await expect(tab.locator('#grade')).to_have_value('Sophomore')
+                outage = True
+                await receiver.locator('#student_name').fill('Synthetic retained edit')
+                await expect(receiver.get_by_test_id('retry-sync')).to_be_visible(timeout=30000)
+                proof = 'M138 isolated guest transfer'
+                grant = rpc('/rest/v1/rpc/mint_merge_grant',{'p_secret_hash':hashlib.sha256(proof.encode()).hexdigest()},auth)
+                dest = rpc('/auth/v1/signup',{'email':'m138@example.invalid','password':'local-only-fixture'})
+                moved = rpc('/rest/v1/rpc/redeem_merge_grant',{'p_token':grant,'p_secret':proof},{'Authorization':'Bearer '+dest['access_token']})
+                assert moved.get('merged') is True
+                await page.locator('#grade').select_option('Senior')
+                stale = 'This profile no longer exists in your account, so nothing is being saved.'
+                for tab in (page,receiver):
+                    await expect(tab.get_by_text(stale,exact=False)).to_be_visible(timeout=35000)
+                    await expect(tab.get_by_test_id('retry-sync')).to_have_count(0)
+                    await expect(tab.get_by_text('Profile saved',exact=True)).to_have_count(0)
+                await expect(receiver.locator('#student_name')).to_have_value('Synthetic retained edit')
+                assert 'merged_away' in outcomes and 'unavailable' in outcomes, outcomes
+                print('PASS deployed two-tab guest merge, failed edit retained, both stale, neither offered retry or claimed saved:',outcomes)
             elif mode in ('urca','eeb'):
                 async with page.expect_response(lambda r: urlsplit(r.url).path == '/api/matches/view' and r.request.method == 'POST' and r.status == 200, timeout=80000) as data:
                     target_tab = 'all' if mode == 'urca' else 'starred'
@@ -182,3 +216,6 @@ asyncio.run(run(sys.argv[1]))
 if sys.argv[1] == 'cache':
     asyncio.run(run('urca'))
     asyncio.run(run('eeb'))
+
+if sys.argv[1] == 'dashboard':
+    asyncio.run(run('merged'))
