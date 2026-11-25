@@ -1,5 +1,6 @@
 'use client';
 
+import MatchUnknowns from '@/components/MatchUnknowns';
 import { profileInputMessage } from '@/lib/profile-input';
 
 import { useCallback, useRef, useState } from 'react';
@@ -681,6 +682,8 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
                 </ul>
               </div>
             )}
+
+            <MatchUnknowns fields={match.unknowns} />
 
             {match.next_steps.length > 0 && (
               <div>
