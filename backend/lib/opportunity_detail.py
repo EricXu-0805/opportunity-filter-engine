@@ -863,7 +863,7 @@ def last_seen_listed(canonical: dict) -> str | None:
     """
     if record_kind(canonical) != "faculty_contact":
         return None
-    seen = _date(source_last_seen_at(_dict(canonical.get("metadata"))))
+    seen = _date(source_last_seen_at(canonical))
     return seen[:10] if seen else None
 
 

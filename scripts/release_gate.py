@@ -842,7 +842,7 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             row["faculty_active"] += faculty
             weekly = record.get("source") not in DAILY_NATIONAL_SOURCES
             row["weekly_active"] += weekly
-            seen = _parse_stamp(source_last_seen_at(meta))
+            seen = _parse_stamp(source_last_seen_at(record))
             if seen is not None and (row["last_seen_at"] is None
                                      or seen > row["last_seen_at"]):
                 row["last_seen_at"] = seen
