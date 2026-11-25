@@ -5126,3 +5126,33 @@ def test_profile_text_without_chrome_is_read_in_linear_time():
     assert _profile_page_text(large) == _page_text_by_copy(large)
     growth = _growth(_profile_page_text, small, large)
     assert growth < 32, f"eight times the page took {growth:.1f} times as long"
+
+
+@pytest.mark.parametrize(("unit", "role", "rank", "uid"), [
+    ("CS", "Chair", "Professor", "sbrandt"),
+    ("ANTH", "Director of Undergraduate Studies", "Associate Professor", "sshangeb"),
+])
+def test_ucsc_leadership_title_needs_a_current_person_profile(monkeypatch, unit, role, rank, uid):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.ucsc_faculty import SCHOOL as ucsc
+
+    department = next(d for d in ucsc["departments"] if d["short"] == unit)
+    settings = department["profile_enrich"]
+    url = f"https://campusdirectory.ucsc.edu/cd_detail?uid={uid}"
+    candidate = {"name": "Example Person", "title": role, "url": url}
+    regular = {"name": "Separate Person", "title": "Lecturer", "url": url + "2"}
+    calls = []
+
+    def fetch(target, **kwargs):
+        calls.append(target)
+        return BeautifulSoup(f"<div class='col2'><h2>Example Person</h2></div><p><label>Title</label> {role}<br>{rank}</p>",
+                             "html.parser")
+
+    monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
+    resolved = fg._apply_profile_enrich([dict(candidate), regular], settings)
+    assert [p["title"] for p in resolved] == [f"{role} {rank}", "Lecturer"]
+    assert calls == [url]
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda *args, **kwargs: None)
+    assert fg._apply_profile_enrich([dict(candidate), regular], settings) == [regular]

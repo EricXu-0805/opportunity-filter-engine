@@ -133,12 +133,25 @@ _RESEARCH_ENRICH = {
 
 
 def _dept(short: str, name: str, majors: list[str], url: str, *,
+          leadership_title: str | None = None,
           profile_id_names: dict[str, tuple[str, str]] | None = None) -> dict:
     """A department on the shared UCSC h-card component."""
+    field = _FIELD
+    if leadership_title:
+        field = {**_FIELD, "include": rf"professor|lecturer|^{leadership_title}$"}
     return {
+        **({"profile_enrich": {
+            "always": True,
+            "listing_title_re": leadership_title,
+            "profile_url_re": r"^https://campusdirectory\.ucsc\.edu/cd_detail\?uid=[a-z0-9._-]+$",
+            "title_selector": 'p:has(> label:-soup-contains-own("Title"))',
+            "title_prefix": "Title ",
+            "identity_selector": ".col2 > h2",
+            "ladder_recheck": {"require": "professor|lecturer", "require_present": True},
+        }} if leadership_title else {}),
         **({"profile_id_names": profile_id_names} if profile_id_names else {}),
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": field,
                    "profile_enrich": _RESEARCH_ENRICH},
     }
 
@@ -158,7 +171,8 @@ SCHOOL: dict = {
         # ---- Baskin School of Engineering ----------------------------------
         _dept("CS", "Department of Computer Science and Engineering",
               ["Computer Science", "Computer Engineering"],
-              "https://engineering.ucsc.edu/departments/computer-science-and-engineering/people/"),
+              "https://engineering.ucsc.edu/departments/computer-science-and-engineering/people/",
+              leadership_title="Chair"),
         _dept("ECE", "Department of Electrical and Computer Engineering",
               ["Electrical Engineering", "Computer Engineering"],
               "https://engineering.ucsc.edu/departments/electrical-and-computer-engineering/people/"),
@@ -199,7 +213,7 @@ SCHOOL: dict = {
               ["Economics", "Business Management Economics", "Global Economics"],
               "https://economics.ucsc.edu/people/faculty/"),
         _dept("ANTH", "Department of Anthropology", ["Anthropology"],
-              "https://anthro.ucsc.edu/people/faculty/"),
+              "https://anthro.ucsc.edu/people/faculty/", leadership_title="Director of Undergraduate Studies"),
         _dept("POLI", "Department of Politics", ["Politics", "Legal Studies"],
               "https://politics.ucsc.edu/people/faculty/"),
         _dept("ENVS", "Department of Environmental Studies",

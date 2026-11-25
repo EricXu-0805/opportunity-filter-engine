@@ -2493,6 +2493,8 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             # The un-enriched tail still ships as listing-level records; the
             # merge's richer-guard keeps previously committed profile fields.
             break
+        if enr.get("listing_title_re") and not re.fullmatch(enr["listing_title_re"], p.get("title") or "", re.I):
+            continue
         target = p.get("url") or ""
         if tpl:
             local = (p.get("email") or "").split("@")[0]
@@ -2658,6 +2660,7 @@ def _enrich_profile(
         # element — a CSS selector beats a body-text regex there.
         t_el = soup.select_one(enrich["title_selector"])
         pos = t_el.get_text(" ", strip=True) if t_el else ""
+        pos = pos.removeprefix(enrich.get("title_prefix", ""))
     if not pos and enrich.get("position_re"):
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
