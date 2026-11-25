@@ -49,6 +49,12 @@ async def run(mode):
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
         if mode == 'merged' or mode.startswith('race'):
             profile.update(institution='UIUC',home_school='uiuc',college='Grainger College of Engineering',major='Computer Science',skills=[])
+        if '-resume-' in mode:
+            profile.update(resume_text='Earlier resume: I checked sensor measurements.',
+                           coursework=['ECE 220'], experience_entries=[{
+                               'id':'prior-independent-entry','revision':1,'status':'confirmed',
+                               'text':'I recorded an independent control measurement.',
+                               'source':{'kind':'manual'}}])
         if mode == 'urca':
             profile.update(institution='UC Santa Barbara', home_school='ucsb', major='', research_interests='', skills=[])
         eeb = ['faculty-ucla-eeb-56b5bd06','faculty-ucla-eeb-04fc2f84','faculty-ucla-eeb-792288c6','faculty-ucla-eeb-880b1219','faculty-ucla-eeb-f529eb3c']
@@ -155,6 +161,56 @@ async def run(mode):
                         await tab.get_by_test_id('switcher-confirm').click()
                         await expect(campus_picker).to_be_hidden(timeout=15000)
                     await expect(tab.locator('#major')).to_have_value('Computer Science',timeout=60000)
+                if '-resume-' in mode:
+                    remove = receiver.get_by_role('button', name='Remove file' if lang == 'en' else '移除文件', exact=True)
+                    await expect(remove).to_be_visible(timeout=30000)
+                    note = 'I independently checked the second sensor sample.'
+                    editor = page.locator('#experience-library details').last
+                    await editor.locator('summary').click()
+                    await context.set_offline(True)
+                    outage = True
+                    await editor.locator('textarea').fill(note)
+                    await editor.get_by_role('button').click()
+                    await expect(page.locator('#experience-library').get_by_text(note,exact=True)).to_be_visible(timeout=15000)
+                    await remove.click()
+                    await expect(remove).to_be_hidden(timeout=15000)
+                    await context.set_offline(False)
+                    outage = False
+                    choices = [tab.get_by_test_id('conflict-keep-mine') for tab in tabs]
+                    for index,tab in enumerate(tabs):
+                        await tab.bring_to_front()
+                        retry = tab.get_by_test_id('retry-sync')
+                        if not await choices[index].is_visible() and await retry.is_visible():
+                            await retry.click(timeout=2000)
+                    answer_tab = receiver if mode.endswith('keep') else page
+                    answer = answer_tab.get_by_test_id('conflict-keep-mine' if mode.endswith('keep') else 'conflict-use-cloud')
+                    print('Resume choices before first answer',mode,[(await t.locator('#profile-save-status').inner_text()) for t in tabs],flush=True)
+                    await expect(answer).to_be_visible(timeout=20000)
+                    await answer.click()
+                    for q in choices:
+                        await expect(q).to_have_count(0,timeout=20000)
+                    def saved_resume():
+                        return json.loads(fetch(stub+'/rest/v1/profiles?select=profile_data,revision&id=eq.'+uid,h=auth)[2])[0]
+                    stored=saved_resume(); data=stored['profile_data']
+                    assert data['name']==profile['name']
+                    assert any(x.get('id')=='prior-independent-entry' for x in data['experience_entries'])
+                    if mode.endswith('keep'):
+                        assert not data.get('resume_text'),data.get('resume_text')
+                    for tab in tabs:
+                        await tab.reload(wait_until='domcontentloaded')
+                        await expect(tab.locator('#student_name')).to_have_value(profile['name'],timeout=35000)
+                        await expect(tab.get_by_test_id('conflict-keep-mine')).to_have_count(0)
+                        removed = tab.get_by_role('button',name='Remove file' if lang=='en' else '移除文件',exact=True)
+                        if data.get('resume_text'):
+                            await expect(removed).to_be_visible()
+                        else:
+                            await expect(removed).to_have_count(0)
+                    assert saved_resume()==stored
+                    print('PASS resume removal and concurrent experience edit, one answer, two reloads', mode,
+                          'revision',stored['revision'],'stored resume',bool(data.get('resume_text')),
+                          'experience count',len(data['experience_entries']),flush=True)
+                    await browser.close()
+                    return
                 outage = True
                 await page.locator('#major').select_option('Electrical Engineering')
                 await expect(page.get_by_test_id('retry-sync')).to_be_visible(timeout=25000)
