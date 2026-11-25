@@ -497,6 +497,9 @@ class TestEveryConfiguredNoteTheRuleReads:
                                     "letter due December 8, 2026; project execution Summer 2027.",
         "uchicago/dsi_summer_lab": "Applications close January 11, 2027 at 11:59 p.m. Central.",
         "uchicago/quad_summer_scholars": "Priority deadline January 31, 2027; final deadline March 31, 2027.",
+        "ucb/eecs_sure": "The 2025 application closed January 25, 2025 at 11:59 PM ET.",
+        "ucb/haas_scholars": "Application deadline: Friday, March 13, 2026 at 12:00 PM Noon Pacific Time.",
+        "ucb/lbl_suli": "Summer 2027 applications are due January 6, 2027 at 5:00 PM ET.",
         "uchicago/quad_year_scholars": "Academic-year deadlines: October 5, 2026 and December 18, 2026. "
                                       "Faculty letters are due with the application.",
         "uchicago/ede_plus": "Annual program; 2026 cohort application closed Feb 16, 2026; details of the EDE+ 2027 "
