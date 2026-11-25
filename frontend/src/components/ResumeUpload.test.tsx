@@ -119,6 +119,24 @@ describe('ResumeUpload — alreadyUploaded prop', () => {
     expect(props.onRemove).toHaveBeenCalledTimes(1);
   });
 
+  it('uses the latest stored attachment if a replacement parse is rejected', async () => {
+    let finish!: (result: ResumeParseResponse) => void;
+    mockParse.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const props = { onParsed: vi.fn(() => false), onRemove: vi.fn() };
+    const { rerender } = render(<ResumeUpload {...props} alreadyUploaded />);
+    const input = document.querySelector('input[type="file"]')!;
+    fireEvent.change(input, { target: { files: [pdfFile('replacement.pdf')] } });
+    rerender(<ResumeUpload {...props} alreadyUploaded={false} />);
+    expect(screen.getByText('replacement.pdf')).toBeInTheDocument();
+    await act(async () => {
+      finish({ success: true, message: 'Parsed', raw_text: 'Independent work',
+        extracted_skills: [], skill_evidence: [], extracted_coursework: [] });
+    });
+    expect(screen.queryByLabelText('resume.removeAria')).toBeNull();
+    expect(screen.getByText('resume.dropHere')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('resume.errProfileChanged');
+  });
+
   it('stays in idle when alreadyUploaded is false / omitted', () => {
     render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} />);
     expect(screen.queryByText(/resume.success/)).toBeNull();
