@@ -352,7 +352,7 @@ def test_malformed_ledger_shape_is_skipped_without_fetch_or_mutation(transport, 
 
 def test_untouched_schools_share_one_request_runs_and_keep_each_id_order(transport):
     rows = sorted(records(6), key=lambda row: row["id"])
-    for row, school in zip(rows, ["a", "a", "a", "b", "b", "c"]):
+    for row, school in zip(rows, ["a", "a", "a", "b", "b", "c"], strict=True):
         row["school"] = school
     by_url = {row["url"]: row["school"] for row in rows}
     calls = transport(lambda url: Response(url, status=503))
@@ -366,7 +366,7 @@ def test_untouched_schools_share_one_request_runs_and_keep_each_id_order(transpo
 
 def test_one_run_spreads_unattempted_pages_before_revisiting_a_school(transport):
     rows = sorted(records(6), key=lambda row: row["id"])
-    for row, school in zip(rows, ["a", "a", "a", "b", "b", "c"]):
+    for row, school in zip(rows, ["a", "a", "a", "b", "b", "c"], strict=True):
         row["school"] = school
     calls = transport(lambda url: Response(url, status=503))
     result = refresh_faculty_condition_sources(rows, max_requests=4)
