@@ -33,7 +33,7 @@ def watch(key, fn):
 
 def health():
     val=json.loads(read(API + "/health"))
-    return {k:v for k,v in val.items() if k in ("status","build_sha","git_commit","build_version","commit","version","deployed_at")}
+    return {k:v for k,v in val.items() if k in ("release_sha","started_at","environment","status","build_sha","git_commit","build_version","commit","version","deployed_at")}
 
 def api_dates():
     val=json.loads(read(API + "/opportunities/" + FACULTY))
@@ -46,7 +46,9 @@ def visible_dates():
 def draft(path):
     val=json.loads(read(API+path,{"engine":"template","opportunity_id":FACULTY,"profile":{"name":"QA Student","year":"sophomore","major":"Chemistry","school":"Example University","research_interests_text":INTERESTS}}))
     results={v.get("id","single"):SENTENCE in (v.get("body") or "") for v in val.get("variants",[val]) if v.get("id","single") in ("balanced","skills","single")}
-    return {"complete_interest_sentence":results, "engine":val.get("engine"), "pipeline":val.get("pipeline_version")}
+    return {"complete_interest_sentence":results,
+            "interest_terms_present":{v.get("id","single"):[term in (v.get("body") or "") for term in INTERESTS.split(", ")] for v in val.get("variants",[val]) if v.get("id","single") in ("balanced","skills","single")},
+            "engine":val.get("engine"), "pipeline":val.get("pipeline_version")}
 
 watch("health", health)
 watch("M177_detail_fields",api_dates)
