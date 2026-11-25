@@ -646,6 +646,7 @@ it('links the archived detail to the current faculty record without changing its
   });
   renderHeader({ opp });
   expect(screen.getByText('detail.inactiveBanner')).toBeInTheDocument();
+  expect(screen.queryByText('card.facultyContactUnconfirmed')).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'detail.currentFacultyRecord' }))
     .toHaveAttribute('href', '/opportunities/faculty-purdue-cs-bb6831d2');
   expect(screen.queryByRole('link', { name: 'detail.applyNow' })).not.toBeInTheDocument();

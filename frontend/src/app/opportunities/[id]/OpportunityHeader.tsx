@@ -161,7 +161,7 @@ export function OpportunityHeader({
             {isCurrentListing && (
               <DetailBadge tone="blue">{typeLabel(opp.opportunity_type, t)}</DetailBadge>
             )}
-            {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+            {isFaculty && statusReason !== 'inactive' && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
               <DetailBadge tone="amber">{t(facultyOutreachLabel(opp))}</DetailBadge>
             )}
             {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
