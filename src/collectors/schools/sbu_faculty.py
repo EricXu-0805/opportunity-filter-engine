@@ -6,7 +6,7 @@ APPENDED, so URLs are kept exactly as verified). Nine markup families across
 29 departments, all selectors live-verified 2026-07-18:
 
 * New OmniUpdate "dept-faculty-directory" theme (11 CAS/CEAS depts: AMS,
-  Physics, Psychology, EcoEvo, Biochem, Neurobiology, Sociology, English,
+  Physics, Psychology, Geosciences, Biochem, Neurobiology, Sociology, English,
   History, Philosophy, Anthropology). Cards carry name/profile-link/title AND
   a plain mailto on the listing, so no profile pass is needed. Grids are
   role-grouped: where ``h3.dept-faculty-directory__group-title`` headings
@@ -36,9 +36,9 @@ APPENDED, so URLs are kept exactly as verified). Nine markup families across
   ("user [at] cs.stonybrook.edu") which the engine's at/dot normalization
   decodes — profile_enrich email pass.
 
-* commcms "bio-list" (EST, Geosciences, Political Science, WGSS):
+* commcms "bio-list" (EST, Political Science, WGSS):
   ``li.equal-height-col`` cards with ``a.name`` and rank in the first
-  ``.bio span.title``/``span.summary-1``. EST/Geo carry a clean
+  ``.bio span.title``/``span.summary-1``. EST carries a clean
   ``.summary-2`` research line; PolSci's summary-2 is office+mailto (wired
   as the email selector instead); WGSS research is skipped — its first
   letter is wrapped in a display span ("F eminist theory") which would ship
@@ -174,7 +174,7 @@ def _commcms(short: str, name: str, majors: list[str], url: str,
             "directory_url": url, "scrape": scrape}
 
 
-# ---- commcms "bio-list" family (est/geosciences/polisci/wgss) --------------
+# ---- commcms "bio-list" family (est/polisci/wgss) --------------
 # Rank lives in span.title (geo) or the first span.summary-1 (est/pol/wgss);
 # the grouped selector returns whichever comes first in the card.
 _BIO_SELECTORS = {
@@ -433,8 +433,18 @@ SCHOOL: dict = {
                                "div.views-field-value-5"),
                      "link": ".data a[href*='/faculty/']",
                  }),
-        _bio("GEO", "Department of Geosciences", ["Geosciences"],
-             "https://www.stonybrook.edu/commcms/geosciences/people/geo-faculty.php"),
+        {
+            **_deptdir("GEO", "Department of Geosciences", ["Geosciences"],
+                       "https://www.stonybrook.edu/geosciences/people/faculty.html",
+                       section={"include": r"^department faculty$"}),
+            # The personal pages retain the initials omitted on the current cards.
+            "profile_id_names": {
+                "stonybrook.edu/geosciences/people/faculty_profiles/deanne-rogers.html":
+                    ("Deanne Rogers", "A. Deanne Rogers"),
+                "stonybrook.edu/geosciences/people/faculty_profiles/troy-rasbury.html":
+                    ("Troy Rasbury", "E. Troy Rasbury"),
+            },
+        },
         _bio("POL", "Department of Political Science", ["Political Science"],
              "https://www.stonybrook.edu/commcms/polisci/people/faculty.php",
              research=False, listing_email=True),

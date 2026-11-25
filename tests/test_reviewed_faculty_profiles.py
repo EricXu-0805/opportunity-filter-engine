@@ -9,6 +9,11 @@ from src.normalizers.reviewed_faculty_profiles import REVIEWS, apply_reviewed_fa
 
 AS_OF = date(2026, 11, 25)
 BEISE = "faculty-umd-phys-5e8e0edd"
+ARCHIVED = {
+    BEISE: ("Professor Emerita", "retired_title"),
+    "faculty-sbu-geo-d49b7576": ("Distinguished Professor Emeritus", "retired_title"),
+    "faculty-sbu-geo-07129e92": ("In Memoriam — Distinguished Professor Emeritus", "listed_as_deceased"),
+}
 
 
 def _old(oid):
@@ -26,17 +31,18 @@ def _old(oid):
 def test_reviewed_urls_and_title_replay_once_without_freshening_other_evidence():
     rows = [_old(oid) for oid in REVIEWS]
     assert apply_reviewed_faculty_profiles(rows, today=AS_OF) == len(rows)
-    assert sum(row["metadata"]["is_active"] is False for row in rows) == 1
+    assert sum(row["metadata"]["is_active"] is False for row in rows) == len(ARCHIVED)
     for row in rows:
         review = REVIEWS[row["id"]]
         md = row["metadata"]
         assert row["url"] == row["source_url"] == row["application"]["application_url"] == review.profile_url
         assert md["last_seen_at"] == md["last_verified"] == "2026-07-25"
         assert md["faculty_profile_review"]["source_url"] == review.roster_url
-        if row["id"] == BEISE:
-            assert md["faculty_title"] == "Professor Emerita"
+        if row["id"] in ARCHIVED:
+            title, reason = ARCHIVED[row["id"]]
+            assert md["faculty_title"] == title
             assert md["faculty_profile_review"]["previous_title"] == "Professor"
-            assert md["is_active"] is False and md["deactivation_reason"] == "retired_title"
+            assert md["is_active"] is False and md["deactivation_reason"] == reason
             assert md["deactivated_at"] == AS_OF.isoformat()
         else:
             assert md["is_active"] is True
@@ -67,7 +73,7 @@ def test_directory_timestamps_cannot_restore_old_urls_or_appointments(seen, veri
     rows = [_old(oid) for oid in REVIEWS]
     for row in rows:
         row["metadata"].update(last_seen_at=seen, last_verified=verified, verification_scope="directory")
-    assert apply_reviewed_faculty_profiles(rows, today=AS_OF) == 6
+    assert apply_reviewed_faculty_profiles(rows, today=AS_OF) == len(rows)
     assert all(row["url"] == REVIEWS[row["id"]].profile_url for row in rows)
     retired = next(row for row in rows if row["id"] == BEISE)
     assert retired["metadata"]["is_active"] is False
