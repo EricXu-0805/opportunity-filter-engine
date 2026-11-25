@@ -2171,6 +2171,9 @@ export async function updateInteractionDetails(
   });
 }
 
+const INTERACTION_STATUS_FIELDS = 'opportunity_id, interaction_type';
+const INTERACTION_DETAIL_FIELDS = 'opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at';
+
 // !deviceId (Supabase unconfigured / anon sign-in permanently failed) is a
 // confirmed local-only degrade: there is no device_id a server row could be
 // scoped to, so "no interactions" is true, not a guess. A query error is
@@ -2183,18 +2186,7 @@ export async function getInteractions(): Promise<Map<string, InteractionType>> {
   const deviceId = await ensureAnonSession();
   if (!deviceId) return new Map();
 
-  const { data, error } = await supabase
-    .from('interactions')
-    .select('opportunity_id, interaction_type')
-    .eq('device_id', deviceId);
-
-  if (error) throw new Error(error.message);
-  return new Map(
-    (data ?? []).map((r: { opportunity_id: string; interaction_type: InteractionType }) => [
-      r.opportunity_id,
-      r.interaction_type,
-    ]),
-  );
+  return readInteractionMap(deviceId, INTERACTION_STATUS_FIELDS, row => row.interaction_type);
 }
 
 /**
@@ -2220,35 +2212,52 @@ export async function getInteractionsFull(): Promise<Map<string, InteractionReco
     throw new Error('session-unavailable');
   }
 
-  const { data, error, count } = await supabase
-    .from('interactions')
-    .select('opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at', { count: 'exact' })
-    .eq('device_id', deviceId);
+  return readInteractionMap(deviceId, INTERACTION_DETAIL_FIELDS, row => ({
+    type: row.interaction_type,
+    notes: row.notes ?? undefined,
+    remind_at: row.remind_at ?? undefined,
+    last_contacted_at: row.last_contacted_at ?? undefined,
+    updated_at: row.updated_at ?? undefined,
+  }));
+}
 
-  if (error) throw new Error(error.message);
-  if (!Array.isArray(data) || (typeof count === 'number' && count !== data.length)
-    || data.some(row => !row || typeof row.opportunity_id !== 'string' || !row.opportunity_id || !row.interaction_type)) {
-    throw new Error('The full tracker could not be read.');
+async function readInteractionMap<T>(
+  deviceId: string,
+  columns: typeof INTERACTION_STATUS_FIELDS | typeof INTERACTION_DETAIL_FIELDS,
+  project: (row: {
+    interaction_type: InteractionType; notes?: string | null; remind_at?: string | null;
+    last_contacted_at?: string | null; updated_at?: string | null;
+  }) => T,
+): Promise<Map<string, T>> {
+  const owner = captureOwnerToken();
+  const query = () => {
+    const table = supabase.from('interactions');
+    const selected = columns === INTERACTION_STATUS_FIELDS
+      ? table.select(INTERACTION_STATUS_FIELDS, { count: 'exact' })
+      : table.select(INTERACTION_DETAIL_FIELDS, { count: 'exact' });
+    return selected.eq('device_id', deviceId).order('opportunity_id', { ascending: true });
+  };
+
+  let page = await query();
+  const total = page.count;
+  const result = new Map<string, T>();
+  for (;;) {
+    if (!isOwnerTokenValid(owner, deviceId)) throw new Error('session-unavailable');
+    if (page.error) throw new Error(page.error.message);
+    const data = page.data;
+    // On a continuation PostgREST counts only IDs beyond the cursor.
+    if (!Array.isArray(data) || (typeof total === 'number' && page.count !== total - result.size)) {
+      throw new Error('The full tracker could not be read.');
+    }
+    for (const row of data) {
+      if (!row || typeof row.opportunity_id !== 'string' || !row.opportunity_id || !row.interaction_type
+        || result.has(row.opportunity_id)) throw new Error('The full tracker could not be read.');
+      result.set(row.opportunity_id, project(row));
+    }
+    if (total == null || result.size === total) return result;
+    if (!data.length || result.size > total) throw new Error('The full tracker could not be read.');
+    page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
   }
-  return new Map(
-    data.map((r: {
-      opportunity_id: string;
-      interaction_type: InteractionType;
-      notes?: string;
-      remind_at?: string;
-      last_contacted_at?: string;
-      updated_at?: string;
-    }) => [
-      r.opportunity_id,
-      {
-        type: r.interaction_type,
-        notes: r.notes ?? undefined,
-        remind_at: r.remind_at ?? undefined,
-        last_contacted_at: r.last_contacted_at ?? undefined,
-        updated_at: r.updated_at ?? undefined,
-      } as InteractionRecord,
-    ]),
-  );
 }
 
 export async function getInteractionDetail(

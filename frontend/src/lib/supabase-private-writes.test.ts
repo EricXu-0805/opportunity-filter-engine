@@ -823,21 +823,21 @@ describe('interaction reads: throw on query failure, null/empty only on a CONFIR
   it('getInteractions throws on a query error (previously: silently returned an empty Map)', async () => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue({ data: null, error: { message: 'connection reset' } });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: () => ({ order: eq }) }) }));
     await expect(getInteractions()).rejects.toThrow('connection reset');
   });
 
   it('getInteractions returns an empty Map on a CONFIRMED empty result set', async () => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue({ data: [], error: null });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: () => ({ order: eq }) }) }));
     await expect(getInteractions()).resolves.toEqual(new Map());
   });
 
   it('getInteractionsFull throws on a query error (previously: silently returned an empty Map)', async () => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue({ data: null, error: { message: 'connection reset' } });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: () => ({ order: eq }) }) }));
     await expect(getInteractionsFull()).rejects.toThrow('connection reset');
   });
 
@@ -848,16 +848,54 @@ describe('interaction reads: throw on query failure, null/empty only on a CONFIR
   ])('rejects an incomplete Tracker payload instead of displaying zero reminders', async reply => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue(reply);
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: () => ({ order: eq }) }) }));
     await expect(getInteractionsFull()).rejects.toThrow('full tracker');
   });
 
   it('getInteractionsFull returns an empty Map on a CONFIRMED empty result set', async () => {
     establishIdentity(U1);
     const eq = vi.fn().mockResolvedValue({ data: [], error: null });
-    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
+    mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq: () => ({ order: eq }) }) }));
     await expect(getInteractionsFull()).resolves.toEqual(new Map());
   });
+
+  it('recovers a capped tracker after a failed second page, with the original IDs and notes', async () => {
+    establishIdentity(U1);
+    const first = Array.from({ length: 1000 }, (_, i) => ({
+      opportunity_id: String(i).padStart(4, '0'), interaction_type: 'applied', notes: 'old note',
+    }));
+    const gt = vi.fn()
+      .mockResolvedValueOnce({ data: null, error: { message: 'later page failed' } })
+      .mockResolvedValueOnce({ data: [{ ...first[0], opportunity_id: '1000' }], count: 1, error: null });
+    const order = vi.fn()
+      .mockResolvedValueOnce({ data: first, count: 1001, error: null }).mockReturnValueOnce({ gt })
+      .mockResolvedValueOnce({ data: first, count: 1001, error: null }).mockReturnValueOnce({ gt });
+    const eq = vi.fn(() => ({ order }));
+    mockFrom.mockImplementation(() => ({ select: () => ({ eq }) }));
+    await expect(getInteractionsFull()).rejects.toThrow('later page failed');
+    const result = await getInteractionsFull();
+    expect(result.size).toBe(1001);
+    expect(result.get('0000')?.notes).toBe('old note');
+    expect(result.has('1000')).toBe(true);
+    expect(gt.mock.calls).toEqual([['opportunity_id', '0999'], ['opportunity_id', '0999']]);
+    expect(eq.mock.calls).toEqual(Array(4).fill(['device_id', U1]));
+  });
+
+  it('reads the final compact status while requesting only IDs and statuses', async () => {
+    establishIdentity(U1);
+    const gt = vi.fn().mockResolvedValue({
+      data: [{ opportunity_id: 'b', interaction_type: 'applied' }], count: 1, error: null,
+    });
+    const order = vi.fn().mockResolvedValueOnce({
+      data: [{ opportunity_id: 'a', interaction_type: 'dismissed' }], count: 2, error: null,
+    }).mockReturnValueOnce({ gt });
+    const select = vi.fn(() => ({ eq: () => ({ order }) }));
+    mockFrom.mockImplementation(() => ({ select }));
+    await expect(getInteractions()).resolves.toEqual(new Map([['a', 'dismissed'], ['b', 'applied']]));
+    expect(select.mock.calls).toEqual(Array(2).fill(['opportunity_id, interaction_type', { count: 'exact' }]));
+    expect(gt).toHaveBeenCalledWith('opportunity_id', 'a');
+  });
+
 });
 
 
