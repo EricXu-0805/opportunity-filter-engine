@@ -9,7 +9,7 @@ from backend.routes.matches import _match_card
 from backend.routes.opportunities import _list_card, _redact
 from src.evidence import faculty_safe_public_record
 from src.matcher.ranker import rank_opportunity
-from src.recommender.cold_email import generate_cold_email
+from src.recommender.cold_email import generate_cold_email, generate_variants
 
 STUDENT = {"name": "Sample Student", "major": "Physics", "year": "sophomore",
            "research_interests_text": "physics", "can_cold_email": True}
@@ -51,7 +51,8 @@ def test_faculty_identity_does_not_create_a_vacancy(name, row_id, age, status):
     assert "?" in draft and "your open position" not in draft.casefold() and "you are hiring" not in draft.casefold()
 
 
-def test_posted_internship_keeps_its_application_action():
+@pytest.mark.parametrize("opportunity_type", [None, "internship"])
+def test_posted_internship_keeps_its_application_action(opportunity_type):
     url = "https://job-boards.greenhouse.io/octaura/jobs/4662934007"
     record = {"id": "simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95", "source_type": "internship",
               "source": "simplify_internships", "title": "Data Engineer Intern", "organization": "Octaura",
@@ -61,4 +62,24 @@ def test_posted_internship_keeps_its_application_action():
         assert public["record_kind"] == "listing" and public["target_truth"]["actionable"]
         assert public["application"]["application_url"] == url
     assert build_target_conditions(record)["record_kind"] == "listing"
-    assert record["title"] in generate_cold_email(STUDENT, record)
+    if opportunity_type:
+        record["opportunity_type"] = opportunity_type
+    draft = generate_cold_email(STUDENT, record)
+    assert record["title"] in draft
+    for email in [draft, *(variant["text"] for variant in generate_variants(STUDENT, record))]:
+        assert email.splitlines()[0] == "Subject: Internship inquiry — Data Engineer Intern"
+
+
+@pytest.mark.parametrize("official_subject", [None, "2027 summer application"])
+def test_posted_internship_fallback_preserves_role_and_official_subject(official_subject):
+    from backend.routes.cold_email import _guard_email_output
+    from src.recommender.cold_email import _common_parts
+
+    record = {"source_type": "internship", "title": "Data Engineer Intern"}
+    if official_subject:
+        record["contact_instructions"] = {"version": 1, "status": "known",
+                                          "rules": [{"kind": "subject", "subject": official_subject}]}
+    parts = _common_parts(STUDENT, record)
+    subject, body, recovered = _guard_email_output("", "", parts, record)
+    assert recovered and subject == (official_subject or "Internship inquiry")
+    assert "internship application" in body and "research openings" not in body
