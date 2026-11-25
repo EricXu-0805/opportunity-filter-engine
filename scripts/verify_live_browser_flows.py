@@ -490,15 +490,6 @@ async def run(mode):
             await browser.close()
     finally:
         proc.terminate();proc.wait()
-asyncio.run(run(sys.argv[1]))
-if sys.argv[1] == 'cache':
-    asyncio.run(run('urca'))
-    asyncio.run(run('eeb'))
-
-if sys.argv[1] == 'dashboard':
-    asyncio.run(run('merged'))
-
-
 async def saved_faculty_links():
     pairs = (
         ('faculty-purdue-cs-412c3ce0', 'faculty-purdue-cs-bb6831d2'),
@@ -533,5 +524,13 @@ async def saved_faculty_links():
         await browser.close()
 
 
-if sys.argv[1] == 'dashboard':
-    asyncio.run(saved_faculty_links())
+if __name__ == "__main__":
+    asyncio.run(run(sys.argv[1]))
+    if sys.argv[1] == 'cache':
+        asyncio.run(run('urca'))
+        asyncio.run(run('eeb'))
+
+    if sys.argv[1] == 'dashboard':
+        asyncio.run(run('merged'))
+    if sys.argv[1] == 'dashboard':
+        asyncio.run(saved_faculty_links())

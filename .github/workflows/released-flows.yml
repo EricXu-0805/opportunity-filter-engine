@@ -2,7 +2,7 @@ name: Verify released opportunity and profile flows
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/released-flows.yml', 'scripts/verify_public_outreach_paths.py']
+    paths: ['.github/workflows/released-flows.yml', 'scripts/verify_public_outreach_paths.py', 'scripts/verify_live_browser_flows.py']
 permissions:
   contents: read
 jobs:
