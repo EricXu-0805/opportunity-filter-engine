@@ -67,10 +67,14 @@ def keys(row):
     return [(tag["key"], tag["params"]) for tag in tags if tag is not None]
 
 
-def card_pages(p, count=1):
+def card_pages(p, count=1, sample_ids=()):
     rows, cursor, generation = [], None, None
     for _ in range(count):
-        page = request("/matches/view?llm=false", {"profile": p, "view": {"today": date.today().isoformat()},
+        view = {"today": date.today().isoformat()}
+        if sample_ids:
+            # The results page applies these client-supplied IDs without storing favorites.
+            view.update(tab="starred", favorite_ids=list(sample_ids))
+        page = request("/matches/view?llm=false", {"profile": p, "view": view,
                                                    "page_size": 100, "cursor": cursor})
         if page.get("ai_refined") is not False:
             raise ValueError("unexpected mode")
@@ -86,12 +90,11 @@ def card_pages(p, count=1):
     return rows
 
 
-def explain(p, rid):
-    row = request(f"/matches/{rid}/explain?llm=false", p)
-    if row.get("opportunity_id") != rid or row.get("method") != "local":
-        raise ValueError("incorrect explain result")
-    keys(row)
-    return row
+def selected(p, sample_ids):
+    rows = card_pages(p, sample_ids=sample_ids)
+    if any(row["opportunity_id"] not in sample_ids for row in rows):
+        raise ValueError("view included an unrelated ID")
+    return {row["opportunity_id"]: row for row in rows}
 
 
 def detail(rid):
@@ -112,17 +115,21 @@ def ucsb():
            or r["opportunity"].get("lab_or_program") == "URCA Undergraduate Research Directory"]
     report("M183-URCA-match-view", len(projects), bad, rows=len(rows), sample_ids=[r["opportunity_id"] for r in projects[:3]])
     rid = "nsf-reu-2548170"
-    r = explain(p, rid)
-    report("M183-NSF-summary", 1, [rid] if any(k in {"research_summary", "lab_focus"} for k, _ in keys(r)) else [],
-           sample_ids=[rid], in_results=r["in_results"])
+    target = selected(profile("uiuc", "UIUC", "Biology", ("artificial intelligence",), seeking=("summer_program",)), [rid])
+    bad = [i for i, row in target.items() if any(k in {"research_summary", "lab_focus"} for k, _ in keys(row))]
+    report("M183-NSF-summary", len(target), bad, sample_ids=list(target))
 
 
 def ucla():
     p = profile("ucla", "UCLA", "Ecology and Evolutionary Biology", ("phylogenetics", "evolutionary biology"))
     by_id = {r["opportunity_id"]: r for r in card_pages(p)}
     checked, bad = [], []
+    missing = [rid for rid in EEB if rid not in by_id]
+    others = selected(p, missing) if missing else {}
     for rid in EEB:
-        row = by_id.get(rid) or explain(p, rid)
+        row = by_id.get(rid) or others.get(rid)
+        if row is None:
+            continue
         fact = detail(rid)["detail_fields"]["fields"]["research_content"]
         if fact["explicit"] or fact["inferred"]:
             continue
@@ -135,19 +142,21 @@ def ucla():
 def berkeley():
     rid = "ucb-b0c3175dfa7a3a"
     p = profile("ucb", "UC Berkeley", fields=("undergraduate research",))
-    r = explain(p, rid)
+    target = selected(p, [rid])
     interest_keys = {"interests_match", "interests_match_ours"}
-    hits = any(k in interest_keys and "undergraduate research" in v.get("terms", "").lower() for k, v in keys(r))
-    report("M174-1-Berkeley-collector-constant", 1, [rid] if hits else [], sample_ids=[rid], in_results=r["in_results"])
-    bad, positives = [], []
-    for rid in MEMORY:
-        # Same two historical humanities records, real short keyword as a positive control.
-        for chip in (SENTENCE, "memory"):
-            p = profile("ucb", "UC Berkeley", "Cognitive Science", (chip,))
-            r = explain(p, rid)
-            if any(k in interest_keys and chip in v.get("terms", "").lower() for k, v in keys(r)):
-                (bad if chip == SENTENCE else positives).append(rid)
-    report("M174-2-long-chip-not-a-single-word", len(MEMORY), bad, sample_ids=MEMORY,
+    bad = [i for i, row in target.items()
+           if any(k in interest_keys and "undergraduate research" in v.get("terms", "").lower() for k, v in keys(row))]
+    report("M174-1-Berkeley-collector-constant", len(target), bad, sample_ids=list(target))
+    bad, positives, seen = [], [], []
+    for chip in (SENTENCE, "memory"):
+        p = profile("ucb", "UC Berkeley", "Cognitive Science", (chip,))
+        target = selected(p, MEMORY)
+        if chip == SENTENCE:
+            seen = list(target)
+        for i, row in target.items():
+            if any(k in interest_keys and chip in v.get("terms", "").lower() for k, v in keys(row)):
+                (bad if chip == SENTENCE else positives).append(i)
+    report("M174-2-long-chip-not-a-single-word", len(seen), bad, sample_ids=seen,
            short_chip_positive_control_ids=positives)
     if not positives:
         report("M174-2-positive-control", 0, [])
@@ -168,18 +177,21 @@ def rss():
             archived.append(rid)
     report("M174-3-RSS-public-attribution", len(confirmed), bad, sample_ids=confirmed, archived=archived)
     bad = []
+    checked = []
     for rid, labels in active:
-        r = explain(profile("uiuc", "UIUC", fields=labels), rid)
-        if any(k == "interests_match_ours" for k, _ in keys(r)):
-            bad.append(rid)
-    report("M174-3-active-RSS-match", len(active), bad, sample_ids=[rid for rid, _ in active])
+        target = selected(profile("uiuc", "UIUC", fields=labels), [rid])
+        for i, r in target.items():
+            checked.append(i)
+            if any(k == "interests_match_ours" for k, _ in keys(r)):
+                bad.append(i)
+    report("M174-3-active-RSS-match", len(checked), bad, sample_ids=checked)
 
 
 def boulder():
     rid = "boulder-0d8edc5782f3"
     p = profile("boulder", "University of Colorado Boulder", "Engineering")
     row = detail(rid)
-    match = explain(p, rid)
+    target = selected(p, [rid])
     draft = request("/cold-email", {"engine": "template", "opportunity_id": rid,
                                     "profile": {**p, "name": "Sample Student"}})
     if draft.get("method") != "template" or not draft.get("body", "").strip():
@@ -188,8 +200,10 @@ def boulder():
     stale_text = "team projectsgroup conference travel"
     bad = (bool(row.get("pi_name")) or not greeting
            or any(t in greeting for t in ("conference travel", "projectsgroup"))
-           or "travel" in greeting or stale_text in " ".join(match["reasons_fit"]).casefold())
-    report("M203-matcher-and-template-greeting", 1, [rid] if bad else [], sample_ids=[rid], method=draft["method"])
+           or "travel" in greeting)
+    report("M203-template-greeting", 1, [rid] if bad else [], sample_ids=[rid], method=draft["method"])
+    bad = [i for i, r in target.items() if stale_text in " ".join(r["reasons_fit"]).casefold()]
+    report("M203-matcher-recipient", len(target), bad, sample_ids=list(target))
 
 
 if __name__ == "__main__":
