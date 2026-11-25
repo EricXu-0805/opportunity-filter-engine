@@ -1,0 +1,34 @@
+name: Reproduce and verify Dashboard read recovery
+on:
+  push:
+    branches: [codex/diagnose-m51-dashboard-read]
+    paths: ['.github/workflows/m51-dashboard-read-proof.yml','frontend/m51-isolated.config.ts','frontend/e2e/m51-baseline.spec.ts']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install locked frontend and Chromium
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund --ignore-scripts
+          npx playwright install --with-deps chromium >"$RUNNER_TEMP/browser-install.log" 2>&1
+      - name: Observe the reported zero on the previous source with an injected 503
+        run: |
+          git restore --source HEAD~2 -- frontend/src
+          cd frontend
+          npx playwright test --config=m51-isolated.config.ts e2e/m51-baseline.spec.ts
+      - name: Verify both pages recover on the candidate with the same synthetic failure
+        run: |
+          git restore --source HEAD^ -- frontend/src
+          cd frontend
+          npx playwright test --config=m51-isolated.config.ts e2e/dashboard.spec.ts --grep 'a favorites read outage'
