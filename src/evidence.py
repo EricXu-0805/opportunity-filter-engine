@@ -45,6 +45,7 @@ from functools import lru_cache
 from src.contact_instructions import SOURCE_KEY as CONTACT_SOURCE_KEY
 from src.contact_instructions import _source_time as contact_source_time
 from src.contact_instructions import _url as contact_url
+from src.program_windows import reviewed_program_cutoff
 from src.urap_windows import SOURCE as URAP_PROJECT_SOURCE
 from src.urap_windows import window_phase
 
@@ -1959,6 +1960,9 @@ def target_truth(record: dict) -> TargetTruth:
     # A project read while recruiting can stay in memory past the exact local
     # cutoff. The date-only grace period is for sources that did not state a time.
     source = record.get("source") if isinstance(record, dict) else None
+    program_cutoff = reviewed_program_cutoff(record) if isinstance(record, dict) else None
+    if program_cutoff is not None:
+        expires_at = program_cutoff.isoformat()
     window = metadata.get("urap_window")
     if source == URAP_PROJECT_SOURCE and isinstance(window, dict):
         verified_at = window.get("observed_at") or verified_at
@@ -2057,7 +2061,11 @@ def target_truth(record: dict) -> TargetTruth:
     # deactivates a past listing on a later refresh, and that must not blur
     # "the deadline passed" into "no longer active".
     deadline = stated_listing_deadline(record)
-    if deadline is not None and deadline + _DEADLINE_GRACE < _today():
+    if program_cutoff is not None:
+        deadline_passed = datetime.now(UTC) >= program_cutoff
+    else:
+        deadline_passed = deadline is not None and deadline + _DEADLINE_GRACE < _today()
+    if deadline is not None and deadline_passed:
         return _truth(
             "listing_closed",
             key="deadline",

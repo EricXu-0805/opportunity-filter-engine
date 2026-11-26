@@ -24,7 +24,14 @@ from src.evidence import (
 )
 from src.lab_context import lab_context_for
 from src.normalizers import bu_stars
-from src.program_windows import DSI_WINDOW, public_opening, read_before_opening, reviewed_window
+from src.program_windows import (
+    DSI_IDS,
+    DSI_WINDOW,
+    public_opening,
+    read_before_opening,
+    reviewed_program_cutoff,
+    reviewed_window,
+)
 from src.research_context import research_context_for
 
 _EMAIL_IN_TEXT_RE = re.compile(
@@ -1117,14 +1124,18 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # the field keeps showing Apply, as before.
     # A compact result omits collector metadata. Carry the verified closing-date
     # citation for paired programs that do not publish an opening date.
+    projected.pop("application_closes_at", None)
     projected.pop("application_deadline_source_url", None)
     window = bu_stars.checked_window(canonical_record)
-    if canonical_record.get("id") in ("uchicago-8cd2def060b6", "sro-d6b78515"):
+    if canonical_record.get("id") in DSI_IDS:
         window = reviewed_window(canonical_record)
         if window and (window.page != DSI_WINDOW.page or canonical_record["metadata"].get("is_active") is False):
             window = None
     if window and projected.get("deadline") == window.closes_on.isoformat():
         projected["application_deadline_source_url"] = window.page
+        cutoff = reviewed_program_cutoff(canonical_record)
+        if cutoff is not None:
+            projected["application_closes_at"] = cutoff.isoformat()
     projected.pop("application_opens", None)
     opening = public_opening(canonical_record)
     if opening is not None:

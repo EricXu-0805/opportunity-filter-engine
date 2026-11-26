@@ -35,10 +35,12 @@ class ProgramWindow:
 
 _REVIEWED = date(2026, 11, 5)
 _DSI_HOST = "https://datascience.uchicago.edu/education/summerlab/"
+DSI_IDS = ("uchicago-8cd2def060b6", "sro-d6b78515")
 DSI_WINDOW = ProgramWindow(
     _DSI_HOST, _DSI_HOST + "program-details/", date(2026, 11, 26), date(2027, 1, 11),
     "Application deadline: January 11, 2027, 11:59pm CT",
 )
+_DSI_CLOSES_AT = datetime.combine(DSI_WINDOW.closes_on, time(23, 59), ZoneInfo("America/Chicago"))
 _DSI_2027_NOTES = (
     "Applications close January 11, 2027 at 11:59 p.m. Central.",
     "The 2026 program has concluded; the 2027 program application is not posted yet "
@@ -297,6 +299,16 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     ):
         return None
     return window
+
+
+def reviewed_program_cutoff(record: dict) -> datetime | None:
+    """The host's published instant, only for the two verified 2027 DSI records."""
+    if record.get("id") not in DSI_IDS:
+        return None
+    window = reviewed_window(record)
+    if window and window.page == DSI_WINDOW.page and record.get("deadline") == window.closes_on.isoformat():
+        return _DSI_CLOSES_AT
+    return None
 
 
 def apply_program_window(record: dict) -> None:

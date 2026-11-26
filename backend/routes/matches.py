@@ -111,6 +111,7 @@ from src.matcher.ranker import (
     without_web_addresses,
 )
 from src.matcher.reason_keys import reason_key, reason_keys
+from src.program_windows import reviewed_program_cutoff
 from src.recommender.cold_email import filter_course_entries
 from src.recommender.resume_advisor import analyze_gaps
 from src.student_evidence import (
@@ -1268,7 +1269,8 @@ def _activate_corpus_generation(corpus: list[dict]) -> int:
         if corpus_identity != _active_corpus_identity:
             _active_corpus_identity = corpus_identity
             _project_cutoffs = tuple(sorted({
-                cutoff.timestamp() for row in corpus if (cutoff := project_cutoff(row)) is not None
+                cutoff.timestamp() for row in corpus
+                if (cutoff := project_cutoff(row) or reviewed_program_cutoff(row)) is not None
             }))
             _match_snapshots.clear()
             _match_view_rows.clear()

@@ -139,6 +139,7 @@ function reasonAgreesWithFields(truth: Record<string, unknown>): boolean {
 type TruthSubject = Pick<Opportunity, 'target_truth' | 'source_type'> & {
   record_kind?: string;
   source?: string;
+  application_closes_at?: string | null;
 };
 
 /**
@@ -186,11 +187,13 @@ function readTruth(opp: TruthSubject): PublicTargetTruth | null {
   if (kind === 'unknown' && truth.actionable) return null;
   if (truth.reason_code === 'record_kind_unverified' && kind !== 'unknown') return null;
   if (truth.reason_code === 'faculty_not_accepting' && kind !== 'faculty_contact') return null;
-  // An already-served URAP card has the precise deadline from its project
-  // notice. A cached card can outlive Berkeley's cutoff on the same day.
-  if (opp?.source === 'ucb_urap_projects' && truth.actionable && truth.expires_at
+  // Only a verified application cutoff can close an already-served card.
+  // Other expiry timestamps can describe the freshness of a record.
+  const urap = opp?.source === 'ucb_urap_projects';
+  const timedListing = kind === 'listing' && opp.application_closes_at === truth.expires_at;
+  if (truth.actionable && truth.expires_at && (urap || timedListing)
     && Date.parse(truth.expires_at) <= Date.now()) {
-    return { ...truth, actionable: false, reference_only: true, listing_state: 'closed',
+    return { ...truth, actionable: false, reference_only: urap, listing_state: 'closed',
       accepting_state: 'not_accepting', reason_code: 'listing_closed' };
   }
   return truth;
