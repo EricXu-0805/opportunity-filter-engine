@@ -1,0 +1,106 @@
+{
+  "production_before": {
+    "observed_utc": "2026-11-26T17:47:05.747679+00:00",
+    "frontend_and_backend_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+    "records": [
+      {
+        "original_id": "faculty-ucr-bmsc-e3769358",
+        "public_detail_http": 200,
+        "public_api_http": 200,
+        "api_works": 0,
+        "visible_expected_works": 0
+      },
+      {
+        "original_id": "faculty-rochester-chm-56814c11",
+        "public_detail_http": 200,
+        "public_api_http": 200,
+        "api_works": 0,
+        "visible_expected_works": 0
+      }
+    ]
+  },
+  "production_after": {
+    "observed_utc": "2026-11-26T18:24:11.173379+00:00",
+    "frontend_and_backend_release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "records": [
+      {
+        "original_id": "faculty-ucr-bmsc-e3769358",
+        "public_detail_http": 200,
+        "public_api_http": 200,
+        "api_works": 3,
+        "visible_expected_works": 3,
+        "verified_author_id_and_work_years_match": true,
+        "displayed_years_match_cited_works": true,
+        "visible_links_are_exact_title_scholar_searches": true,
+        "independently_checked_dois": [
+          {
+            "doi": "10.64898/2026.11.17.767137",
+            "crossref_http": 200,
+            "matches_displayed_title": true,
+            "matches_faculty_byline": true,
+            "faculty_campus_matches": true,
+            "supplied_orcids_match": true
+          },
+          {
+            "doi": "10.1093/pnasnexus/pgag365",
+            "crossref_http": 200,
+            "matches_displayed_title": true,
+            "matches_faculty_byline": true,
+            "faculty_campus_matches": true,
+            "supplied_orcids_match": true
+          },
+          {
+            "doi": "10.1093/jimmun/vkag141.1564",
+            "crossref_http": 200,
+            "matches_displayed_title": true,
+            "matches_faculty_byline": true,
+            "faculty_campus_matches": true,
+            "supplied_orcids_match": true
+          }
+        ]
+      },
+      {
+        "original_id": "faculty-rochester-chm-56814c11",
+        "public_detail_http": 200,
+        "public_api_http": 200,
+        "api_works": 3,
+        "visible_expected_works": 3,
+        "verified_author_id_and_work_years_match": true,
+        "displayed_years_match_cited_works": true,
+        "visible_links_are_exact_title_scholar_searches": true,
+        "independently_checked_dois": [
+          {
+            "doi": "10.1021/acs.joc.6c00848",
+            "crossref_http": 200,
+            "matches_displayed_title": true,
+            "matches_faculty_byline": true,
+            "faculty_campus_matches": true,
+            "supplied_orcids_match": true
+          },
+          {
+            "doi": "10.1039/d4dt01829j",
+            "crossref_http": 200,
+            "matches_displayed_title": true,
+            "matches_faculty_byline": true,
+            "faculty_campus_matches": true,
+            "supplied_orcids_match": true
+          },
+          {
+            "doi": "10.1021/acs.organomet.4c00235",
+            "crossref_http": 200,
+            "matches_displayed_title": true,
+            "matches_faculty_byline": true,
+            "faculty_campus_matches": true,
+            "supplied_orcids_match": true
+          }
+        ]
+      }
+    ]
+  },
+  "deployment_pr": 1404,
+  "source_prs": [
+    1399,
+    1402
+  ],
+  "scheduled_refresh_verified_here": false
+}
