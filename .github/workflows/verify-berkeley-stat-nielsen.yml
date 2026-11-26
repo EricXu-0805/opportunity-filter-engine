@@ -1,0 +1,47 @@
+name: Check Berkeley faculty and lab source chain
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths: [.github/workflows/verify-berkeley-stat-nielsen.yml]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: db3e8229b64e781b4dc74cddfe2c4acaa13d5896
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Read reviewed profile and lab pages with the shipped collector
+        run: |
+          mkdir observation
+          python - <<'PY'
+          import json,time
+          from pathlib import Path
+          from scripts import lab_refresh
+          from src.collectors.lab_website import fetch_lab_page
+          target='faculty-ucb-stat-5558a1b1'
+          calls=[]
+          def fetch(url):
+              if calls:
+                  time.sleep(2)
+              page,error=fetch_lab_page(url)
+              calls.append({'url':url,'outcome':error or 'read','bytes':len((page or {}).get('html',b''))})
+              return page,error
+          assert lab_refresh.main(['--input','data/processed/shards/ucb.json','--record-id',target,'--out','observation/candidate.json'],fetch=fetch)==0
+          patch=json.loads(Path('observation/candidate.json').read_text())['results'][0]['patch']
+          result={'id':target,'release':'db3e8229b64e781b4dc74cddfe2c4acaa13d5896','calls':calls,'refresh':patch['lab_refresh']}
+          Path('observation/source-result.json').write_text(json.dumps(result,indent=2))
+          print(result)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: berkeley-stat-nielsen-source
+          path: observation
+          retention-days: 30
