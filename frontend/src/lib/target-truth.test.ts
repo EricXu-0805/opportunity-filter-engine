@@ -3,6 +3,7 @@ import type { Opportunity, PublicTargetTruth } from './types';
 import {
   facultyProfileUrl,
   opportunityApplicationUrl,
+  opportunityCitationUrl,
   opportunitySourceUrl,
   targetPosture,
   targetStatusReason,
@@ -506,7 +507,9 @@ describe('Michigan State Natural Science faculty destinations', () => {
 
   it('opens the individual campus profile and cites the department roster', () => {
     expect(facultyProfileUrl(row)).toBe(person);
-    expect(opportunitySourceUrl(row)).toBe(source);
+    expect(opportunityCitationUrl(row)).toBe(source);
+    expect(opportunitySourceUrl({ ...row, source_type: 'faculty_research' })).toBe(person);
+    expect(opportunitySourceUrl({ ...row, source_type: 'campus_department' })).toBe(source);
   });
 
   it('never labels the roster or an unrelated link as this faculty member’s profile', () => {

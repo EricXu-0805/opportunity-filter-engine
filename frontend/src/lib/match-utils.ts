@@ -4,7 +4,7 @@ import { courseEntries } from './course-status';
 import { opportunityRecordKind } from './record-kind';
 import {
   opportunityApplicationUrl,
-  opportunitySourceUrl,
+  opportunityCitationUrl,
   targetPosture,
   targetStatusReason,
 } from './target-truth';
@@ -123,7 +123,7 @@ const NO_SPONSORSHIP_CELL = 'No visa sponsorship (listing label)';
 // purpose by falling back from application_url through url/source_url, which
 // meant a reference page could be rendered under an Apply label. It is
 // replaced by the deliberately fallback-free pair in ./target-truth:
-// opportunityApplicationUrl (Apply, or nothing) and opportunitySourceUrl
+// opportunityApplicationUrl (Apply, or nothing) and opportunityCitationUrl
 // (always readable). Do not reintroduce a combined resolver.
 
 const SEARCH_ALIASES: Record<string, string[]> = {
@@ -239,7 +239,7 @@ export function matchesToCSV(matches: MatchResult[]): string {
       // exported spreadsheet outlives the session, so a row must not hand
       // someone a reference page under a column they read as "where to apply".
       opportunityApplicationUrl(m.opportunity)
-        || opportunitySourceUrl(m.opportunity)
+        || opportunityCitationUrl(m.opportunity)
         || '',
     ];
   });

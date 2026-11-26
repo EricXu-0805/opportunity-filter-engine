@@ -859,6 +859,16 @@ describe('MatchCard', () => {
       expect(screen.queryByRole('link', { name: 'card.applyNow' })).toBeNull();
     });
 
+    it('opens the verified person on the faculty card and omits a directory-only faculty link', () => {
+      const listing = { source: 'msu_faculty', source_type: 'faculty_research',
+        source_url: 'https://directory.natsci.msu.edu/Directory/Directory/Department/6',
+        url: 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493' };
+      const { rerender } = render(<MatchCard match={makeMatch(listing)} onDraftEmail={() => {}} />);
+      expect(screen.getByRole('link', { name: 'card.viewFacultyPage' })).toHaveAttribute('href', listing.url);
+      rerender(<MatchCard match={makeMatch({ ...listing, url: listing.source_url })} onDraftEmail={() => {}} />);
+      expect(screen.queryByRole('link', { name: 'card.viewFacultyPage' })).toBeNull();
+    });
+
     it('faculty "Draft Email" button triggers onDraftEmail', () => {
       const handler = vi.fn();
       const match = makeMatch({

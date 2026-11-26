@@ -5,7 +5,7 @@ import EmailMeButton from '@/components/EmailMeButton';
 import { sendFavoritesEmail } from '@/lib/api';
 import { opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
-import { opportunitySourceUrl, targetPosture } from '@/lib/target-truth';
+import { opportunityCitationUrl, targetPosture } from '@/lib/target-truth';
 import { getInteractionsFull } from '@/lib/supabase';
 import { MAX_COMPARE, MIN_COMPARE, type Opp, type TFunc } from './types';
 
@@ -101,7 +101,7 @@ export function FavoritesHeader({
                     title: o.title,
                     // source_url first: never hand an old renderer an
                     // application URL to present as the source link.
-                    url: opportunitySourceUrl(o) || '',
+                    url: opportunityCitationUrl(o) || '',
                     source: o.source || '',
                     deadline: bridgeKind === 'listing' ? o.deadline || null : null,
                     record_kind: bridgeKind as 'listing' | 'faculty_contact' | 'unknown',
