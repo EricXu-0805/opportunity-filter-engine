@@ -227,7 +227,7 @@ class TestNormalize:
     def test_closed_page_still_marks_every_row_closed(self, monkeypatch):
         raw = self._raw()
         raw["status"] = "Open"
-        monkeypatch.setattr(up, "scrape_projects", lambda status="Open": [raw])
+        monkeypatch.setattr(up, "scrape_projects", lambda status="Open", **kwargs: [raw])
         out = up.fetch_and_normalize("Closed")
         assert [o["metadata"]["urap_status"] for o in out] == ["closed"]
         assert [o["metadata"]["is_active"] for o in out] == [False]
@@ -241,7 +241,7 @@ class TestNormalize:
         closed_row["id"] = "20079-1"
         closed_row["status"] = "Closed - no longer accepting apprentices"
         monkeypatch.setattr(
-            up, "scrape_projects", lambda status="Open": [open_row, closed_row],
+            up, "scrape_projects", lambda status="Open", **kwargs: [open_row, closed_row],
         )
         calls = []
         monkeypatch.setattr(up, "_fetch", lambda url, params: calls.append((url, params)))
@@ -334,7 +334,7 @@ def test_transient_failure_preserves_evidence_until_same_id_reopens(tmp_path, mo
     file = tmp_path / "opportunities.json"
     file.write_text("[]")
     monkeypatch.setattr(up, "PROCESSED_FILE", file)
-    monkeypatch.setattr(up, "scrape_projects", lambda status="Open": [PROJECT])
+    monkeypatch.setattr(up, "scrape_projects", lambda status="Open", **kwargs: [PROJECT])
     monkeypatch.setattr(up, "_fetch", lambda url, params: None)
     fall_read = datetime(2026, 11, 25, tzinfo=UTC)
     old = up.normalize_project(detail_raw(detail_soup(), fall_read), now=fall_read)
@@ -408,3 +408,88 @@ def test_match_universe_and_snapshot_expire_with_a_still_cached_record(monkeypat
     moment[0] = cutoff
     assert matches._ranked_with(None) != before
     assert matches._release_universe(corpus) == []
+
+
+@pytest.mark.parametrize(("deadline", "hour", "minute"), [
+    ("The deadline to apply is Monday, August 31st, 4 p.m.", 16, 0),
+    ("The deadline to apply is Monday, August 31st, 4 p.m..", 16, 0),
+    ("The deadline to apply is Monday, August 31st, 4:00 PM.", 16, 0),
+    ("The deadline to apply is Monday, August 31st, noon.", 12, 0),
+    ("The deadline to apply is Monday, August 31st, 12 noon.", 12, 0),
+    ("The deadline to apply is Monday, August 31st, 12am midnight.", 0, 0),
+    ("The deadline to apply is Monday, August 31st, 11:59pm PT.", 23, 59),
+    ("The deadline to apply is Monday, Aug. 31st by 4pm.", 16, 0),
+    ("The deadline to apply is 4pm on Monday, August 31st.", 16, 0),
+    ("Applications are due Monday, Aug. 31st at 4pm.", 16, 0),
+])
+def test_published_clock_and_date_forms(deadline, hour, minute):
+    notice = FALL[:FALL.index("The deadline")] + deadline
+    detail = detail_raw(detail_soup(notice), datetime(2026, 8, 18, tzinfo=UTC))["detail"]
+    assert detail["opens_on"] == "2026-08-21"
+    assert detail["deadline_at"] == f"2026-08-31T{hour:02}:{minute:02}:00-07:00"
+    assert detail["deadline_quote"] == deadline
+
+
+@pytest.mark.parametrize("clock", ["", ", 4pm ET", ", 4pm PST", ", 0pm", ", 12:65pm",
+                                   ", 4pm noon", ", 12:01am midnight", ", 12pm midnight",
+                                   ", 4 p.m. Eastern Time", ", 4 p.m. EDT", ", noon or midnight"])
+def test_uncertain_cutoff_does_not_grant_application_access(clock):
+    at = datetime(2026, 8, 24, tzinfo=UTC)
+    raw = detail_raw(detail_soup(FALL.replace(", 4pm", clock)), at)
+    assert raw["detail"] is None
+    assert up.normalize_project(raw, now=at)["metadata"]["urap_status"] == "unknown"
+
+
+def test_contradictory_or_duplicate_deadline_never_opens():
+    notice = FALL + " Applications are due on another date."
+    assert detail_raw(detail_soup(notice), datetime(2026, 8, 24, tzinfo=UTC))["detail"] is None
+
+
+def test_previous_calendar_year_for_spring_requires_corroboration():
+    notice = ("Open. Enter your application online beginning December 1st. "
+              "The deadline to apply is Monday, December 14th, 4pm.")
+    now = datetime(2026, 12, 2, tzinfo=UTC)
+    detail = detail_raw(detail_soup(notice, "Spring 2027"), now)["detail"]
+    assert detail["opens_on"] == "2026-12-01"
+    assert detail["deadline_at"] == "2026-12-14T16:00:00-08:00"
+    assert detail_raw(detail_soup(notice.replace("Monday, ", ""), "Spring 2027"), now)["detail"] is None
+
+
+@pytest.mark.parametrize("clock", ["4pm.", "4 p.m.", "4:00 PM PT."])
+def test_deadline_quote_stops_at_next_sentence(clock):
+    notice = FALL.replace("4pm.", clock) + " Please include your transcript with your application."
+    detail = detail_raw(detail_soup(notice), datetime(2026, 8, 24, tzinfo=UTC))["detail"]
+    assert detail["deadline_quote"].endswith(clock)
+    assert "Please" not in detail["deadline_quote"]
+
+def test_list_failure_is_distinct_from_a_supported_seasonal_zero(monkeypatch):
+    from src.collectors.source_health import collection_evidence_issues
+
+    monkeypatch.setattr(up, "_fetch", lambda url, params: None)
+    errors = []
+    assert up.fetch_and_normalize("Open", list_errors=errors) == []
+    assert up.fetch_and_normalize("Closed", list_errors=errors) == []
+    assert errors == ["Open list page 1: fetch failed", "Closed list page 1: fetch failed"]
+    assert collection_evidence_issues({"list_errors": errors}) == (["list_errors"], [])
+
+    errors.clear()
+    monkeypatch.setattr(up, "_fetch", lambda *args: detail_soup(body="Showing 0 projects out of 0 found."))
+    assert up.fetch_and_normalize("Open", list_errors=errors) == []
+    assert not errors
+
+
+@pytest.mark.parametrize("second_page, expected", [
+    (None, "fetch failed"), (LIST_FIXTURE, "did not report a result count"),
+    ("Showing , projects out of 3 found.", "did not report a result count"),
+    ("Showing 1 project out of 3 found.", "read 0 distinct new IDs"),
+    ("Showing 0 projects out of 3 found.", "only 2 distinct IDs"),
+])
+def test_incomplete_second_page_retains_first_page_and_reports_gap(monkeypatch, second_page, expected):
+    first = detail_soup(body="Showing 2 projects out of 3 found." + LIST_FIXTURE)
+    pages = iter([first, detail_soup(body=second_page) if second_page else None])
+    monkeypatch.setattr(up, "_fetch", lambda *args: next(pages))
+    monkeypatch.setattr(up, "PER_PAGE", 2)
+    monkeypatch.setattr(up, "_PAGE_DELAY", 0)
+    errors = []
+    assert len(up.scrape_projects("Closed", list_errors=errors)) == 2
+    assert len(errors) == 1 and expected in errors[0]

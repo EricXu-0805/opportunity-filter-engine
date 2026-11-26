@@ -57,17 +57,23 @@ test.describe('Dashboard', () => {
 
   test('a favorites read outage keeps account totals and deadlines unknown until a successful retry on each page', async ({ page }) => {
     let fail = true;
-    let reads = 0;
+    let cursorReads = 0;
     await page.route('**/rest/v1/favorites?**', route => {
       expect(route.request().method()).toBe('GET');
-      reads++;
       if (fail) return route.fulfill({
         status: 503,
         // Exercise all SDK retries before the assertion deadline.
         headers: { 'Retry-After': '0', 'Access-Control-Expose-Headers': 'Retry-After' },
         json: { message: 'controlled read failure' },
       });
-      return route.fulfill({ json: [{ opportunity_id: 'saved-target' }], headers: { 'Content-Range': '0-0/1' } });
+      // The count header is absent. After the only ID, the service has no remaining favorites.
+      const cursor = new URL(route.request().url()).searchParams.get('opportunity_id');
+      if (cursor !== null) {
+        expect(cursor).toBe('gt.saved-target');
+        cursorReads++;
+        return route.fulfill({ json: [] });
+      }
+      return route.fulfill({ json: [{ opportunity_id: 'saved-target' }] });
     });
     await page.route('**/api/opportunities/batch', route => route.fulfill({
       json: { requested: 1, found: 0, opportunities: [] },
@@ -85,13 +91,15 @@ test.describe('Dashboard', () => {
     await expect(saved).toContainText('1');
     await expect(page.getByTestId('dashboard-unavailable-note')).toBeVisible();
 
+    expect(cursorReads).toBeGreaterThan(0);
+    const dashboardCursorReads = cursorReads;
     fail = true;
     await page.goto('/favorites');
     await expect(page.getByText(en.favorites.loadError)).toBeVisible();
     fail = false;
     await page.getByRole('alert').filter({ hasText: en.favorites.loadError }).getByRole('button').click();
     await expect(page.getByText(en.favorites.count.replace('{count}', '1'), { exact: true })).toBeVisible();
-    expect(reads).toBeGreaterThanOrEqual(4);
+    expect(cursorReads).toBeGreaterThan(dashboardCursorReads);
   });
 
   test('a failed continuation of a large tracker stays unknown until retry loads the final status', async ({ page }) => {

@@ -16,13 +16,12 @@ STUDENT = {"name": "Sample Student", "major": "Physics", "year": "sophomore",
 
 
 @pytest.mark.parametrize(("name", "row_id", "age", "status"), [
-    ("Sergei Gukov", "faculty-caltech-phys-b6dd07e7", None, "unavailable"),
-    ("Ahmed Alaa", "faculty-ucb-eecs-d683bc2c", 1, "sign_in_required"),
-    ("Ahmed Alaa", "faculty-ucb-eecs-d683bc2c", 70, "unavailable"),
+    ("Rae Example", "faculty-caltech-phys-fixture", None, "unavailable"),
+    ("Noor Example", "faculty-ucb-eecs-fixture", 1, "sign_in_required"),
+    ("Noor Example", "faculty-ucb-eecs-fixture", 70, "unavailable"),
 ])
 def test_faculty_identity_does_not_create_a_vacancy(name, row_id, age, status):
-    # Reduced shapes of real faculty directory records. The contact and dates
-    # are synthetic to keep this independent of the next refresh and the clock.
+    # Keep the production source types, with fictional people and contact data.
     profile_url = "https://example.edu/people/" + row_id
     record = {"id": row_id, "title": name, "pi_name": name, "source": "caltech_faculty" if age is None else "ucb_eecs_faculty",
               "source_type": "faculty_research", "department": "Physics", "organization": "Caltech" if age is None else "UC Berkeley",
@@ -53,9 +52,9 @@ def test_faculty_identity_does_not_create_a_vacancy(name, row_id, age, status):
 
 @pytest.mark.parametrize("opportunity_type", [None, "internship"])
 def test_posted_internship_keeps_its_application_action(opportunity_type):
-    url = "https://job-boards.greenhouse.io/octaura/jobs/4662934007"
-    record = {"id": "simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95", "source_type": "internship",
-              "source": "simplify_internships", "title": "Data Engineer Intern", "organization": "Octaura",
+    url = "https://careers.example.edu/jobs/engineering-intern"
+    record = {"id": "simplify-intern-fixture", "source_type": "internship",
+              "source": "simplify_internships", "title": "Data Engineer Intern", "organization": "Example Instruments",
               "url": url, "source_url": url, "application": {"application_url": url}, "metadata": {}}
     for projection in (_match_card, _list_card, _redact):
         public = projection(record)

@@ -141,29 +141,15 @@ test.describe('Legacy Tracker attachment recovery', () => {
     } finally { await owner.http.dispose(); }
   });
 
-  test('selected replacement uses the guarded PUT on the original key', async ({ page }) => {
+  test('legacy files remain accessible without offering unavailable replacement', async ({ page }) => {
     const owner = await account();
     try {
       const state = await setup(page, owner);
-      const path = owner.session.user.id + '/' + TARGET + '/original.pdf';
-      await page.route('**/rest/v1/rpc/tracker_attachment_replace_version', route => {
-        expect(route.request().postDataJSON()).toMatchObject({ p_path: path, p_id: 'original.pdf', p_mime: 'application/pdf' });
-        return route.fulfill({ json: 'original-version' });
-      });
-      let writes = 0;
-      await page.route('**/storage/v1/object/tracker-attachments/**', route => {
-        expect(route.request().method()).toBe('PUT');
-        expect(decodeURIComponent(new URL(route.request().url()).pathname)).toBe('/storage/v1/object/tracker-attachments/' + path);
-        expect(route.request().postDataBuffer()?.toString()).toContain('"version":"original-version"');
-        writes++;
-        return route.fulfill({ json: { Key: 'tracker-attachments/' + path, Id: 'original.pdf' } });
-      });
-      const picker = page.waitForEvent('filechooser');
-      await panel(page).getByRole('button', { name: dict().replaceAria.replace('{name}', 'original.pdf') }).click();
-      await (await picker).setFiles({ name: 'revised.pdf', mimeType: 'application/pdf', buffer: PDF });
-      await expect(page.getByTestId('tracker-attachments-notice')).toHaveText(dict().replaced.replace('{name}', 'original.pdf'));
       await expect(openFile(page)).toBeEnabled();
-      expect(writes).toBe(1);
+      await expect(deleteFile(page)).toBeEnabled();
+      await expect(panel(page).getByRole('button', { name: dict().addButton, exact: true })).toBeEnabled();
+      await expect(panel(page).getByRole('button', { name: dict().replaceAria.replace('{name}', 'original.pdf') })).toHaveCount(0);
+      await expect(panel(page).getByLabel(dict().chooseReplacement)).toHaveCount(0);
       expect(state.uploads).toBe(0);
       expect(state.deletes).toBe(0);
     } finally { await owner.http.dispose(); }

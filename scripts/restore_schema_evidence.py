@@ -7,15 +7,37 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
+from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes
 
-METHOD = "postgres-application-ddl-and-migrations-v2"
+METHOD = "postgres-application-access-ddl-and-migrations-v3"
 QUERY = """
 WITH application_schema AS (
   SELECT oid, nspname FROM pg_namespace WHERE nspname IN ('public', 'private')
+), access_relations AS (
+  SELECT c.*, n.nspname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE (n.nspname IN ('public','private') AND c.relkind IN ('r','p','v','m','f','S'))
+     OR (n.nspname = 'storage' AND c.relname IN ('objects','buckets'))
+), access_objects(kind, schema_name, identity, owner_oid, acl) AS (
+  SELECT 'schema', nspname, to_jsonb(nspname), nspowner, COALESCE(nspacl, acldefault('n', nspowner))
+  FROM pg_namespace WHERE nspname IN ('public','private','storage')
+  UNION ALL
+  SELECT 'relation', nspname, jsonb_build_array(relkind, relname), relowner,
+         COALESCE(relacl, acldefault(CASE WHEN relkind = 'S' THEN 's' ELSE 'r' END::"char", relowner))
+  FROM access_relations
+  UNION ALL
+  SELECT 'column', c.nspname, jsonb_build_array(c.relname, a.attname), c.relowner, a.attacl
+  FROM access_relations c JOIN pg_attribute a ON a.attrelid = c.oid
+  WHERE a.attnum > 0 AND NOT a.attisdropped AND cardinality(a.attacl) > 0
+  UNION ALL
+  SELECT 'routine', n.nspname, jsonb_build_array(p.proname, pg_get_function_identity_arguments(p.oid)),
+         p.proowner, COALESCE(p.proacl, acldefault('f', p.proowner))
+  FROM pg_proc p JOIN application_schema n ON n.oid = p.pronamespace
 ), definitions(kind, schema_name, definition) AS (
   SELECT 'index', n.nspname, jsonb_build_array(pg_get_indexdef(i.indexrelid), i.indisvalid, i.indisready)
   FROM pg_index i JOIN pg_class t ON t.oid = i.indrelid
@@ -26,8 +48,7 @@ WITH application_schema AS (
   WHERE t.relkind IN ('v','m')
   UNION ALL
   SELECT 'trigger', n.nspname, jsonb_build_array(pg_get_triggerdef(g.oid), g.tgenabled)
-  FROM pg_trigger g JOIN pg_class t ON t.oid = g.tgrelid
-  JOIN application_schema n ON n.oid = t.relnamespace WHERE NOT g.tgisinternal
+  FROM pg_trigger g JOIN access_relations n ON n.oid = g.tgrelid WHERE NOT g.tgisinternal
   UNION ALL
   SELECT 'routine', n.nspname, to_jsonb(pg_get_functiondef(p.oid))
   FROM pg_proc p JOIN application_schema n ON n.oid = p.pronamespace WHERE p.prokind IN ('f','p','w')
@@ -35,8 +56,25 @@ WITH application_schema AS (
   SELECT 'constraint', n.nspname, jsonb_build_array(t.relname, c.conname, pg_get_constraintdef(c.oid), c.convalidated)
   FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
   JOIN application_schema n ON n.oid = t.relnamespace
+  UNION ALL
+  SELECT 'row-security', nspname, jsonb_build_array(relname, relrowsecurity, relforcerowsecurity)
+  FROM access_relations WHERE relkind IN ('r','p')
+  UNION ALL
+  SELECT 'policy', c.nspname, jsonb_build_array(c.relname, p.polname, p.polcmd, p.polpermissive,
+         ARRAY(SELECT (CASE WHEN r = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(r)::text END) COLLATE "C"
+               FROM unnest(p.polroles) AS r ORDER BY 1),
+         pg_get_expr(p.polqual, p.polrelid), pg_get_expr(p.polwithcheck, p.polrelid))
+  FROM pg_policy p JOIN access_relations c ON c.oid = p.polrelid
+  UNION ALL
+  SELECT 'access', schema_name, jsonb_build_array(kind, identity, pg_get_userbyid(owner_oid),
+         ARRAY(SELECT item::text FROM unnest(acl) AS item ORDER BY item::text COLLATE "C"))
+  FROM access_objects
+  UNION ALL
+  SELECT 'bucket-public', 'storage', jsonb_build_array(id, public) FROM storage.buckets
+  WHERE id IN ('tracker-attachments','tracker-attachment-versions','application-materials')
 )
 SELECT json_build_object(
+  'bucket_catalog_unfiltered', NOT row_security_active('storage.buckets'),
   'ddl_count', (SELECT count(*) FROM definitions),
   'ddl_sha256', (SELECT encode(sha256(convert_to(COALESCE(jsonb_agg(
     jsonb_build_array(kind, schema_name, definition)
@@ -64,7 +102,8 @@ class CatalogueConnectionError(ValueError):
     """Operator-visible database connection detail, safe for the drill log."""
 
 
-def observe(project: str, backup: str, session_pooler_host: str | None = None) -> dict:
+def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
+            include_row_counts: bool = False, storage_catalogue_out: Path | None = None) -> dict:
     """Read the named project's catalogue directly or through its shared session pooler."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
@@ -80,11 +119,17 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None) -
     env = {k: v for k, v in os.environ.items() if not k.startswith("PG")
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10", LC_ALL="C")
+    query = QUERY
+    if include_row_counts:
+        row_query = restore_row_evidence.capture_query(QUERY)
+        storage_query = Path(__file__).with_name("restore_storage_catalogue.sql").read_text()
+        query = (f"SELECT snapshot || jsonb_build_object('storage_catalogue', ({storage_query})) "
+                 f"FROM ({row_query}) AS backup(snapshot)")
     try:
         result = subprocess.run(
             ["psql", "-XqAtw", "-v", "ON_ERROR_STOP=1", "-h", host, "-p", "5432", "-U", user,
              "-d", "postgres", "-c", "BEGIN READ ONLY", "-c", "SET LOCAL statement_timeout = 20000",
-             "-c", "SET LOCAL search_path = pg_catalog", "-c", QUERY, "-c", "COMMIT"],
+             "-c", "SET LOCAL search_path = pg_catalog", "-c", query, "-c", "COMMIT"],
             capture_output=True, text=True, timeout=35, check=True, env=env,
         )
     except FileNotFoundError:
@@ -106,6 +151,8 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None) -
     except OSError:
         raise CatalogueConnectionError("could not execute psql; check the PostgreSQL client installation") from None
     catalogue = json.loads(result.stdout)
+    if catalogue.get("bucket_catalog_unfiltered") is not True:
+        raise ValueError("an unfiltered Storage bucket catalogue is required to verify bucket visibility")
     columns = catalogue["columns"]
     migrations = catalogue["migrations"]
     if not isinstance(columns, list) or not columns or not isinstance(migrations, list) or not migrations:
@@ -119,13 +166,33 @@ def observe(project: str, backup: str, session_pooler_host: str | None = None) -
     # Use only filenames matched to actually observed rows. Comparing against the
     # gate's candidate hash is meaningful only when parity was one-to-one.
     names = sorted(item["file"] for item in comparison["matched"])
-    return {"method": METHOD, "project_ref": project, "source_backup_id": backup,
-            "observed_at": datetime.now(UTC).isoformat(),
-            "columns_sha256": _digest(columns), "column_count": len(columns),
-            "ddl_sha256": ddl_digest, "ddl_count": ddl_count,
-            "history_sha256": _digest(migrations), "migration_count": len(migrations),
-            "migration_parity": comparison["in_parity"],
-            "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16]}
+    observation = {
+        "method": METHOD, "project_ref": project, "source_backup_id": backup,
+        "observed_at": datetime.now(UTC).isoformat(),
+        "columns_sha256": _digest(columns), "column_count": len(columns),
+        "ddl_sha256": ddl_digest, "ddl_count": ddl_count,
+        "history_sha256": _digest(migrations), "migration_count": len(migrations),
+        "migration_parity": comparison["in_parity"],
+        "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16],
+    }
+    if include_row_counts:
+        if not restore_row_evidence.complete(catalogue.get("row_counts")):
+            raise ValueError("source table counts incomplete")
+        observation["row_counts"] = catalogue["row_counts"]
+        buckets = catalogue.get("storage_catalogue")
+        if (not isinstance(buckets, dict) or set(buckets) not in (set(BUCKETS), set(ALL_BUCKETS))
+                or any(not isinstance(b, dict) or b.get("public") is not False or not isinstance(b.get("objects"), dict)
+                       or any(type(size) is not int or size < 0 for size in b["objects"].values())
+                       for b in buckets.values())):
+            raise ValueError("source private Storage catalogue missing, filtered or incomplete")
+        private = catalogue_bytes(project, backup, buckets)
+        observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
+        if storage_catalogue_out is not None:
+            with tempfile.NamedTemporaryFile(dir=storage_catalogue_out.parent) as tmp:
+                tmp.write(private)
+                tmp.flush()
+                os.link(tmp.name, storage_catalogue_out)
+    return observation
 
 
 def manifest_bytes(observation: dict) -> bytes:
@@ -146,9 +213,19 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
     if not isinstance(part, dict) or not _valid_shape(part):
         return None
     # A source-supplied JSON file is private. Copy only validated metadata.
-    return {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
+    validated = {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
                                         "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count",
                                         "migration_parity", "matched_filenames_digest")}
+    if "row_counts" in part:
+        if not restore_row_evidence.complete(part["row_counts"]):
+            return None
+        validated["row_counts"] = part["row_counts"]
+    if "storage_catalogue_sha256" in part:
+        pin = part["storage_catalogue_sha256"]
+        if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
+            return None
+        validated["storage_catalogue_sha256"] = pin
+    return validated
 
 
 def _valid_shape(part: dict) -> bool:
@@ -212,9 +289,11 @@ def main() -> int:
     ap.add_argument("--session-pooler-host", help="shared session pooler hostname from Supabase Connect")
     ap.add_argument("--source-backup-id", required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
     try:
-        observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host)
+        observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
+                              storage_catalogue_out=args.storage_catalogue_out)
         with args.out.open("xb") as dest:
             dest.write(manifest_bytes(observation))
     except (ValueError, OSError) as exc:

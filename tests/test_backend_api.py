@@ -5002,6 +5002,7 @@ class TestPushRemindersCron:
         # now, and an exact object is what the service worker consumes.
         payload = json.loads(calls[0]["data"])
         assert payload == {
+            "recipient": _DUE_ROW["device_id"],
             "title": "Reminder: follow up",
             "body": "Your follow-up reminder is due.",
             "url": "/tracker",
@@ -5107,6 +5108,7 @@ class TestPushRemindersCron:
         assert r.json()["sent"] == 1
         payload = json.loads(calls[0]["data"])
         assert payload == {
+            "recipient": _DUE_ROW["device_id"],
             "title": "Reminder: follow up",
             "body": "Your follow-up reminder is due.",
             "url": "/tracker",

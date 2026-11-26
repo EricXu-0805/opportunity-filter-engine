@@ -627,6 +627,34 @@ describe('signOutOfAccount', () => {
     sessionStorage.setItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER, 'google');
   }
 
+  it('discards A’s prepared logout when the live session has become a different permanent account', async () => {
+    stashPendingFlows();
+    mockGetSession.mockResolvedValueOnce(permanentSession());
+    await expect(signOutOfAccount('account-A')).rejects.toMatchObject({ name: 'OwnerMismatchError' });
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(mockSignInAnonymously).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).not.toBeNull();
+  });
+
+  it('rechecks the live session if an auth change lands while A’s observation is in flight', async () => {
+    const { bumpAuthObservationRevision } = await import('./identity-owner');
+    let finish!: (value: unknown) => void;
+    mockGetSession.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: 'B', is_anonymous: false } } } });
+    const signout = signOutOfAccount('perm-uid');
+    bumpAuthObservationRevision();
+    finish(permanentSession());
+    await expect(signout).rejects.toMatchObject({ name: 'OwnerMismatchError' });
+    expect(mockSignOut).not.toHaveBeenCalled();
+  });
+
+  it.each([noSession, anonSession])('finishes an already expired account logout without signing out a later guest', async observed => {
+    stashPendingFlows(); mockGetSession.mockResolvedValue(observed());
+    await expect(signOutOfAccount('account-A')).resolves.toBe(true);
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
   it('signs out with scope:"local" — other devices keep their sessions — then re-anons', async () => {
     mockSignOut.mockResolvedValueOnce({ error: null });
     mockGetSession.mockResolvedValueOnce(noSession());

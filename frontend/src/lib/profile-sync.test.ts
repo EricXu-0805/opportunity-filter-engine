@@ -835,6 +835,27 @@ describe('skills are an operation, not a list', () => {
     expect(commitMock.mock.calls[1]?.[0].patch.skills).toEqual(combined.skills);
   });
 
+  it.each([
+    { level: 'experienced' as const, confirmed: false },
+    { level: 'expert' as const, confirmed: true },
+  ])('retries GitHub evidence imports without resetting the stored $level level', async ({ level, confirmed }) => {
+    const legacy = { name: 'PyTorch', source: 'github' as const, level, confirmed };
+    const imported = { ...legacy, level: 'beginner' as const, confirmed: false, evidence: 'repo vision: topic pytorch' };
+    const base = { ...FULL, skills: [legacy] };
+    loadProfileMock.mockResolvedValue(cloud(base, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    markSkillAdditions([imported], token);
+    const annotated = { ...legacy, evidence: imported.evidence };
+    const unrelated = { name: 'Git', level: 'expert' as const };
+    const remote = { ...base, skills: [legacy, unrelated] };
+    const retried = { ...base, skills: [annotated, unrelated] };
+    commitMock.mockResolvedValueOnce(conflict(remote, 8)).mockResolvedValueOnce(saved(retried, 9));
+    const result = await stageProfilePatch({ ...base, skills: [annotated] }, ['skills'], token);
+    expect(result.status).toBe('saved');
+    expect(commitMock.mock.calls[1]?.[0].patch.skills).toEqual(retried.skills);
+  });
+
   it('a remote LEVEL change on an untouched skill is not a conflict', async () => {
     const base = { ...FULL, skills: [{ name: 'Python', level: 'beginner' as const }] };
     loadProfileMock.mockResolvedValue(cloud(base, 7));

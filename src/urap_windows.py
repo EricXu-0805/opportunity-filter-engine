@@ -10,20 +10,30 @@ from zoneinfo import ZoneInfo
 SOURCE = "ucb_urap_projects"
 PACIFIC = ZoneInfo("America/Los_Angeles")
 _TERM = re.compile(r"(Spring|Summer|Fall|Winter) (20\d{2})", re.I)
-_MONTH = r"(" + "|".join(calendar.month_name[1:]) + ")"
-_DAY = r"(\d{1,2})(?:st|nd|rd|th)?"
-_WEEKDAY = r"(?:(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
-_DEADLINE = re.compile(
-    r"\bThe deadline to apply is\s+" + _WEEKDAY + _MONTH + r"\s+" + _DAY
-    + r"(?:,\s*(20\d{2}))?\s*(?:,\s*|\s+at\s+)(\d{1,2})(?::(\d{2}))?\s*(am|pm)"
-    + r"(?:\s+(?:noon|midnight))?\s*(?:\.|$)", re.I,
+_MONTHS = {name.lower(): i for i in range(1, 13) for name in (calendar.month_name[i], calendar.month_abbr[i])}
+_MONTH = r"(?P<month>" + "|".join(_MONTHS) + r")\.?"
+_DAY = r"(?P<day>\d{1,2})(?:st|nd|rd|th)?"
+_DATE = (r"(?:(?P<weekday>Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
+         + _MONTH + r"\s+" + _DAY + r"(?:,\s*(?P<year>20\d{2}))?")
+_CLOCK = (r"(?:(?P<noon>(?:12\s+)?noon)|(?P<hour>\d{1,2})(?::(?P<minute>\d{2}))?\s*"
+          r"(?P<meridiem>[ap])\.?m\.?(?:\s+(?P<qualifier>noon|midnight))?)"
+          r"(?:\s+(?P<zone>PT|PST|PDT)\b)?")
+_DEADLINE_LABEL = re.compile(r"\b(?:the deadline to apply is|applications are due)\s+", re.I)
+# A period can terminate a sentence or the abbreviation "p.m.". Do not
+# discard an unparsed time zone as if it began a new sentence.
+_END = (r"(?:\.?$|\.(?=\s+(?!(?:eastern|central|mountain|pacific|atlantic|alaska|hawaii|"
+        r"universal|local|greenwich|london)\b|(?-i:[A-Z]{2,6})\b)(?-i:[A-Z][a-z])))")
+_DEADLINES = (
+    re.compile(_DATE + r"(?:\s*,\s*(?:(?:at|by)\s+)?|\s+(?:at|by)\s+)" + _CLOCK + _END, re.I),
+    re.compile(_CLOCK + r"\s+on\s+" + _DATE + _END, re.I),
 )
-_OPENING = re.compile(r"\bEnter your application online beginning\s+" + _MONTH + r"\s+" + _DAY + r"\.", re.I)
+_OPENING = re.compile(r"\bEnter your application online beginning\s+" + _MONTH + r"\s+" + _DAY
+                      + r"(?=\.|\s+and the deadline\b)", re.I)
 _APPLICATION_CTA = " Apply through the URAP application portal."
 
 
 def _date(year: int, month: str, day: str) -> date:
-    return date(year, list(calendar.month_name).index(month.capitalize()), int(day))
+    return date(year, _MONTHS[month.lower()], int(day))
 
 
 def parse_project_notice(soup, title: str, url: str, observed_at: datetime) -> dict | None:
@@ -46,31 +56,59 @@ def parse_project_notice(soup, title: str, url: str, observed_at: datetime) -> d
     detail = {"term": term, "source_url": url, "observed_at": observed_at.isoformat()}
     if notice.lower().startswith("closed."):
         return {**detail, "status": "closed"}
-    matches = list(_DEADLINE.finditer(notice))
-    if len(matches) != 1:
+    labels = list(_DEADLINE_LABEL.finditer(notice))
+    if len(labels) != 1:
         return None
-    match = matches[0]
-    weekday, month, day, explicit_year, hour, minute, meridiem = match.groups()
+    label = labels[0]
+    for pattern in _DEADLINES:
+        match = pattern.match(notice, label.end())
+        if match is not None:
+            break
+    else:
+        return None
     year = int(term[-4:])
-    if (explicit_year and int(explicit_year) != year) or not 1 <= int(hour) <= 12:
+    month = _MONTHS[match["month"].lower()]
+    # A spring application round in late fall belongs to the previous
+    # calendar year, even if the notice omits both the weekday and year.
+    if term.lower().startswith("spring") and month >= 10:
+        # An undated, weekday-free December notice cannot establish the
+        # calendar year of a spring round on its own.
+        if not (match["year"] or match["weekday"]):
+            return None
+        year -= 1
+    if match["year"] and int(match["year"]) != year:
         return None
     try:
-        close = _date(year, month, day)
-        if weekday and close.strftime("%A").casefold() != weekday.casefold():
+        close = _date(year, match["month"], match["day"])
+        if match["weekday"] and close.strftime("%A").casefold() != match["weekday"].casefold():
             return None
-        closes_at = datetime(year, close.month, close.day, int(hour) % 12 + 12 * (meridiem.lower() == "pm"),
-                             int(minute or 0), tzinfo=PACIFIC)
+        hour = 12
+        if not match["noon"]:
+            hour = int(match["hour"])
+            if not 1 <= hour <= 12:
+                return None
+            hour = hour % 12 + 12 * (match["meridiem"].lower() == "p")
+            if match["qualifier"]:
+                expected = 12 if match["qualifier"].lower() == "noon" else 0
+                if hour != expected or int(match["minute"] or 0):
+                    return None
+        closes_at = datetime(year, month, close.day, hour, int(match["minute"] or 0), tzinfo=PACIFIC)
+        if match["zone"] and match["zone"].upper() not in {"PT", closes_at.tzname()}:
+            return None
         opening = _OPENING.search(notice)
         if "application online beginning" in notice.lower():
             if opening is None:
                 return None
-            opens = _date(year, *opening.groups())
+            opens_year = year
+            if month <= 3 and _MONTHS[opening["month"].lower()] >= 10:
+                opens_year -= 1
+            opens = _date(opens_year, opening["month"], opening["day"])
             if opens > close:
                 return None
             detail["opens_on"] = opens.isoformat()
     except ValueError:
         return None
-    return {**detail, "status": "open", "deadline_at": closes_at.isoformat(), "deadline_quote": match[0].strip()}
+    return {**detail, "status": "open", "deadline_at": closes_at.isoformat(), "deadline_quote": notice[label.start():match.end()]}
 
 
 def window_phase(detail: dict, now: datetime | None = None) -> str:

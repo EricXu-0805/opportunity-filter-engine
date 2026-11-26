@@ -54,7 +54,8 @@ import {
   type OAuthProvider,
   type SignInOutcome,
 } from '@/lib/supabase';
-import { dropBrowserPushSubscription, releasePushForSignOut } from '@/lib/push';
+import { synchronizePushOwner, releasePushForSignOut, withPushSessionLock } from '@/lib/push';
+import { OwnerMismatchError } from '@/lib/identity-owner';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -183,6 +184,7 @@ export default function AuthModal() {
   const [outcome, setOutcome] = useState<SignInOutcome | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const [retiredPushOwner, setRetiredPushOwner] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset transient state on close. Phase / email persist across same-
@@ -197,6 +199,7 @@ export default function AuthModal() {
       setSubmitting(false);
       setOutcome(null);
       setSignOutFailed(false);
+      setRetiredPushOwner(null);
     } else if (resolved === 'signin') {
       // Defer to next tick so the autofocus actually happens after the
       // backdrop fades in — focusing during the same frame causes jsdom
@@ -302,23 +305,36 @@ export default function AuthModal() {
   }, [lastProvider, submitting]);
 
   const confirmSignOut = useCallback(async () => {
+    const expectedUid = authState?.user?.id ?? null;
     setSigningOut(true);
     setSignOutFailed(false);
+    setRetiredPushOwner(null);
     try {
       // A push row can only be deleted by its own account's session, so it
       // goes while that session still exists.
-      const pushReleased = await releasePushForSignOut();
-      if (!(await signOutOfAccount())) {
+      const { release, signedOut } = await withPushSessionLock(async () => {
+        const release = await releasePushForSignOut(expectedUid);
+        let signedOut = false;
+        try {
+          signedOut = await signOutOfAccount(expectedUid);
+          return { release, signedOut };
+        } finally {
+          if (!signedOut) {
+            if (release.outcome === 'browser-unsubscribed') setRetiredPushOwner(expectedUid);
+            await release.restore?.();
+          }
+        }
+      });
+      if (!signedOut) {
         // A failed logout request leaves the account session in place, but an
         // expired session whose refresh is refused is dropped and the error
         // still comes back; the message reads the live auth state for that.
         setSignOutFailed(true);
         return;
       }
-      // The row outlived the session that could delete it. Only a dead
-      // endpoint keeps that account's reminders off this browser now.
-      if (!pushReleased) {
-        await dropBrowserPushSubscription()
+      // Reconcile the live session: another tab may already have bound a new endpoint.
+      if (release.outcome === 'muted') {
+        await synchronizePushOwner()
           .catch((err) => console.warn('[ofe] push endpoint survived sign-out:', err));
       }
       // Tell GuestBanner this was a deliberate sign-out (not first-visit
@@ -328,12 +344,15 @@ export default function AuthModal() {
         sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
       } catch { /* private mode */ }
       closeModal();
-    } catch {
-      setSignOutFailed(true);
+    } catch (error) {
+      // This confirmation belonged to the previous account. Dismiss it without
+      // setting a sign-out banner or reporting a failure for the new account.
+      if (error instanceof OwnerMismatchError) closeModal();
+      else setSignOutFailed(true);
     } finally {
       setSigningOut(false);
     }
-  }, [closeModal]);
+  }, [authState, closeModal]);
 
   if (!open) return null;
 
@@ -685,6 +704,9 @@ export default function AuthModal() {
                 {isSignedIn
                   ? t('auth.modal.signOutConfirm.failedStillSignedIn')
                   : t('auth.modal.signOutConfirm.failed')}
+                {isSignedIn && retiredPushOwner === authState?.user?.id && (
+                  <> {t('auth.modal.signOutConfirm.notificationsRetired')}</>
+                )}
               </p>
             )}
 
