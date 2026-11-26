@@ -59,9 +59,28 @@ s=s.replace('            except Exception as exc:errors[oid]=str(exc)[:800]','''
 s=s.replace('out/"two-sampled-dates.json"','out/"two-verified-host-windows.json"')
 s=s.replace('from urllib.parse import quote',
             'from urllib.parse import quote\nfrom verify_berkeley_coverage_card import BerkeleyCoverageCard')
+# Berkeley's exact release count was a B12 check. Later academic-route
+# checks use the same form without asserting a historical campus count.
+academic = sys.argv[2:] == ["academic"]
+assert academic or len(sys.argv) == 2
+campus_step = "        enter_results(page)"
+if not academic:
+    campus_step = ('        coverage = BerkeleyCoverageCard(page, receipt, out)\n'
+                   '        enter_results(page, before_select=coverage.verify)')
 s=s.replace('        enter_results(page)',
             f"        assert 'data-release-sha=\"{sha}\"' in ctx.request.get(site).text()\n"
-            '        receipt["frontend_release"] = receipt["backend_release"]\n'
-            '        coverage = BerkeleyCoverageCard(page, receipt, out)\n'
-            '        enter_results(page, before_select=coverage.verify)')
+            '        receipt["frontend_release"] = receipt["backend_release"]\n' + campus_step)
+if academic:
+    s=s.replace('                assert expected in body', '''                e = fields["eligibility"]
+                majors = (["Biomedical science","Behavioral science"] if crisp else
+                          ["Mathematics","Statistics","Computer Science","Social science"])
+                assert d["eligibility"]["majors"] == e["explicit"]["majors"] == majors
+                assert "majors_attribution" not in d
+                assert e["quotes"]["majors"]["source_url"].startswith(
+                    "https://cancer.iu.edu/" if crisp else "https://www.smu.edu/")
+                phrase = "incoming first-year students" if crisp else "two academic routes"
+                assert phrase in body and all(major in body for major in majors)
+                result["academic_routes"] = {"majors":majors, "source":e["quotes"]["majors"]["source_url"],
+                                             "student_summary":d["description_clean"].split("\\n", 1)[0]}
+                assert expected in body''')
 p.write_text(s)

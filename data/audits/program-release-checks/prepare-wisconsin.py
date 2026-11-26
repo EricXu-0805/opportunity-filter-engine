@@ -2,7 +2,9 @@
 from pathlib import Path
 import subprocess,sys
 p=Path('data/audits/verify_m23_manual_20261126.py')
-sha,phase=sys.argv[1:]
+sha,phase=sys.argv[1:3]
+student_terms = sys.argv[3:] == ['student-terms']
+assert student_terms or len(sys.argv) == 3
 assert len(sha)==40 and set(sha)<=set("0123456789abcdef")
 assert phase in ('calendar','identity','refreshed')
 base=subprocess.check_output(['git','show','7c059d9b7:'+str(p)],text=True)
@@ -50,4 +52,42 @@ with sync_playwright() as pw:
     finally:
         (out/"wisconsin-after.json").write_text(json.dumps(receipt,indent=2)+"\\n");print(json.dumps(receipt));browser.close()
 '''
+if student_terms:
+    s=s.replace('school = "uiuc" if student == "uiuc" else "ucb"', 'school = student')
+    s=s.replace('college = "College of Letters and Science" if school == "ucb" else "Grainger College of Engineering"',
+                'college = "College of Letters and Science" if school == "ucb" else "College of Letters & Science"')
+    s=s.replace('("#major", "Integrative Biology")',
+                '("#major", "Integrative Biology" if school == "ucb" else "Molecular and Cell Biology")')
+    s=s.replace('label="Sophomore" if student == "ucb-sophomore" else "Junior"', 'label="Freshman"')
+    marker = '        for oid in source_ids:'
+    assert s.count(marker) == 1
+    s=s.replace(marker, '''        receipt["confirmed_paid_for_students"] = {}
+        for campus in ("ucb", "wisc"):
+            if campus == "wisc":
+                make_student(page, campus)
+            def requested(response):
+                if not is_view(response):
+                    return False
+                post = response.request.post_data_json or {}
+                view, profile = post.get("view", {}), post.get("profile", {})
+                return (view.get("paid") == "yes" and view.get("search_query") == q
+                        and profile.get("home_school") == campus and profile.get("year", "").lower() == "freshman")
+            with page.expect_response(requested, timeout=90000) as res:
+                page.goto(site + "/results?tab=all&ai=0&paid=yes&q=" + quote(q), wait_until="domcontentloaded")
+            d=res.value.json()
+            ids=[r["opportunity_id"] for r in d["results"]]
+            assert res.value.ok and set(ids)==expected_by_source[0] and len(ids)==d["filtered_total"]
+            expect(page.get_by_role("combobox",name="Pay",exact=True)).to_have_value("yes")
+            card=page.locator("#match-card-"+host);expect(card).to_be_visible(timeout=60000)
+            text=card.inner_text(); assert "$7,000" in text and "Pay not confirmed" not in text
+            receipt["confirmed_paid_for_students"][campus]={"ids":ids,"count":d["filtered_total"],"host_card":text}
+            card.screenshot(path=out/("confirmed-paid-"+campus+".png"))
+        for oid in source_ids:''')
+    s=s.replace('            page.screenshot(path=out/(oid+"-published-window.png"))', '''            if phase != "refreshed" or oid != alias:
+                assert d["paid"]=="yes" and not d.get("paid_attribution") and not d.get("compensation_attribution")
+                visible = receipt[oid]["visible"]
+                for claim in ("UW–Madison students may apply", "$7,000", "10 weeks", "funding"):
+                    assert claim in visible
+                assert "excluded by funding rules" not in visible and "Pay not confirmed" not in visible
+            page.screenshot(path=out/(oid+"-published-window.png"))''')
 p.write_text(s.replace('__PHASE__',phase).replace('__DEPLOY__',sha))
