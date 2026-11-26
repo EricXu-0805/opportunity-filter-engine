@@ -1,0 +1,24 @@
+name: Verify the B20 confirmed résumé on the official site
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-official-b20-confirmed-resume.yml']
+permissions:
+  contents: read
+jobs:
+  official:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      OFE_EXPECTED_SITE_SHA: f30443aa8654bd1c0d093ccd6fd9c067c3f4148a
+      M17_RESUME_EXPECT_FIXED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - name: Verify the official PDF picker, personal confirmation and clean-browser matching
+        run: python -u scripts/verify_m17_resume_confirmed.py
