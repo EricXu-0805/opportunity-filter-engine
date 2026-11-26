@@ -1,19 +1,53 @@
-name: Verify deployed profile conflict recovery
+name: Verify M212 with disposable Auth, PostgREST and Chromium
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths:
-      - .github/workflows/verify-profile-conflict.yml
-      - scripts/verify_m212_browser.py
+    paths: ['.github/workflows/verify-profile-conflict.yml', 'scripts/verify_m212_supabase_browser.mjs']
 permissions:
   contents: read
 jobs:
   browser:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
-      - run: python -u scripts/verify_m212_browser.py
+      - name: Check out the reviewed application commit
+        uses: actions/checkout@v6
+        with:
+          ref: bc956e1a016ed30065a6d8ddbf840b8bb4ef82c1
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Start disposable profile database, Auth and PostgREST
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/m212"
+          mkdir -p "$fixture"; cd "$fixture"; supabase init
+          mkdir -p supabase/migrations
+          src="$GITHUB_WORKSPACE/product/supabase/migrations"
+          cp "$src"/{001_,002_,003_,006_,017_,029_,20261011230618_}*.sql supabase/migrations/
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -Ei 'error|failed|fatal|denied' "$fixture/start.log" | tail -8 | cut -c1-220 || true
+            exit 1
+          fi
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'
+      - name: Install locked frontend and Chromium
+        working-directory: product/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium > "$RUNNER_TEMP/m212-browser-install.log" 2>&1
+      - name: Exercise the product importer and check the physical row after a fresh browser read
+        working-directory: product
+        run: |
+          cp ../scripts/verify_m212_supabase_browser.mjs frontend/verify-m212-isolated.mjs
+          node frontend/verify-m212-isolated.mjs "$RUNNER_TEMP/m212/status.json"
