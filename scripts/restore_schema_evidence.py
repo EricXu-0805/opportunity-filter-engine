@@ -10,6 +10,7 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
 
 METHOD = "postgres-application-ddl-and-migrations-v2"
@@ -60,7 +61,7 @@ def _digest(value: list) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
-def observe(project: str, backup: str) -> dict:
+def observe(project: str, backup: str, *, include_row_counts: bool = False) -> dict:
     """Use the named project's direct DB endpoint. Read only catalogue and ledger metadata."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
@@ -71,10 +72,11 @@ def observe(project: str, backup: str) -> dict:
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10",
                PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=20000 -c search_path=pg_catalog")
+    query = restore_row_evidence.capture_query(QUERY) if include_row_counts else QUERY
     try:
         result = subprocess.run(
             ["psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", f"db.{project}.supabase.co",
-             "-p", "5432", "-U", "postgres", "-d", "postgres", "-c", QUERY],
+             "-p", "5432", "-U", "postgres", "-d", "postgres", "-c", query],
             capture_output=True, text=True, timeout=35, check=True, env=env,
         )
     except (OSError, subprocess.SubprocessError):
@@ -93,13 +95,20 @@ def observe(project: str, backup: str) -> dict:
     # Use only filenames matched to actually observed rows. Comparing against the
     # gate's candidate hash is meaningful only when parity was one-to-one.
     names = sorted(item["file"] for item in comparison["matched"])
-    return {"method": METHOD, "project_ref": project, "source_backup_id": backup,
-            "observed_at": datetime.now(UTC).isoformat(),
-            "columns_sha256": _digest(columns), "column_count": len(columns),
-            "ddl_sha256": ddl_digest, "ddl_count": ddl_count,
-            "history_sha256": _digest(migrations), "migration_count": len(migrations),
-            "migration_parity": comparison["in_parity"],
-            "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16]}
+    observation = {
+        "method": METHOD, "project_ref": project, "source_backup_id": backup,
+        "observed_at": datetime.now(UTC).isoformat(),
+        "columns_sha256": _digest(columns), "column_count": len(columns),
+        "ddl_sha256": ddl_digest, "ddl_count": ddl_count,
+        "history_sha256": _digest(migrations), "migration_count": len(migrations),
+        "migration_parity": comparison["in_parity"],
+        "matched_filenames_digest": hashlib.sha256("\n".join(names).encode()).hexdigest()[:16],
+    }
+    if include_row_counts:
+        if not restore_row_evidence.complete(catalogue.get("row_counts")):
+            raise ValueError("source table counts incomplete")
+        observation["row_counts"] = catalogue["row_counts"]
+    return observation
 
 
 def manifest_bytes(observation: dict) -> bytes:
@@ -120,9 +129,14 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
     if not isinstance(part, dict) or not _valid_shape(part):
         return None
     # A source-supplied JSON file is private. Copy only validated metadata.
-    return {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
+    validated = {key: part[key] for key in ("method", "project_ref", "source_backup_id", "observed_at",
                                         "columns_sha256", "column_count", "ddl_sha256", "ddl_count", "history_sha256", "migration_count",
                                         "migration_parity", "matched_filenames_digest")}
+    if "row_counts" in part:
+        if not restore_row_evidence.complete(part["row_counts"]):
+            return None
+        validated["row_counts"] = part["row_counts"]
+    return validated
 
 
 def _valid_shape(part: dict) -> bool:
@@ -187,7 +201,7 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     try:
-        observation = observe(args.project_ref, args.source_backup_id)
+        observation = observe(args.project_ref, args.source_backup_id, include_row_counts=True)
         with args.out.open("xb") as dest:
             dest.write(manifest_bytes(observation))
     except (ValueError, OSError) as exc:

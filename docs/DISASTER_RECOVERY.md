@@ -131,6 +131,7 @@ readable and need this additional evidence to clear the current gate.
   "application-materials":[], "tracker-attachment-versions":null}}
 ```
 
+Generate the inventory and load its objects into scratch using the [storage archive procedure](RESTORE_STORAGE_ARCHIVE.md).
 Keep the inventory and both backup receipts private. Restore the storage
 backup into the scratch project before running step 3.
 
@@ -171,8 +172,7 @@ by clause. That file is the deliverable; the markdown row in §4 is a human
 index of it, not the evidence itself.
 
 1. **Schema**: every required table is reachable. The drill compares independently observed public/private columns, application DDL and applied migrations across the source and scratch projects, and checks the applied identities against the candidate filenames.
-2. **Data**: representative user-owned tables came back populated. An empty
-   restore satisfies every schema check and none of the point of one.
+2. **Data**: the scratch count for each of the 23 required application tables matches its count in the pinned source catalogue. Keep application data frozen from source capture through the backup, or capture against the immutable recovery point. A prior receipt without source counts leaves data recovery unverified. Equal row counts verify totals only.
 3. **RLS**: an anonymous caller sees no user-owned rows. This is the leg a
    service-role-only check cannot make — a restore that brings back the tables
    but not their policies reads perfectly well to an admin probe while exposing

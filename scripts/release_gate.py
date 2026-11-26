@@ -1269,6 +1269,16 @@ def check_restore_drill(migrations: dict | None = None) -> dict:
         return _gate("restore_drill", FAIL if storage_status == FAIL else UNVERIFIED,
                      f"drill {drill_id} has incomplete or inconsistent attachment byte evidence",
                      evidence, reason="attachment_integrity_unproven")
+    from scripts.restore_row_evidence import compare as compare_row_counts  # noqa: PLC0415
+
+    data = details.get("data") if isinstance(details, dict) else None
+    data_status, different = compare_row_counts(record["source_schema_version"].get("row_counts"),
+                                                data.get("row_counts") if isinstance(data, dict) else None)
+    if data_status != PASS:
+        evidence["different_tables"] = different
+        return _gate("restore_drill", data_status,
+                     f"drill {drill_id} lacks matching per-table counts from the selected backup and scratch",
+                     evidence, reason="row_count_comparison_incomplete")
     return _gate("restore_drill", PASS,
                  f"drill {drill_id} restored {record.get('source_backup_id')} into "
                  f"{record.get('scratch_environment')} and validated schema, data, "

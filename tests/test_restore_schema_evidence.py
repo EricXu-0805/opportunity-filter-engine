@@ -113,6 +113,7 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
                 "history_sha256": "b" * 64,
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"]}
+    part["row_counts"] = dict.fromkeys(drill._REQUIRED_TABLES, 1)
     source_path = tmp_path / "source-schema.json"
     source_path.write_bytes(schema.manifest_bytes(part))
     body = b"synthetic"
@@ -221,5 +222,27 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
         after_view = json.loads(sql(schema.QUERY))
         assert after_view["columns"] == after_column["columns"]
         assert after_view["ddl_sha256"] != after_column["ddl_sha256"]
+
+        # The same psql session fixture exercises both backup capture queries on synthetic tables.
+        from scripts import restore_row_evidence
+
+        sql(";".join(f"CREATE TABLE public.{table}(n integer)" for table in restore_row_evidence.TABLES))
+        sql("INSERT INTO public.favorites VALUES (1),(2); INSERT INTO public.profiles VALUES (9)")
+        row_capture = json.loads(sql(restore_row_evidence.capture_query(schema.QUERY)))["row_counts"]
+        assert row_capture == dict.fromkeys(restore_row_evidence.TABLES, 0) | {"favorites": 2, "profiles": 1}
+        sql("CREATE DATABASE private_archive_fixture")
+        db = [bindir / "psql", "-XqAtw", "-v", "ON_ERROR_STOP=1", "-h", tmp_path, "-U", "drill",
+              "-d", "private_archive_fixture"]
+        subprocess.run([*db, "-c", "CREATE SCHEMA storage; CREATE TABLE storage.buckets(id text, public boolean);"
+                        "CREATE TABLE storage.objects(bucket_id text, name text, metadata jsonb);"
+                        "INSERT INTO storage.buckets VALUES ('tracker-attachments', false), ('application-materials', false);"
+                        "INSERT INTO storage.objects VALUES ('tracker-attachments', 'mock/user.pdf',"
+                        "jsonb_build_object('size', 17))"], check=True, capture_output=True, timeout=15)
+        command = [*db, "-v", "source_ref=source", "-v", "backup_id=point", "-f",
+                   Path(__file__).resolve().parents[1] / "scripts/restore_storage_catalogue.sql"]
+        exported = json.loads(subprocess.check_output(command, text=True, timeout=15))
+        assert exported == {"source_environment": "source", "source_backup_id": "point", "buckets": {
+            "tracker-attachments": {"public": False, "objects": {"mock/user.pdf": 17}},
+            "application-materials": {"public": False, "objects": {}}}}
     finally:
         subprocess.run([*ctl, "-m", "immediate", "stop"], check=True, capture_output=True, timeout=30)

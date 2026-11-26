@@ -23,21 +23,13 @@ import httpx
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
-from scripts import restore_schema_evidence  # noqa: E402
+from scripts import restore_row_evidence, restore_schema_evidence  # noqa: E402
 from scripts.release_gate import migration_set_identity  # noqa: E402
 from scripts.restore_attachment_evidence import attachment_verdict, validate_attachments  # noqa: E402
 
 # Every table the application depends on, from the committed migration set.
 # A restore that brings back the database but not these is not a recovery.
-_REQUIRED_TABLES = (
-    "profiles", "favorites", "interactions", "profile_versions",
-    "interaction_status_changes", "saved_searches", "match_feedback",
-    "push_subscriptions", "analytics_events", "waitlist", "feedback",
-    "feedback_events", "merged_devices", "merge_grants", "orders",
-    "usage_events", "resume_renovations", "resume_renovation_versions",
-    "professor_follows", "professor_update_reads", "ops_incidents",
-    "ops_incident_events", "ops_heartbeats",
-)
+_REQUIRED_TABLES = restore_row_evidence.TABLES
 
 # Tables whose rows belong to one user. Under RLS an anonymous caller must see
 # none of them — that is the property a restore has to bring back, and the one
@@ -76,10 +68,9 @@ def _count(client: httpx.Client, base: str, key: str, table: str,
         return None, 0, f"transport error: {exc}"
     content_range = resp.headers.get("content-range", "")
     total: int | None = None
-    if "/" in content_range:
-        tail = content_range.rsplit("/", 1)[-1]
-        if tail.isdigit():
-            total = int(tail)
+    match = re.fullmatch(r"(?:\*|[0-9]+-[0-9]+)/([0-9]+)", content_range)
+    if match:
+        total = int(match.group(1))
     return total, resp.status_code, resp.text[:200] if resp.status_code >= 400 else ""
 
 
@@ -105,31 +96,21 @@ def validate_schema(client: httpx.Client, base: str, service_key: str) -> dict:
     }
 
 
-def validate_data(client: httpx.Client, base: str, service_key: str) -> dict:
-    """Representative rows came back, not just empty tables.
-
-    An empty restore satisfies every schema check and none of the point of
-    one, so this records the counts and fails when the whole user-owned
-    surface is empty — the shape a restore-from-the-wrong-point produces.
-    """
+def validate_data(client: httpx.Client, base: str, service_key: str, expected_counts: dict | None = None) -> dict:
+    """Read every application table and compare exact totals with the selected recovery point."""
     counts: dict[str, int | None] = {}
-    unreadable: list[str] = []
-    for table in _USER_OWNED_TABLES:
+    unreadable = []
+    for table in _REQUIRED_TABLES:
         total, status, _note = _count(client, base, service_key, table)
         if not 200 <= status < 300 or total is None:
             unreadable.append(table)
+            total = None
         counts[table] = total
-    known = [v for v in counts.values() if isinstance(v, int)]
-    populated = [t for t, v in counts.items() if isinstance(v, int) and v > 0]
-    result = "PASS"
-    if unreadable or not known:
-        result = "FAIL"
-    elif not populated:
-        result = "FAIL"
+    result, different = restore_row_evidence.compare(expected_counts, counts)
     return {
-        "result": result,
+        "result": "FAIL" if unreadable else result,
         "row_counts": counts,
-        "populated_tables": populated,
+        "different_tables": different,
         "unreadable_tables": unreadable,
     }
 
@@ -220,7 +201,7 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
                       f"errors {schema['errors']}")
     if data["result"] != "PASS":
         issues.append(f"data: unreadable {data['unreadable_tables']}, "
-                      f"populated {data['populated_tables']}")
+                      f"different {data['different_tables']} (source totals required)")
     if rls["result"] != "PASS":
         issues.append(f"rls: anon could read {rls['anon_readable']}")
     if app["result"] != "PASS":
@@ -316,7 +297,7 @@ def main() -> int:
             print("::warning::scratch schema observation unavailable")
     with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
         schema = validate_schema(client, base, service_key)
-        data = validate_data(client, base, service_key)
+        data = validate_data(client, base, service_key, (source_schema or {}).get("row_counts"))
         rls = validate_rls(client, base, anon_key)
         app = validate_application(client, base, anon_key, args.api_base)
 
@@ -337,7 +318,7 @@ def main() -> int:
     print(f"schema:    {schema['result']} "
           f"({schema['present']}/{schema['required_tables']} tables)")
     print(f"data:      {data['result']} "
-          f"({len(data['populated_tables'])} populated table(s))")
+          f"({len(data['different_tables'])} table count differences)")
     print(f"rls:       {rls['result']}")
     print(f"attachments: {record['attachment_validation']}")
     print(f"app smoke: {app['result']}")
