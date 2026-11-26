@@ -1,0 +1,875 @@
+{
+  "observed_utc": "2026-11-26T14:47:16.963299+00:00",
+  "start_release": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "end_release": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "rows": [
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "faculty": "Patricia Akhimie",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-19ef3e36",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4290
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie",
+      "returned_id": "faculty-georgetown-engl-19ef3e36",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false,
+      "page": "https://joinalab.com/opportunities/faculty-georgetown-engl-19ef3e36",
+      "page_requests": [
+        {
+          "http": 200,
+          "ms": 6601
+        }
+      ],
+      "page_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf"
+    },
+    {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "faculty": "Randall Bass",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-6746abcd",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4397
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwokAAC/randall-bass?searchType=Contact-Info&searchText=randall%20bass",
+      "returned_id": "faculty-georgetown-engl-6746abcd",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false,
+      "page": "https://joinalab.com/opportunities/faculty-georgetown-engl-6746abcd",
+      "page_requests": [
+        {
+          "http": 200,
+          "ms": 5488
+        }
+      ],
+      "page_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf"
+    },
+    {
+      "id": "faculty-georgetown-engl-3f3f47fd",
+      "faculty": "Jessica Batychenko",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-3f3f47fd",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3125
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003UH000008FwblYAC/jessica-batychenko?searchType=Contact-Info&searchText=jessica%20batychenko",
+      "returned_id": "faculty-georgetown-engl-3f3f47fd",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-60a11198",
+      "faculty": "Caetlin Benson-Allott",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-60a11198",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2124
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWn1AAG/caetlin-bensonallott?searchType=Contact-Info&searchText=caetlin%20benson",
+      "returned_id": "faculty-georgetown-engl-60a11198",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-f9d788e9",
+      "faculty": "Alex Brostoff",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-f9d788e9",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4689
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003UH00000Vw8EhYAJ/alex-brostoff",
+      "returned_id": "faculty-georgetown-engl-f9d788e9",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-912a5304",
+      "faculty": "Elizabeth Catchmark (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-912a5304",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4676
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jMw5QIAS/elizabeth-catchmark?searchType=Contact-Info&searchText=catchmark",
+      "returned_id": "faculty-georgetown-engl-912a5304",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-a9eb9b96",
+      "faculty": "Manu Samriti Chander (He/Him/His)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-a9eb9b96",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3742
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jN3TiIAK/manu-chander?searchType=Contact-Info&searchText=chander",
+      "returned_id": "faculty-georgetown-engl-a9eb9b96",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-1cd68f39",
+      "faculty": "Maureen Corrigan",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-1cd68f39",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3716
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVHiAAO/maureen-corrigan?searchType=Contact-Info&searchText=maureen%20corrigan",
+      "returned_id": "faculty-georgetown-engl-1cd68f39",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-e1e0eacd",
+      "faculty": "Margaret Debelius",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-e1e0eacd",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4081
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RZgNAAW/maggie-debelius?searchType=Contact-Info&searchText=margaret%20debelius",
+      "returned_id": "faculty-georgetown-engl-e1e0eacd",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-7b76c532",
+      "faculty": "Jennifer Natalya Fink (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-7b76c532",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4006
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWdRAAW/jennifer-natalya-fink?searchType=Contact-Info&searchText=jennifer%20natalya%20fink",
+      "returned_id": "faculty-georgetown-engl-7b76c532",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false,
+      "page": "https://joinalab.com/opportunities/faculty-georgetown-engl-7b76c532",
+      "page_requests": [
+        {
+          "http": 200,
+          "ms": 4049
+        }
+      ],
+      "page_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf"
+    },
+    {
+      "id": "faculty-georgetown-engl-cbc96696",
+      "faculty": "Carolyn Forché",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-cbc96696",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3249
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgPhAAK/carolyn-forch%C3%A9?searchType=Contact-Info&searchText=carolyn%20forche",
+      "returned_id": "faculty-georgetown-engl-cbc96696",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-b55b14a1",
+      "faculty": "David Gewanter (He/Him/His)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-b55b14a1",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3154
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RfVhAAK/david-s-gewanter-phd?searchType=Contact-Info&searchText=david%20gewanter",
+      "returned_id": "faculty-georgetown-engl-b55b14a1",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-95ad177a",
+      "faculty": "John Glavin",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-95ad177a",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2406
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgkYAAS/john-glavin?searchType=Contact-Info&searchText=john%20glavin",
+      "returned_id": "faculty-georgetown-engl-95ad177a",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-b072d3d6",
+      "faculty": "Nathan Hensley (He/Him/His)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-b072d3d6",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3306
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014Tw4pAAC/nathan-hensley?searchType=Contact-Info&searchText=nathan%20hensley",
+      "returned_id": "faculty-georgetown-engl-b072d3d6",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-888650c1",
+      "faculty": "Brian Hochman (He/Him/His)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-888650c1",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3408
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rf5JAAS/brian-hochman?searchType=Contact-Info&searchText=brian%20hochman",
+      "returned_id": "faculty-georgetown-engl-888650c1",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "faculty": "Marisa Holmes",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-be9bd333",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3540
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "returned_id": "faculty-georgetown-engl-be9bd333",
+      "public_url": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "public_source_url": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": true
+    },
+    {
+      "id": "faculty-georgetown-engl-e97a4daf",
+      "faculty": "Fatima Jafar",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-e97a4daf",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3562
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003UH000011D0p9YAC/fatima-jafar?searchType=Contact-Info&searchText=fatima%20jafar",
+      "returned_id": "faculty-georgetown-engl-e97a4daf",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false,
+      "page": "https://joinalab.com/opportunities/faculty-georgetown-engl-e97a4daf",
+      "page_requests": [
+        {
+          "http": 200,
+          "ms": 4291
+        }
+      ],
+      "page_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf"
+    },
+    {
+      "id": "faculty-georgetown-engl-42b9eeaa",
+      "faculty": "M. Lindsay Kaplan (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-42b9eeaa",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3472
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RePLAA0/m-lindsay-kaplan?searchType=Contact-Info&searchText=lindsay%20kaplan",
+      "returned_id": "faculty-georgetown-engl-42b9eeaa",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-c5c27dac",
+      "faculty": "Peggy Lee (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-c5c27dac",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4765
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cJxCrQAK/peggy-lee?searchType=Contact-Info&searchText=peggy%20lee",
+      "returned_id": "faculty-georgetown-engl-c5c27dac",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-c3711a29",
+      "faculty": "Sherry Linkon",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-c3711a29",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3843
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014TmvhAAC/sherry-linkon?searchType=Contact-Info&searchText=sherry%20linkon",
+      "returned_id": "faculty-georgetown-engl-c3711a29",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-983db631",
+      "faculty": "David Lipscomb",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-983db631",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 5952
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rjf5AAC/david-lipscomb?searchType=Contact-Info&searchText=david%20lipscomb",
+      "returned_id": "faculty-georgetown-engl-983db631",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-0b30af59",
+      "faculty": "Eddie Maloney",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-0b30af59",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 5852
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney",
+      "returned_id": "faculty-georgetown-engl-0b30af59",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-0b965fab",
+      "faculty": "Monica Maxwell",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-0b965fab",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3172
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RBIXAA4/monica-maxwell-phd?searchType=Contact-Info&searchText=monica%20maxwell",
+      "returned_id": "faculty-georgetown-engl-0b965fab",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-4cc038ec",
+      "faculty": "Mark McMorris",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-4cc038ec",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3052
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RcRSAA0/mark-mcmorris?searchType=Contact-Info&searchText=mark%20mcmorris",
+      "returned_id": "faculty-georgetown-engl-4cc038ec",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-eabebde9",
+      "faculty": "Sarah McNamer",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-eabebde9",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2894
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer",
+      "returned_id": "faculty-georgetown-engl-eabebde9",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-3628e405",
+      "faculty": "Lori Merish (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-3628e405",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2843
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014ReiYAAS/lori-merish?searchType=Contact-Info&searchText=lori%20merish",
+      "returned_id": "faculty-georgetown-engl-3628e405",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-66c04eaa",
+      "faculty": "Angelyn L. Mitchell",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-66c04eaa",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3961
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell",
+      "returned_id": "faculty-georgetown-engl-66c04eaa",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-b09a1a61",
+      "faculty": "Amani Morrison (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-b09a1a61",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4109
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison",
+      "returned_id": "faculty-georgetown-engl-b09a1a61",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-a3879e7d",
+      "faculty": "Patrick R. O’Malley",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-a3879e7d",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2854
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWRFAA4/patrick-omalley?searchType=Contact-Info&searchText=patrick%20o%27malley",
+      "returned_id": "faculty-georgetown-engl-a3879e7d",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-a9bfca89",
+      "faculty": "Lindsey O’Neil",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-a9bfca89",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2694
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cu3B2QAI/lindsey-oneil?searchType=Contact-Info&searchText=o%27neil",
+      "returned_id": "faculty-georgetown-engl-a9bfca89",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-7aeebe3d",
+      "faculty": "J Palmeri (They/He)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-7aeebe3d",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3687
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jOsa6IAC/j-palmeri?searchType=Contact-Info&searchText=palmeri",
+      "returned_id": "faculty-georgetown-engl-7aeebe3d",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false,
+      "page": "https://joinalab.com/opportunities/faculty-georgetown-engl-7aeebe3d",
+      "page_requests": [
+        {
+          "http": 200,
+          "ms": 3985
+        }
+      ],
+      "page_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf"
+    },
+    {
+      "id": "faculty-georgetown-engl-b6ef30b2",
+      "faculty": "Cóilín Parsons",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-b6ef30b2",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3693
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfI6AAK/c%C3%B3il%C3%ADn-parsons?searchType=Contact-Info&searchText=coilin%20parsons",
+      "returned_id": "faculty-georgetown-engl-b6ef30b2",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-34f4f949",
+      "faculty": "Seth Perlow",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-34f4f949",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3125
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014SeXiAAK/seth-perlow?searchType=Contact-Info&searchText=seth%20perlow",
+      "returned_id": "faculty-georgetown-engl-34f4f949",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-a58be95d",
+      "faculty": "Amanda Phillips (They/He/She)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-a58be95d",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3145
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014SM4eAAG/amanda-phillips?searchType=Contact-Info&searchText=amanda%20phillips",
+      "returned_id": "faculty-georgetown-engl-a58be95d",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-347f78f1",
+      "faculty": "Libbie S. Rifkin",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-347f78f1",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2285
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWqtAAG/libbie-rifkin?searchType=Contact-Info&searchText=libbie%20rifkin",
+      "returned_id": "faculty-georgetown-engl-347f78f1",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-a672670d",
+      "faculty": "Nicole Rizzuto",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-a672670d",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3588
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfTfAAK/nicole-rizzuto?searchType=Contact-Info&searchText=nicole%20rizzuto",
+      "returned_id": "faculty-georgetown-engl-a672670d",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-598b7188",
+      "faculty": "Phil Sandick",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-598b7188",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3584
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gIAAQ/phil-sandick?searchType=Contact-Info&searchText=phil%20sandick",
+      "returned_id": "faculty-georgetown-engl-598b7188",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-14396d28",
+      "faculty": "Daniel Shore",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-14396d28",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3216
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVhhAAG/daniel-shore?searchType=Contact-Info&searchText=daniel%20shore",
+      "returned_id": "faculty-georgetown-engl-14396d28",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-5574b293",
+      "faculty": "Christine So",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-5574b293",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 3345
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwMpAAK/christine-so?searchType=Contact-Info&searchText=christine%20so",
+      "returned_id": "faculty-georgetown-engl-5574b293",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-e6b06bba",
+      "faculty": "Mecca Jamilah Sullivan",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-e6b06bba",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2893
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002XGKx2QAH/mecca-sullivan?searchType=Contact-Info&searchText=mecca%20sullivan",
+      "returned_id": "faculty-georgetown-engl-e6b06bba",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-d3964c5c",
+      "faculty": "Rebecca Tarsa",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-d3964c5c",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 2784
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gSAAQ/rebecca-tarsa?searchType=Contact-Info&searchText=rebecca%20tarsa",
+      "returned_id": "faculty-georgetown-engl-d3964c5c",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-fbdd4dd9",
+      "faculty": "Kathryn Temple (She/Her/Hers)",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-fbdd4dd9",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4031
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014RdTbAAK/kathryn-d-temple",
+      "returned_id": "faculty-georgetown-engl-fbdd4dd9",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false
+    },
+    {
+      "id": "faculty-georgetown-engl-414f6f7a",
+      "faculty": "Duncan Wu",
+      "api": "https://joinalab.com/api/opportunities/faculty-georgetown-engl-414f6f7a",
+      "api_requests": [
+        {
+          "http": 200,
+          "ms": 4025
+        }
+      ],
+      "school_card_destination": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rr5BAAS/duncan-wu?searchType=Contact-Info&searchText=duncan%20wu",
+      "returned_id": "faculty-georgetown-engl-414f6f7a",
+      "public_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "public_source_url": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "active": null,
+      "source_date": null,
+      "matches_personal_url": false,
+      "page": "https://joinalab.com/opportunities/faculty-georgetown-engl-414f6f7a",
+      "page_requests": [
+        {
+          "http": 200,
+          "ms": 6248
+        }
+      ],
+      "page_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf"
+    }
+  ],
+  "public_ids_returned": 43,
+  "true_personal_destinations": 1,
+  "shared_directory_destinations": 42,
+  "external_named_in_chrome": [
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "campus_roster_name": "Patricia Akhimie",
+      "public_personal_heading": "Patricia Akhimie"
+    },
+    {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "campus_roster_name": "Randall Bass",
+      "public_personal_heading": "Randall J Bass"
+    },
+    {
+      "id": "faculty-georgetown-engl-b55b14a1",
+      "campus_roster_name": "David Gewanter (He/Him/His)",
+      "public_personal_heading": "David S Gewanter"
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "campus_roster_name": "Marisa Holmes",
+      "public_personal_heading": "Marisa Koulen Holmes"
+    },
+    {
+      "id": "faculty-georgetown-engl-42b9eeaa",
+      "campus_roster_name": "M. Lindsay Kaplan (She/Her/Hers)",
+      "public_personal_heading": "M Lindsay Kaplan"
+    }
+  ],
+  "all_official_hrefs_returned_http_200": true,
+  "source": "https://english.georgetown.edu/people/full-time-faculty-2/",
+  "observed_main_action_example": {
+    "id": "faculty-georgetown-engl-6746abcd",
+    "visible_cta": "View faculty profile",
+    "actual_destination": "https://english.georgetown.edu/people/full-time-faculty-2/",
+    "destination_h1": "Full-Time Faculty",
+    "correct_card_anchor": "View Dr. Bass’ Bio",
+    "correct_official_profile_h1": "Randall J Bass"
+  },
+  "next_natural_school_rotation": "2026-12-01 (Tuesday weekly cohort 2); reconcile all 43 by ID, plus the two historical saved rows. The ordinary pre-deploy API and Chrome checks do not supply that future run.",
+  "published_precursor_prs": [
+    1249,
+    1257
+  ],
+  "fixture_before_new_repair": true
+}
