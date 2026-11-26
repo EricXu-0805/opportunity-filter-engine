@@ -78,5 +78,48 @@
     2,
     3,
     4
-  ]
+  ],
+  "separate_live_new_target_run": {
+    "release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "backend_release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "started": "2026-11-26T11:07:21.549479+00:00",
+    "evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45807568806/job/139866726030",
+    "applied_revisions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "new_material": {
+      "target": "simplify-intern-f5c86f4d-394f-4270-9bb3-1a362fbddbcb",
+      "http": 200,
+      "variants": [
+        "balanced",
+        "skills",
+        "concise"
+      ],
+      "removed_matlab_in_profile": false,
+      "removed_matlab_or_old_pdf_line_in_new_drafts": false,
+      "confirmed_spss_in_request": true,
+      "github_evidenced_pytorch_in_request": true,
+      "rendered_new_draft": true,
+      "email_open_or_send_actions": 0
+    },
+    "historical_email": {
+      "subject_and_handwritten_body_retained": true,
+      "revision_before_pdf_removal": 3,
+      "revision_after_pdf_removal": 4,
+      "newly_shown_review_notice": true,
+      "free_template_reads": 1,
+      "email_open_or_send_actions": 0
+    },
+    "historical_tailor": {
+      "target": "/opportunities/simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95",
+      "author_text_unchanged": true,
+      "before_removal_stale_badges": 0,
+      "after_removal_stale_badges": 1,
+      "ai_generations": 0,
+      "handwritten_text_entered_in_form": true
+    }
+  }
 }
