@@ -11,7 +11,8 @@ Currently that means **Mathematics** (``www.math.princeton.edu``), a Drupal
 "Views" grid filtered to the faculty position: each ``.person-card`` carries the
 name (``.person-card__name``), the rank (``.person-card__title``), and a
 ``/people/<slug>`` profile link. No email or research area is on the listing, so
-records ship "lite" (contact_email=None); per-profile enrichment is deferred.
+the monthly profile pass reads the subject terms that the named faculty profile
+places under its Research Field label.
 
 Computer Science is added via the engine's ``render: true`` (headless-Chromium)
 mode: its directory is a client-side ``.custom_card`` grid that a plain request
@@ -28,6 +29,8 @@ Single source ("princeton_faculty"); department rides each record's
 from __future__ import annotations
 
 from .. import faculty_graph
+
+_MATH_DIRECTORY = "https://www.math.princeton.edu/people?combine=&field_position_target_id=115"
 
 # Princeton central-Drupal "person-card" grid (name + rank + profile link only).
 _PERSON_CARD = {
@@ -63,11 +66,6 @@ _SB_SELECTORS = {
     "email": ".field--name-field-ps-people-email a[href^='mailto:']",
     "research_items": ".field--name-field-ps-sitewide-category .field__item",
 }
-
-
-def _drupal(short: str, name: str, majors: list[str], url: str) -> dict:
-    return {"short": short, "name": name, "majors": majors, "directory_url": url,
-            "scrape": {"url": url, "selectors": _PERSON_CARD, "ladder_filter": _LADDER}}
 
 
 # Site Builder PROFILE pages sit behind the same Cloudflare wall as the listing
@@ -109,11 +107,17 @@ SCHOOL: dict = {
         "the arrangement; ask the professor."
     ),
     "departments": [
-        _drupal(
-            "MATH", "Department of Mathematics",
-            ["Mathematics", "Applied Mathematics"],
-            "https://www.math.princeton.edu/people?combine=&field_position_target_id=115",
-        ),
+        {
+            "short": "MATH", "name": "Department of Mathematics",
+            "majors": ["Mathematics", "Applied Mathematics"],
+            "directory_url": _MATH_DIRECTORY,
+            "scrape": {"url": _MATH_DIRECTORY, "selectors": _PERSON_CARD, "ladder_filter": _LADDER},
+            "profile_enrich": {
+                "profile_url_re": r"^https://www\.math\.princeton\.edu/people/[\w-]+/?$",
+                "stated_research_items_selector": ".field--name-field-research-field .field--items > .field--item",
+                "throttle": 0.3,
+            },
+        },
         # Computer Science: client-side .custom_card grid — needs render mode.
         # Each card exposes the rank (.position) and per-area research links
         # (.research_areas a), so records land keyworded (no email on the listing).
