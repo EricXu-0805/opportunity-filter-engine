@@ -1,0 +1,346 @@
+{
+  "started_at": "2026-11-26T23:28:44.683078+00:00",
+  "expected": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "start": [
+    "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+    "428516b07eb63bdc1bc31693a7d399f51bc6bd96"
+  ],
+  "details": [
+    {
+      "id": "faculty-pitt-phil-d41160dd",
+      "name": "Robert Batterman",
+      "published_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+      "faculty_title": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+      "detail_heading": [
+        "Robert Batterman"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/rbatterman",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+      "university_status": 200,
+      "university_name": [
+        "Robert  Batterman"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-f8df8e27",
+      "name": "Thomas Berry",
+      "published_url": "https://www.philosophy.pitt.edu/people/tberry",
+      "faculty_title": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+      "detail_heading": [
+        "Thomas Berry"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/tberry",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/tberry",
+      "university_status": 200,
+      "university_name": [
+        "Thomas Berry"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-e7593149",
+      "name": "Douglas Blue",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-75",
+      "faculty_title": "Assistant Professor and Website Director",
+      "detail_heading": [
+        "Douglas Blue"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-75",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-75",
+      "university_status": 200,
+      "university_name": [
+        "Douglas Blue"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-d740c0a3",
+      "name": "Robert Brandom",
+      "published_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+      "faculty_title": "Distinguished Professor of Philosophy",
+      "detail_heading": [
+        "Robert Brandom"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/rbrandom",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+      "university_status": 200,
+      "university_name": [
+        "Robert Brandom"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-5239754e",
+      "name": "Stephen Engstrom",
+      "published_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+      "faculty_title": "Distinguished Professor of Philosophy",
+      "detail_heading": [
+        "Stephen Engstrom"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/sengstrom",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+      "university_status": 200,
+      "university_name": [
+        "Stephen  Engstrom"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-8ba5545b",
+      "name": "Anil Gupta",
+      "published_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+      "faculty_title": "Alan Ross Anderson Distinguished Professor of Philosophy",
+      "detail_heading": [
+        "Anil Gupta"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+      "university_status": 200,
+      "university_name": [
+        "Anil Gupta"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-9f1dfd0f",
+      "name": "Josefine Klingspor",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-115",
+      "faculty_title": "Assistant Professor of Philosophy",
+      "detail_heading": [
+        "Josefine Klingspor"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-115",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-115",
+      "university_status": 200,
+      "university_name": [
+        "Josefine Klingspor"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-15cd0388",
+      "name": "Jed Lewinsohn",
+      "published_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+      "faculty_title": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+      "detail_heading": [
+        "Jed Lewinsohn"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+      "university_status": 200,
+      "university_name": [
+        "Jed Lewinsohn"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-01e44da7",
+      "name": "Sara Magrin",
+      "published_url": "https://www.philosophy.pitt.edu/people/smagrin",
+      "faculty_title": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+      "detail_heading": [
+        "Sara Magrin"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/smagrin",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/smagrin",
+      "university_status": 200,
+      "university_name": [
+        "Sara Magrin"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-8316b779",
+      "name": "Sven Neth",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-74",
+      "faculty_title": "Assistant Professor, Career Director, and Philosophy Club Director",
+      "detail_heading": [
+        "Sven Neth"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-74",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-74",
+      "university_status": 200,
+      "university_name": [
+        "Sven Neth"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-b5e102fb",
+      "name": "Japa Pallikkathayil",
+      "published_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+      "faculty_title": "Associate Professor of Philosophy",
+      "detail_heading": [
+        "Japa Pallikkathayil"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+      "university_status": 200,
+      "university_name": [
+        "Japa Pallikkathayil"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-fd9a1a31",
+      "name": "Larkin Philpot",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-60",
+      "faculty_title": "Teaching Assistant Professor",
+      "detail_heading": [
+        "Larkin Philpot"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-60",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-60",
+      "university_status": 200,
+      "university_name": [
+        "Larkin Philpot"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-52256215",
+      "name": "Amy Ramirez",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-114",
+      "faculty_title": "Teaching Assistant Professor",
+      "detail_heading": [
+        "Amy Ramirez"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-114",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-114",
+      "university_status": 200,
+      "university_name": [
+        "Amy Ramirez"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-d1104248",
+      "name": "Jacob Rosen",
+      "published_url": "https://www.philosophy.pitt.edu/people/jrosen",
+      "faculty_title": "Associate Professor of Philosophy",
+      "detail_heading": [
+        "Jacob Rosen"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/jrosen",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jrosen",
+      "university_status": 200,
+      "university_name": [
+        "Jacob Rosen"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-5aa6030b",
+      "name": "James Shaw",
+      "published_url": "https://www.philosophy.pitt.edu/people/jshaw",
+      "faculty_title": "Professor of Philosophy and Department Chair",
+      "detail_heading": [
+        "James Shaw"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/jshaw",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jshaw",
+      "university_status": 200,
+      "university_name": [
+        "James  Shaw"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-eb764410",
+      "name": "Matthew Soteriou",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-113",
+      "faculty_title": "Professor of Philosophy",
+      "detail_heading": [
+        "Matthew Soteriou"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-113",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-113",
+      "university_status": 200,
+      "university_name": [
+        "Matthew Soteriou"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-2930bf5f",
+      "name": "Kate Stanton",
+      "published_url": "https://www.philosophy.pitt.edu/people/kstanton",
+      "faculty_title": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+      "shared_browser": "The B21 Chromium release probe covers this person's normal UI and two saved cross-unit records."
+    },
+    {
+      "id": "faculty-pitt-phil-a0adc9be",
+      "name": "Michael Thompson",
+      "published_url": "https://www.philosophy.pitt.edu/people/mthompson",
+      "faculty_title": "Professor of Philosophy",
+      "detail_heading": [
+        "Michael Thompson"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/mthompson",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/mthompson",
+      "university_status": 200,
+      "university_name": [
+        "Michael Thompson"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-4e0c21eb",
+      "name": "David Wallace",
+      "published_url": "https://www.philosophy.pitt.edu/people/dwallace",
+      "faculty_title": "Mellon Professorship",
+      "shared_browser": "The B21 Chromium release probe covers this person's normal UI and two saved cross-unit records."
+    },
+    {
+      "id": "faculty-pitt-phil-7b9d049f",
+      "name": "Jennifer Whiting",
+      "published_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+      "faculty_title": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+      "detail_heading": [
+        "Jennifer Whiting"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/jwhiting",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+      "university_status": 200,
+      "university_name": [
+        "Jennifer Whiting"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-3bc2a27e",
+      "name": "Porter Williams",
+      "published_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+      "faculty_title": "Associate Professor of Philosophy and Director of Graduate Studies",
+      "detail_heading": [
+        "Porter Williams"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/pwilliams",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+      "university_status": 200,
+      "university_name": [
+        "Porter Williams"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-04473822",
+      "name": "Mark Wilson",
+      "published_url": "https://www.philosophy.pitt.edu/people/mwilson",
+      "faculty_title": "Distinguished Professor of Philosophy",
+      "detail_heading": [
+        "Mark Wilson"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/mwilson",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/mwilson",
+      "university_status": 200,
+      "university_name": [
+        "Mark Wilson"
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-cd6487c5",
+      "name": "Adam Zweber",
+      "published_url": "https://www.philosophy.pitt.edu/people/ant-116",
+      "faculty_title": "Teaching Assistant Professor",
+      "detail_heading": [
+        "Adam Zweber"
+      ],
+      "profile_action": "https://www.philosophy.pitt.edu/people/ant-116",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-116",
+      "university_status": 200,
+      "university_name": [
+        "Adam Zweber"
+      ]
+    }
+  ],
+  "end": [
+    "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+    "428516b07eb63bdc1bc31693a7d399f51bc6bd96"
+  ],
+  "completed_at": "2026-11-26T23:34:19.693077+00:00",
+  "merge": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1474",
+  "scope": "Technical publication of 23 saved Pitt philosophy records. The shared B21 browser covers the two cross-unit student actions. Natural collection totals require the next scheduled Pitt run."
+}
