@@ -41,15 +41,15 @@ Filter input shape (from saved_searches.filters_json):
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from datetime import date, datetime
 
 from backend.lib.opportunity_detail import pay_is_inferred
 from backend.lib.public_projection import redact_embedded_emails
 from backend.routes.matches import _has_research_topic, _in_view_scope, _match_view_row
+from src import reviewed_program_pairs as program_pairs
 from src.evidence import faculty_contact_claims_unverified, record_kind, stated_listing_deadline
 from src.matcher.ranker import _normalize_type_key, _word_re, expand_search_aliases, without_web_addresses
-from src.normalizers import fodommat
 
 
 def days_until(deadline: str | None) -> int | None:
@@ -300,7 +300,7 @@ def filter_opportunities(
     home_school: str | None = "uiuc",
     view_rows: Mapping | None = None,
     excluded_ids: set[str] | None = None,
-    preferred_id: str = fodommat.HOST_ID,
+    preferred_ids: Collection[str] = (),
 ) -> list[dict]:
     """Return opportunities matching ``filters`` + ``query`` text search.
 
@@ -315,15 +315,26 @@ def filter_opportunities(
     """
     q = (query or "").strip().lower()
     scope = filters.get("scope") or ""
-    selected = [
-        o for o in opportunities
-        if (not excluded_ids or o.get("id") not in excluded_ids) and match_filter(o, filters)
-        and _matches_scope(o, scope, home_school, view_rows)
-        and _matches_query(o, q, served)
-    ]
-    if fodommat.records_share_offering(selected):
-        hide = fodommat.HOST_ID if preferred_id == fodommat.DIRECTORY_ID else fodommat.DIRECTORY_ID
-        return [o for o in selected if o.get("id") != hide]
+    selected = []
+    candidates = {}
+    matched_members = set()
+    for opportunity in opportunities:
+        oid = opportunity.get("id")
+        if excluded_ids and oid in excluded_ids:
+            continue
+        if oid in program_pairs.ALL_IDS:
+            candidates[oid] = opportunity
+        if (match_filter(opportunity, filters) and _matches_scope(opportunity, scope, home_school, view_rows)
+                and _matches_query(opportunity, q, served)):
+            selected.append(opportunity)
+            if oid in program_pairs.ALL_IDS:
+                matched_members.add(oid)
+    hidden = {
+        pair.redundant_id(preferred_ids) for pair in program_pairs.verified_pairs(candidates)
+        if pair.host_id in matched_members and pair.directory_id in matched_members
+    }
+    if hidden:
+        return [o for o in selected if o.get("id") not in hidden]
     return selected
 
 
@@ -336,7 +347,7 @@ def matching_ids(
     home_school: str | None = "uiuc",
     view_rows: Mapping | None = None,
     excluded_ids: set[str] | None = None,
-    preferred_id: str = fodommat.HOST_ID,
+    preferred_ids: Collection[str] = (),
 ) -> list[str]:
     """Same as filter_opportunities but returns just the opportunity IDs.
 
@@ -348,7 +359,7 @@ def matching_ids(
         for o in filter_opportunities(
             opportunities, filters, query,
             served=served, home_school=home_school, view_rows=view_rows,
-            excluded_ids=excluded_ids, preferred_id=preferred_id,
+            excluded_ids=excluded_ids, preferred_ids=preferred_ids,
         )
         if o.get("id")
     ]

@@ -69,6 +69,7 @@ from backend.schemas import (
     ProfileRequest,
 )
 from src import evidence as evidence_module
+from src import reviewed_program_pairs as program_pairs
 from src.evidence import (
     configured_note_last_date,
     configured_note_window_passed,
@@ -110,7 +111,6 @@ from src.matcher.ranker import (
     without_web_addresses,
 )
 from src.matcher.reason_keys import reason_key, reason_keys
-from src.normalizers import fodommat
 from src.recommender.cold_email import filter_course_entries
 from src.recommender.resume_advisor import analyze_gaps
 from src.student_evidence import (
@@ -425,7 +425,7 @@ TARGET_TRUTH_CONTRACT = "target-truth-v2"
 # the pre-filter universe — the closed records are still in it, and its bucket
 # thresholds were derived from a population that included them. Reusing one
 # would serve exactly the rows this release exists to remove.
-MATCH_SNAPSHOT_VERSION = "match-snapshot-v6-reviewed-program-pair"
+MATCH_SNAPSHOT_VERSION = "match-snapshot-v7-reviewed-program-pairs"
 
 # Only fields consumed by ranker.py participate in a snapshot key. Contact
 # identity/signature fields do not change ranking; including them let trivial
@@ -878,11 +878,13 @@ class _MatchSnapshot:
     last_view: _PageableMatchView | None = None
 
     @cached_property
-    def duplicate_program_index(self) -> int | None:
-        """The reviewed directory row's rank is stable for this snapshot."""
-        if not _has_fodommat_pair(self.view_rows):
-            return None
-        return next(i for i, result in enumerate(self.visible) if result.opportunity_id == fodommat.DIRECTORY_ID)
+    def duplicate_program_indices(self) -> tuple[int, ...]:
+        """The reviewed directory ranks stay fixed for this ranking snapshot."""
+        hidden = {pair.directory_id for pair in _snapshot_program_pairs(self.view_rows)}
+        if not hidden:
+            return ()
+        return tuple(i for i, result in enumerate(self.visible) if result.opportunity_id in hidden)
+
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
@@ -1830,25 +1832,25 @@ def _apply_match_view(
         for result in results
         if result.opportunity_id in opportunities_by_id
     }
-    same_program = all(oid in rows for oid in fodommat.IDS) and fodommat.same_offering(
-        opportunities_by_id.get(fodommat.HOST_ID), opportunities_by_id.get(fodommat.DIRECTORY_ID), projected=True,
-    )
-    return _apply_match_view_rows(results, rows, view, home_school, same_program=same_program)
+    present = {oid: opportunities_by_id[oid] for oid in program_pairs.ALL_IDS if oid in rows}
+    pairs = program_pairs.verified_pairs(present, projected=True)
+    return _apply_match_view_rows(results, rows, view, home_school, pairs=pairs)
 
 
-def _has_fodommat_pair(rows: Mapping[str, _MatchViewRow]) -> bool:
-    host = rows.get(fodommat.HOST_ID)
-    directory = rows.get(fodommat.DIRECTORY_ID)
-    return bool(host and directory and fodommat.same_offering(host.record, directory.record))
+def _snapshot_program_pairs(rows: Mapping[str, _MatchViewRow]) -> tuple[program_pairs.ProgramPair, ...]:
+    return program_pairs.verified_pairs({oid: rows[oid].record for oid in program_pairs.ALL_IDS if oid in rows})
 
 
-def _default_program_counts(snap: _MatchSnapshot) -> tuple[MatchResult | None, dict[str, int], int]:
-    if snap.duplicate_program_index is None:
-        return None, snap.buckets, snap.field_relevant_count
-    directory = snap.visible[snap.duplicate_program_index]
+def _default_program_counts(snap: _MatchSnapshot) -> tuple[dict[str, int], int]:
+    if not snap.duplicate_program_indices:
+        return snap.buckets, snap.field_relevant_count
     counts = dict(snap.buckets)
-    counts[directory.bucket] -= 1
-    return directory, counts, snap.field_relevant_count - int(directory.field_relevant)
+    relevant = snap.field_relevant_count
+    for index in snap.duplicate_program_indices:
+        duplicate = snap.visible[index]
+        counts[duplicate.bucket] -= 1
+        relevant -= int(duplicate.field_relevant)
+    return counts, relevant
 
 
 def _has_research_topic(tags, topic: str) -> bool:
@@ -1880,7 +1882,7 @@ def _apply_match_view_rows(
     view: MatchViewState,
     home_school: str,
     *,
-    same_program: bool | None = None,
+    pairs: tuple[program_pairs.ProgramPair, ...] | None = None,
 ) -> tuple[
     list[MatchResult],
     dict[str, int],
@@ -1916,8 +1918,10 @@ def _apply_match_view_rows(
     deadline_counts = {"7": 0, "14": 0, "30": 0, "passed": 0}
     base: list[MatchResult] = []
     starred: list[MatchResult] = []
-    if same_program is None:
-        same_program = _has_fodommat_pair(rows)
+    if pairs is None:
+        pairs = _snapshot_program_pairs(rows)
+    default_duplicates = {pair.directory_id for pair in pairs}
+    member_ids = {oid for pair in pairs for oid in pair.ids}
     program_positions: dict[str, int] = {}
     for result in results:
         row = rows.get(result.opportunity_id, _EMPTY_VIEW_ROW)
@@ -1939,7 +1943,7 @@ def _apply_match_view_rows(
         # the page, selecting 151 records not one of which says passed.
         # The scorer also recognizes inference stamps without the older flag.
         days_left = _calendar_days_until(row, today)
-        if days_left is not None and not (same_program and result.opportunity_id == fodommat.DIRECTORY_ID):
+        if days_left is not None and result.opportunity_id not in default_duplicates:
             if days_left < 0:
                 deadline_counts["passed"] += 1
             else:
@@ -2021,17 +2025,20 @@ def _apply_match_view_rows(
             ):
                 continue
 
-        if same_program and result.opportunity_id in fodommat.IDS:
+        if result.opportunity_id in member_ids:
             program_positions[result.opportunity_id] = len(base)
         base.append(result)
         # Both source pages can be in an older collection of saved IDs.
         if result.opportunity_id in favorite_ids:
             starred.append(result)
-    if len(program_positions) == 2:
-        # Prefer the host unless only the directory is already starred.
-        keep = fodommat.preferred_source_id("", favorite_ids)
-        hide = fodommat.DIRECTORY_ID if keep == fodommat.HOST_ID else fodommat.HOST_ID
-        base.pop(program_positions[hide])
+    # Preserve any source that was the only one to survive this view. Remove
+    # redundant rows from the end so earlier positions keep their meaning.
+    hidden_positions = [
+        program_positions[pair.redundant_id(favorite_ids)] for pair in pairs
+        if pair.host_id in program_positions and pair.directory_id in program_positions
+    ]
+    for index in sorted(hidden_positions, reverse=True):
+        base.pop(index)
 
     view_counts = {
         "all": len(base),
@@ -2181,8 +2188,8 @@ async def get_matches(
     use_llm = _ai_pass_allowed(request, llm)
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
 
-    duplicate, counts, relevant = _default_program_counts(snap)
-    total = len(snap.visible) - int(duplicate is not None)
+    counts, relevant = _default_program_counts(snap)
+    total = len(snap.visible) - len(snap.duplicate_program_indices)
     page_offset = offset
     if decoded_cursor is not None:
         cursor_result_set_id, page_offset = decoded_cursor
@@ -2202,15 +2209,17 @@ async def get_matches(
                 },
             )
     raw_offset = page_offset
-    duplicate_index = snap.duplicate_program_index
-    if duplicate_index is not None and duplicate_index < page_offset:
-        raw_offset += 1
+    for index in snap.duplicate_program_indices:
+        if index < raw_offset:
+            raw_offset += 1
     raw_end = raw_offset + limit
-    if duplicate_index is not None and raw_offset <= duplicate_index < raw_end:
-        page = snap.visible[raw_offset:raw_end + 1]
-        page.pop(duplicate_index - raw_offset)
-    else:
-        page = snap.visible[raw_offset:raw_end]
+    for index in snap.duplicate_program_indices:
+        if raw_offset <= index < raw_end:
+            raw_end += 1
+    page = snap.visible[raw_offset:raw_end]
+    for index in reversed(snap.duplicate_program_indices):
+        if raw_offset <= index < raw_end:
+            page.pop(index - raw_offset)
     cards = _snapshot_cards(snap, page)
     page_response = [_match_result_response(r, cards, snap.view_rows) for r in page]
     next_offset = page_offset + len(page_response)
@@ -2309,9 +2318,9 @@ async def get_match_view(
     next_offset = page_offset + len(page_response)
     has_more = next_offset < len(pageable.results)
 
-    duplicate, counts, relevant = _default_program_counts(snap)
+    counts, relevant = _default_program_counts(snap)
     return MatchesResponse(
-        total=len(snap.visible) - int(duplicate is not None),
+        total=len(snap.visible) - len(snap.duplicate_program_indices),
         high_priority=counts["high_priority"],
         good_match=counts["good_match"],
         reach=counts["reach"],
