@@ -10,7 +10,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 const mockOpenModal = vi.fn();
 const mockGetAuthState = vi.fn();
 const mockLoadProfile = vi.fn();
-const mockGetFavorites = vi.fn();
+const mockGetFavoritesSnapshot = vi.fn();
 const mockGetInteractions = vi.fn();
 const mockJoinWaitlist = vi.fn();
 const mockTrack = vi.fn();
@@ -28,7 +28,7 @@ vi.mock('@/lib/supabase', () => ({
     return () => { authCallback = null; };
   },
   loadProfile: () => mockLoadProfile(),
-  getFavorites: () => mockGetFavorites(),
+  getFavoritesSnapshot: () => mockGetFavoritesSnapshot(),
   getInteractionsFull: () => mockGetInteractions(),
   joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
 }));
@@ -74,7 +74,7 @@ import { OwnerMismatchError } from '@/lib/identity-owner';
 
 beforeEach(() => {
   authCallback = null;
-  mockGetFavorites.mockResolvedValue(new Set(['a', 'b', 'c']));
+  mockGetFavoritesSnapshot.mockResolvedValue({ ids: new Set(['a', 'b', 'c']), complete: true });
   mockGetInteractions.mockResolvedValue(new Map([['x', {}], ['y', {}]]));
   mockLoadProfile.mockResolvedValue(null);
   mockJoinWaitlist.mockResolvedValue(true);
@@ -199,6 +199,18 @@ describe('AccountPage — activity links', () => {
     mockGetAuthState.mockResolvedValue({
       session: {}, user: { id: 'u1', is_anonymous: false }, isAnonymous: false, email: 'e@x.com',
     });
+  });
+
+  it.each([{ ids: [] }, { ids: ['cached'] }])('omits an incomplete favorites count and recovers on a fresh read', async ({ ids }) => {
+    mockGetFavoritesSnapshot.mockResolvedValueOnce({ ids: new Set(ids), complete: false });
+    const first = render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.activityTitle')).toBeInTheDocument());
+    const favorites = screen.getByRole('link', { name: /account.favorites/ });
+    expect(favorites).not.toHaveTextContent(/\d/);
+    expect(screen.getByText('2')).toBeInTheDocument();
+    first.unmount();
+    render(<AccountPage />);
+    expect(await screen.findByText('3')).toBeInTheDocument();
   });
 
   it('shows favorites + tracker counts and links out to the real pages', async () => {
@@ -397,9 +409,9 @@ describe('AccountPage — live identity change mid-session', () => {
       mockGetAuthState.mockResolvedValueOnce(authState('u1'));
       mockLoadProfile.mockRejectedValueOnce(new Error('down'));
     }],
-    ['getFavorites', () => {
+    ['getFavoritesSnapshot', () => {
       mockGetAuthState.mockResolvedValueOnce(authState('u1'));
-      mockGetFavorites.mockRejectedValueOnce(new Error('down'));
+      mockGetFavoritesSnapshot.mockRejectedValueOnce(new Error('down'));
     }],
     ['getInteractionsFull', () => {
       mockGetAuthState.mockResolvedValueOnce(authState('u1'));
@@ -431,7 +443,7 @@ describe('AccountPage — live identity change mid-session', () => {
   it('a confirmed-empty result (no error anywhere — profile null, favorites/interactions genuinely empty) shows noProfile + zero counts, with NO error banner', async () => {
     mockGetAuthState.mockResolvedValueOnce(authState('u1'));
     mockLoadProfile.mockResolvedValueOnce(null);
-    mockGetFavorites.mockResolvedValueOnce(new Set());
+    mockGetFavoritesSnapshot.mockResolvedValueOnce({ ids: new Set(), complete: true });
     mockGetInteractions.mockResolvedValueOnce(new Map());
     render(<AccountPage />);
 
@@ -452,7 +464,7 @@ describe('AccountPage — live identity change mid-session', () => {
     expect(screen.getByText('2')).toBeInTheDocument(); // tracker
 
     mockGetAuthState.mockResolvedValueOnce(authState('u2'));
-    mockGetFavorites.mockRejectedValueOnce(new Error('down'));
+    mockGetFavoritesSnapshot.mockRejectedValueOnce(new Error('down'));
     act(() => { authCallback?.(authState('u2')); });
 
     await waitFor(() => expect(screen.getByText('account.loadError')).toBeInTheDocument());

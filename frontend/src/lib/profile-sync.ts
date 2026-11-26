@@ -5598,7 +5598,11 @@ export function mergeSkillAdditions(
       continue;
     }
     const existing = out[index];
-    if (existing.level !== skill.level) return null;
+    // The GitHub importer supplies a default level. Re-imported evidence
+    // describes the repository; it does not change the student's saved level.
+    const evidenceOnly = existing.source === 'github' && skill.source === 'github'
+      && skill.level === 'beginner' && !skill.confirmed && Boolean(skill.evidence?.trim());
+    if (existing.level !== skill.level && !evidenceOnly) return null;
     out[index] = withGitHubImportEvidence(existing, skill);
   }
   return out;

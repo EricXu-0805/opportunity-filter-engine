@@ -1720,7 +1720,8 @@ export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
     if (remote.size - previousSize !== data.length || (typeof total === 'number' && remote.size > total)) {
       return incomplete('The full saved list could not be checked.');
     }
-    if (total == null || remote.size === total) break;
+    // Without an exact count even a short page can be capped by the server.
+    if (total == null ? data.length === 0 : remote.size === total) break;
     if (!data.length) return incomplete('The full saved list could not be checked.');
     page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
   }
@@ -2262,8 +2263,8 @@ async function readInteractionMap<T>(
         || result.has(row.opportunity_id)) throw new Error('The full tracker could not be read.');
       result.set(row.opportunity_id, project(row));
     }
-    if (total == null || result.size === total) return result;
-    if (!data.length || result.size > total) throw new Error('The full tracker could not be read.');
+    if (total == null ? data.length === 0 : result.size === total) return result;
+    if (!data.length || (total != null && result.size > total)) throw new Error('The full tracker could not be read.');
     page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
   }
 }

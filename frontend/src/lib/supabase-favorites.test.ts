@@ -158,7 +158,7 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
   });
 
   const cloud = (...ids: string[]) =>
-    mockEq.mockResolvedValueOnce({ data: ids.map((opportunity_id) => ({ opportunity_id })), error: null });
+    mockEq.mockResolvedValueOnce({ data: ids.map((opportunity_id) => ({ opportunity_id })), count: ids.length, error: null });
 
   it('distinguishes a read outage from confirmed zero even if a later read updates the shared sync banner', async () => {
     mockEq.mockResolvedValueOnce({ data: null, error: { message: 'synthetic outage' } });
@@ -187,6 +187,19 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
     mockEq.mockReturnValueOnce({ gt: vi.fn().mockResolvedValue({ data: null, error: { message: 'continuation failed' } }) });
     expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['remote', 'queued']), complete: false });
     expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('checks past a count-less page before reconciling queued saves', async () => {
+    writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["c"]', captureOwnerToken());
+    const gt = vi.fn()
+      .mockResolvedValueOnce({ data: [{ opportunity_id: 'c' }], count: null, error: null })
+      .mockResolvedValueOnce({ data: [], count: null, error: null });
+    mockEq.mockResolvedValueOnce({ data: [{ opportunity_id: 'a' }, { opportunity_id: 'b' }], count: null, error: null })
+      .mockReturnValue({ gt });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['a', 'b', 'c']), complete: true });
+    expect(gt.mock.calls).toEqual([['opportunity_id', 'b'], ['opportunity_id', 'c']]);
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(localMirror()).toEqual([]);
   });
 
   it('restores all 1001 cloud saves on retry and clears a queued ID only after confirming it on the last page', async () => {
