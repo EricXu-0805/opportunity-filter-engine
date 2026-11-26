@@ -46,17 +46,19 @@ def verify(settings_path):
         return rpc('commit_profile_patch_cas', {'p_expected_device_id':uid,'p_expected_revision':rev,'p_patch':patch}, author)
     assert save(0,profile)['revision'] == 1
     fields = ['interests','skills','courses']
-    value = rpc('preview_profile_share',{'p_fields':fields},author)
+    value = rpc('preview_profile_share',{'p_fields':fields,'p_expected_owner':uid},author)
     assert value == {'profile_revision':1,'snapshot':{'interests':'Original directions','skills':[{'n':'Python','l':'experienced'}],'courses':['CS 100']}}
     for who in [None, guest]:
-        status, _ = request('/rest/v1/rpc/preview_profile_share',{'p_fields':fields},who)
+        status, _ = request('/rest/v1/rpc/preview_profile_share',{'p_fields':fields,'p_expected_owner':uid},who)
         assert status in (401,403)
+    code, _ = request('/rest/v1/rpc/preview_profile_share',{'p_fields':fields,'p_expected_owner':uid},recipient)
+    assert code == 403
     for bad in [[],['name'],['skills','skills']]:
-        status, _ = request('/rest/v1/rpc/preview_profile_share',{'p_fields':bad},author)
+        status, _ = request('/rest/v1/rpc/preview_profile_share',{'p_fields':bad,'p_expected_owner':uid},author)
         assert status == 400
     token = str(uuid4())
     future = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-    publish = {'p_token':token,'p_expected_version':0,'p_fields':fields,'p_expires_at':future,'p_profile_revision':1}
+    publish = {'p_expected_owner':uid,'p_token':token,'p_expected_version':0,'p_fields':fields,'p_expires_at':future,'p_profile_revision':1}
     create = lambda _: rpc('publish_profile_share',publish,author)
     with ThreadPoolExecutor(max_workers=2) as workers:
         assert list(workers.map(create,range(2))) == [{'status':'published','version':1}]*2

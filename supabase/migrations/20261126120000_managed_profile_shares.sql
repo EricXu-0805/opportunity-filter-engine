@@ -4,7 +4,7 @@ create table public.profile_shares (
   token uuid primary key,
   owner_id uuid not null references auth.users(id) on delete cascade,
   version integer not null check (version > 0),
-  profile_revision integer not null,
+  profile_revision bigint not null,
   fields text[] not null,
   snapshot jsonb not null,
   expires_at timestamptz not null,
@@ -20,13 +20,13 @@ create policy profile_share_owner_read on public.profile_shares for select to au
 
 -- A snapshot is derived from the authenticated owner's stored profile. Only
 -- names and levels leave a skills row; course sources and statuses stay private.
-create function private.profile_share_preview(fields text[])
+create function private.profile_share_preview(expected_owner uuid, fields text[])
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
   choices text[] := array['college','major','grade','intl','interests','skills','seeking','weight','courses'];
   data jsonb;
-  rev integer;
+  rev bigint;
   snapshot jsonb := '{}'::jsonb;
   key text;
   value jsonb;
@@ -34,7 +34,7 @@ declare
   item jsonb;
   item_name text;
 begin
-  if uid is null or auth.jwt()->>'is_anonymous' is distinct from 'false' then
+  if uid is null or uid is distinct from expected_owner or auth.jwt()->>'is_anonymous' is distinct from 'false' then
     raise insufficient_privilege using message = 'permanent_account_required';
   end if;
   if fields is null or cardinality(fields) not between 1 and cardinality(choices)
@@ -84,26 +84,26 @@ begin
   return jsonb_build_object('profile_revision',rev,'snapshot',snapshot);
 end;
 $$;
-revoke all on function private.profile_share_preview(text[]) from public, anon, authenticated;
+revoke all on function private.profile_share_preview(uuid,text[]) from public, anon, authenticated;
 
-create function public.preview_profile_share(p_fields text[])
+create function public.preview_profile_share(p_expected_owner uuid,p_fields text[])
 returns jsonb language sql stable security definer set search_path = '' as $$
-  select private.profile_share_preview(p_fields);
+  select private.profile_share_preview(p_expected_owner,p_fields);
 $$;
-revoke all on function public.preview_profile_share(text[]) from public, anon;
-grant execute on function public.preview_profile_share(text[]) to authenticated;
+revoke all on function public.preview_profile_share(uuid,text[]) from public, anon;
+grant execute on function public.preview_profile_share(uuid,text[]) to authenticated;
 
 -- A sender supplies a random token once. Retrying a successful create or
 -- replace after losing the response returns that version without advancing it.
-create function public.publish_profile_share(p_token uuid, p_expected_version integer, p_fields text[],
-  p_expires_at timestamptz, p_profile_revision integer)
+create function public.publish_profile_share(p_expected_owner uuid,p_token uuid, p_expected_version integer, p_fields text[],
+  p_expires_at timestamptz, p_profile_revision bigint)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
   preview jsonb;
   saved public.profile_shares%rowtype;
 begin
-  preview := private.profile_share_preview(p_fields);
+  preview := private.profile_share_preview(p_expected_owner,p_fields);
   if p_token is null or p_expected_version is null or p_expected_version < 0
       or p_expires_at is null or not isfinite(p_expires_at) then
     raise invalid_parameter_value using message = 'invalid_share_request';
@@ -119,7 +119,7 @@ begin
     return jsonb_build_object('status','published','version',saved.version);
   end if;
   if p_expires_at <= clock_timestamp() then raise invalid_parameter_value using message = 'future_expiry_required'; end if;
-  if (preview->>'profile_revision')::integer is distinct from p_profile_revision then
+  if (preview->>'profile_revision')::bigint is distinct from p_profile_revision then
     return jsonb_build_object('status','profile_changed');
   end if;
   if coalesce(saved.version,0) <> p_expected_version then return jsonb_build_object('status','conflict'); end if;
@@ -133,8 +133,8 @@ begin
   return jsonb_build_object('status','published','version',p_expected_version+1);
 end;
 $$;
-revoke all on function public.publish_profile_share(uuid,integer,text[],timestamptz,integer) from public, anon;
-grant execute on function public.publish_profile_share(uuid,integer,text[],timestamptz,integer) to authenticated;
+revoke all on function public.publish_profile_share(uuid,uuid,integer,text[],timestamptz,bigint) from public, anon;
+grant execute on function public.publish_profile_share(uuid,uuid,integer,text[],timestamptz,bigint) to authenticated;
 
 create function public.revoke_profile_share(p_token uuid,p_expected_version integer)
 returns jsonb language plpgsql security definer set search_path = '' as $$

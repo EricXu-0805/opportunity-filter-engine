@@ -19,10 +19,10 @@ import { SaveCta } from './SaveCta';
 import { SearchFocusCard } from './SearchFocusCard';
 import { SharedBanner } from './SharedBanner';
 import { SubmitRow } from './SubmitRow';
-import { useProfileForm } from './use-profile-form';
+import { useProfileForm, type AcceptedProfileShare } from './use-profile-form';
 import { useDatabaseStats } from './use-database-stats';
 
-export default function HomePage() {
+export default function HomePage({ acceptedShare }: { acceptedShare?: AcceptedProfileShare } = {}) {
   // The fallback reserves a viewport of height on purpose. With a null
   // fallback the streamed shell is short enough that the sticky footer paints
   // INSIDE the viewport, and lands 1,600px lower once the form arrives — a
@@ -30,12 +30,12 @@ export default function HomePage() {
   // tall by the time it settles.
   return (
     <Suspense fallback={<div className="min-h-screen" aria-hidden="true" />}>
-      <HomePageInner />
+      <HomePageInner acceptedShare={acceptedShare} />
     </Suspense>
   );
 }
 
-function HomePageInner() {
+function HomePageInner({ acceptedShare }: { acceptedShare?: AcceptedProfileShare }) {
   const { t } = useT();
   const databaseStats = useDatabaseStats();
   const {
@@ -78,7 +78,7 @@ function HomePageInner() {
     confirmArchivedProfileRestored,
     guestRestoreHeld,
     isArchivedProfileStored,
-  } = useProfileForm(t);
+  } = useProfileForm(t, acceptedShare);
 
   useEffect(() => {
     trackOnce('landing_view');

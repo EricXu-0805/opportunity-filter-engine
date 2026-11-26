@@ -159,6 +159,13 @@ export type GuestRestoreOutcome = 'restored' | 'conflict' | 'refused' | 'unknown
  *  elsewhere before or after it. */
 export type GuestRestoreCheck = 'restored' | 'notRestored' | 'changed';
 
+export interface AcceptedProfileShare {
+  key: string;
+  owner: OwnerToken;
+  profile: Partial<ProfileData>;
+  keys: (keyof ProfileData)[];
+}
+
 export interface UseProfileFormResult {
   profile: ProfileData;
   setProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
@@ -294,7 +301,7 @@ const TYPING_BURST_MS = 400;
 // the outbox or the journal (see the background check's 'storage' listener).
 const OTHER_TAB_READ_MS = 1000;
 
-export function useProfileForm(t: TFunc): UseProfileFormResult {
+export function useProfileForm(t: TFunc, acceptedShare?: AcceptedProfileShare): UseProfileFormResult {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
@@ -2457,14 +2464,15 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, [startLoad, resetForPendingLoad, armRetryable, setSaveStatus, screenOrigin]);
 
   useEffect(() => {
-    const shareParam = searchParams.get('share');
+    if (acceptedShare && !isOwnerTokenValid(acceptedShare.owner, acceptedShare.owner.uid)) return;
+    const shareParam = acceptedShare?.key ?? searchParams.get('share');
     if (shareParam) {
       if (shareImportedParamRef.current === shareParam) {
         // Already imported once. Never again for this link — and never a
         // load over it either; the auth stream owns loading from here.
         return;
       }
-      const decoded = decodeProfileResult(shareParam);
+      const decoded = acceptedShare ? { ok: true as const, profile: acceptedShare.profile, keys: acceptedShare.keys } : decodeProfileResult(shareParam);
       // The entire link is accepted or rejected; a failed import never replaces the current draft.
       if (shareCheckedParamRef.current !== shareParam) {
         shareCheckedParamRef.current = shareParam;
@@ -2575,7 +2583,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         fallbackLoadTimerRef.current = null;
       }
     };
-  }, [searchParams, startLoad, retireProfileLoad, armRetryable, setSaveStatus, publishProfileRefresh]);
+  }, [acceptedShare, searchParams, startLoad, retireProfileLoad, armRetryable, setSaveStatus, publishProfileRefresh]);
 
   // This is deliberately not startLoad()/hydrate(): a foreground check does
   // not replay the historical dirty buffer, apply URL prefills, flush an outbox,

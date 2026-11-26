@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Check, CheckCircle2, Cloud, CloudOff, Share2, Sparkles } from 'lucide-react';
 import type { HomeProfileRefreshStatus, HydrationState, SaveStatus, TFunc } from './types';
 
@@ -87,7 +88,11 @@ export function SubmitRow({
           <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
           {t(isSubmitting ? 'home.actions.generating' : 'home.actions.generate')}
         </button>
-        {isValid && (
+        {process.env.NEXT_PUBLIC_MANAGED_PROFILE_SHARES === 'true' ? (
+          <Link href="/share" className="rounded-full border border-gray-300 px-5 py-3 text-sm font-medium">
+            {t('home.actions.shareProfile')}
+          </Link>
+        ) : isValid && (
           <button
             type="button"
             onClick={onShare}
