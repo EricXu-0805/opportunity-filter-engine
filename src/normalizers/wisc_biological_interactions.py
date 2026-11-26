@@ -46,11 +46,12 @@ def apply_terms(record: dict) -> None:
         previous = record.get("description") or ""
         _, heading, from_page = previous.partition("\n\nFrom the program page: ")
         record["description"] = SUMMARY + heading + from_page
-        record["description_clean"] = record["description"]
+        record["description_clean"] = record["description"][:1500]
     else:
         clean = record.get("description_clean") or ""
         if not clean.startswith(SUMMARY):
-            record["description_clean"] = (SUMMARY + "\n\n" + clean).rstrip()
+            clean = (SUMMARY + "\n\n" + clean).rstrip()
+        record["description_clean"] = clean[:1500]
 
 
 def quote(record: dict, field: str) -> dict | None:

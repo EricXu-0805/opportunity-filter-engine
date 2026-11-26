@@ -429,6 +429,7 @@ export interface Opportunity {
   on_campus: boolean | null;
   description_clean: string;
   description_raw?: string;
+  reviewed_program_summary?: string;
   keywords: string[];
   deadline?: string;
   deadline_is_estimate?: boolean | null;
