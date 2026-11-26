@@ -1,0 +1,110 @@
+{
+  "checked_at": "2026-11-26T20:25:00+00:00",
+  "scope": "Independent projected data check, prior to the actual B18/B20 releases. No frozen release branch was changed.",
+  "b18_to_b19_twenty_sixth_refresh_projection": {
+    "b18": "20bab4a96a628792d6064f11c5fa91c478b1baed",
+    "b19": "74a39764222889d8d3d6220dcc5d765b09756c25",
+    "result": {
+      "reviewed_baseline": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+      "reviewed_b19": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+      "published": "20bab4a96a628792d6064f11c5fa91c478b1baed",
+      "candidate": "74a39764222889d8d3d6220dcc5d765b09756c25",
+      "shards": {
+        "national": {
+          "published_rows": 14198,
+          "candidate_rows": 14198,
+          "original_reviewed_ids": [
+            "nsf-reu-2447670",
+            "sro-3c378261",
+            "sro-3ec4ea4e",
+            "sro-44f176cd",
+            "sro-595e912d",
+            "wisc-86cba49b83d7"
+          ],
+          "published_ids_dropped_by_candidate": [],
+          "ids_added_by_candidate": [],
+          "same_order": true,
+          "reviewed_ids_absent_on_published_main": [],
+          "overlapping_source_fields_requiring_individual_review": {},
+          "rows_different_from_current_fields_plus_reviewed_changes": [],
+          "passed": true
+        },
+        "utexas": {
+          "published_rows": 2329,
+          "candidate_rows": 2329,
+          "original_reviewed_ids": [
+            "faculty-utexas-mpdd-5850399f"
+          ],
+          "published_ids_dropped_by_candidate": [],
+          "ids_added_by_candidate": [],
+          "same_order": true,
+          "reviewed_ids_absent_on_published_main": [],
+          "overlapping_source_fields_requiring_individual_review": {},
+          "rows_different_from_current_fields_plus_reviewed_changes": [],
+          "passed": true
+        },
+        "ucsd": {
+          "published_rows": 1508,
+          "candidate_rows": 1508,
+          "original_reviewed_ids": [
+            "faculty-ucsd-nano-04ac1d79",
+            "faculty-ucsd-nano-25a6d469",
+            "faculty-ucsd-nano-27240933",
+            "faculty-ucsd-nano-2aa92754",
+            "faculty-ucsd-nano-dc9e3de3"
+          ],
+          "published_ids_dropped_by_candidate": [],
+          "ids_added_by_candidate": [],
+          "same_order": true,
+          "reviewed_ids_absent_on_published_main": [],
+          "overlapping_source_fields_requiring_individual_review": {},
+          "rows_different_from_current_fields_plus_reviewed_changes": [],
+          "passed": true
+        }
+      },
+      "passed": true
+    }
+  },
+  "b21_frozen": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "independent_projected_b20": "7487ee71fadd61b1945aa5a40ab475af03951ce2",
+  "projected_b21_data_tree": "4ae108d2a6814f920e1b689b4196f9d727c920e5",
+  "one_unchanged_historical_id": "faculty-vanderbilt-math-1d5fbacf",
+  "original_profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+  "public_display_name": "Chris Kapulkin",
+  "official_rank": "Professor of Mathematics · Dual Appointment: Computer Science",
+  "frozen_b21_observation": {
+    "name": "Krzysztof Kapulkin",
+    "title": "Professor of Mathematics · Dual Appointment: Computer Science",
+    "source": "https://as.vanderbilt.edu/math/faculty/",
+    "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+    "checked_on": "2026-11-26",
+    "directory_name": "Chris Kapulkin"
+  },
+  "corrected_b20_observation_to_preserve": {
+    "name": "Chris Kapulkin",
+    "title": "Professor of Mathematics · Dual Appointment: Computer Science",
+    "source": "https://as.vanderbilt.edu/math/faculty/",
+    "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+    "checked_on": "2026-11-26"
+  },
+  "negative": {
+    "passed": false,
+    "mismatched_paths": [
+      "data/processed/shards/vanderbilt.json"
+    ]
+  },
+  "positive": {
+    "passed": true,
+    "mismatched_paths": [],
+    "reviewed_original_ids_by_school": {
+      "duke": 90,
+      "fsu": 2,
+      "miami": 444,
+      "pitt": 29,
+      "ucsd": 1,
+      "usc": 2
+    }
+  },
+  "final_gate": "Recompute against the real first parent immediately before merging, at its exact SHA. Retain the published Vanderbilt observation if it changes further.",
+  "independent_b20_preview_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/c1cf334c0316eaf8e8b1a54918e0cd219dc87b3a/data/audits/observed-faculty-2026-11-26/twentieth-candidate/b20-thursday-merge-verified-data.json"
+}
