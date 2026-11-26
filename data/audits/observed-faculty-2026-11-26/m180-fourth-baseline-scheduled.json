@@ -1,0 +1,1172 @@
+{
+  "ncsu": {
+    "run_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45232854848",
+    "data_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/b598e776b9d3024f7e4aaf96247cd6cf7e35f90f/data/processed/collector_status.json",
+    "recorded_at": "2026-11-23T17:57:46.811848",
+    "school_collector": {
+      "fetched": 2109,
+      "new": 6,
+      "status": "ok",
+      "unit_ledger_authorized_units": 1,
+      "unit_ledger_units": 37,
+      "updated": 2103,
+      "zero_class": "success_nonzero"
+    },
+    "units": {
+      "chass": {
+        "unit_name": "College of Humanities and Social Sciences",
+        "unit_url": "https://chass.ncsu.edu/people/",
+        "completed_at": "2026-11-23T20:06:04.420534+00:00",
+        "completeness_status": "partial",
+        "observed_count": 429,
+        "baseline_active_count": 443,
+        "baseline_identity_count": 442,
+        "matched_identity_count": 429,
+        "new_identity_count": 0,
+        "retirement_authorized": false
+      }
+    },
+    "reviewed_ids": [
+      {
+        "id": "faculty-ncsu-chass-6cb0c1b0",
+        "group": "retired_only",
+        "name": "Joseph Herkert",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-da735178",
+        "group": "retired_only",
+        "name": "William Smith",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c8c748bd",
+        "group": "retired_only",
+        "name": "William Wormsley",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-f6c04422",
+        "group": "retired_only",
+        "name": "Toby Parcel",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-618da59b",
+        "group": "retired_only",
+        "name": "Tim Wallace",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-7127258e",
+        "group": "retired_only",
+        "name": "Virginia Aldige",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-825124c2",
+        "group": "name_differs_between_official_entries",
+        "name": "Ron Czaja",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-01017fff",
+        "group": "retired_only",
+        "name": "Theodore Greenstein",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-2c5ca7f5",
+        "group": "retired_only",
+        "name": "Margaret Zahn",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-8874c982",
+        "group": "name_differs_between_official_entries",
+        "name": "Patty McCall",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c5da53cb",
+        "group": "additional_appointment_or_group",
+        "name": "Jeffrey Leiter",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-8a7b1a0e",
+        "group": "retired_only",
+        "name": "Michael Schwalbe",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-e7bd2a4f",
+        "group": "additional_appointment_or_group",
+        "name": "Risa Ellovich",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-5b9403a0",
+        "group": "retired_only",
+        "name": "Maxine Atkinson",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-766b7906",
+        "group": "retired_only",
+        "name": "William Clifford",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-53a980d5",
+        "group": "retired_only",
+        "name": "Adam Davis",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-af259a1c",
+        "group": "retired_only",
+        "name": "Marvin Soroos",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-d8305216",
+        "group": "name_differs_between_official_entries",
+        "name": "Bob Moog",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-8426ed71",
+        "group": "mixed_or_unconfirmed_retirement_title",
+        "name": "G Garson",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-86a2f80f",
+        "group": "retired_only",
+        "name": "Thomas Hess",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-ed249065",
+        "group": "retired_only",
+        "name": "Michael Wogalter",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-d8c4ba8d",
+        "group": "name_differs_between_official_entries",
+        "name": "Samuel Pond",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-ca7b565e",
+        "group": "retired_only",
+        "name": "Roger Mitchell",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-ebe42923",
+        "group": "retired_only",
+        "name": "Ann Schulte",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-27a2fc46",
+        "group": "retired_only",
+        "name": "Lynne Baker-Ward",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-982a2d82",
+        "group": "retired_only",
+        "name": "Mark Wilson",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-dcb028fb",
+        "group": "name_differs_between_official_entries",
+        "name": "Mary E Haskett",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-ff4905cc",
+        "group": "name_differs_between_official_entries",
+        "name": "Donald H. Mershon",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-77beffdf",
+        "group": "retired_only",
+        "name": "James Kalat",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-b36ff5aa",
+        "group": "mixed_or_unconfirmed_retirement_title",
+        "name": "Katharine Stewart",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-53cdfe9a",
+        "group": "retired_only",
+        "name": "Kitty Klein",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-bb2a287f",
+        "group": "retired_only",
+        "name": "Joan Michael",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-6691c85c",
+        "group": "retired_only",
+        "name": "William Erchul",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-0d338337",
+        "group": "retired_only",
+        "name": "Amy Halberstadt",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-2f83bf51",
+        "group": "retired_only",
+        "name": "Doug Gillan",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-fee3291c",
+        "group": "retired_only",
+        "name": "Denis Gray",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-1d403578",
+        "group": "retired_only",
+        "name": "David Martin",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-a3b3f627",
+        "group": "retired_only",
+        "name": "Hal Levin",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-4c6f69c7",
+        "group": "retired_only",
+        "name": "Michael Pendlebury",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c42f300a",
+        "group": "retired_only",
+        "name": "David Austin",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-31aed8b9",
+        "group": "retired_only",
+        "name": "A. Donald VandeVeer",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-165fe06b",
+        "group": "name_differs_between_official_entries",
+        "name": "David Greene",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-0bd3e213",
+        "group": "retired_only",
+        "name": "Stephanie Spencer",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-f7f96c30",
+        "group": "retired_only",
+        "name": "William Harris",
+        "observed_by_units": []
+      },
+      {
+        "id": "faculty-ncsu-chass-7bd17d24",
+        "group": "retired_only",
+        "name": "Edith Sylla",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-5ed4f6d7",
+        "group": "retired_only",
+        "name": "Alexander De Grand",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c60e7c19",
+        "group": "retired_only",
+        "name": "Anthony LaVopa",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-a3f975b4",
+        "group": "retired_only",
+        "name": "James Banker",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-3ada8e26",
+        "group": "retired_only",
+        "name": "Turi Hoversten",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-f600e4ac",
+        "group": "retired_only",
+        "name": "Toby Brody",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-3e0037ac",
+        "group": "retired_only",
+        "name": "Mary Witt",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-a802f469",
+        "group": "retired_only",
+        "name": "Yvonne Rollins",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-9cd4b0a6",
+        "group": "retired_only",
+        "name": "Martine Bell",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-49e38fb4",
+        "group": "name_differs_between_official_entries",
+        "name": "Louise Salstad",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-b1f59d0e",
+        "group": "retired_only",
+        "name": "Michele Magill",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-141f03e6",
+        "group": "retired_only",
+        "name": "Michele Darrah",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-a4f06c3b",
+        "group": "retired_only",
+        "name": "E Lioret",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-26df05d8",
+        "group": "retired_only",
+        "name": "Larysa Mykyta",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-6c8352f5",
+        "group": "retired_only",
+        "name": "Irwin Stern",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-d4e39c02",
+        "group": "retired_only",
+        "name": "Jillian Haeseler",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-595cab57",
+        "group": "retired_only",
+        "name": "Eika Tai",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-7fd5e8b6",
+        "group": "retired_only",
+        "name": "John Mertz",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-93b95a67",
+        "group": "retired_only",
+        "name": "Gary Mathews",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-dc604573",
+        "group": "retired_only",
+        "name": "Diane Beckman",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-0096f675",
+        "group": "retired_only",
+        "name": "Vladimir Bilenkin",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-43f8b3c4",
+        "group": "retired_only",
+        "name": "Wanda Ramm",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-08a6a48e",
+        "group": "additional_appointment_or_group",
+        "name": "Walt Wolfram",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-38b191e6",
+        "group": "name_differs_between_official_entries",
+        "name": "William Shaw",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-f779aad1",
+        "group": "name_differs_between_official_entries",
+        "name": "Wilton Barnhardt",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-66ccd11d",
+        "group": "additional_appointment_or_group",
+        "name": "Susan Katz",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-68e03470",
+        "group": "retired_only",
+        "name": "Jeanne Smoot",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-0fead013",
+        "group": "retired_only",
+        "name": "Sharon Setzer",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-7dab7a46",
+        "group": "retired_only",
+        "name": "Allen Stein",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-48f6179f",
+        "group": "retired_only",
+        "name": "John Kessel",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-0533fcc5",
+        "group": "retired_only",
+        "name": "Harry West",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-84e6cecc",
+        "group": "name_differs_between_official_entries",
+        "name": "RV Young",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-6317da3f",
+        "group": "retired_only",
+        "name": "Stan Dicks",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-1308dd4b",
+        "group": "retired_only",
+        "name": "Robert Kochersberger",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-eb130a81",
+        "group": "retired_only",
+        "name": "John Morillo",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-b1612d52",
+        "group": "name_differs_between_official_entries",
+        "name": "Mike Carter",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-720c8b8d",
+        "group": "retired_only",
+        "name": "Paul Colby",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-1894dc04",
+        "group": "name_differs_between_official_entries",
+        "name": "Philip Blank",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-98d2e744",
+        "group": "name_differs_between_official_entries",
+        "name": "Nancy Penrose",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-cbb0d8d9",
+        "group": "retired_only",
+        "name": "Carmine Prioli",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-abfe3ef9",
+        "group": "retired_only",
+        "name": "Marvin Hunt",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-6b705305",
+        "group": "retired_only",
+        "name": "Leila May",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-67420b77",
+        "group": "retired_only",
+        "name": "Lee Smith",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-6ae5927d",
+        "group": "mixed_or_unconfirmed_retirement_title",
+        "name": "Linda Holley",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-1e045b11",
+        "group": "retired_only",
+        "name": "Lucinda MacKethan",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-34394e34",
+        "group": "retired_only",
+        "name": "Margaret King",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c48a2e7d",
+        "group": "mixed_or_unconfirmed_retirement_title",
+        "name": "Maria Rouphail",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-433f5e0f",
+        "group": "retired_only",
+        "name": "Mary Thuente",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-34b13b74",
+        "group": "name_differs_between_official_entries",
+        "name": "Jim Clark",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-e8200533",
+        "group": "additional_appointment_or_group",
+        "name": "John Easley",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-4574a4b4",
+        "group": "retired_only",
+        "name": "Judith Ferster",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-98436171",
+        "group": "name_differs_between_official_entries",
+        "name": "John N Wall",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-af33539f",
+        "group": "retired_only",
+        "name": "Jon Thompson",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c87be0e0",
+        "group": "retired_only",
+        "name": "Judy Small",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-71f33bad",
+        "group": "retired_only",
+        "name": "John Balaban",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-cae62c8a",
+        "group": "retired_only",
+        "name": "Antony Harrison",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-57f02900",
+        "group": "retired_only",
+        "name": "Judi Gaitens",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-38b8ddf0",
+        "group": "retired_only",
+        "name": "Joseph Gomez",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-0ed45fbe",
+        "group": "name_differs_between_official_entries",
+        "name": "Michael Grimwood",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-f1ef75b0",
+        "group": "mixed_or_unconfirmed_retirement_title",
+        "name": "Etta Barksdale",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-ee4950c7",
+        "group": "retired_only",
+        "name": "David Covington",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-5148f03d",
+        "group": "name_differs_between_official_entries",
+        "name": "Cat Warren",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-96c8e0ea",
+        "group": "retired_only",
+        "name": "Devin Orgeron",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-89084a58",
+        "group": "retired_only",
+        "name": "Dick Reavis",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-52f21ae0",
+        "group": "retired_only",
+        "name": "Dorianne Laux",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-2245f23c",
+        "group": "retired_only",
+        "name": "Charlotte Gross",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-23293f4c",
+        "group": "retired_only",
+        "name": "Barbara Baines",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-1a99c291",
+        "group": "retired_only",
+        "name": "Robert Bateman",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-103a03af",
+        "group": "retired_only",
+        "name": "Beryl Pittman",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-a8da80ea",
+        "group": "retired_only",
+        "name": "Anne Baker",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-043b7940",
+        "group": "retired_only",
+        "name": "Angela Davis-Gardner",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-333b7b71",
+        "group": "retired_only",
+        "name": "Dean Phillips",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-14382765",
+        "group": "additional_appointment_or_group",
+        "name": "Sandy Stallings",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-4efb3edd",
+        "group": "retired_only",
+        "name": "Sarah Stein",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-9e6e4815",
+        "group": "retired_only",
+        "name": "William Jordan",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-cefc8c15",
+        "group": "retired_only",
+        "name": "Becky Leonard",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-4152431b",
+        "group": "retired_only",
+        "name": "Robert Schrag",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-acb2eb75",
+        "group": "name_differs_between_official_entries",
+        "name": "Melissa A. Johnson",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-4b621e05",
+        "group": "retired_only",
+        "name": "Nancy Snow",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-c07541fe",
+        "group": "retired_only",
+        "name": "Patricia Caple",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-fbcc8754",
+        "group": "name_differs_between_official_entries",
+        "name": "Bob Larson",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-a71e7ad9",
+        "group": "retired_only",
+        "name": "Joann Keyton",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-30622ea2",
+        "group": "retired_only",
+        "name": "James Kiwanuka-Tondo",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-74ae94c6",
+        "group": "mixed_or_unconfirmed_retirement_title",
+        "name": "Edward Funkhouser",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-9dc91fcb",
+        "group": "additional_appointment_or_group",
+        "name": "Charlotte Elleman",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-f4808c47",
+        "group": "retired_only",
+        "name": "Anita Croasmun",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-07f045ac",
+        "group": "retired_only",
+        "name": "Jim Alchediak",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-b48ebdaa",
+        "group": "retired_only",
+        "name": "Craig Smith",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-37744c16",
+        "group": "retired_only",
+        "name": "Daniel DeJoy",
+        "observed_by_units": [
+          "chass"
+        ]
+      },
+      {
+        "id": "faculty-ncsu-chass-ea98ec3c",
+        "group": "retired_only",
+        "name": "John Gilbert",
+        "observed_by_units": [
+          "chass"
+        ]
+      }
+    ]
+  },
+  "wisc": {
+    "run_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+    "data_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/308e04289f19cc575d2ca0031e8ca217612dc71b/data/processed/collector_status.json",
+    "recorded_at": "2026-11-25T17:06:18.043847",
+    "school_collector": {
+      "fetched": 1143,
+      "new": 92,
+      "status": "ok",
+      "unit_ledger_authorized_units": 16,
+      "unit_ledger_units": 69,
+      "updated": 1051,
+      "zero_class": "success_nonzero"
+    },
+    "units": {
+      "cs": {
+        "unit_name": "Department of Computer Sciences",
+        "unit_url": "https://www.cs.wisc.edu/people/faculty-2/",
+        "completed_at": "2026-11-25T17:22:16.938250+00:00",
+        "completeness_status": "partial",
+        "observed_count": 77,
+        "baseline_active_count": 131,
+        "baseline_identity_count": 128,
+        "matched_identity_count": 77,
+        "new_identity_count": 0,
+        "retirement_authorized": false,
+        "live_roster_count": 77,
+        "retained_only_count": 0
+      },
+      "ece": {
+        "unit_name": "Department of Electrical & Computer Engineering",
+        "unit_url": "https://directory.engr.wisc.edu/ece/",
+        "completed_at": "2026-11-25T17:22:21.457634+00:00",
+        "completeness_status": "complete",
+        "observed_count": 29,
+        "baseline_active_count": 31,
+        "baseline_identity_count": 31,
+        "matched_identity_count": 29,
+        "new_identity_count": 0,
+        "retirement_authorized": true,
+        "live_roster_count": 29,
+        "retained_only_count": 0,
+        "missed_present_identities": []
+      }
+    },
+    "reviewed_ids": [
+      {
+        "id": "faculty-wisc-cs-0ead07e9",
+        "group": "retired_affiliate",
+        "name": "Mikko Lipasti",
+        "observed_by_units": []
+      },
+      {
+        "id": "faculty-wisc-ece-6f602ed6",
+        "group": "active_control",
+        "name": "Chris Brace",
+        "observed_by_units": [
+          "ece"
+        ]
+      },
+      {
+        "id": "faculty-wisc-ece-ea5c581c",
+        "group": "active_control",
+        "name": "Randall Goldsmith",
+        "observed_by_units": [
+          "ece"
+        ]
+      }
+    ]
+  },
+  "scope": "Immediately preceding successful scheduled runs, before the retirement corrections. Presence in the named departmental unit ledger is reproduced from observed_entity_ids. This is a historical baseline, not a check of the updated collectors."
+}
