@@ -20,7 +20,7 @@ run:
 # Production UI is the Next.js frontend (see frontend/); this is just an
 # ad-hoc tool for browsing data/processed/opportunities.json. Optional.
 run-streamlit:
-	streamlit run src/app/streamlit_app.py
+	streamlit run archive/streamlit/streamlit_app.py
 
 # Run collectors
 collect-our:
