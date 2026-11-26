@@ -4,6 +4,7 @@ import type { EmailTextSelection } from './email-revision';
 import type { MatchReasonKey } from './match-reasons';
 import { validateResumeMaster } from './resume-master';
 import type {
+  GitHubPullSource,
   ProfileData,
   ProfileRequest,
   MatchesResponse,
@@ -1456,6 +1457,11 @@ export interface GitHubParseResponse {
   topics: string[];
   repo_count: number;
   top_repos: string[];
+}
+
+export function fetchGitHubContribution(username: string, pull: { owner: string; repo: string; number: number }) {
+  const path = [username, 'pull', pull.owner, pull.repo, String(pull.number)].map(encodeURIComponent).join('/');
+  return request<{ id: string; source: GitHubPullSource }>(`/resume/github/${path}`);
 }
 
 export async function parseGitHubProfile(username: string): Promise<GitHubParseResponse> {

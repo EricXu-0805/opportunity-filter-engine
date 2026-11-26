@@ -2555,7 +2555,7 @@ export default function ColdEmailModal({
                               <p className="whitespace-pre-wrap">{entry.excerpt}</p>
                               {entry.context === null && <p className="mt-1 text-gray-500">{locale === 'zh' ? '未指定项目或经历；仅使用这条原文。' : 'No activity assigned; only this original entry is used.'}</p>}
                               {entry.context && <div className="mt-1 whitespace-pre-wrap" data-testid="email-experience-activity">{['title', 'institution', 'organization', 'venue', 'start', 'end', 'date'].map(key => entry.context?.fields[key]).filter(Boolean).map(fact => <p key={fact!.id}>{fact!.value}</p>)}</div>}
-                              <span className="text-gray-500">{t(entry.source.kind === 'resume' ? 'coldEmail.experienceSourceResume' : 'coldEmail.experienceSourceManual')}</span>
+                              <span className="text-gray-500">{t(entry.source.kind === 'github' ? 'home.experience.source.github' : entry.source.kind === 'resume' ? 'coldEmail.experienceSourceResume' : 'coldEmail.experienceSourceManual')}</span>
                             </li>
                           ))}
                         </ul>
