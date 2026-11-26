@@ -1,0 +1,84 @@
+{
+  "release": "87b1e916c0c88c32bba327256706a2beff293346",
+  "mode": "before",
+  "site": "https://joinalab.com",
+  "started_at": "2026-11-26T20:35:55.375767+00:00",
+  "projections": [
+    {
+      "id": "ucb-urap-proj-f800d57c6f64",
+      "fingerprint": "10d192d3e54708e89deb25acd22652a0beeaed630c0de1489fda8d223b53eec1"
+    },
+    {
+      "id": "ucb-urap-proj-464484929146",
+      "fingerprint": "adf1016778f7df3c1bdf880d0a5bcf40dbd14bc292b5953da448bcac59a7529a"
+    },
+    {
+      "id": "ucb-urap-proj-5d3f6167a36a",
+      "fingerprint": "205c7643d2c92622f0d173bd1fce6ad16c36104de987d379e7a37d4c76f60bde"
+    },
+    {
+      "id": "ucb-urap-proj-124e546d2fdd",
+      "fingerprint": "ce7f0230e3c6d4adc5b5c455adcd6c95e43cce2dd0d1d82592cb2228f3417f5f"
+    },
+    {
+      "id": "ucb-urap-proj-cb3ddbd5cf76",
+      "fingerprint": "7781fd8419c67cbaff8f2ec2cddc5476d1b5da3dc3a5f7aee9eb2d51828e95c4"
+    },
+    {
+      "id": "simplify-intern-01c4d1da-b058-4813-b47e-7f8e4dba1bd1",
+      "fingerprint": "5a8f575b71480216cbfc0f4243d97a924e4d5b71cff4146078e0e5e077865642"
+    }
+  ],
+  "pages": [
+    {
+      "id": "simplify-intern-01c4d1da-b058-4813-b47e-7f8e4dba1bd1",
+      "url": "https://joinalab.com/opportunities/simplify-intern-01c4d1da-b058-4813-b47e-7f8e4dba1bd1",
+      "status": 200,
+      "visible_h1": "Technical Intern and New Grad",
+      "api_mentor_or_employer": "General Intuition &amp; Medal",
+      "public_posture": "inactive"
+    },
+    {
+      "id": "ucb-urap-proj-464484929146",
+      "url": "https://joinalab.com/opportunities/ucb-urap-proj-464484929146",
+      "status": 200,
+      "visible_h1": "Geometry Resources in Dance (GRiD)\nDesign-based educational research for learners to objectify their tacit attentional anchors for movement coordination into auxiliary lines for geometric practice",
+      "api_mentor_or_employer": "Prof. Reza Abbasi-Asl's URAP project",
+      "public_posture": "listing_closed"
+    },
+    {
+      "id": "ucb-urap-proj-5d3f6167a36a",
+      "url": "https://joinalab.com/opportunities/ucb-urap-proj-5d3f6167a36a",
+      "status": 200,
+      "visible_h1": "The Mobilization of Undocumented Immigrants in Phoenix, Arizona",
+      "api_mentor_or_employer": "Prof. Reza Abbasi-Asl's URAP project",
+      "public_posture": "listing_closed"
+    },
+    {
+      "id": "ucb-urap-proj-cb3ddbd5cf76",
+      "url": "https://joinalab.com/opportunities/ucb-urap-proj-cb3ddbd5cf76",
+      "status": 200,
+      "visible_h1": "Adding Scientific End-to-End Tests to the Medium-Energy Gamma-ray Astronomy Library (MEGAlib)",
+      "api_mentor_or_employer": "Prof. Wendy Yue's URAP project",
+      "public_posture": "listing_closed"
+    },
+    {
+      "id": "ucb-urap-proj-f800d57c6f64",
+      "url": "https://joinalab.com/opportunities/ucb-urap-proj-f800d57c6f64",
+      "status": 200,
+      "visible_h1": "Stability driven interpretation and compression of neural networks",
+      "api_mentor_or_employer": "Prof. Reza Abbasi-Asl's URAP project",
+      "public_posture": "listing_closed"
+    },
+    {
+      "id": "ucb-urap-proj-124e546d2fdd",
+      "url": "https://joinalab.com/opportunities/ucb-urap-proj-124e546d2fdd",
+      "status": 200,
+      "visible_h1": "Strengthening Early Childhood Systems Through Networks: Alumni Engagement, Campus Partnerships, and Community Outreach\n\nSponsored by UC Berkeley Equity &amp; Excellence in Early Childhood (E3C) (inter",
+      "api_mentor_or_employer": "Prof. Reza Abbasi-Asl's URAP project",
+      "public_posture": "listing_closed"
+    }
+  ],
+  "retry_events": [],
+  "finished_at": "2026-11-26T20:36:10.130016+00:00"
+}
