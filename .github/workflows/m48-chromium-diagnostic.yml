@@ -21,7 +21,4 @@ jobs:
           node-version: 24
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - run: |
-          for mode in shell-persistent chrome-persistent chrome-headed; do
-            xvfb-run -a env FIXTURE_MODE="$mode" node e2e/m48-diagnostic.mjs
-          done
+      - run: npx playwright test -c m48-fixture.config.ts --repeat-each 3
