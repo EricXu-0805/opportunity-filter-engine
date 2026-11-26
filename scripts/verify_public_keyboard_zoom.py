@@ -30,6 +30,8 @@ def open_menu(p,toggle):
     raise AssertionError(('menu did not open with Enter',active(p)))
 
 def active(p):
+    # Let the browser finish its normal keyboard scroll before measuring coverage.
+    p.wait_for_timeout(420)
     return p.evaluate("""() => {const e=document.activeElement, cs=getComputedStyle(e), r=e.getBoundingClientRect();
       const x=Math.max(0,Math.min(innerWidth-1,r.x+r.width/2)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height/2));
       const cover=document.elementFromPoint(x,y);return {tag:e.tagName,id:e.id,role:e.getAttribute('role'),name:(e.getAttribute('aria-label')||e.innerText||e.getAttribute('placeholder')||'').slice(0,65),focused:e.matches(':focus-visible'),outline:cs.outlineStyle!=='none'&&parseFloat(cs.outlineWidth)>0,ring:cs.boxShadow!=='none',visible:r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0,uncovered:cover===e||e.contains(cover)}}""")
@@ -128,6 +130,12 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         if LOCAL:
             assert case['inner_arrow_to_text'] and case['inner_tab_to_panel'] and case['separate_tabstops']==['-1','0'],case
             assert case.get('escape_restores_menu_toggle',True) and case['route_visited']=='/favorites',case
+            assert case['outer_end_focus']['id']=='resources-tab-import',case
+            for key in ('outer_end_focus','url_focus','textarea_focus','nav_link_focus'):
+                item=case[key]
+                assert item['focused'] and item['visible'] and item['uncovered'] and (item['outline'] or item['ring']),(key,item)
+            if 'after_menu_escape' in case:
+                item=case['after_menu_escape'];assert item['focused'] and item['visible'] and item['uncovered'],item
             assert all(case[k]['document']<=case[k]['client']+1 for k in ('import_geometry','favorites_geometry'))
         cases.append(case);print('PUBLIC KEYBOARD CASE',json.dumps(case,ensure_ascii=False),flush=True)
         ctx.close()
