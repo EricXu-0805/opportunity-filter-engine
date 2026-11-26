@@ -1,0 +1,66 @@
+{
+  "observed_utc": "2026-11-26T09:11:52.447894+00:00",
+  "input_main": "0741df3b",
+  "source_url": "https://ciera.northwestern.edu/directory/",
+  "original_northwestern_rows": 2857,
+  "raw_page_cards": 272,
+  "old_unique_urls": 44,
+  "corrected_unique_urls": 39,
+  "filtered_urls": [
+    "https://ciera.northwestern.edu/directory/adriano-baldeschi/",
+    "https://ciera.northwestern.edu/directory/gokul-srinivasaragavanq/",
+    "https://ciera.northwestern.edu/directory/juan-gabriel-serra-perez/",
+    "https://ciera.northwestern.edu/directory/rocco-coppejans/",
+    "https://ciera.northwestern.edu/directory/samantha-wu/"
+  ],
+  "actual_refresh_replay": {
+    "fetched": 39,
+    "new": 24,
+    "updated": 15,
+    "status": "ok"
+  },
+  "unit": {
+    "retirement_authorized": false,
+    "failure_reason": "blocked_identity_match_failures",
+    "missed_present_identities": [
+      "url/ciera.northwestern.edu/directory/adriano-baldeschi",
+      "url/ciera.northwestern.edu/directory/gokul-srinivasaragavanq",
+      "url/ciera.northwestern.edu/directory/juan-gabriel-serra-perez",
+      "url/ciera.northwestern.edu/directory/rocco-coppejans",
+      "url/ciera.northwestern.edu/directory/samantha-wu"
+    ]
+  },
+  "after_replay": [
+    {
+      "id": "faculty-northwestern-ciera-aad82d04",
+      "actionable_row": true,
+      "deactivation_reason": null,
+      "last_seen_at": "2026-11-20T17:18:14.117881"
+    },
+    {
+      "id": "faculty-northwestern-ciera-1868059f",
+      "actionable_row": true,
+      "deactivation_reason": null,
+      "last_seen_at": "2026-11-20T17:18:14.117924"
+    },
+    {
+      "id": "faculty-northwestern-ciera-f419fea7",
+      "actionable_row": true,
+      "deactivation_reason": null,
+      "last_seen_at": "2026-11-20T17:18:14.117972"
+    },
+    {
+      "id": "faculty-northwestern-ciera-9b57ab7e",
+      "actionable_row": true,
+      "deactivation_reason": null,
+      "last_seen_at": "2026-09-11T07:23:13.867997"
+    },
+    {
+      "id": "faculty-northwestern-ciera-bb043c26",
+      "actionable_row": true,
+      "deactivation_reason": null,
+      "last_seen_at": "2026-11-20T17:18:14.117527"
+    }
+  ],
+  "scope": "Local replay only of the saved university roster, current main Northwestern shard, real collection/merge and archival path, with unrelated units isolated."
+}
