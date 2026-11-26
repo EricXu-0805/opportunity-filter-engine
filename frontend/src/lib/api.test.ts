@@ -283,11 +283,13 @@ describe('getMatchView', () => {
         results: [],
         filtered_total: 0,
         view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
+        applied_research_topic: 'graph neural networks',
         applied_opportunity_type: 'research',
         contract_version: 'match-view-v3-faculty-trust',
       }),
     );
     const view = {
+      research_topic: 'graph neural networks',
       opportunity_type: 'research' as const,
       tab: 'starred' as const,
       search_query: 'ml',
@@ -319,7 +321,9 @@ describe('getMatchView', () => {
 
     // A previous Render deployment silently ignores a new view field.
     fetchMock.mockResolvedValue(okJson({ results: [], filtered_total: 0 }));
-    await expect(getMatchView(makeProfile(), view)).rejects.toThrow(/opportunity type/);
+    await expect(getMatchView(makeProfile(), { ...view, research_topic: '' })).rejects.toThrow(/opportunity type/);
+    fetchMock.mockResolvedValue(okJson({ results: [], filtered_total: 0, applied_opportunity_type: 'research' }));
+    await expect(getMatchView(makeProfile(), view)).rejects.toThrow(/research topic/);
   });
 
   it('fails closed when a caller asks for AI refine before release acceptance', async () => {

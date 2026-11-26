@@ -64,6 +64,7 @@ import { useT } from '@/i18n/client';
 
 import { EmptyState } from './EmptyState';
 import { favoriteExportView, favoriteRowsForTab } from './export-view';
+import { suggestInterests } from '@/lib/interest-suggestions';
 import { FilterRail } from './FilterRail';
 import { MatchList } from './MatchList';
 import { ResultsHeader } from './ResultsHeader';
@@ -336,6 +337,7 @@ function ResultsContent() {
     intl: filters.intl,
     source: filters.source,
     ...(filters.opportunityType && { opportunity_type: filters.opportunityType }),
+    ...(filters.researchTopic && { research_topic: filters.researchTopic }),
     on_campus: filters.onCampus,
     deadline: filters.deadline,
     min_score: filters.minScore,
@@ -415,8 +417,21 @@ function ResultsContent() {
     { owner: view?.token ?? null, restore: resultSession.restore, onValidated: acceptResultPage },
   );
 
-  // Facets are derived from the complete canonical snapshot by the backend,
-  // never guessed from the current 50-card page.
+  // Examples for the input. A student may enter any tag in the full results.
+  const topicSuggestions = useMemo(() => {
+    const labels = new Map<string, string>();
+    const keywords = (data?.results ?? []).flatMap(row => row.opportunity?.keywords ?? []);
+    for (const value of [...keywords, ...suggestInterests(profile?.major, profile?.college)]) {
+      if (typeof value !== 'string') continue;
+      const label = value.trim();
+      if (label && label !== '[email redacted]' && label.length <= 100 && !labels.has(label.toLowerCase())) {
+        labels.set(label.toLowerCase(), label);
+      }
+    }
+    return [...labels.values()];
+  }, [data?.results, profile?.major, profile?.college]);
+
+  // Counted facets cover the complete snapshot, including later pages.
   const sourceOptions = useMemo<Array<[string, string]>>(() => [
     ['', t('results.filters.sourceAll')],
     ...(data?.source_facets ?? []).map(
@@ -647,6 +662,7 @@ function ResultsContent() {
     (filters.intl === 'yes' ? 1 : 0) +
     (filters.source ? 1 : 0) +
     (filters.opportunityType ? 1 : 0) +
+    (filters.researchTopic ? 1 : 0) +
     (filters.onCampus ? 1 : 0) +
     (filters.deadline ? 1 : 0) +
     (filters.minScore > 0 ? 1 : 0) +
@@ -1041,6 +1057,7 @@ function ResultsContent() {
             dismissedCount={dismissedCount}
             activeFilterCount={activeFilterCount}
             sourceOptions={sourceOptions}
+            topicSuggestions={topicSuggestions}
             deadlineOptions={deadlineOptions}
             scopeOptions={scopeOptions}
             includeCrossSchool={includeCrossSchool}

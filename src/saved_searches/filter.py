@@ -46,7 +46,7 @@ from datetime import date, datetime
 
 from backend.lib.opportunity_detail import pay_is_inferred
 from backend.lib.public_projection import redact_embedded_emails
-from backend.routes.matches import _in_view_scope, _match_view_row
+from backend.routes.matches import _has_research_topic, _in_view_scope, _match_view_row
 from src.evidence import faculty_contact_claims_unverified
 from src.matcher.ranker import _normalize_type_key, _word_re, expand_search_aliases, without_web_addresses
 
@@ -240,6 +240,13 @@ def match_filter(opp: dict, filters: dict) -> bool:
     real opportunities.json data is well-formed but cron should never
     crash on a single malformed row.
     """
+    topic = filters.get("researchTopic")
+    if topic:
+        if not isinstance(topic, str):
+            return False
+        normalized = topic.strip().casefold()
+        if normalized and not _has_research_topic(opp.get("keywords"), normalized):
+            return False
     wanted_type = filters.get("opportunityType")
     if wanted_type:
         raw_type = opp.get("opportunity_type")

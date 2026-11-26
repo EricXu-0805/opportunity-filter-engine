@@ -21,6 +21,7 @@ export interface FilterRailProps {
    *  results (first entry is the "All" option). Replaces a hardcoded list that
    *  omitted simplify_internships (the 2nd-largest source) and others. */
   sourceOptions: Array<[string, string]>;
+  topicSuggestions?: string[];
   /** Deadline facet options, derived like sourceOptions from what the server
    *  counted rather than hardcoded. "All" and "rolling" are always present;
    *  the day-windows and "passed" appear only when a record would come back. */
@@ -64,6 +65,7 @@ export function FilterRail({
   dismissedCount,
   activeFilterCount,
   sourceOptions,
+  topicSuggestions = [],
   deadlineOptions,
   scopeOptions,
   includeCrossSchool,
@@ -128,6 +130,26 @@ export function FilterRail({
         id="filter-rail-chips"
         className={`${mobileExpanded ? 'flex' : 'hidden'} sm:flex flex-wrap items-center gap-2 -mx-4 px-4 sm:mx-0 sm:px-0`}
       >
+        <form
+          key={filters.researchTopic ?? ''}
+          className="flex items-center gap-1"
+          onSubmit={event => {
+            event.preventDefault();
+            const topic = String(new FormData(event.currentTarget).get('topic') ?? '').trim();
+            onFiltersChange({ ...filters, researchTopic: topic || undefined });
+          }}
+        >
+          <input name="topic" list="match-research-topics" maxLength={100}
+            aria-label={t('results.filters.topicTag')} placeholder={t('results.filters.topicTag')}
+            defaultValue={filters.researchTopic ?? ''}
+            className="w-40 px-3 py-1.5 rounded-lg border border-gray-200 text-xs focus-visible:outline-indigo-500" />
+          <datalist id="match-research-topics">
+            {topicSuggestions.map(label => <option key={label} value={label} />)}
+          </datalist>
+          <button type="submit" className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus-visible:outline-indigo-500">
+            {t('results.filters.applyTopic')}
+          </button>
+        </form>
         <FilterSelect
           label={t('results.filters.typeAria')}
           value={filters.opportunityType ?? ''}

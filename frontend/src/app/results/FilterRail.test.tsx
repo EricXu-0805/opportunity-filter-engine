@@ -17,6 +17,7 @@ function renderRail(overrides: {
   showDismissed?: boolean;
   dismissedCount?: number;
   sourceOptions?: Array<[string, string]>;
+  topicSuggestions?: string[];
   deadlineOptions?: Array<[string, string]>;
   scopeOptions?: Array<[string, string]>;
   includeCrossSchool?: boolean;
@@ -29,6 +30,7 @@ function renderRail(overrides: {
     <FilterRail
       filters={overrides.filters ?? DEFAULT_FILTERS}
       onFiltersChange={onFiltersChange}
+      topicSuggestions={overrides.topicSuggestions}
       sortBy={overrides.sortBy ?? 'score'}
       onSortByChange={onSortByChange}
       showDismissed={overrides.showDismissed ?? false}
@@ -139,7 +141,7 @@ describe('FilterRail (R69-B mobile collapse)', () => {
     expect(chips).toBeTruthy();
     // Scope is absent for this fixture, and min-score has its own button.
     const selects = within(chips!).getAllByRole('combobox');
-    expect(selects.length).toBe(7);
+    expect(selects.length).toBe(8);
   });
 });
 
@@ -161,7 +163,7 @@ describe('FilterRail — discovery-scope facet', () => {
     expect(screen.getByText('results.filters.scopeMySchool')).toBeInTheDocument();
     expect(screen.getByText('results.filters.scopeOpen')).toBeInTheDocument();
     const chips = document.getElementById('filter-rail-chips');
-    expect(within(chips!).getAllByRole('combobox').length).toBe(8);
+    expect(within(chips!).getAllByRole('combobox').length).toBe(9);
   });
 
   it('selecting a scope updates filters.scope', () => {
@@ -184,10 +186,26 @@ describe('FilterRail — every dropdown says what it filters', () => {
     const chips = document.getElementById('filter-rail-chips');
     const names = within(chips!).getAllByRole('combobox').map((select) => select.getAttribute('aria-label'));
     expect(names).toEqual([
-      'results.filters.typeAria', 'results.filters.paidAria', 'results.filters.intlAria', 'results.filters.sourceAria',
+      'results.filters.topicTag', 'results.filters.typeAria', 'results.filters.paidAria', 'results.filters.intlAria', 'results.filters.sourceAria',
       'results.filters.scopeAria', 'results.filters.locAria', 'results.filters.deadlineAria', 'results.filters.sortAria',
     ]);
     expect(screen.getByRole('combobox', { name: 'results.filters.paidAria' })).toHaveValue('');
+  });
+
+  it('submits any whole research tag, preserving other filters, and clears only that tag on an empty submission', () => {
+    const filters: Filters = { ...DEFAULT_FILTERS, paid: 'yes', researchTopic: 'robotics' };
+    const { onFiltersChange } = renderRail({ filters, topicSuggestions: ['robotics', 'control systems'] });
+    const input = screen.getByRole('combobox', { name: 'results.filters.topicTag' });
+    expect(input).toHaveValue('robotics');
+    const suggestions = document.getElementById(input.getAttribute('list')!)!;
+    expect(Array.from(suggestions.querySelectorAll('option'), option => option.value)).toEqual(['robotics', 'control systems']);
+    fireEvent.change(input, { target: { value: '  graph neural networks  ' } });
+    expect(onFiltersChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'results.filters.applyTopic' }));
+    expect(onFiltersChange).toHaveBeenLastCalledWith({ ...filters, researchTopic: 'graph neural networks' });
+    fireEvent.change(input, { target: { value: ' ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'results.filters.applyTopic' }));
+    expect(onFiltersChange).toHaveBeenLastCalledWith({ ...filters, researchTopic: undefined });
   });
 
   it('lets a student narrow their existing results to a released opportunity type', () => {

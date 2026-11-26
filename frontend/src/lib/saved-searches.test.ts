@@ -837,6 +837,7 @@ describe('a saved search restores every condition it was saved with', () => {
         tab,
         sort_by,
         filters: {
+          researchTopic: ['Arts & AI', 'graph neural networks'][n % 2],
           opportunityType: (['research', 'internship', 'summer_program'] as const)[n % 3],
           paid: (['', 'yes', 'no'] as const)[n % 3],
           intl: (['', 'yes', 'no'] as const)[(n + 1) % 3],
@@ -885,6 +886,7 @@ describe('a saved search restores every condition it was saved with', () => {
     const restored = readInitialFiltersFromUrl(
       new URLSearchParams(savedSearchToUrl(legacy).split('?')[1] ?? ''),
     );
+    expect(restored.filters.researchTopic).toBeUndefined();
     expect(restored.filters.opportunityType).toBeUndefined();
     expect(restored.filters.scope).toBe('');
     expect(restored.filters.paid).toBe('yes');

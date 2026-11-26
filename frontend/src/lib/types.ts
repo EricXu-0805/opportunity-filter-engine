@@ -580,6 +580,7 @@ export interface MatchesResponse {
   source_facets?: Array<{ source: string; count: number }>;
   scope_available?: boolean;
   applied_opportunity_type?: string;
+  applied_research_topic?: string;
   /** How many records each deadline chip would return, counted server-side
    *  over the whole snapshot against the caller's `today`. Absent from an
    *  older backend; the rail then hides the chips rather than assuming. */

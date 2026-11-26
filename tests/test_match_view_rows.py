@@ -587,3 +587,56 @@ def test_type_filter_agrees_with_saved_searches_on_normalized_and_unknown_types(
         assert {r.opportunity_id for r in filtered} == expected
     assert set(matching_ids(records, {"opportunityType": "summer_program"})) == expected
     assert set(matching_ids(records, {})) == {r["id"] for r in records}
+
+def test_research_topic_paginates_only_exact_public_tags_across_the_full_view(match_env):
+    from tests.test_match_consistency import _profile
+
+    profile = _profile(seeking_type=["research", "internship"])
+    view = {"tab": "all", "today": _TODAY, "research_topic": "Materials Science", "favorite_ids": ["opp-02", "opp-03"]}
+    request = {"profile": profile, "view": view, "page_size": 1}
+    first = client.post("/api/matches/view", json=request)
+    assert first.status_code == 200, first.text
+    page = first.json()
+    assert page["applied_research_topic"] == "Materials Science"
+    assert page["view_counts"]["all"] == page["filtered_total"] == 3
+    assert page["view_counts"]["starred"] == 1
+    ids = []
+    while True:
+        for row in page["results"]:
+            assert "materials science" in row["opportunity"]["keywords"]
+            ids.append(row["opportunity_id"])
+        if not page["next_cursor"]:
+            break
+        following = client.post("/api/matches/view", json={**request, "cursor": page["next_cursor"]})
+        assert following.status_code == 200, following.text
+        page = following.json()
+    assert sorted(ids) == ["opp-02", "opp-06", "opp-10"]
+    changed = {**request, "view": {**view, "research_topic": "machine learning"}, "cursor": first.json()["next_cursor"]}
+    assert client.post("/api/matches/view", json=changed).status_code == 409
+    assert client.post("/api/matches/view", json={**request, "view": {**view, "research_topic": "a" * 101}}).status_code == 422
+
+
+def test_research_topics_match_published_whole_tags_in_results_and_saved_searches():
+    from src.saved_searches.filter import matching_ids
+
+    records = [
+        _listing("exact", keywords=["Graph Neural Networks"]),
+        _listing("substring", keywords=["applied graph neural networks"]),
+        _listing("prose-only", title="Graph neural networks", description_clean="Graph neural networks."),
+        _listing("other-type", keywords=["graph neural networks"], opportunity_type="internship"),
+        _listing("contact", keywords=["private@example.edu"]),
+    ]
+    cards = {r["id"]: m_module._match_card(r) for r in records}
+    rows = {r["id"]: m_module._match_view_row(r) for r in records}
+    results = _results(records)
+    for topic, expected in [
+        ("  graph NEURAL networks ", {"exact"}), ("Networks", set()),
+        ("private@example.edu", set()), ("[email redacted]", set()),
+    ]:
+        view = MatchViewState(today=_TODAY, research_topic=topic, opportunity_type="research")
+        for filtered, *_ in (
+            m_module._apply_match_view(results, cards, view, "uiuc"),
+            m_module._apply_match_view_rows(results, rows, view, "uiuc"),
+        ):
+            assert {r.opportunity_id for r in filtered} == expected
+        assert set(matching_ids(records, {"researchTopic": topic, "opportunityType": "research"})) == expected

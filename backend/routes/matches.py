@@ -1080,6 +1080,8 @@ def _decode_match_cursor(cursor: str) -> tuple[str, int]:
 
 def _normalized_view_payload(view: MatchViewState) -> dict:
     payload = view.model_dump()
+    if not view.research_topic:
+        payload.pop("research_topic")
     if not view.opportunity_type:
         # Preserve the identity of existing unfiltered pages and cursors.
         payload.pop("opportunity_type")
@@ -1809,6 +1811,16 @@ def _apply_match_view(
     return _apply_match_view_rows(results, rows, view, home_school)
 
 
+def _has_research_topic(tags, topic: str) -> bool:
+    """Match a whole public topic tag. Never expose a hidden contact by filtering."""
+    if topic == "[email redacted]" or not isinstance(tags, (list, tuple)):
+        return False
+    return any(
+        isinstance(tag, str) and tag.strip().casefold() == topic and not contains_embedded_email(tag)
+        for tag in tags
+    )
+
+
 def _in_view_scope(row: _MatchViewRow, scope: str, home_school: str) -> bool:
     """Whether ``row`` is in the discovery scope ``scope`` for ``home_school``.
 
@@ -1838,6 +1850,7 @@ def _apply_match_view_rows(
     favorite_ids = set(view.favorite_ids)
     dismissed_ids = set(view.dismissed_ids)
     today = date.fromisoformat(view.today)
+    research_topic = view.research_topic.strip().casefold()
     search_matchers = [
         _search_matcher(term)
         for term in (
@@ -1899,6 +1912,8 @@ def _apply_match_view_rows(
             not is_confirmed_listing
             or row.international_friendly != "yes"
         ):
+            continue
+        if research_topic and not _has_research_topic(row.keywords, research_topic):
             continue
         if view.opportunity_type and _normalize_type_key(row.opportunity_type) != view.opportunity_type:
             continue
@@ -2257,6 +2272,7 @@ async def get_match_view(
         source_facets=source_facets,
         scope_available=scope_available,
         applied_opportunity_type=body.view.opportunity_type,
+        applied_research_topic=body.view.research_topic,
         deadline_facets=deadline_facets,
         view_id=view_id,
     )

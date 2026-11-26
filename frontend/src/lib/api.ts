@@ -474,6 +474,7 @@ export async function getMatches(
 
 export interface MatchViewRequestState {
   opportunity_type?: string;
+  research_topic?: string;
   tab: 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
   search_query: string;
   paid: '' | 'yes' | 'no';
@@ -518,6 +519,9 @@ export async function getMatchView(
     timeoutMs: 70_000,
     retries: 2,
   });
+  if (view.research_topic && data.applied_research_topic !== view.research_topic) {
+    throw new Error('The server could not confirm the selected research topic.');
+  }
   if (view.opportunity_type && data.applied_opportunity_type !== view.opportunity_type) {
     // An older backend ignores unknown view fields during a split deployment.
     throw new Error('The server could not confirm the selected opportunity type.');
