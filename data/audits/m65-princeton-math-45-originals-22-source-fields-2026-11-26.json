@@ -1,0 +1,1074 @@
+{
+  "at": "2026-11-26T15:32:40.908289+00:00",
+  "plain_official_roster": "https://www.math.princeton.edu/people?combine=&field_position_target_id=115",
+  "raw_directory_cards": 95,
+  "eligible_roster_originals": 45,
+  "active_stored_mathematics_originals": 45,
+  "historical_mathematics_originals": 5,
+  "read_distinct_named_official_pages": 45,
+  "official_subjects_found": 22,
+  "named_profiles_without_an_explicit_field": 23,
+  "campus_originals": 658,
+  "all_original_ids_and_order_preserved": true,
+  "changed_listing_dates": 0,
+  "rows": [
+    {
+      "id": "faculty-princeton-math-0a3b5211",
+      "person": "Michael Aizenman",
+      "official_person_url": "https://www.math.princeton.edu/people/michael-aizenman",
+      "official_fields": [
+        "Mathematical Physics"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:49.181234+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Mathematical Physics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/michael-aizenman",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-4448a014",
+      "person": "Noga Alon",
+      "official_person_url": "https://www.math.princeton.edu/people/noga-alon",
+      "official_fields": [
+        "Combinatorics"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:24:27.967642+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Combinatorics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/noga-alon",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-213fb372",
+      "person": "Manjul Bhargava",
+      "official_person_url": "https://www.math.princeton.edu/people/manjul-bhargava",
+      "official_fields": [
+        "Number Theory"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:49.171410+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Number Theory"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/manjul-bhargava",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-367f333b",
+      "person": "Bhargav Bhatt",
+      "official_person_url": "https://www.math.princeton.edu/people/bhargav-bhatt",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:24:36.379263+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-2bc4f244",
+      "person": "Guido Bosco",
+      "official_person_url": "https://www.math.princeton.edu/people/guido-bosco",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:24:39.380913+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-81717fad",
+      "person": "Sun-Yung Alice Chang",
+      "official_person_url": "https://www.math.princeton.edu/people/sun-yung-alice-chang",
+      "official_fields": [
+        "Geometric Analysis"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:52.472386+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Geometric Analysis"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/sun-yung-alice-chang",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-1e8d9a73",
+      "person": "Maria Chudnovsky",
+      "official_person_url": "https://www.math.princeton.edu/people/maria-chudnovsky",
+      "official_fields": [
+        "Graph Theory",
+        "Applied Mathematics"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:24:51.428399+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Graph Theory; Applied Mathematics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/maria-chudnovsky",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-ac2c4b7c",
+      "person": "Peter Constantin",
+      "official_person_url": "https://www.math.princeton.edu/people/peter-constantin",
+      "official_fields": [
+        "Analysis",
+        "Mathematical Physics",
+        "Applied Mathematics"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:24:52.410472+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Analysis; Mathematical Physics; Applied Mathematics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/peter-constantin",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": false,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-508a2fbf",
+      "person": "Mihalis Dafermos",
+      "official_person_url": "https://www.math.princeton.edu/people/mihalis-dafermos",
+      "official_fields": [
+        "Mathematical Physics",
+        "Partial Differential Equations"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:52.459887+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Mathematical Physics; Partial Differential Equations"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/mihalis-dafermos",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-67fb324d",
+      "person": "Camillo De Lellis",
+      "official_person_url": "https://www.math.princeton.edu/people/camillo-de-lellis",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:04.700458+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-9f854696",
+      "person": "Zeev Dvir",
+      "official_person_url": "https://www.math.princeton.edu/people/zeev-dvir",
+      "official_fields": [
+        "Discrete Mathematics",
+        "Applied Mathematics"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:10.857773+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Discrete Mathematics; Applied Mathematics"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/zeev-dvir",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-5e514677",
+      "person": "Charles Fefferman",
+      "official_person_url": "https://www.math.princeton.edu/people/charles-fefferman",
+      "official_fields": [
+        "Analysis"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:16.108977+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Analysis"
+        },
+        "inferred": {
+          "research_areas": {
+            "value": [
+              "navier-stokes equation solutions",
+              "geometric analysis and curvature flows",
+              "holomorphic and operator theory",
+              "spectral theory in mathematical physics",
+              "advanced harmonic analysis"
+            ],
+            "basis": "external_enrichment",
+            "source_name": "OpenAlex"
+          }
+        },
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/charles-fefferman",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-2fde5b92",
+      "person": "David Gabai",
+      "official_person_url": "https://www.math.princeton.edu/people/david-gabai",
+      "official_fields": [
+        "Topology"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:55.969744+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Topology"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/david-gabai",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-6bc4ebc8",
+      "person": "Marc A. Gilles",
+      "official_person_url": "https://www.math.princeton.edu/people/marc-gilles",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:28.202611+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-7ca4f281",
+      "person": "Susanna V. Haziot",
+      "official_person_url": "https://www.math.princeton.edu/people/susanna-v-haziot",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:31.694979+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-fdc91218",
+      "person": "Helmut H. Hofer",
+      "official_person_url": "https://www.math.princeton.edu/people/helmut-h-hofer",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:55.969038+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-b11e2997",
+      "person": "June Huh",
+      "official_person_url": "https://www.math.princeton.edu/people/june-huh-0",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:42.434992+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-ad232dab",
+      "person": "Thomas M. Hutchcroft",
+      "official_person_url": "https://www.math.princeton.edu/people/thomas-m-hutchcroft",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:25:48.213631+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-544ca149",
+      "person": "Alexandru Ionescu",
+      "official_person_url": "https://www.math.princeton.edu/people/alexandru-ionescu",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:28:59.479144+00:00",
+      "first_read": "ReadTimeout",
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-969b7ed6",
+      "person": "Nicholas Katz",
+      "official_person_url": "https://www.math.princeton.edu/people/nicholas-katz",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:00.577639+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-5348bdbb",
+      "person": "Sergiu Klainerman",
+      "official_person_url": "https://www.math.princeton.edu/people/sergiu-klainerman",
+      "official_fields": [
+        "Partial Differential Equations"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:04.238627+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Partial Differential Equations"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/sergiu-klainerman",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-b7ff93cb",
+      "person": "János Kollár",
+      "official_person_url": "https://www.math.princeton.edu/people/janos-kollar",
+      "official_fields": [
+        "Algebraic Geometry"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:07.479445+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Algebraic Geometry"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/janos-kollar",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-bf86c099",
+      "person": "Elon Lindenstrauss",
+      "official_person_url": "https://www.math.princeton.edu/people/elon-lindenstrauss",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:12.218150+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-1d1e69ca",
+      "person": "Fernando Codá Marques",
+      "official_person_url": "https://www.math.princeton.edu/people/fernando-coda-marques",
+      "official_fields": [
+        "Differential Geometry"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:16.473717+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Differential Geometry"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/fernando-coda-marques",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-e36f0caa",
+      "person": "Aaron Naber",
+      "official_person_url": "https://www.math.princeton.edu/people/aaron-naber-0",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:21.773005+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-6afc8974",
+      "person": "Assaf Naor",
+      "official_person_url": "https://www.math.princeton.edu/people/assaf-naor",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:27.037389+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-d459f31c",
+      "person": "Peter Ozsváth",
+      "official_person_url": "https://www.math.princeton.edu/people/peter-ozsvath",
+      "official_fields": [
+        "Topology"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:31.754858+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Topology"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/peter-ozsvath",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-ac69a7b1",
+      "person": "Stan Palasek",
+      "official_person_url": "https://www.math.princeton.edu/people/stan-palasek",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:35.965522+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-6dad9124",
+      "person": "Igor Rodnianski",
+      "official_person_url": "https://www.math.princeton.edu/people/igor-rodnianski",
+      "official_fields": [
+        "Analysis",
+        "Partial Differential Equations"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:39.724362+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Analysis; Partial Differential Equations"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/igor-rodnianski",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-3316625a",
+      "person": "Peter Sarnak",
+      "official_person_url": "https://www.math.princeton.edu/people/peter-sarnak",
+      "official_fields": [
+        "Number Theory"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:43.156822+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Number Theory"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/peter-sarnak",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-d92edaa1",
+      "person": "Will Sawin",
+      "official_person_url": "https://www.math.princeton.edu/people/will-sawin",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:47.596952+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-8cf71423",
+      "person": "Paul Seymour",
+      "official_person_url": "https://www.math.princeton.edu/people/paul-seymour",
+      "official_fields": [
+        "Graph Theory"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:51.515952+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Graph Theory"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/paul-seymour",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-22055a6d",
+      "person": "Ravi Shankar",
+      "official_person_url": "https://www.math.princeton.edu/people/ravi-shankar",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:26:55.709738+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-15876a68",
+      "person": "Jacob Shapiro",
+      "official_person_url": "https://www.math.princeton.edu/people/jacob-shapiro",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:00.422136+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-f161866c",
+      "person": "Amit Singer",
+      "official_person_url": "https://www.math.princeton.edu/people/amit-singer",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:04.145492+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-56d81c19",
+      "person": "Christopher Skinner",
+      "official_person_url": "https://www.math.princeton.edu/people/christopher-skinner",
+      "official_fields": [
+        "Number Theory"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:08.177190+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Number Theory"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/christopher-skinner",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": false,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-cb5e2142",
+      "person": "Allan Sly",
+      "official_person_url": "https://www.math.princeton.edu/people/allan-sly",
+      "official_fields": [
+        "Probability"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:12.421831+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Probability"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/allan-sly",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-1bb82b28",
+      "person": "Zoltán Szabó",
+      "official_person_url": "https://www.math.princeton.edu/people/zoltan-szabo",
+      "official_fields": [
+        "Topology"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:16.167414+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Topology"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/zoltan-szabo",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": false,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-c82a9a90",
+      "person": "Jonathan Tidor",
+      "official_person_url": "https://www.math.princeton.edu/people/jonathan-tidor",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:21.844053+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-2cd22652",
+      "person": "Ramon van Handel",
+      "official_person_url": "https://www.math.princeton.edu/people/ramon-van-handel-0",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:27.688894+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-9272a519",
+      "person": "Akshay Venkatesh",
+      "official_person_url": "https://www.math.princeton.edu/people/akshay-venkatesh",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:31.929309+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-597545eb",
+      "person": "Chenyang Xu",
+      "official_person_url": "https://www.math.princeton.edu/people/chenyang-xu",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:36.308261+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-e7a85785",
+      "person": "Paul C. Yang",
+      "official_person_url": "https://www.math.princeton.edu/people/paul-c-yang",
+      "official_fields": [
+        "Differential Geometry",
+        "Partial Differential Equations"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:42.247037+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Differential Geometry; Partial Differential Equations"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/paul-c-yang",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    },
+    {
+      "id": "faculty-princeton-math-52f0b1f1",
+      "person": "Mingjia Zhang",
+      "official_person_url": "https://www.math.princeton.edu/people/mingjia-zhang",
+      "official_fields": [],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:47.019332+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": false,
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-674ed5e8",
+      "person": "Shou-Wu Zhang",
+      "official_person_url": "https://www.math.princeton.edu/people/shou-wu-zhang",
+      "official_fields": [
+        "Number Theory"
+      ],
+      "school_response": 200,
+      "actual_observed": "2026-11-26T15:27:52.336161+00:00",
+      "first_read": 200,
+      "inferred_keywords_previously": true,
+      "changed": true,
+      "research_field_on_normal_candidate": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Number Theory"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.math.princeton.edu/people/shou-wu-zhang",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "public_before_fix": {
+        "attempts": [
+          200
+        ],
+        "explicit": null,
+        "inferred": true,
+        "previous_seen": "2026-11-20"
+      },
+      "candidate_normal_api_matches": true
+    }
+  ],
+  "published_verification": "Pending deploy and regular profile enrichment.",
+  "public_before_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "public_before_sha_at_end": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "public_missing_explicit_for_rows_with_source": 22,
+  "previously_public_inferred": 19,
+  "all_candidate_normal_api_originals": 45,
+  "candidate_explicit_personal_fields": 22,
+  "repo_qa": "Awaiting source CI and production reread on this source set.",
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1442",
+  "base": "6c039e0b523cea810723fd70093daa412426f22f",
+  "head": "44526d4ce9d313d72efa95cd489352484b2bf1a4",
+  "exact_standard_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45850829001",
+  "local_regression_test_count": 1092,
+  "weekly_directory_refresh_nominal_utc": "2026-11-27 06:07",
+  "next_monthly_profile_refresh_nominal_utc": "2026-12-04 06:07",
+  "first_week_monthly_only": true
+}
