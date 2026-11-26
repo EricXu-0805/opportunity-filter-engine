@@ -31,7 +31,7 @@ def version(session, site):
     return [page_sha[1] if page_sha else None, get(session, site + "/api/health").json()["release_sha"]]
 
 
-def check(session, site, scope, pair, pid):
+def check(session, site, scope, pair, pid, after_refresh):
     current = pair["current_id"]
     api = get(session, site + "/api/opportunities/" + pid, params={"_release_scope": scope}).json()
     detail_url = site + "/opportunities/" + pid
@@ -43,15 +43,27 @@ def check(session, site, scope, pair, pid):
     ]
     active = pid == current
     assert api["id"] == pid and bool(api["target_truth"]["actionable"]) == active, (pid, "actionability")
+    campus = None
     if active:
-        assert api["url"] == pair["school_url"], (pid, "unexpected source URL", api.get("url"))
-        assert any(link["destination"] == pair["school_url"] for link in links), (pid, "profile link", links)
+        destinations = {pair["school_url"]: pair["school_name"]}
+        if after_refresh:
+            # The full department roster can recover and once again return its
+            # own, independently identified person page instead of the college's.
+            destinations[pair["department_url"]] = pair["department_name"]
+        url = api.get("url")
+        assert url in destinations, (pid, "unexpected source URL", url)
+        assert any(link["destination"] == url for link in links), (pid, "profile link", links)
+        official = get(session, url)
+        person = BeautifulSoup(official.content, "html.parser")
+        headings = [heading.get_text(" ", strip=True) for heading in person.select("h1")]
+        assert destinations[url] in headings, (pid, "wrong campus identity", headings)
+        campus = {"url": url, "final_url": official.url, "http": official.status_code, "name": destinations[url]}
         if pid == "faculty-pitt-cs-e47a8796":
             assert api.get("contact_email_status") == "unavailable", (pid, "office address shown")
     else:
         assert api.get("current_faculty_id") == current, (pid, "saved record successor")
         assert any(link["destination"] == site + "/opportunities/" + current for link in links), (pid, "successor link", links)
-    return {"id": pid, "current_id": current, "actionable": active, "links": links}
+    return {"id": pid, "current_id": current, "actionable": active, "links": links, "campus_person": campus}
 
 
 def main():
@@ -59,7 +71,10 @@ def main():
     parser.add_argument("--sha", required=True)
     parser.add_argument("--scope", required=True)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--refresh-run", help="Natural refresh run URL after it publishes the school data")
     args = parser.parse_args()
+    if args.refresh_run:
+        assert re.fullmatch(r"https://github\.com/EricXu-0805/opportunity-filter-engine/actions/runs/\d+", args.refresh_run)
     site = "https://joinalab.com"
     folder = Path(__file__).parent
     pairs = json.loads((folder / "directory-comparison-and-person-destinations.json").read_text())["identities"]
@@ -68,12 +83,12 @@ def main():
     session = requests.Session()
     initial = version(session, site)
     assert initial == [args.sha, args.sha], (initial, "wait for the same release at both services")
-    result = {"expected": args.sha, "start": initial, "started_at": datetime.now(timezone.utc).isoformat(), "details": []}
+    result = {"expected": args.sha, "natural_refresh": args.refresh_run, "start": initial, "started_at": datetime.now(timezone.utc).isoformat(), "details": []}
     for pair in pairs:
         pair["current_id"] = primary[pair["school_name"]]
         for pid in pair["published_ids"]:
             try:
-                record = check(session, site, args.scope, pair, pid)
+                record = check(session, site, args.scope, pair, pid, bool(args.refresh_run))
             except (AssertionError, ValueError, requests.RequestException) as exc:
                 record = {"id": pid, "error": str(exc)}
             result["details"].append(record)
