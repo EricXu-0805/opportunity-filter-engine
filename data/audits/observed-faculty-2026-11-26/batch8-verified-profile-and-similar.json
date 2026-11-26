@@ -1,0 +1,458 @@
+{
+  "verified_at_utc": "2026-11-26T12:31:52.702498+00:00",
+  "stacked_on_pr": 1372,
+  "stacked_on": "d50eb0049d154cbb7c1f225d25a14734b2248ae7",
+  "candidate_head": "a0a2a685305117e73e8f54ae417f766aa35f714d",
+  "candidate_tree": "45f4e458cb28e5b609a69556002339fd4710b61d",
+  "sources": {
+    "1358": "d8793019232211106bd6f352a1185833f1c87b13",
+    "1363": "ea4b012a164c65c4c9f938737806e147a733de41",
+    "1365": "10a24e48430f934e6c9f4820c17510e51331d03b",
+    "1369": "6904fb607aa519704a18c0fd3418e550006062ef",
+    "1377": "acc2e1c106b6dab8df95f10180906850e3ac69ed"
+  },
+  "merge_method": "Five ordinary merge commits, no conflict resolutions and no synthetic replacements of source branches.",
+  "scoped_suites": {
+    "frontend_full_files": 378,
+    "frontend_full_tests": 9793,
+    "frontend_full_status": "passed",
+    "frontend_reference": "e5b5441b597993d8d566a0ff24a198d5a1d63b3b",
+    "frontend_tree_identical_on_final_head": true,
+    "tsc_no_emit": "passed",
+    "backend_final_profile_match_similar_release_boundary_maryland_tests": 334,
+    "backend_profile_only_tests_included_above": 111,
+    "git_diff_check": "passed"
+  },
+  "preserved_git_objects": {
+    "frontend": {
+      "base": "7d7d32707affdf918ccc550d1d4a7dbdc92cb93c",
+      "integrated": "a89b3a30c71ab1f9b163ce67fda9bbf12471be5c"
+    },
+    "data": {
+      "base": "de434fd312655411fe28a6738671518c98e69e99",
+      "integrated": "de434fd312655411fe28a6738671518c98e69e99"
+    },
+    "data/processed": {
+      "base": "254147bbb98cbb96202887a0604fa6cb7cb8462b",
+      "integrated": "254147bbb98cbb96202887a0604fa6cb7cb8462b"
+    },
+    "src/collectors": {
+      "base": "6cb0ee9c915f29268ceb56e567631f1b46c3013b",
+      "integrated": "6cb0ee9c915f29268ceb56e567631f1b46c3013b"
+    },
+    "data/processed/shards/umd.json": {
+      "base": "d593654fd6621578617fa57a24db589d5c1b0762",
+      "integrated": "d593654fd6621578617fa57a24db589d5c1b0762"
+    }
+  },
+  "campus_shards": 117,
+  "unique_original_corpus_ids": 149775,
+  "duplicate_ids": 0,
+  "maryland_shard_records": 1437,
+  "independent_final_bulk_comparison": {
+    "utc": "2026-11-26T12:30:10.697403+00:00",
+    "baseline": "d50eb0049d154cbb7c1f225d25a14734b2248ae7",
+    "candidate": "a0a2a685305117e73e8f54ae417f766aa35f714d",
+    "rows": 149775,
+    "cases": [
+      {
+        "id": "faculty-ncsu-chass-6cb0c1b0",
+        "limit": 20,
+        "total": 130543,
+        "ordered_ids": [
+          "faculty-arizona-bme-4416f08c",
+          "faculty-asu-bme-364b7fc9",
+          "faculty-asu-tps-37b91136",
+          "faculty-gatech-spp-10ba7838",
+          "faculty-law-7971f58d",
+          "faculty-lehigh-meche-67eea7a4",
+          "faculty-tamu-ece-fdb2b6a4",
+          "faculty-tufts-me-6a1d71e9",
+          "faculty-ncsu-aec-05144f6b",
+          "faculty-ncsu-aec-0bd7a929",
+          "faculty-ncsu-aec-1d960cd9",
+          "faculty-ncsu-aec-265f88f1",
+          "faculty-ncsu-aec-2bec1c93",
+          "faculty-ncsu-aec-2e5218dc",
+          "faculty-ncsu-aec-3399436d",
+          "faculty-ncsu-aec-4260e891",
+          "faculty-ncsu-aec-4a8a211b",
+          "faculty-ncsu-aec-5da298d7",
+          "faculty-ncsu-aec-5ff210b5",
+          "faculty-ncsu-aec-63c25b67"
+        ],
+        "full_output_sha256": "3e25478b2a4e2a28fe3719b3a65f61437015d82ecb0ae2f726667f83221f3e3c",
+        "baseline_seconds": 0.57079,
+        "candidate_seconds": 0.55418
+      },
+      {
+        "id": "faculty-wisc-cs-0ead07e9",
+        "limit": 1,
+        "total": 130544,
+        "ordered_ids": [
+          "faculty-cornell-ece-1f23a980"
+        ],
+        "full_output_sha256": "adc29c908d7e12f650ffb8bb0c753290e8c64354ce85653698e23dde9db7b2bb",
+        "baseline_seconds": 1.27355,
+        "candidate_seconds": 0.18181
+      },
+      {
+        "id": "faculty-wisc-ece-6f602ed6",
+        "limit": 17,
+        "total": 130543,
+        "ordered_ids": [
+          "faculty-vt-bse-eacb8f3a",
+          "faculty-wisc-aae-00730b7f",
+          "faculty-wisc-aae-00917a20",
+          "faculty-wisc-aae-1083f283",
+          "faculty-wisc-aae-111319df",
+          "faculty-wisc-aae-2e7fbd9d",
+          "faculty-wisc-aae-31cef517",
+          "faculty-wisc-aae-34447d9c",
+          "faculty-wisc-aae-377d6435",
+          "faculty-wisc-aae-3da047ff",
+          "faculty-wisc-aae-5f5ff725",
+          "faculty-wisc-aae-7bbcd969",
+          "faculty-wisc-aae-95e6fd6e",
+          "faculty-wisc-aae-c4b11814",
+          "faculty-wisc-aae-c7565737",
+          "faculty-wisc-aae-c8789bbb",
+          "faculty-wisc-aae-e5734539"
+        ],
+        "full_output_sha256": "360c62c24d97234ca89ca3090d30f125d633716e4359772b8ee2fb802ed785a3",
+        "baseline_seconds": 0.55803,
+        "candidate_seconds": 0.19785
+      },
+      {
+        "id": "faculty-ncsu-chass-089a76c8",
+        "limit": 3,
+        "total": 130542,
+        "ordered_ids": [
+          "faculty-ncsu-aec-05144f6b",
+          "faculty-ncsu-aec-0bd7a929",
+          "faculty-ncsu-aec-1d960cd9"
+        ],
+        "full_output_sha256": "1d3cd1e07344f8c315851c7fcde7f110dc77be86fa676230e43129c533cc053c",
+        "baseline_seconds": 1.18069,
+        "candidate_seconds": 0.18702
+      },
+      {
+        "id": "faculty-ncsu-chass-dcb028fb",
+        "limit": 20,
+        "total": 130542,
+        "ordered_ids": [
+          "faculty-ncsu-aec-05144f6b",
+          "faculty-ncsu-aec-0bd7a929",
+          "faculty-ncsu-aec-1d960cd9",
+          "faculty-ncsu-aec-265f88f1",
+          "faculty-ncsu-aec-2bec1c93",
+          "faculty-ncsu-aec-2e5218dc",
+          "faculty-ncsu-aec-3399436d",
+          "faculty-ncsu-aec-4260e891",
+          "faculty-ncsu-aec-4a8a211b",
+          "faculty-ncsu-aec-5da298d7",
+          "faculty-ncsu-aec-5ff210b5",
+          "faculty-ncsu-aec-63c25b67",
+          "faculty-ncsu-aec-7a1d5b2e",
+          "faculty-ncsu-aec-7fb50f25",
+          "faculty-ncsu-aec-8878b2a2",
+          "faculty-ncsu-aec-8eabeafa",
+          "faculty-ncsu-aec-997324b0",
+          "faculty-ncsu-aec-a6d74d70",
+          "faculty-ncsu-aec-b713ea82",
+          "faculty-ncsu-aec-d2620b8b"
+        ],
+        "full_output_sha256": "d6f1461b84d9a2e8b2f05c6dc8fee1beab4087027957e60e5970250c33d6d10f",
+        "baseline_seconds": 0.55194,
+        "candidate_seconds": 0.196
+      },
+      {
+        "id": "faculty-wisc-ece-ea5c581c",
+        "limit": 5,
+        "total": 130546,
+        "ordered_ids": [
+          "faculty-psu-chem-6ef4d919",
+          "faculty-ucb-chem-f0d36990",
+          "faculty-ucla-chem-3c0b0319",
+          "faculty-uw-chem-a6834c9c",
+          "faculty-uw-chem-d8dbaa82"
+        ],
+        "full_output_sha256": "3bc3d0f6818e39bdfe4a5457f9e3f5195f10f369af2ad5ebed209a4d70065056",
+        "baseline_seconds": 1.20527,
+        "candidate_seconds": 0.19894
+      },
+      {
+        "id": "ucb-urap-proj-00521bb9c742",
+        "limit": 13,
+        "total": 130839,
+        "ordered_ids": [
+          "ucb-4964dcb4b010cb",
+          "ucb-8e0e33d3e307de",
+          "duke-47a8e48eea71",
+          "ucb-014976963cb849",
+          "ucb-0aa6f3d4d6975c",
+          "ucb-15571f7795d7e1",
+          "ucb-1a6909b9feb646",
+          "ucb-238886c5d2d30f",
+          "ucb-26084a7f944c99",
+          "ucb-33b32a5e431485",
+          "ucb-37a9e888f7da88",
+          "ucb-3c652b9b283519",
+          "ucb-4e4c66dedc1bfa"
+        ],
+        "full_output_sha256": "3ded980dd24e66b1de81a7dfe02c3630dbc86605325e86692152387fcf07a419",
+        "baseline_seconds": 0.55489,
+        "candidate_seconds": 0.83711
+      },
+      {
+        "id": "faculty-umd-phys-52990ca5",
+        "limit": 20,
+        "total": 130541,
+        "ordered_ids": [
+          "faculty-umd-ae-052ce6ba",
+          "faculty-umd-ae-0538b297",
+          "faculty-umd-ae-082077ab",
+          "faculty-umd-ae-09373feb",
+          "faculty-umd-ae-0a3b3a78",
+          "faculty-umd-ae-139f6e96",
+          "faculty-umd-ae-1fc1ffc6",
+          "faculty-umd-ae-36325f5c",
+          "faculty-umd-ae-3953483f",
+          "faculty-umd-ae-3a385665",
+          "faculty-umd-ae-3a8a1acb",
+          "faculty-umd-ae-3f5a1ccd",
+          "faculty-umd-ae-3f98c25b",
+          "faculty-umd-ae-3fefe44b",
+          "faculty-umd-ae-4e4fab3c",
+          "faculty-umd-ae-52760988",
+          "faculty-umd-ae-60cad7bc",
+          "faculty-umd-ae-670a6926",
+          "faculty-umd-ae-68c8af76",
+          "faculty-umd-ae-6929e79d"
+        ],
+        "full_output_sha256": "b7040c7b85de8ff5e83efbb45e0e3ecf8024a5086e41302b954a93109683b8eb",
+        "baseline_seconds": 0.55873,
+        "candidate_seconds": 0.19199
+      }
+    ]
+  },
+  "independent_time_and_simultaneous_call_boundaries": {
+    "head": "acc2e1c106b6dab8df95f10180906850e3ac69ed",
+    "baseline": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+    "scenarios": [
+      {
+        "case": "eight_simultaneous_cold_requests",
+        "filter_runs": 1,
+        "matches_frozen_parent": true
+      },
+      {
+        "case": "before_exact_cutoff",
+        "utc": "2026-08-31T22:59:59+00:00",
+        "matching_limits": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "included_ids": [
+          "deadline",
+          "second",
+          "ucb-urap-proj-4029d15a89db"
+        ],
+        "total": 3,
+        "filter_runs_to_date": 1
+      },
+      {
+        "case": "exact_berkeley_deadline",
+        "utc": "2026-08-31T23:00:00+00:00",
+        "matching_limits": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "included_ids": [
+          "deadline",
+          "second"
+        ],
+        "total": 2,
+        "filter_runs_to_date": 2
+      },
+      {
+        "case": "after_utc_midnight",
+        "utc": "2026-09-01T00:00:00+00:00",
+        "matching_limits": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "included_ids": [
+          "second"
+        ],
+        "total": 1,
+        "filter_runs_to_date": 3
+      },
+      {
+        "case": "fellowships_enabled",
+        "utc": "2026-09-01T00:00:00+00:00",
+        "matching_limits": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "included_ids": [
+          "second",
+          "hidden"
+        ],
+        "total": 2,
+        "filter_runs_to_date": 4
+      },
+      {
+        "case": "fellowships_disabled",
+        "utc": "2026-09-01T00:00:00+00:00",
+        "matching_limits": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "included_ids": [
+          "second"
+        ],
+        "total": 1,
+        "filter_runs_to_date": 5
+      }
+    ]
+  },
+  "independent_actual_file_generation_race": {
+    "scope": "Local deterministic race across the normal corpus file publication path, with a barrier after source lookup. The candidate executes its ordinary FastAPI HTTP route. The parent executes its frozen original handler. The candidate must complete the old in-flight response consistently and a later request must return 404.",
+    "observed_utc": "2026-11-26T12:29:00.489486+00:00",
+    "parent": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+    "candidate": "acc2e1c106b6dab8df95f10180906850e3ac69ed",
+    "scenarios": [
+      {
+        "implementation": "parent",
+        "original_source": "race-source",
+        "first_generation": [
+          "only-in-generation-A",
+          "race-source"
+        ],
+        "new_generation": [
+          "only-in-generation-B",
+          "other-in-generation-B"
+        ],
+        "returned_source_id": "race-source",
+        "returned_candidates": [
+          "only-in-generation-B",
+          "other-in-generation-B"
+        ],
+        "subsequent_request_http": 404,
+        "source_absent_in_new_generation": true
+      },
+      {
+        "implementation": "candidate",
+        "original_source": "race-source",
+        "first_generation": [
+          "only-in-generation-A",
+          "race-source"
+        ],
+        "new_generation": [
+          "only-in-generation-B",
+          "other-in-generation-B"
+        ],
+        "returned_source_id": "race-source",
+        "returned_candidates": [
+          "only-in-generation-A"
+        ],
+        "subsequent_request_http": 404,
+        "source_absent_in_new_generation": true
+      }
+    ]
+  },
+  "previous_race_reproduction": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/89a82090d095fe7faeb8875fc46afd2b9590fd23/data/audits/observed-faculty-2026-11-26/independent-1377-hot-reload.json",
+  "source_1377_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45819869937",
+  "integration_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820244430",
+  "ci_status_at_receipt": "Final branch CI queued. This artifact documents local and inherited checks, not deployment or product acceptance."
+}
