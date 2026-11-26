@@ -90,12 +90,20 @@ async def run(mode):
                   if (location.hostname !== 'joinalab.com') return;
                   window.fixtureBrowserFails = FAILS;
                   window.fixtureSubscriptionReads = 0;
+                  window.fixtureUnsubscribes = 0;
+                  window.fixtureEndpointActive = true;
                   Object.defineProperty(Notification, 'permission', {get: () => 'granted'});
                   Object.defineProperty(navigator.serviceWorker, 'getRegistration', {value: async () => ({
                     pushManager: {getSubscription: async () => {
                       ++window.fixtureSubscriptionReads;
                       if (window.fixtureBrowserFails) throw new Error('controlled browser read failure');
-                      return {endpoint: ENDPOINT};
+                      if (!window.fixtureEndpointActive) return null;
+                      return {endpoint: ENDPOINT, unsubscribe: async () => {
+                        ++window.fixtureUnsubscribes;
+                        if (!window.fixtureAllowUnsubscribe) return false;
+                        window.fixtureEndpointActive = false;
+                        return true;
+                      }};
                     }}
                   })});
                 })()""".replace('FAILS', json.dumps('-browser-' in mode)).replace('ENDPOINT', json.dumps(endpoint)))
@@ -105,6 +113,8 @@ async def run(mode):
             blocked_assets = set()
             outage = False
             outcomes = []
+            test_unsubscribe = False
+            delete_allowed = False
             large = mode.startswith('large-')
             table = 'interactions' if 'tracker' in mode else 'favorites'
             continuation_calls = []
@@ -116,12 +126,16 @@ async def run(mode):
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
                     if push and u.path == '/rest/v1/push_subscriptions':
-                        if req.method != 'GET':
-                            outcomes.append(req.method)
-                            return await route.abort()
-                        reads += 1
                         q = parse_qs(u.query)
                         assert q['device_id'] == ['eq.' + uid] and q['endpoint'] == ['eq.' + endpoint], q
+                        if req.method != 'GET':
+                            outcomes.append(req.method)
+                            if req.method == 'DELETE' and test_unsubscribe:
+                                if delete_allowed:
+                                    return await route.fulfill(status=204, headers=cors)
+                                return await route.fulfill(status=403, headers=cors, json={'message':'controlled unsubscribe failure'})
+                            return await route.abort()
+                        reads += 1
                         if '-account-' in mode and fail:
                             return await route.fulfill(status=503, headers={**cors, 'Retry-After': '0'}, json={'message':'controlled subscription read failure'})
                         return await route.fulfill(headers=cors, json=[{'endpoint': endpoint}])
@@ -212,6 +226,21 @@ async def run(mode):
                 assert await page.evaluate('window.fixtureSubscriptionReads') > 0 and not outcomes
                 print('PASS', mode, 'frontend', await page.locator('html').get_attribute('data-release-sha'),
                       'account reads', reads, 'subscription writes', outcomes, flush=True)
+                if mode.endswith('-after') and '-account-' in mode:
+                    test_unsubscribe = True
+                    on = page.get_by_role('button', name='Notifications on', exact=True)
+                    await on.click()
+                    error = on.locator('..').get_by_role('alert')
+                    await expect(error).to_be_visible()
+                    await expect(on).to_have_attribute('aria-pressed', 'true')
+                    assert await page.evaluate('window.fixtureEndpointActive && window.fixtureUnsubscribes === 1')
+                    delete_allowed = True
+                    await page.evaluate('window.fixtureAllowUnsubscribe = true')
+                    await on.click()
+                    await expect(enabled).to_have_attribute('aria-pressed', 'false')
+                    assert outcomes == ['DELETE', 'DELETE'], outcomes
+                    assert await page.evaluate('!window.fixtureEndpointActive && window.fixtureUnsubscribes === 2')
+                    print('PASS controlled unsubscribe: first attempt displayed an error and stayed on; retry switched off; two local fixture deletes',flush=True)
             elif large:
                 await page.goto('https://joinalab.com/dashboard', wait_until='domcontentloaded')
                 is_tracker = table == 'interactions'
