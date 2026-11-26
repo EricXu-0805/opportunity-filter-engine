@@ -1,0 +1,371 @@
+{
+  "candidate": "b1fe28bf1b7124c37113d0798836a2833d45f7e2",
+  "candidate_tree": "fee028d12b32024a8e3b8a8151426848b431f90b",
+  "main": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "original_failure": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45802798654/job/139850292470",
+  "fifth_current_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45817148568",
+  "school_contact_normal_entry": {
+    "corpus_size": 149775,
+    "identities": 61,
+    "strict_source_bound_reachable": 60,
+    "formerly_contradictory_restored": 27,
+    "no_published_address": "faculty-umd-math-d52013f6",
+    "whole_corpus_contradictions": 0,
+    "source": "https://www-math.umd.edu/people/faculty.html",
+    "all_60_row_ids": [
+      "faculty-umd-math-0300a4bb",
+      "faculty-umd-math-0f940cb3",
+      "faculty-umd-math-10e144a3",
+      "faculty-umd-math-135699cf",
+      "faculty-umd-math-1516d149",
+      "faculty-umd-math-1c5ba4c5",
+      "faculty-umd-math-22dd1d69",
+      "faculty-umd-math-2f542ed6",
+      "faculty-umd-math-314bf290",
+      "faculty-umd-math-32938979",
+      "faculty-umd-math-36800e3a",
+      "faculty-umd-math-36ccdb0d",
+      "faculty-umd-math-395976f0",
+      "faculty-umd-math-3cd59720",
+      "faculty-umd-math-3d7ad323",
+      "faculty-umd-math-53d548d5",
+      "faculty-umd-math-5460f4ec",
+      "faculty-umd-math-54766ea9",
+      "faculty-umd-math-56fc8ade",
+      "faculty-umd-math-60daca01",
+      "faculty-umd-math-63e84dad",
+      "faculty-umd-math-647c2e23",
+      "faculty-umd-math-64de2a8d",
+      "faculty-umd-math-6bfb1b2f",
+      "faculty-umd-math-6e3b5b3f",
+      "faculty-umd-math-738a3990",
+      "faculty-umd-math-762389ab",
+      "faculty-umd-math-78581485",
+      "faculty-umd-math-7cb1adce",
+      "faculty-umd-math-806c9572",
+      "faculty-umd-math-81bbd8ec",
+      "faculty-umd-math-82018d8f",
+      "faculty-umd-math-8699d8e4",
+      "faculty-umd-math-893fa023",
+      "faculty-umd-math-8c529fb5",
+      "faculty-umd-math-90a4b94e",
+      "faculty-umd-math-93280e3c",
+      "faculty-umd-math-938d3714",
+      "faculty-umd-math-955401c0",
+      "faculty-umd-math-9cfa9129",
+      "faculty-umd-math-9eb3e2a4",
+      "faculty-umd-math-a3da6155",
+      "faculty-umd-math-a8700233",
+      "faculty-umd-math-a944ef2f",
+      "faculty-umd-math-afad5e58",
+      "faculty-umd-math-b2de4069",
+      "faculty-umd-math-b497d141",
+      "faculty-umd-math-b9c19178",
+      "faculty-umd-math-c04f8168",
+      "faculty-umd-math-c507be15",
+      "faculty-umd-math-cb4e770c",
+      "faculty-umd-math-d41531e2",
+      "faculty-umd-math-d44d7b51",
+      "faculty-umd-math-d477b648",
+      "faculty-umd-math-d6138cdd",
+      "faculty-umd-math-d9167d41",
+      "faculty-umd-math-dcee82bf",
+      "faculty-umd-math-e02031c7",
+      "faculty-umd-math-f7d34508",
+      "faculty-umd-math-fab275b7"
+    ],
+    "restored_27_row_ids": [
+      "faculty-umd-math-0300a4bb",
+      "faculty-umd-math-0f940cb3",
+      "faculty-umd-math-135699cf",
+      "faculty-umd-math-22dd1d69",
+      "faculty-umd-math-32938979",
+      "faculty-umd-math-36ccdb0d",
+      "faculty-umd-math-3cd59720",
+      "faculty-umd-math-53d548d5",
+      "faculty-umd-math-56fc8ade",
+      "faculty-umd-math-60daca01",
+      "faculty-umd-math-63e84dad",
+      "faculty-umd-math-647c2e23",
+      "faculty-umd-math-738a3990",
+      "faculty-umd-math-81bbd8ec",
+      "faculty-umd-math-82018d8f",
+      "faculty-umd-math-893fa023",
+      "faculty-umd-math-938d3714",
+      "faculty-umd-math-955401c0",
+      "faculty-umd-math-a3da6155",
+      "faculty-umd-math-afad5e58",
+      "faculty-umd-math-b497d141",
+      "faculty-umd-math-c507be15",
+      "faculty-umd-math-d41531e2",
+      "faculty-umd-math-d6138cdd",
+      "faculty-umd-math-dcee82bf",
+      "faculty-umd-math-e02031c7",
+      "faculty-umd-math-fab275b7"
+    ]
+  },
+  "whole_source_merge_reconciliation": {
+    "base": "2e6f18277b4230b7781fc604dd8774123d20fac8",
+    "head": "b1fe28bf1b7124c37113d0798836a2833d45f7e2",
+    "accepted_commits": [
+      {
+        "pr": 1341,
+        "head": "0046891306c551e524ef1130eee02b68de0dbeb1",
+        "base": "59297be5c8b1e37caefb289e9372a930edc8af1b"
+      },
+      {
+        "pr": 1343,
+        "head": "1e1f637ac0ab2ebf2aa2ef67997ad672671379d9",
+        "base": "59297be5c8b1e37caefb289e9372a930edc8af1b"
+      },
+      {
+        "pr": 1351,
+        "head": "a2339fd37ec0a748cec59483e2a12f7b723cdca2",
+        "base": "1e1f637ac0ab2ebf2aa2ef67997ad672671379d9"
+      },
+      {
+        "pr": 1344,
+        "head": "84154883f5f4da209b766c06d7b9d6d68e4951ad",
+        "base": "59297be5c8b1e37caefb289e9372a930edc8af1b"
+      },
+      {
+        "pr": 1352,
+        "head": "76a85762f63daeff05c9ddc830affe06925a575b",
+        "base": "2e6f18277b4230b7781fc604dd8774123d20fac8"
+      },
+      {
+        "pr": 1349,
+        "head": "8c73c9b25ddc40503e08d5945c40dbbf2baf80b4",
+        "base": "060c202648bc102a1bee713b1e31a89dda75998e"
+      }
+    ],
+    "inputs": {
+      "1352": [
+        {
+          "school": "bc",
+          "records_changed": 1,
+          "new_ids": []
+        },
+        {
+          "school": "duke",
+          "records_changed": 1,
+          "new_ids": []
+        },
+        {
+          "school": "ucr",
+          "records_changed": 1,
+          "new_ids": []
+        },
+        {
+          "school": "udel",
+          "records_changed": 1,
+          "new_ids": []
+        },
+        {
+          "school": "umd",
+          "records_changed": 1,
+          "new_ids": []
+        }
+      ],
+      "1341": [
+        {
+          "school": "ucsb",
+          "records_changed": 253,
+          "new_ids": []
+        }
+      ],
+      "1343": [
+        {
+          "school": "umd",
+          "records_changed": 63,
+          "new_ids": []
+        }
+      ],
+      "1351": [
+        {
+          "school": "umd",
+          "records_changed": 50,
+          "new_ids": [
+            "faculty-umd-phys-52990ca5"
+          ]
+        }
+      ],
+      "1349": [
+        {
+          "school": "wlu",
+          "records_changed": 1,
+          "new_ids": []
+        }
+      ]
+    },
+    "expected_inputs_equal_actual_integrated_rows": true,
+    "shared_original_first_seen_and_order_preserved": true,
+    "unrelated_file_changes": false,
+    "shards": {
+      "bc": {
+        "old": 854,
+        "now": 854,
+        "different_original_rows": 1,
+        "new_ids": [],
+        "first_seen_changes": 0
+      },
+      "duke": {
+        "old": 1316,
+        "now": 1316,
+        "different_original_rows": 1,
+        "new_ids": [],
+        "first_seen_changes": 0
+      },
+      "ucr": {
+        "old": 1178,
+        "now": 1178,
+        "different_original_rows": 1,
+        "new_ids": [],
+        "first_seen_changes": 0
+      },
+      "ucsb": {
+        "old": 1141,
+        "now": 1141,
+        "different_original_rows": 253,
+        "new_ids": [],
+        "first_seen_changes": 0
+      },
+      "udel": {
+        "old": 1047,
+        "now": 1047,
+        "different_original_rows": 1,
+        "new_ids": [],
+        "first_seen_changes": 0
+      },
+      "umd": {
+        "old": 1436,
+        "now": 1437,
+        "different_original_rows": 113,
+        "new_ids": [
+          "faculty-umd-phys-52990ca5"
+        ],
+        "first_seen_changes": 0
+      },
+      "wlu": {
+        "old": 245,
+        "now": 245,
+        "different_original_rows": 1,
+        "new_ids": [],
+        "first_seen_changes": 0
+      }
+    },
+    "school_counts": {
+      "bc": {
+        "before": {
+          "listing_count": 5,
+          "faculty_contact_count": 841,
+          "unreviewed_count": 0,
+          "total_count": 846
+        },
+        "after": {
+          "listing_count": 4,
+          "faculty_contact_count": 841,
+          "unreviewed_count": 0,
+          "total_count": 845
+        }
+      },
+      "duke": {
+        "before": {
+          "listing_count": 54,
+          "faculty_contact_count": 1195,
+          "unreviewed_count": 0,
+          "total_count": 1249
+        },
+        "after": {
+          "listing_count": 53,
+          "faculty_contact_count": 1195,
+          "unreviewed_count": 0,
+          "total_count": 1248
+        }
+      },
+      "ucr": {
+        "before": {
+          "listing_count": 5,
+          "faculty_contact_count": 1171,
+          "unreviewed_count": 0,
+          "total_count": 1176
+        },
+        "after": {
+          "listing_count": 4,
+          "faculty_contact_count": 1171,
+          "unreviewed_count": 0,
+          "total_count": 1175
+        }
+      },
+      "ucsb": {
+        "before": {
+          "listing_count": 267,
+          "faculty_contact_count": 848,
+          "unreviewed_count": 0,
+          "total_count": 1115
+        },
+        "after": {
+          "listing_count": 101,
+          "faculty_contact_count": 848,
+          "unreviewed_count": 0,
+          "total_count": 949
+        }
+      },
+      "udel": {
+        "before": {
+          "listing_count": 4,
+          "faculty_contact_count": 1018,
+          "unreviewed_count": 0,
+          "total_count": 1022
+        },
+        "after": {
+          "listing_count": 3,
+          "faculty_contact_count": 1018,
+          "unreviewed_count": 0,
+          "total_count": 1021
+        }
+      },
+      "umd": {
+        "before": {
+          "listing_count": 7,
+          "faculty_contact_count": 1346,
+          "unreviewed_count": 0,
+          "total_count": 1353
+        },
+        "after": {
+          "listing_count": 6,
+          "faculty_contact_count": 1343,
+          "unreviewed_count": 0,
+          "total_count": 1349
+        }
+      }
+    },
+    "national_count_before": 5599,
+    "national_count_after": 5599
+  },
+  "candidate_cases_passed": 544,
+  "school_stats_match_generator": true,
+  "preceding_production_observation": {
+    "observed_utc": "2026-11-26T11:58:36.930788+00:00",
+    "expected_merge": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+    "observations": {
+      "homepage": {
+        "url": "https://joinalab.com/",
+        "status": 200,
+        "release_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439"
+      },
+      "official_site_api": {
+        "url": "https://joinalab.com/api/health",
+        "status": 200,
+        "release_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439"
+      },
+      "render_origin": {
+        "url": "https://opportunity-filter-engine-api.onrender.com/api/health",
+        "status": 200,
+        "release_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439"
+      }
+    },
+    "all_exact": true
+  },
+  "production_status": "This receipt covers the new candidate input from reviewed Math/Physics source commits. The preceding fourth batch is live. Fifth-batch production and the scheduled Maryland refresh are separate."
+}
