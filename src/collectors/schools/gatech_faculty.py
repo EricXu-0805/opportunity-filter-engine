@@ -30,6 +30,29 @@ from __future__ import annotations
 from .. import faculty_graph
 
 
+def _engineering_directory(unit: str, old_card: str) -> dict:
+    # Drupal's grid places several people in each .views-row. Only each
+    # individual node binds one person's name, rank and destination.
+    return {
+        "selectors": {
+            "card": f".directory-person, {old_card}:has(a.dir_link):not(:has(.directory-person))",
+            "name": ".field--name-field-person-name, a.dir_link",
+            "link": "a.directory-person-wrapper-link, a.dir_link",
+            "title": ".field--name-field-person-job-title-s-",
+        },
+        "profile_enrich": {
+            "always": True,
+            "profile_url_re": rf"^https://{unit}\.gatech\.edu/(?:directory/person|people)/[^/?#]+/?$",
+            "identity_selector": "h1",
+            "email_selector": (
+                ".field--name-field-person-email:not(:has(.field__item:is(.field__item ~ .field__item))) "
+                ".field__item > a[href^='mailto:']:only-child"
+            ),
+            "email_drop": r"^(?![^@]+@(?:[a-z0-9-]+\.)*gatech\.edu$)|^(?:info|office|admin|help|advising)@",
+        },
+    }
+
+
 # Scheller College of Business ships its whole roster as one authoritative JSON
 # feed; each academic area filters that feed and ladder-filters the titles.
 def _scheller(short: str, name: str, majors: list[str], area: str) -> dict:
@@ -169,9 +192,7 @@ SCHOOL: dict = {
             "directory_url": "https://chbe.gatech.edu/directory1?field_person_category_target_id=1",
             "scrape": {
                 "url": "https://chbe.gatech.edu/directory1?field_person_category_target_id=1",
-                "selectors": {"card": ".views-row", "name": "a.dir_link",
-                              "link": "a.dir_link",
-                              "title": ".field--name-field-person-job-title-s-"},
+                **_engineering_directory("chbe", ".views-row"),
                 "ladder_filter": {"drop": r"emerit|adjunct|affiliat|of the practice"
                                           r"|academic professional"},
             },
@@ -206,16 +227,16 @@ SCHOOL: dict = {
         {'short': 'AE',
          'name': 'Daniel Guggenheim School of Aerospace Engineering',
          'majors': ['Aerospace Engineering'],
-         'directory_url': 'https://ae.gatech.edu/people?tid=1',
-         'scrape': {'url': 'https://ae.gatech.edu/people?tid=1',
-                    'selectors': {'card': '.node--type-dir-person',
-                                  'name': 'a.dir_link',
-                                  'link': 'a.dir_link',
-                                  'title': '.field--name-field-person-job-title-s-'},
+         'profile_id_names': {
+             'ae.gatech.edu/directory/person/masatoshi-hirabayashi': (
+                 'Masatoshi Hirabayashi', 'Masatoshi "Toshi" Hirabayashi'),
+         },
+         'directory_url': 'https://ae.gatech.edu/browser-directory?tid=1',
+         'scrape': {'url': 'https://ae.gatech.edu/browser-directory?tid=1',
+                    **_engineering_directory("ae", ".node--type-dir-person"),
                     'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|of the practice|academic '
                                               'professional|research '
-                                              '(scientist|engineer)|post.?doc|lecturer|instructor'},
-                    'paginate': {'param': 'page', 'start': 1, 'max': 8}}},
+                                              '(scientist|engineer)|post.?doc|lecturer|instructor'}}},
         {'short': 'BME',
          'name': 'Wallace H. Coulter Department of Biomedical Engineering',
          'majors': ['Biomedical Engineering'],
