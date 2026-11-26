@@ -1,7 +1,8 @@
 """Official-site matching/receipt QA; one dedicated anonymous account, one synthetic work file, free drafts only."""
 import json
 import os
-from urllib.parse import urlencode, urlsplit
+import re
+from urllib.parse import urlsplit
 from playwright.sync_api import expect, sync_playwright
 
 site = 'https://joinalab.com'
@@ -58,9 +59,12 @@ def home(ctx):
     return p
 
 def results(ctx,confirmed):
-    p=ctx.new_page()
-    with p.expect_response(lambda r:urlsplit(r.url).path=='/api/matches/view' and r.ok and r.request.post_data_json['profile']['name']==student,timeout=125000) as seen:
-        p.goto(site+'/results?'+urlencode({'tab':'all','q':public_title}),wait_until='domcontentloaded')
+    p=home(ctx);expect(p.locator('#student_name')).to_have_value(student,timeout=60000)
+    p.get_by_role('button',name='Generate Matches',exact=True).click()
+    p.wait_for_url('**/results**',timeout=85000)
+    p.get_by_role('button',name=re.compile(r'^All(?:\s|$)')).first.click()
+    with p.expect_response(lambda r:urlsplit(r.url).path=='/api/matches/view' and r.ok and r.request.post_data_json['profile']['name']==student and r.request.post_data_json['view'].get('search_query')==public_title,timeout=125000) as seen:
+        p.get_by_placeholder('Search by title, org, description, research area...').fill(public_title)
     res=seen.value;payload=res.request.post_data_json['profile'];listing={r['opportunity_id']:r for r in res.json()['results']}
     item=listing[target];basis=item.get('experience_basis')
     if confirmed:
