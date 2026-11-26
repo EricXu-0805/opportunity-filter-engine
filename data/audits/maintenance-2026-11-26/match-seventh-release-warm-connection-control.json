@@ -1,0 +1,43 @@
+{
+  "method": "Additional serial end-to-end warm requests after the sixty-record physics check, reusing one HTTPS session. Same production site, rules, profiles, date and result sets. TTFB is time to response headers, including network and upstream work.",
+  "utc": "2026-11-26T13:53:42.087876+00:00",
+  "sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "requests": [
+    {
+      "profile": "ucb_eecs",
+      "status": 200,
+      "same_20_ids": true,
+      "same_result_set": true,
+      "wall_seconds": 0.141,
+      "header_seconds": 0.14,
+      "uncompressed_response_bytes": 68199
+    },
+    {
+      "profile": "uiuc_cs_cross_all3",
+      "status": 200,
+      "same_20_ids": true,
+      "same_result_set": true,
+      "wall_seconds": 0.093,
+      "header_seconds": 0.092,
+      "uncompressed_response_bytes": 65578
+    },
+    {
+      "profile": "ucb_eecs",
+      "status": 200,
+      "same_20_ids": true,
+      "same_result_set": true,
+      "wall_seconds": 0.099,
+      "header_seconds": 0.098,
+      "uncompressed_response_bytes": 68199
+    },
+    {
+      "profile": "uiuc_cs_cross_all3",
+      "status": 200,
+      "same_20_ids": true,
+      "same_result_set": true,
+      "wall_seconds": 0.134,
+      "header_seconds": 0.129,
+      "uncompressed_response_bytes": 65578
+    }
+  ]
+}
