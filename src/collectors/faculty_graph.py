@@ -707,7 +707,9 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     owner = dept.get("reserved_profile_identity")
     if owner and name in owner["names"]:
         page = canonical_profile_url(person.get("url"))
-        if page == owner["profile"] or email == owner["email"]:
+        previous_profile = owner.get("matches_previous_profile")
+        if (page == owner["profile"] or email == owner["email"]
+                or (previous_profile and previous_profile(person.get("url")))):
             id_name = owner["name"]
         elif page and email and page.rpartition("/")[0] == owner["profile"].rpartition("/")[0]:
             id_name = f"{owner['name']}|{page}"

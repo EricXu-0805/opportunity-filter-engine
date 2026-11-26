@@ -74,9 +74,14 @@ ship email-less; recover in a profile-enrich pass that resolves each
 
 from __future__ import annotations
 
+import json
+import re
+from urllib.parse import unquote, urlsplit
+
+from backend.lib.public_projection import safe_public_http_url
 from src.normalizers.deactivate_stale_faculty import canonical_profile_url
 
-from .. import faculty_graph
+from .. import faculty_graph, ucb_common
 
 # ---- Shared Cascade CMS "people-profile" component -------------------------
 # CS renders it as a table row (li.people-profile, desktop + mobile copy), all
@@ -114,6 +119,33 @@ _DEANGELIS_EMAIL = "ddeangelis@miami.edu"
 _DEANGELIS_PROFILE = "people.miami.edu/profile/" + _DEANGELIS_EMAIL
 
 
+def _matches_previous_deangelis_profile(raw_url: str | None) -> bool:
+    if not raw_url:
+        return False
+    if canonical_profile_url(unquote(raw_url)) == _DEANGELIS_PROFILE:
+        # An encoded at-sign identifies the same institutional account.
+        return True
+    public = safe_public_http_url(raw_url)
+    if not public:
+        return False
+    parts = urlsplit(public)
+    if parts.netloc.lower() != "people.miami.edu" or not re.fullmatch(r"/profile/[\w-]+/?", parts.path, re.ASCII):
+        return False
+    # Only an ambiguous new card reaches here. An earlier directory observation
+    # with the verified address can establish the same person's new URL.
+    processed = ucb_common.PROCESSED_FILE
+    shard = processed.parent / "shards" / "miami.json"
+    try:
+        source = processed if processed.is_file() else shard
+        with source.open(encoding="utf-8") as file:
+            prior = next((r for r in json.load(file) if r.get("id") == _DEANGELIS_ID), None)
+    except (OSError, ValueError):
+        return False
+    return bool(prior and prior.get("source") == "miami_faculty"
+                and prior.get("pi_name") in ("Don DeAngelis", _DEANGELIS_OLD_NAME)
+                and canonical_profile_url(prior.get("url")) == canonical_profile_url(public))
+
+
 def _biology() -> dict:
     dept = _cascade("BIO", "Department of Biology",
                     ["Biology", "Marine Science and Biology", "Microbiology and Immunology", "Neuroscience"],
@@ -123,6 +155,7 @@ def _biology() -> dict:
     dept["reserved_profile_identity"] = {
         "name": _DEANGELIS_OLD_NAME, "names": ("Don DeAngelis", _DEANGELIS_OLD_NAME),
         "profile": _DEANGELIS_PROFILE, "email": _DEANGELIS_EMAIL,
+        "matches_previous_profile": _matches_previous_deangelis_profile,
     }
     return dept
 
@@ -248,8 +281,9 @@ def fetch_and_normalize(deep: bool = True,
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
     rows = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
     for row in rows:
-        if row["id"] == _DEANGELIS_ID and canonical_profile_url(row.get("url")) in (
-            _DEANGELIS_PROFILE, canonical_profile_url(_BIOLOGY_DIRECTORY),
+        if row["id"] == _DEANGELIS_ID and (
+            not safe_public_http_url(row.get("url"))
+            or canonical_profile_url(row.get("url")) == canonical_profile_url(_BIOLOGY_DIRECTORY)
         ):
             # His named card links to an address-bearing profile. Keep that
             # identity in the corpus and cite the public roster on the product.
