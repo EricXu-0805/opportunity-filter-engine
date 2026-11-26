@@ -2395,6 +2395,11 @@ export const en = {
   },
   account: {
     attachmentExport: {
+      part: 'Download part {part} of {total}', receipt: 'Download completion checksums',
+      partial: 'Keep all parts together. The final checksum file is available once the entire export has been verified.',
+      multiComplete: 'Downloads requested for {count} attachments. Check that all the parts were saved, then verify them with the command below.',
+      limit: 'The attachment {path} exceeds the 5 MiB file limit. The export is incomplete.',
+      metadataLimit: 'The archive entry for {path} exceeds the 16 MiB part limit. The export is incomplete.',
       title: 'Tracker attachments', description: 'Download all your Tracker files, including attachments from older opportunities. The ZIP includes their original paths and SHA-256 checksums.',
       start: 'Download attachments as ZIP', preparing: 'Checking your files…', progress: 'Preparing {done} of {total} files…',
       cancel: 'Cancel export', empty: 'There are no Tracker attachments in this account.',
@@ -7895,6 +7900,11 @@ export const zh = {
   },
   account: {
     attachmentExport: {
+      part: '下载第 {part} 卷（共 {total} 卷）', receipt: '下载完整导出校验文件',
+      partial: '请将各卷保存在同一目录。所有附件核验通过后，即可下载整套校验文件。',
+      multiComplete: '已请求下载 {count} 个附件。请确认所有分卷已保存，再运行下方命令核验。',
+      limit: '附件 {path} 超过 5 MiB 的单文件限制，本次导出未完成。',
+      metadataLimit: '附件 {path} 的归档条目超过 16 MiB 的分卷限制，本次导出未完成。',
       title: '申请追踪附件', description: '下载本账号在申请追踪中保存的全部附件，包括旧机会下的文件。ZIP 内附原始路径和每个文件的 SHA-256 校验值。',
       start: '下载附件 ZIP', preparing: '正在检查附件…', progress: '正在准备文件（{done}/{total}）…',
       cancel: '取消导出', empty: '这个账号没有申请追踪附件。',

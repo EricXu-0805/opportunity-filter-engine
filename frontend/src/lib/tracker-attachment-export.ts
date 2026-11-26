@@ -1,7 +1,7 @@
-import { downloadZip } from 'client-zip';
+import { downloadZip, predictLength } from 'client-zip';
 import { assertAttachmentOwner, AttachmentRequestError, runAttachmentRequest } from './attachment-request';
 import type { OwnerToken } from './identity-owner';
-import { ATTACHMENTS_BUCKET, getAuthState, resolveTrackerAttachmentVersions, supabase, type ResolvedTrackerAttachment } from './supabase';
+import { ATTACHMENTS_BUCKET, ATTACHMENTS_MAX_BYTES, getAuthState, resolveTrackerAttachmentVersions, supabase, type ResolvedTrackerAttachment } from './supabase';
 
 interface Anchor {
   path: string;
@@ -91,8 +91,55 @@ async function sha256(bytes: ArrayBuffer) {
   return Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export interface ExportVolume { filename: string; blob: Blob; number: number; total: number; confirmBeforeDownload: () => Promise<void> }
+export type OfferVolume = (file: ExportVolume) => Promise<void>;
+export class AttachmentExportLimitError extends Error {
+  constructor(readonly path: string, readonly metadata = false) { super('Attachment exceeds the export limit'); }
+}
+const volumeBytes = 16 * 1024 * 1024;
+const volumeFiles = 128;
+const emptyDigest = '0'.repeat(64);
+
+function manifestText(entries: ExportEntry[], exportId?: string) {
+  const header = exportId ? { formatVersion: 2, scope: 'partial-volume', exportId } : { formatVersion: 1 };
+  return JSON.stringify({ ...header, files: entries }, null, 2) + '\n';
+}
+
+function checksumText(entries: ExportEntry[], manifestHash: string) {
+  return [...entries.map(entry => entry.sha256 + '  ' + entry.archivePath), manifestHash + '  manifest.json'].join('\n') + '\n';
+}
+
+function projectedSize(entries: ExportEntry[], exportId?: string) {
+  // The real SHA-256 strings have the same UTF-8 length as the placeholders.
+  const manifest = manifestText(entries, exportId);
+  const checksums = checksumText(entries, emptyDigest);
+  return Number(predictLength([
+    ...entries.map(entry => ({ name: entry.archivePath, size: entry.size })),
+    { name: 'manifest.json', input: manifest }, { name: 'SHA256SUMS', input: checksums },
+  ]));
+}
+
+function partition(entries: ExportEntry[], exportId: string) {
+  if (entries.length <= volumeFiles && projectedSize(entries) <= volumeBytes) return [entries.length];
+  const ends: number[] = [];
+  let start = 0;
+  while (start < entries.length) {
+    let lo = start;
+    let hi = Math.min(start + volumeFiles, entries.length);
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (projectedSize(entries.slice(start, mid), exportId) <= volumeBytes) lo = mid;
+      else hi = mid - 1;
+    }
+    if (lo === start) throw new AttachmentExportLimitError(entries[start].originalPath, true);
+    ends.push(lo);
+    start = lo;
+  }
+  return ends;
+}
+
 /** Account-wide, including keys whose opportunity no longer exists in the catalog. */
-export async function exportTrackerAttachments(uid: string, token: OwnerToken, signal: AbortSignal, progress: Progress) {
+export async function exportTrackerAttachments(uid: string, token: OwnerToken, signal: AbortSignal, progress: Progress, offerVolume?: OfferVolume) {
   const check = () => { signal.throwIfAborted(); assertAttachmentOwner(token, uid); };
   const confirmSession = () => runAttachmentRequest(token, { signal }, async request => {
     const auth = await request.wait(getAuthState({ throwOnError: true }));
@@ -101,20 +148,30 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
   check();
   await confirmSession();
   const files = await inventory(uid, token, signal);
-  check();
-  if (!files.length) {
-    if ((await inventory(uid, token, signal)).length) unavailable();
+  const verify = async () => {
+    const verified = await inventory(uid, token, signal);
+    if (verified.length !== files.length || verified.some((file, i) => JSON.stringify(file) !== JSON.stringify(files[i]))) unavailable();
     await confirmSession();
     check();
-    return null;
-  }
+  };
+  check();
+  if (!files.length) { await verify(); return null; }
+  const entries = files.map(({ anchor, version }, index) => {
+    if (version.sizeBytes > ATTACHMENTS_MAX_BYTES) throw new AttachmentExportLimitError(anchor.path);
+    return { originalPath: anchor.path, archivePath: memberName(anchor.path, index), size: version.sizeBytes,
+      mime: version.mimeType, sha256: emptyDigest };
+  });
+  // Separate retries cannot accidentally be combined into one verified set.
+  const exportId = crypto.randomUUID();
+  const ends = partition(entries, exportId);
+  const multipart = ends.length > 1;
+  if (multipart && !offerVolume) return unavailable();
   progress(0, files.length);
-  async function* members() {
-    const entries: ExportEntry[] = [];
-    for (const [i, { anchor, version }] of files.entries()) {
-      const bucket = supabase.storage.from(version.storageBucket);
+  async function* members(start: number, end: number) {
+    for (let i = start; i < end; i++) {
+      const { version } = files[i];
       check();
-      // The SDK interpolates the supplied key into a URL. Encode individual segments for legacy names.
+      const bucket = supabase.storage.from(version.storageBucket);
       const encoded = version.storagePath.split('/').map(encodeURIComponent).join('/');
       const bytes = await runAttachmentRequest(token, { signal }, async request => {
         const { data, error } = await request.wait(bucket.download(encoded, {
@@ -123,27 +180,41 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
         if (error || !data || data.size !== version.sizeBytes) return unavailable();
         return request.wait(data.arrayBuffer());
       });
+      entries[i].sha256 = await sha256(bytes);
       check();
-      const archivePath = memberName(anchor.path, i);
-      const digest = await sha256(bytes);
-      check();
-      entries.push({ originalPath: anchor.path, archivePath, size: version.sizeBytes, mime: version.mimeType, sha256: digest });
-      yield { name: archivePath, input: new Uint8Array(bytes) };
+      yield { name: entries[i].archivePath, input: new Uint8Array(bytes) };
       progress(i + 1, files.length);
     }
-    // No download can be handed to the browser until this second inventory and the entire ZIP finish.
-    const verified = await inventory(uid, token, signal);
-    if (JSON.stringify(verified) !== JSON.stringify(files)) unavailable();
+    const batch = entries.slice(start, end);
+    const id = multipart ? exportId : undefined;
+    const manifest = manifestText(batch, id);
+    const hash = await sha256(new TextEncoder().encode(manifest).buffer);
+    const checksums = checksumText(batch, hash);
+    yield { name: 'manifest.json', input: manifest };
+    yield { name: 'SHA256SUMS', input: checksums };
+  }
+  const sums: string[] = [];
+  let start = 0;
+  for (const [index, end] of ends.entries()) {
+    const expected = projectedSize(entries.slice(start, end), multipart ? exportId : undefined);
+    const blob = await downloadZip(members(start, end)).blob();
+    check();
+    if (blob.size !== expected || blob.size > volumeBytes) unavailable();
+    if (!multipart) {
+      await verify();
+      return { filename: 'tracker-attachments.zip', blob, count: files.length };
+    }
+    const name = 'tracker-attachments-' + exportId + '-partial-' + (index + 1) + '-of-' + ends.length + '.zip';
+    sums.push(await sha256(await blob.arrayBuffer()) + '  ' + name);
     await confirmSession();
     check();
-    const manifest = JSON.stringify({ formatVersion: 1, files: entries }, null, 2) + '\n';
-    const manifestHash = await sha256(new TextEncoder().encode(manifest).buffer);
-    yield { name: 'manifest.json', input: manifest };
-    const checksums = entries.map(entry => entry.sha256 + '  ' + entry.archivePath);
-    checksums.push(manifestHash + '  manifest.json');
-    yield { name: 'SHA256SUMS', input: checksums.join('\n') + '\n' };
+    await offerVolume!({ filename: name, blob, number: index + 1, total: ends.length, confirmBeforeDownload: confirmSession });
+    check();
+    start = end;
   }
-  const blob = await downloadZip(members()).blob();
-  check();
-  return { filename: 'tracker-attachments.zip', blob, count: files.length };
+  // A partial volume only describes its own files. The separate whole-export
+  // receipt is withheld until every volume was offered and the snapshot is rechecked.
+  await verify();
+  return { filename: 'tracker-attachments-' + exportId + '-complete.sha256',
+    blob: new Blob([sums.join('\n') + '\n'], { type: 'text/plain' }), count: files.length, parts: ends.length, confirmBeforeDownload: verify };
 }

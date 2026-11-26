@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { webcrypto } from 'node:crypto';
-import { exportTrackerAttachments } from './tracker-attachment-export';
+import { createHash, webcrypto } from 'node:crypto';
+import { exportTrackerAttachments, type ExportVolume } from './tracker-attachment-export';
 
 vi.hoisted(() => {
   vi.stubGlobal('localStorage', { clear() {} });
@@ -9,7 +9,7 @@ vi.hoisted(() => {
 });
 const fixture = vi.hoisted(() => ({ uid: 'account', list: vi.fn(), download: vi.fn(), versionDownload: vi.fn(), resolve: vi.fn() }));
 vi.mock('./supabase', () => ({
-  ATTACHMENTS_BUCKET: 'tracker-attachments',
+  ATTACHMENTS_BUCKET: 'tracker-attachments', ATTACHMENTS_MAX_BYTES: 5 * 1024 * 1024,
   getAuthState: () => Promise.resolve({ user: { id: fixture.uid } }),
   resolveTrackerAttachmentVersions: fixture.resolve,
   supabase: { storage: { from: (name: string) => name === 'tracker-attachments' ? fixture : { download: fixture.versionDownload } } },
@@ -150,5 +150,61 @@ describe('Tracker attachment export', () => {
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
     expect(fixture.list).toHaveBeenCalledTimes(1);
+  });
+
+  function archiveWithFourLargeFiles() {
+    const size = 4 * 1024 * 1024;
+    const rows = ['a.pdf', 'b.pdf', 'c.pdf', 'd.pdf'].map(name => row(name));
+    fixture.list.mockResolvedValue(ok(rows));
+    fixture.resolve.mockImplementation(async (paths: string[]) => new Map(paths.map(path => [path, { ...legacy(path), sizeBytes: size }])));
+    const file = new Blob([new Uint8Array(size)]);
+    fixture.download.mockResolvedValue(ok(file));
+  }
+
+  it('includes metadata and ZIP overhead in the limit and issues checksums for precisely the requested volumes', async () => {
+    archiveWithFourLargeFiles();
+    const expected: string[] = [];
+    const result = await exportTrackerAttachments('account', token, new AbortController().signal, vi.fn(), async part => {
+      expect(part.total).toBe(2);
+      expect(part.blob.size).toBeLessThanOrEqual(16 * 1024 * 1024);
+      expect(fixture.download).toHaveBeenCalledTimes(part.number === 1 ? 3 : 4);
+      expect(await part.blob.text()).toContain('"scope": "partial-volume"');
+      expected.push(createHash('sha256').update(new Uint8Array(await part.blob.arrayBuffer())).digest('hex') + '  ' + part.filename);
+    });
+    expect(result?.parts).toBe(2);
+    expect(await result?.blob.text()).toEqual(expected.join('\n') + '\n');
+    expect(result?.filename).toMatch(/-complete[.]sha256$/);
+    fixture.list.mockResolvedValue(ok([]));
+    await expect(result?.confirmBeforeDownload?.()).rejects.toThrow();
+  });
+
+  it('never releases a completion receipt after cancellation or drift, and starts a new export on retry', async () => {
+    archiveWithFourLargeFiles();
+    const controller = new AbortController();
+    const partial = vi.fn(async (part: ExportVolume) => {
+      expect(part.filename).toMatch(/-partial-1-of-2[.]zip$/);
+      controller.abort();
+    });
+    await expect(exportTrackerAttachments('account', token, controller.signal, vi.fn(), partial)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(partial).toHaveBeenCalledTimes(1);
+    expect(fixture.download).toHaveBeenCalledTimes(3);
+    let retryName = '';
+    await expect(exportTrackerAttachments('account', token, new AbortController().signal, vi.fn(), async part => {
+      if (part.number === 1) retryName = part.filename;
+      if (part.number === 2) fixture.list.mockResolvedValue(ok([]));
+    })).rejects.toThrow();
+    expect(retryName).not.toBe(partial.mock.calls[0][0].filename);
+  });
+
+  it('names an oversized legacy file before reading bytes or offering a part', async () => {
+    fixture.list.mockResolvedValue(ok([row('first.pdf'), row('legacy.pdf')]));
+    fixture.resolve.mockImplementation(async (paths: string[]) => new Map(paths.map(path => [
+      path, { ...legacy(path), sizeBytes: path.endsWith('/legacy.pdf') ? 5 * 1024 * 1024 + 1 : 3 },
+    ])));
+    const offer = vi.fn();
+    await expect(exportTrackerAttachments('account', token, new AbortController().signal, vi.fn(), offer))
+      .rejects.toMatchObject({ path: 'legacy.pdf' });
+    expect(fixture.download).not.toHaveBeenCalled();
+    expect(offer).not.toHaveBeenCalled();
   });
 });
