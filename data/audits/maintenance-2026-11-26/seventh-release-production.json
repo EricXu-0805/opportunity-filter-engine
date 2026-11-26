@@ -1,0 +1,15 @@
+{
+  "observed_at": "2026-11-26T13:50:40.606120+00:00",
+  "merge_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "merge_tree": "f5e0eef3768b90bfbc39dbdac133a69071d40308",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1372",
+  "merge_parents": [
+    "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+    "d8212be31051d4707576da9d51661ee7c498c37c"
+  ],
+  "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912",
+  "backend_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "frontend_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "data_sha": null,
+  "data_commit": null
+}
