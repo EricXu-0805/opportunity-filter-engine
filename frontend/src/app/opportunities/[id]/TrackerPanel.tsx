@@ -94,7 +94,7 @@ export function TrackerPanel({
     }
     event.preventDefault();
     setNotesMode(next);
-    notesTabs.current[next]?.focus();
+    notesTabs.current[next]?.focus({ preventScroll: true });
   }
 
   // Each field's own last-CONFIRMED-from-parent baseline — separate from
@@ -387,6 +387,13 @@ export function TrackerPanel({
                   aria-controls={notesId}
                   aria-selected={notesMode === mode}
                   tabIndex={notesMode === mode ? 0 : -1}
+                  onFocus={event => {
+                    // The history above can finish rendering as focus arrives. Center the
+                    // keyboard target without competing with the page's smooth scroll.
+                    if (event.currentTarget.matches(':focus-visible')) {
+                      event.currentTarget.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: 'instant' });
+                    }
+                  }}
                   onKeyDown={navigateNotes}
                   onClick={() => setNotesMode(mode)}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-indigo-600 ${
