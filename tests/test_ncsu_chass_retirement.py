@@ -220,3 +220,74 @@ def test_active_rank_name_variant_requires_the_reviewed_post_profile_and_spellin
     target["id"] = post
     target["link"] = "https://chass.ncsu.edu/people/different-profile/"
     assert not fetch(alias, "Professor")["metadata"]["faculty_title"]
+
+
+def test_reviewed_profile_mismatch_restores_only_with_an_observed_named_rank():
+    from copy import deepcopy
+
+    original = {
+        "id": "faculty-ncsu-chass-existing", "url": "https://chass.ncsu.edu/people/example/",
+        "pi_name": "A Teacher", "metadata": {
+            "is_active": False, "deactivation_reason": "profile_identity_mismatch",
+            "last_seen_at": "2026-07-01", "faculty_title": "Professor",
+        },
+    }
+    recent_url = "https://chass.ncsu.edu/people/new-profile/"
+    current = {
+        "id": original["id"], "url": recent_url, "pi_name": original["pi_name"],
+        "metadata": {"is_active": True, "last_seen_at": "2026-11-26", "faculty_title": "Lecturer"},
+    }
+    evidence = {"source": ncsu_chass.FACULTY_URL, "profile": recent_url, "name": "A Teacher", "title": "Lecturer"}
+    for invalid in (
+        None, "unavailable", {**evidence, "name": "Another Person"},
+        {**evidence, "profile": original["url"]}, {**evidence, "title": "Assistant Professor"},
+    ):
+        read = deepcopy(current)
+        read["metadata"]["faculty_title_observation"] = invalid
+        ncsu_chass.prepare_update(original, read)
+        assert read == original
+        assert read["metadata"] is not original["metadata"]
+
+    current["metadata"]["faculty_title_observation"] = evidence
+    accepted = deepcopy(current)
+    ncsu_chass.prepare_update(original, accepted)
+    assert accepted == current
+
+
+def test_one_reviewed_profile_cannot_keep_two_contact_buttons_after_a_name_change(tmp_path, monkeypatch):
+    import json
+    from copy import deepcopy
+
+    from src.collectors import ucb_common
+
+    first, second = sorted(ncsu_chass.REVIEWED_CONTACT_IDS)
+    shared = ncsu_chass.REVIEWED_CONTACT_URL
+    def confirmed(contact_id, name, url):
+        return {"id": contact_id, "pi_name": name, "url": url, "metadata": {
+            "is_active": True, "first_seen_at": "2026-01-01", "faculty_title": "Lecturer",
+            "faculty_title_observation": {"source": ncsu_chass.FACULTY_URL, "profile": url,
+                                          "name": name, "title": "Lecturer"},
+        }}
+
+    current = confirmed(first, "First Teacher", shared)
+    earlier = confirmed(second, "Second Teacher", shared)
+    published = tmp_path / "published.json"
+    published.write_text(json.dumps([current, earlier]))
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", published)
+
+    def merge(*observed):
+        ncsu_faculty.merge_into_processed(deepcopy(list(observed)))
+        return {v["id"]: v for v in json.loads(published.read_text())}
+
+    rows = merge(current)
+    assert rows[first]["metadata"]["is_active"] and not rows[second]["metadata"]["is_active"]
+    assert rows[second]["metadata"]["deactivation_reason"] == "profile_identity_mismatch"
+    old_stamp = rows[second]["metadata"]["deactivated_at"]
+    unverified = deepcopy(earlier)
+    unverified["metadata"].pop("faculty_title_observation")
+    assert merge(unverified)[second]["metadata"]["deactivated_at"] == old_stamp
+
+    rows = merge(earlier)
+    assert rows[second]["metadata"]["is_active"] and not rows[first]["metadata"]["is_active"]
+    separate = confirmed(first, "First Teacher", "https://chass.ncsu.edu/people/independent/")
+    assert all(r["metadata"]["is_active"] for r in merge(earlier, separate).values())
