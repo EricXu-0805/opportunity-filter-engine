@@ -1,0 +1,69 @@
+{
+  "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "observed_date_chicago": "2026-11-26",
+  "method": "Read each original production detail in Chrome. Waited for the person's unique visible heading and checked the accessible page, source link, archived notice, and application/contact actions. No mail, drafts, or profile edits.",
+  "originals": [
+    {
+      "id": "faculty-ncsu-chass-dcb028fb",
+      "name": "Mary E Haskett",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-dcb028fb",
+      "visible_inactive_notice": true,
+      "faculty_profile_link": true,
+      "draft_email_controls": 0,
+      "apply_controls": 0,
+      "legacy_publication_outreach_advice": false
+    },
+    {
+      "id": "faculty-ncsu-chass-ff4905cc",
+      "name": "Donald H. Mershon",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ff4905cc",
+      "visible_inactive_notice": true,
+      "faculty_profile_link": true,
+      "draft_email_controls": 0,
+      "apply_controls": 0,
+      "legacy_publication_outreach_advice": false
+    },
+    {
+      "id": "faculty-ncsu-chass-38b191e6",
+      "name": "William Shaw",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-38b191e6",
+      "visible_inactive_notice": true,
+      "faculty_profile_link": true,
+      "draft_email_controls": 0,
+      "apply_controls": 0,
+      "legacy_publication_outreach_advice": false
+    },
+    {
+      "id": "faculty-ncsu-chass-98436171",
+      "name": "John N Wall",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-98436171",
+      "visible_inactive_notice": true,
+      "faculty_profile_link": true,
+      "draft_email_controls": 0,
+      "apply_controls": 0,
+      "legacy_publication_outreach_advice": false
+    },
+    {
+      "id": "faculty-ncsu-chass-acb2eb75",
+      "name": "Melissa A. Johnson",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-acb2eb75",
+      "visible_inactive_notice": true,
+      "faculty_profile_link": true,
+      "draft_email_controls": 0,
+      "apply_controls": 0,
+      "legacy_publication_outreach_advice": false
+    },
+    {
+      "id": "faculty-ncsu-chass-089a76c8",
+      "name": "Jeffery Braden",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-089a76c8",
+      "visible_inactive_notice": true,
+      "faculty_profile_link": true,
+      "draft_email_controls": 0,
+      "apply_controls": 0,
+      "legacy_publication_outreach_advice": true
+    }
+  ],
+  "finding": "The Jeffery Braden page simultaneously read “This record is no longer active.” and “skim one before you reach out.” Three Scholar title links remained visible. Other five retired pages did not show this outreach sentence.",
+  "related_readback": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/85f81bb992e0fb4ed8e941868d8ff2017c8fd343/data/audits/maintenance-2026-11-26/b9-ncstate-34-original-ids.json"
+}
