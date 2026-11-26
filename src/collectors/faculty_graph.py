@@ -817,7 +817,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     record = {
         "id": opp_id,
         "source": school["source"],
-        "source_url": dept["directory_url"] if cite_directory else profile_url,
+        "source_url": person.get("_cited_directory_url") or (dept["directory_url"] if cite_directory else profile_url),
         "source_type": "faculty_research",
         "title": opp_title,
         "organization": school["organization"],
@@ -2026,7 +2026,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                     "retires nobody this run", dept.get("short"), sorted(not_read))
         for extra in cfg.get("extra_urls", []):
             _extra_url = extra["url"] if isinstance(extra, dict) else extra
-            unit_filter = extra.get("unit_filter") if isinstance(extra, dict) else None
+            page_config = extra if isinstance(extra, dict) else {}
             # Sibling roster pages of the SAME department that share one theme —
             # rank-split med-school galleries, art-history + studio art, core +
             # teaching faculty — merged under this department's short/name (dedup
@@ -2044,10 +2044,22 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 logger.warning("faculty_graph: %s roster page %s was not read; the "
                                "unit retires nobody this run", dept.get("short"), _extra_url)
                 continue
-            _seen = {(p["name"], p["url"]) for p in people}
-            people.extend(
-                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff, unit_filter=unit_filter)
-                if (p["name"], p["url"]) not in _seen)
+            existing_people = {(p["name"], p["url"]): p for p in people}
+            extra_people = _parse_cards(
+                _es, page_config.get("selectors", sel), _extra_url, page_config.get("ladder_filter", lf),
+                flip, link_f, page_config.get("section_filter", sf), ff, unit_filter=page_config.get("unit_filter"),
+            )
+            for person in extra_people:
+                identity = person["name"], person["url"]
+                prior = existing_people.get(identity)
+                if page_config.get("cite_directory"):
+                    cited_person = prior if prior is not None else person
+                    cited_person["_cited_directory_url"] = _extra_url
+                    if person.get("title"):
+                        cited_person["title"] = person["title"]
+                if prior is None:
+                    people.append(person)
+                    existing_people[identity] = person
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)

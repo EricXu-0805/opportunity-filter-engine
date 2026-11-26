@@ -44,6 +44,8 @@ def scrape(monkeypatch, pages):
 
     def fetch(url, **kwargs):
         requested.append(url)
+        if url == NANO["scrape"]["extra_urls"][0]["url"] and url not in pages:
+            return BeautifulSoup('<div class="faculty-information"><h4><a href="/other">Other Person</a></h4></div>', "html.parser")
         return pages[url]
 
     monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
@@ -62,7 +64,7 @@ def legacy_row(oid):
 
 def test_current_roster_excludes_only_the_emeritus_section(monkeypatch):
     rows, requests = scrape(monkeypatch, {NANO["directory_url"]: roster("Professors Emeriti")})
-    assert requests == [NANO["directory_url"]]
+    assert requests == [NANO["directory_url"], NANO["scrape"]["extra_urls"][0]["url"]]
     assert [row["pi_name"] for row in rows.values()] == ["Shaochen Chen", "Paul Yu"]
 
 
@@ -72,7 +74,7 @@ def test_corroborated_new_nano_appointments_use_the_original_ids(monkeypatch, le
     pages.update({REVIEWS[ESENER].profile_url: profile("Sadik Esener", ["Professor, NENG", "Professor Emeritus, ECE"]),
                   REVIEWS[HELLER].profile_url: profile("Michael Heller", ["Associate Professor, CNE", "Faculty-Recall, BENG"])})
     rows, requests = scrape(monkeypatch, pages)
-    assert set(requests) == set(pages) and len(requests) == 3
+    assert set(requests) == set(pages) | {NANO["scrape"]["extra_urls"][0]["url"]} and len(requests) == 4
     assert len(rows) == 4
     for oid, new_title in ((ESENER, "Professor"), (HELLER, "Associate Professor")):
         incoming = rows[oid]

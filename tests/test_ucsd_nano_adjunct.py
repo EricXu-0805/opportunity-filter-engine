@@ -50,6 +50,8 @@ def parse(monkeypatch, pages):
 
     def fetch(url, **kwargs):
         calls.append(url)
+        if url == NANO["scrape"]["extra_urls"][0]["url"] and url not in pages:
+            return BeautifulSoup('<div class="faculty-information"><h4><a href="/other">Other Person</a></h4></div>', "html.parser")
         return pages[url]
 
     monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
@@ -74,7 +76,7 @@ def test_three_official_adjunct_ranks_do_not_enter_the_ladder_roster(monkeypatch
         pages[review.profile_url] = personal(review, ["Adjunct Professor, NENG", "Faculty-Affiliate, ECE"])
     rows, requested = parse(monkeypatch, pages)
     assert list(rows) == [ONG]
-    assert set(requested) == set(pages) and len(requested) == 4
+    assert set(requested) == set(pages) | {NANO["scrape"]["extra_urls"][0]["url"]} and len(requested) == 5
 
 
 @pytest.mark.parametrize("oid", IDS)
@@ -86,7 +88,7 @@ def test_two_matching_current_sources_restore_the_original_id(monkeypatch, oid, 
              review.roster_url: current(review, "Associate Professor", person=review.previous_name or review.name)}
     rows, calls = parse(monkeypatch, pages)
     assert set(rows) == {oid, ONG}
-    assert len(calls) == 3
+    assert len(calls) == 4
     prior = historical(oid)
     assert apply_reviewed_faculty_profile(prior, today=AS_OF)
     recovered = rows[oid]
