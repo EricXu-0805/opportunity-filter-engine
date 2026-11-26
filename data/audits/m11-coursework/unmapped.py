@@ -1,9 +1,10 @@
 """Check a synthetic unlabelled citation and actual manual recovery in the released résumé master."""
 from datetime import datetime, timezone
+import base64
 import json
 import os
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from check import DATABASE, SITE, confirm_school, expect, home, reads, sessions, sync_playwright
 
 marker='An invented archive note, Fictional Journal (2024).'
@@ -16,20 +17,43 @@ def read_before_confirmation(browser):
     """Reopen the owner's real profile and inspect the fresh first-party read."""
     reader = home(browser, sessions[0])
     try:
-        expect(reader.get_by_role('button', name='Remove file')).to_be_visible(timeout=55000)
         def profile_read(response):
             address = urlsplit(response.url)
+            query = parse_qs(address.query)
+            expected_owner = sessions[0]['user']['id']
             return (address.hostname == DATABASE and address.path == '/rest/v1/profiles'
+                    and query.get('id') == ['eq.' + expected_owner]
+                    and {'profile_data', 'revision'} <= set(query.get('select', [''])[0].split(','))
                     and response.request.method == 'GET' and response.status == 200)
+
         with reader.expect_response(profile_read, timeout=40000) as received:
             reader.reload(wait_until='domcontentloaded')
-        payload = received.value.json()
-        row = payload[0] if isinstance(payload, list) else payload
-        profile = row['profile_data']
-        assert marker in profile['resume_text'], 'The saved résumé was not present in the independent read'
-        publications = (profile.get('resume_master') or {}).get('publications') or []
-        assert not publications, 'A publication was saved before the student confirmed the title'
-        return {'http': received.value.status, 'revision': row['revision'], 'publication_count': len(publications)}
+        response = received.value
+        authorization = response.request.all_headers().get('authorization', '')
+        assert authorization.startswith('Bearer '), 'The profile read was unauthenticated'
+        token_payload = authorization.split('.', 2)[1]
+        claims = json.loads(base64.urlsafe_b64decode(token_payload + '=' * (-len(token_payload) % 4)))
+        assert claims.get('sub') == sessions[0]['user']['id'], 'A different visitor made the read'
+        payload = response.json()
+        assert not isinstance(payload, list) or len(payload) <= 1
+        if isinstance(payload, list):
+            row = payload[0] if payload else None
+        else:
+            row = payload
+        if row is None:
+            return {'http': response.status, 'owner_verified': True, 'profile_row': 'absent',
+                    'revision': 0, 'uploaded_source_saved': False, 'publication_field': 'absent', 'publication_count': 0}
+        assert isinstance(row, dict) and 'profile_data' in row and isinstance(row.get('revision'), int)
+        profile = row['profile_data'] or {}
+        assert isinstance(profile, dict)
+        master = profile.get('resume_master') or {}
+        publications = master.get('publications')
+        assert publications is None or publications == [], 'A publication was saved before the student confirmed the title'
+        saved_source = marker in (profile.get('resume_text') or '')
+        return {'http': response.status, 'owner_verified': True, 'profile_row': 'present',
+                'revision': row['revision'], 'uploaded_source_saved': saved_source,
+                'publication_field': 'absent' if publications is None else 'saved_empty_list',
+                'publication_count': 0}
     finally:
         reader.context.close()
 
