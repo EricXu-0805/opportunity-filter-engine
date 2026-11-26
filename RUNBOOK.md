@@ -174,7 +174,7 @@ verify production migration version `20261126120000` is applied. The owner
 applies the migration under the operator procedure below. After deployment,
 check two designated test accounts can preview selected fields, replace the
 contents at the same link, decline an import and revoke the link. Clearing the
-flag stops offering new links. Existing recipients can still open their links
+flag pauses creation of new managed links. Existing recipients can still open their links
 and signed-in authors can manage them at `/share`. Historical `/?share=` links
 contain their original snapshot and have no server-side expiry or revocation.
 

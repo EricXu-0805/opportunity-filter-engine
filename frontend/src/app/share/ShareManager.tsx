@@ -119,6 +119,7 @@ export function ShareManager({ uid, zh, allowCreate }: { uid: string; zh: boolea
       </div>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{txt('Your links', '我的分享链接')}</h2>
+        <p className="text-sm">{txt('Earlier links beginning with /?share= carry a fixed copy. They cannot be updated or revoked here.', '以前生成的 /?share= 链接自带当时的副本，无法在这里替换或撤销。')}</p>
         {readFailed ? <button className={button} type="button" onClick={() => setLoad(n => n + 1)}>{txt('Could not load links. Retry', '读取失败，重试')}</button>
           : links === null ? <p>{txt('Loading links…', '正在读取链接…')}</p> : !links.length ? <p>{txt('No published links.', '尚未发布分享链接。')}</p> : null}
         {links?.map(item => <div key={item.token} className="space-y-2 border-t py-3">
