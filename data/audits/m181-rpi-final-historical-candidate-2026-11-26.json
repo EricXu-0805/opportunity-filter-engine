@@ -1,0 +1,121 @@
+{
+  "observed_at": "2026-11-26T11:53:23.303211+00:00",
+  "historical_scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/41846323715",
+  "historical_published_data": "https://github.com/EricXu-0805/opportunity-filter-engine/tree/a0b3248f8398121c011895438e3d329f7a84d8a0/data/processed",
+  "RPI_historical_unobserved_units": [
+    {
+      "unit": "bio",
+      "baseline": 24,
+      "replayed_source_published_count": 22,
+      "missed_but_source_lists_profile_count": 1,
+      "original_ids_not_observed_and_profile_missing_from_source": [
+        "faculty-rpi-bio-e8468413"
+      ]
+    },
+    {
+      "unit": "cbe",
+      "baseline": 17,
+      "replayed_source_published_count": 0,
+      "missed_but_source_lists_profile_count": 17,
+      "original_ids_not_observed_and_profile_missing_from_source": []
+    },
+    {
+      "unit": "ees",
+      "baseline": 6,
+      "replayed_source_published_count": 5,
+      "missed_but_source_lists_profile_count": 1,
+      "original_ids_not_observed_and_profile_missing_from_source": []
+    },
+    {
+      "unit": "lally",
+      "baseline": 37,
+      "replayed_source_published_count": 36,
+      "missed_but_source_lists_profile_count": 1,
+      "original_ids_not_observed_and_profile_missing_from_source": []
+    }
+  ],
+  "source_controls": {
+    "biological_sciences_current_home": {
+      "url": "https://biology.rpi.edu/people",
+      "http_status": 200,
+      "final_url": "https://biology.rpi.edu/people",
+      "source_mentions_name": false,
+      "cards": 34,
+      "matching_listed_profiles": []
+    },
+    "earth_environmental_sciences_current_home": {
+      "url": "https://earth.rpi.edu/people",
+      "http_status": 200,
+      "final_url": "https://earth.rpi.edu/people",
+      "source_mentions_name": false,
+      "cards": 24,
+      "matching_listed_profiles": []
+    },
+    "central_faculty_profile": {
+      "url": "https://faculty.rpi.edu/karyn-rogers",
+      "http_status": 403,
+      "final_url": "https://faculty.rpi.edu/karyn-rogers",
+      "source_mentions_name": false
+    },
+    "rare_research_center": {
+      "url": "https://rare.rpi.edu/people",
+      "http_status": 200,
+      "final_url": "https://rare.rpi.edu/people",
+      "source_mentions_name": true,
+      "mentions_department_biology": false,
+      "mentions_department_earth": true,
+      "observed_source_role": "Research center director and associate professor in Earth & Environmental Sciences",
+      "center_person_url": "https://rare.rpi.edu/people/assoc-professor-karyn-rogers"
+    },
+    "idea_university_profile": {
+      "url": "https://idea.rpi.edu/people/faculty/karyn-rogers-0",
+      "http_status": 200,
+      "final_url": "https://idea.rpi.edu/people/faculty/karyn-rogers-0",
+      "source_mentions_name": true,
+      "mentions_department_biology": true,
+      "mentions_department_earth": true
+    },
+    "earth_environmental_department_research": {
+      "url": "https://earth.rpi.edu/research/earth-system-history-and-paleoclimatology",
+      "http_status": 200,
+      "final_url": "https://earth.rpi.edu/research/earth-system-history-and-paleoclimatology",
+      "source_mentions_name": true,
+      "mentions_department_biology": false,
+      "mentions_department_earth": false
+    },
+    "engineering_speakers": {
+      "url": "https://eng.rpi.edu/speakers",
+      "http_status": 200,
+      "final_url": "https://eng.rpi.edu/speakers",
+      "source_mentions_name": true,
+      "mentions_department_biology": false,
+      "mentions_department_earth": true
+    },
+    "academy_committee": {
+      "url": "https://www.nationalacademies.org/units/DEPS-SSB-16-08",
+      "http_status": 200,
+      "final_url": "https://www.nationalacademies.org/units/DEPS-SSB-16-08",
+      "source_mentions_name": false
+    },
+    "public_detail": {
+      "url": "https://joinalab.com/opportunities/faculty-rpi-bio-e8468413",
+      "http_status": 200,
+      "final_url": "https://joinalab.com/opportunities/faculty-rpi-bio-e8468413",
+      "source_mentions_name": false,
+      "release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896"
+    },
+    "public_api": {
+      "url": "https://joinalab.com/api/opportunities/faculty-rpi-bio-e8468413",
+      "http_status": 200,
+      "final_url": "https://joinalab.com/api/opportunities/faculty-rpi-bio-e8468413",
+      "original_id": "faculty-rpi-bio-e8468413",
+      "department": "Department of Biological Sciences",
+      "target_actionable": true
+    }
+  },
+  "decision": "Keep original ID available. Current department people pages omit this name. University center, engineering and academic sources identify Earth and Environmental Sciences. Central faculty identity and university centers also have a historical Biology affiliation. No dated appointment or departure was established. No source date, new home or retirement has been written to the published record.",
+  "secondary_index_context": {
+    "central_faculty_profile": "The primary individual link currently returned 403. An indexed university copy two months old identifies Biological Sciences and the center. It does not establish a November appointment.",
+    "earth_source": "The current Earth department research-topic page lists Karyn Rogers. Its main people roster does not."
+  }
+}
