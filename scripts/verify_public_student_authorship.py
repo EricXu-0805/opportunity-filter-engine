@@ -26,11 +26,13 @@ with sync_playwright() as w:
     probe=w.request.new_context();assert probe.get(site+'/api/health').json()['release_sha']==expected
     assert 'data-release-sha="'+expected+'"' in probe.get(site+'/about').text();probe.dispose()
     b=w.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
-    key=[]
+    key=[];events=[]
     def client():
         ctx=cold(b)
         def headers(r):
             p=urlsplit(r.url)
+            if p.hostname==db and p.path.startswith('/rest/v1/'):
+                events.append((r.request.method,p.path,r.status))
             if p.hostname==db and p.path.startswith('/rest/v1/') and r.ok:
                 token=r.request.headers.get('apikey')
                 if token and not key:key.append(token)
@@ -46,6 +48,9 @@ with sync_playwright() as w:
         for _ in range(200):
             if len(revisions)>old:return
             page.wait_for_timeout(200)
+        note=page.get_by_test_id('hydration-note')
+        print('Own profile diagnostics',events[-16:],revisions, note.inner_text() if note.count() else None,
+              page.locator('[role=alert]').all_inner_texts(), page.get_by_test_id('conflict-keep-mine').count(),flush=True)
         raise AssertionError('profile commit did not settle')
     def panel(page):
         page.get_by_role('link',name='Confirm authorship and import my publications').click()
@@ -61,8 +66,18 @@ with sync_playwright() as w:
         page.get_by_role('button',name='Check authorships').click()
         expect(page.get_by_text('Matching works · 2 / Skipped · 2')).to_be_visible()
         for reject in ('Namesake control','Ambiguous control'):expect(page.get_by_role('link',name=reject)).to_have_count(0)
-    ctx=client();p=home(ctx);p.locator('#student_name').fill(student)
-    old=len(revisions);p.locator('#scholar_url').fill(url);p.locator('#scholar_url').blur();changed(p,old)
+    ctx=client();p=home(ctx)
+    # Complete the same ordinary profile fields as any new guest before reviewing publications.
+    p.locator('#student_name').fill(student)
+    p.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)')
+    p.locator('#major').select_option(label='Integrative Biology')
+    p.locator('#grade').select_option(label='Junior')
+    p.locator('#research_interests').fill('Synthetic publication history for an archive sample')
+    p.locator('#scholar_url').fill(url);p.locator('#scholar_url').blur()
+    for _ in range(210):
+        if key and revisions and owned(ctx)['profile_data'].get('scholar_url')==url:break
+        p.wait_for_timeout(200)
+    if not revisions:changed(p,0)
     for _ in range(160):
         if key and owned(ctx)['profile_data'].get('scholar_url')==url:break
         p.wait_for_timeout(200)

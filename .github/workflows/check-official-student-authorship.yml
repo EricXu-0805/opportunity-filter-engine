@@ -2,7 +2,7 @@ name: Verify confirmed publication identity on the deployed profile
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/check-official-student-authorship.yml']
+    paths: ['.github/workflows/check-official-student-authorship.yml', 'scripts/verify_public_student_authorship.py']
 permissions:
   contents: read
 jobs:
@@ -19,5 +19,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install --quiet playwright==1.55.0
-      - name: Use one synthetic public guest, the official profile form, matching and draft controls
+      - name: Use the official student profile and résumé publication controls
         run: python -u scripts/verify_public_student_authorship.py
