@@ -24,8 +24,9 @@ from urllib.parse import urljoin, urlsplit
 import requests
 from bs4 import BeautifulSoup
 
+from src.normalizers import fodommat
 from src.normalizers.deadlines import normalize_deadline, to_legacy
-from src.program_windows import apply_program_window
+from src.program_windows import apply_program_window, reviewed_window
 
 from ..contact_instructions import (
     CAPTURE_KEY,
@@ -902,6 +903,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         },
     }
     apply_program_window(record)
+    fodommat.apply_requirements(record)
     return record
 
 
@@ -1027,6 +1029,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                 # The list row is itself a current deadline observation; only
                 # an absent one falls back to the prior detail-page value.
                 if opp.get("deadline") is not None:
+                    if fodommat.host_quote(prior, "majors") and reviewed_window(opp) is None:
+                        # A new cohort cannot inherit the 2027 host's eligibility
+                        # while retaining the new directory deadline.
+                        carried.remove("eligibility")
                     carried = [key for key in carried
                                if key not in ("deadline", "deadline_is_estimate", "is_rolling")]
                 for key in carried:
@@ -1043,6 +1049,11 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             from .uiuc_faculty import carry_forward_contact_instruction_sources
 
             carry_forward_contact_instruction_sources(prior, opp)
+            # The shallow merge can restore a deep host link or an older set
+            # of inferred majors. Recheck against the merged record.
+            if opp["id"] == "sro-1532726e":
+                apply_program_window(opp)
+                fodommat.apply_requirements(opp)
             index[opp["id"]] = opp
             updated += 1
         else:
