@@ -1,0 +1,204 @@
+{
+  "utc": "2026-11-26T21:41:39.230066+00:00",
+  "site": "http://127.0.0.1:3000",
+  "account": {
+    "signup": 200,
+    "onboarding_attempts": [
+      "closed"
+    ],
+    "college": "College of Natural Science",
+    "major": "Biochemistry and Molecular Biology",
+    "responses": [
+      {
+        "endpoint": "commit_profile_patch_cas",
+        "status": 200,
+        "method": "POST"
+      },
+      {
+        "endpoint": "commit_profile_patch_cas",
+        "status": 200,
+        "method": "POST"
+      }
+    ],
+    "profile_commit": "applied"
+  },
+  "records": [
+    {
+      "id": "faculty-msu-bmb-939e5db8",
+      "query": "Ogunwobi",
+      "name": "Olorunseun O Ogunwobi",
+      "person_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+      "official_roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "h1": "Olorunseun O Ogunwobi",
+      "added_normally": true,
+      "detail": {
+        "label": "View faculty profile",
+        "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/opportunities/faculty-msu-bmb-939e5db8",
+        "client_release": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+        "points_to": "stored person URL",
+        "landed_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "title": "",
+        "headings": [],
+        "linked_people": 0,
+        "navigation_responses": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ]
+      },
+      "favorites": {
+        "label": "Faculty page",
+        "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/favorites",
+        "client_release": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+        "points_to": "stored person URL",
+        "landed_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "title": "",
+        "headings": [],
+        "linked_people": 0,
+        "navigation_responses": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ]
+      },
+      "matches_all": {
+        "label": "Faculty page",
+        "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/results?tab=all&q=Ogunwobi",
+        "client_release": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+        "points_to": "stored person URL",
+        "landed_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "title": "",
+        "headings": [],
+        "linked_people": 0,
+        "navigation_responses": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-0ac5b942",
+      "query": "Michael Boots",
+      "name": "Michael Boots",
+      "person_url": "https://ccb.berkeley.edu/people/michael-boots",
+      "official_roster": "https://ccb.berkeley.edu/people/core-faculty",
+      "h1": "Michael Boots",
+      "added_normally": true,
+      "detail": {
+        "label": "View faculty profile",
+        "href": "https://ccb.berkeley.edu/people/michael-boots",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/opportunities/faculty-ucb-cdss-0ac5b942",
+        "client_release": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+        "points_to": "stored person URL",
+        "landed_url": "https://ccb.berkeley.edu/people/michael-boots",
+        "title": "Michael Boots | Center for Computational Biology",
+        "headings": [
+          "Secondary navigation",
+          "Michael Boots",
+          "CONTACT"
+        ],
+        "linked_people": 17,
+        "navigation_responses": [
+          {
+            "url": "https://ccb.berkeley.edu/people/michael-boots",
+            "status": 200
+          }
+        ]
+      },
+      "favorites": {
+        "label": "Faculty page",
+        "href": "https://ccb.berkeley.edu/people/michael-boots",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/favorites",
+        "client_release": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+        "points_to": "stored person URL",
+        "landed_url": "https://ccb.berkeley.edu/people/michael-boots",
+        "title": "Michael Boots | Center for Computational Biology",
+        "headings": [
+          "Secondary navigation",
+          "Michael Boots",
+          "CONTACT"
+        ],
+        "linked_people": 17,
+        "navigation_responses": [
+          {
+            "url": "https://ccb.berkeley.edu/people/michael-boots",
+            "status": 200
+          }
+        ]
+      },
+      "used_product_cross_school": "false",
+      "matches_all_error": "Locator.wait_for: Timeout 55000ms exceeded.\nCall log:\n  - waiting for locator(\"#match-card-faculty-ucb-cdss-0ac5b942\") to be visible\n",
+      "match_header_all": "Back to Profile\nYour Matches\n\n0 opportunities ranked for you\n\n?\nAll\n0\nHigh Priority\n0\nGood Match\n0\nReach\n0\nStarred\n0\nProfile 3/5 complete — add 2+ skills, a résumé for sharper matches.\nEdit profile\n/\nSave preset\nSave to account\n\nNo results for “Michael Boots”\n\nFilter by topic\nAll opportunity types\nResearch\nSummer program\nInternship\nPaid / Unpaid\nPaid only\nUnpaid / not disclosed\nInternational status\nIntl friendly only\nShow all (incl. US-only)\nAll sources\nJohns Hopkins Faculty\nNorthwestern Faculty",
+      "matches_starred_error": "Locator.wait_for: Timeout 55000ms exceeded.\nCall log:\n  - waiting for locator(\"#match-card-faculty-ucb-cdss-0ac5b942\") to be visible\n",
+      "match_header_starred": "Back to Profile\nYour Matches\n\n0 opportunities ranked for you\n\n?\nAll\n0\nHigh Priority\n0\nGood Match\n0\nReach\n0\nStarred\n0\nProfile 3/5 complete — add 2+ skills, a résumé for sharper matches.\nEdit profile\n/\nSave preset\nSave to account\n\nNo results for “Michael Boots”\n\nFilter by topic\nAll opportunity types\nResearch\nSummer program\nInternship\nPaid / Unpaid\nPaid only\nUnpaid / not disclosed\nInternational status\nIntl friendly only\nShow all (incl. US-only)\nAll sources\nJohns Hopkins Faculty\nNorthwestern Faculty"
+    }
+  ],
+  "matches_requests": [
+    {
+      "http": 200,
+      "query": null,
+      "tab": null,
+      "major": "Biochemistry and Molecular Biology"
+    },
+    {
+      "http": 200,
+      "query": null,
+      "tab": null,
+      "major": "Biochemistry and Molecular Biology"
+    },
+    {
+      "http": 200,
+      "query": null,
+      "tab": null,
+      "major": "Biochemistry and Molecular Biology"
+    },
+    {
+      "http": 200,
+      "query": null,
+      "tab": null,
+      "major": "Biochemistry and Molecular Biology"
+    },
+    {
+      "http": 200,
+      "query": null,
+      "tab": null,
+      "major": "Biochemistry and Molecular Biology"
+    }
+  ],
+  "environment": "isolated candidate, actual local account DB and production-sized corpus",
+  "start": {
+    "front": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+    "back": "08a8ea170ac2c7792778c76a9473616ad1ec824e"
+  },
+  "end": {
+    "front": "08a8ea170ac2c7792778c76a9473616ad1ec824e",
+    "back": "08a8ea170ac2c7792778c76a9473616ad1ec824e"
+  },
+  "stable_release": true,
+  "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45899343567",
+  "result": "All three Michigan State links reached the stored original person URL. The university supplied a browser check. Both Berkeley detail and Favorites reached the named Berkeley page. This visitor’s home school was Michigan State, and the Berkeley ID was not visible in the Michigan State ranking."
+}
