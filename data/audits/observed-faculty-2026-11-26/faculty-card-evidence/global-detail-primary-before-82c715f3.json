@@ -1,0 +1,85 @@
+{
+  "at": "2026-11-26T21:39:32.977383+00:00",
+  "requested_result": "before",
+  "channel": "Anonymous published UI HTML and normal public detail API under the same release",
+  "start": {
+    "html": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "api": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "end": {
+    "html": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "api": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "rows": [
+    {
+      "id": "faculty-ucb-cdss-118019dd",
+      "name": "Eric Kim",
+      "detail_url": "https://joinalab.com/opportunities/faculty-ucb-cdss-118019dd",
+      "contact_status": "unavailable",
+      "detail_sha": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+      "h1": "Eric Kim",
+      "actionable": true,
+      "profile_according_to_api": "https://eric-kim.net/eric-kim-net/index.html",
+      "actions": [
+        {
+          "label": "View faculty profile",
+          "href": "https://eric-kim.net/eric-kim-net/index.html",
+          "style": [
+            "inline-flex",
+            "items-center",
+            "gap-2",
+            "px-4",
+            "py-2.5",
+            "rounded-xl",
+            "bg-white",
+            "border",
+            "border-gray-200",
+            "text-gray-700",
+            "text-[14px]",
+            "font-medium",
+            "hover:bg-gray-50",
+            "transition-colors",
+            "focus:outline-none",
+            "focus-visible:ring-2",
+            "focus-visible:ring-indigo-500"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faculty-msu-phys-c0440436",
+      "name": "Jonas Nils Becker",
+      "detail_url": "https://joinalab.com/opportunities/faculty-msu-phys-c0440436",
+      "contact_status": "sign_in_required",
+      "detail_sha": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+      "h1": "Jonas Nils Becker",
+      "actionable": true,
+      "profile_according_to_api": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+      "actions": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+          "style": [
+            "inline-flex",
+            "items-center",
+            "gap-2",
+            "px-4",
+            "py-2.5",
+            "rounded-xl",
+            "bg-white",
+            "border",
+            "border-gray-200",
+            "text-gray-700",
+            "text-[14px]",
+            "font-medium",
+            "hover:bg-gray-50",
+            "transition-colors",
+            "focus:outline-none",
+            "focus-visible:ring-2",
+            "focus-visible:ring-indigo-500"
+          ]
+        }
+      ]
+    }
+  ]
+}
