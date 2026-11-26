@@ -266,12 +266,12 @@ describe('subscribeToPush', () => {
     expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
   });
 
-  it('returns false when getDeviceId resolves to null (no anonymous session)', async () => {
+  it('reports a failure when getDeviceId resolves to null (no anonymous session)', async () => {
     installNotification('granted');
     installPushManager();
     installServiceWorker({ hasRegistration: true });
     mockGetDeviceId.mockResolvedValue(null);
-    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
+    await expect(subscribeToPush('AAAA', TOKEN)).rejects.toThrow();
   });
 
   it('upserts the subscription to push_subscriptions with the correct shape on success', async () => {
@@ -305,7 +305,7 @@ describe('subscribeToPush', () => {
     );
   });
 
-  it('returns false when the subscription is missing endpoint/p256dh/auth', async () => {
+  it('reports a failure when the subscription is missing endpoint/p256dh/auth', async () => {
     installNotification('granted');
     installPushManager();
     mockSubscription = {
@@ -315,17 +315,17 @@ describe('subscribeToPush', () => {
     };
     installServiceWorker({ hasRegistration: true });
 
-    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
+    await expect(subscribeToPush('AAAA', TOKEN)).rejects.toThrow();
     expect(mockUpsert).not.toHaveBeenCalled();
   });
 
-  it('returns false when the Supabase upsert returns an error (e.g. table does not exist)', async () => {
+  it('reports a failure when the Supabase upsert returns an error (e.g. table does not exist)', async () => {
     installNotification('granted');
     installPushManager();
     installServiceWorker({ hasRegistration: true });
     mockUpsert.mockResolvedValue({ error: { message: 'relation does not exist' } });
 
-    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
+    await expect(subscribeToPush('AAAA', TOKEN)).rejects.toThrow();
   });
 });
 

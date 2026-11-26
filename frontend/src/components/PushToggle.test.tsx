@@ -228,13 +228,22 @@ describe('a failed change is reported, not painted as done', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('rechecks the permission after an offer is declined', async () => {
+    const button = await renderReady('default');
+    subscribeToPush.mockResolvedValueOnce(false);
+    getPushStatus.mockResolvedValue('denied');
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.queryByRole('button')).toBeNull());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('says so when subscribing throws, and stays off', async () => {
     subscribeToPush.mockRejectedValueOnce(new Error('push service unavailable'));
     const button = await renderReady('default');
 
     fireEvent.click(button);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(await screen.findByRole('alert')).toHaveTextContent('dashboard.push.enableFailed');
     expect(button).toHaveAttribute('aria-pressed', 'false');
   });
 

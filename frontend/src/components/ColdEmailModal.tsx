@@ -612,7 +612,7 @@ export default function ColdEmailModal({
   // reminder — it renders on the Tracker card and flips to "Follow-up due" —
   // but nothing arrives outside the app, and nothing offered to change that.
   // null = not determined yet; the offer stays hidden until it is known.
-  const [pushOffer, setPushOffer] = useState<'available' | 'subscribed' | null>(null);
+  const [pushOffer, setPushOffer] = useState<'available' | 'subscribed' | 'failed' | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   // The status the confirm RPC actually landed on. It is an upsert that
   // PRESERVES an existing status, so a row already marked rejected or
@@ -2067,8 +2067,15 @@ export default function ColdEmailModal({
     try {
       const key = await getVapidPublicKey();
       if (!current()) return;
-      if (key && await subscribeToPush(key, token) && current()) setPushOffer('subscribed');
-    } catch { /* a session change, an owner change or a refused write: the offer simply stays; nothing was promised */ } finally {
+      if (!key) {
+        setPushOffer('failed');
+        return;
+      }
+      const subscribed = await subscribeToPush(key, token);
+      if (current()) setPushOffer(subscribed ? 'subscribed' : null);
+    } catch {
+      if (current()) setPushOffer('failed');
+    } finally {
       // A busy flag carries no account data; reset either way.
       setPushBusy(false);
     }
@@ -2948,9 +2955,10 @@ export default function ColdEmailModal({
                       </button>
                     ),
                   )}
-                  {followUpDate && pushOffer === 'available' && (
+                  {followUpDate && (pushOffer === 'available' || pushOffer === 'failed') && (
                     <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-500">
                       {t('coldEmail.reminderInAppOnly')}
+                      {pushOffer === 'failed' && <span role="alert">{t('dashboard.push.enableFailed')}</span>}
                       <button
                         type="button"
                         disabled={!sourceReady || pushBusy}
