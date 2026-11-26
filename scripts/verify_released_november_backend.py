@@ -28,25 +28,29 @@ def release():
 
 
 def publications():
-    from bs4 import BeautifulSoup
+    from playwright.sync_api import expect, sync_playwright
 
     cases = {
         "faculty-asu-ece-36055db6": (["composite finger seal", "MHD Simulation"], []),
         "faculty-tamu-mays-2157ba4d": (["Load Forecasting Using MSTL"], ["New Insights on Workplace Mistreatment"]),
     }
-    for oid, (removed, retained) in cases.items():
-        path = "/opportunities/" + oid + "?_release_scope=" + SCOPE
-        data = json.loads(read("/api" + path))
-        assert data["id"] == oid
-        page = BeautifulSoup(read(path), "html.parser")
-        assert page.select_one("h1") and data["pi_name"].casefold() in page.select_one("h1").get_text(" ",strip=True).casefold()
-        titles = " ".join(work["title"] for work in data["metadata"].get("recent_works", []))
-        visible = page.select_one("main").get_text(" ", strip=True)
-        for text in removed:
-            assert all(text.casefold() not in source.casefold() for source in (titles, visible)), (oid, text)
-        for text in retained:
-            assert all(text.casefold() in source.casefold() for source in (titles, visible)), (oid, text)
-        print("PASS", oid, "removed", removed, "retained", retained, "frontend",page.html.get("data-release-sha"),flush=True)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+        page = browser.new_page()
+        for oid, (removed, retained) in cases.items():
+            path = "/opportunities/" + oid + "?_release_scope=" + SCOPE
+            data = json.loads(read("/api" + path))
+            assert data["id"] == oid
+            page.goto(SITE + path, wait_until="domcontentloaded")
+            expect(page.get_by_role("heading", level=1)).to_contain_text(data["pi_name"], timeout=30000)
+            titles = " ".join(work["title"] for work in data["metadata"].get("recent_works", []))
+            visible = page.locator("main").inner_text()
+            for text in removed:
+                assert all(text.casefold() not in source.casefold() for source in (titles, visible)), (oid, text)
+            for text in retained:
+                assert all(text.casefold() in source.casefold() for source in (titles, visible)), (oid, text)
+            print("PASS", oid, "removed", removed, "retained", retained, "frontend",page.locator("html").get_attribute("data-release-sha"),flush=True)
+        browser.close()
 
 
 if __name__ == "__main__":
