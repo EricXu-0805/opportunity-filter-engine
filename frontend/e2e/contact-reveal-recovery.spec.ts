@@ -1,3 +1,4 @@
+import { RELATED_LISTING_ID } from './actionable-listing.cjs';
 import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Route, type Request } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -207,10 +208,9 @@ test.describe('Contact reveal recovery', () => {
     try {
       await seed(page, owner);
       await page.route(`**/api/opportunities/${TARGET}`, async route => { reads += 1; await pending.promise; try { await reveal(route, 'previous-target@example.test'); } finally { settled = true; } });
-      // This verified local recommendation has no known email. Its real
-      // target page must stay unavailable after the old response arrives.
+      // The nearby local test posting has no published contact address.
       await page.goto(PATH); await expect.poll(() => reads).toBe(1);
-      const related = page.locator('section[aria-labelledby="similar-heading"] a[href="/opportunities/purdue-74a073b99827"]'); await expect(related).toBeVisible();
+      const related = page.locator(`section[aria-labelledby="similar-heading"] a[href="/opportunities/${RELATED_LISTING_ID}"]`); await expect(related).toBeVisible();
       const href = await related.getAttribute('href'); expect(href).toMatch(/^\/opportunities\//); expect(href).not.toBe(PATH);
       await related.click(); await expect(page).toHaveURL(new RegExp(`${href}$`)); await expect(page.locator('h1')).toBeVisible();
       pending.release(); await expect.poll(() => settled).toBe(true);
