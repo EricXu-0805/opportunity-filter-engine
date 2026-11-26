@@ -1,0 +1,59 @@
+{
+  "checked_utc": "2026-11-26T17:36:25+00:00",
+  "live_both_ends_sha": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "candidate_sha": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+  "scope": "Public API and streamed HTML on both live inactive IDs and the active control, plus isolated normal FastAPI GET for all three candidate shard rows. Separate Chrome readback of the inactive banner and absence of Apply now/Draft email on Braden and Beise. The two historical routes hide their summary block in the production UI; the bug is the data returned to API clients.",
+  "baseline_production_and_candidate": {
+    "faculty-ncsu-chass-089a76c8": {
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-089a76c8?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "frontend": "https://joinalab.com/opportunities/faculty-ncsu-chass-089a76c8",
+      "api_status": 200,
+      "front_status": 200,
+      "live_api_has_generated_outreach_ending": true,
+      "live_frontend_rendered_html_inactive_banner": true,
+      "live_frontend_rendered_html_contains_summary_outreach": false,
+      "pi_name": "Jeffery Braden",
+      "candidate_local_http": 200,
+      "actionable_before_and_after": false,
+      "rendered_research_areas_preserved": true,
+      "candidate_generated_outreach_ending": false,
+      "candidate_structured_summary_archived": true,
+      "only_removed_product_closing": true,
+      "normal_detail_after_deployment_pending": true
+    },
+    "faculty-umd-phys-5e8e0edd": {
+      "api": "https://joinalab.com/api/opportunities/faculty-umd-phys-5e8e0edd?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "frontend": "https://joinalab.com/opportunities/faculty-umd-phys-5e8e0edd",
+      "api_status": 200,
+      "front_status": 200,
+      "live_api_has_generated_outreach_ending": true,
+      "live_frontend_rendered_html_inactive_banner": true,
+      "live_frontend_rendered_html_contains_summary_outreach": false,
+      "pi_name": "Elizabeth Beise",
+      "candidate_local_http": 200,
+      "actionable_before_and_after": false,
+      "rendered_research_areas_preserved": true,
+      "candidate_generated_outreach_ending": false,
+      "candidate_structured_summary_archived": true,
+      "only_removed_product_closing": true,
+      "normal_detail_after_deployment_pending": true
+    },
+    "faculty-ucsd-nano-d24bdcfa": {
+      "api": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-d24bdcfa?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "frontend": "https://joinalab.com/opportunities/faculty-ucsd-nano-d24bdcfa",
+      "api_status": 200,
+      "front_status": 200,
+      "live_api_has_generated_outreach_ending": true,
+      "live_frontend_rendered_html_inactive_banner": false,
+      "live_frontend_rendered_html_contains_summary_outreach": true,
+      "pi_name": "Shaochen Chen",
+      "candidate_local_http": 200,
+      "actionable_before_and_after": true,
+      "rendered_research_areas_preserved": true,
+      "candidate_generated_outreach_ending": true,
+      "candidate_structured_summary_archived": null,
+      "only_removed_product_closing": false,
+      "normal_detail_after_deployment_pending": true
+    }
+  }
+}
