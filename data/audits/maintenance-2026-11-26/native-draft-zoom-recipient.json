@@ -1,0 +1,192 @@
+{
+  "site": "https://joinalab.com",
+  "target": "faculty-cs-321c7f13",
+  "started_utc": "2026-11-26T12:00:40.206911+00:00",
+  "observations": [
+    {
+      "stage": "desktop 100%",
+      "copy": {
+        "x": 450.796875,
+        "y": 718.34375,
+        "w": 93.171875,
+        "h": 42,
+        "inside": true,
+        "viewport": [
+          1280,
+          813
+        ],
+        "dpr": 1
+      },
+      "composer": {
+        "x": 851.0625,
+        "y": 719.34375,
+        "w": 156.078125,
+        "h": 40,
+        "inside": true,
+        "viewport": [
+          1280,
+          813
+        ],
+        "dpr": 1
+      },
+      "composer_enabled": false
+    },
+    {
+      "stage": "native page zoom 200%",
+      "copy": {
+        "x": 342.75,
+        "y": 347.5,
+        "w": 93.171875,
+        "h": 42,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer": {
+        "x": 443.921875,
+        "y": 338.5,
+        "w": 137.1640625,
+        "h": 60,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer_enabled": false
+    },
+    {
+      "stage": "typing at 200%",
+      "copy": {
+        "x": 342.75,
+        "y": 356.5,
+        "w": 93.171875,
+        "h": 42,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer": {
+        "x": 443.921875,
+        "y": 357.5,
+        "w": 156.078125,
+        "h": 40,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer_enabled": false
+    },
+    {
+      "stage": "after copy at 200%",
+      "copy": {
+        "x": 342.75,
+        "y": 356.5,
+        "w": 93.171875,
+        "h": 42,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer": {
+        "x": 443.921875,
+        "y": 357.5,
+        "w": 156.078125,
+        "h": 40,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer_enabled": false
+    },
+    {
+      "stage": "with recipient at 200%",
+      "copy": {
+        "x": 342.75,
+        "y": 356.5,
+        "w": 93.171875,
+        "h": 42,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer": {
+        "x": 443.921875,
+        "y": 357.5,
+        "w": 156.078125,
+        "h": 40,
+        "inside": true,
+        "viewport": [
+          640,
+          406
+        ],
+        "dpr": 2
+      },
+      "composer_enabled": true
+    }
+  ],
+  "template_http": [
+    200
+  ],
+  "guest_signup_http": 200,
+  "profile_commits": [
+    {
+      "http": 200,
+      "outcome": "applied",
+      "fields": [
+        "additional_majors",
+        "college",
+        "coursework",
+        "experience_entries",
+        "grade",
+        "home_school",
+        "institution",
+        "is_international",
+        "major",
+        "name",
+        "research_interests",
+        "resume_master",
+        "resume_text",
+        "search_weight",
+        "skills"
+      ]
+    }
+  ],
+  "cloud_profile_saved": true,
+  "external_composer_opens": 0,
+  "backend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "initial_viewport": {
+    "width": 1280,
+    "height": 813,
+    "dpr": 1
+  },
+  "copy_action": "Copy draft only",
+  "initial_recipient_present": false,
+  "composer_with_recipient_enabled": true,
+  "visible_guidance": [
+    "Saved on this browser.Delete draft and start again",
+    "Edit the full body, or select a passage in the body to edit only that passage."
+  ],
+  "copied_long_draft_characters": 1974,
+  "result": "passed"
+}
