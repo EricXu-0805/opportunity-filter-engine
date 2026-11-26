@@ -213,7 +213,9 @@ test.describe('Writing entry checks use current profiles', () => {
       await expect.poll(gate.started).toBe(true); expect(requests).toEqual([]);
       gate.release();
       const dialog = page.getByRole('dialog', { name: 'Tailor My Resume' });
-      await expect(dialog.getByRole('status')).toContainText('Your profile changed. Existing text and edits are kept');
+      await expect(dialog.getByRole('status').filter({
+        hasText: 'Your profile changed. Existing text and edits are kept',
+      })).toBeVisible();
       await expect(input).toHaveValue(MANUAL);
       // Text entered before the initial binding finishes has unknown provenance.
       // Both that draft and a stale bound draft require the student's review.
