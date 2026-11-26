@@ -32,12 +32,11 @@ across seven markup families, verified live 2026-07-17:
   scientists/postdocs, a legitimate drop). Geology's dept profile pages
   carry a labelled "Areas of Interest:" line → env-gated research enrich.
 
-* Plain HTML tables with per-dept column maps (Physics, Math, Anthropology,
-  and IFAS Animal Sciences' emeritus tables). Physics: name|title|phone|
-  office|email columns, 95 rows of which 52 are ladder faculty (the rest are
-  emeriti/scientists/affiliates — verified against the title histogram).
-  NOTE: Physics prints surnames in caps ("Jeff ANDREWS") and the engine has
-  no case transform — names ship as published. Math merges name+rank+
+* Physics uses the named Faculty section of the CLAS team grid. Personal
+  biographies and the exact card names retain the identifiers from its former
+  surname-capitalized table. The title gate excludes research professorships.
+* Plain HTML tables with per-dept column maps (Math, Anthropology, and IFAS
+  Animal Sciences' emeritus tables). Math merges name+rank+
   (school, year)+areas into one cell: the name is the cell's anchor text,
   the rank comes from ``title_re``, the areas from a bounded ``research_re``
   after the credential parenthetical. Animal Sciences' ACTIVE faculty are
@@ -119,6 +118,10 @@ Deferred (from the recon pass, with reasons):
 
 from __future__ import annotations
 
+from urllib.parse import urljoin
+
+from src.normalizers.deactivate_stale_faculty import canonical_profile_url
+
 from .. import faculty_graph
 
 # ---- Wertheim Engineering: Connections Business Directory grids ------------
@@ -188,6 +191,90 @@ def _conn(short: str, name: str, majors: list[str], url: str, *,
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": sel, "ladder_filter": _CONN_LADDER,
                        "profile_enrich": _CONN_ENRICH}}
+
+
+# The former Physics table published different spellings. Bind each old ID
+# to the reviewed individual page and its current card name in this unit.
+_PHY_DIRECTORY = "https://phys.ufl.edu/people/faculty/"
+_PHY_PROFILE_ID_NAMES = {
+    f"phys.ufl.edu/directory/{slug}": (current, original)
+    for slug, current, original in (
+        ("jeff-andrews", "Jeff Andrews", "Jeff ANDREWS"),
+        ("thomas-angelini", "Thomas Angelini", "Thomas ANGELINI"),
+        ("imre-bartos", "Imre Bartos", "Imre BARTOS"),
+        ("gabriel-birzu", "Gabriel Birzu", "Gabriel BIRZU"),
+        ("amlan-biswas", "Amlan Biswas", "Amlan BISWAS"),
+        ("laura-blecha", "Laura Blecha", "Laura BLECHA"),
+        ("philip-chang", "Philip Chang", "Philip CHANG"),
+        ("sudi-chen", "Sudi Chen", "Sudi CHEN"),
+        ("jeff-dror", "Jeff Dror", "Jeff DROR"),
+        ("yohei-ema", "Yohei Ema", "Yohei EMA"),
+        ("paul-fulda", "Paul Fulda", "Paul FULDA"),
+        ("ivan-furic", "Ivan Furic", "Ivan FURIC"),
+        ("stephen-hagen", "Stephen Hagen", "Stephen HAGEN"),
+        ("james-hamlin", "James Hamlin", "James HAMLIN"),
+        ("selman-hershfield", "Selman Hershfield", "Selman HERSHFIELD"),
+        ("peter-hirschfeld", "Peter Hirschfeld", "Peter HIRSCHFELD"),
+        ("rachel-houtz", "Rachel Houtz", "Rachel HOUTZ"),
+        ("kevin-ingersent", "Kevin Ingersent", "Kevin INGERSENT"),
+        ("chunjing-jia", "Chunjing Jia", "Chunjing JIA"),
+        ("sergey-klimenko", "Sergey Klimenko", "Sergey KLIMENKO"),
+        ("ravin-kodikara", "Ravin Kodikara", "Ravin KODIKARA"),
+        ("sujata-krishna", "Sujata Krishna", "Sujata KRISHNA"),
+        ("andrey-korytov", "Andrey Korytov", "Andrey KORYTOV"),
+        ("dominique-laroche", "Dominique Laroche", "Dominique LAROCHE"),
+        ("yoonseok-lee", "Yoonseok Lee", "Yoonseok LEE"),
+        ("nivarthana-yapa-mudiyanselage", "Nivarthana Yapa Mudiyanselage", "Nivarthana Yapa MUDIYANSELAGE"),
+        ("dmitrii-maslov", "Dmitrii Maslov", "Dmitrii MASLOV"),
+        ("mark-meisel", "Mark Meisel", "Mark MEISEL"),
+        ("guido-mueller", "Guido Mueller", "Guido MUELLER"),
+        ("khandker-muttalib", "Khandker Muttalib", "Khandker MUTTALIB"),
+        ("haining-pan", "Haining Pan", "Haining PAN"),
+        ("edwin-pedrozo-penafiel", "Edwin Pedrozo-Peñafiel", "Edwin PEDROZO-PENAFIEL"),
+        ("saroj-pokharel", "Saroj Pokharel", "Saroj POKHAREL"),
+        ("heather-ray", "Heather Ray", "Heather RAY"),
+        ("tarek-saab", "Tarek Saab", "Tarek SAAB"),
+        ("emrah-simsek", "Emrah Şimşek", "Emrah ŞIMŞEK"),
+        ("christopher-stanton", "Christopher Stanton", "Christopher STANTON"),
+        ("gregory-stewart", "Gregory Stewart", "Gregory STEWART"),
+        ("neil-sullivan", "Neil Sullivan", "Neil SULLIVAN"),
+        ("yuta-takahashi", "Yuta Takahashi", "Yuta TAKAHASHI"),
+        ("yasumasa-takano", "Yasumasa Takano", "Yasumasa TAKANO"),
+        ("david-tanner", "David Tanner", "David TANNER"),
+        ("yuxuan-wang", "Yuxuan Wang", "Yuxuan WANG"),
+        ("shawn-weatherford", "Shawn Weatherford", "Shawn WEATHERFORD"),
+        ("clifford-m-will", "Clifford M. Will", "Clifford WILL"),
+        ("richard-woodard", "Richard Woodard", "Richard WOODARD"),
+        ("siyao-xu", "Siyao Xu", "Siyao XU"),
+        ("bingkan-xue", "BingKan Xue", "BingKan XUE"),
+        ("wei-xue", "Wei Xue", "Wei XUE"),
+        ("john-yelton", "John Yelton", "John YELTON"),
+        ("jiabin-yu", "Jiabin Yu", "Jiabin YU"),
+        ("xiao-xiao-zhang", "Xiao-Xiao Zhang", "Xiao-Xiao ZHANG"),
+    )
+}
+
+
+_PHY_CURRENT_NAMES = {current for current, _ in _PHY_PROFILE_ID_NAMES.values()}
+_PHY_BIO_LINK = (
+    ".ufclas-team-grid__bio a[href^='/directory/'], "
+    ".ufclas-team-grid__bio a[href^='https://phys.ufl.edu/directory/']"
+)
+
+
+def _physics_rank(card) -> str | None:
+    """Keep a previously identified person pending if the new card loses that identity."""
+    rank = card.select_one(".ufclas-team-grid__position")
+    name_node = card.select_one("h3.ufclas-team-grid__name")
+    if not rank or not name_node:
+        return None
+    name = " ".join(name_node.get_text(" ", strip=True).split())
+    link = card.select_one(_PHY_BIO_LINK)
+    profile = urljoin(_PHY_DIRECTORY, link["href"]) if link else ""
+    alias = _PHY_PROFILE_ID_NAMES.get(canonical_profile_url(profile))
+    if (alias and alias[0] != name) or (not alias and name in _PHY_CURRENT_NAMES):
+        return None
+    return rank.get_text(" ", strip=True) or None
 
 
 # ---- Shared ".faculty-listing-item" theme (ISE, Chem, Law, JOU, HHP) -------
@@ -520,18 +607,20 @@ SCHOOL: dict = {
             },
         },
         # ---- College of Liberal Arts and Sciences -------------------------
-        # Physics table: 95 rows, 52 ladder (emeriti/scientists/affiliates/
-        # research-professors gated out — verified against title histogram).
         {
             "short": "PHY", "name": "Department of Physics", "majors": ["Physics"],
-            "directory_url": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+            "directory_url": _PHY_DIRECTORY,
+            "profile_id_names": _PHY_PROFILE_ID_NAMES,
             "scrape": {
-                "url": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
-                "selectors": {"card": "table tr", "name": "td:nth-of-type(1)",
-                              "link": "td a[href*='people']",
-                              "title": "td:nth-of-type(2)",
-                              "email": "td:nth-of-type(5)"},
-                "name_flip": True,
+                "url": _PHY_DIRECTORY,
+                "selectors": {
+                    "card": "article.ufclas-team-grid__item",
+                    "name": "h3.ufclas-team-grid__name",
+                    "directory_rank": _physics_rank,
+                    "link": _PHY_BIO_LINK,
+                    "email": ".ufclas-team-grid__email a[href^='mailto:']",
+                },
+                "section_filter": {"heading": "h2", "include": "^Faculty$"},
                 "ladder_filter": {
                     "require": r"\bprofessor\b|\blecturer\b",
                     "drop": r"emerit|scientist|affiliate|research professor",
