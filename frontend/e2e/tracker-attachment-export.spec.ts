@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 import { account, seed } from './contact-materials-fixture';
 import { en } from '../src/i18n/dictionaries';
 
-test('downloads one independently verifiable ZIP for all legacy Tracker folders after a failed attempt', async ({ page }, info) => {
+test('downloads independently verifiable single and multipart archives from every legacy Tracker folder after a failed attempt', async ({ page }, info) => {
+  test.setTimeout(120_000);
   const owner = await account(true);
   try {
     await seed(page, owner);
@@ -26,6 +28,24 @@ test('downloads one independently verifiable ZIP for all legacy Tracker folders 
       }
       return route.continue();
     });
+    const anchorId = (key: string) => '00000000-0000-4000-8000-' + createHash('sha256').update(key).digest('hex').slice(0, 12);
+    await page.route('**/rest/v1/rpc/tracker_attachment_export_marker', route => {
+      const digest = (s: string) => createHash('sha256').update(s).digest('hex');
+      const hashes = [...files].map(([key, data]) => digest([uid + '/' + key, anchorId(key), 'o:fixture',
+        Buffer.byteLength(data), 'application/octet-stream'].join('\0')));
+      return route.fulfill({ json: { count: hashes.length, digest: digest(hashes.sort().join('')), observedAt: new Date().toISOString() } });
+    });
+    await page.route('**/rest/v1/rpc/resolve_tracker_attachment_versions', route => {
+      const paths: string[] = route.request().postDataJSON().p_paths;
+      expect(paths.length).toBeLessThanOrEqual(100);
+      return route.fulfill({ json: Object.fromEntries(paths.map(path => {
+        expect(path.startsWith(uid + '/')).toBe(true);
+        const key = path.slice(uid.length + 1);
+        return [path, { path, anchorId: anchorId(key), revision: 'o:fixture',
+          storageBucket: 'tracker-attachments', storagePath: path, sizeBytes: Buffer.byteLength(files.get(key)!),
+          mimeType: 'application/octet-stream', etag: null, updatedAt: '2026-11-25T08:00:00Z' }];
+      })) });
+    });
     await page.route('**/storage/v1/object/list/tracker-attachments', route => {
       const { prefix, offset, limit } = route.request().postDataJSON();
       expect(route.request().headers().authorization).toBe('Bearer ' + owner.session.access_token);
@@ -37,7 +57,7 @@ test('downloads one independently verifiable ZIP for all legacy Tracker folders 
         const rest = key.slice(folder.length);
         const [name] = rest.split('/');
         names.set(name, rest.includes('/') ? { name, id: null, metadata: null } : {
-          name, id: key, updated_at: '2026-11-25T08:00:00Z', metadata: { size: Buffer.byteLength(content), mimetype: 'application/octet-stream' },
+          name, id: anchorId(key), updated_at: '2026-11-25T08:00:00Z', metadata: { size: Buffer.byteLength(content), mimetype: 'application/octet-stream' },
         });
       }
       if (folder === 'retired/') offsets.push(offset);
@@ -91,6 +111,48 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     await expect(page.getByText(copy.complete.replace('{count}', '105'))).toBeVisible();
     expect(offsets.filter(offset => offset === 99).length).toBeGreaterThanOrEqual(2);
     expect(downloads).toBe(1);
+
+    // Push the same legacy account past the per-volume file-count boundary.
+    // The browser must issue each download only on its own click.
+    for (let i = 0; i < 25; i++) files.set('extra/part-' + i + '.txt', 'extra ' + i);
+    await page.getByRole('button', { name: copy.start }).click();
+    const paths: string[] = [];
+    for (const label of [copy.part.replace('{part}', '1').replace('{total}', '2'),
+      copy.part.replace('{part}', '2').replace('{total}', '2'), copy.receipt]) {
+      const button = page.getByRole('button', { name: label });
+      await expect(button).toBeVisible();
+      const activated = page.waitForEvent('download');
+      await button.click();
+      const offered = await activated;
+      const path = info.outputPath(offered.suggestedFilename());
+      await offered.saveAs(path);
+      paths.push(path);
+    }
+    execFileSync('python3', ['-c', `
+import hashlib, json, pathlib, sys, zipfile
+first, second, receipt = map(pathlib.Path, sys.argv[1:])
+expected = json.load(sys.stdin)
+seen = {}
+receipt_lines = receipt.read_text().splitlines()
+assert receipt_lines[0].startswith('# Verified at ')
+assert receipt_lines[1:] == [
+    hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name for p in (first, second)]
+for p in (first, second):
+    with zipfile.ZipFile(p) as z:
+        assert z.testzip() is None
+        m = json.loads(z.read("manifest.json"))
+        assert m["scope"] == "partial-volume" and m["exportId"] in p.name
+        assert len(m["files"]) <= 128
+        for entry in m["files"]:
+            key = entry["originalPath"]
+            assert key not in seen
+            b = z.read(entry["archivePath"])
+            assert hashlib.sha256(b).hexdigest() == entry["sha256"]
+            seen[key] = b.decode()
+assert seen == expected
+`, ...paths], { input: JSON.stringify(Object.fromEntries(files)) });
+    await expect(page.getByText(copy.multiComplete.replace('{count}', '130'))).toBeVisible();
+    expect(downloads).toBe(4);
     expect(external).toEqual([]);
   } finally { await owner.http.dispose(); }
 });
