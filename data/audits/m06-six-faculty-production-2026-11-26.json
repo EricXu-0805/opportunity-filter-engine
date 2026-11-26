@@ -1,0 +1,201 @@
+{
+  "scope": "Six original opportunity IDs on the live production website and anonymous live API. The research source link and observation date were found inside each research field. Publication titles were found as actual Recent Works list links. No fixtures or interceptors. These six cases do not conclude M06.",
+  "merge_commit": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "integration_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1327",
+  "component_prs": [
+    1312,
+    1317
+  ],
+  "source_control": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/662beedcb0a7e6e2aeab4b6a39caa78db861d71d/data/audits/m06-six-faculty-current-source-control-2026-11-26.json",
+  "before": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/e748c9e1cebdae12f70c7035fee4dbd68ae8e757/data/audits/m06-formal-pages-before-2026-11-26.json",
+  "counts": {
+    "production_detail_pages": 6,
+    "matching_detail_and_backend_releases": 6,
+    "caltech_personal_source_topics": 13,
+    "jhu_reviewed_author_publications": 3
+  },
+  "caltech": {
+    "target_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "release_before": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "release_after": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "at": "2026-11-26T10:59:28.250250+00:00",
+    "rows": [
+      {
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "id": "faculty-caltech-phys-68128723",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-68128723",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-68128723",
+        "page_title": "Bradley W. Filippone at California Institute of Technology · JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-68128723",
+        "observed_at": "2026-11-26T10:59:01.286553+00:00",
+        "research_topics_in_visible_field": [
+          "Experimental Nuclear Physics & Low Energy Particle Physics"
+        ],
+        "expected_count": 1,
+        "api_state": "source",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/bradley-w-filippone",
+          "observed_at": "2026-11-26T08:47:59.546171Z"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-26T08:47:59.546171Z",
+        "actual_html_field": "Research Research areas Source says Experimental Nuclear Physics & Low Energy Particle Physics Source page Observed 2026-11-26",
+        "passed": true
+      },
+      {
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "id": "faculty-caltech-phys-b6dd07e7",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-b6dd07e7",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-b6dd07e7",
+        "page_title": "Sergei Gukov at California Institute of Technology · JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-b6dd07e7",
+        "observed_at": "2026-11-26T10:59:08.067700+00:00",
+        "research_topics_in_visible_field": [
+          "Mathematics and Machine Learning",
+          "Future of AI in Mathematics and Automated Theorem Proving",
+          "Quantum Topology",
+          "geometric Langlands program",
+          "gauge theory",
+          "Rozansky-Witten geometry of Coulomb branches",
+          "categorification of knot and 3-manifold invariants",
+          "KLR algebras, DAHA, and (logarithmic) vertex algebras",
+          "Mathematical physics"
+        ],
+        "expected_count": 9,
+        "api_state": "source",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/gukov",
+          "observed_at": "2026-11-26T08:47:59.546171Z"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-26T08:47:59.546171Z",
+        "actual_html_field": "Research Research areas Source says Mathematics and Machine Learning, Future of AI in Mathematics and Automated Theorem Proving, Quantum Topology, geometric Langlands program, gauge theory, Rozansky-Witten geometry of Coulomb branches, categorification of knot and 3-manifold invariants, KLR algebras, DAHA, and (logarithmic) vertex algebras, Mathematical physics Source page Observed 2026-11-26",
+        "passed": true
+      },
+      {
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "id": "faculty-caltech-phys-a55ac716",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-a55ac716",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-a55ac716",
+        "page_title": "Kenneth G. Libbrecht at California Institute of Technology · JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-a55ac716",
+        "observed_at": "2026-11-26T10:59:08.079651+00:00",
+        "research_topics_in_visible_field": [
+          "Physics of Crystal Growth and Pattern Formation in Ice"
+        ],
+        "expected_count": 1,
+        "api_state": "source",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/kenneth-g-libbrecht",
+          "observed_at": "2026-11-26T08:47:59.546171Z"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-26T08:47:59.546171Z",
+        "actual_html_field": "Research Research areas Source says Physics of Crystal Growth and Pattern Formation in Ice Source page Observed 2026-11-26",
+        "passed": true
+      },
+      {
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "id": "faculty-caltech-phys-ce75d85a",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-ce75d85a",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-ce75d85a",
+        "page_title": "E. Sterl Phinney at California Institute of Technology · JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-ce75d85a",
+        "observed_at": "2026-11-26T10:59:18.444650+00:00",
+        "research_topics_in_visible_field": [
+          "Theoretical High-Energy Astrophysics and Gravitational-Wave Astrophysics"
+        ],
+        "expected_count": 1,
+        "api_state": "source",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/e-s-sterl-phinney",
+          "observed_at": "2026-11-26T08:47:59.546171Z"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-26T08:47:59.546171Z",
+        "actual_html_field": "Research Research areas Source says Theoretical High-Energy Astrophysics and Gravitational-Wave Astrophysics Source page Observed 2026-11-26",
+        "passed": true
+      },
+      {
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "id": "faculty-caltech-phys-82f76699",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-82f76699",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-82f76699",
+        "page_title": "Hsin-Yuan (Robert) Huang at California Institute of Technology · JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-82f76699",
+        "observed_at": "2026-11-26T10:59:24.580295+00:00",
+        "research_topics_in_visible_field": [
+          "Quantum Information (theory)"
+        ],
+        "expected_count": 1,
+        "api_state": "source",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/robert-huang",
+          "observed_at": "2026-11-26T08:47:59.546171Z"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-26T08:47:59.546171Z",
+        "actual_html_field": "Research Research areas Source says Quantum Information (theory) Source page Observed 2026-11-26",
+        "passed": true
+      }
+    ],
+    "accepted": true
+  },
+  "jhu": {
+    "target_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "release_before": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "release_after": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "at": "2026-11-26T10:59:15.028189+00:00",
+    "rows": [
+      {
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "id": "faculty-jhu-som-ab46342e",
+        "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-ab46342e",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-ab46342e",
+        "page_title": "Daeyeol Lee at Johns Hopkins University · JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-jhu-som-ab46342e",
+        "observed_at": "2026-11-26T10:59:08.076107+00:00",
+        "html_recent_paper_titles": [
+          "Temporal and Spatial Scales of Human Resting-State Cortical Activity across the Lifespan",
+          "Foraging animals use dynamic Bayesian updating to model meta-uncertainty in environment representations",
+          "Chronic ethanol exposure produces sex-dependent impairments in value computations in the striatum"
+        ],
+        "public_works": [
+          {
+            "title": "Temporal and Spatial Scales of Human Resting-State Cortical Activity across the Lifespan",
+            "year": 2025
+          },
+          {
+            "title": "Foraging animals use dynamic Bayesian updating to model meta-uncertainty in environment representations",
+            "year": 2025
+          },
+          {
+            "title": "Chronic ethanol exposure produces sex-dependent impairments in value computations in the striatum",
+            "year": 2025
+          }
+        ],
+        "author_id": "A5051230082",
+        "authors_status": "verified_author_id",
+        "visible_titles": [
+          "Temporal and Spatial Scales of Human Resting-State Cortical Activity across the Lifespan",
+          "Foraging animals use dynamic Bayesian updating to model meta-uncertainty in environment representations",
+          "Chronic ethanol exposure produces sex-dependent impairments in value computations in the striatum"
+        ],
+        "old_oncology_titles_visible": false,
+        "passed": true
+      }
+    ],
+    "accepted": true
+  }
+}
