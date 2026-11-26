@@ -7,7 +7,7 @@ import type { ExperienceEntry, ResumeFact, ResumeMasterV1 } from './types';
 import { sourceDigest } from './experience-evidence';
 import {
   buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact, proposeResumeMaster,
-  removeResumeMasterSources, resumeMasterFacts, validateResumeMaster, withdrawResumeMaster,
+  removeResumeMasterSources, resumeMasterFacts, unmatchedResumeLines, validateResumeMaster, withdrawResumeMaster,
 } from './resume-master';
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -575,4 +575,16 @@ describe('résumé master candidates proposed from the résumé text', () => {
     expect(proposeResumeMaster(excluded, persona, signature)).toEqual(excluded);
     expect(proposeResumeMaster(first, persona, signature)).toEqual(first);
   });
+});
+
+it('identifies uncovered original lines at their actual Unicode positions and ignores recognised headings', async () => {
+  const source = 'Publications\r\nTitle: A synthetic study 🧪\r\nAuthors: Example Student\r\n一段未识别的原文。\r\n一段未识别的原文。';
+  const digest = await sourceDigest(source);
+  const master = proposeResumeMaster(createEmptyResumeMaster(), source, digest);
+  const facts = resumeMasterFacts(master);
+  const lines = unmatchedResumeLines(source, digest, facts);
+  expect(lines.map(line => line.text)).toEqual(['一段未识别的原文。', '一段未识别的原文。']);
+  const text = Array.from(source);
+  for (const line of lines) expect(text.slice(line.start, line.start + Array.from(line.text).length).join('')).toBe(line.text);
+  expect(unmatchedResumeLines(source, '0'.repeat(64), facts).map(line => line.text)).toContain('Title: A synthetic study 🧪');
 });
