@@ -1,0 +1,2463 @@
+{
+  "source_retrieved": "2026-11-26",
+  "base": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "source_retirement_taxonomies": "https://chass.ncsu.edu/wp-json/wp/v2/group?search=retired&per_page=100",
+  "faculty_archive": "https://chass.ncsu.edu/group/faculty/",
+  "wp_faculty_pages": [
+    "https://chass.ncsu.edu/wp-json/wp/v2/person?per_page=100&page=1&group=11847&orderby=id&order=asc",
+    "https://chass.ncsu.edu/wp-json/wp/v2/person?per_page=100&page=2&group=11847&orderby=id&order=asc",
+    "https://chass.ncsu.edu/wp-json/wp/v2/person?per_page=100&page=3&group=11847&orderby=id&order=asc",
+    "https://chass.ncsu.edu/wp-json/wp/v2/person?per_page=100&page=4&group=11847&orderby=id&order=asc",
+    "https://chass.ncsu.edu/wp-json/wp/v2/person?per_page=100&page=5&group=11847&orderby=id&order=asc"
+  ],
+  "faculty_wordpress_people": 434,
+  "faculty_html_people": 434,
+  "historic_school_records": 2334,
+  "original_ids_preserved": 2334,
+  "joined_retirement_profiles": 134,
+  "decisions": {
+    "retired_only": 101,
+    "name_differs_between_official_entries": 20,
+    "additional_appointment_or_group": 7,
+    "mixed_or_unconfirmed_retirement_title": 6
+  },
+  "school_coverage_before": {
+    "listing_count": 5,
+    "faculty_contact_count": 2322,
+    "unreviewed_count": 0,
+    "total_count": 2327
+  },
+  "school_coverage_after": {
+    "listing_count": 5,
+    "faculty_contact_count": 2221,
+    "unreviewed_count": 0,
+    "total_count": 2226
+  },
+  "reviewed_records": [
+    {
+      "id": "faculty-ncsu-chass-6cb0c1b0",
+      "stored_name": "Joseph Herkert",
+      "wp_name": "Joseph Herkert",
+      "college_card_name": "Joseph Herkert",
+      "profile": "https://chass.ncsu.edu/people/jherkert/",
+      "wp_post_id": 96395,
+      "wp_groups": [
+        11847,
+        11967
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/ihss/ids-retired-faculty/"
+      ],
+      "rank": "Unpaid Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.377434"
+    },
+    {
+      "id": "faculty-ncsu-chass-da735178",
+      "stored_name": "William Smith",
+      "wp_name": "William Smith",
+      "college_card_name": "William Smith",
+      "profile": "https://chass.ncsu.edu/people/wrs/",
+      "wp_post_id": 91670,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.377499"
+    },
+    {
+      "id": "faculty-ncsu-chass-c8c748bd",
+      "stored_name": "William Wormsley",
+      "wp_name": "William Wormsley",
+      "college_card_name": "William Wormsley",
+      "profile": "https://chass.ncsu.edu/people/wewormsl/",
+      "wp_post_id": 91698,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.378158"
+    },
+    {
+      "id": "faculty-ncsu-chass-f6c04422",
+      "stored_name": "Toby Parcel",
+      "wp_name": "Toby Parcel",
+      "college_card_name": "Toby Parcel",
+      "profile": "https://chass.ncsu.edu/people/tlparcel/",
+      "wp_post_id": 91663,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.378413"
+    },
+    {
+      "id": "faculty-ncsu-chass-618da59b",
+      "stored_name": "Tim Wallace",
+      "wp_name": "Tim Wallace",
+      "college_card_name": "Tim Wallace",
+      "profile": "https://chass.ncsu.edu/people/twallace/",
+      "wp_post_id": 91667,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.378476"
+    },
+    {
+      "id": "faculty-ncsu-chass-7127258e",
+      "stored_name": "Virginia Aldige",
+      "wp_name": "Virginia Aldige",
+      "college_card_name": "Virginia Aldige",
+      "profile": "https://chass.ncsu.edu/people/vmaldige/",
+      "wp_post_id": 91669,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.378570"
+    },
+    {
+      "id": "faculty-ncsu-chass-825124c2",
+      "stored_name": "Ron Czaja",
+      "wp_name": "Ron Czaja",
+      "college_card_name": "Ronald Czaja",
+      "profile": "https://chass.ncsu.edu/people/ronczaja/",
+      "wp_post_id": 91638,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.378634"
+    },
+    {
+      "id": "faculty-ncsu-chass-01017fff",
+      "stored_name": "Theodore Greenstein",
+      "wp_name": "Theodore Greenstein",
+      "college_card_name": "Theodore Greenstein",
+      "profile": "https://chass.ncsu.edu/people/ted/",
+      "wp_post_id": 91656,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.378951"
+    },
+    {
+      "id": "faculty-ncsu-chass-2c5ca7f5",
+      "stored_name": "Margaret Zahn",
+      "wp_name": "Margaret Zahn",
+      "college_card_name": "Margaret Zahn",
+      "profile": "https://chass.ncsu.edu/people/mazahn/",
+      "wp_post_id": 91627,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.379207"
+    },
+    {
+      "id": "faculty-ncsu-chass-8874c982",
+      "stored_name": "Patty McCall",
+      "wp_name": "Patty McCall",
+      "college_card_name": "Patricia McCall",
+      "profile": "https://chass.ncsu.edu/people/pmccall/",
+      "wp_post_id": 91634,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.379396"
+    },
+    {
+      "id": "faculty-ncsu-chass-c5da53cb",
+      "stored_name": "Jeffrey Leiter",
+      "wp_name": "Jeffrey Leiter",
+      "college_card_name": "Jeffrey Leiter",
+      "profile": "https://chass.ncsu.edu/people/leiter/",
+      "wp_post_id": 91623,
+      "wp_groups": [
+        11847,
+        11945,
+        11775
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.379862"
+    },
+    {
+      "id": "faculty-ncsu-chass-8a7b1a0e",
+      "stored_name": "Michael Schwalbe",
+      "wp_name": "Michael Schwalbe",
+      "college_card_name": "Michael Schwalbe",
+      "profile": "https://chass.ncsu.edu/people/duckpond/",
+      "wp_post_id": 91606,
+      "wp_groups": [
+        11847,
+        11967,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/ihss/ids-retired-faculty/",
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.380111"
+    },
+    {
+      "id": "faculty-ncsu-chass-e7bd2a4f",
+      "stored_name": "Risa Ellovich",
+      "wp_name": "Risa Ellovich",
+      "college_card_name": "Risa Ellovich",
+      "profile": "https://chass.ncsu.edu/people/ellovich/",
+      "wp_post_id": 91610,
+      "wp_groups": [
+        11847,
+        11945,
+        11775
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.379985"
+    },
+    {
+      "id": "faculty-ncsu-chass-5b9403a0",
+      "stored_name": "Maxine Atkinson",
+      "wp_name": "Maxine Atkinson",
+      "college_card_name": "Maxine Atkinson",
+      "profile": "https://chass.ncsu.edu/people/atkinson/",
+      "wp_post_id": 91594,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.380173"
+    },
+    {
+      "id": "faculty-ncsu-chass-766b7906",
+      "stored_name": "William Clifford",
+      "wp_name": "William Clifford",
+      "college_card_name": "William Clifford",
+      "profile": "https://chass.ncsu.edu/people/clifford/",
+      "wp_post_id": 91598,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.380296"
+    },
+    {
+      "id": "faculty-ncsu-chass-53a980d5",
+      "stored_name": "Adam Davis",
+      "wp_name": "Adam Davis",
+      "college_card_name": "Adam Davis",
+      "profile": "https://chass.ncsu.edu/people/acdavis/",
+      "wp_post_id": 91589,
+      "wp_groups": [
+        11847,
+        11945
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/socant/socant-retired-faculty/"
+      ],
+      "rank": "Emeritus Faculty",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.380488"
+    },
+    {
+      "id": "faculty-ncsu-chass-af259a1c",
+      "stored_name": "Marvin Soroos",
+      "wp_name": "Marvin Soroos",
+      "college_card_name": "Marvin Soroos",
+      "profile": "https://chass.ncsu.edu/people/soroos/",
+      "wp_post_id": 91516,
+      "wp_groups": [
+        11847,
+        11936
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/spia/spia-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.382729"
+    },
+    {
+      "id": "faculty-ncsu-chass-d8305216",
+      "stored_name": "Bob Moog",
+      "wp_name": "Bob Moog",
+      "college_card_name": "Robert Moog",
+      "profile": "https://chass.ncsu.edu/people/rsmoog/",
+      "wp_post_id": 91510,
+      "wp_groups": [
+        11847,
+        11936
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/spia/spia-retired-faculty/"
+      ],
+      "rank": "Unpaid Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.383115"
+    },
+    {
+      "id": "faculty-ncsu-chass-8426ed71",
+      "stored_name": "G Garson",
+      "wp_name": "G Garson",
+      "college_card_name": "G. David Garson",
+      "profile": "https://chass.ncsu.edu/people/garson/",
+      "wp_post_id": 91479,
+      "wp_groups": [
+        11847,
+        11936
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/spia/spia-retired-faculty/"
+      ],
+      "rank": "Professor",
+      "outcome": "mixed_or_unconfirmed_retirement_title",
+      "original_last_seen_at": "2026-11-23T20:06:04.383703"
+    },
+    {
+      "id": "faculty-ncsu-chass-86a2f80f",
+      "stored_name": "Thomas Hess",
+      "wp_name": "Thomas Hess",
+      "college_card_name": "Thomas Hess",
+      "profile": "https://chass.ncsu.edu/people/tmhess/",
+      "wp_post_id": 91434,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Distinguished Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.384797"
+    },
+    {
+      "id": "faculty-ncsu-chass-ed249065",
+      "stored_name": "Michael Wogalter",
+      "wp_name": "Michael Wogalter",
+      "college_card_name": "Michael Wogalter",
+      "profile": "https://chass.ncsu.edu/people/wogalter/",
+      "wp_post_id": 91438,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.384985"
+    },
+    {
+      "id": "faculty-ncsu-chass-d8c4ba8d",
+      "stored_name": "Samuel Pond",
+      "wp_name": "Samuel Pond",
+      "college_card_name": "Samuel Pond III",
+      "profile": "https://chass.ncsu.edu/people/pond/",
+      "wp_post_id": 91424,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.385355"
+    },
+    {
+      "id": "faculty-ncsu-chass-ca7b565e",
+      "stored_name": "Roger Mitchell",
+      "wp_name": "Roger Mitchell",
+      "college_card_name": "Roger Mitchell",
+      "profile": "https://chass.ncsu.edu/people/remitche/",
+      "wp_post_id": 91425,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.385416"
+    },
+    {
+      "id": "faculty-ncsu-chass-ebe42923",
+      "stored_name": "Ann Schulte",
+      "wp_name": "Ann Schulte",
+      "college_card_name": "Ann Schulte",
+      "profile": "https://chass.ncsu.edu/people/schulte/",
+      "wp_post_id": 91431,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.385230"
+    },
+    {
+      "id": "faculty-ncsu-chass-27a2fc46",
+      "stored_name": "Lynne Baker-Ward",
+      "wp_name": "Lynne Baker-Ward",
+      "college_card_name": "Lynne Baker-Ward",
+      "profile": "https://chass.ncsu.edu/people/lbward/",
+      "wp_post_id": 91414,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.385562"
+    },
+    {
+      "id": "faculty-ncsu-chass-982a2d82",
+      "stored_name": "Mark Wilson",
+      "wp_name": "Mark Wilson",
+      "college_card_name": "Mark Wilson",
+      "profile": "https://chass.ncsu.edu/people/mark-wilson/",
+      "wp_post_id": 91417,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.385688"
+    },
+    {
+      "id": "faculty-ncsu-chass-dcb028fb",
+      "stored_name": "Mary E Haskett",
+      "wp_name": "Mary E Haskett",
+      "college_card_name": "Mary Haskett",
+      "profile": "https://chass.ncsu.edu/people/mehasket/",
+      "wp_post_id": 91419,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.385750"
+    },
+    {
+      "id": "faculty-ncsu-chass-ff4905cc",
+      "stored_name": "Donald H. Mershon",
+      "wp_name": "Donald H. Mershon",
+      "college_card_name": "Donald Mershon",
+      "profile": "https://chass.ncsu.edu/people/mershon/",
+      "wp_post_id": 91420,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.385814"
+    },
+    {
+      "id": "faculty-ncsu-chass-77beffdf",
+      "stored_name": "James Kalat",
+      "wp_name": "James Kalat",
+      "college_card_name": "James Kalat",
+      "profile": "https://chass.ncsu.edu/people/jwkalat/",
+      "wp_post_id": 91409,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386061"
+    },
+    {
+      "id": "faculty-ncsu-chass-b36ff5aa",
+      "stored_name": "Katharine Stewart",
+      "wp_name": "Katharine Stewart",
+      "college_card_name": "Katharine Stewart",
+      "profile": "https://chass.ncsu.edu/people/kestewa4/",
+      "wp_post_id": 91410,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Professor and Vice Provost Emeritus",
+      "outcome": "mixed_or_unconfirmed_retirement_title",
+      "original_last_seen_at": "2026-11-23T20:06:04.386124"
+    },
+    {
+      "id": "faculty-ncsu-chass-53cdfe9a",
+      "stored_name": "Kitty Klein",
+      "wp_name": "Kitty Klein",
+      "college_card_name": "Kitty Klein",
+      "profile": "https://chass.ncsu.edu/people/kklein/",
+      "wp_post_id": 91411,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386186"
+    },
+    {
+      "id": "faculty-ncsu-chass-bb2a287f",
+      "stored_name": "Joan Michael",
+      "wp_name": "Joan Michael",
+      "college_card_name": "Joan Michael",
+      "profile": "https://chass.ncsu.edu/people/jjmichae/",
+      "wp_post_id": 91404,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.385936"
+    },
+    {
+      "id": "faculty-ncsu-chass-6691c85c",
+      "stored_name": "William Erchul",
+      "wp_name": "William Erchul",
+      "college_card_name": "William Erchul",
+      "profile": "https://chass.ncsu.edu/people/erchul/",
+      "wp_post_id": 91396,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386385"
+    },
+    {
+      "id": "faculty-ncsu-chass-0d338337",
+      "stored_name": "Amy Halberstadt",
+      "wp_name": "Amy Halberstadt",
+      "college_card_name": "Amy Halberstadt",
+      "profile": "https://chass.ncsu.edu/people/halbers/",
+      "wp_post_id": 91398,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386448"
+    },
+    {
+      "id": "faculty-ncsu-chass-2f83bf51",
+      "stored_name": "Doug Gillan",
+      "wp_name": "Doug Gillan",
+      "college_card_name": "Doug Gillan",
+      "profile": "https://chass.ncsu.edu/people/djgillan/",
+      "wp_post_id": 91388,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Distinguished Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386772"
+    },
+    {
+      "id": "faculty-ncsu-chass-fee3291c",
+      "stored_name": "Denis Gray",
+      "wp_name": "Denis Gray",
+      "college_card_name": "Denis Gray",
+      "profile": "https://chass.ncsu.edu/people/dogray/",
+      "wp_post_id": 91390,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386898"
+    },
+    {
+      "id": "faculty-ncsu-chass-1d403578",
+      "stored_name": "David Martin",
+      "wp_name": "David Martin",
+      "college_card_name": "David Martin",
+      "profile": "https://chass.ncsu.edu/people/dwmartin/",
+      "wp_post_id": 91392,
+      "wp_groups": [
+        11847,
+        11927
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/"
+      ],
+      "rank": "Emeritus Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.386961"
+    },
+    {
+      "id": "faculty-ncsu-chass-a3b3f627",
+      "stored_name": "Hal Levin",
+      "wp_name": "Hal Levin",
+      "college_card_name": "Hal Levin",
+      "profile": "https://chass.ncsu.edu/people/levin/",
+      "wp_post_id": 91349,
+      "wp_groups": [
+        11847,
+        11915
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/philrel/philosophy-faculty/philrel-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.387675"
+    },
+    {
+      "id": "faculty-ncsu-chass-4c6f69c7",
+      "stored_name": "Michael Pendlebury",
+      "wp_name": "Michael Pendlebury",
+      "college_card_name": "Michael Pendlebury",
+      "profile": "https://chass.ncsu.edu/people/mjpendle/",
+      "wp_post_id": 91354,
+      "wp_groups": [
+        11847,
+        11915
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/philrel/philosophy-faculty/philrel-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.387862"
+    },
+    {
+      "id": "faculty-ncsu-chass-c42f300a",
+      "stored_name": "David Austin",
+      "wp_name": "David Austin",
+      "college_card_name": "David Austin",
+      "profile": "https://chass.ncsu.edu/people/n51ls801/",
+      "wp_post_id": 91356,
+      "wp_groups": [
+        11847,
+        11915
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/philrel/philosophy-faculty/philrel-retired-faculty/"
+      ],
+      "rank": "Associate Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.387925"
+    },
+    {
+      "id": "faculty-ncsu-chass-31aed8b9",
+      "stored_name": "A. Donald VandeVeer",
+      "wp_name": "A. Donald VandeVeer",
+      "college_card_name": "A. Donald VanDeVeer",
+      "profile": "https://chass.ncsu.edu/people/dvphi/",
+      "wp_post_id": 91339,
+      "wp_groups": [
+        11847,
+        11915
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/philrel/philosophy-faculty/philrel-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.388114"
+    },
+    {
+      "id": "faculty-ncsu-chass-165fe06b",
+      "stored_name": "David Greene",
+      "wp_name": "David Greene",
+      "college_card_name": "David Greene Jr",
+      "profile": "https://chass.ncsu.edu/people/dbgreene/",
+      "wp_post_id": 91286,
+      "wp_groups": [
+        11847,
+        11967
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/ihss/ids-retired-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.389451"
+    },
+    {
+      "id": "faculty-ncsu-chass-0bd3e213",
+      "stored_name": "Stephanie Spencer",
+      "wp_name": "Stephanie Spencer",
+      "college_card_name": "Stephanie Spencer",
+      "profile": "https://chass.ncsu.edu/people/slspenc2/",
+      "wp_post_id": 91249,
+      "wp_groups": [
+        11895,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/history/history-retired-faculty/"
+      ],
+      "rank": "Unpaid Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.389667"
+    },
+    {
+      "id": "faculty-ncsu-chass-f7f96c30",
+      "stored_name": "William Harris",
+      "wp_name": "William Harris",
+      "college_card_name": "William Harris",
+      "profile": "https://chass.ncsu.edu/people/wcharri2/",
+      "wp_post_id": 91265,
+      "wp_groups": [
+        11895,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/history/history-retired-faculty/"
+      ],
+      "rank": "Unpaid Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-20T10:33:22.221472"
+    },
+    {
+      "id": "faculty-ncsu-chass-7bd17d24",
+      "stored_name": "Edith Sylla",
+      "wp_name": "Edith Sylla",
+      "college_card_name": "Edith Sylla",
+      "profile": "https://chass.ncsu.edu/people/edsssl/",
+      "wp_post_id": 91180,
+      "wp_groups": [
+        11895,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/history/history-retired-faculty/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.390708"
+    },
+    {
+      "id": "faculty-ncsu-chass-5ed4f6d7",
+      "stored_name": "Alexander De Grand",
+      "wp_name": "Alexander De Grand",
+      "college_card_name": "Alexander De Grand",
+      "profile": "https://chass.ncsu.edu/people/ajdhi/",
+      "wp_post_id": 91161,
+      "wp_groups": [
+        11895,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/history/history-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.390931"
+    },
+    {
+      "id": "faculty-ncsu-chass-c60e7c19",
+      "stored_name": "Anthony LaVopa",
+      "wp_name": "Anthony LaVopa",
+      "college_card_name": "Anthony LaVopa",
+      "profile": "https://chass.ncsu.edu/people/ajlavopa/",
+      "wp_post_id": 91162,
+      "wp_groups": [
+        11895,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/history/history-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.390994"
+    },
+    {
+      "id": "faculty-ncsu-chass-a3f975b4",
+      "stored_name": "James Banker",
+      "wp_name": "James Banker",
+      "college_card_name": "James Banker",
+      "profile": "https://chass.ncsu.edu/people/banker/",
+      "wp_post_id": 91164,
+      "wp_groups": [
+        11895,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/history/history-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.391055"
+    },
+    {
+      "id": "faculty-ncsu-chass-3ada8e26",
+      "stored_name": "Turi Hoversten",
+      "wp_name": "Turi Hoversten",
+      "college_card_name": "Turi Hoversten",
+      "profile": "https://chass.ncsu.edu/people/tkhovers/",
+      "wp_post_id": 91062,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Retiree",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.391844"
+    },
+    {
+      "id": "faculty-ncsu-chass-f600e4ac",
+      "stored_name": "Toby Brody",
+      "wp_name": "Toby Brody",
+      "college_card_name": "Toby Brody",
+      "profile": "https://chass.ncsu.edu/people/tpbrody/",
+      "wp_post_id": 91064,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.391371"
+    },
+    {
+      "id": "faculty-ncsu-chass-3e0037ac",
+      "stored_name": "Mary Witt",
+      "wp_name": "Mary Witt",
+      "college_card_name": "Mary Witt",
+      "profile": "https://chass.ncsu.edu/people/wittma/",
+      "wp_post_id": 91067,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.391494"
+    },
+    {
+      "id": "faculty-ncsu-chass-a802f469",
+      "stored_name": "Yvonne Rollins",
+      "wp_name": "Yvonne Rollins",
+      "college_card_name": "Yvonne Rollins",
+      "profile": "https://chass.ncsu.edu/people/yrollins/",
+      "wp_post_id": 91069,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emerita Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.391657"
+    },
+    {
+      "id": "faculty-ncsu-chass-9cd4b0a6",
+      "stored_name": "Martine Bell",
+      "wp_name": "Martine Bell",
+      "college_card_name": "Martine Bell",
+      "profile": "https://chass.ncsu.edu/people/mbell/",
+      "wp_post_id": 91036,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.392865"
+    },
+    {
+      "id": "faculty-ncsu-chass-49e38fb4",
+      "stored_name": "Louise Salstad",
+      "wp_name": "Louise Salstad",
+      "college_card_name": "M Salstad",
+      "profile": "https://chass.ncsu.edu/people/mlsalsta/",
+      "wp_post_id": 91041,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.392552"
+    },
+    {
+      "id": "faculty-ncsu-chass-b1f59d0e",
+      "stored_name": "Michele Magill",
+      "wp_name": "Michele Magill",
+      "college_card_name": "Michele Magill",
+      "profile": "https://chass.ncsu.edu/people/mmmagill/",
+      "wp_post_id": 91042,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emerita Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.392618"
+    },
+    {
+      "id": "faculty-ncsu-chass-141f03e6",
+      "stored_name": "Michele Darrah",
+      "wp_name": "Michele Darrah",
+      "college_card_name": "Michele Darrah",
+      "profile": "https://chass.ncsu.edu/people/msdarrah/",
+      "wp_post_id": 91045,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emerita Senior Lecturer",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.392743"
+    },
+    {
+      "id": "faculty-ncsu-chass-a4f06c3b",
+      "stored_name": "E Lioret",
+      "wp_name": "E Lioret",
+      "college_card_name": "E Lioret",
+      "profile": "https://chass.ncsu.edu/people/kent/",
+      "wp_post_id": 91024,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.393059"
+    },
+    {
+      "id": "faculty-ncsu-chass-26df05d8",
+      "stored_name": "Larysa Mykyta",
+      "wp_name": "Larysa Mykyta",
+      "college_card_name": "Larysa Mykyta",
+      "profile": "https://chass.ncsu.edu/people/lamfll/",
+      "wp_post_id": 91029,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emerita Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.393182"
+    },
+    {
+      "id": "faculty-ncsu-chass-6c8352f5",
+      "stored_name": "Irwin Stern",
+      "wp_name": "Irwin Stern",
+      "college_card_name": "Irwin Stern",
+      "profile": "https://chass.ncsu.edu/people/istern/",
+      "wp_post_id": 91010,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus Teaching Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.393921"
+    },
+    {
+      "id": "faculty-ncsu-chass-d4e39c02",
+      "stored_name": "Jillian Haeseler",
+      "wp_name": "Jillian Haeseler",
+      "college_card_name": "Jillian Haeseler",
+      "profile": "https://chass.ncsu.edu/people/jshaesel/",
+      "wp_post_id": 91020,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Retiree",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.393729"
+    },
+    {
+      "id": "faculty-ncsu-chass-595cab57",
+      "stored_name": "Eika Tai",
+      "wp_name": "Eika Tai",
+      "college_card_name": "Eika Tai",
+      "profile": "https://chass.ncsu.edu/people/etai/",
+      "wp_post_id": 91001,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emerita Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.394235"
+    },
+    {
+      "id": "faculty-ncsu-chass-7fd5e8b6",
+      "stored_name": "John Mertz",
+      "wp_name": "John Mertz",
+      "college_card_name": "John Mertz",
+      "profile": "https://chass.ncsu.edu/people/fljpm/",
+      "wp_post_id": 91002,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Unpaid Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.394301"
+    },
+    {
+      "id": "faculty-ncsu-chass-93b95a67",
+      "stored_name": "Gary Mathews",
+      "wp_name": "Gary Mathews",
+      "college_card_name": "Gary Mathews",
+      "profile": "https://chass.ncsu.edu/people/glmathew/",
+      "wp_post_id": 91005,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.394489"
+    },
+    {
+      "id": "faculty-ncsu-chass-dc604573",
+      "stored_name": "Diane Beckman",
+      "wp_name": "Diane Beckman",
+      "college_card_name": "Diane Beckman",
+      "profile": "https://chass.ncsu.edu/people/dsbeckma/",
+      "wp_post_id": 90997,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Teaching Assistant Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.394048"
+    },
+    {
+      "id": "faculty-ncsu-chass-0096f675",
+      "stored_name": "Vladimir Bilenkin",
+      "wp_name": "Vladimir Bilenkin",
+      "college_card_name": "Vladimir Bilenkin",
+      "profile": "https://chass.ncsu.edu/people/achekhov/",
+      "wp_post_id": 90984,
+      "wp_groups": [
+        11872,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.395301"
+    },
+    {
+      "id": "faculty-ncsu-chass-43f8b3c4",
+      "stored_name": "Wanda Ramm",
+      "wp_name": "Wanda Ramm",
+      "college_card_name": "Wanda Ramm",
+      "profile": "https://chass.ncsu.edu/people/wjramm/",
+      "wp_post_id": 90968,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Lecturer Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.395364"
+    },
+    {
+      "id": "faculty-ncsu-chass-08a6a48e",
+      "stored_name": "Walt Wolfram",
+      "wp_name": "Walt Wolfram",
+      "college_card_name": "Walter Wolfram",
+      "profile": "https://chass.ncsu.edu/people/wolfram/",
+      "wp_post_id": 90970,
+      "wp_groups": [
+        11869,
+        11847,
+        11970
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Unpaid Emeritus",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.395490"
+    },
+    {
+      "id": "faculty-ncsu-chass-38b191e6",
+      "stored_name": "William Shaw",
+      "wp_name": "William Shaw",
+      "college_card_name": "William Shaw PhD",
+      "profile": "https://chass.ncsu.edu/people/wpshaw/",
+      "wp_post_id": 90971,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.395574"
+    },
+    {
+      "id": "faculty-ncsu-chass-f779aad1",
+      "stored_name": "Wilton Barnhardt",
+      "wp_name": "Wilton Barnhardt",
+      "college_card_name": "William Barnhardt",
+      "profile": "https://chass.ncsu.edu/people/wwbarnha/",
+      "wp_post_id": 90972,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.395640"
+    },
+    {
+      "id": "faculty-ncsu-chass-66ccd11d",
+      "stored_name": "Susan Katz",
+      "wp_name": "Susan Katz",
+      "college_card_name": "Susan Katz",
+      "profile": "https://chass.ncsu.edu/people/smk/",
+      "wp_post_id": 90956,
+      "wp_groups": [
+        11869,
+        11847,
+        11937
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Associate Professor Emerita",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.396250"
+    },
+    {
+      "id": "faculty-ncsu-chass-68e03470",
+      "stored_name": "Jeanne Smoot",
+      "wp_name": "Jeanne Smoot",
+      "college_card_name": "Jeanne Smoot",
+      "profile": "https://chass.ncsu.edu/people/smoot/",
+      "wp_post_id": 90957,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.396311"
+    },
+    {
+      "id": "faculty-ncsu-chass-0fead013",
+      "stored_name": "Sharon Setzer",
+      "wp_name": "Sharon Setzer",
+      "college_card_name": "Sharon Setzer",
+      "profile": "https://chass.ncsu.edu/people/ssetzer/",
+      "wp_post_id": 90958,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.396373"
+    },
+    {
+      "id": "faculty-ncsu-chass-7dab7a46",
+      "stored_name": "Allen Stein",
+      "wp_name": "Allen Stein",
+      "college_card_name": "Allen Stein",
+      "profile": "https://chass.ncsu.edu/people/stein/",
+      "wp_post_id": 90959,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.396435"
+    },
+    {
+      "id": "faculty-ncsu-chass-48f6179f",
+      "stored_name": "John Kessel",
+      "wp_name": "John Kessel",
+      "college_card_name": "John Kessel",
+      "profile": "https://chass.ncsu.edu/people/tenshi/",
+      "wp_post_id": 90960,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.395765"
+    },
+    {
+      "id": "faculty-ncsu-chass-0533fcc5",
+      "stored_name": "Harry West",
+      "wp_name": "Harry West",
+      "college_card_name": "Harry West",
+      "profile": "https://chass.ncsu.edu/people/west/",
+      "wp_post_id": 90966,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Associate Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.396067"
+    },
+    {
+      "id": "faculty-ncsu-chass-84e6cecc",
+      "stored_name": "RV Young",
+      "wp_name": "RV Young",
+      "college_card_name": "Robert Young Jr",
+      "profile": "https://chass.ncsu.edu/people/ryoung/",
+      "wp_post_id": 90948,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.396894"
+    },
+    {
+      "id": "faculty-ncsu-chass-6317da3f",
+      "stored_name": "Stan Dicks",
+      "wp_name": "Stan Dicks",
+      "college_card_name": "Stan Dicks",
+      "profile": "https://chass.ncsu.edu/people/sdicks/",
+      "wp_post_id": 90949,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus Associate Professor",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.396956"
+    },
+    {
+      "id": "faculty-ncsu-chass-1308dd4b",
+      "stored_name": "Robert Kochersberger",
+      "wp_name": "Robert Kochersberger",
+      "college_card_name": "Robert Kochersberger",
+      "profile": "https://chass.ncsu.edu/people/rckeg/",
+      "wp_post_id": 90942,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.396643"
+    },
+    {
+      "id": "faculty-ncsu-chass-eb130a81",
+      "stored_name": "John Morillo",
+      "wp_name": "John Morillo",
+      "college_card_name": "John Morillo",
+      "profile": "https://chass.ncsu.edu/people/morillo/",
+      "wp_post_id": 90928,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.397795"
+    },
+    {
+      "id": "faculty-ncsu-chass-b1612d52",
+      "stored_name": "Mike Carter",
+      "wp_name": "Mike Carter",
+      "college_card_name": "Michael Carter",
+      "profile": "https://chass.ncsu.edu/people/mpc/",
+      "wp_post_id": 90929,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.397018"
+    },
+    {
+      "id": "faculty-ncsu-chass-720c8b8d",
+      "stored_name": "Paul Colby",
+      "wp_name": "Paul Colby",
+      "college_card_name": "Paul Colby",
+      "profile": "https://chass.ncsu.edu/people/pacolby/",
+      "wp_post_id": 90932,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.397144"
+    },
+    {
+      "id": "faculty-ncsu-chass-1894dc04",
+      "stored_name": "Philip Blank",
+      "wp_name": "Philip Blank",
+      "college_card_name": "Philip Blank Jr",
+      "profile": "https://chass.ncsu.edu/people/peblank/",
+      "wp_post_id": 90936,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.397337"
+    },
+    {
+      "id": "faculty-ncsu-chass-98d2e744",
+      "stored_name": "Nancy Penrose",
+      "wp_name": "Nancy Penrose",
+      "college_card_name": "Ann Penrose",
+      "profile": "https://chass.ncsu.edu/people/penrose/",
+      "wp_post_id": 90937,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emerita",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.397399"
+    },
+    {
+      "id": "faculty-ncsu-chass-cbb0d8d9",
+      "stored_name": "Carmine Prioli",
+      "wp_name": "Carmine Prioli",
+      "college_card_name": "Carmine Prioli",
+      "profile": "https://chass.ncsu.edu/people/prioli/",
+      "wp_post_id": 90938,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.397461"
+    },
+    {
+      "id": "faculty-ncsu-chass-abfe3ef9",
+      "stored_name": "Marvin Hunt",
+      "wp_name": "Marvin Hunt",
+      "college_card_name": "Marvin Hunt",
+      "profile": "https://chass.ncsu.edu/people/mhunt/",
+      "wp_post_id": 90924,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Teaching Associate Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.397608"
+    },
+    {
+      "id": "faculty-ncsu-chass-6b705305",
+      "stored_name": "Leila May",
+      "wp_name": "Leila May",
+      "college_card_name": "Leila May",
+      "profile": "https://chass.ncsu.edu/people/leila/",
+      "wp_post_id": 90910,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.398631"
+    },
+    {
+      "id": "faculty-ncsu-chass-67420b77",
+      "stored_name": "Lee Smith",
+      "wp_name": "Lee Smith",
+      "college_card_name": "Lee Smith",
+      "profile": "https://chass.ncsu.edu/people/lsmith/",
+      "wp_post_id": 90913,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.397979"
+    },
+    {
+      "id": "faculty-ncsu-chass-6ae5927d",
+      "stored_name": "Linda Holley",
+      "wp_name": "Linda Holley",
+      "college_card_name": "Linda Holley",
+      "profile": "https://chass.ncsu.edu/people/lth/",
+      "wp_post_id": 90914,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emeritus and Director of Advising",
+      "outcome": "mixed_or_unconfirmed_retirement_title",
+      "original_last_seen_at": "2026-11-23T20:06:04.398042"
+    },
+    {
+      "id": "faculty-ncsu-chass-1e045b11",
+      "stored_name": "Lucinda MacKethan",
+      "wp_name": "Lucinda MacKethan",
+      "college_card_name": "Lucinda MacKethan",
+      "profile": "https://chass.ncsu.edu/people/macketha/",
+      "wp_post_id": 90915,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.398105"
+    },
+    {
+      "id": "faculty-ncsu-chass-34394e34",
+      "stored_name": "Margaret King",
+      "wp_name": "Margaret King",
+      "college_card_name": "Margaret King",
+      "profile": "https://chass.ncsu.edu/people/mfking/",
+      "wp_post_id": 90918,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.398296"
+    },
+    {
+      "id": "faculty-ncsu-chass-c48a2e7d",
+      "stored_name": "Maria Rouphail",
+      "wp_name": "Maria Rouphail",
+      "college_card_name": "Maria Rouphail",
+      "profile": "https://chass.ncsu.edu/people/mgr/",
+      "wp_post_id": 90922,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Senior Lecturer Emerita and Academic Adviser",
+      "outcome": "mixed_or_unconfirmed_retirement_title",
+      "original_last_seen_at": "2026-11-23T20:06:04.398484"
+    },
+    {
+      "id": "faculty-ncsu-chass-433f5e0f",
+      "stored_name": "Mary Thuente",
+      "wp_name": "Mary Thuente",
+      "college_card_name": "Mary Thuente",
+      "profile": "https://chass.ncsu.edu/people/mhthuent/",
+      "wp_post_id": 90923,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.398566"
+    },
+    {
+      "id": "faculty-ncsu-chass-34b13b74",
+      "stored_name": "Jim Clark",
+      "wp_name": "Jim Clark",
+      "college_card_name": "James Clark Jr",
+      "profile": "https://chass.ncsu.edu/people/jwclark/",
+      "wp_post_id": 90903,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.399004"
+    },
+    {
+      "id": "faculty-ncsu-chass-e8200533",
+      "stored_name": "John Easley",
+      "wp_name": "John Easley",
+      "college_card_name": "John Easley",
+      "profile": "https://chass.ncsu.edu/people/jbeasley/",
+      "wp_post_id": 90884,
+      "wp_groups": [
+        11869,
+        11847,
+        11775
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.399688"
+    },
+    {
+      "id": "faculty-ncsu-chass-4574a4b4",
+      "stored_name": "Judith Ferster",
+      "wp_name": "Judith Ferster",
+      "college_card_name": "Judith Ferster",
+      "profile": "https://chass.ncsu.edu/people/jferster/",
+      "wp_post_id": 90886,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.399750"
+    },
+    {
+      "id": "faculty-ncsu-chass-98436171",
+      "stored_name": "John N Wall",
+      "wp_name": "John N Wall",
+      "college_card_name": "John Wall",
+      "profile": "https://chass.ncsu.edu/people/jnwall/",
+      "wp_post_id": 90894,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.399479"
+    },
+    {
+      "id": "faculty-ncsu-chass-af33539f",
+      "stored_name": "Jon Thompson",
+      "wp_name": "Jon Thompson",
+      "college_card_name": "Jon Thompson",
+      "profile": "https://chass.ncsu.edu/people/jont/",
+      "wp_post_id": 90895,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.399561"
+    },
+    {
+      "id": "faculty-ncsu-chass-c87be0e0",
+      "stored_name": "Judy Small",
+      "wp_name": "Judy Small",
+      "college_card_name": "Judy Small",
+      "profile": "https://chass.ncsu.edu/people/josmall/",
+      "wp_post_id": 90896,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.399626"
+    },
+    {
+      "id": "faculty-ncsu-chass-71f33bad",
+      "stored_name": "John Balaban",
+      "wp_name": "John Balaban",
+      "college_card_name": "John Balaban",
+      "profile": "https://chass.ncsu.edu/people/jbalaba/",
+      "wp_post_id": 90883,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.400641"
+    },
+    {
+      "id": "faculty-ncsu-chass-cae62c8a",
+      "stored_name": "Antony Harrison",
+      "wp_name": "Antony Harrison",
+      "college_card_name": "Antony Harrison",
+      "profile": "https://chass.ncsu.edu/people/engahh/",
+      "wp_post_id": 90868,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.399811"
+    },
+    {
+      "id": "faculty-ncsu-chass-57f02900",
+      "stored_name": "Judi Gaitens",
+      "wp_name": "Judi Gaitens",
+      "college_card_name": "Judi Gaitens",
+      "profile": "https://chass.ncsu.edu/people/gaitens/",
+      "wp_post_id": 90871,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.399934"
+    },
+    {
+      "id": "faculty-ncsu-chass-38b8ddf0",
+      "stored_name": "Joseph Gomez",
+      "wp_name": "Joseph Gomez",
+      "college_card_name": "Joseph Gomez",
+      "profile": "https://chass.ncsu.edu/people/gomez/",
+      "wp_post_id": 90874,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.400058"
+    },
+    {
+      "id": "faculty-ncsu-chass-0ed45fbe",
+      "stored_name": "Michael Grimwood",
+      "wp_name": "Michael Grimwood",
+      "college_card_name": "James Grimwood",
+      "profile": "https://chass.ncsu.edu/people/grimwood/",
+      "wp_post_id": 90875,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.400121"
+    },
+    {
+      "id": "faculty-ncsu-chass-f1ef75b0",
+      "stored_name": "Etta Barksdale",
+      "wp_name": "Etta Barksdale",
+      "college_card_name": "Etta Barksdale",
+      "profile": "https://chass.ncsu.edu/people/hcbarksd/",
+      "wp_post_id": 90876,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Senior Lecturer Emerita / Sophmore Advisor",
+      "outcome": "mixed_or_unconfirmed_retirement_title",
+      "original_last_seen_at": "2026-11-23T20:06:04.400183"
+    },
+    {
+      "id": "faculty-ncsu-chass-ee4950c7",
+      "stored_name": "David Covington",
+      "wp_name": "David Covington",
+      "college_card_name": "David Covington",
+      "profile": "https://chass.ncsu.edu/people/covingto/",
+      "wp_post_id": 90853,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.400705"
+    },
+    {
+      "id": "faculty-ncsu-chass-5148f03d",
+      "stored_name": "Cat Warren",
+      "wp_name": "Cat Warren",
+      "college_card_name": "Catherine Warren",
+      "profile": "https://chass.ncsu.edu/people/cwarren/",
+      "wp_post_id": 90855,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.400766"
+    },
+    {
+      "id": "faculty-ncsu-chass-96c8e0ea",
+      "stored_name": "Devin Orgeron",
+      "wp_name": "Devin Orgeron",
+      "college_card_name": "Devin Orgeron",
+      "profile": "https://chass.ncsu.edu/people/daorgero/",
+      "wp_post_id": 90857,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emeritus, Film Studies",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.400828"
+    },
+    {
+      "id": "faculty-ncsu-chass-89084a58",
+      "stored_name": "Dick Reavis",
+      "wp_name": "Dick Reavis",
+      "college_card_name": "Dick Reavis",
+      "profile": "https://chass.ncsu.edu/people/djreavis/",
+      "wp_post_id": 90859,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.400889"
+    },
+    {
+      "id": "faculty-ncsu-chass-52f21ae0",
+      "stored_name": "Dorianne Laux",
+      "wp_name": "Dorianne Laux",
+      "college_card_name": "Dorianne Laux",
+      "profile": "https://chass.ncsu.edu/people/dllaux/",
+      "wp_post_id": 90861,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.401013"
+    },
+    {
+      "id": "faculty-ncsu-chass-2245f23c",
+      "stored_name": "Charlotte Gross",
+      "wp_name": "Charlotte Gross",
+      "college_card_name": "Charlotte Gross",
+      "profile": "https://chass.ncsu.edu/people/charlott/",
+      "wp_post_id": 90847,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.401446"
+    },
+    {
+      "id": "faculty-ncsu-chass-23293f4c",
+      "stored_name": "Barbara Baines",
+      "wp_name": "Barbara Baines",
+      "college_card_name": "Barbara Baines",
+      "profile": "https://chass.ncsu.edu/people/baines/",
+      "wp_post_id": 90831,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.402560"
+    },
+    {
+      "id": "faculty-ncsu-chass-1a99c291",
+      "stored_name": "Robert Bateman",
+      "wp_name": "Robert Bateman",
+      "college_card_name": "Robert Bateman",
+      "profile": "https://chass.ncsu.edu/people/bateman/",
+      "wp_post_id": 90832,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.402634"
+    },
+    {
+      "id": "faculty-ncsu-chass-103a03af",
+      "stored_name": "Beryl Pittman",
+      "wp_name": "Beryl Pittman",
+      "college_card_name": "Beryl Pittman",
+      "profile": "https://chass.ncsu.edu/people/bcpittma/",
+      "wp_post_id": 90833,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.402702"
+    },
+    {
+      "id": "faculty-ncsu-chass-a8da80ea",
+      "stored_name": "Anne Baker",
+      "wp_name": "Anne Baker",
+      "college_card_name": "Anne Baker",
+      "profile": "https://chass.ncsu.edu/people/abaker/",
+      "wp_post_id": 90506,
+      "wp_groups": [
+        11869,
+        11847,
+        11967
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+        "https://chass.ncsu.edu/group/ihss/ids-retired-faculty/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.402763"
+    },
+    {
+      "id": "faculty-ncsu-chass-043b7940",
+      "stored_name": "Angela Davis-Gardner",
+      "wp_name": "Angela Davis-Gardner",
+      "college_card_name": "Angela Davis-Gardner",
+      "profile": "https://chass.ncsu.edu/people/agardner/",
+      "wp_post_id": 90509,
+      "wp_groups": [
+        11869,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/"
+      ],
+      "rank": "Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.402888"
+    },
+    {
+      "id": "faculty-ncsu-chass-333b7b71",
+      "stored_name": "Dean Phillips",
+      "wp_name": "Dean Phillips",
+      "college_card_name": "Dean Phillips",
+      "profile": "https://chass.ncsu.edu/people/dsphilli/",
+      "wp_post_id": 89874,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Senior Lecturer Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.402952"
+    },
+    {
+      "id": "faculty-ncsu-chass-14382765",
+      "stored_name": "Sandy Stallings",
+      "wp_name": "Sandy Stallings",
+      "college_card_name": "Sandy Stallings",
+      "profile": "https://chass.ncsu.edu/people/spstalli/",
+      "wp_post_id": 89867,
+      "wp_groups": [
+        11866,
+        11847,
+        11775
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Adviser Emerita",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.403283"
+    },
+    {
+      "id": "faculty-ncsu-chass-4efb3edd",
+      "stored_name": "Sarah Stein",
+      "wp_name": "Sarah Stein",
+      "college_card_name": "Sarah Stein",
+      "profile": "https://chass.ncsu.edu/people/sstein/",
+      "wp_post_id": 89868,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Associate Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.403344"
+    },
+    {
+      "id": "faculty-ncsu-chass-9e6e4815",
+      "stored_name": "William Jordan",
+      "wp_name": "William Jordan",
+      "college_card_name": "William Jordan",
+      "profile": "https://chass.ncsu.edu/people/wjj/",
+      "wp_post_id": 89871,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.403590"
+    },
+    {
+      "id": "faculty-ncsu-chass-cefc8c15",
+      "stored_name": "Becky Leonard",
+      "wp_name": "Becky Leonard",
+      "college_card_name": "Becky Leonard",
+      "profile": "https://chass.ncsu.edu/people/rleonard/",
+      "wp_post_id": 89864,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Assoc. Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.403147"
+    },
+    {
+      "id": "faculty-ncsu-chass-4152431b",
+      "stored_name": "Robert Schrag",
+      "wp_name": "Robert Schrag",
+      "college_card_name": "Robert Schrag",
+      "profile": "https://chass.ncsu.edu/people/schrag/",
+      "wp_post_id": 89866,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.403220"
+    },
+    {
+      "id": "faculty-ncsu-chass-acb2eb75",
+      "stored_name": "Melissa A. Johnson",
+      "wp_name": "Melissa A. Johnson",
+      "college_card_name": "Melissa Johnson",
+      "profile": "https://chass.ncsu.edu/people/mjohnson/",
+      "wp_post_id": 89855,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.403865"
+    },
+    {
+      "id": "faculty-ncsu-chass-4b621e05",
+      "stored_name": "Nancy Snow",
+      "wp_name": "Nancy Snow",
+      "college_card_name": "Nancy Snow",
+      "profile": "https://chass.ncsu.edu/people/nhsnow/",
+      "wp_post_id": 89859,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.403991"
+    },
+    {
+      "id": "faculty-ncsu-chass-c07541fe",
+      "stored_name": "Patricia Caple",
+      "wp_name": "Patricia Caple",
+      "college_card_name": "Patricia Caple",
+      "profile": "https://chass.ncsu.edu/people/pcaple/",
+      "wp_post_id": 89861,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Associate Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.404053"
+    },
+    {
+      "id": "faculty-ncsu-chass-fbcc8754",
+      "stored_name": "Bob Larson",
+      "wp_name": "Bob Larson",
+      "college_card_name": "Robert Larson",
+      "profile": "https://chass.ncsu.edu/people/rblarson/",
+      "wp_post_id": 89862,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Senior Lecturer Emeritus",
+      "outcome": "name_differs_between_official_entries",
+      "original_last_seen_at": "2026-11-23T20:06:04.404115"
+    },
+    {
+      "id": "faculty-ncsu-chass-a71e7ad9",
+      "stored_name": "Joann Keyton",
+      "wp_name": "Joann Keyton",
+      "college_card_name": "Joann Keyton",
+      "profile": "https://chass.ncsu.edu/people/jkeyton/",
+      "wp_post_id": 89845,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Distinguished Professor Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.404364"
+    },
+    {
+      "id": "faculty-ncsu-chass-30622ea2",
+      "stored_name": "James Kiwanuka-Tondo",
+      "wp_name": "James Kiwanuka-Tondo",
+      "college_card_name": "James Kiwanuka-Tondo",
+      "profile": "https://chass.ncsu.edu/people/jkiwanu/",
+      "wp_post_id": 89846,
+      "wp_groups": [
+        11866,
+        11847,
+        11967
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/",
+        "https://chass.ncsu.edu/group/ihss/ids-retired-faculty/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.404427"
+    },
+    {
+      "id": "faculty-ncsu-chass-74ae94c6",
+      "stored_name": "Edward Funkhouser",
+      "wp_name": "Edward Funkhouser",
+      "college_card_name": "Edward Funkhouser",
+      "profile": "https://chass.ncsu.edu/people/edwardt/",
+      "wp_post_id": 89838,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Former Associate Professor & Associate Dean",
+      "outcome": "mixed_or_unconfirmed_retirement_title",
+      "original_last_seen_at": "2026-11-23T20:06:04.404178"
+    },
+    {
+      "id": "faculty-ncsu-chass-9dc91fcb",
+      "stored_name": "Charlotte Elleman",
+      "wp_name": "Charlotte Elleman",
+      "college_card_name": "Charlotte Elleman",
+      "profile": "https://chass.ncsu.edu/people/aellema/",
+      "wp_post_id": 89826,
+      "wp_groups": [
+        11866,
+        11847,
+        11775
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emerita",
+      "outcome": "additional_appointment_or_group",
+      "original_last_seen_at": "2026-11-23T20:06:04.404636"
+    },
+    {
+      "id": "faculty-ncsu-chass-f4808c47",
+      "stored_name": "Anita Croasmun",
+      "wp_name": "Anita Croasmun",
+      "college_card_name": "Anita Croasmun",
+      "profile": "https://chass.ncsu.edu/people/agcroasm/",
+      "wp_post_id": 89827,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Senior Lecturer Emerita",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.404698"
+    },
+    {
+      "id": "faculty-ncsu-chass-07f045ac",
+      "stored_name": "Jim Alchediak",
+      "wp_name": "Jim Alchediak",
+      "college_card_name": "Jim Alchediak",
+      "profile": "https://chass.ncsu.edu/people/alchedia/",
+      "wp_post_id": 89828,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Senior Lecturer Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.404760"
+    },
+    {
+      "id": "faculty-ncsu-chass-b48ebdaa",
+      "stored_name": "Craig Smith",
+      "wp_name": "Craig Smith",
+      "college_card_name": "Craig Smith",
+      "profile": "https://chass.ncsu.edu/people/casmith5/",
+      "wp_post_id": 89831,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.404886"
+    },
+    {
+      "id": "faculty-ncsu-chass-37744c16",
+      "stored_name": "Daniel DeJoy",
+      "wp_name": "Daniel DeJoy",
+      "college_card_name": "Daniel DeJoy",
+      "profile": "https://chass.ncsu.edu/people/ddejoy/",
+      "wp_post_id": 89834,
+      "wp_groups": [
+        11866,
+        11847
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/"
+      ],
+      "rank": "Associate Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.405014"
+    },
+    {
+      "id": "faculty-ncsu-chass-ea98ec3c",
+      "stored_name": "John Gilbert",
+      "wp_name": "John Gilbert",
+      "college_card_name": "John Gilbert",
+      "profile": "https://chass.ncsu.edu/people/jgilbert/",
+      "wp_post_id": 91490,
+      "wp_groups": [
+        11847,
+        11936
+      ],
+      "school_retirement_group_pages": [
+        "https://chass.ncsu.edu/group/spia/spia-retired-faculty/"
+      ],
+      "rank": "Assoc Professor Emeritus",
+      "outcome": "retired_only",
+      "original_last_seen_at": "2026-11-23T20:06:04.383298"
+    }
+  ]
+}
