@@ -46,17 +46,14 @@ SCHOOL: dict = {
                     "bc_undergrad_research_opportunities",
                     "Undergraduate Research Opportunities (Boston College)",
                     _P + "/research/undergrad-research-opps.html",
-                    "Boston College's university-wide hub for undergraduate "
-                    "research. Across the humanities, sciences, business, and "
-                    "education, students gain exposure to new methods and lead "
-                    "their own research projects, with funding pathways "
-                    "including Advanced Study Grants, Summer Fellowships, "
-                    "Conference Travel Grants, and Thesis Research Supplemental "
-                    "Grants, plus links to prestigious national fellowships.",
+                    "Boston College lists several undergraduate research funding options, "
+                    "including Advanced Study Grants and Thesis Research Supplemental "
+                    "Grants. The page links to the application details for each award.",
                     lab_or_program="Undergraduate Research Opportunities",
                     opportunity_type="research",
-                    international_friendly="yes",
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
+                    reference_only=True,
+                    is_rolling=False,
+                    preferred_year=[],
                     keywords=["undergraduate research", "research funding",
                               "any major", "mentored research"],
                 ),

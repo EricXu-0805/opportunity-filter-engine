@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 from src.evidence import stamp_inferred
-from src.normalizers.enricher import _skill_source_text, _store_skill_mentions
+from src.normalizers.enricher import _skill_source_text, _store_skill_mentions, can_infer_application_fields
 from src.opportunity_terms import extract_skill_requirements
 
 logger = logging.getLogger(__name__)
@@ -44,12 +44,9 @@ def save_opportunities(opps: list[dict]) -> None:
 
 def needs_tagging(opp: dict) -> bool:
     """Check if an opportunity has unknown fields that could be improved."""
-    # Faculty directory/profile rows are research contacts, not postings.  Bio
-    # prose can support research-topic matching, but it cannot establish pay,
-    # application requirements, class-year eligibility, or work authorization.
-    # Those rows get their research keywords from the faculty collectors and
-    # dedicated enrichers; this opening-field tagger must leave them alone.
-    if opp.get("source_type") == "faculty_research":
+    # The text of a reference directory or a faculty biography can describe
+    # an individual fellowship. Its requirements apply to that fellowship.
+    if not can_infer_application_fields(opp):
         return False
     elig = opp.get("eligibility", {})
     if opp.get("paid") == "unknown":
@@ -124,7 +121,7 @@ PAID_TITLE_PATTERNS = [
 
 def rule_based_tag(opp: dict) -> dict:
     """Apply rule-based heuristics to extract structured fields."""
-    if opp.get("source_type") == "faculty_research":
+    if not can_infer_application_fields(opp):
         return {}
 
     full_text = _build_full_text(opp)
@@ -394,7 +391,7 @@ Opportunities:
 
         bounded = []
         for opp, result in zip(opps, results, strict=False):
-            if opp.get("source_type") == "faculty_research":
+            if not can_infer_application_fields(opp):
                 bounded.append({})
                 continue
             result = dict(result) if isinstance(result, dict) else {}
@@ -424,7 +421,7 @@ def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") 
     # forced update must not turn faculty biography words such as
     # "Scholarship", "Volunteer", or "U.S. national security" into opening
     # facts.
-    if opp.get("source_type") == "faculty_research" or not isinstance(updates, dict):
+    if not can_infer_application_fields(opp) or not isinstance(updates, dict):
         return False
 
     changed = False
@@ -469,7 +466,7 @@ def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") 
     # Faculty never get an inferred year, for the same reason (above) that they
     # never get inferred skills. Guarded here so both the rule-based and LLM
     # taggers are covered.
-    if "preferred_year" in updates and opp.get("source_type") != "faculty_research":
+    if "preferred_year" in updates:
         current = elig.get("preferred_year", [])
         if current == ["freshman", "sophomore", "junior", "senior"] and updates["preferred_year"] != current:
             elig["preferred_year"] = updates["preferred_year"]

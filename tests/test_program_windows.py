@@ -392,3 +392,36 @@ def test_wlu_dart_keeps_its_identity_and_closes_the_2026_neuroscience_fellowship
     monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
     truth = evidence.target_truth(data_loader._sanitize_opportunity(row))
     assert (truth.actionable, truth.reason_code) == (False, "listing_closed")
+
+
+@pytest.mark.parametrize(("school", "key", "stored_id"), [
+    ("ucr", "ucr_cnas_student_research", "ucr-e08f03f0945b"),
+    ("umd", "honors_college", "umd-54542deb3560"),
+    ("udel", "udel_undergraduate_research_program", "udel-f6a5e4ea0f51"),
+    ("bc", "bc_undergrad_research_opportunities", "bc-ec4ea5f74178"),
+])
+def test_program_directories_never_inherit_a_linked_awards_requirements(school, key, stored_id):
+    from src.normalizers.enricher import enrich_opportunity
+    from src.parsers import llm_tagger
+
+    config, source, spec = _spec(school, key)
+    # A new deep crawl can find genuine requirements for an individual award
+    # on a directory. They do not become requirements for the whole directory.
+    row = cg._normalize_program(config, source, spec, status="open", seed_page_verified=True,
+                                extra_desc="The award pays a stipend to senior Biology students. Python required.")
+    enrich_opportunity(row)
+    assert row["id"] == stored_id
+    assert row["source_url"] == spec["url"] and row["application"]["application_url"] is None
+    assert evidence.target_truth(row).reason_code == "reference_only"
+    assert row["is_rolling"] is False and row["paid"] == "unknown"
+    assert not any(row["eligibility"][field] for field in ("preferred_year", "majors", "skills_required"))
+    assert not llm_tagger.needs_tagging(row) and llm_tagger.rule_based_tag(row) == {}
+    assert not llm_tagger.apply_updates(row, {"paid": "yes", "preferred_year": ["senior"]})
+
+
+def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
+    row = _row("duke", "focus_program")
+    assert row["id"] == "duke-0ad241611979" and row["is_rolling"] is False
+    assert row["deadline"] == "2026-05-13" and not row["metadata"].get("reference_only")
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
+    assert evidence.target_truth(row).reason_code == "listing_closed"
