@@ -1,0 +1,146 @@
+{
+  "expected_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "original_id": "caltech-acdbfe29c21d",
+  "started_at": "2026-11-26T17:20:41.738420+00:00",
+  "pages": {
+    "product": {
+      "requested": "https://joinalab.com/opportunities/caltech-acdbfe29c21d",
+      "final": "https://joinalab.com/opportunities/caltech-acdbfe29c21d",
+      "http": 200,
+      "title": "LIGO SURF (NSF REU site) — Caltech at LIGO Laboratory (Caltech/MIT) · JoinALab",
+      "date_excerpts": [
+        "DOW SYSTEM INFERENCE Summer 2027: U.S. applications through NSF ETAP close January 15, 2027. For students at institutions in India, applications close Janua",
+        "ry 5, 2027 and reference letters are due January 10, 2027. From our listing’s deadline note. Check the program’s current d"
+      ],
+      "heading": "LIGO SURF (NSF REU site) — Caltech",
+      "application_links": [
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Apply now"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Open application page"
+        },
+        {
+          "href": "https://ligosurf.caltech.edu/apply",
+          "text": "Source page"
+        }
+      ]
+    },
+    "host": {
+      "requested": "https://ligosurf.caltech.edu/apply",
+      "final": "https://ligosurf.caltech.edu/apply",
+      "http": 200,
+      "application_links": [
+        {
+          "href": "https://etap.nsf.gov/award/8325/opportunity/12125",
+          "text": "Application for students from the United States"
+        },
+        {
+          "href": "https://www.gw.iucaa.in/ligo-surf-program/",
+          "text": "Application for students from India"
+        }
+      ],
+      "title": "Apply - LIGO SURF",
+      "date_excerpts": []
+    },
+    "US_ETAP": {
+      "requested": "https://etap.nsf.gov/award/8325/opportunity/12125",
+      "final": "https://etap.nsf.gov/award/8325/opportunity/12125",
+      "http": 200,
+      "title": "OpportunityLanding | Award | NSF Education & Training Application | ETAP",
+      "date_excerpts": [
+        "ram REU Program Period Jun 2027 - Aug 2027 Application Window 11/04/2026 - 01/15/2027 11:59 PM ET Award ID 2547402 Research Topics LIGO, gravitational"
+      ]
+    },
+    "India": {
+      "requested": "https://www.gw.iucaa.in/ligo-surf-program/",
+      "final": "https://www.gw.iucaa.in/ligo-surf-program/",
+      "http": 200,
+      "title": "International LIGO SURF Program 2027 – GW @ IUCAA",
+      "date_excerpts": [
+        "ed in your application form. The deadline for sending reference letters is 10th Jan 2027. If you think you satisfy all the criteria mentioned above, plea",
+        "in the LIGO SURF program. **** Application form deadline for submission is 5th Jan 2027 ****. All applicants will be notified of their status by mid-Mar"
+      ]
+    }
+  },
+  "checks": {
+    "product_visible_correct_host": true,
+    "three_dates_visible_on_original": true,
+    "eligibility_distinguishes_routes": true,
+    "api_source_and_routes": true,
+    "host_links_both_portals": true,
+    "us_january_15_eligibility": true,
+    "india_january_5_and_reference_january_10": true,
+    "same_product_release": true
+  },
+  "backend_at_start": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "frontend_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "api": {
+    "id": "caltech-acdbfe29c21d",
+    "source_url": "https://ligosurf.caltech.edu/apply",
+    "deadline": null,
+    "is_rolling": false,
+    "eligibility": {
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior"
+      ],
+      "min_gpa": null,
+      "majors": [
+        "physics",
+        "astronomy",
+        "engineering",
+        "computer science"
+      ],
+      "skills_required": [],
+      "skills_preferred": [],
+      "citizenship_required": null,
+      "international_friendly": "unknown",
+      "work_auth_notes": "The U.S. route requires U.S. citizenship, permanent residency or U.S. national status, a 2.5 GPA and a full year of undergraduate study including a year of physics. Students at institutions in India apply separately through LIGO India. Both routes require continuing undergraduate status."
+    },
+    "application": {
+      "contact_method": "website",
+      "requires_resume": "unknown",
+      "requires_cover_letter": "unknown",
+      "requires_transcript": "unknown",
+      "requires_recommendation": "unknown",
+      "application_effort": "medium",
+      "application_url": "https://ligosurf.caltech.edu/apply"
+    },
+    "deadline_note": "Summer 2027: U.S. applications through NSF ETAP close January 15, 2027. For students at institutions in India, applications close January 5, 2027 and reference letters are due January 10, 2027."
+  },
+  "backend_at_finish": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "finished_at": "2026-11-26T17:21:05.795683+00:00"
+}
