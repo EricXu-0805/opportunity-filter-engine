@@ -1,7 +1,8 @@
 'use client';
 
-import { Fragment, memo } from 'react';
+import { Fragment, memo, useMemo } from 'react';
 import MatchCard from '@/components/MatchCard';
+import { matchExperienceEntries } from '@/lib/match-experience';
 import { mixesOpportunityTypes } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { MatchExperienceReceipt } from './MatchExperienceReceipt';
@@ -146,6 +147,9 @@ export function MatchList({
   onPageChange,
   t,
 }: MatchListProps) {
+  const eligibleEntries = useMemo(() => ownerReady
+    ? matchExperienceEntries(profile?.experience_entries, profile?.resume_text) ?? []
+    : [], [ownerReady, profile?.experience_entries, profile?.resume_text]);
   return (
     <>
       {mixesOpportunityTypes(matches) && (
@@ -223,7 +227,7 @@ export function MatchList({
                   position={positionOffset + idx + 1}
                 />
                 {ownerReady && profile && match.experience_basis && <MatchExperienceReceipt basis={match.experience_basis}
-                  entries={profile.experience_entries} />}
+                  eligibleEntries={eligibleEntries} />}
               </div>
               {RELEASE_SCOPE.conciergeRequests && page === 1 && idx === Math.min(3, matches.length - 1) && (
                 <div className="lg:col-span-2">

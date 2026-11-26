@@ -1,5 +1,5 @@
 import { validGitHubPullSource } from './github-contribution';
-import type { ExperienceEntry } from './types';
+import type { ExperienceEntry, ExperienceSource } from './types';
 import {
   BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_PERSON, RESUME_PLACE, RESUME_ROLE, resumeContactLine, resumeSectionHeading,
   resumeTextCharacters, storedWraps,
@@ -37,7 +37,7 @@ function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boo
 
 /** TextEncoder replaces lone UTF-16 surrogates. Reject them before hashing so
  *  the source digest always describes the exact text accepted by Python UTF-8. */
-function wellFormedUnicode(value: string): boolean {
+export function wellFormedUnicode(value: string): boolean {
   for (const character of value) {
     const point = character.codePointAt(0)!;
     if (point >= 0xd800 && point <= 0xdfff) return false;
@@ -121,14 +121,19 @@ export interface ExperienceSourceContext {
   expectedDigest: string;
 }
 
+/** Check an original excerpt against exact Unicode code-point offsets. */
+export function resumeQuoteMatches(source: Extract<ExperienceSource, { kind: 'resume' }>,
+  characters: readonly string[]): boolean {
+  return characters.slice(source.start, source.end).join('') === source.quote;
+}
+
 export function isActiveExperience(entry: ExperienceEntry, context: ExperienceSourceContext): boolean {
   if (!validateExperienceEntries([entry]).ok || entry.status !== 'confirmed') return false;
   if (entry.source.kind !== 'resume') return true;
   const { source } = entry;
-  return wellFormedUnicode(context.rawText) && DIGEST.test(context.expectedDigest)
-    && source.signature === context.expectedDigest
+  return source.signature === context.expectedDigest && wellFormedUnicode(context.rawText)
     && resumeTextCharacters(context.rawText) <= MAX_RESUME_TEXT_CHARACTERS
-    && Array.from(context.rawText).slice(source.start, source.end).join('') === source.quote;
+    && resumeQuoteMatches(source, Array.from(context.rawText));
 }
 
 /** This fail-closed read is for generation eligibility, never for saving or
