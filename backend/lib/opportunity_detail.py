@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from urllib.parse import urlsplit
 
 # Module import, not a name import: the public projector imports this module
 # for `paid_basis`/`location_basis`/`keywords_basis`/`skills_basis`, and a name
@@ -925,6 +926,12 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
     source = str(canonical.get("source") or "")
     base = _provenance(payload, source)
     research_provenance = _provenance(payload, source, observed_key="research_areas_verified_at")
+    metadata = _dict(canonical.get("metadata"))
+    research_source = public_projection.safe_public_http_url(metadata.get("research_areas_source_url"))
+    profile_source = base.get("source_url")
+    if (research_source and profile_source and _text(metadata.get("research_areas_raw"))
+            and urlsplit(research_source).netloc == urlsplit(profile_source).netloc):
+        research_provenance["source_url"] = research_source
     fields = (
         _school(payload),
         _department(payload, canonical, source),
