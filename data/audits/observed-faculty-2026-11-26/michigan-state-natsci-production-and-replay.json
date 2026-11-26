@@ -1,0 +1,347 @@
+{
+  "scope": "Michigan State Natural Science. Production observations precede the five queued fixes. Candidate and replay observations are identified separately. December 1 scheduled verification is outstanding.",
+  "production_release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "previous_release_receipts": {
+    "first_html_observed_at": "2026-11-26T15:11:31.045798+00:00",
+    "independent_detail_api_observed_at": "2026-11-26T15:14:37.274955+00:00"
+  },
+  "public_detail_prefix": "https://joinalab.com/opportunities/",
+  "public_api_prefix": "https://joinalab.com/api/opportunities/",
+  "old_faculty_records": [
+    {
+      "id": "faculty-msu-phys-4c910e1c",
+      "html_http": 200,
+      "name_shown": "Sean M Couch",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101031",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-phys-91db5547",
+      "html_http": 200,
+      "name_shown": "Wolfgang Eitel Kerzendorf",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101041",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-cd34856d",
+      "html_http": 200,
+      "name_shown": "Longxiu Huang",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/102984",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-e2891df4",
+      "html_http": 200,
+      "name_shown": "Mark A Iwen",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101122",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-363836ca",
+      "html_http": 200,
+      "name_shown": "Elizabeth Munch",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101076",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-2bd1295b",
+      "html_http": 200,
+      "name_shown": "Christian A Parkinson",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/104912",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-945da1cf",
+      "html_http": 200,
+      "name_shown": "Jianliang Qian",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101039",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-ad789a28",
+      "html_http": 200,
+      "name_shown": "Ekaterina A Rapinchuk",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101074",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-math-1d6d8c00",
+      "html_http": 200,
+      "name_shown": "Rongrong Wang",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101060",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-stat-13be0b4e",
+      "html_http": 200,
+      "name_shown": "Guanqun Cao",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/104239",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-stat-4a2be08b",
+      "html_http": 200,
+      "name_shown": "Huan Lei",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/101035",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-bmb-07e6d53d",
+      "html_http": 200,
+      "name_shown": "Alexander R Dickson",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/100331",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-bmb-c681ae7f",
+      "html_http": 200,
+      "name_shown": "Susanne Hoffmann-Benning",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/100403",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-mgi-1172a556",
+      "html_http": 200,
+      "name_shown": "Christopher H Contag",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/103365",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-mgi-5ca9b09b",
+      "html_http": 200,
+      "name_shown": "Kathleen A Hoag",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "match_to_official_person": false
+    },
+    {
+      "id": "faculty-msu-mgi-58139ab2",
+      "html_http": 200,
+      "name_shown": "Thomas V O'Halloran",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/100832",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-ibio-cb03d504",
+      "html_http": 200,
+      "name_shown": "Grace Smith Vidaurre",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/directory/Profiles/Person/104435",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "match_to_official_person": true
+    },
+    {
+      "id": "faculty-msu-psl-19d4bb6d",
+      "html_http": 200,
+      "name_shown": "Luisa Seguella",
+      "source_links_before": [],
+      "api_url_before": null,
+      "api_source_url_before": null,
+      "candidate_destination": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "candidate_citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "match_to_official_person": false
+    }
+  ],
+  "foundation_rank_observed_at": "2026-11-26T15:28:43.481852+00:00",
+  "foundation_appointments": [
+    {
+      "id": "faculty-msu-bmb-f5a0490b",
+      "production_http": 404,
+      "candidate_faculty_title": "MSU Research FDN DIST. Prof",
+      "individual": "https://directory.natsci.msu.edu/directory/Profiles/Person/100370",
+      "department": "https://directory.natsci.msu.edu/Directory/Directory/Department/6"
+    },
+    {
+      "id": "faculty-msu-ibio-c37f66a6",
+      "production_http": 404,
+      "candidate_faculty_title": "MSU Research FDN DIST. Prof",
+      "individual": "https://directory.natsci.msu.edu/directory/Profiles/Person/101346",
+      "department": "https://directory.natsci.msu.edu/Directory/Directory/Department/4"
+    },
+    {
+      "id": "faculty-msu-mgi-750c0c00",
+      "production_http": 404,
+      "candidate_faculty_title": "MSU Research FDN DIST. Prof",
+      "individual": "https://directory.natsci.msu.edu/directory/Profiles/Person/101706",
+      "department": "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
+    },
+    {
+      "id": "faculty-msu-phys-663bb7b1",
+      "production_http": 404,
+      "candidate_faculty_title": "MSU Research FDN DIST. Prof",
+      "individual": "https://directory.natsci.msu.edu/directory/Profiles/Person/102018",
+      "department": "https://directory.natsci.msu.edu/Directory/Directory/Department/34"
+    },
+    {
+      "id": "faculty-msu-stat-1bd37418",
+      "production_http": 404,
+      "candidate_faculty_title": "MSU Research FDN DIST. Prof",
+      "individual": "https://directory.natsci.msu.edu/directory/Profiles/Person/102583",
+      "department": "https://directory.natsci.msu.edu/Directory/Directory/Department/2"
+    },
+    {
+      "id": "faculty-msu-stat-d53fe8f5",
+      "production_http": 404,
+      "candidate_faculty_title": "MSU Research FDN DIST. Prof",
+      "individual": "https://directory.natsci.msu.edu/directory/Profiles/Person/102595",
+      "department": "https://directory.natsci.msu.edu/Directory/Directory/Department/2"
+    },
+    {
+      "id": "faculty-msu-cmse-5b280249",
+      "production_http": 200,
+      "current_name": "Andrew Christlieb",
+      "current_title": "MSU Research Foundation Distinguished Professor",
+      "actionable": true
+    },
+    {
+      "id": "faculty-msu-math-7d462896",
+      "production_http": 404,
+      "current_name": null,
+      "current_title": null,
+      "actionable": null
+    }
+  ],
+  "last_scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45448976476/job/138640498422",
+  "hosted_source_read": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45847203137",
+  "hosted_source_result": {
+    "unit": "phys",
+    "http": 200,
+    "content_type": "text/html",
+    "parsed": false,
+    "remaining_units_read": 0
+  },
+  "reviewed_campus_roster_replay": [
+    {
+      "unit": "phys",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/34?page=1",
+      "pages": 4,
+      "unique_source_people_in_unit": 384
+    },
+    {
+      "unit": "math",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/3?page=1",
+      "pages": 3,
+      "unique_source_people_in_unit": 240
+    },
+    {
+      "unit": "stat",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/2?page=1",
+      "pages": 3,
+      "unique_source_people_in_unit": 225
+    },
+    {
+      "unit": "bmb",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/6?page=1",
+      "pages": 3,
+      "unique_source_people_in_unit": 237
+    },
+    {
+      "unit": "mgi",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/26?page=1",
+      "pages": 3,
+      "unique_source_people_in_unit": 211
+    },
+    {
+      "unit": "ibio",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/4?page=1",
+      "pages": 2,
+      "unique_source_people_in_unit": 138
+    },
+    {
+      "unit": "psl",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/35?page=1",
+      "pages": 2,
+      "unique_source_people_in_unit": 189
+    },
+    {
+      "unit": "ees",
+      "first_page": "https://directory.natsci.msu.edu/Directory/api/Directory/20?page=1",
+      "pages": 2,
+      "unique_source_people_in_unit": 129
+    }
+  ],
+  "campus_replays": {
+    "complete_source_rows_sum": 1753,
+    "complete_normalized_after_1433": 428,
+    "complete_normalized_after_1440": 434,
+    "first_page_unreadable_emitted": 0,
+    "second_page_unreadable_emitted_after_1433": 186,
+    "reuse_limits": "Distinct people are counted within each department. The same professor can hold multiple department appointments."
+  },
+  "open_cross_appointment": {
+    "id": "faculty-msu-bmb-c681ae7f",
+    "campus_person_id": 100403,
+    "campus_profile": "https://directory.natsci.msu.edu/Directory/Profiles/Person/100403?group=1097&org=41",
+    "campus_appointments": {
+      "Biochemistry & Molecular Biology": "Fixed Term Associate Professor Emeritum",
+      "Molecular Plant Sciences Program": "Regular Faculty",
+      "BioMolecular Science Gateway": "Fixed Term Associate Professor"
+    },
+    "review_note": "The BMB-only title on the old record is stale. The other two current program appointments must be retained in assessing the contact."
+  }
+}
