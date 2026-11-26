@@ -1,0 +1,131 @@
+{
+  "date_utc": "2026-11-26T20:22:18.101693+00:00",
+  "production_release": "87b1e916c0c88c32bba327256706a2beff293346",
+  "public_ui": "Normal Chrome on the production saved detail for both originals. No contact, draft, subscription or application action taken.",
+  "before": [
+    {
+      "id": "faculty-pitt-cs-bb6c586d",
+      "campus": "University of Pittsburgh",
+      "h1": "Xiaowei Jia",
+      "actionable": true,
+      "visible_draft_control": true,
+      "official_profile": "https://www.cs.pitt.edu/people/full-time-faculty/xiaowei-jia",
+      "last_seen_listed_at": "2026-08-27"
+    },
+    {
+      "id": "faculty-rutgers-cs-bb6c586d",
+      "campus": "Rutgers University–New Brunswick",
+      "h1": "Xiaowei Jia",
+      "actionable": true,
+      "visible_draft_control": true,
+      "official_profile": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia",
+      "last_seen_listed_at": "2026-11-23"
+    }
+  ],
+  "public_sources": [
+    {
+      "url": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia",
+      "observed": "Rutgers Computer Science names Xiaowei Jia under Professors as Associate Professor."
+    },
+    {
+      "url": "https://www.cs.rutgers.edu/people/professors?page=1",
+      "observed": "The Rutgers current faculty directory lists the same person."
+    },
+    {
+      "url": "https://www.linkedin.com/posts/rutgers-university-department-of-computer-science_join-us-in-welcoming-our-newest-faculty-member-activity-7500951282594136064-eVrZ",
+      "observed": "Rutgers Computer Science welcomes Jia. In his own announcement reproduced there, he describes the new Rutgers role after six years at Pittsburgh."
+    },
+    {
+      "url": "https://www.cs.pitt.edu/people/full-time-faculty",
+      "observed": "38 named entries in the Pitt department roster omit Jia. The November 26 hosted scheduled collector received 403. The roster comparison used the separately obtained public listing."
+    },
+    {
+      "url": "https://www.sci.pitt.edu/people/department-computer-science-faculty",
+      "observed": "37 named entries in the current Pitt college CS roster omit Jia."
+    },
+    {
+      "url": "https://sites.pitt.edu/~xiaowei/",
+      "observed": "The older personal Pitt site still gives the previous role. Its linked CV is dated 2025. This source was retained for audit."
+    }
+  ],
+  "department_names": [
+    "Wonsun Ahn",
+    "Amy Babay",
+    "Marina Barsky",
+    "Jacob Biehl",
+    "Bruce Childers",
+    "Panos Chrysanthis",
+    "Paul Cohen",
+    "Nicholas Farnan",
+    "William Garrison",
+    "Aakash Gautam",
+    "Milos Hauskrecht",
+    "Timothy Hoffman",
+    "Emma Jordan",
+    "Sherif Khattab",
+    "Thumtongsak Kosiyatrkul",
+    "Adriana Kovashka",
+    "Alexandros Labrinidis",
+    "John Lange",
+    "Adam Lee",
+    "Stephen Lee",
+    "Lorraine (Xiang) Li",
+    "Diane Litman",
+    "Junyu Liu",
+    "Daniel Mosse",
+    "Nils Murrugarra-Llerena",
+    "Brian T. Nixon",
+    "Luis Oliveira",
+    "Kirk Pruhs",
+    "John Ramirez",
+    "Rob Rutenbar",
+    "Longfei Shangguan",
+    "Ryan Shi",
+    "Patrick Skeba",
+    "Xulong Tang",
+    "Nadine von Frankenberg",
+    "Erin Walker",
+    "Youtao Zhang",
+    "Michael Miller Yoder"
+  ],
+  "college_names": [
+    "Wonsun Ahn",
+    "Amy Babay",
+    "Marina Barsky",
+    "Jacob Biehl",
+    "Bruce R. Childers",
+    "Panos Chrysanthis",
+    "Paul Cohen",
+    "Nicholas L. Farnan",
+    "William C. Garrison",
+    "Aakash Gautam",
+    "Milos Hauskrecht",
+    "Timothy L. Hoffman",
+    "Emma Jordan",
+    "Sherif Khattab",
+    "Thumrongsak Kosiyatrakul",
+    "Adriana I. Kovashka",
+    "Alexandros Labrinidis",
+    "John R. Lange",
+    "Adam J. Lee",
+    "Stephen Lee",
+    "Lorraine (Xiang) Li",
+    "Diane J. Litman",
+    "Junyu Liu",
+    "Daniel Mosse",
+    "Nils Murrugarra Llerena",
+    "Brian T. Nixon",
+    "Luis de Oliveira",
+    "Kirk R. Pruhs",
+    "John C. Ramirez",
+    "Rob A. Rutenbar",
+    "Longfei Shangguan",
+    "Ryan Shi",
+    "Patrick Skeba",
+    "Xulong Tang",
+    "Nadine von Frankenberg",
+    "Erin Walker",
+    "Youtao Zhang"
+  ],
+  "decision": "Treat the former Pitt full-time listing as historical. Retain its stable ID, August listing date and publications; Rutgers remains a separate current ID. A future affirmative current Pitt roster observation can reactivate the original."
+}
