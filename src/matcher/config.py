@@ -412,7 +412,8 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # 40: match reasons and explanation prompts use the detail page's PI rule
 # for unstamped internship and campus records too (M203).
 # 41: similarity reasons name whole interest terms and require a phrase in a long sentence.
-_MATCHER_VERSION_BASE = "41"
+# M17 adds confirmed, target-specific work to the readiness component.
+_MATCHER_VERSION_BASE = "42"
 
 
 def _matcher_fingerprint() -> str:

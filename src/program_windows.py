@@ -134,7 +134,28 @@ NCSA_DIRECTORY = (
 )
 WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
 _UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
+_CRISP_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cancer-research-internship-summer-program-crisp"
+_CRISP_HOST = "https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html"
+_CRISP_DATES = "Applications open Nov. 15, 2026 and close Jan. 31, 2027."
+SMU_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/reu-advancing-data-science-public-interest"
+_SMU_PROGRAM = (
+    "https://www.smu.edu/Provost/saes/academic-enrichment/engaged-learning/"
+    "research/research-experiences-undergraduates/data-science-reu"
+)
+_SMU_DATES = "11/19/2026 - 02/22/2027 11:59 PM ET"
+SMU_WINDOW = ProgramWindow(
+    "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447670",
+    "https://etap.nsf.gov/award/8314/opportunity/12305",
+    date(2026, 11, 26), date(2027, 2, 22), _SMU_DATES,
+    date(2026, 11, 19), _SMU_DATES, "America/New_York", "11/19/2026",
+)
 _AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-3ec4ea4e"): ("2027-02-01", ProgramWindow(
+        _CRISP_DIRECTORY, _CRISP_HOST, date(2026, 11, 26), date(2027, 1, 31), _CRISP_DATES,
+        date(2026, 11, 15), _CRISP_DATES, "America/Indiana/Indianapolis", "Nov. 15, 2026",
+    )),
+    ("uiuc_sro", "sro-44f176cd"): ("2027-02-15", replace(SMU_WINDOW, url=SMU_DIRECTORY)),
+    ("nsf_reu", "nsf-reu-2447670"): ("2026-02-15", SMU_WINDOW),
     ("uiuc_sro", "sro-1532726e"): (
         "2027-03-15", replace(WINDOWS[("manual", "ext-uiuc-ncsa-reu")], url=NCSA_DIRECTORY),
     ),
@@ -152,6 +173,8 @@ _AGGREGATOR_WINDOWS = {
 
 
 _SRO_APPLICATION_LINKS = {
+    _CRISP_DIRECTORY: {_CRISP_DIRECTORY, _CRISP_HOST},
+    SMU_DIRECTORY: {SMU_DIRECTORY, _SMU_PROGRAM, _SMU_PROGRAM.lower()},
     WISCONSIN_DIRECTORY: {WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
     NCSA_DIRECTORY: {NCSA_DIRECTORY, _NCSA},
     WISCONSIN_DIRECTORY + "-0": {WISCONSIN_DIRECTORY + "-0", _WISCONSIN_HOST, _WISCONSIN_OLD_HOST},
@@ -168,7 +191,13 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         return None
     source_url = record.get("source_url")
     if record["source"] == "nsf_reu":
-        if source_url != window.url or str(record["metadata"].get("nsf_award_id")) != "2447669":
+        award_id = str(record["metadata"].get("nsf_award_id"))
+        if source_url != window.url or record["id"] != f"nsf-reu-{award_id}":
+            return None
+        if window is SMU_WINDOW and (
+            record.get("lab_or_program") != "Advancing Data Science in the Public Interest"
+            or record.get("organization") != "Southern Methodist University"
+        ):
             return None
     else:
         # SRO records the pagination URL as source_url. The stable detail URL
@@ -237,6 +266,18 @@ def apply_program_window(record: dict) -> None:
         record["is_rolling"] = False
         if record.get("source") in ("nsf_reu", "uiuc_sro"):
             metadata = record["metadata"]
+            if window is SMU_WINDOW:
+                # The grant starts in 2025. ETAP names June 2027 for this cohort,
+                # without a day. Keep the award's date out of the program display.
+                if record.get("start_date") in ("2025-12-01", "12/01/2025"):
+                    metadata["nsf_award_start_date"] = record["start_date"]
+                    record["start_date"] = None
+                metadata["superseded_award_deadline_estimate"] = {
+                    "date": "2026-02-15", "source_url": window.url,
+                }
+                application = record.get("application")
+                if isinstance(application, dict) and application.get("application_url") == window.url:
+                    application["application_url"] = window.page
             if record["source"] == "uiuc_sro":
                 # Keep the directory's original, anticipated date alongside the reviewed host date.
                 original_estimate, _ = _AGGREGATOR_WINDOWS[(record["source"], record["id"])]

@@ -137,6 +137,8 @@ const ZH_REASONS: Record<string, Render> = {
   // Readiness
   resume_required: fixed('需要简历 —— 申请前先准备好'),
   experience_faculty: fixed('你的经历可以支撑你认真地联系这位教师'),
+  experience_topic_method: (p) => `已确认的经历使用了来源研究方向中提到的方法：${p.method}`,
+  experience_method: (p) => `已确认的经历使用了该机会明确列出的方法：${p.method}`,
   experience_competitive: fixed('你的经验水平有竞争力'),
   experience_limited_faculty: fixed('你的经历信息有限 —— 可以问问需要哪些准备'),
   experience_limited: fixed('先前经验有限 —— 这个职位可能竞争激烈'),

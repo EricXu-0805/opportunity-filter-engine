@@ -2416,3 +2416,39 @@ def test_numbered_publisher_attachment_title_shape_does_not_drop_other_scholarly
     for title in ("Additional files for collaborating on a manuscript", "The case for an additional file",
                   "Additional file formats", "Author Reply: A cohort study", None):
         assert not is_additional_file(title)
+
+
+@pytest.mark.parametrize(("scenario", "accept"), [
+    ("complete", True),
+    ("truncated_results", False),
+    ("same_name_in_two_records", False),
+    ("wrong_school", False),
+    ("wrong_field", False),
+    ("too_few_works", False),
+    ("initial_only", False),
+])
+def test_accented_author_fallback_requires_a_unique_complete_name_and_domain_evidence(monkeypatch, scenario, accept):
+    name = "M. Pera" if scenario == "initial_only" else "Mariela Pera"
+    profile = "M. Péra" if scenario == "initial_only" else "Mariela Péra"
+    topics = [("River monitoring", "Engineering")]
+    if scenario == "wrong_field":
+        topics = [("Screenwriting", "Arts and Humanities")]
+    candidate = _author(profile, 1 if scenario == "too_few_works" else 50,
+                        ["I2" if scenario == "wrong_school" else "I1"], topics)
+    candidate["id"] = "https://openalex.org/A12345"
+    other = _author("Mariela Pera Mendez", 1, ["I1"], topics)
+    rows = [candidate, other]
+    if scenario == "same_name_in_two_records":
+        rows.append({**candidate, "id": "https://openalex.org/A54321"})
+    count = len(rows) + int(scenario == "truncated_results")
+    monkeypatch.setattr(oa, "_get", lambda params: {"meta": {"count": count}, "results": rows})
+    result = oa._match_author(name, "I1", "Department of Civil Engineering")
+    assert result is (candidate if accept else None)
+
+
+def test_exact_author_spelling_keeps_precedence_when_accent_equivalents_also_exist(monkeypatch):
+    topics = [("River monitoring", "Engineering")]
+    literal = _author("Mariela Pera", 20, ["I1"], topics)
+    other = _author("Mariela Péra", 100, ["I1"], topics)
+    monkeypatch.setattr(oa, "_get", lambda params: {"meta": {"count": 2}, "results": [other, literal]})
+    assert oa._match_author("Mariela Pera", "I1", "Department of Civil Engineering") is literal
