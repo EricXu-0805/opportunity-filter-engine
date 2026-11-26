@@ -88,6 +88,11 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         "March 1: Application deadline.",
         date(2026, 11, 15), "November 15: Online application opens.", "America/Chicago", "November 15",
     ),
+    ("uchicago", "dsi_summer_lab"): ProgramWindow(
+        "https://datascience.uchicago.edu/education/summerlab/",
+        "https://datascience.uchicago.edu/education/summerlab/program-details/",
+        date(2026, 11, 26), date(2027, 1, 11), "Application deadline: January 11, 2027, 11:59pm CT",
+    ),
     ("jhu", "summer_pura"): ProgramWindow(
         "https://hour.jhu.edu/opportunities/summerpura/", "https://hour.jhu.edu/opportunities/summerpura/",
         _REVIEWED, date(2027, 2, 1),
