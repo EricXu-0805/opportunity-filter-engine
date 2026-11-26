@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import json
 import os
+import re
 from check import confirm_school, expect, home, reads, sessions, sync_playwright, writes
 
 title = 'Tidal Records in a Synthetic Library'
@@ -41,13 +42,14 @@ with sync_playwright() as pw:
     expect(master.get_by_role('status').filter(has_text='candidates quoted from your résumé')).to_be_visible(timeout=20000)
     section=master.get_by_text('Publications',exact=True).filter(visible=True).first.locator('..')
     expect(section.get_by_role('button',name='Add publication')).to_be_visible()
-    candidates=section.get_by_label('Publication title', exact=True).count()
+    candidates=section.get_by_role('button',name='Remove publication', exact=True).count()
+    print('Publication controls:', section.locator('label').evaluate_all('(els)=>els.map(e=>[e.firstChild.textContent,e.querySelector("textarea")?.value])'), flush=True)
     fixed = os.environ.get('PDF_ACCEPTANCE_MODE') == 'fixed'
     assert candidates == (1 if fixed else 0), candidates
     if fixed:
         for label, content in [('Publication title',title),('Authors in exact order',authors),('Journal / conference','Synthetic Proceedings'),('Publication date','2025')]:
-            expect(section.get_by_label(label,exact=True)).to_have_value(content)
-            expect(section.get_by_label(label,exact=True).locator('xpath=../..')).to_contain_text('Needs confirmation')
+            expect(section.get_by_role('textbox', name=re.compile('^'+re.escape(label)))).to_have_value(content)
+            expect(section.get_by_role('textbox', name=re.compile('^'+re.escape(label))).locator('xpath=../..')).to_contain_text('Needs confirmation')
 
     for course in ['Discrete Mathematics','Computer Vision']:
         expect(page.get_by_text(course, exact=True).first).to_be_visible()
@@ -82,7 +84,7 @@ with sync_playwright() as pw:
             assert field['status'] == ('confirmed' if key=='title' else 'candidate')
             source=field['source']
             assert source['kind']=='resume' and raw[source['start']:source['end']]==source['quote']==value
-        expect(editor2.get_by_label('Publication title',exact=True)).to_have_value(title)
+        expect(editor2.get_by_role('textbox', name=re.compile('^Publication title'))).to_have_value(title)
 
     receipt={'site':'https://joinalab.com','time':datetime.now(timezone.utc).isoformat(),
              'frontend_sha':page.locator('html').get_attribute('data-release-sha'),
