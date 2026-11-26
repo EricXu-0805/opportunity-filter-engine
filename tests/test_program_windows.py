@@ -700,7 +700,7 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
         ranked = rank_opportunity(student, loaded)
         assert "opportunity.majors" not in ranked.unknowns and "profile.gpa" in ranked.unknowns
         assert all("graduate / PhD" not in reason and "Limited prior experience" not in reason for reason in ranked.reasons_gap)
-        prep = {**loaded, "description_clean": "Learn how to apply to a PhD program in biomedical science."}
+        prep = {**loaded, "description_clean": "Scholars learn how the PhD program in biomedical science reviews applications."}
         assert not _requires_graduate_standing(prep)
         assert _requires_graduate_standing({**prep, "id": "unreviewed"})
         card = project_public_opportunity_payload(loaded, loaded)

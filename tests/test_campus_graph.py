@@ -194,7 +194,7 @@ _REFERENCE_PAGES = {
 # sees them at GRAD_LEVEL_PENALTY with a "Targets graduate / PhD students"
 # concern. A configured text newly read that way fails here.
 _GRADUATE_ONLY_ROWS = {
-    ("stanford", "ssrp_amgen_scholars"), ("ucsb", "cal_bridge"), ("ucsd", "mcnair"),
+    ("ucsb", "cal_bridge"), ("ucsd", "mcnair"),
     ("umich", "sure"), ("upenn", "hillman_scholars"),
 }
 
