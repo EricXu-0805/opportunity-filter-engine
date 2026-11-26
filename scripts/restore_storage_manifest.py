@@ -33,8 +33,16 @@ def _scan(bucket: Path, expected: dict) -> list[dict]:
             with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as reader:
                 if os.fstat(reader.fileno()).st_size != expected[key]:
                     raise ValueError("archived size differs from source catalogue")
-                digest = hashlib.file_digest(reader, "sha256").hexdigest()
-            records.append({"key": key, "size": expected[key], "sha256": digest})
+                digest = hashlib.sha256()
+                size = 0
+                for chunk in iter(lambda: reader.read(1024 * 1024), b""):
+                    size += len(chunk)
+                    if size > expected[key]:
+                        raise ValueError("archive changed during capture")
+                    digest.update(chunk)
+                if size != expected[key]:
+                    raise ValueError("archive changed during capture")
+            records.append({"key": key, "size": size, "sha256": digest.hexdigest()})
             remaining.remove(key)
     if remaining:
         raise ValueError("archive lacks one or more catalogued objects")
@@ -78,6 +86,8 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True, help="new private manifest file")
     args = parser.parse_args()
     try:
+        if args.out.resolve().is_relative_to(args.archive.resolve()):
+            raise ValueError("manifest output must be outside the archive tree")
         manifest = capture(args.catalogue, args.archive, args.source_environment, args.source_backup_id)
         raw = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
         # Publish only after the private file is complete; never replace an existing receipt.

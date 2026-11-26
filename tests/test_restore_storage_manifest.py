@@ -83,3 +83,12 @@ def test_incomplete_or_unsafe_archive_cannot_be_captured(tmp_path, fault):
     catalogue.write_text(json.dumps(doc))
     with pytest.raises(ValueError):
         capture.capture(catalogue, root, "source", "snapshot")
+
+def test_manifest_output_cannot_alter_the_archive(tmp_path, monkeypatch):
+    root, catalogue, _, _ = archive(tmp_path)
+    out = root / BUCKETS[0] / "manifest.json"
+    monkeypatch.setattr(sys, "argv", ["capture", "--catalogue", str(catalogue), "--archive", str(root),
+                                      "--source-environment", "source", "--source-backup-id", "snapshot", "--out", str(out)])
+    with pytest.raises(SystemExit):
+        capture.main()
+    assert not out.exists()
