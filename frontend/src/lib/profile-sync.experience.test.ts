@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { webcrypto } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExperienceEntry, ProfileData } from './types';
 import type { LoadedProfile, ProfilePatchIntent, ProfilePatchOutcome } from './supabase';
 const loadProfileMock = vi.fn<() => Promise<LoadedProfile>>();
@@ -7,6 +8,7 @@ vi.mock('./supabase', () => ({
   loadProfile: () => loadProfileMock(), commitProfilePatch: (intent: ProfilePatchIntent) => commitMock(intent),
 }));
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from './identity-owner';
+import { commitWorkReview, parseWorkCsv, prepareWorkReview } from './linkedin-experience-import';
 import { STORAGE_KEYS } from './storage-keys';
 import { appendRebaseReceipt, readOutstandingOps, readRebaseReceipts, resetJournalLaneForTests, startDocumentForTests } from './profile-journal';
 import {
@@ -52,6 +54,8 @@ beforeEach(async () => {
   await syncLocalIdentityOwner('experience-owner');
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe('experience profile persistence', () => {
   it('preserves legacy absence and journals/stages all resume partners for the first evidence edit', async () => {
     const token = await hydrate();
@@ -81,6 +85,30 @@ describe('experience profile persistence', () => {
     commitMock.mockResolvedValue(saved(desired));
     expect((await flushPendingProfileWrite(captureOwnerToken())).status).toBe('saved');
     expect(readProfileSyncEnvelope()?.confirmed?.profile.experience_entries).toEqual([confirmed]);
+  });
+
+  it('recovers one reviewed CSV position after offline save and reload alongside a legacy profile', async () => {
+    vi.stubGlobal('crypto', webcrypto);
+    const old = { ...BASE, resume_text: 'Worked at Fictional River Centre.', experience_entries: [ENTRY] };
+    const token = await hydrate(old);
+    const csv = 'Company Name,Title,Started On,Finished On,Description,Results\nFictional Hill Co,Analyst,2024,2025,Checked cells,Found errors';
+    const { rows, targets } = await prepareWorkReview(parseWorkCsv(csv), old.experience_entries, old.resume_text);
+    const entries = commitWorkReview([{ ...rows[0], action: 'new' }], old.experience_entries, targets);
+    const desired = { ...old, experience_entries: entries };
+    expect(recordProfileIntent(desired, ['experience_entries'], token)).toBe(true);
+    commitMock.mockResolvedValue({ status: 'transport-error', message: 'offline' });
+    await stageProfilePatch(desired, ['experience_entries'], token);
+    startDocumentForTests('reload'); resetProfileDirtyLedger();
+    expect((await hydrateProfile()).profile?.experience_entries).toEqual(entries);
+    commitMock.mockResolvedValue(saved(desired));
+    expect((await flushPendingProfileWrite(captureOwnerToken())).status).toBe('saved');
+    const recovered = readProfileSyncEnvelope()?.confirmed?.profile;
+    expect(recovered).toMatchObject({ ...old, experience_entries: [
+      ENTRY,
+      { id: rows[0].id, text: 'Analyst — Fictional Hill Co\nFrom 2024 · To 2025\nChecked cells\nFound errors', status: 'confirmed', source: { kind: 'manual' } },
+    ] });
+    expect(recovered?.experience_entries).toHaveLength(2);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).experience_entries).toEqual(entries);
   });
 
   it('migrates an old partial bundle using the correct array default, maximum version and complete lock set', async () => {
