@@ -149,6 +149,25 @@ with sync_playwright() as pw:
                     def by_name(d,n):return next((x for x in d.get('skills',[]) if x['name']==n),None)
                     before=read_owned()['profile_data']
                     assert by_name(before,'PyTorch')['source']=='resume' and before['name']=='Synthetic PDF check' and marker in before['resume_text']
+                    historical='--historical-tailor' in sys.argv
+                    if historical:
+                        sample='I manually documented a second synthetic experiment.'
+                        active_target='/opportunities/simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95'
+                        def draft():
+                            target=cold.new_page()
+                            target.goto(site+active_target,wait_until='domcontentloaded')
+                            target.get_by_role('button',name='定制简历',exact=True).click(timeout=35000)
+                            editor=target.locator('#tailor-bullets-input')
+                            expect(editor).to_be_visible(timeout=30000)
+                            return target,editor
+                        target,editor=draft()
+                        editor.fill(sample)
+                        target.wait_for_function('v=>Object.values(localStorage).some(s=>s.includes(v))',arg=sample,timeout=10000)
+                        target.close()
+                        old,editor=draft()
+                        expect(editor).to_have_value(sample)
+                        expect(old.get_by_test_id('tailor-stale-draft')).to_have_count(0)
+                        old.close()
                     github=pg.locator('#github_url')
                     github.fill('https://github.com/pytorch')
                     github.locator('..').get_by_role('button').click()
@@ -174,6 +193,12 @@ with sync_playwright() as pw:
                     if '--expect-retained' in sys.argv:
                         assert surviving and surviving['source']=='github' and repo_evidence[0]['repo'] in surviving['evidence'] and not surviving.get('confirmed'),surviving
                     else: assert surviving is None,surviving
+                    if historical:
+                        target,editor=draft()
+                        expect(editor).to_have_value(sample)
+                        expect(target.get_by_test_id('tailor-stale-draft')).to_be_visible(timeout=12000)
+                        receipt['historical_tailor']={'target':active_target,'author_text_unchanged':True,'before_removal_stale_badges':0,'after_removal_stale_badges':1,'ai_generations':0,'handwritten_text_entered_in_form':True}
+                        target.close()
                     receipt['independent_skill']={'legacy_source':'resume','github_import':repo_evidence[0],'detail_after_import':by_name(mid['profile_data'],'PyTorch'),'other_github_skill_retained':'Python','after_removal':surviving,'revision_after_import':mid['revision'],'revision_after_removal':raw['revision'],'fresh_read':True}
                     cold.close()
                     continue

@@ -14,4 +14,4 @@ jobs:
         with:
           persist-credentials: false
       - run: python -m pip install --quiet playwright==1.55.0
-      - run: python -u scripts/verify_public_guest_pdf_390.py --independent-github-skill
+      - run: python -u scripts/verify_public_guest_pdf_390.py --independent-github-skill --historical-tailor
