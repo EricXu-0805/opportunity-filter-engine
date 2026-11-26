@@ -143,3 +143,38 @@ def test_known_record_id_is_byte_stable():
     corpus on the next scrape. Pin a real corpus id."""
     person = {"name": "Ehud Altman", "url": "x", "title": "Professor"}
     assert normalize_faculty(person, PHYS_CONFIG)["id"] == "faculty-ucb-phys-3ec7499e"
+
+
+def test_untyped_people_urls_require_the_same_name_and_faculty_role_across_roster_pages(monkeypatch):
+    base = PHYS_CONFIG["base"]
+    areas = "".join([
+        _person_card("old", "Original Person", "Professor"),
+        _person_card("member", "Current Person", "Assistant Professor", path="people"),
+        _person_card("other", "Other Person", "Researcher", path="people"),
+        _person_card("staff", "Staff Person", "Professor's assistant", path="people"),
+    ])
+
+    def roster_row(slug, name, role):
+        return (f'<tr><td class="views-field-title"><a href="/people/{slug}">{name}</a></td>'
+                f'<td class="views-field-field-openberkeley-person-type">{role}</td></tr>')
+
+    first = ("<table><tbody>" + roster_row("other", "Another Person", "Faculty")
+             + roster_row("staff", "Staff Person", "Staff") + "</tbody></table>"
+             + '<li class="pager-next"><a href="/directory?role%5B0%5D=11&amp;page=1">next</a></li>')
+    second = ("<table><tbody>" + roster_row("member", "Current Person", "Faculty") + "</tbody></table>"
+              + '<li class="pager-next"><a href="/directory?role%5B0%5D=11">next</a></li>')
+    fixtures = {f"{base}/research-faculty/astrophysics": areas,
+                f"{base}/directory?role%5B0%5D=11": first,
+                f"{base}/directory?role%5B0%5D=11&page=1": second}
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        return BeautifulSoup(fixtures[url], "html.parser") if fixtures.get(url) else None
+
+    monkeypatch.setattr(mod, "fetch_soup", fetch)
+    monkeypatch.setattr(mod.time, "sleep", lambda _: None)
+    assert [p["name"] for p in _scrape_physics_faculty()] == ["Original Person", "Current Person"]
+    assert calls.count(f"{base}/directory?role%5B0%5D=11") == 1
+    fixtures[f"{base}/directory?role%5B0%5D=11&page=1"] = ""
+    assert [p["name"] for p in _scrape_physics_faculty()] == ["Original Person"]

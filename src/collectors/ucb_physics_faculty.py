@@ -6,8 +6,8 @@ Physics renders faculty in the same Open-Berkeley card variant as Chemistry
 (`div.node-openberkeley-person`), but the flat `/people/faculty` listing is
 paginated across ~26 pages and mixes in grad students and postdocs. The clean
 source is the per-research-area pages under `/research-faculty/<area>`, which
-list each area's faculty as cards. We iterate the eight area pages, keep only
-`/people/faculty/` cards, and tag each professor with the area(s) they appear
+list each area's faculty as cards. We iterate the eight area pages, keep
+named faculty profiles, and tag each professor with the area(s) they appear
 under — giving research keywords for free (mapped via PHYS_AREA_KEYWORDS, the
 shared area_keywords path) and naturally restricting to faculty. A professor in
 multiple areas is merged into one record carrying all of them.
@@ -28,10 +28,12 @@ from __future__ import annotations
 
 import logging
 import time
+from urllib.parse import urljoin, urlsplit
 
 from . import ucb_common
 from .ucb_common import (
     PROFILE_DELAY,
+    clean_name,
     dedup_by_profile_url,
     enrich_faculty_from_profiles,
     fetch_soup,
@@ -92,21 +94,54 @@ PHYS_CONFIG = {
 }
 
 
+def _listed_faculty_profiles(candidates: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    """Confirm name and URL on the department's Faculty directory for untyped links."""
+    directory = f"{PHYS_CONFIG['base']}/directory"
+    page_url = f"{directory}?role%5B0%5D=11"
+    visited = set()
+    confirmed = set()
+    while page_url and page_url not in visited and candidates - confirmed:
+        visited.add(page_url)
+        soup = fetch_soup(page_url)
+        if soup is None:
+            break
+        for row in soup.select("tbody tr"):
+            name = row.select_one("td.views-field-title a[href]")
+            role = row.select_one("td.views-field-field-openberkeley-person-type")
+            if name and role and role.get_text(" ", strip=True) == "Faculty":
+                identity = (urljoin(page_url, name["href"]), clean_name(name.get_text(" ", strip=True)))
+                if identity in candidates:
+                    confirmed.add(identity)
+        following = soup.select_one("li.pager-next a[href]")
+        page_url = urljoin(page_url, following["href"]) if following else ""
+        if page_url and page_url.split("?", 1)[0] != directory:
+            break
+    return confirmed
+
+
 def _scrape_physics_faculty() -> list[dict]:
     """Scrape the eight research-area pages into one faculty list.
 
-    Keeps only `/people/faculty/` cards (the area pages also list some staff),
+    Keeps faculty cards (the area pages also list some staff),
     tags each professor with the readable area name, and merges a professor who
     appears under multiple areas into a single record carrying all of them.
     """
     by_url: dict[str, dict] = {}
+    untyped_profiles = set()
     for slug, area in PHYS_AREAS.items():
         soup = fetch_soup(f"{PHYS_CONFIG['base']}/research-faculty/{slug}")
         if not soup:
             continue
-        cards = [p for p in scrape_open_berkeley_faculty(soup, PHYS_CONFIG)
-                 if "/people/faculty/" in p["url"]]
+        cards = scrape_open_berkeley_faculty(soup, PHYS_CONFIG)
         for person in cards:
+            parts = urlsplit(person["url"])
+            path = parts.path.strip("/").split("/")
+            if parts.netloc != "physics.berkeley.edu" or path[0] != "people":
+                continue
+            if len(path) == 2:
+                untyped_profiles.add((person["url"], person["name"]))
+            elif len(path) != 3 or path[1] != "faculty":
+                continue
             existing = by_url.get(person["url"])
             if existing:
                 areas = existing.get("research_areas", "")
@@ -115,8 +150,11 @@ def _scrape_physics_faculty() -> list[dict]:
             else:
                 person["research_areas"] = area
                 by_url[person["url"]] = person
-        logger.info(f"  {slug}: {len(cards)} faculty")
+        logger.info(f"  {slug}: {len(cards)} research-area cards")
         time.sleep(PROFILE_DELAY)
+    confirmed = _listed_faculty_profiles(untyped_profiles)
+    for url, _name in untyped_profiles - confirmed:
+        by_url.pop(url, None)
     logger.info(f"  {len(by_url)} unique PHYS faculty across areas")
     return list(by_url.values())
 
