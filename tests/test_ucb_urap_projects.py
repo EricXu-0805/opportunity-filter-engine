@@ -227,7 +227,7 @@ class TestNormalize:
     def test_closed_page_still_marks_every_row_closed(self, monkeypatch):
         raw = self._raw()
         raw["status"] = "Open"
-        monkeypatch.setattr(up, "scrape_projects", lambda status="Open": [raw])
+        monkeypatch.setattr(up, "scrape_projects", lambda status="Open", **kwargs: [raw])
         out = up.fetch_and_normalize("Closed")
         assert [o["metadata"]["urap_status"] for o in out] == ["closed"]
         assert [o["metadata"]["is_active"] for o in out] == [False]
@@ -241,7 +241,7 @@ class TestNormalize:
         closed_row["id"] = "20079-1"
         closed_row["status"] = "Closed - no longer accepting apprentices"
         monkeypatch.setattr(
-            up, "scrape_projects", lambda status="Open": [open_row, closed_row],
+            up, "scrape_projects", lambda status="Open", **kwargs: [open_row, closed_row],
         )
         calls = []
         monkeypatch.setattr(up, "_fetch", lambda url, params: calls.append((url, params)))
@@ -334,7 +334,7 @@ def test_transient_failure_preserves_evidence_until_same_id_reopens(tmp_path, mo
     file = tmp_path / "opportunities.json"
     file.write_text("[]")
     monkeypatch.setattr(up, "PROCESSED_FILE", file)
-    monkeypatch.setattr(up, "scrape_projects", lambda status="Open": [PROJECT])
+    monkeypatch.setattr(up, "scrape_projects", lambda status="Open", **kwargs: [PROJECT])
     monkeypatch.setattr(up, "_fetch", lambda url, params: None)
     fall_read = datetime(2026, 11, 25, tzinfo=UTC)
     old = up.normalize_project(detail_raw(detail_soup(), fall_read), now=fall_read)
@@ -461,3 +461,34 @@ def test_deadline_quote_stops_at_next_sentence(clock):
     detail = detail_raw(detail_soup(notice), datetime(2026, 8, 24, tzinfo=UTC))["detail"]
     assert detail["deadline_quote"].endswith(clock)
     assert "Please" not in detail["deadline_quote"]
+
+def test_list_failure_is_distinct_from_a_supported_seasonal_zero(monkeypatch):
+    from src.collectors.source_health import collection_evidence_issues
+
+    monkeypatch.setattr(up, "_fetch", lambda url, params: None)
+    errors = []
+    assert up.fetch_and_normalize("Open", list_errors=errors) == []
+    assert up.fetch_and_normalize("Closed", list_errors=errors) == []
+    assert errors == ["Open list page 1: fetch failed", "Closed list page 1: fetch failed"]
+    assert collection_evidence_issues({"list_errors": errors}) == (["list_errors"], [])
+
+    errors.clear()
+    monkeypatch.setattr(up, "_fetch", lambda *args: detail_soup(body="Showing 0 projects out of 0 found."))
+    assert up.fetch_and_normalize("Open", list_errors=errors) == []
+    assert not errors
+
+
+@pytest.mark.parametrize("second_page, expected", [
+    (None, "fetch failed"), (LIST_FIXTURE, "did not report a result count"),
+    ("Showing 1 project out of 3 found.", "read 0 distinct new IDs"),
+    ("Showing 0 projects out of 3 found.", "only 2 distinct IDs"),
+])
+def test_incomplete_second_page_retains_first_page_and_reports_gap(monkeypatch, second_page, expected):
+    first = detail_soup(body="Showing 2 projects out of 3 found." + LIST_FIXTURE)
+    pages = iter([first, detail_soup(body=second_page) if second_page else None])
+    monkeypatch.setattr(up, "_fetch", lambda *args: next(pages))
+    monkeypatch.setattr(up, "PER_PAGE", 2)
+    monkeypatch.setattr(up, "_PAGE_DELAY", 0)
+    errors = []
+    assert len(up.scrape_projects("Closed", list_errors=errors)) == 2
+    assert len(errors) == 1 and expected in errors[0]
