@@ -1,0 +1,20 @@
+{
+  "release": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+  "site": "https://joinalab.com",
+  "anonymous_first_party_account": true,
+  "legacy_import_routes_to_resources": true,
+  "paid_model_and_external_network_submissions": 0,
+  "controlled_offline_parse_attempts": 2,
+  "full_proposed_input_retained": true,
+  "old_record_seeded_on_own_browser": true,
+  "reopened_same_id_and_identical_legacy_source": true,
+  "guest_account_save_requires_sign_in": true,
+  "account_record_created": false,
+  "real_model_extraction_tested": false,
+  "reopened_favorites_counts_one_local_record": true,
+  "dashboard_counts_one_local_record": true,
+  "nonanonymous_cloud_count_path_tested_on_production": false,
+  "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45884460370/job/140131588386",
+  "source_pull_request": 1408,
+  "account_only_isolated_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/c06781ce/data/audits/private-opportunity-flow-2026-11-26.json"
+}
