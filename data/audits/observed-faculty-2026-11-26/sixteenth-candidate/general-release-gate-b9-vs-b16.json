@@ -1,0 +1,482 @@
+{
+  "comparison": "General availability release gate, B9 and B16, 2026-11-26 UTC",
+  "earlier_hosted_gate": {
+    "release_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45844456158",
+    "ledger_artifact_sha256": "fddd9c351e7bdca12fabcff69fc81ea1ac153799938cbf74c5aa986a467fa726",
+    "artifact_member": "091c3800c9b5310fba6c591d3eaa1f588390055f.json",
+    "generated_at": "2026-11-26T15:00:43.128207+00:00",
+    "verdict": "NO-GO",
+    "release_identity": {
+      "frontend": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "backend": "091c3800c9b5310fba6c591d3eaa1f588390055f"
+    },
+    "corpus": {
+      "generated_at": "2026-11-26T15:00:37.179120+00:00",
+      "fresh_records": 114976,
+      "active_records": 137010,
+      "stale_records": 22034,
+      "inactive_records": 12783,
+      "freshness_percent": 83.92,
+      "freshness_threshold": 95.0,
+      "stale_days": 14.0,
+      "school_count": 117,
+      "no_fresh_faculty_schools": [
+        "colby",
+        "haverford"
+      ],
+      "fully_stale_schools": [],
+      "unsupported_schools": [
+        "ucd"
+      ],
+      "records_short_of_95_percent": 15184
+    },
+    "summary": {
+      "passed": 5,
+      "failed": 4,
+      "blocked": 7,
+      "cannot_verify": 0,
+      "unverified": 6,
+      "skipped": 4,
+      "not_run": 0,
+      "not_applicable": 2,
+      "release_blocking": 21
+    },
+    "applicable_release_blockers": [
+      {
+        "check": "ledger_currency",
+        "status": "FAIL",
+        "reason": "sha_mismatch"
+      },
+      {
+        "check": "corpus_freshness",
+        "status": "FAIL",
+        "reason": "below_threshold"
+      },
+      {
+        "check": "no_fully_stale_school",
+        "status": "FAIL",
+        "reason": "check_failed"
+      },
+      {
+        "check": "truthfulness",
+        "status": "FAIL",
+        "reason": "check_failed"
+      },
+      {
+        "check": "open_incidents",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "provider_readiness",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore_drill",
+        "status": "BLOCKED",
+        "reason": "scratch_project_access_required"
+      },
+      {
+        "check": "ci:Backend (lint + pytest)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Frontend (typecheck + build)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Migrations (Flow B merge + CLI replay)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:E2E (Playwright)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "render_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "vercel_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "supabase_canary",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "backup",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "dead_man",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "api_ready",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "promotion",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "rollback",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "scheduler",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      }
+    ],
+    "source_health": {
+      "fully_stale_school_count": 2,
+      "fully_stale_schools": [
+        "colby",
+        "haverford"
+      ],
+      "no_fresh_faculty_school_count": 2,
+      "no_fresh_faculty_schools": [
+        "colby",
+        "haverford"
+      ],
+      "school_count": 116,
+      "partially_degraded_school_count": 91,
+      "stale_shard_count": 105,
+      "failed_shard_count": 104,
+      "stale_days": 17.0
+    },
+    "truthfulness": {
+      "decision": "NO-GO",
+      "generated_at": "2026-11-26T10:09:37.604265+00:00",
+      "age_days": 0.20214700033564814
+    }
+  },
+  "later_hosted_gate": {
+    "release_sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45894887117",
+    "ledger_artifact_sha256": "27aef28c4e677c530c8dba3bb97449154f54a6122385dde896fd258049b9f6ae",
+    "artifact_member": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541.json",
+    "generated_at": "2026-11-26T21:01:00.614724+00:00",
+    "verdict": "NO-GO",
+    "release_identity": {
+      "frontend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+      "backend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541"
+    },
+    "corpus": {
+      "generated_at": "2026-11-26T21:00:52.248884+00:00",
+      "fresh_records": 114881,
+      "active_records": 136989,
+      "stale_records": 22108,
+      "inactive_records": 12903,
+      "freshness_percent": 83.86,
+      "freshness_threshold": 95.0,
+      "stale_days": 14.0,
+      "school_count": 117,
+      "no_fresh_faculty_schools": [
+        "colby"
+      ],
+      "fully_stale_schools": [],
+      "unsupported_schools": [
+        "ucd"
+      ],
+      "records_short_of_95_percent": 15259
+    },
+    "summary": {
+      "passed": 5,
+      "failed": 4,
+      "blocked": 7,
+      "cannot_verify": 0,
+      "unverified": 6,
+      "skipped": 4,
+      "not_run": 0,
+      "not_applicable": 2,
+      "release_blocking": 21
+    },
+    "applicable_release_blockers": [
+      {
+        "check": "ledger_currency",
+        "status": "FAIL",
+        "reason": "sha_mismatch"
+      },
+      {
+        "check": "corpus_freshness",
+        "status": "FAIL",
+        "reason": "below_threshold"
+      },
+      {
+        "check": "no_fully_stale_school",
+        "status": "FAIL",
+        "reason": "check_failed"
+      },
+      {
+        "check": "truthfulness",
+        "status": "FAIL",
+        "reason": "check_failed"
+      },
+      {
+        "check": "open_incidents",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "provider_readiness",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore_drill",
+        "status": "BLOCKED",
+        "reason": "scratch_project_access_required"
+      },
+      {
+        "check": "ci:Backend (lint + pytest)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Frontend (typecheck + build)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:Migrations (Flow B merge + CLI replay)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "ci:E2E (Playwright)",
+        "status": "SKIPPED",
+        "reason": "required_check_skipped"
+      },
+      {
+        "check": "render_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "vercel_canary",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "supabase_canary",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "backup",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "restore",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "dead_man",
+        "status": "BLOCKED",
+        "reason": "access_required"
+      },
+      {
+        "check": "api_ready",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "promotion",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "rollback",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      },
+      {
+        "check": "scheduler",
+        "status": "UNVERIFIED",
+        "reason": "evidence_absent"
+      }
+    ],
+    "source_health": {
+      "fully_stale_school_count": 2,
+      "fully_stale_schools": [
+        "colby",
+        "haverford"
+      ],
+      "no_fresh_faculty_school_count": 2,
+      "no_fresh_faculty_schools": [
+        "colby",
+        "haverford"
+      ],
+      "school_count": 116,
+      "partially_degraded_school_count": 91,
+      "stale_shard_count": 106,
+      "failed_shard_count": 104,
+      "stale_days": 17.0
+    },
+    "truthfulness": {
+      "decision": "NO-GO",
+      "generated_at": "2026-11-26T12:58:17.122200+00:00",
+      "age_days": 0.3352251802546296
+    }
+  },
+  "live_gate_blocker_changes": {
+    "added": [],
+    "removed": []
+  },
+  "common_cutoff_replay": {
+    "method": "Recompute each immutable set of all 117 tracked school shards using the release gate, the later hosted gate observation time, a 14-day source observation window and the existing active-record denominator.",
+    "common_time": "2026-11-26T21:00:52.248884+00:00",
+    "B9": {
+      "generated_at": "2026-11-26T21:00:52.248884+00:00",
+      "fresh_records": 114737,
+      "active_records": 137010,
+      "stale_records": 22273,
+      "inactive_records": 12783,
+      "freshness_percent": 83.74,
+      "freshness_threshold": 95.0,
+      "stale_days": 14.0,
+      "school_count": 117,
+      "no_fresh_faculty_schools": [
+        "colby",
+        "haverford"
+      ],
+      "fully_stale_schools": [],
+      "unsupported_schools": [
+        "ucd"
+      ],
+      "records_short_of_95_percent": 15423
+    },
+    "B16": {
+      "generated_at": "2026-11-26T21:00:52.248884+00:00",
+      "fresh_records": 114881,
+      "active_records": 136989,
+      "stale_records": 22108,
+      "inactive_records": 12903,
+      "freshness_percent": 83.86,
+      "freshness_threshold": 95.0,
+      "stale_days": 14.0,
+      "school_count": 117,
+      "no_fresh_faculty_schools": [
+        "colby"
+      ],
+      "fully_stale_schools": [],
+      "unsupported_schools": [
+        "ucd"
+      ],
+      "records_short_of_95_percent": 15259
+    },
+    "fresh_delta": 144,
+    "active_delta": -21,
+    "stale_delta": -165,
+    "shortfall_delta": -164,
+    "same_calculation_at_both_commits": {
+      "scripts/release_gate.py": {
+        "corpus_freshness_policy": "63280eb91f49bc3ba6cc18f46b8d53aaf19ea59ad4d4663ac4fb757583a422c3",
+        "corpus_freshness_report": "5c7e6f2cd29a6bf94f2a603c21150510c406d683bba8b4c956215d7f15114cc6",
+        "check_corpus_freshness": "5926d5c36e59defed37beebdb70991b853d60e61a0b16f33eb3a094803c018dc"
+      },
+      "src/evidence.py": {
+        "source_last_seen_at": "f9a12aadce0a7799b2a2754408becf402fc52f3b2267c1a97588772356088334"
+      }
+    }
+  },
+  "B16_largest_stale_shards": [
+    {
+      "school": "jhu",
+      "stale": 4479,
+      "active": 4586,
+      "fresh": 107,
+      "faculty_active": 4557,
+      "faculty_fresh": 78,
+      "state": "partially_stale",
+      "last_seen_at": "2026-11-20T17:02:57.680278+00:00"
+    },
+    {
+      "school": "northwestern",
+      "stale": 1734,
+      "active": 2835,
+      "fresh": 1101,
+      "faculty_active": 2807,
+      "faculty_fresh": 1073,
+      "state": "partially_stale",
+      "last_seen_at": "2026-11-20T17:22:57.503245+00:00"
+    },
+    {
+      "school": "umich",
+      "stale": 1354,
+      "active": 1492,
+      "fresh": 138,
+      "faculty_active": 1483,
+      "faculty_fresh": 129,
+      "state": "partially_stale",
+      "last_seen_at": "2026-11-21T14:33:58.475494+00:00"
+    },
+    {
+      "school": "nyu",
+      "stale": 1091,
+      "active": 2280,
+      "fresh": 1189,
+      "faculty_active": 2269,
+      "faculty_fresh": 1178,
+      "state": "partially_stale",
+      "last_seen_at": "2026-11-24T19:13:29.928591+00:00"
+    },
+    {
+      "school": "osu",
+      "stale": 699,
+      "active": 2514,
+      "fresh": 1815,
+      "faculty_active": 2506,
+      "faculty_fresh": 1807,
+      "state": "partially_stale",
+      "last_seen_at": "2026-11-21T15:04:27.771727+00:00"
+    }
+  ],
+  "separate_data_views": {
+    "B16_corpus": {
+      "colby": {
+        "active": 247,
+        "fresh": 8,
+        "faculty_active": 239,
+        "faculty_fresh": 0,
+        "state": "partially_stale",
+        "last_seen_at": "2026-11-21T14:40:21.576416+00:00"
+      },
+      "haverford": {
+        "active": 139,
+        "fresh": 19,
+        "faculty_active": 130,
+        "faculty_fresh": 10,
+        "state": "partially_stale",
+        "last_seen_at": "2026-11-26T12:19:13.135000+00:00"
+      }
+    },
+    "source_health_ledger_scope": "The receipt generated from the source-health ledger uses its own 17-day policy and run histories. It still reports Colby plus Haverford; the 14-day current per-record gate reports Colby only."
+  },
+  "B16_maintenance_pr_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45888728901",
+  "release_conditions": "General availability remains NO-GO; no release flag, alert, production operation or customer communication is required by this observation."
+}
