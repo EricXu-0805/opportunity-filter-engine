@@ -83,6 +83,59 @@ class TestScrape:
         assert people["Michael Aizenman"]["url"].startswith("https://www.math.princeton.edu/people/")
 
 
+def test_math_profile_states_each_named_persons_research_fields(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    from src.collectors.uiuc_faculty import _carry_forward_enrichment
+
+    dept = SCHOOL["departments"][0]
+    url = "https://www.math.princeton.edu/people/mihalis-dafermos"
+    html = """
+        <h1>Mihalis Dafermos</h1>
+        <div class="field--name-field-research-field">
+          <div class="field--label">Research Field</div>
+          <div class="field--items">
+            <div class="field--item">Mathematical Physics</div>
+            <div class="field--item">Partial Differential Equations</div>
+          </div>
+        </div>
+        <div class="field--item">Unrelated navigation</div>
+    """
+    monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+    monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                        lambda url, **options: BeautifulSoup(html, "html.parser"))
+    people = [{"name": name, "title": "Professor", "url": url}
+              for name in ("Mihalis Dafermos", "Different Person")]
+    fg._apply_profile_enrich(people, dept["profile_enrich"])
+    own = fg._normalize(SCHOOL, dept, people[0])
+    assert own["keywords"] == ["Mathematical Physics", "Partial Differential Equations"]
+    assert own["metadata"]["research_areas_raw"] == "Mathematical Physics; Partial Differential Equations"
+    assert own["metadata"]["research_areas_source_url"] == url
+    assert own["metadata"]["research_areas_verified_at"]
+    assert "research_areas" not in people[1]
+    assert "_research_areas_source_url" not in people[1]
+
+    held = {(fg._url(url), fg._identity("Mihalis Dafermos")): frozenset({"research"})}
+    with fg.run_start_profiles(held):
+        def reread():
+            person = {"name": "Mihalis Dafermos", "title": "Professor", "url": url}
+            fg._apply_profile_enrich([person], dept["profile_enrich"])
+            incoming = fg._normalize(SCHOOL, dept, person)
+            _carry_forward_enrichment(own, incoming)
+            return incoming
+
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", False)
+        weekly = reread()
+        assert weekly["metadata"]["research_areas_raw"] == own["metadata"]["research_areas_raw"]
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        html = "<h1>Different Person</h1>"
+        assert reread()["metadata"]["research_areas_raw"] == own["metadata"]["research_areas_raw"]
+        html = "<h1>Mihalis Dafermos</h1>"
+        withdrawn = reread()
+        assert not withdrawn["metadata"].get("research_areas_raw")
+        assert not withdrawn.get("keywords")
+
+
 # The CS directory is client-side rendered — reached via the engine's render mode
 # (headless Chromium). Cards carry the rank + per-area research links.
 CS_CARD_HTML = """
