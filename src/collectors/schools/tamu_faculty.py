@@ -356,7 +356,11 @@ SCHOOL: dict = {
         _eng("CSCE", "Department of Computer Science and Engineering",
              ["Computer Science", "Computer Engineering"], "csce"),
         _eng("ECE", "Department of Electrical and Computer Engineering",
-             ["Electrical Engineering", "Computer Engineering"], "electrical"),
+             ["Electrical Engineering", "Computer Engineering"], "electrical") | {
+            "profile_id_names": {
+                "engineering.tamu.edu/electrical/profiles/yi-suin.html": ("Suin Yi", "Su-in Yi"),
+            },
+        },
         _eng("ME", "J. Mike Walker '66 Department of Mechanical Engineering",
              ["Mechanical Engineering"], "mechanical"),
         _eng("BME", "Department of Biomedical Engineering",

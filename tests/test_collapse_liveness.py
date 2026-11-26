@@ -605,6 +605,7 @@ def test_a_berkeley_name_variant_its_richer_department_dropped_gives_way():
     ("osu", "DESIGN", "Matt Lewis", "Matthew Lewis", "design.osu.edu/people/lewis.239", "faculty-osu-design-73e460f2"),
     ("purdue", "BSC", "Kyu Kang", "Kyubyung Kang", "polytechnic.purdue.edu/profile/kyukang", "faculty-purdue-bsc-e4bf6c5d"),
     ("utexas", "LINGUISTICS", "Akshay Aitha", "Akshayraj Aitha", "liberalarts.utexas.edu/linguistics/faculty/aa225967", "faculty-utexas-linguistics-ab991fd0"),
+    ("tamu", "ECE", "Suin Yi", "Su-in Yi", "engineering.tamu.edu/electrical/profiles/yi-suin.html", "faculty-tamu-ece-44b0285f"),
     ("tamu", "BME", "Jeff Reynolds", "Jeffery Reynolds", "engineering.tamu.edu/biomedical/profiles/reynolds-jeffery.html", "faculty-tamu-bme-dccdf5db"),
     ("purdue", "CS", "Kazem Taram", "Mohammadkazem Taram", "cs.purdue.edu/people/faculty/mtaram.html", "faculty-purdue-cs-bb6831d2"),
     ("vanderbilt", "MATH", "Chris Kapulkin", "Krzysztof Kapulkin", "as.vanderbilt.edu/math/bio/krzysztof-kapulkin", "faculty-vanderbilt-math-1d5fbacf"),
