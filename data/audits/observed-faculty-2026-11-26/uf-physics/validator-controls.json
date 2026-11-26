@@ -1,0 +1,96 @@
+{
+  "kind": "Historical real scheduled publication and separate validator controls",
+  "historical_control": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44761914990",
+    "data_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1211",
+    "run_head": "4fc6b5d01dda219e159f7d9cb108ce6e5b20fc49",
+    "data_merge": "672e2db133bca2b74931c303a9e31ad954accf6c",
+    "merge_first_parent": "4fc6b5d01dda219e159f7d9cb108ce6e5b20fc49",
+    "published_blobs": {
+      "data/processed/shards/uf.json": "d638da6ff8a76a4f9f263911d5ff0cc4934587d6",
+      "data/processed/collector_status.json": "8aa2d7bf31605f4252a26accd577d1d7c5e156fb"
+    },
+    "prior_blobs": {
+      "data/processed/shards/uf.json": "2648182f2a0b6aa9a1d60656ac818a20f94c502f",
+      "data/processed/collector_status.json": "647eaa80276b9dae54b7ad8e16b87f99eca1be12"
+    },
+    "unit_checks": {
+      "merged_pr_contains_published_uf_and_ledger_blobs": true,
+      "merged_uf_and_ledger_advanced_since_first_parent": true,
+      "uf_authorized_and_published": true,
+      "ledger_written_during_run": true,
+      "physics_unit": true,
+      "physics_unit_ran_during_the_workflow": true,
+      "physics_fetch_parse_complete": false,
+      "observed_ids_count_agrees": true,
+      "no_missed_identities_or_partial_rows": true
+    },
+    "source_provenance": "unconfirmed",
+    "physics": {
+      "unit_name": "Department of Physics",
+      "fetch_status": "ok",
+      "parse_status": "zero_rows",
+      "completeness_status": "unknown",
+      "observed_count": 0,
+      "coverage": {
+        "ambiguous_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parsed_faculty_rows": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+        "raw_roster_rows": 0,
+        "unparsed_rows": 0
+      },
+      "started_at": "2026-11-20T16:31:41.079842+00:00",
+      "completed_at": "2026-11-20T16:31:42.583181+00:00"
+    },
+    "result": "published_originals_or_physics_ledger_need_review",
+    "original_ids": 52,
+    "originals_in_physics_ledger": 0,
+    "originals_with_new_seen_time": 0,
+    "originals_present": 52
+  },
+  "synthetic_validator_rehearsal": {
+    "fixture_only": true,
+    "cases": {
+      "assembled_positive_from_52_reviewed_current_named_pages": {
+        "result": "verified_scheduled_publication",
+        "expected_exit": 0,
+        "checked_originals": 52
+      },
+      "incorrect_published_person_link": {
+        "result": "published_originals_or_physics_ledger_need_review",
+        "expected_exit": 1,
+        "checked_originals": 52
+      },
+      "duplicate_published_original": {
+        "result": "published_originals_or_physics_ledger_need_review",
+        "expected_exit": 1,
+        "checked_originals": 52
+      },
+      "missing_department_observation": {
+        "result": "published_originals_or_physics_ledger_need_review",
+        "expected_exit": 1,
+        "checked_originals": 52
+      },
+      "current_profile_lands_on_namesake": {
+        "result": "published_and_current_campus_evidence_differ",
+        "expected_exit": 1,
+        "checked_originals": 52
+      },
+      "individual_bio_has_different_rank": {
+        "result": "published_and_current_campus_evidence_differ",
+        "expected_exit": 1,
+        "checked_originals": 52
+      }
+    }
+  },
+  "november_27_before_run": {
+    "checked_at": "2026-11-26T20:36:53+00:00",
+    "target_utc_date": "2026-11-27",
+    "reviewed_source": "6d67369a1e40847db3f3c8beda3ef668e85eec40",
+    "result": "awaiting_scheduled_run"
+  }
+}
