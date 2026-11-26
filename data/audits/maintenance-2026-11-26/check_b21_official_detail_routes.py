@@ -7,7 +7,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import requests
 from playwright.sync_api import expect, sync_playwright
@@ -18,19 +18,34 @@ SCOPE = "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
 
 
 def prepare_visitor(context, page, report):
-    current_user = []
-    revisions = []
-    signup_sent = []
+    current_user, revisions, confirmed_fields, persisted_reads = [], [], {}, []
+    signup_sent, confirmed_signup_failure = [], []
     def observe(response):
         url = urlsplit(response.url)
-        if url.hostname != DB or not response.ok:
+        if url.hostname != DB:
             return
         if url.path == "/auth/v1/signup":
-            data = response.json()
-            assert data["user"]["is_anonymous"] and not current_user
-            current_user.append(data["user"]["id"])
-        if url.path.endswith("/rpc/commit_profile_patch_cas") and response.json().get("status") == "applied":
-            revisions.append(response.json()["revision"])
+            if response.ok:
+                data = response.json()
+                assert data["user"]["is_anonymous"] and not current_user
+                current_user.append(data["user"]["id"])
+            else:
+                confirmed_signup_failure.append(response.status)
+            return
+        if not response.ok or not current_user:
+            return
+        if url.path.endswith("/rpc/commit_profile_patch_cas"):
+            saved = response.json()
+            if saved.get("status") == "applied":
+                revisions.append(saved["revision"])
+                patch = (response.request.post_data_json or {}).get("p_patch") or {}
+                confirmed_fields.update({k:v for k,v in patch.items() if k in {"name","research_interests"}})
+        elif url.path == "/rest/v1/profiles" and parse_qs(url.query).get("id") == ["eq."+current_user[0]]:
+            saved = response.json()
+            for row in saved if isinstance(saved,list) else [saved]:
+                fields = (row or {}).get("profile_data") or {}
+                if fields.get("name") == "Faculty Directory QA" and fields.get("research_interests") == "Comparative faculty research":
+                    persisted_reads.append(row.get("revision"))
 
     def own_calls(route):
         request = route.request
@@ -39,7 +54,8 @@ def prepare_visitor(context, page, report):
             return route.continue_()
         if request.method == "POST" and url.hostname == DB:
             data = request.post_data_json or {}
-            if url.path == "/auth/v1/signup" and not signup_sent and not data.get("email"):
+            if (url.path == "/auth/v1/signup" and not current_user and not data.get("email")
+                    and (not signup_sent or (len(signup_sent) == 1 and confirmed_signup_failure))):
                 signup_sent.append(True)
                 return route.continue_()
             if url.path == "/auth/v1/token" and current_user:
@@ -53,9 +69,14 @@ def prepare_visitor(context, page, report):
     page.goto(SITE, wait_until="domcontentloaded", timeout=90000)
     name = page.locator("#student_name")
     expect(name).to_be_visible(timeout=60000)
+    tried_retry = False
     for _ in range(150):
         if current_user and not page.get_by_test_id("hydration-note").is_visible():
             break
+        retry = page.get_by_role("button",name=re.compile(r"^(Retry|Retry loading profile|Retry sync)$")).first
+        if not tried_retry and retry.is_visible():
+            tried_retry = True
+            retry.click()
         page.wait_for_timeout(200)
     assert len(current_user) == 1, "A real anonymous visitor is required"
     skip = page.get_by_role("button",name="Skip tour",exact=True)
@@ -73,15 +94,22 @@ def prepare_visitor(context, page, report):
     interests=page.locator("#research_interests")
     interests.fill("Comparative faculty research")
     for _ in range(150):
-        if revisions:
+        if confirmed_fields.get("research_interests") == "Comparative faculty research":
             break
         page.wait_for_timeout(200)
-    assert revisions, "No confirmed profile revision"
+    assert revisions and confirmed_fields.get("research_interests") == "Comparative faculty research", "Final input was not committed"
+    persisted_reads.clear()
     page.reload(wait_until="domcontentloaded")
     expect(name).to_have_value("Faculty Directory QA",timeout=60000)
     expect(interests).to_have_value("Comparative faculty research",timeout=60000)
+    for _ in range(150):
+        if persisted_reads:
+            break
+        page.wait_for_timeout(200)
+    assert persisted_reads, "The stored values were not read back through this visitor's own production profile"
     report["normal_visitor"] = {"anonymous_signup": True, "profile_saved_by_site_ui": True,
-                                "saved_revision_count": len(revisions), "home_form_restored_after_reload": True}
+                                "saved_revision_count": len(revisions), "home_form_restored_after_reload": True,
+                                "profile_revisions_read_back": persisted_reads.copy(), "product_retry_used": tried_retry}
     page.close()
 
 
