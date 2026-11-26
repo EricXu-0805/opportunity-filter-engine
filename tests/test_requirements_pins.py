@@ -45,7 +45,7 @@ def test_web_push_is_pinned_to_the_version_used_by_the_dispatcher_tests():
     # major release needs that compatibility reviewed, even if pip resolved it.
     requirements = [Requirement(line) for line in _REQUIREMENTS.splitlines()
                     if line.strip() and not line.lstrip().startswith("#")]
-    dependency, = [req for req in requirements if req.name.lower() == "pywebpush"]
+    dependency, = (req for req in requirements if req.name.lower() == "pywebpush")
     assert dependency.marker is None and dependency.url is None
     pin, = dependency.specifier
     assert pin.operator == "==" and "*" not in pin.version
