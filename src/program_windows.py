@@ -230,14 +230,11 @@ def apply_program_window(record: dict) -> None:
         record["is_rolling"] = False
         if record.get("source") in ("nsf_reu", "uiuc_sro"):
             metadata = record["metadata"]
-            if window.url == NCSA_DIRECTORY:
-                # Keep the earlier, explicitly anticipated directory date as
-                # historical evidence without treating it as the active window.
+            if record["source"] == "uiuc_sro":
+                # Keep the directory's original, anticipated date alongside the reviewed host date.
+                original_estimate, _ = _AGGREGATOR_WINDOWS[(record["source"], record["id"])]
                 metadata["superseded_directory_deadline"] = {
-                    "date": "2027-03-15", "anticipated": True, "source_url": window.url,
-            if record.get("id") in {"sro-595e912d", "sro-3c378261"}:
-                metadata["superseded_directory_deadline"] = {
-                    "date": "2027-02-15", "anticipated": True, "source_url": window.url,
+                    "date": original_estimate, "anticipated": True, "source_url": window.url,
                 }
             metadata.pop("deadline_note", None)
             stamps = metadata.get("inferred_fields")
