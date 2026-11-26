@@ -1495,8 +1495,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # A regex bounds just the research line; _clean_keywords splits it.
             m = re.search(sel["research_re"], str(card), re.I | re.S)
             if m:
-                seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
-                research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip()
+                research = _research_html_text(m.group(1))
         if not research and not keywords and sel.get("research_re_text"):
             # Same idea but over the card's rendered TEXT — for patterns whose
             # character classes ([^.]) would trip on dots inside tag attributes
@@ -2323,6 +2322,13 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
     return ([], "")
 
 
+def _research_html_text(fragment: str) -> str:
+    # The regex captured serialized markup. Keep line-break delimiters and
+    # decode once after stripping tags, just as readers see the text.
+    separated = _BR_RE.sub("; ", fragment)
+    return " ".join(html.unescape(_HTML_TAG_RE.sub(" ", separated)).split())
+
+
 def _wp_text(raw: str) -> str:
     """Strip tags, decode HTML entities (WP returns "Theory &amp; Computation"),
     and collapse whitespace — so names/keywords clear the DQ junk filter."""
@@ -2775,8 +2781,7 @@ def _enrich_profile(
         # derived-keyword path cleans + splits it through the same DQ gate).
         m = re.search(enrich["research_html_re"], str(soup), re.I | re.S)
         if m:
-            seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
-            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip().rstrip(".").strip()
+            kw = _research_html_text(m.group(1)).rstrip(".").strip()
     if not kw and enrich.get("research_re"):
         m = re.search(enrich["research_re"], body, re.I)
         if m:
