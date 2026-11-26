@@ -58,7 +58,7 @@ def main():
     assert run["event"] == "schedule" and run["path"] == ".github/workflows/refresh-data.yml"
     assert pr["head"]["ref"] == f"auto/refresh-data-{args.run}" and pr["base"]["ref"] == "main"
     # Track the collection change itself. Later tests and static-count commits do not change its behavior.
-    expected = "00d11a8f00b25f0bb4b98b966f963f46f1e240f6" if args.jahed else "13061d423178121463c101fd891e40b34d13ae77"
+    expected = "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c" if args.jahed else "13061d423178121463c101fd891e40b34d13ae77"
     compare = gh("api", f"repos/{REPO}/compare/{expected}...{run['head_sha']}?per_page=1")
     contains = compare["status"] in {"ahead", "identical"}
     report = {"run": run["html_url"], "event": run["event"], "run_started_at": run["run_started_at"],
@@ -91,6 +91,16 @@ def main():
                 row.get("pi_name") == name and identities[oid]["stored_active"] is expected_active
                 and ids.count(oid) == int(expected_active)
             )
+            if oid == JAHED:
+                receipt = row.get("metadata", {}).get("faculty_title_observation", {})
+                biography = "https://jacobsschool.ucsd.edu/faculty/profile?id=527"
+                roster = "https://www.nanoengineering.ucsd.edu/index.php/fac"
+                identities[oid]["recorded_rank_observation"] = receipt
+                identities[oid]["satisfies_identity_checks"] &= (
+                    row.get("url") == row.get("source_url") == biography
+                    and receipt.get("name") == name and receipt.get("source") == receipt.get("profile") == biography
+                    and receipt.get("roster_url") == roster and bool(receipt.get("title"))
+                )
         prior = json.loads(Path(__file__).with_name("ucsd-jahed-appointment-original-id-retry.json").read_bytes())
         expected_ids = set(prior["ordered_projected_ids"])
         if not args.jahed:

@@ -1,0 +1,73 @@
+name: Verify Jahed public faculty links in Chromium and the saved and matching cards
+on:
+  push:
+    branches: [audit/ucsd-nano-emeritus-20261126]
+    paths:
+      - '.github/workflows/verify-jahed-public-faculty-controls.yml'
+      - 'data/audits/maintenance-2026-11-26/check_jahed_public_controls.py'
+      - 'data/audits/maintenance-2026-11-26/check_jahed_cards.test.tsx'
+permissions:
+  contents: read
+jobs:
+  details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CANDIDATE: dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c
+      BACKEND_URL: http://127.0.0.1:8100
+      OFE_RELEASE_SHA: dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c
+      OFE_ENVIRONMENT: isolated-candidate
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-candidate-no-account-service
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: candidate/requirements.txt
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: candidate/frontend/package-lock.json
+      - name: Install normal runtime and Chromium
+        run: |
+          python -m pip install -q -r candidate/requirements.txt playwright==1.55.0
+          python -m playwright install --with-deps chromium >"$RUNNER_TEMP/chromium.log"
+          npm ci --prefix candidate/frontend --no-audit --no-fund
+      - name: Build the exact candidate and assemble its full corpus
+        working-directory: candidate
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          python scripts/shard_corpus.py assemble --force
+          npm --prefix frontend run build
+      - name: Read both named detail routes and feed the real matching and detail responses to their UI components
+        working-directory: candidate
+        run: |
+          python -m uvicorn backend.main:app --host 127.0.0.1 --port 8100 >"$RUNNER_TEMP/ofe-api.log" 2>&1 &
+          npm --prefix frontend run start -- --hostname 127.0.0.1 --port 3000 >"$RUNNER_TEMP/ofe-next.log" 2>&1 &
+          for attempt in $(seq 1 100); do
+            if curl --silent --fail http://127.0.0.1:3000/api/health >"$RUNNER_TEMP/ofe-health.json"; then break; fi
+            sleep 2
+          done
+          SCOPE="$(python -c 'from backend.routes.opportunities import CURRENT_TRUTH_AWARE_SCOPE; print(CURRENT_TRUTH_AWARE_SCOPE)')"
+          python ../audit/data/audits/maintenance-2026-11-26/check_jahed_public_controls.py --site http://127.0.0.1:3000 --sha "$CANDIDATE" --scope "$SCOPE" --out "$GITHUB_WORKSPACE/jahed-public-controls.json" --inputs "$RUNNER_TEMP/jahed-actual"
+          cp ../audit/data/audits/maintenance-2026-11-26/check_jahed_cards.test.tsx frontend/src/components/jahed-actual.test.tsx
+          cd frontend
+          OFE_ACTUAL_CARD_INPUTS="$RUNNER_TEMP/jahed-actual" npx --no-install vitest run src/components/jahed-actual.test.tsx --retry 0
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: jahed-candidate-faculty-controls
+          path: jahed-public-controls.json
+          if-no-files-found: warn

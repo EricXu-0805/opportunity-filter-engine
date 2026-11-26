@@ -1,0 +1,184 @@
+{
+  "as_of_utc": "2026-11-26T19:38:26+00:00",
+  "base": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "earlier_source_head": "928cd7bd270ad708506ce2e794f0f84cf5f26193",
+  "original_campus_rows_unchanged": 1508,
+  "first_seen_preserved": true,
+  "identity": "faculty-ucsd-nano-8a42e65d",
+  "canonical_profile": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+  "combined_roster": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+  "source_rank_observation": {
+    "name": "Zeinab Jahed",
+    "title": "Associate Professor",
+    "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+    "profile": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+    "roster_url": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+    "checked_on": "2026-11-26"
+  },
+  "existing_campus_ids_sha256": "bb2fa84facb435b7db36e594fc25a34fb328b0070aee10b654be46b720b084a6",
+  "official_pages": {
+    "named_current_roster": {
+      "url": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+      "status": 200,
+      "name": "Zeinab Jahed",
+      "rank": "Associate Professor",
+      "profile_href": "https://jacobsschool.ucsd.edu/faculty/profile?id=527"
+    },
+    "faculty-ucsd-nano-8a42e65d": {
+      "resolved_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "status": 200,
+      "official_heading": "Zeinab Jahed",
+      "official_role": "Associate Professor, NENG"
+    },
+    "faculty-ucsd-nano-467aa36b": {
+      "resolved_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=156",
+      "status": 200,
+      "official_heading": "Kenneth Vecchio"
+    }
+  },
+  "originals_missing": [],
+  "ordered_nano_ids": [
+    "faculty-ucsd-nano-d24bdcfa",
+    "faculty-ucsd-nano-28e08ebd",
+    "faculty-ucsd-nano-79dd203c",
+    "faculty-ucsd-nano-c8fc10d0",
+    "faculty-ucsd-nano-812f8dc1",
+    "faculty-ucsd-nano-2097ee48",
+    "faculty-ucsd-nano-0f313dcf",
+    "faculty-ucsd-nano-ef30f6e2",
+    "faculty-ucsd-nano-65b8b318",
+    "faculty-ucsd-nano-e94320ae",
+    "faculty-ucsd-nano-6e6b276c",
+    "faculty-ucsd-nano-4c95244a",
+    "faculty-ucsd-nano-ecc31f16",
+    "faculty-ucsd-nano-467aa36b",
+    "faculty-ucsd-nano-58f109dc",
+    "faculty-ucsd-nano-5443ea03",
+    "faculty-ucsd-nano-f22f5fe7",
+    "faculty-ucsd-nano-4296d17b",
+    "faculty-ucsd-nano-3b436240",
+    "faculty-ucsd-nano-fd63f909",
+    "faculty-ucsd-nano-52bb1d25",
+    "faculty-ucsd-nano-571a39eb",
+    "faculty-ucsd-nano-4bcf3471",
+    "faculty-ucsd-nano-3be64dab",
+    "faculty-ucsd-nano-6efedc5d",
+    "faculty-ucsd-nano-74646bb6",
+    "faculty-ucsd-nano-5e6a268c",
+    "faculty-ucsd-nano-6f1ca843",
+    "faculty-ucsd-nano-d181f3a2",
+    "faculty-ucsd-nano-92aa2cb4",
+    "faculty-ucsd-nano-a213f336",
+    "faculty-ucsd-nano-0b8a48ba",
+    "faculty-ucsd-nano-1d03d169",
+    "faculty-ucsd-nano-a37aa155",
+    "faculty-ucsd-nano-03f450ce",
+    "faculty-ucsd-nano-7c7f22ea",
+    "faculty-ucsd-nano-8a42e65d"
+  ],
+  "runs": [
+    {
+      "unique": 37,
+      "originals_present": 27,
+      "unit": {
+        "unit_name": "Department of NanoEngineering",
+        "observed_count": 37,
+        "fetch_status": "ok",
+        "parse_status": "ok",
+        "completeness_status": "unknown",
+        "coverage": {
+          "raw_roster_rows": 53,
+          "parsed_faculty_rows": 38,
+          "classified_nonfaculty_rows": 3,
+          "unparsed_rows": 12,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 5,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      }
+    },
+    {
+      "unique": 37,
+      "originals_present": 27,
+      "unit": {
+        "unit_name": "Department of NanoEngineering",
+        "observed_count": 37,
+        "fetch_status": "ok",
+        "parse_status": "ok",
+        "completeness_status": "unknown",
+        "coverage": {
+          "raw_roster_rows": 53,
+          "parsed_faculty_rows": 38,
+          "classified_nonfaculty_rows": 3,
+          "unparsed_rows": 12,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 5,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      }
+    }
+  ],
+  "source_head": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c",
+  "public_read_routes": {
+    "as_of_utc": "2026-11-26T19:38:25.237119+00:00",
+    "same_origin_public_read_status": {
+      "faculty-ucsd-nano-8a42e65d": 200,
+      "faculty-ucsd-nano-467aa36b": 200
+    },
+    "candidate_canonical_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+    "public_named_rank_quote": {
+      "text": "Associate Professor",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "observed_at": "2026-11-26"
+    },
+    "supplemental_campus_evidence": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+    "control": {
+      "id": "faculty-ucsd-nano-467aa36b",
+      "pi_name": "Ken Vecchio",
+      "url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+      "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156"
+    }
+  },
+  "interrupted_then_recovered": {
+    "named_biography_unavailable": {
+      "actual_current_roster_count": 36,
+      "named_profile_available": false,
+      "partial_render_rows": 1,
+      "added": 0,
+      "updated": 0,
+      "disk_row_count": 1,
+      "original_id": "faculty-ucsd-nano-8a42e65d",
+      "first_seen_unchanged": true,
+      "stored_active": true,
+      "scope": "Only the named profile request was set unavailable in the failure case. The other collection inputs and the entire retry were fetched from actual university routes."
+    },
+    "normal_retry": {
+      "actual_current_roster_count": 37,
+      "named_profile_available": true,
+      "partial_render_rows": 0,
+      "added": 0,
+      "updated": 1,
+      "disk_row_count": 1,
+      "original_id": "faculty-ucsd-nano-8a42e65d",
+      "first_seen_unchanged": true,
+      "stored_active": true,
+      "scope": "Only the named profile request was set unavailable in the failure case. The other collection inputs and the entire retry were fetched from actual university routes."
+    }
+  },
+  "local_component_results": {
+    "matching_view_returned_exact_original": true,
+    "matching_view_filtered_total": 1,
+    "matching_card_compact_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+    "matching_card_compact_source_url": null,
+    "matching_and_favorites_link_label": "Faculty page",
+    "matching_and_favorites_both_have_named_href": true,
+    "check_type": "Rendered normal components with actual full-corpus matching and public-detail results in jsdom. No saved account state modified.",
+    "matching_and_favorites_tests": 2,
+    "backend_tests": 805,
+    "all_school_counts_match": 115
+  }
+}
