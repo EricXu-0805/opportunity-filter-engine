@@ -93,10 +93,23 @@ SCHOOL: dict = {
             "short": "MATH",
             "name": "School of Mathematics",
             "majors": ["Mathematics", "Applied Mathematics"],
+            # The original ID used the two spaces still printed by the school.
+            # The shared card reader normalizes that whitespace for display.
+            "profile_id_names": {
+                "math.gatech.edu/people/dmitrii-ostrovskii": ("Dmitrii Ostrovskii", "Dmitrii  Ostrovskii"),
+            },
             "directory_url": "https://math.gatech.edu/people?field_job_type_tid=11",
             "scrape": {
                 "url": "https://math.gatech.edu/people?field_job_type_tid=11",
-                "selectors": {"card": "tr", "name": "td a", "link": "td a"},
+                # The faculty filter now returns individual cards. Older copies
+                # used a table with a linked name in the first cell.
+                "selectors": {
+                    "card": ".profile-card, tr:has(a:is(td a[href*='/people/']))",
+                    "name": ".profile-name a, td a[href*='/people/']",
+                    "link": ".profile-name a, td a[href*='/people/']",
+                    "title": ".profile-title",
+                    "bound_contact": {"allowed_email_domains": ["gatech.edu"]},
+                },
             },
             # The per-profile pages carry no research field, but a dedicated
             # aggregator page lists each professor's areas keyed by /people/<slug>.
