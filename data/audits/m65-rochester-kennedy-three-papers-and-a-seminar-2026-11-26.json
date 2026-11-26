@@ -1,0 +1,67 @@
+{
+  "at": "2026-11-26T13:36:33.071791+00:00",
+  "sample": "publication-003",
+  "original_id": "faculty-rochester-chm-56814c11",
+  "pi": "C. Rose Kennedy",
+  "campus_profile": "https://www.sas.rochester.edu/chm/people/faculty/kennedy-c.rose/index.html",
+  "school_publication_list": "https://sites.rochester.edu/kennedy/publications/",
+  "prior_public_api": "https://joinalab.com/api/opportunities/faculty-rochester-chm-56814c11",
+  "prior_public_title_count": 0,
+  "confirmed_author_id": "https://openalex.org/A5000903916",
+  "school_published_orcid": "https://orcid.org/0000-0003-3681-819X",
+  "previous_normal_collector": [
+    {
+      "title": "Decarbonylation Enables Chemodivergent Access to Guaiazulene-3-Oxalic and -Carboxylic Acid Derivatives",
+      "year": 2026
+    },
+    {
+      "title": "N-Arylation by Nickel-Mediated Carbonyl Deletion from Carbox-amides Enabled by Visible Light",
+      "year": 2025
+    },
+    {
+      "title": "Mechanistic insights on C(acyl)–N functionalisation mediated by late transition metals",
+      "year": 2024
+    }
+  ],
+  "current_normal_collector": [
+    {
+      "title": "Decarbonylation Enables Chemodivergent Access to Guaiazulene-3-Oxalic and -Carboxylic Acid Derivatives",
+      "year": 2026,
+      "doi": "https://doi.org/10.1021/acs.joc.6c00848",
+      "type": "article",
+      "author_work": "https://openalex.org/W7165523429",
+      "primary_name_and_identity": "https://pubmed.ncbi.nlm.nih.gov/42329052/"
+    },
+    {
+      "title": "Mechanistic insights on C(acyl)–N functionalisation mediated by late transition metals",
+      "year": 2024,
+      "doi": "https://doi.org/10.1039/d4dt01829j",
+      "type": "review",
+      "author_work": "https://openalex.org/W4401330214",
+      "primary_name_and_identity": "https://sites.rochester.edu/kennedy/publications/"
+    },
+    {
+      "title": "Deactivation Modes in Nickel-Mediated Suzuki–Miyaura Cross-Coupling Reactions Using an NHC-Pyridonate Ligand",
+      "year": 2024,
+      "doi": "https://doi.org/10.1021/acs.organomet.4c00235",
+      "type": "article",
+      "author_work": "https://openalex.org/W4401481439",
+      "primary_name_and_identity": "https://sites.rochester.edu/kennedy/publications/"
+    }
+  ],
+  "rejected_seminar": {
+    "doi": "10.52843/cassyni.fvcg0s.5",
+    "publisher": "Cassyni",
+    "crossref_talk": "https://cassyni.com/talks/Wxi8XGptYKxmogYdeu2Bm7",
+    "series": "Thieme Cheminars",
+    "underlying_preprint": "10.26434/chemrxiv-2025-kj1m5",
+    "work_metadata": "https://api.crossref.org/works/10.52843/cassyni.fvcg0s.5",
+    "why": "Crossref and Cassyni identify this as the separate presentation of a ChemRxiv paper. The paper has a distinct DOI. The presentation and the underlying paper supply independent evidence.",
+    "publisher_partnership_format_documentation": "https://help.altmetric.com/en/articles/13970433"
+  },
+  "local_normal_detail_status": 200,
+  "local_normal_detail_titles": 3,
+  "only_record_changed": "faculty-rochester-chm-56814c11",
+  "school_records_in_original_order": 869,
+  "natural_refresh_and_deployment": "Follow the original public detail after rollout, and observe the subsequent independent publication refresh."
+}
