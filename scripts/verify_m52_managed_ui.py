@@ -65,7 +65,8 @@ async def main():
             if row(author)['profile_data']['research_interests']=='Revised fields QA':break
             await asyncio.sleep(.2)
         assert row(author)['profile_data']['research_interests']=='Revised fields QA'
-        await send.get_by_role('button',name='Replace version').click()
+        issued=send.get_by_text('Research interests · Skill names and levels',exact=False).locator('..')
+        await issued.get_by_role('button',name='Replace version').click()
         await send.get_by_role('button',name='Preview selected fields').click()
         await expect(send.get_by_text('Revised fields QA',exact=True)).to_be_visible()
         await send.get_by_role('button',name='Replace at the same link').click()
@@ -91,7 +92,7 @@ async def main():
             assert final['profile_data'][field]==before['profile_data'][field]
         await recv.goto(url,wait_until='domcontentloaded')
         await expect(recv.get_by_text('Revised fields QA',exact=True)).to_be_visible()
-        await send.get_by_role('button',name='Revoke link').click()
+        await issued.get_by_role('button',name='Revoke link').click()
         await expect(send.get_by_text('Link revoked.',exact=True)).to_be_visible()
         await recv.get_by_role('button',name='Accept selected fields').click()
         await expect(recv.get_by_text('This link is unavailable or has expired.',exact=True)).to_be_visible()
