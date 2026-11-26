@@ -1,0 +1,3897 @@
+{
+  "source_pr": 1468,
+  "stage": "before",
+  "both_versions_before": {
+    "frontend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "backend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "at": "2026-11-26T20:52:24.123873+00:00"
+  },
+  "scope": "536 individually verified URLs from six schools; seven original public reproductions include the separate Florida case. School appointment, role and natural refresh remain independent.",
+  "batches": [
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:24.330668+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:26.591138+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:28.868819+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:31.188479+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:33.451437+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:35.635342+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:37.775175+00:00"
+    },
+    {
+      "status": 200,
+      "size": 60,
+      "at": "2026-11-26T20:52:40.060578+00:00"
+    },
+    {
+      "status": 200,
+      "size": 58,
+      "at": "2026-11-26T20:52:42.294797+00:00"
+    }
+  ],
+  "rows": {
+    "faculty-duke-nurs-018e4810": {
+      "id": "faculty-duke-nurs-018e4810",
+      "name": "Sophia K. Smith",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-037b5497": {
+      "id": "faculty-duke-nurs-037b5497",
+      "name": "Ragan Johnson",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-048f7e45": {
+      "id": "faculty-duke-nurs-048f7e45",
+      "name": "Schenita D. Randolph",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-08650bf9": {
+      "id": "faculty-duke-nurs-08650bf9",
+      "name": "Amie Koch",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-0f6f969e": {
+      "id": "faculty-duke-nurs-0f6f969e",
+      "name": "Kais Gadhoumi",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-19069c15": {
+      "id": "faculty-duke-nurs-19069c15",
+      "name": "Anne L. Derouin",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-1924b39e": {
+      "id": "faculty-duke-nurs-1924b39e",
+      "name": "Jessica Szydlowski",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-1f4942bc": {
+      "id": "faculty-duke-nurs-1f4942bc",
+      "name": "Elaine D. Kauschinger",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-2167f985": {
+      "id": "faculty-duke-nurs-2167f985",
+      "name": "Mary Lou Affronti",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-25bec2d3": {
+      "id": "faculty-duke-nurs-25bec2d3",
+      "name": "Darina V. Petrovsky",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-28024f3c": {
+      "id": "faculty-duke-nurs-28024f3c",
+      "name": "Devon Noonan",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-2e458971": {
+      "id": "faculty-duke-nurs-2e458971",
+      "name": "Eleanor S. McConnell",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-2e5a8ed4": {
+      "id": "faculty-duke-nurs-2e5a8ed4",
+      "name": "Ernest Grant",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-329f95d5": {
+      "id": "faculty-duke-nurs-329f95d5",
+      "name": "Mitchell T. Heflin",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-336ab4fc": {
+      "id": "faculty-duke-nurs-336ab4fc",
+      "name": "Hanzhang Xu",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-339e5ab5": {
+      "id": "faculty-duke-nurs-339e5ab5",
+      "name": "Isaac M. Lipkus",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-35b40da1": {
+      "id": "faculty-duke-nurs-35b40da1",
+      "name": "Mitchell R Knisely PhD",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-36346099": {
+      "id": "faculty-duke-nurs-36346099",
+      "name": "Maryellen Kelly",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-3757813d": {
+      "id": "faculty-duke-nurs-3757813d",
+      "name": "Derrick Glymph, PhD, DNAP, CRNA, CHSE, CNE, COL (RET)",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-38528aaf": {
+      "id": "faculty-duke-nurs-38528aaf",
+      "name": "Allen Cadavero",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-39b7d049": {
+      "id": "faculty-duke-nurs-39b7d049",
+      "name": "Donna Biederman",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-3a8fa3f1": {
+      "id": "faculty-duke-nurs-3a8fa3f1",
+      "name": "Bradi B. Granger",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-3d63fed7": {
+      "id": "faculty-duke-nurs-3d63fed7",
+      "name": "Karin Reuter-Rice",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-3e22e25c": {
+      "id": "faculty-duke-nurs-3e22e25c",
+      "name": "Michael V. Relf",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-3fea6ca7": {
+      "id": "faculty-duke-nurs-3fea6ca7",
+      "name": "Rémi M. Hueckel",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-41d37401": {
+      "id": "faculty-duke-nurs-41d37401",
+      "name": "Jacquelyn M McMillian-Bohler",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-41fdc6bf": {
+      "id": "faculty-duke-nurs-41fdc6bf",
+      "name": "Kathryn E. Kreider",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-42609b5d": {
+      "id": "faculty-duke-nurs-42609b5d",
+      "name": "Kathleen M. Turner",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-42cb7c55": {
+      "id": "faculty-duke-nurs-42cb7c55",
+      "name": "Jamison Lord",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-4595e348": {
+      "id": "faculty-duke-nurs-4595e348",
+      "name": "Allison Stafford",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-49816f98": {
+      "id": "faculty-duke-nurs-49816f98",
+      "name": "Kara McGee",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-4e6f64e1": {
+      "id": "faculty-duke-nurs-4e6f64e1",
+      "name": "Stephanie Gedzyk-Nieman",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-4fc55f79": {
+      "id": "faculty-duke-nurs-4fc55f79",
+      "name": "Nancy Crego",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-575f94e8": {
+      "id": "faculty-duke-nurs-575f94e8",
+      "name": "Christina Leonard",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-5b6c36b2": {
+      "id": "faculty-duke-nurs-5b6c36b2",
+      "name": "Khaled Bader",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-5ffc3d95": {
+      "id": "faculty-duke-nurs-5ffc3d95",
+      "name": "Marta Mulawa",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-61579858": {
+      "id": "faculty-duke-nurs-61579858",
+      "name": "Lawrence Yang",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-66505474": {
+      "id": "faculty-duke-nurs-66505474",
+      "name": "Barbara S. Turner",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-68be3d73": {
+      "id": "faculty-duke-nurs-68be3d73",
+      "name": "Sharron L. Docherty",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-6aa9fae2": {
+      "id": "faculty-duke-nurs-6aa9fae2",
+      "name": "Malinda Teague, DNP, APRN, CPNP-AC/PC",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-70254f17": {
+      "id": "faculty-duke-nurs-70254f17",
+      "name": "Mariam Kayle",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-7b0c85ee": {
+      "id": "faculty-duke-nurs-7b0c85ee",
+      "name": "Margaret (Peggy) Bush",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-7c0228c5": {
+      "id": "faculty-duke-nurs-7c0228c5",
+      "name": "Donald (Chip) E. Bailey Jr.",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-8462877f": {
+      "id": "faculty-duke-nurs-8462877f",
+      "name": "Michael E. Zychowicz",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-85d4935f": {
+      "id": "faculty-duke-nurs-85d4935f",
+      "name": "Eleanor L. Stevenson",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-873104fc": {
+      "id": "faculty-duke-nurs-873104fc",
+      "name": "Carolina (Callie) Dimsdale",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-8754b67c": {
+      "id": "faculty-duke-nurs-8754b67c",
+      "name": "Tonia Poteat",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-87accf3f": {
+      "id": "faculty-duke-nurs-87accf3f",
+      "name": "Ryan J. Shaw",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-89608924": {
+      "id": "faculty-duke-nurs-89608924",
+      "name": "Benjamin Smallheer",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-90083b5f": {
+      "id": "faculty-duke-nurs-90083b5f",
+      "name": "Wei Pan",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-937888d0": {
+      "id": "faculty-duke-nurs-937888d0",
+      "name": "Virginia (Chris) Simmons",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-93fd58d0": {
+      "id": "faculty-duke-nurs-93fd58d0",
+      "name": "Rosa Gonzalez-Guarda",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-94cae60b": {
+      "id": "faculty-duke-nurs-94cae60b",
+      "name": "Debra H. Brandon",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-9a267b8d": {
+      "id": "faculty-duke-nurs-9a267b8d",
+      "name": "Stephanie Ibemere",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-9be2dafd": {
+      "id": "faculty-duke-nurs-9be2dafd",
+      "name": "Jennie De Gagne",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-9c257d2b": {
+      "id": "faculty-duke-nurs-9c257d2b",
+      "name": "Nicole (Nikki) Petsas Blodgett",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-9c4dcc19": {
+      "id": "faculty-duke-nurs-9c4dcc19",
+      "name": "Jill Brennan-Cook",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-9c95f492": {
+      "id": "faculty-duke-nurs-9c95f492",
+      "name": "Marissa Abram",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-a10c70a1": {
+      "id": "faculty-duke-nurs-a10c70a1",
+      "name": "Terry McDonnell",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-a1941007": {
+      "id": "faculty-duke-nurs-a1941007",
+      "name": "Blanca Iris Padilla",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-a22f8178": {
+      "id": "faculty-duke-nurs-a22f8178",
+      "name": "Paula Tanabe",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-a24cfd4e": {
+      "id": "faculty-duke-nurs-a24cfd4e",
+      "name": "Julia K. Walker",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-a562cb88": {
+      "id": "faculty-duke-nurs-a562cb88",
+      "name": "Hideyo Tsumura",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-b45282c2": {
+      "id": "faculty-duke-nurs-b45282c2",
+      "name": "Cristina C. Hendrix",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-b6addf78": {
+      "id": "faculty-duke-nurs-b6addf78",
+      "name": "Michelle Webb",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-bd680ad3": {
+      "id": "faculty-duke-nurs-bd680ad3",
+      "name": "Alison H. Edie",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-c02a9832": {
+      "id": "faculty-duke-nurs-c02a9832",
+      "name": "Emily Funk",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-c14d7084": {
+      "id": "faculty-duke-nurs-c14d7084",
+      "name": "Irene Felsman, DNP, MPH, RN, C-GH",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-c28baa30": {
+      "id": "faculty-duke-nurs-c28baa30",
+      "name": "Staci Reynolds",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-c3e637e4": {
+      "id": "faculty-duke-nurs-c3e637e4",
+      "name": "Casey Brown",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-c4aeddc9": {
+      "id": "faculty-duke-nurs-c4aeddc9",
+      "name": "Ayomide Bankole",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-c937ddd5": {
+      "id": "faculty-duke-nurs-c937ddd5",
+      "name": "Marilyn H. Oermann",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-ca888c2b": {
+      "id": "faculty-duke-nurs-ca888c2b",
+      "name": "Kathryn J. Trotter",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-cd900862": {
+      "id": "faculty-duke-nurs-cd900862",
+      "name": "Sharron (Shari) Rushton",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-ce05d49b": {
+      "id": "faculty-duke-nurs-ce05d49b",
+      "name": "Valerie K. Sabol",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-d444f22b": {
+      "id": "faculty-duke-nurs-d444f22b",
+      "name": "Tracey L. Yap",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-d6c44c98": {
+      "id": "faculty-duke-nurs-d6c44c98",
+      "name": "Qing Yang",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-d84cd467": {
+      "id": "faculty-duke-nurs-d84cd467",
+      "name": "Sean P Convoy",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-e0155efb": {
+      "id": "faculty-duke-nurs-e0155efb",
+      "name": "Thomas Blodgett",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-e6bfdef9": {
+      "id": "faculty-duke-nurs-e6bfdef9",
+      "name": "Bonnie Hepler",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-e6f4afd2": {
+      "id": "faculty-duke-nurs-e6f4afd2",
+      "name": "Lemuel Scott",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-ebda4791": {
+      "id": "faculty-duke-nurs-ebda4791",
+      "name": "Allison Lewinski",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-f117d3c1": {
+      "id": "faculty-duke-nurs-f117d3c1",
+      "name": "Desi Newberry",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-f12e8f4a": {
+      "id": "faculty-duke-nurs-f12e8f4a",
+      "name": "Tolu O. Oyesanya",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-f18d02af": {
+      "id": "faculty-duke-nurs-f18d02af",
+      "name": "Deirdre K. Thornlow",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-f1c0bb2e": {
+      "id": "faculty-duke-nurs-f1c0bb2e",
+      "name": "Margaret (Midge) T. Bowers",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-f2b34b36": {
+      "id": "faculty-duke-nurs-f2b34b36",
+      "name": "Evan Eschliman",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-f3289db1": {
+      "id": "faculty-duke-nurs-f3289db1",
+      "name": "Brandon Knettel",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-duke-nurs-fd61095d": {
+      "id": "faculty-duke-nurs-fd61095d",
+      "name": "Becky Carson, DNP, APRN, CPNP-PC/AC",
+      "school": "duke",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-fsu-comm-4ebdf384": {
+      "id": "faculty-fsu-comm-4ebdf384",
+      "name": "Elizabeth Ray",
+      "school": "fsu",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-0447a22f": {
+      "id": "faculty-miami-anth-0447a22f",
+      "name": "David W. Forrest",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-612c41c8": {
+      "id": "faculty-miami-anth-612c41c8",
+      "name": "Toni Cela",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-695d2c65": {
+      "id": "faculty-miami-anth-695d2c65",
+      "name": "Ariana Hernandez-Reguant",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-b6264dc0": {
+      "id": "faculty-miami-anth-b6264dc0",
+      "name": "Lydia Light",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-be77ade1": {
+      "id": "faculty-miami-anth-be77ade1",
+      "name": "Colleen Alena O'Brien",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-c5f358db": {
+      "id": "faculty-miami-anth-c5f358db",
+      "name": "Traci A Ardren",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-ca0db2bb": {
+      "id": "faculty-miami-anth-ca0db2bb",
+      "name": "Pamela L. Geller",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-d4347d7a": {
+      "id": "faculty-miami-anth-d4347d7a",
+      "name": "Louis Herns Marcelin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-dbea121a": {
+      "id": "faculty-miami-anth-dbea121a",
+      "name": "Claire Oueslati-Porter",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-anth-edf8f8e7": {
+      "id": "faculty-miami-anth-edf8f8e7",
+      "name": "Jorge Ulloa Hung",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-04251504": {
+      "id": "faculty-miami-art-04251504",
+      "name": "Jeannette Stargala",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-093d6455": {
+      "id": "faculty-miami-art-093d6455",
+      "name": "Kyle H Trowbridge",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-09aad8f3": {
+      "id": "faculty-miami-art-09aad8f3",
+      "name": "Yuxiang Dong",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-12f17cbe": {
+      "id": "faculty-miami-art-12f17cbe",
+      "name": "Erica Moiah James",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-15889011": {
+      "id": "faculty-miami-art-15889011",
+      "name": "Gerardo Olhovich",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-1a94bfb9": {
+      "id": "faculty-miami-art-1a94bfb9",
+      "name": "Ivan Albreht",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-20229f20": {
+      "id": "faculty-miami-art-20229f20",
+      "name": "Carlos Llerena Aguirre",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-2e7b9352": {
+      "id": "faculty-miami-art-2e7b9352",
+      "name": "Billie G Lynn",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-3b8b0711": {
+      "id": "faculty-miami-art-3b8b0711",
+      "name": "Barbara G. Scheer",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-45fac4a8": {
+      "id": "faculty-miami-art-45fac4a8",
+      "name": "Patricia Lorraine Cooke",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-4e6a0ef9": {
+      "id": "faculty-miami-art-4e6a0ef9",
+      "name": "Brian Curtis",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-632bac26": {
+      "id": "faculty-miami-art-632bac26",
+      "name": "Joel A. Hollander",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-6471642e": {
+      "id": "faculty-miami-art-6471642e",
+      "name": "Lidija Slavkovic",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-675c83a4": {
+      "id": "faculty-miami-art-675c83a4",
+      "name": "David James Marsh",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-6d23276d": {
+      "id": "faculty-miami-art-6d23276d",
+      "name": "Sanaz Haghani Nouri",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-8b42136d": {
+      "id": "faculty-miami-art-8b42136d",
+      "name": "Sofia Valiente Noailles",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-98d1bb95": {
+      "id": "faculty-miami-art-98d1bb95",
+      "name": "Karen R Mathews",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-9d042539": {
+      "id": "faculty-miami-art-9d042539",
+      "name": "Jenna Efrein",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-a1e60a67": {
+      "id": "faculty-miami-art-a1e60a67",
+      "name": "Lenny Salas Moreno",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-aff774fb": {
+      "id": "faculty-miami-art-aff774fb",
+      "name": "Amy Schissel",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-b18b2e77": {
+      "id": "faculty-miami-art-b18b2e77",
+      "name": "Carlos Enrique Prado",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-b68a40fe": {
+      "id": "faculty-miami-art-b68a40fe",
+      "name": "Claudio Nolasco",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-b68eee21": {
+      "id": "faculty-miami-art-b68eee21",
+      "name": "Lani Marie Shapton",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-d9390eea": {
+      "id": "faculty-miami-art-d9390eea",
+      "name": "Victoria Ravelo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-da7b6697": {
+      "id": "faculty-miami-art-da7b6697",
+      "name": "Abigail Esther Lapin Dardashti",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-art-e23a0490": {
+      "id": "faculty-miami-art-e23a0490",
+      "name": "Christina Larson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-024b2688": {
+      "id": "faculty-miami-bio-024b2688",
+      "name": "Neil Rosser",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-096cf0d5": {
+      "id": "faculty-miami-bio-096cf0d5",
+      "name": "Juan Pablo Quimbayo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-202d1bad": {
+      "id": "faculty-miami-bio-202d1bad",
+      "name": "Cynthia Silveira",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-24adf167": {
+      "id": "faculty-miami-bio-24adf167",
+      "name": "James D Baker",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-2f11f0af": {
+      "id": "faculty-miami-bio-2f11f0af",
+      "name": "Alyssa Joy Laffitte-Peslak",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-371b09af": {
+      "id": "faculty-miami-bio-371b09af",
+      "name": "J. David Van Dyken",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-3b83c30b": {
+      "id": "faculty-miami-bio-3b83c30b",
+      "name": "Athula H Wikramanayake",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-3dd512fa": {
+      "id": "faculty-miami-bio-3dd512fa",
+      "name": "Kevin McCracken",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-3e2ca68c": {
+      "id": "faculty-miami-bio-3e2ca68c",
+      "name": "Alexandra C C Wilson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-4ad7ffb0": {
+      "id": "faculty-miami-bio-4ad7ffb0",
+      "name": "Julia Dallman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-4fbd01f1": {
+      "id": "faculty-miami-bio-4fbd01f1",
+      "name": "Giovanni Hanna",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-618a1f7f": {
+      "id": "faculty-miami-bio-618a1f7f",
+      "name": "Delia S Shelton",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-656bff56": {
+      "id": "faculty-miami-bio-656bff56",
+      "name": "Barbara Whitlock",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-6732cce6": {
+      "id": "faculty-miami-bio-6732cce6",
+      "name": "Winter A. Beckles",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-700a79d8": {
+      "id": "faculty-miami-bio-700a79d8",
+      "name": "Patrick James Lariviere",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-87a79501": {
+      "id": "faculty-miami-bio-87a79501",
+      "name": "Zhongmin Lu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-943c1222": {
+      "id": "faculty-miami-bio-943c1222",
+      "name": "Kenneth Feeley",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-9ae87eeb": {
+      "id": "faculty-miami-bio-9ae87eeb",
+      "name": "Sandra Rieger",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-ac86447b": {
+      "id": "faculty-miami-bio-ac86447b",
+      "name": "Christopher A Searcy",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-b4ec7f67": {
+      "id": "faculty-miami-bio-b4ec7f67",
+      "name": "Michael Stephen Gaines",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-bccf1363": {
+      "id": "faculty-miami-bio-bccf1363",
+      "name": "Michelle E. Afkhami",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-c061b1f4": {
+      "id": "faculty-miami-bio-c061b1f4",
+      "name": "Catherine Macdonald",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-c9a1b0a2": {
+      "id": "faculty-miami-bio-c9a1b0a2",
+      "name": "Nat Clarke",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-cb8f5341": {
+      "id": "faculty-miami-bio-cb8f5341",
+      "name": "Charles H. Mallery",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-d53b2977": {
+      "id": "faculty-miami-bio-d53b2977",
+      "name": "Yunqiu Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-df740ea9": {
+      "id": "faculty-miami-bio-df740ea9",
+      "name": "Kevin M Collins",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-df84f94a": {
+      "id": "faculty-miami-bio-df84f94a",
+      "name": "Nikki Traylor-Knowles",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-e1d85e9a": {
+      "id": "faculty-miami-bio-e1d85e9a",
+      "name": "Jose Maria Cardoso da Silva",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bio-efc99d65": {
+      "id": "faculty-miami-bio-efc99d65",
+      "name": "William E Browne",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-00e9c037": {
+      "id": "faculty-miami-bme-00e9c037",
+      "name": "Jeffrey Duerk",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-01eef71f": {
+      "id": "faculty-miami-bme-01eef71f",
+      "name": "Julian Lippmann",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-0ac183b9": {
+      "id": "faculty-miami-bme-0ac183b9",
+      "name": "Weizhao Zhao",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-4d0c15d4": {
+      "id": "faculty-miami-bme-4d0c15d4",
+      "name": "Fabrice Manns",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-532eeed5": {
+      "id": "faculty-miami-bme-532eeed5",
+      "name": "Gianluca D'Ippolito",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-5e15aa9a": {
+      "id": "faculty-miami-bme-5e15aa9a",
+      "name": "Patrick Ganzer",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-727328f7": {
+      "id": "faculty-miami-bme-727328f7",
+      "name": "Jorge E Bohorquez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-74485b1b": {
+      "id": "faculty-miami-bme-74485b1b",
+      "name": "Noel Marysa Ziebarth",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-843d3b45": {
+      "id": "faculty-miami-bme-843d3b45",
+      "name": "David Alfonso Castilla Casadiego",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-8466a3ca": {
+      "id": "faculty-miami-bme-8466a3ca",
+      "name": "Alicia R. Jackson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-9f90c304": {
+      "id": "faculty-miami-bme-9f90c304",
+      "name": "Abhishek Prasad",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-a5c22dee": {
+      "id": "faculty-miami-bme-a5c22dee",
+      "name": "Edward A Dauer",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-a732e529": {
+      "id": "faculty-miami-bme-a732e529",
+      "name": "Ashutosh Agarwal",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-bee6f61f": {
+      "id": "faculty-miami-bme-bee6f61f",
+      "name": "Hongxia Fu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-c133a436": {
+      "id": "faculty-miami-bme-c133a436",
+      "name": "Federica Maddalena Raciti",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-c439da9b": {
+      "id": "faculty-miami-bme-c439da9b",
+      "name": "Fotios M Andreopoulos",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-d36e4019": {
+      "id": "faculty-miami-bme-d36e4019",
+      "name": "Yingchun Zhang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-d7676f2f": {
+      "id": "faculty-miami-bme-d7676f2f",
+      "name": "Kajana Satkunendrarajah",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-e95f54e3": {
+      "id": "faculty-miami-bme-e95f54e3",
+      "name": "Alice Tomei",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-e99fa3ca": {
+      "id": "faculty-miami-bme-e99fa3ca",
+      "name": "C.-Y. Charles Huang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-bme-eb5d06d2": {
+      "id": "faculty-miami-bme-eb5d06d2",
+      "name": "Courtney M Dumont",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-17900bf1": {
+      "id": "faculty-miami-cae-17900bf1",
+      "name": "Esber Andiroglu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-184c0afb": {
+      "id": "faculty-miami-cae-184c0afb",
+      "name": "Antonio Nanni",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-19f8ca25": {
+      "id": "faculty-miami-cae-19f8ca25",
+      "name": "Gang Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-1bfcc827": {
+      "id": "faculty-miami-cae-1bfcc827",
+      "name": "Ali Ghahremaninezhad",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-2a5f5bb2": {
+      "id": "faculty-miami-cae-2a5f5bb2",
+      "name": "Jean Pierre Bardet",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-35d43737": {
+      "id": "faculty-miami-cae-35d43737",
+      "name": "Helena M Solo-Gabriele",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-4bbc0d93": {
+      "id": "faculty-miami-cae-4bbc0d93",
+      "name": "Matthew Jacob Trussoni",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-4d52707d": {
+      "id": "faculty-miami-cae-4d52707d",
+      "name": "Wimal Suaris",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-5206a67f": {
+      "id": "faculty-miami-cae-5206a67f",
+      "name": "David A. Chin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-53cd8a15": {
+      "id": "faculty-miami-cae-53cd8a15",
+      "name": "Landolf Rhode-Barbarigos",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-78d85943": {
+      "id": "faculty-miami-cae-78d85943",
+      "name": "Prannoy Suraneni",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-825e8011": {
+      "id": "faculty-miami-cae-825e8011",
+      "name": "James W Giancaspro",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-8755bf44": {
+      "id": "faculty-miami-cae-8755bf44",
+      "name": "Xianming Shi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-92643f7e": {
+      "id": "faculty-miami-cae-92643f7e",
+      "name": "Minghui Cheng",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-a71e67cb": {
+      "id": "faculty-miami-cae-a71e67cb",
+      "name": "Elizabeth Anne Greig",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-c26afd52": {
+      "id": "faculty-miami-cae-c26afd52",
+      "name": "Luis Ruiz Pestana",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-dbf2c361": {
+      "id": "faculty-miami-cae-dbf2c361",
+      "name": "Derin Ural",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cae-fc471cf1": {
+      "id": "faculty-miami-cae-fc471cf1",
+      "name": "Roni Avissar",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-06f225f7": {
+      "id": "faculty-miami-chem-06f225f7",
+      "name": "Zachary Goldsmith",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-10d3a3b3": {
+      "id": "faculty-miami-chem-10d3a3b3",
+      "name": "Katlyn Meier",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-18b212bc": {
+      "id": "faculty-miami-chem-18b212bc",
+      "name": "James N Wilson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-1b2379cc": {
+      "id": "faculty-miami-chem-1b2379cc",
+      "name": "Burjor K Captain",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-28ed64c8": {
+      "id": "faculty-miami-chem-28ed64c8",
+      "name": "Mark Yeager",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-31da7480": {
+      "id": "faculty-miami-chem-31da7480",
+      "name": "Lukun Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-3615e317": {
+      "id": "faculty-miami-chem-3615e317",
+      "name": "Orlando Acevedo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-61fdc612": {
+      "id": "faculty-miami-chem-61fdc612",
+      "name": "Diana Velluto",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-6370a899": {
+      "id": "faculty-miami-chem-6370a899",
+      "name": "Tegan Eve",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-69f525ad": {
+      "id": "faculty-miami-chem-69f525ad",
+      "name": "Jason John Calvin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-7219623e": {
+      "id": "faculty-miami-chem-7219623e",
+      "name": "Stephan Schürer",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-762859b9": {
+      "id": "faculty-miami-chem-762859b9",
+      "name": "Stephen Lee",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-7fb503d3": {
+      "id": "faculty-miami-chem-7fb503d3",
+      "name": "Jamie Walls",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-a3fb845d": {
+      "id": "faculty-miami-chem-a3fb845d",
+      "name": "Rajeev Prabhakar",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-a7d73244": {
+      "id": "faculty-miami-chem-a7d73244",
+      "name": "Shanta Dhar",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-a859ab52": {
+      "id": "faculty-miami-chem-a859ab52",
+      "name": "Cesar Gonzalez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-a8a6c550": {
+      "id": "faculty-miami-chem-a8a6c550",
+      "name": "Fuwu Zhang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-adcb6d32": {
+      "id": "faculty-miami-chem-adcb6d32",
+      "name": "Vaidhyanathan Ramamurthy",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-adec0cfe": {
+      "id": "faculty-miami-chem-adec0cfe",
+      "name": "Thomas K Harris",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-adf9d74c": {
+      "id": "faculty-miami-chem-adf9d74c",
+      "name": "Oswaldo Rafael Nunez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-b48761b2": {
+      "id": "faculty-miami-chem-b48761b2",
+      "name": "Zhipeng Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-cecc459e": {
+      "id": "faculty-miami-chem-cecc459e",
+      "name": "Edward Miller",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-cf621b42": {
+      "id": "faculty-miami-chem-cf621b42",
+      "name": "Francisco Raymo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-e7cc4232": {
+      "id": "faculty-miami-chem-e7cc4232",
+      "name": "Valentine Renique St. Hilaire",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-eb75e544": {
+      "id": "faculty-miami-chem-eb75e544",
+      "name": "Roger M. Leblanc",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-chem-f7786111": {
+      "id": "faculty-miami-chem-f7786111",
+      "name": "Carl D. Hoff",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-3ff1280f": {
+      "id": "faculty-miami-clas-3ff1280f",
+      "name": "Han Tran",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-57e9ae27": {
+      "id": "faculty-miami-clas-57e9ae27",
+      "name": "Jennifer L Ferriss-Hill",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-65ae344b": {
+      "id": "faculty-miami-clas-65ae344b",
+      "name": "John T. Kirby",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-703bd04d": {
+      "id": "faculty-miami-clas-703bd04d",
+      "name": "Allannah K. Karas",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-a938b450": {
+      "id": "faculty-miami-clas-a938b450",
+      "name": "Wilson H Shearin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-c7d9e6cb": {
+      "id": "faculty-miami-clas-c7d9e6cb",
+      "name": "Charles Frederick Bartlett",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-clas-d91d6706": {
+      "id": "faculty-miami-clas-d91d6706",
+      "name": "Brian Jorge Bigio",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-01dc0889": {
+      "id": "faculty-miami-cs-01dc0889",
+      "name": "Burton Rosenberg",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-0963dadf": {
+      "id": "faculty-miami-cs-0963dadf",
+      "name": "Geoff Sutcliffe",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-205038d7": {
+      "id": "faculty-miami-cs-205038d7",
+      "name": "Liang Liang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-2c14d515": {
+      "id": "faculty-miami-cs-2c14d515",
+      "name": "Stephen Dennis",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-340a60c8": {
+      "id": "faculty-miami-cs-340a60c8",
+      "name": "Subramanian Ramakrishnan",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-3cd4eb2a": {
+      "id": "faculty-miami-cs-3cd4eb2a",
+      "name": "Morris Alper",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-44946391": {
+      "id": "faculty-miami-cs-44946391",
+      "name": "David R Chapman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-4c807688": {
+      "id": "faculty-miami-cs-4c807688",
+      "name": "Hien Minh Nguyen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-606952d5": {
+      "id": "faculty-miami-cs-606952d5",
+      "name": "Nick Tsinoremas",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-622a65be": {
+      "id": "faculty-miami-cs-622a65be",
+      "name": "Mitsunori Ogihara",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-65961fee": {
+      "id": "faculty-miami-cs-65961fee",
+      "name": "Victor J Milenkovic",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-66816e6f": {
+      "id": "faculty-miami-cs-66816e6f",
+      "name": "Stefan Wuchty",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-6c799720": {
+      "id": "faculty-miami-cs-6c799720",
+      "name": "Victor C. Pestien",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-9fed9d29": {
+      "id": "faculty-miami-cs-9fed9d29",
+      "name": "Jacqueline Le Moigne",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-a7e53724": {
+      "id": "faculty-miami-cs-a7e53724",
+      "name": "Ubbo Visser",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-b0f4bc1f": {
+      "id": "faculty-miami-cs-b0f4bc1f",
+      "name": "Vanessa Aguiar-Pulido",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-b421477b": {
+      "id": "faculty-miami-cs-b421477b",
+      "name": "Yelena Yesha",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-bc4fcd67": {
+      "id": "faculty-miami-cs-bc4fcd67",
+      "name": "Huseyin Kocak",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-bf8eca9f": {
+      "id": "faculty-miami-cs-bf8eca9f",
+      "name": "Zheng Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-cf05e82d": {
+      "id": "faculty-miami-cs-cf05e82d",
+      "name": "Phuong Nguyen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-d202b3b8": {
+      "id": "faculty-miami-cs-d202b3b8",
+      "name": "Dilip Sarkar",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-dd0ca0d8": {
+      "id": "faculty-miami-cs-dd0ca0d8",
+      "name": "Mohamed Iskandarani",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-e0fd7210": {
+      "id": "faculty-miami-cs-e0fd7210",
+      "name": "Shahriar Negahdaripour",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-cs-f06f879c": {
+      "id": "faculty-miami-cs-f06f879c",
+      "name": "Odelia Schwartz",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-146a99a6": {
+      "id": "faculty-miami-ece-146a99a6",
+      "name": "Willie McClinton",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-29bd396c": {
+      "id": "faculty-miami-ece-29bd396c",
+      "name": "Ye Hu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-3399887e": {
+      "id": "faculty-miami-ece-3399887e",
+      "name": "Zhenglun Kong",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-3adc8dd2": {
+      "id": "faculty-miami-ece-3adc8dd2",
+      "name": "Manohar N. Murthi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-51fcce89": {
+      "id": "faculty-miami-ece-51fcce89",
+      "name": "Richard K. Lee",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-539b18bc": {
+      "id": "faculty-miami-ece-539b18bc",
+      "name": "Diego Palacios",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-61d563f2": {
+      "id": "faculty-miami-ece-61d563f2",
+      "name": "Abdul Hamid Samra",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-6e1db5c6": {
+      "id": "faculty-miami-ece-6e1db5c6",
+      "name": "Jieyuan Tian",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-7b106887": {
+      "id": "faculty-miami-ece-7b106887",
+      "name": "Nigel M John",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-7cabb2e1": {
+      "id": "faculty-miami-ece-7cabb2e1",
+      "name": "W. Dalton Dietrich",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-801191cd": {
+      "id": "faculty-miami-ece-801191cd",
+      "name": "Kamal Premaratne",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-826ee4f0": {
+      "id": "faculty-miami-ece-826ee4f0",
+      "name": "Guy Zyskind",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-8f178e49": {
+      "id": "faculty-miami-ece-8f178e49",
+      "name": "Hammam Alsafrjalani",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-92482186": {
+      "id": "faculty-miami-ece-92482186",
+      "name": "Chunlei Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-9d0070de": {
+      "id": "faculty-miami-ece-9d0070de",
+      "name": "Michael Renxun Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-d4e448e5": {
+      "id": "faculty-miami-ece-d4e448e5",
+      "name": "Sakhrat Khizroev",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-dc199767": {
+      "id": "faculty-miami-ece-dc199767",
+      "name": "Lokesh Saravanan Ramamoorthi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-e5845ffa": {
+      "id": "faculty-miami-ece-e5845ffa",
+      "name": "Xiaodong Cai",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-ed551910": {
+      "id": "faculty-miami-ece-ed551910",
+      "name": "Stephen J. Murrell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-f092b4ed": {
+      "id": "faculty-miami-ece-f092b4ed",
+      "name": "Mingzhe Chen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-f5d15155": {
+      "id": "faculty-miami-ece-f5d15155",
+      "name": "Mansur R. Kabuka",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ece-ffcd946b": {
+      "id": "faculty-miami-ece-ffcd946b",
+      "name": "Pinhas Ben-Tzvi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-035603e9": {
+      "id": "faculty-miami-eng-035603e9",
+      "name": "Tassie K Gwilliam",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-063b1231": {
+      "id": "faculty-miami-eng-063b1231",
+      "name": "John R. Funchion",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-2456f500": {
+      "id": "faculty-miami-eng-2456f500",
+      "name": "Meghna Sapui",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-25189d06": {
+      "id": "faculty-miami-eng-25189d06",
+      "name": "Joel T Nickels",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-29f0aeb9": {
+      "id": "faculty-miami-eng-29f0aeb9",
+      "name": "Kelly Baker Josephs",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-3900f46d": {
+      "id": "faculty-miami-eng-3900f46d",
+      "name": "Elizabeth Oldman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-395e0b4b": {
+      "id": "faculty-miami-eng-395e0b4b",
+      "name": "Catherine Anne Judd",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-3bc02c0e": {
+      "id": "faculty-miami-eng-3bc02c0e",
+      "name": "Chantel Acevedo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-5ee1af38": {
+      "id": "faculty-miami-eng-5ee1af38",
+      "name": "Donette Francis",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-65b19b30": {
+      "id": "faculty-miami-eng-65b19b30",
+      "name": "Robert Casillo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-6aa998c8": {
+      "id": "faculty-miami-eng-6aa998c8",
+      "name": "Brenna M Munro",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-77fc737b": {
+      "id": "faculty-miami-eng-77fc737b",
+      "name": "Patricia A Engel",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-82579043": {
+      "id": "faculty-miami-eng-82579043",
+      "name": "Mia Angela Leonin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-86d3e513": {
+      "id": "faculty-miami-eng-86d3e513",
+      "name": "Noa Ania Nikolsky",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-973f1726": {
+      "id": "faculty-miami-eng-973f1726",
+      "name": "Timothy P Watson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-a1cf9d53": {
+      "id": "faculty-miami-eng-a1cf9d53",
+      "name": "Amina Gautier",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-b7067885": {
+      "id": "faculty-miami-eng-b7067885",
+      "name": "Peter Schmitt",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-b7aa1757": {
+      "id": "faculty-miami-eng-b7aa1757",
+      "name": "Pamela S Hammons",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-c16c8c29": {
+      "id": "faculty-miami-eng-c16c8c29",
+      "name": "Patricia J. Saunders",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-c5dc1a13": {
+      "id": "faculty-miami-eng-c5dc1a13",
+      "name": "Joel Childers",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-c5f76887": {
+      "id": "faculty-miami-eng-c5f76887",
+      "name": "Jaswinder Bolina",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-d2d64279": {
+      "id": "faculty-miami-eng-d2d64279",
+      "name": "M. Evelina Galang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-d9ed7bff": {
+      "id": "faculty-miami-eng-d9ed7bff",
+      "name": "John Paul Russo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-debd7a61": {
+      "id": "faculty-miami-eng-debd7a61",
+      "name": "Kei Miller",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-e6c614d7": {
+      "id": "faculty-miami-eng-e6c614d7",
+      "name": "Frank H. Stringfellow, Jr.",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-ea8958df": {
+      "id": "faculty-miami-eng-ea8958df",
+      "name": "Kimberly Connor-Reyes",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-eng-f6e811a1": {
+      "id": "faculty-miami-eng-f6e811a1",
+      "name": "Emmy Waldman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-0459a049": {
+      "id": "faculty-miami-geog-0459a049",
+      "name": "Han Li",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-088926ac": {
+      "id": "faculty-miami-geog-088926ac",
+      "name": "Shouraseni Sen Roy",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-128f0182": {
+      "id": "faculty-miami-geog-128f0182",
+      "name": "Haoluan Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-1f037d5b": {
+      "id": "faculty-miami-geog-1f037d5b",
+      "name": "Sarbeswar Praharaj",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-3c708dd7": {
+      "id": "faculty-miami-geog-3c708dd7",
+      "name": "Dina Moulioukova",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-648616d4": {
+      "id": "faculty-miami-geog-648616d4",
+      "name": "Richard J. Grant",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-69f5e3ad": {
+      "id": "faculty-miami-geog-69f5e3ad",
+      "name": "Guimin Zhu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-ce1a5269": {
+      "id": "faculty-miami-geog-ce1a5269",
+      "name": "Anna Arango",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-d2a136a3": {
+      "id": "faculty-miami-geog-d2a136a3",
+      "name": "Ira M. Sheskin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-geog-fa0cafd7": {
+      "id": "faculty-miami-geog-fa0cafd7",
+      "name": "Justin B Stoler",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-2f9eaf80": {
+      "id": "faculty-miami-hist-2f9eaf80",
+      "name": "Krista A. Goff",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-35cc393a": {
+      "id": "faculty-miami-hist-35cc393a",
+      "name": "Sumita Chatterjee",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-3a851eb5": {
+      "id": "faculty-miami-hist-3a851eb5",
+      "name": "Eduardo Elena",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-4fe443ca": {
+      "id": "faculty-miami-hist-4fe443ca",
+      "name": "Etana Habte Dinka",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-5e38d399": {
+      "id": "faculty-miami-hist-5e38d399",
+      "name": "Robin Faith Bachin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-5fc86657": {
+      "id": "faculty-miami-hist-5fc86657",
+      "name": "Hugh M Thomas",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-695b2f07": {
+      "id": "faculty-miami-hist-695b2f07",
+      "name": "Edmund Abaka",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-70ff11f2": {
+      "id": "faculty-miami-hist-70ff11f2",
+      "name": "Hannah K Hicks",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-77bea49e": {
+      "id": "faculty-miami-hist-77bea49e",
+      "name": "Stephen R Halsey",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-88a48007": {
+      "id": "faculty-miami-hist-88a48007",
+      "name": "Kevan Malone",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-892169b6": {
+      "id": "faculty-miami-hist-892169b6",
+      "name": "Martin A Nesvig",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-a5d55373": {
+      "id": "faculty-miami-hist-a5d55373",
+      "name": "Michael T Bernath",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-a9355a58": {
+      "id": "faculty-miami-hist-a9355a58",
+      "name": "Ashli C White",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-c382865f": {
+      "id": "faculty-miami-hist-c382865f",
+      "name": "Michael J. Bustamante",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-cf4e5b8e": {
+      "id": "faculty-miami-hist-cf4e5b8e",
+      "name": "Phil Harling",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-hist-f7255f4f": {
+      "id": "faculty-miami-hist-f7255f4f",
+      "name": "Hermann Beck",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-0537c555": {
+      "id": "faculty-miami-ise-0537c555",
+      "name": "Adam Meyers",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-10a593eb": {
+      "id": "faculty-miami-ise-10a593eb",
+      "name": "Seung Ho Woo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-17696489": {
+      "id": "faculty-miami-ise-17696489",
+      "name": "Luis Gonzalez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-2620bac0": {
+      "id": "faculty-miami-ise-2620bac0",
+      "name": "Nina DeCario Miville",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-384f427e": {
+      "id": "faculty-miami-ise-384f427e",
+      "name": "Jaime H Buitrago",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-876aceca": {
+      "id": "faculty-miami-ise-876aceca",
+      "name": "Tamer H. Elattar",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-8d595b1d": {
+      "id": "faculty-miami-ise-8d595b1d",
+      "name": "Mario G. Beruvides",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-9135370c": {
+      "id": "faculty-miami-ise-9135370c",
+      "name": "Vincent K Omachonu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-cb85ecf9": {
+      "id": "faculty-miami-ise-cb85ecf9",
+      "name": "Ramin Moghaddass",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-cc443fab": {
+      "id": "faculty-miami-ise-cc443fab",
+      "name": "Nurcin Celik",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-f1e10c40": {
+      "id": "faculty-miami-ise-f1e10c40",
+      "name": "Khaled Yahia Zakaria Abdel Rahman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-ise-f40b2a10": {
+      "id": "faculty-miami-ise-f40b2a10",
+      "name": "Murat Erkoc",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-13a116e2": {
+      "id": "faculty-miami-mae-13a116e2",
+      "name": "Xiangyang Zhou",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-1a11e8d6": {
+      "id": "faculty-miami-mae-1a11e8d6",
+      "name": "Charles Vincent Tomonto",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-37f108a0": {
+      "id": "faculty-miami-mae-37f108a0",
+      "name": "Giacomo Po",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-3bd067db": {
+      "id": "faculty-miami-mae-3bd067db",
+      "name": "Bertrand Dano",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-49838967": {
+      "id": "faculty-miami-mae-49838967",
+      "name": "Kevin Boutsen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-53371443": {
+      "id": "faculty-miami-mae-53371443",
+      "name": "Qingda Yang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-6d761315": {
+      "id": "faculty-miami-mae-6d761315",
+      "name": "GeCheng Zha",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-75ae264d": {
+      "id": "faculty-miami-mae-75ae264d",
+      "name": "Weiyong Gu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-804b75e6": {
+      "id": "faculty-miami-mae-804b75e6",
+      "name": "Sivakumar Ramanathan",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-86eaa62b": {
+      "id": "faculty-miami-mae-86eaa62b",
+      "name": "Ram Narasimhan",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-87b70967": {
+      "id": "faculty-miami-mae-87b70967",
+      "name": "Ali Rownaghi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-9757eb47": {
+      "id": "faculty-miami-mae-9757eb47",
+      "name": "Kaan Inal",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-98ea4e12": {
+      "id": "faculty-miami-mae-98ea4e12",
+      "name": "Francesco Travascio",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-ccca7bf6": {
+      "id": "faculty-miami-mae-ccca7bf6",
+      "name": "Jiayu Li",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-dd2e60e4": {
+      "id": "faculty-miami-mae-dd2e60e4",
+      "name": "Hongtan Liu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mae-e3d61e54": {
+      "id": "faculty-miami-mae-e3d61e54",
+      "name": "Emrah Celik",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-1b5d0fe2": {
+      "id": "faculty-miami-mll-1b5d0fe2",
+      "name": "Ager Gondra",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-33a4a7ef": {
+      "id": "faculty-miami-mll-33a4a7ef",
+      "name": "Andrew Lynch",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-363f3658": {
+      "id": "faculty-miami-mll-363f3658",
+      "name": "Susanna Alles Torrent",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-3ac07132": {
+      "id": "faculty-miami-mll-3ac07132",
+      "name": "Bridget Christine Arce",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-4993075c": {
+      "id": "faculty-miami-mll-4993075c",
+      "name": "Tracy Devine Guzmán",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-557fc8cd": {
+      "id": "faculty-miami-mll-557fc8cd",
+      "name": "Thomas Matusiak",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-92f4cbb9": {
+      "id": "faculty-miami-mll-92f4cbb9",
+      "name": "Lillian Manzor",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-98042ddf": {
+      "id": "faculty-miami-mll-98042ddf",
+      "name": "Patoimbasba Nikiema",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-bd59c7cd": {
+      "id": "faculty-miami-mll-bd59c7cd",
+      "name": "Rebecca Doran",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-c0d402d3": {
+      "id": "faculty-miami-mll-c0d402d3",
+      "name": "Gema Pilar Perez Sanchez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-c92e7bc9": {
+      "id": "faculty-miami-mll-c92e7bc9",
+      "name": "Ludovic Vetea Mompelat",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-c9b7d44f": {
+      "id": "faculty-miami-mll-c9b7d44f",
+      "name": "Omar Vargas",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-d0070cd7": {
+      "id": "faculty-miami-mll-d0070cd7",
+      "name": "Logan Connors",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-d27c2311": {
+      "id": "faculty-miami-mll-d27c2311",
+      "name": "Yolanda M. Martinez-San Miguel",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-d6de9ed5": {
+      "id": "faculty-miami-mll-d6de9ed5",
+      "name": "Christina Civantos",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-f2678019": {
+      "id": "faculty-miami-mll-f2678019",
+      "name": "Suja Sawafta",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-mll-fee59ed6": {
+      "id": "faculty-miami-mll-fee59ed6",
+      "name": "Steven Fred Butterman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-0d20f59d": {
+      "id": "faculty-miami-phil-0d20f59d",
+      "name": "Anjan Chakravartty",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-1dc4d069": {
+      "id": "faculty-miami-phil-1dc4d069",
+      "name": "Michael Slote",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-30572515": {
+      "id": "faculty-miami-phil-30572515",
+      "name": "Alison Ann Springle",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-33b1567c": {
+      "id": "faculty-miami-phil-33b1567c",
+      "name": "Brit Brogaard",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-53058f0d": {
+      "id": "faculty-miami-phil-53058f0d",
+      "name": "Simon J Evnine",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-655d8a50": {
+      "id": "faculty-miami-phil-655d8a50",
+      "name": "Mark J Rowlands",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-6da56d3b": {
+      "id": "faculty-miami-phil-6da56d3b",
+      "name": "Helen Yetter-Chappell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-98f45e14": {
+      "id": "faculty-miami-phil-98f45e14",
+      "name": "Aleksandra Hernandez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-a1df94cf": {
+      "id": "faculty-miami-phil-a1df94cf",
+      "name": "Jake Zuehl",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-c175f358": {
+      "id": "faculty-miami-phil-c175f358",
+      "name": "Richard Chappell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-d7af47a2": {
+      "id": "faculty-miami-phil-d7af47a2",
+      "name": "Otavio A Bueno",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phil-f06f002b": {
+      "id": "faculty-miami-phil-f06f002b",
+      "name": "Elijah L Chudnoff",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-221b7031": {
+      "id": "faculty-miami-phys-221b7031",
+      "name": "Olga Korotkova",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-23302316": {
+      "id": "faculty-miami-phys-23302316",
+      "name": "Miguel Antonio Nieto",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-23f2c5ba": {
+      "id": "faculty-miami-phys-23f2c5ba",
+      "name": "Fulin Zuo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-30211cfd": {
+      "id": "faculty-miami-phys-30211cfd",
+      "name": "Nico Cappelluti",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-35936fd5": {
+      "id": "faculty-miami-phys-35936fd5",
+      "name": "Hebin Li",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-3858bffb": {
+      "id": "faculty-miami-phys-3858bffb",
+      "name": "He Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-400f757a": {
+      "id": "faculty-miami-phys-400f757a",
+      "name": "Stewart E. Barnes",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-4575bf5c": {
+      "id": "faculty-miami-phys-4575bf5c",
+      "name": "Thomas Lynn Curtright",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-4e2c62ae": {
+      "id": "faculty-miami-phys-4e2c62ae",
+      "name": "Pawel Stanislaw Jung",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-563e38fb": {
+      "id": "faculty-miami-phys-563e38fb",
+      "name": "Vivek Nagendra Prakash",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-57d04941": {
+      "id": "faculty-miami-phys-57d04941",
+      "name": "Massimiliano Galeazzi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-623bf7b6": {
+      "id": "faculty-miami-phys-623bf7b6",
+      "name": "Sheyum Syed",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-64b97395": {
+      "id": "faculty-miami-phys-64b97395",
+      "name": "Joshua Ott Gundersen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-6f94c3af": {
+      "id": "faculty-miami-phys-6f94c3af",
+      "name": "Kun Wang",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-81ef5319": {
+      "id": "faculty-miami-phys-81ef5319",
+      "name": "Mason Klein",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-8335d9bc": {
+      "id": "faculty-miami-phys-8335d9bc",
+      "name": "Joshua L Cohn",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-8b19363c": {
+      "id": "faculty-miami-phys-8b19363c",
+      "name": "Arthur C.R. Gleason",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-a76c941b": {
+      "id": "faculty-miami-phys-a76c941b",
+      "name": "Chaoming Song",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-a8e911d1": {
+      "id": "faculty-miami-phys-a8e911d1",
+      "name": "Danila Barskiy",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-c65b9ef8": {
+      "id": "faculty-miami-phys-c65b9ef8",
+      "name": "Antoni Luque Santolaria",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-e041967e": {
+      "id": "faculty-miami-phys-e041967e",
+      "name": "Orlando Alvarez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-ee57ada6": {
+      "id": "faculty-miami-phys-ee57ada6",
+      "name": "Mohammadjavad Farrokhi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-f04ef797": {
+      "id": "faculty-miami-phys-f04ef797",
+      "name": "Rafael I Nepomechie",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-phys-f3edacf3": {
+      "id": "faculty-miami-phys-f3edacf3",
+      "name": "Cheng-Ju Lin",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-1192a595": {
+      "id": "faculty-miami-pol-1192a595",
+      "name": "Jennifer Marie Connolly",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-169eceff": {
+      "id": "faculty-miami-pol-169eceff",
+      "name": "Katrin Fraser Katz",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-17101e1a": {
+      "id": "faculty-miami-pol-17101e1a",
+      "name": "Casey A Klofstad",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-217c7e9c": {
+      "id": "faculty-miami-pol-217c7e9c",
+      "name": "Julia Wester",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-25c0d8c7": {
+      "id": "faculty-miami-pol-25c0d8c7",
+      "name": "George A Gonzalez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-28469e57": {
+      "id": "faculty-miami-pol-28469e57",
+      "name": "Ellen S. Venzer",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-2b91f4b7": {
+      "id": "faculty-miami-pol-2b91f4b7",
+      "name": "Arthur Marshall Simon",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-30261c82": {
+      "id": "faculty-miami-pol-30261c82",
+      "name": "Brian Blankenship",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-43e0c456": {
+      "id": "faculty-miami-pol-43e0c456",
+      "name": "Stephanie Puello",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-4cfe97d0": {
+      "id": "faculty-miami-pol-4cfe97d0",
+      "name": "Ariel Powell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-54580779": {
+      "id": "faculty-miami-pol-54580779",
+      "name": "Louise K. Davidson-Schmich",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-74088726": {
+      "id": "faculty-miami-pol-74088726",
+      "name": "Fernand Amandi",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-8b4927a6": {
+      "id": "faculty-miami-pol-8b4927a6",
+      "name": "John Twichell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-93cc785c": {
+      "id": "faculty-miami-pol-93cc785c",
+      "name": "Joseph E Uscinski",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-a291e6ab": {
+      "id": "faculty-miami-pol-a291e6ab",
+      "name": "Ruowen Shen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-b61b01cb": {
+      "id": "faculty-miami-pol-b61b01cb",
+      "name": "Cali A Curley",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-b703fbff": {
+      "id": "faculty-miami-pol-b703fbff",
+      "name": "Sharon McIntyre",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-be7898f6": {
+      "id": "faculty-miami-pol-be7898f6",
+      "name": "Matthew David Nelsen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-c4bdf0a3": {
+      "id": "faculty-miami-pol-c4bdf0a3",
+      "name": "Costantino Pischedda",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-c4c0e609": {
+      "id": "faculty-miami-pol-c4c0e609",
+      "name": "Dilara Hekimci",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-de746a4f": {
+      "id": "faculty-miami-pol-de746a4f",
+      "name": "Gregory Koger",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-e253b192": {
+      "id": "faculty-miami-pol-e253b192",
+      "name": "June Teufel Dreyer",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-e3fcdf2d": {
+      "id": "faculty-miami-pol-e3fcdf2d",
+      "name": "Laura Gómez-Mera",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-e5aa0c76": {
+      "id": "faculty-miami-pol-e5aa0c76",
+      "name": "Kaitlyn Chriswell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-pol-ea4c2ef9": {
+      "id": "faculty-miami-pol-ea4c2ef9",
+      "name": "Bradford R McGuinn",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-1b135c59": {
+      "id": "faculty-miami-rel-1b135c59",
+      "name": "Henry A. Green",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-2f423677": {
+      "id": "faculty-miami-rel-2f423677",
+      "name": "Mohammad Homayounvash",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-36ea8a97": {
+      "id": "faculty-miami-rel-36ea8a97",
+      "name": "Kathi Lynn Kern",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-5169f3d4": {
+      "id": "faculty-miami-rel-5169f3d4",
+      "name": "Justin Ritzinger",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-65b97208": {
+      "id": "faculty-miami-rel-65b97208",
+      "name": "Nebil Husayn",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-6b0c458b": {
+      "id": "faculty-miami-rel-6b0c458b",
+      "name": "Daniel L. Pals",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-75903eae": {
+      "id": "faculty-miami-rel-75903eae",
+      "name": "Catherine Newell",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-8741053e": {
+      "id": "faculty-miami-rel-8741053e",
+      "name": "Paul Russell Shockley",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-892b6e8f": {
+      "id": "faculty-miami-rel-892b6e8f",
+      "name": "Robyn Walsh",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-9c48cbe8": {
+      "id": "faculty-miami-rel-9c48cbe8",
+      "name": "Dexter E Callender, Jr.",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-dc5318c3": {
+      "id": "faculty-miami-rel-dc5318c3",
+      "name": "David W. Kling",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-e531abbd": {
+      "id": "faculty-miami-rel-e531abbd",
+      "name": "Lacy Crocker Papadakis",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-rel-f8bf4ae7": {
+      "id": "faculty-miami-rel-f8bf4ae7",
+      "name": "William Scott Green",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-18c34148": {
+      "id": "faculty-miami-soc-18c34148",
+      "name": "John W Murphy",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-1f0364c1": {
+      "id": "faculty-miami-soc-1f0364c1",
+      "name": "Hadis Dastgerdizadzad Elyaderani",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-3572df9d": {
+      "id": "faculty-miami-soc-3572df9d",
+      "name": "Jan Sokol-Katz",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-46773755": {
+      "id": "faculty-miami-soc-46773755",
+      "name": "Natalia Pires de Vasconcelos",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-52f64a06": {
+      "id": "faculty-miami-soc-52f64a06",
+      "name": "Robert E. Rosen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-6154405e": {
+      "id": "faculty-miami-soc-6154405e",
+      "name": "Alexis Piquero",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-6cf7fba8": {
+      "id": "faculty-miami-soc-6cf7fba8",
+      "name": "George Wilson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-79ffc0b0": {
+      "id": "faculty-miami-soc-79ffc0b0",
+      "name": "Kasim Ortiz",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-83b15d43": {
+      "id": "faculty-miami-soc-83b15d43",
+      "name": "Jomills Henry Braddock",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-8c2f1eea": {
+      "id": "faculty-miami-soc-8c2f1eea",
+      "name": "Megan Stubbs-Richardson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-8e0079d8": {
+      "id": "faculty-miami-soc-8e0079d8",
+      "name": "Amie L Nielsen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-a74fa64b": {
+      "id": "faculty-miami-soc-a74fa64b",
+      "name": "Marvin Phillip Dawkins",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-ca34ab41": {
+      "id": "faculty-miami-soc-ca34ab41",
+      "name": "Alejandro Portes",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-d05a7c6c": {
+      "id": "faculty-miami-soc-d05a7c6c",
+      "name": "Nick Petersen",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-d33fd177": {
+      "id": "faculty-miami-soc-d33fd177",
+      "name": "Robert J Johnson",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-d6fc1f47": {
+      "id": "faculty-miami-soc-d6fc1f47",
+      "name": "Olena Antonaccio",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-f03b855e": {
+      "id": "faculty-miami-soc-f03b855e",
+      "name": "Kim-Phuong Truong-Vu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-f75dd3df": {
+      "id": "faculty-miami-soc-f75dd3df",
+      "name": "Margarita Rodriguez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-soc-fd7dbf3c": {
+      "id": "faculty-miami-soc-fd7dbf3c",
+      "name": "Roger G. Dunham",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-0042ad96": {
+      "id": "faculty-miami-sonhs-0042ad96",
+      "name": "Latoya Lewis",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-1524b4ea": {
+      "id": "faculty-miami-sonhs-1524b4ea",
+      "name": "Lilian Guadalupe Bravo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-2bd4df9f": {
+      "id": "faculty-miami-sonhs-2bd4df9f",
+      "name": "Charles Downs",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-2d1d8100": {
+      "id": "faculty-miami-sonhs-2d1d8100",
+      "name": "Giovanna Cecilia De Oliveira",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-2e06fbbe": {
+      "id": "faculty-miami-sonhs-2e06fbbe",
+      "name": "Yui Matsuda",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-2e86bd00": {
+      "id": "faculty-miami-sonhs-2e86bd00",
+      "name": "Maria de los Angeles Ortega Hernandez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-3042ed43": {
+      "id": "faculty-miami-sonhs-3042ed43",
+      "name": "Lonar Anthony Umadhay",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-386921e6": {
+      "id": "faculty-miami-sonhs-386921e6",
+      "name": "Giselle M Garcia Rivero",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-39390be1": {
+      "id": "faculty-miami-sonhs-39390be1",
+      "name": "Andres F Ocampo-Salazar",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-3a32561c": {
+      "id": "faculty-miami-sonhs-3a32561c",
+      "name": "Yannine Amanda Estrada",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-4dfcff81": {
+      "id": "faculty-miami-sonhs-4dfcff81",
+      "name": "Frank Guido-Sanz",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-5051c718": {
+      "id": "faculty-miami-sonhs-5051c718",
+      "name": "Alyssa Danielle Lozano",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-512f647a": {
+      "id": "faculty-miami-sonhs-512f647a",
+      "name": "Christopher Weidlich",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-5336376c": {
+      "id": "faculty-miami-sonhs-5336376c",
+      "name": "Cynthia Nicole Lebron",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-5ef2444f": {
+      "id": "faculty-miami-sonhs-5ef2444f",
+      "name": "Yhovana Gordon",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-64e3529d": {
+      "id": "faculty-miami-sonhs-64e3529d",
+      "name": "Cynthia L Foronda",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-688fa2e9": {
+      "id": "faculty-miami-sonhs-688fa2e9",
+      "name": "Juan M Gonzalez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-6f4e4f24": {
+      "id": "faculty-miami-sonhs-6f4e4f24",
+      "name": "Renessa Shamar Williams",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-73783745": {
+      "id": "faculty-miami-sonhs-73783745",
+      "name": "Heidy Nataly Medina",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-7b614c7e": {
+      "id": "faculty-miami-sonhs-7b614c7e",
+      "name": "Nicole A Gonzaga Gomez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-82d1fdec": {
+      "id": "faculty-miami-sonhs-82d1fdec",
+      "name": "Nichole Crenshaw",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-832805c7": {
+      "id": "faculty-miami-sonhs-832805c7",
+      "name": "Regine Placide Reaves",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-86403a9e": {
+      "id": "faculty-miami-sonhs-86403a9e",
+      "name": "Joseph P De Santis",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-94321db4": {
+      "id": "faculty-miami-sonhs-94321db4",
+      "name": "Denise Christina Vidot",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-97a035ee": {
+      "id": "faculty-miami-sonhs-97a035ee",
+      "name": "Willy Prado",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-a3b09f3c": {
+      "id": "faculty-miami-sonhs-a3b09f3c",
+      "name": "Erick Zarabozo",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-a3e8c407": {
+      "id": "faculty-miami-sonhs-a3e8c407",
+      "name": "Carol Cassandra Biggs",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-a714e88f": {
+      "id": "faculty-miami-sonhs-a714e88f",
+      "name": "Ashley L. Falcon",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-ae09c757": {
+      "id": "faculty-miami-sonhs-ae09c757",
+      "name": "Arsham Alamian",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-afff8752": {
+      "id": "faculty-miami-sonhs-afff8752",
+      "name": "Audrey Harkness",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-b0f47029": {
+      "id": "faculty-miami-sonhs-b0f47029",
+      "name": "Diego A Deleon",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-b251c126": {
+      "id": "faculty-miami-sonhs-b251c126",
+      "name": "Kenya F Snowden",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-b79c9c21": {
+      "id": "faculty-miami-sonhs-b79c9c21",
+      "name": "Ramniwas Yadav",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-b989be56": {
+      "id": "faculty-miami-sonhs-b989be56",
+      "name": "Saribel G Quinones",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-c99a0d44": {
+      "id": "faculty-miami-sonhs-c99a0d44",
+      "name": "Tatiana Perrino",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-cb51f986": {
+      "id": "faculty-miami-sonhs-cb51f986",
+      "name": "Andrew Porter",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-cc28fc45": {
+      "id": "faculty-miami-sonhs-cc28fc45",
+      "name": "Rosina Cianelli",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-cc2ee7f4": {
+      "id": "faculty-miami-sonhs-cc2ee7f4",
+      "name": "Greta Mitzova-Vladinov",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-cd26993e": {
+      "id": "faculty-miami-sonhs-cd26993e",
+      "name": "Karina Gattamorta",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-d28c0b1f": {
+      "id": "faculty-miami-sonhs-d28c0b1f",
+      "name": "Carlos Cantos",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-d6a6609c": {
+      "id": "faculty-miami-sonhs-d6a6609c",
+      "name": "Brenda Owusu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-dabf2a08": {
+      "id": "faculty-miami-sonhs-dabf2a08",
+      "name": "Patricia Larrieu-Jimenez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-dd661f0a": {
+      "id": "faculty-miami-sonhs-dd661f0a",
+      "name": "Carmen Rosa Presti",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-df452eb0": {
+      "id": "faculty-miami-sonhs-df452eb0",
+      "name": "Beatriz Valdes",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-dfd1e32a": {
+      "id": "faculty-miami-sonhs-dfd1e32a",
+      "name": "Marva Hodges Louisville",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-e4fbbd6f": {
+      "id": "faculty-miami-sonhs-e4fbbd6f",
+      "name": "Victoria Behar-Zusman",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-ebcb2606": {
+      "id": "faculty-miami-sonhs-ebcb2606",
+      "name": "Johis Ortega",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-sonhs-fca2c375": {
+      "id": "faculty-miami-sonhs-fca2c375",
+      "name": "Deborah A Salani",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-16d5d397": {
+      "id": "faculty-miami-tha-16d5d397",
+      "name": "Judith Ann Bassing",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-239adff7": {
+      "id": "faculty-miami-tha-239adff7",
+      "name": "Brandon M. Newton",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-23bbe760": {
+      "id": "faculty-miami-tha-23bbe760",
+      "name": "John Berst",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-381fd46d": {
+      "id": "faculty-miami-tha-381fd46d",
+      "name": "Kevin Thiel",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-3a5131ca": {
+      "id": "faculty-miami-tha-3a5131ca",
+      "name": "Edgar Miguel Abreu",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-4d025907": {
+      "id": "faculty-miami-tha-4d025907",
+      "name": "Kelly Gabrielle Murphy",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-4d2b7686": {
+      "id": "faculty-miami-tha-4d2b7686",
+      "name": "Michiko Kitayama Skinner",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-5c39250c": {
+      "id": "faculty-miami-tha-5c39250c",
+      "name": "David N Williams",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-680bf1ee": {
+      "id": "faculty-miami-tha-680bf1ee",
+      "name": "Catherine Magarino",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-7742498a": {
+      "id": "faculty-miami-tha-7742498a",
+      "name": "Burton Tedesco",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-8181d035": {
+      "id": "faculty-miami-tha-8181d035",
+      "name": "Thomas Meacham",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-992f7572": {
+      "id": "faculty-miami-tha-992f7572",
+      "name": "Pablo A. Souki",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-a422ac4c": {
+      "id": "faculty-miami-tha-a422ac4c",
+      "name": "Anjane Cecilia Girwarr",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-a5d29e40": {
+      "id": "faculty-miami-tha-a5d29e40",
+      "name": "Jennifer A Burke",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-b0692ef7": {
+      "id": "faculty-miami-tha-b0692ef7",
+      "name": "Everth Lopez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-c58af2b9": {
+      "id": "faculty-miami-tha-c58af2b9",
+      "name": "Maha McCain",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-d68afa55": {
+      "id": "faculty-miami-tha-d68afa55",
+      "name": "Jessica Bashline",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-dbb21562": {
+      "id": "faculty-miami-tha-dbb21562",
+      "name": "Christine Mazeppa",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-f4ddcd02": {
+      "id": "faculty-miami-tha-f4ddcd02",
+      "name": "Danny Hernandez",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-miami-tha-fafc07e8": {
+      "id": "faculty-miami-tha-fafc07e8",
+      "name": "Ramanjaneyulu Doosari",
+      "school": "miami",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-pitt-ling-b87b919a": {
+      "id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "school": "pitt",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-pitt-ling-c7f555fa": {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "name": "Tessa Warren",
+      "school": "pitt",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-ucsd-hwsph-29c119e1": {
+      "id": "faculty-ucsd-hwsph-29c119e1",
+      "name": "Gregory Norman",
+      "school": "ucsd",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-uf-phy-51d99691": {
+      "id": "faculty-uf-phy-51d99691",
+      "name": "Jeff ANDREWS",
+      "school": "uf",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-usc-soci-99287958": {
+      "id": "faculty-usc-soci-99287958",
+      "name": "Biblarz Timothy",
+      "school": "usc",
+      "url": null,
+      "source_url": null
+    },
+    "faculty-usc-soci-b0fa66b8": {
+      "id": "faculty-usc-soci-b0fa66b8",
+      "name": "Jody Agius Vallejo",
+      "school": "usc",
+      "url": null,
+      "source_url": null
+    }
+  },
+  "seven_details": [
+    {
+      "id": "faculty-fsu-comm-4ebdf384",
+      "url": "https://joinalab.com/opportunities/faculty-fsu-comm-4ebdf384",
+      "heading": "Elizabeth Ray",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    },
+    {
+      "id": "faculty-duke-nurs-9c95f492",
+      "url": "https://joinalab.com/opportunities/faculty-duke-nurs-9c95f492",
+      "heading": "Marissa Abram",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    },
+    {
+      "id": "faculty-miami-sonhs-3042ed43",
+      "url": "https://joinalab.com/opportunities/faculty-miami-sonhs-3042ed43",
+      "heading": "Lonar Anthony Umadhay",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    },
+    {
+      "id": "faculty-ucsd-hwsph-29c119e1",
+      "url": "https://joinalab.com/opportunities/faculty-ucsd-hwsph-29c119e1",
+      "heading": "Gregory Norman",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    },
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "url": "https://joinalab.com/opportunities/faculty-uf-phy-51d99691",
+      "heading": "Jeff ANDREWS",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "url": "https://joinalab.com/opportunities/faculty-pitt-ling-b87b919a",
+      "heading": "Lori Levin",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    },
+    {
+      "id": "faculty-usc-soci-b0fa66b8",
+      "url": "https://joinalab.com/opportunities/faculty-usc-soci-b0fa66b8",
+      "heading": "Jody Agius Vallejo",
+      "http": 200,
+      "link_controls": [],
+      "formal_reproduction_was_missing": true
+    }
+  ],
+  "both_versions_after": {
+    "frontend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "backend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "at": "2026-11-26T20:52:50.259989+00:00"
+  },
+  "counts_by_school": {
+    "miami": 442,
+    "pitt": 1,
+    "fsu": 1,
+    "ucsd": 1,
+    "usc": 2,
+    "duke": 89
+  },
+  "restored_to_checked_person": 0
+}
