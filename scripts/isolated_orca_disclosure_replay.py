@@ -133,6 +133,28 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
     for name in candidates:
         result['local_disclosures'][name]=measure_disclosure(page,base+'/'+name+'.html')
         print('LOCAL DISCLOSURE',name,json.dumps(result['local_disclosures'][name],ensure_ascii=False),flush=True)
+    if 'OFE_RENDERED_PANEL_DIR' in os.environ:
+        export_dir=Path(os.environ['OFE_RENDERED_PANEL_DIR'])
+        checked={}
+        expected_titles={
+            'en-unreviewed': 'Target conditions for this draft Application conditions need review',
+            'en-sourced': 'Target conditions for this draft 1 sourced · 1 to review',
+            'zh-unreviewed': '本次参考的目标条件 申请条件尚未核对',
+            'zh-sourced': '本次参考的目标条件 1 项有依据 · 1 项需核对',
+        }
+        for variant,title in expected_titles.items():
+            public_panel=(export_dir/(variant+'.html')).read_text()
+            language=variant[:2]
+            # The wrapper supplies surrounding document and initial tab stop.
+            # All markup and content inside the tested panel come from React.
+            (directory/(variant+'.html')).write_text(shell.replace('lang="en"','lang="'+language+'"')+public_panel+'</main></html>')
+            checked[variant]=measure_disclosure(page,base+'/'+variant+'.html')
+            obs=checked[variant]
+            assert obs['dom_text']==title
+            assert any(title.casefold() in line.casefold() for line in obs['utterances']), (variant,obs['utterances'])
+            assert obs['expanded'] and obs['peak']>40 and obs['frames']>0
+            print('REAL CANDIDATE DISCLOSURE',variant, json.dumps(obs,ensure_ascii=False),flush=True)
+        result['rendered_candidate']={'commit':os.environ['OFE_PANEL_COMMIT'],'cases':checked}
     result['native_dialog_return']=measure_dialog(page,base+'/dialog.html')
     for case in result['local_disclosures'].values():
         assert case['peak']>40 and case['frames']>0

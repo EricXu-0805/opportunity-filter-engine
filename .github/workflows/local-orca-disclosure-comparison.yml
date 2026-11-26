@@ -2,13 +2,15 @@ name: Compare spoken disclosure titles and native dialog focus on localhost
 on:
   push:
     branches: [audit/m59-orca-matches-nov26]
-    paths: ['scripts/isolated_orca_disclosure_replay.py', '.github/workflows/local-orca-disclosure-comparison.yml']
+    paths: ['scripts/isolated_orca_disclosure_replay.py', 'scripts/render_orca_disclosures.test.tsx', '.github/workflows/local-orca-disclosure-comparison.yml']
 permissions:
   contents: read
 jobs:
   reader:
     runs-on: ubuntu-24.04
-    timeout-minutes: 14
+    timeout-minutes: 16
+    env:
+      OFE_PANEL_COMMIT: 6220628d2572716132f1ab879d1b3a758eef9139
     steps:
       - uses: actions/checkout@v6
         with:
@@ -16,6 +18,24 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+      - name: Check out the reviewed conditions component
+        uses: actions/checkout@v6
+        with:
+          ref: 6220628d2572716132f1ab879d1b3a758eef9139
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Render the candidate's two languages and source statuses
+        working-directory: product/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          export OFE_RENDERED_PANEL_DIR="$RUNNER_TEMP/real-component"
+          mkdir -p "$OFE_RENDERED_PANEL_DIR"
+          cp "$GITHUB_WORKSPACE/scripts/render_orca_disclosures.test.tsx" src/components/render_orca_disclosures.test.tsx
+          ./node_modules/.bin/vitest run src/components/render_orca_disclosures.test.tsx
+          echo "OFE_RENDERED_PANEL_DIR=$OFE_RENDERED_PANEL_DIR" >> "$GITHUB_ENV"
       - name: Install desktop screen reader, speech and browser
         run: |
           sudo apt-get update -qq
