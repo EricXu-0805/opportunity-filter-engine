@@ -1,0 +1,230 @@
+{
+  "observed_utc": "2026-11-26T09:29:51.990043+00:00",
+  "release_sha_at_receipt": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "method": "Anonymous Chrome navigation to each production detail URL. For each of the 26 pages, waited for the visible inactive notice and for the profile-update indicator to disappear, read the person heading, and checked for Draft email buttons and Apply links. No route interception or mutations.",
+  "records": [
+    {
+      "id": "faculty-wisc-ece-f0b32bf6",
+      "heading": "William Sethares",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-f0b32bf6",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-e182518c",
+      "heading": "John Booske",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-e182518c",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-8d8691e2",
+      "heading": "Susan Hagness",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-8d8691e2",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-6b241458",
+      "heading": "Thomas Jahns",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-6b241458",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-de755775",
+      "heading": "Barry Van Veen",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-de755775",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-a187845b",
+      "heading": "Fernando Alvarado",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-a187845b",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-4f2aab05",
+      "heading": "David Anderson",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-4f2aab05",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-beb616a3",
+      "heading": "B Barmish",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-beb616a3",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-d04b0925",
+      "heading": "Theodore Bernstein",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-d04b0925",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-430ceb2e",
+      "heading": "Dan Botez",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-430ceb2e",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-9e53259d",
+      "heading": "James Bucklew",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-9e53259d",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-7c796f01",
+      "heading": "Daniel Cobb",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-7c796f01",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-3bdb02c3",
+      "heading": "Christopher DeMarco",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-3bdb02c3",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-ce3c6535",
+      "heading": "John Gubner",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-ce3c6535",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-fec40cdf",
+      "heading": "Eric Hoffman",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-fec40cdf",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-11c7bb0a",
+      "heading": "Yu Hen Hu",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-11c7bb0a",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-78e533b7",
+      "heading": "Robert Lasseter",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-78e533b7",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-ce567809",
+      "heading": "Luke Mawst",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-ce567809",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-f68c8821",
+      "heading": "Leon McCaughan",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-f68c8821",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-54f4bafb",
+      "heading": "Katherine Morrow",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-54f4bafb",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-dadcde2b",
+      "heading": "Michael Morrow",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-dadcde2b",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-85905000",
+      "heading": "Kewal Saluja",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-85905000",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-e5d9a87c",
+      "heading": "John Scharer",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-e5d9a87c",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-45124634",
+      "heading": "James Smith",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-45124634",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-4b656049",
+      "heading": "Ronald Vernon",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-4b656049",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    },
+    {
+      "id": "faculty-wisc-ece-e9eb5c1d",
+      "heading": "Amy Wendt",
+      "url": "https://joinalab.com/opportunities/faculty-wisc-ece-e9eb5c1d",
+      "inactive_notice_visible": true,
+      "draft_email_buttons": 0,
+      "apply_links": 0
+    }
+  ],
+  "positive_control": {
+    "id": "faculty-wisc-ece-6f602ed6",
+    "heading": "Chris Brace",
+    "url": "https://joinalab.com/opportunities/faculty-wisc-ece-6f602ed6",
+    "draft_email_button_visible": true,
+    "profile_link_visible": true,
+    "last_seen_listed": "2026-11-25"
+  },
+  "virginia_tech_pre_release_control": {
+    "id": "faculty-vt-che-be391032",
+    "name": "Donald Baird",
+    "draft_email_button_visible": true,
+    "last_seen_listed": "2026-11-19",
+    "url": "https://joinalab.com/opportunities/faculty-vt-che-be391032"
+  }
+}
