@@ -112,13 +112,18 @@ def dept_name_stems(department: str) -> set[str]:
     }
 
 
+def is_known_unit_mailbox(email: object) -> bool:
+    """A published office address whose local part alone would also be a valid personal alias."""
+    return isinstance(email, str) and email.strip().casefold() == "lingpitt@pitt.edu"
+
+
 def is_unit_mailbox_email(email: str, department: str = "") -> bool:
     """True when the address's local-part is a department/unit/role mailbox
     rather than a personal address."""
     if not email or "@" not in email:
         return False
     local = re.sub(r"[^a-z]", "", email.split("@")[0].lower())
-    return bool(local) and (local in UNIT_MAILBOX_LOCALPARTS
+    return bool(local) and (is_known_unit_mailbox(email) or local in UNIT_MAILBOX_LOCALPARTS
                             or local in dept_name_stems(department))
 
 

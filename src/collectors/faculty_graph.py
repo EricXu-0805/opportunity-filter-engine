@@ -100,6 +100,7 @@ from ..evidence import (
     is_deceased_listing,
     is_directory_discipline,
     is_inferred,
+    is_known_unit_mailbox,
     is_professor_rank,
     is_research_clause_fragment,
     is_retired_title,
@@ -1016,6 +1017,8 @@ def _clean_email(raw: str) -> str | None:
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-
     # insensitive, so lowercasing is safe and canonical.
+    if is_known_unit_mailbox(result):
+        return None
     return result.lower() if result else None
 
 

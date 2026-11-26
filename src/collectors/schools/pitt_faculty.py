@@ -376,7 +376,9 @@ SCHOOL: dict = {
             ["Gender, Sexuality, and Women's Studies"],
             "https://www.wstudies.pitt.edu/people/core-faculty"),
         _d2("LING", "Department of Linguistics", ["Linguistics"],
-            "https://www.linguistics.pitt.edu/people/core-linguistics-faculty"),
+            "https://www.linguistics.pitt.edu/people/core-linguistics-faculty",
+            # The first mailto on the campus people template belongs to the department.
+            enrich={**_DIETRICH_ENRICH, "email_selector": _D_EMAIL}),
         _d2("MUSIC", "Department of Music", ["Music"],
             "https://www.music.pitt.edu/people/core-faculty"),
         _d2("URBST", "Urban Studies Program", ["Urban Studies"],
