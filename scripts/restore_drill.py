@@ -278,6 +278,7 @@ def main() -> int:
                     help="production project ref the backup came from")
     ap.add_argument("--scratch-environment", required=True,
                     help="project ref the backup was restored INTO (never production)")
+    ap.add_argument("--session-pooler-host", help="scratch shared session pooler hostname from Supabase Connect")
     ap.add_argument("--source-schema-manifest", type=Path,
                     help="catalogue capture bound to the selected recovery point")
     ap.add_argument("--source-schema-manifest-sha256", help="file SHA-256 retained with the backup receipt")
@@ -288,10 +289,14 @@ def main() -> int:
     ap.add_argument("--operator", default=os.environ.get("USER", "unknown"))
     ap.add_argument("--api-base",
                     help="backend pointed at the restored project, for /api/ready")
-    ap.add_argument("--restore-started-at", default=_now())
+    ap.add_argument("--restore-started-at", default=_now(),
+                    help="ISO 8601 restore start with timezone, e.g. 2026-11-25T18:00:00Z")
     ap.add_argument("--out-dir", type=Path,
                     default=_REPO / "data" / "releases" / "drills")
     args = ap.parse_args()
+
+    if restore_schema_evidence.aware_timestamp(args.restore_started_at) is None:
+        ap.error("--restore-started-at must be an ISO 8601 timestamp with a timezone (Z or ±HH:MM)")
 
     base = os.environ.get("DRILL_SUPABASE_URL", "").rstrip("/")
     service_key = os.environ.get("DRILL_SERVICE_ROLE_KEY", "")
@@ -311,7 +316,10 @@ def main() -> int:
     scratch_schema = None
     if source_schema:
         try:
-            scratch_schema = restore_schema_evidence.observe(args.scratch_environment, args.source_backup_id)
+            scratch_schema = restore_schema_evidence.observe(
+                args.scratch_environment, args.source_backup_id, args.session_pooler_host)
+        except restore_schema_evidence.CatalogueConnectionError as exc:
+            print(f"::warning::scratch schema observation unavailable: {exc}")
         except (ValueError, KeyError, TypeError):
             print("::warning::scratch schema observation unavailable")
     with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
