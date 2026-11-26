@@ -1,0 +1,137 @@
+{
+  "utc": "2026-11-26T21:42:33.368754+00:00",
+  "site": "https://joinalab.com",
+  "campus": "ucb",
+  "account": {
+    "signup": 200,
+    "onboarding_attempts": [
+      "closed"
+    ],
+    "college": "College of Computing, Data Science, and Society",
+    "major": "Data Science",
+    "responses": [
+      {
+        "endpoint": "commit_profile_patch_cas",
+        "status": 200,
+        "method": "POST"
+      }
+    ],
+    "profile_commit": "applied"
+  },
+  "records": [
+    {
+      "id": "faculty-ucb-cdss-0ac5b942",
+      "query": "Boots",
+      "name": "Michael Boots",
+      "person_url": "https://ccb.berkeley.edu/people/michael-boots",
+      "official_roster": "https://ccb.berkeley.edu/people/core-faculty",
+      "h1": "Michael Boots",
+      "added_normally": true,
+      "detail": {
+        "label": "View faculty profile",
+        "href": "https://ccb.berkeley.edu/people/michael-boots",
+        "target": "_blank",
+        "route": "https://joinalab.com/opportunities/faculty-ucb-cdss-0ac5b942",
+        "client_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+        "points_to": "stored person URL",
+        "landed_url": "https://ccb.berkeley.edu/people/michael-boots",
+        "title": "Michael Boots | Center for Computational Biology",
+        "headings": [
+          "Secondary navigation",
+          "Michael Boots",
+          "CONTACT"
+        ],
+        "linked_people": 17,
+        "navigation_responses": [
+          {
+            "url": "https://ccb.berkeley.edu/people/michael-boots",
+            "status": 200
+          }
+        ]
+      },
+      "favorites": {
+        "label": "Faculty page",
+        "href": "https://ccb.berkeley.edu/people/core-faculty",
+        "target": "_blank",
+        "route": "https://joinalab.com/favorites",
+        "client_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+        "points_to": "stored source URL",
+        "landed_url": "https://ccb.berkeley.edu/people/core-faculty",
+        "title": "Core Faculty | Center for Computational Biology",
+        "headings": [
+          "Secondary navigation",
+          "Core Faculty",
+          "Adam Arkin",
+          "Doris Bachtrog",
+          "Lisa Barcellos",
+          "Peter Bickel",
+          "Michael Boots",
+          "Rachel Brem"
+        ],
+        "linked_people": 67,
+        "navigation_responses": [
+          {
+            "url": "https://ccb.berkeley.edu/people/core-faculty",
+            "status": 200
+          }
+        ]
+      },
+      "visible_matching_cards": {
+        "all": {
+          "card": "match-card-faculty-ucb-cdss-0ac5b942",
+          "links": [
+            {
+              "label": "Michael Boots",
+              "href": "/opportunities/faculty-ucb-cdss-0ac5b942?returnTo=%2Fresults%3Ftab%3Dall%26q%3DBoots"
+            },
+            {
+              "label": "Faculty page",
+              "href": "https://ccb.berkeley.edu/people/michael-boots"
+            }
+          ]
+        }
+      },
+      "matches_all": {
+        "label": "Faculty page",
+        "href": "https://ccb.berkeley.edu/people/michael-boots",
+        "target": "_blank",
+        "route": "https://joinalab.com/results?tab=all&q=Boots",
+        "client_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+        "points_to": "stored person URL",
+        "landed_url": "https://ccb.berkeley.edu/people/michael-boots",
+        "title": "Michael Boots | Center for Computational Biology",
+        "headings": [
+          "Secondary navigation",
+          "Michael Boots",
+          "CONTACT"
+        ],
+        "linked_people": 17,
+        "navigation_responses": [
+          {
+            "url": "https://ccb.berkeley.edu/people/michael-boots",
+            "status": 200
+          }
+        ]
+      }
+    }
+  ],
+  "matches_requests": [
+    {
+      "http": 200,
+      "query": "Boots",
+      "tab": "all",
+      "major": "Data Science"
+    }
+  ],
+  "start": {
+    "front": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "back": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "end": {
+    "front": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "back": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "stable_release": true,
+  "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45899876792",
+  "result": "The Berkeley data science visitor opened the faculty member’s named university page from the all-results match card and the detail. Favorites opened the Core Faculty directory."
+}

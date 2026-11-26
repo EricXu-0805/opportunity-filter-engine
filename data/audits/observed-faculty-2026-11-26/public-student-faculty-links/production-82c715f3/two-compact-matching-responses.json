@@ -1,0 +1,33 @@
+[
+  {
+    "school": "ucb",
+    "profile_major": "Data Science",
+    "query": "Boots",
+    "id": "faculty-ucb-cdss-0ac5b942",
+    "person": "Michael Boots",
+    "url": "https://ccb.berkeley.edu/people/michael-boots",
+    "source": "ucb_datascience_faculty",
+    "has_stored_source_url_field": false,
+    "source_url": null,
+    "matched_ids": [
+      "faculty-ucb-cdss-0ac5b942",
+      "faculty-ucb-ib-419c4adf"
+    ],
+    "score": 64.7
+  },
+  {
+    "school": "msu",
+    "profile_major": "Biochemistry and Molecular Biology",
+    "query": "Ogunwobi",
+    "id": "faculty-msu-bmb-939e5db8",
+    "person": "Olorunseun O Ogunwobi",
+    "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+    "source": "msu_faculty",
+    "has_stored_source_url_field": false,
+    "source_url": null,
+    "matched_ids": [
+      "faculty-msu-bmb-939e5db8"
+    ],
+    "score": 54.9
+  }
+]
