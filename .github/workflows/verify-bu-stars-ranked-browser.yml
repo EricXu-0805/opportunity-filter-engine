@@ -1,0 +1,66 @@
+name: Verify Boston STaRS branch in a real results browser
+on:
+  push:
+    branches: [codex/diagnose-m04-public-targets]
+    paths: ['data/audits/verify_bu_stars_rank_branch_20261126.py','.github/workflows/verify-bu-stars-ranked-browser.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TEST_SHA: e5546eeef2bc4e7c8cbf1696bf8df9cfe9585e03
+      NEXT_TELEMETRY_DISABLED: '1'
+      BACKEND_URL: http://127.0.0.1:28147
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:28148
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-loopback-stub-anon-key-not-a-real-key
+      E2E_SUPABASE_PORT: '28148'
+      OFE_DISABLE_RATE_LIMIT: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: probe
+          sparse-checkout: data/audits
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TEST_SHA }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: source/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/frontend/package-lock.json
+      - run: pip install -r source/requirements.txt playwright==1.58.0
+      - run: npm ci --prefix source/frontend --no-audit --no-fund
+      - name: Run production matching code with the reviewed complete corpus and isolated local session storage
+        run: |
+          set -euo pipefail
+          cd source
+          python scripts/shard_corpus.py assemble
+          python -m uvicorn backend.main:app --host 127.0.0.1 --port 28147 >../backend.log 2>&1 &
+          backend_pid=$!
+          cd frontend
+          node e2e/supabase-stub.mjs >../../session.log 2>&1 &
+          session_pid=$!
+          node node_modules/next/dist/bin/next dev --webpack --port 28149 --hostname 127.0.0.1 >../../web.log 2>&1 &
+          web_pid=$!
+          trap 'kill "$web_pid" "$session_pid" "$backend_pid" 2>/dev/null || true' EXIT
+          cd ../..
+          curl -fsS --retry 30 --retry-all-errors --retry-delay 3 --max-time 180 http://127.0.0.1:28149/api/health -o health.json
+          python probe/data/audits/verify_bu_stars_rank_branch_20261126.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bu-stars-ranked-browser
+          path: |
+            evidence/
+            health.json
+            *.log
