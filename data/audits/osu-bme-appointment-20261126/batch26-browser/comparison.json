@@ -1,0 +1,14 @@
+{
+  "baseline_sha": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "candidate_sha": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+  "candidate_tree": "0b3d831340d3180d94957ec29fa036673cd0a300",
+  "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45907634349/job/140208093056",
+  "method": "Separate normally built B19 and B26 Next.js and FastAPI websites with their own complete corpus were served in order at the same private origin. A visitor signed up on B19, saved a profile, saved the professor in Favorites, reopened it and then reopened the same cloud favorite on B26 from the same Chromium browser profile. A private GoTrue/PostgREST/Postgres instance ran the repository migrations. The two current faculty were checked separately on B26. No outreach action was performed.",
+  "checks": [
+    "The B19 favorite POST returned success. Authenticated cloud reads in both browser phases returned the same hashed owner and original ID. The B26 phase created neither an account nor a favorite.",
+    "B19 showed the previous regular professor and a draft button. B26 showed the historical status, original personal page, and all three original publication links without a draft button. Its public API carried the sourced adjunct rank.",
+    "On B26 Walter remained Associate Professor and Bellamkonda remained Professor. Both personal sources, both draft buttons and all six publication titles remained visible.",
+    "The three hosted candidate API responses and Chromium records agreed with the independently assembled 149,954-ID candidate on original ID, named person, campus, profile, rank and quotation, contact state and all nine paper titles."
+  ],
+  "scope": "Private candidate observation. A deployed release of both production services and a successful natural OSU BME directory refresh remain independent."
+}

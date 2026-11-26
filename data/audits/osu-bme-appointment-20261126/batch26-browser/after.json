@@ -1,0 +1,95 @@
+{
+  "stage": "after",
+  "at": "2026-11-26T23:02:53.940387+00:00",
+  "rows": [
+    {
+      "id": "faculty-osu-bme-5874478d",
+      "heading": "Rengasayee Veeraraghavan",
+      "page": "http://127.0.0.1:3000/opportunities/faculty-osu-bme-5874478d",
+      "campus": "Ohio State University",
+      "source_page": "https://bme.osu.edu/people/veeraraghavan.12",
+      "archive_banner": true,
+      "draft_visible": false,
+      "three_visible_papers": [
+        "Nanoscale organization in the cell membrane dynamically modulates the biophysics of voltage-gated sodium channels",
+        "Intercalated disk structure, tissue heterogeneity and ion channel distribution modulate conduction and local calcium influx",
+        "Selectivity Filter Mutation in NaV1.5 Promotes Ventricular Tachycardia"
+      ],
+      "api_appointment": "Adjunct Professor, Biomedical Engineering",
+      "source_quote": {
+        "text": "Adjunct Professor, Biomedical Engineering",
+        "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+        "observed_at": "2026-11-26"
+      },
+      "api_contact_email_status": "unavailable",
+      "release": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15"
+    },
+    {
+      "id": "faculty-osu-bme-16e6344f",
+      "heading": "Benjamin Walter",
+      "page": "http://127.0.0.1:3000/opportunities/faculty-osu-bme-16e6344f",
+      "campus": "Ohio State University",
+      "source_page": "https://bme.osu.edu/people/walter.367",
+      "archive_banner": false,
+      "draft_visible": true,
+      "three_visible_papers": [
+        "Cerclage Wire as an Affordable Alternative for Internal Fixation in Murine Critical Sized Defect Models",
+        "MRE-Derived Stiffness Measurements of Painful and Non-Painful Discs from Low Back Pain Patients",
+        "Spatial and Diurnal Variations in Sodium Content Within Intervertebral Disc Tissue"
+      ],
+      "api_appointment": "Associate Professor, Biomedical Engineering",
+      "source_quote": null,
+      "api_contact_email_status": "sign_in_required",
+      "release": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15"
+    },
+    {
+      "id": "faculty-osu-bme-c7dcb9ef",
+      "heading": "Ravi Bellamkonda",
+      "page": "http://127.0.0.1:3000/opportunities/faculty-osu-bme-c7dcb9ef",
+      "campus": "Ohio State University",
+      "source_page": "https://bme.osu.edu/people/bellamkonda.7",
+      "archive_banner": false,
+      "draft_visible": true,
+      "three_visible_papers": [
+        "TIP-27. An assessment of the Tumor Monorail Device (TMD) for repeated sampling as part of a trial evaluating the combination of D2C7-IT and an Fc-engineered anti-CD40 monoclonal antibody (2141-V11) ad",
+        "Finite element analysis of a neural implant for cytostatic hypothermia and a novel heat management system",
+        "Halting Glioblastoma: A Neural Implant and Cytostatic Hypothermia (P4-6.010)"
+      ],
+      "api_appointment": "Professor, Biomedical Engineering",
+      "source_quote": null,
+      "api_contact_email_status": "sign_in_required",
+      "release": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15"
+    }
+  ],
+  "passed": true,
+  "isolated_account": {
+    "signup_http": null,
+    "profile_saved": false,
+    "favorite_write_http": null,
+    "favorite_select_reads": [
+      {
+        "http": 200,
+        "owner_hash": "90fc8e2da3539c796a52",
+        "original_id": "faculty-osu-bme-5874478d"
+      },
+      {
+        "http": 200,
+        "owner_hash": "90fc8e2da3539c796a52",
+        "original_id": "faculty-osu-bme-5874478d"
+      },
+      {
+        "http": 200,
+        "owner_hash": "90fc8e2da3539c796a52",
+        "original_id": "faculty-osu-bme-5874478d"
+      },
+      {
+        "http": 200,
+        "owner_hash": "90fc8e2da3539c796a52",
+        "original_id": "faculty-osu-bme-5874478d"
+      }
+    ],
+    "guest_hash": null
+  },
+  "opened_from_favorites": true,
+  "stored_original_id": "faculty-osu-bme-5874478d"
+}

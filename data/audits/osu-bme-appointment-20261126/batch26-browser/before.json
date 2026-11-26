@@ -1,0 +1,45 @@
+{
+  "stage": "before",
+  "at": "2026-11-26T23:01:35.080675+00:00",
+  "rows": [
+    {
+      "id": "faculty-osu-bme-5874478d",
+      "heading": "Rengasayee Veeraraghavan",
+      "page": "http://127.0.0.1:3000/opportunities/faculty-osu-bme-5874478d",
+      "campus": "Ohio State University",
+      "source_page": "https://bme.osu.edu/people/veeraraghavan.12",
+      "archive_banner": false,
+      "draft_visible": true,
+      "three_visible_papers": [
+        "Nanoscale organization in the cell membrane dynamically modulates the biophysics of voltage-gated sodium channels",
+        "Intercalated disk structure, tissue heterogeneity and ion channel distribution modulate conduction and local calcium influx",
+        "Selectivity Filter Mutation in NaV1.5 Promotes Ventricular Tachycardia"
+      ],
+      "api_appointment": "Professor, Biomedical Engineering",
+      "source_quote": null,
+      "api_contact_email_status": "sign_in_required",
+      "release": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+    }
+  ],
+  "passed": true,
+  "isolated_account": {
+    "signup_http": 200,
+    "profile_saved": true,
+    "favorite_write_http": 201,
+    "favorite_select_reads": [
+      {
+        "http": 200,
+        "owner_hash": "90fc8e2da3539c796a52",
+        "original_id": "faculty-osu-bme-5874478d"
+      },
+      {
+        "http": 200,
+        "owner_hash": "90fc8e2da3539c796a52",
+        "original_id": "faculty-osu-bme-5874478d"
+      }
+    ],
+    "guest_hash": "90fc8e2da3539c796a52"
+  },
+  "opened_from_favorites": true,
+  "stored_original_id": "faculty-osu-bme-5874478d"
+}
