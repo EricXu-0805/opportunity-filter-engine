@@ -1,0 +1,54 @@
+{
+  "started": "2026-11-26T21:59:13+00:00",
+  "site": "https://joinalab.com",
+  "verified_frontend_and_backend_sha": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "scope": "Student signs up anonymously through the normal site. The audit selects no external application, contact, or writing action.",
+  "rows": [
+    {
+      "id": "faculty-ucsd-nano-e94320ae",
+      "ok": true,
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Shyue Ping Ong",
+      "old_reading_url": "http://materialsvirtuallab.org/",
+      "actionable": true,
+      "draft_visible_to_same_visitor": true,
+      "active_draft_button_visible_to_same_visitor": true
+    },
+    {
+      "id": "faculty-ucsd-nano-25a6d469",
+      "ok": true,
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Esener",
+      "old_reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=31",
+      "actionable": true,
+      "draft_visible_to_same_visitor": true
+    },
+    {
+      "id": "faculty-ucsd-nano-dc9e3de3",
+      "ok": true,
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Mike Heller",
+      "old_reading_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=1",
+      "actionable": true,
+      "draft_visible_to_same_visitor": true
+    }
+  ],
+  "normal_visitor": {
+    "anonymous_signup": true,
+    "profile_saved_by_site_ui": true,
+    "saved_revision_count": 1,
+    "home_form_restored_after_reload": true,
+    "profile_revisions_read_back": [
+      1
+    ],
+    "product_retry_used": false
+  },
+  "phase": "B18-before",
+  "observed_writing_requests": [],
+  "same_backend_at_end": true,
+  "finished": "2026-11-26T22:00:20+00:00",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45901694993"
+}
