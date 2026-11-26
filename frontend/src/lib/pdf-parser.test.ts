@@ -1,3 +1,4 @@
+import { createHash, webcrypto } from 'node:crypto';
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -563,10 +564,12 @@ describe('complete supported resume input', () => {
   });
 
   it('reports pages without text rather than claiming the whole PDF was read', async () => {
+    vi.stubGlobal('crypto', webcrypto);
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(['Readable page', '', 'Tail'])) });
     const res = await parseResumePDF(fakeFile());
     expect(res.success).toBe(true);
     expect(res.pages_without_text).toEqual([2]);
+    expect(res.incomplete_source_digest).toBe(createHash('sha256').update(res.raw_text).digest('hex'));
     expect(res.raw_text).toBe('Readable page\n\nTail');
   });
 

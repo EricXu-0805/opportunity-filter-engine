@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import Card from '@/components/Card';
+import { StudentPublicationImport } from './StudentPublicationImport';
+import { addStudentWork, scholarUser } from '@/lib/student-publications';
 import { useLocale } from '@/i18n/client';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import {
   buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact, proposeResumeMaster, resumeMasterEditBase,
-  resumeMasterFacts, validateResumeMaster,
+  resumeMasterFacts, unmatchedResumeLines, validateResumeMaster,
 } from '@/lib/resume-master';
 import type { ExperienceSourceContext } from '@/lib/experience-evidence';
 import type {
   ExperienceEntry, ProfileData, ResumeActivityItem, ResumeExperienceRef, ResumeFact, ResumeMasterV1,
 } from '@/lib/types';
 
-type EditBase = { resumeText: string; entriesJson: string; masterJson: string };
+type EditBase = { resumeText: string; entriesJson: string; masterJson: string; scholarUrl?: string };
 type Draft = { master: ResumeMasterV1; base: EditBase; dirty: boolean };
 type Copy = (en: string, zh: string) => string;
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
@@ -22,9 +24,9 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const sameBase = (a: EditBase, b: EditBase) => a.resumeText === b.resumeText
   && a.entriesJson === b.entriesJson && a.masterJson === b.masterJson;
 
-function FactField({ label, fact, disabled, context, onChange, copy }: {
+function FactField({ label, fact, disabled, context, onChange, copy, sourceLabel }: {
   label: string; fact?: ResumeFact; disabled: boolean; context: ExperienceSourceContext;
-  onChange: (fact: ResumeFact | undefined) => void; copy: Copy;
+  onChange: (fact: ResumeFact | undefined) => void; copy: Copy; sourceLabel?: string;
 }) {
   const current = !!fact && isActiveResumeFact({ ...fact, status: 'confirmed' }, context);
   const status = fact && ({
@@ -43,8 +45,8 @@ function FactField({ label, fact, disabled, context, onChange, copy }: {
         }} />
     </label>
     {fact && <>
-      <p className="mt-1 text-xs text-gray-500">{status} · {fact.source.kind === 'manual'
-        ? copy('Entered by you', '手动录入') : copy('Résumé source', '简历原文')}
+      <p className="mt-1 text-xs text-gray-500">{status} · {sourceLabel ?? (fact.source.kind === 'manual'
+        ? copy('Entered by you', '手动录入') : copy('Résumé source', '简历原文'))}
         {!current && fact.source.kind === 'resume' && ` · ${copy('Source not verified against the current résumé', '来源尚未通过当前简历核对')}`}</p>
       {fact.source.kind === 'resume' && <details className="mt-2 text-xs text-gray-600">
         <summary className="cursor-pointer">{copy('View original source', '查看原始出处')}</summary>
@@ -97,11 +99,14 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
   const { resumeText: raw, entriesJson, masterJson } = base;
   const checked = validateResumeMaster(profile.resume_master);
   const checkedEntries = validateExperienceEntries(profile.experience_entries);
+  const scholar = scholarUser(profile.scholar_url);
   const [draft, setDraft] = useState<Draft | null>(() => ready && checked.ok
     ? { master: clone(checked.value ?? createEmptyResumeMaster()), base, dirty: false } : null);
   const [error, setError] = useState<'invalid' | 'stale' | null>(null);
   const [digest, setDigest] = useState<{ raw: string; value: string } | null>(null);
-  const [proposed, setProposed] = useState<number | null>(null);
+  const [review, setReview] = useState<{
+    signature: string; added: number; lines: Array<{ start: number; text: string }>;
+  } | null>(null);
   useEffect(() => {
     if (!ready) return;
     const parsed = validateResumeMaster(JSON.parse(masterJson));
@@ -119,6 +124,8 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     return () => { active = false; };
   }, [raw]);
   const context = { rawText: raw, expectedDigest: digest?.raw === raw ? digest.value : '' };
+  const currentReview = review?.signature === context.expectedDigest ? review : null;
+  const proposed = currentReview?.added ?? null;
   const entries = checkedEntries.ok ? checkedEntries.value : [];
   const conflict = !!draft && !sameBase(draft.base, base);
   const blocked = !ready || !checked.ok || !checkedEntries.ok;
@@ -131,8 +138,8 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     });
     setError(null);
   };
-  const field = (label: string, fact: ResumeFact | undefined, update: (next: ResumeMasterV1, fact: ResumeFact | undefined) => void) =>
-    <FactField key={label} label={label} fact={fact} disabled={blocked} context={context} copy={copy}
+  const field = (label: string, fact: ResumeFact | undefined, update: (next: ResumeMasterV1, fact: ResumeFact | undefined) => void, sourceLabel?: string) =>
+    <FactField key={label} label={label} fact={fact} disabled={blocked} context={context} copy={copy} sourceLabel={sourceLabel}
       onChange={(value) => edit((next) => update(next, value))} />;
   const references = (refs: ResumeExperienceRef[], update: (next: ResumeMasterV1, refs: ResumeExperienceRef[]) => void) =>
     <ExperienceReferences refs={refs} entries={entries} context={context} disabled={blocked} copy={copy}
@@ -171,10 +178,15 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
 
   const apply = () => {
     if (!draft || blocked || conflict || !draft.dirty) return;
+    // A previously saved receipt keeps its historic identity. A newly staged
+    // work cannot be saved after the student switches the Scholar profile.
+    const persistedWorks = new Set((checked.ok ? checked.value?.publications : [])?.filter((item) => item.student_authorship).map((item) => item.id));
+    const newReceipts = draft.master.publications.flatMap((item) => !persistedWorks.has(item.id) && item.student_authorship ? [item.student_authorship] : []);
+    if (newReceipts.some((source) => source.scholar_id !== scholar)) { setError('stale'); return; }
     const next = { ...draft.master, revision: draft.master.revision + 1 };
     const validated = validateResumeMaster(next);
     if (!validated.ok || !validated.value) { setError('invalid'); return; }
-    if (!onChange(validated.value, draft.base)) { setError('stale'); return; }
+    if (!onChange(validated.value, newReceipts.length ? { ...draft.base, scholarUrl: profile.scholar_url } : draft.base)) { setError('stale'); return; }
     setDraft({ master: validated.value, base: resumeMasterEditBase({ ...profile, resume_master: validated.value }), dirty: false });
     setError(null);
   };
@@ -184,7 +196,9 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     if (!draft || blocked || !context.expectedDigest) return;
     try {
       const next = proposeResumeMaster(draft.master, raw, context.expectedDigest);
-      setProposed(resumeMasterFacts(next).length - resumeMasterFacts(draft.master).length);
+      const facts = resumeMasterFacts(next);
+      setReview({ signature: context.expectedDigest, added: facts.length - resumeMasterFacts(draft.master).length,
+        lines: unmatchedResumeLines(raw, context.expectedDigest, facts) });
       if (next !== draft.master) setDraft({ ...draft, master: next, dirty: true });
       setError(null);
     } catch {
@@ -227,6 +241,12 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
               ? copy(`Added ${proposed} candidates quoted from your résumé. Confirm each one before it appears in the preview.`,
                 `已从简历原文添加 ${proposed} 条待确认内容，逐条确认后才会进入预览。`)
               : copy('No new candidates found in your résumé.', '简历中没有新的待确认内容。')}</p>}
+          {currentReview && currentReview.lines.length > 0 && <details className="mt-3 rounded-xl border border-amber-200 p-3">
+            <summary className="cursor-pointer text-sm font-medium">{copy('Review source text without a matching field', '核对尚未匹配字段的原文')}</summary>
+            <p className="my-2 text-sm">{copy('This text had no quoted field in the last scan. Add any missing details in their section below.',
+              '上次提取时，下列原文未对应到字段。请在下方相应章节补充遗漏的内容。')}</p>
+            <pre tabIndex={0} className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{currentReview.lines.map(line => line.text).join('\n')}</pre>
+          </details>}
         </div>}
         <div className="mt-5 space-y-4">
           {master.section_order.map((sectionId, position) => <details open key={sectionId} className="rounded-xl border border-gray-200 p-4">
@@ -281,10 +301,18 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
               {master.publications.map((item, index) => <fieldset key={item.id} className="mb-3 rounded-xl border p-3"><legend className="text-sm font-medium">{copy('Publication', '论文')} {index + 1}</legend>
                 <div className="grid gap-2 sm:grid-cols-2">{([
                   ['title', copy('Publication title', '论文标题')], ['authors', copy('Authors in exact order', '作者及准确顺序')], ['venue', copy('Journal / conference', '期刊／会议')], ['date', copy('Publication date', '发表日期')], ['publication_status', copy('Publication status', '发表状态')], ['url', copy('Publication URL', '论文链接')], ['doi', 'DOI'],
-                ] as const).map(([key, label]) => field(label, item[key], (next, value) => { next.publications[index][key] = value; }))}</div>
+                ] as const).map(([key, label]) => field(label, item[key], (next, value) => { const publication = next.publications[index];
+                  if ((key === 'title' || key === 'url' || key === 'doi') && (publication[key]?.value !== value?.value || value?.status !== 'confirmed')) delete publication.student_authorship;
+                  publication[key] = value;
+                }, item.student_authorship && !item.student_authorship.linked_by && (key === 'title' || key === 'url' || key === 'doi') ? copy('Your OpenAlex export', '本人提供的 OpenAlex 导出') : undefined))}</div>
+                {item.student_authorship && <p className="mt-2 text-xs text-gray-600">{copy('Authorship confirmed by you', '本人已确认署名')} · <a className="underline" target="_blank" rel="noreferrer" href={'https://scholar.google.com/citations?user=' + item.student_authorship.scholar_id}>Scholar {item.student_authorship.scholar_id}</a> · <a className="underline" target="_blank" rel="noreferrer" href={'https://openalex.org/' + item.student_authorship.author_id}>{item.student_authorship.author_id}</a> · <a className="underline" target="_blank" rel="noreferrer" href={'https://openalex.org/' + item.student_authorship.work_id}>{item.student_authorship.work_id}</a>{item.student_authorship.orcid && <> · <a className="underline" target="_blank" rel="noreferrer" href={'https://orcid.org/' + item.student_authorship.orcid}>{item.student_authorship.orcid}</a></>}</p>}
                 {references(item.details, (next, value) => { next.publications[index].details = value; })}
                 <button type="button" className={`${button} mt-2`} onClick={() => edit((next) => { next.publications.splice(index, 1); })}>{copy('Remove publication', '删除论文项')}</button>
               </fieldset>)}
+              <StudentPublicationImport key={scholar ?? ''} scholar={scholar} items={master.publications} disabled={blocked || conflict} copy={copy}
+                onConfirm={(work) => edit((next) => {
+                  if (work.source.scholar_id === scholar) addStudentWork(next.publications, work);
+                })} />
               <button type="button" className={button} onClick={() => edit((next) => { next.publications.push({ id: crypto.randomUUID(), details: [] }); })}>{copy('Add publication', '添加论文')}</button>
             </>}
             {sectionId === 'skills' && <>

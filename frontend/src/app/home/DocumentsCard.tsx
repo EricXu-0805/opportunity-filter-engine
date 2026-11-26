@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { sourceDigest } from '@/lib/experience-evidence';
 import dynamic from 'next/dynamic';
 import { FileText, Upload } from 'lucide-react';
 import Card from '@/components/Card';
@@ -27,6 +29,18 @@ export function DocumentsCard({
   ready?: boolean;
   t: TFunc;
 }) {
+  const text = profile.resume_text ?? '';
+  const incompleteDigest = profile.resume_incomplete_digest;
+  const [verified, setVerified] = useState<{ text: string; digest: string } | null>(null);
+  useEffect(() => {
+    if (!incompleteDigest || !text) return;
+    let current = true;
+    void sourceDigest(text).then(digest => {
+      if (current) setVerified(digest === incompleteDigest ? { text, digest } : null);
+    }).catch(() => { if (current) setVerified(null); });
+    return () => { current = false; };
+  }, [text, incompleteDigest]);
+  const incomplete = !!incompleteDigest && verified?.text === text && verified.digest === incompleteDigest;
   return (
     <Card>
       <div className="flex items-center gap-3 mb-6">
@@ -43,7 +57,8 @@ export function DocumentsCard({
         <ResumeUpload
           onParsed={onResumeParsed}
           onRemove={onResumeRemoved}
-          alreadyUploaded={!!profile.resume_text}
+          alreadyUploaded={!!text}
+          savedHasUnreadablePages={incomplete}
         />
       ) : (
         <p role="status" aria-live="polite" className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">

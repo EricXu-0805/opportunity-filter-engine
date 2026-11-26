@@ -403,11 +403,11 @@ def test_match_universe_and_snapshot_expire_with_a_still_cached_record(monkeypat
     monkeypatch.setattr(matches, "_match_snapshots", {})
     monkeypatch.setattr(matches, "_match_view_rows", {})
     matches._activate_corpus_generation(corpus)
-    assert matches._release_universe(corpus) == corpus
+    assert matches.release_actionable_corpus(corpus) == corpus
     before = matches._ranked_with(None)
     moment[0] = cutoff
     assert matches._ranked_with(None) != before
-    assert matches._release_universe(corpus) == []
+    assert matches.release_actionable_corpus(corpus) == []
 
 
 @pytest.mark.parametrize(("deadline", "hour", "minute"), [

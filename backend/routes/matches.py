@@ -1274,8 +1274,8 @@ def _activate_corpus_generation(corpus: list[dict]) -> int:
 on_corpus_published(_activate_corpus_generation)
 
 
-def _release_universe(corpus: list[dict]) -> list[dict]:
-    """The release-visible, actionable records of ``corpus``: what a ranking scores.
+def release_actionable_corpus(corpus: list[dict]) -> list[dict]:
+    """The release-visible, actionable records shared by matches and similar suggestions.
 
     Every snapshot miss used to run both filters over the whole corpus on the
     event loop, 0.28-0.77 s during which no other request on the worker could
@@ -1363,7 +1363,7 @@ def prepare_match_views(corpus: list[dict]) -> None:
     it scores. Rankings build any row or scan still missing.
     """
     corpus_identity = _activate_corpus_generation(corpus)
-    opportunities = _release_universe(corpus)
+    opportunities = release_actionable_corpus(corpus)
     _snapshot_view_rows(
         opportunities,
         {opportunity.get("id") for opportunity in opportunities},
@@ -1607,7 +1607,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     # Release filtering scans the full corpus and allocates a survivor list,
     # once per corpus generation and UTC day, off the event loop. Cursor/view
     # pages normally hit the snapshot above and never ask.
-    opportunities = await asyncio.to_thread(_release_universe, corpus)
+    opportunities = await asyncio.to_thread(release_actionable_corpus, corpus)
     if not llm:
         return await _get_or_compute_rule_snapshot(
             key,

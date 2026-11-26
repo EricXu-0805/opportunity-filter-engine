@@ -2,6 +2,7 @@ import type {
   ExperienceEntry, ExperienceSource, ProfileData, ResumeActivityItem, ResumeFact, ResumeMasterV1,
   ResumeExperienceRef, ResumeMasterSectionKind,
 } from './types';
+import { studentAuthorshipBound } from './student-publications';
 import { isActiveExperience, validateExperienceEntries, type ExperienceSourceContext } from './experience-evidence';
 import {
   BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_FIELD_SEPARATOR as FIELD_SEPARATOR, RESUME_PERSON as PERSON,
@@ -152,7 +153,8 @@ export function validateResumeMaster(value: unknown): ResumeMasterValidation {
       fields(item, ACTIVITY_FIELDS); references(item.details);
     }
     for (const item of list(value.publications)) {
-      shape(item, ['id', 'details'], PUBLICATION_FIELDS);
+      shape(item, ['id', 'details'], [...PUBLICATION_FIELDS, 'student_authorship']);
+      if (Object.hasOwn(item, 'student_authorship') && !studentAuthorshipBound(item.student_authorship, item.url, item.doi)) fail('invalid_source');
       addRecord(item.id); fields(item, PUBLICATION_FIELDS); references(item.details);
     }
     for (const fact of list(value.skills)) addFact(fact);
@@ -404,6 +406,41 @@ const PUBLICATION_LABELS = new Map<string, string>(Object.entries({
 }));
 
 interface SourceLine { text: string; start: number }
+function sourceLines(points: string[]): SourceLine[] {
+  const lines: SourceLine[] = [];
+  for (let start = 0, index = 0; index <= points.length; index++) {
+    if (index === points.length || points[index] === '\n') {
+      lines.push({ text: points.slice(start, index).join('').replace(/\r$/u, ''), start });
+      start = index + 1;
+    }
+  }
+  return lines;
+}
+
+/** Report source lines with no quoted field; this never infers the meaning or ownership of a citation. */
+export function unmatchedResumeLines(raw: string, signature: string, facts: ResumeFact[]): SourceLine[] {
+  const points = Array.from(raw);
+  const spans = facts.flatMap(({ source }) =>
+    source.kind === 'resume' && source.signature === signature && points.slice(source.start, source.end).join('') === source.quote
+      ? [source] : []).sort((a, b) => a.start - b.start);
+  let span = 0;
+  const missing: SourceLine[] = [];
+  for (const line of sourceLines(points)) {
+    let start = line.start;
+    // Columns and bullet-separated facts can share a physical PDF line. A
+    // matched email in one column does not cover unrecognised work in another.
+    for (const part of line.text.split(/([•|｜\t]|\s·\s)/u)) {
+      const end = start + Array.from(part).length;
+      const text = part.trim();
+      while (span < spans.length && spans[span].end <= start) span++;
+      if (/[\p{L}\p{N}]/u.test(text) && !PUBLICATIONS_HEADING.test(text) && !resumeSectionHeading(text)
+        && (span === spans.length || spans[span].start >= end)) missing.push({ start, text: part });
+      start = end;
+    }
+  }
+  return missing;
+}
+
 interface ProposedItem { fields: Partial<Record<string, ResumeFact>>; kind?: ResumeActivityItem['kind'] }
 
 /** Candidate facts found verbatim in the résumé: contact details, schools and
@@ -415,13 +452,7 @@ interface ProposedItem { fields: Partial<Record<string, ResumeFact>>; kind?: Res
 export function proposeResumeMaster(value: unknown, rawText: string, signature: string): ResumeMasterV1 {
   const master = requireMaster(value) ?? createEmptyResumeMaster();
   const points = Array.from(rawText);
-  const lines: SourceLine[] = [];
-  for (let start = 0, index = 0; index <= points.length; index++) {
-    if (index === points.length || points[index] === '\n') {
-      lines.push({ text: points.slice(start, index).join('').replace(/\r$/u, ''), start });
-      start = index + 1;
-    }
-  }
+  const lines = sourceLines(points);
   /** The trimmed text between two UTF-16 offsets of a line, as a candidate. */
   const fact = (line: SourceLine, from: number, to: number): ResumeFact | undefined => {
     const raw = line.text.slice(from, to);

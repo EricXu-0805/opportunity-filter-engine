@@ -42,12 +42,17 @@ afterEach(() => {
 });
 
 describe('OnlineProfilesCard — Google Scholar field', () => {
+  it('links a recognized Scholar profile to its publication import panel', () => {
+    renderCard({ scholar_url: 'https://scholar.google.com.hk/citations?user=ExampleStudent' });
+    expect(screen.getByRole('link', { name: 'home.form.scholarImport' })).toHaveAttribute('href', '#student-publication-import');
+  });
+
   it('renders the Google Scholar field alongside LinkedIn and GitHub', () => {
     renderCard();
     // Regression: the existing profile fields must still render.
     expect(screen.getByLabelText('home.form.linkedinLabel')).toBeInTheDocument();
     expect(screen.getByLabelText('GitHub')).toBeInTheDocument();
-    // The new Scholar field renders as a plain URL input (no import button).
+    // An empty profile can still edit its Scholar URL directly.
     const scholar = screen.getByLabelText('home.form.scholarLabel');
     expect(scholar).toBeInTheDocument();
     expect(scholar).toHaveAttribute('type', 'url');

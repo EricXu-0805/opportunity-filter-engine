@@ -373,6 +373,13 @@ def _load_opportunities_unlocked() -> list[dict]:
     return []
 
 
+def load_indexed_opportunities() -> tuple[list[dict], dict[str, dict]]:
+    """Return a published corpus and its own ID index under the same loader lock."""
+    with _loader_lock:
+        records = _load_opportunities_unlocked()
+        return records, _opp_cache_by_id if records else {}
+
+
 def load_opportunities_by_id() -> dict[str, dict]:
     load_opportunities()
     return _opp_cache_by_id

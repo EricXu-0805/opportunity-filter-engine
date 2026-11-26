@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import heapq
 import json
 import logging
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import (
     corpus_version,
+    load_indexed_opportunities,
     load_opportunities,
     load_opportunities_by_id,
 )
@@ -65,6 +67,7 @@ from backend.lib.target_actionability import (
     assert_target_actionable,
 )
 from backend.routes.cold_email import _format_recent_works
+from backend.routes.matches import release_actionable_corpus
 from backend.schemas import ProfileRequest
 from src.collectors import source_health
 from src.evidence import (
@@ -564,7 +567,7 @@ def get_similar_opportunities(
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
-    lookup = load_opportunities_by_id()
+    corpus, lookup = load_indexed_opportunities()
     source = release_visible_opportunity_by_id(lookup, opportunity_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -575,7 +578,7 @@ def get_similar_opportunities(
     source_org = (source.get("organization") or "").lower()
 
     scored: list[tuple[float, dict]] = []
-    for opp in actionable_opportunities(release_visible_opportunities(load_opportunities())):
+    for opp in release_actionable_corpus(corpus):
         if opp.get("id") == opportunity_id:
             continue
         if not (opp.get("metadata") or {}).get("is_active", True):
@@ -603,8 +606,7 @@ def get_similar_opportunities(
 
     # The 3.0/1.0/0.5-step scorer ties constantly — a unique id tie-break keeps
     # the "Similar" rail deterministic instead of inheriting corpus order.
-    scored.sort(key=lambda x: (-x[0], x[1].get("id") or ""))
-    top = scored[:limit]
+    top = heapq.nsmallest(limit, scored, key=lambda entry: (-entry[0], entry[1].get("id") or ""))
     return {
         "source_id": opportunity_id,
         # The number of similar records FOUND (pre-slice) — previously this

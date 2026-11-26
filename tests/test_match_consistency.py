@@ -2376,6 +2376,7 @@ class TestOpportunitiesSurfaceConsistency:
         monkeypatch.setattr(
             o_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
         )
+        monkeypatch.setattr(o_module, "load_indexed_opportunities", lambda: (corpus, o_module.load_opportunities_by_id()))
         return corpus
 
     def test_inactive_excluded_from_list_but_detail_resolves(self, browse_corpus):

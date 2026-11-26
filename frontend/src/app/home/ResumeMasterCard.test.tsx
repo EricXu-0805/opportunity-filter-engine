@@ -28,6 +28,49 @@ function Harness({ initial = DEFAULT_PROFILE }: { initial?: ProfileData }) {
   }} /><output data-testid="master">{JSON.stringify(profile.resume_master ?? null)}</output></>;
 }
 describe('complete résumé master editor', () => {
+  it('requires confirmation of both identity and publication, retains original IDs after save, and refuses duplicate imports', () => {
+    const data = { results: [{ id: 'https://openalex.org/W22', display_name: 'Example paper',
+      authorships: [{ author: { id: 'https://openalex.org/A99', display_name: 'A. Student' } }] }] };
+    render(<Harness initial={{ ...DEFAULT_PROFILE, scholar_url: 'https://scholar.google.com/citations?user=DemoStudent' }} />);
+    open();
+    screen.getByText('Import my publications from OpenAlex').closest('details')!.open = true;
+    expect(screen.queryByRole('button', { name: 'Check authorships' })).toBeNull();
+    change('Your OpenAlex author ID or ORCID', 'A99');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm that these author profiles are mine.' }));
+    change('Paste your public OpenAlex Works JSON export (up to 200 works).', JSON.stringify(data));
+    fireEvent.click(screen.getByRole('button', { name: 'Check authorships' }));
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm this is my publication' }));
+    expect(screen.getByRole('button', { name: 'Already in résumé' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().publications[0].student_authorship).toEqual({ scholar_id: 'DemoStudent', author_id: 'A99', work_id: 'W22' });
+    expect(stored().publications[0].title?.status).toBe('confirmed');
+    change('Publication title', 'Different work');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().publications[0].student_authorship).toBeUndefined();
+  });
+  it('attaches authorship to a confirmed legacy DOI without changing the student’s citation or its sources', () => {
+    const master = createEmptyResumeMaster();
+    const original = { id: 'old-paper', details: [], title: fact('My preserved title'),
+      authors: fact('Coauthor, A.; Student, B.'), doi: fact('10.1234/OldTitle'), url: fact('https://publisher.example/old') };
+    master.publications.push(original);
+    render(<Harness initial={{ ...DEFAULT_PROFILE, scholar_url: 'https://scholar.google.com/citations?user=DemoStudent', resume_master: master }} />);
+    open();
+    screen.getByText('Import my publications from OpenAlex').closest('details')!.open = true;
+    change('Your OpenAlex author ID or ORCID', 'A99');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm that these author profiles are mine.' }));
+    change('Paste your public OpenAlex Works JSON export (up to 200 works).', JSON.stringify({
+      id: 'https://openalex.org/W66', display_name: 'Publisher spelling', doi: 'https://doi.org/10.1234/oldtitle',
+      authorships: [{ author: { id: 'A99', display_name: 'Student, B.' } }],
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Check authorships' }));
+    expect(screen.getByText('Existing confirmed citation', { exact: false })).toHaveTextContent('My preserved title');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm authorship for this existing citation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().publications).toEqual([{ ...original, student_authorship: {
+      scholar_id: 'DemoStudent', author_id: 'A99', work_id: 'W66', linked_by: '10.1234/oldtitle' } }]);
+    expect(screen.queryByText('Your OpenAlex export', { exact: false })).toBeNull();
+  });
   it('waits for hydration and opens a collapsed editor without inventing profile facts', () => {
     const onChange = vi.fn(() => true);
     const profile = { ...DEFAULT_PROFILE, name: 'Do not infer', university: 'Do not infer a degree' };
@@ -66,11 +109,26 @@ describe('complete résumé master editor', () => {
     fireEvent.click(propose);
     expect(screen.getByText('No new candidates found in your résumé.')).toBeVisible();
   });
+  it('shows unstructured source lines and the manual section controls without creating new claims', async () => {
+    const citation = 'An invented archive note, Fictional Journal (2024).';
+    render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'Publications\n' + citation }} />); open();
+    const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
+    await waitFor(() => expect(propose).toBeEnabled());
+    fireEvent.click(propose);
+    const guidance = screen.getByText('Review source text without a matching field');
+    fireEvent.click(guidance);
+    expect(within(guidance.parentElement!).getByText(citation)).toBeVisible();
+    expect(within(guidance.parentElement!).getByText(/Add any missing details/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add publication' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Remove publication' })).toBeNull();
+    expect(preview().queryByText(citation)).toBeNull();
+  });
   it('counts a single résumé candidate in the singular', async () => {
     render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'SKILLS\nPython' }} />); open();
     const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
     await waitFor(() => expect(propose).toBeEnabled());
     fireEvent.click(propose);
+    expect(screen.queryByText('Review source text without a matching field')).toBeNull();
     expect(screen.getByText('Added 1 candidate quoted from your résumé. Confirm it before it appears in the preview.'))
       .toHaveAttribute('role', 'status');
   });

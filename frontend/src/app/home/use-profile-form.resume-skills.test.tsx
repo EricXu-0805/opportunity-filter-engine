@@ -1,3 +1,4 @@
+import { createHash, webcrypto } from 'node:crypto';
 import { act, cleanup, render } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -152,6 +153,26 @@ async function requested(): Promise<string[]> {
 }
 
 describe('a replaced résumé takes the skills only it named with it', () => {
+  it('keeps an incomplete-page warning with its source through reload, replacement and removal', async () => {
+    vi.stubGlobal('crypto', webcrypto);
+    try {
+      row = { revision: 1, profile: SIGNED_UP };
+      const view = await mount();
+      await importResume('Synthetic partial résumé', '');
+      const digest = createHash('sha256').update(form().profile.resume_text!).digest('hex');
+      expect(row.profile.resume_incomplete_digest).toBe(digest);
+      await reload(view);
+      expect(form().profile.resume_incomplete_digest).toBe(digest);
+      await importResume('Synthetic complete résumé');
+      expect(row.profile.resume_incomplete_digest).toBeNull();
+      await importResume('Synthetic latest source', '');
+      expect(row.profile.resume_incomplete_digest).toBeTruthy();
+      await removeResume();
+      expect(row.profile.resume_incomplete_digest).toBeNull();
+      expect(row.profile.resume_text).toBe('');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it('drops a skill the new résumé does not name and gives one it does name the new line (live 2026-10-17)', async () => {
     row = { revision: 1, profile: SIGNED_UP };
     await mount();

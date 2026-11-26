@@ -109,6 +109,43 @@ def valid_source(source, max_quote):
         fail("invalid_source")
 
 
+def citation_doi(value):
+    if not isinstance(value, str) or len(value) > 300:
+        return None
+    doi = re.sub(r"^https://(?:dx\.)?doi\.org/", "", value.strip(), flags=re.I)
+    return doi.lower() if re.fullmatch(r"10\.[0-9]{4,9}/\S+", doi) and all(ord(char) >= 32 for char in doi) else None
+
+
+def validate_student_authorship(source, url, doi):
+    shape(source, ("scholar_id", "author_id", "work_id"), ("orcid", "linked_by"))
+    for key, pattern in (("scholar_id", r"[a-zA-Z0-9_-]{1,40}"), ("author_id", r"A[1-9][0-9]{0,18}"),
+                         ("work_id", r"W[1-9][0-9]{0,18}")):
+        if not re.fullmatch(pattern, text(source[key], 40, True)):
+            fail("invalid_source")
+    work_url = "https://openalex.org/" + source["work_id"]
+    link = url.get("value") if isinstance(url, dict) else None
+    if "linked_by" not in source:
+        bound = link == work_url
+    elif source["linked_by"] == work_url:
+        bound = isinstance(link, str) and re.sub(r"^https://openalex\.org/", "", link, flags=re.I).upper() == source["work_id"]
+    else:
+        locator = text(source["linked_by"], 300, True)
+        bound = citation_doi(locator) == locator and locator in {citation_doi(link), citation_doi(doi.get("value") if isinstance(doi, dict) else None)}
+    if not bound:
+        fail("invalid_source")
+    if "orcid" in source:
+        value = text(source["orcid"], 19, True)
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]", value):
+            fail("invalid_source")
+        digits = value.replace("-", "")
+        total = 0
+        for digit in digits[:-1]:
+            total = (total + int(digit)) * 2
+        check = (12 - total % 11) % 11
+        if digits[-1] != ("X" if check == 10 else str(check)):
+            fail("invalid_source")
+
+
 def validate_entries(entries):
     seen = set()
     total = quotes = 0
@@ -191,7 +228,10 @@ def validate_master(master):
         fact(link["url"])
     for name, keys in (("education", EDUCATION), ("activities", ACTIVITY), ("publications", PUBLICATION)):
         for item in array(master[name]):
-            shape(item, ("id", "details", "kind") if name == "activities" else ("id", "details"), keys)
+            optional = (*keys, "student_authorship") if name == "publications" else keys
+            shape(item, ("id", "details", "kind") if name == "activities" else ("id", "details"), optional)
+            if "student_authorship" in item:
+                validate_student_authorship(item["student_authorship"], item.get("url"), item.get("doi"))
             unique(item["id"], True)
             if name == "activities" and item["kind"] not in {"employment", "research", "project", "volunteer", "other"}:
                 fail("invalid_master")
