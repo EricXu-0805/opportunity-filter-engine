@@ -1,0 +1,30 @@
+[
+  {
+    "id": "faculty-msu-mgi-6af109e0",
+    "name": "Debbie Walton",
+    "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/104350",
+    "rank": "Executive Assistant to the Chair and Communications Manager",
+    "active": false
+  },
+  {
+    "id": "faculty-msu-bmb-350c8c60",
+    "name": "John E. Wilson",
+    "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/103481",
+    "rank": "Professor Emeritus",
+    "active": false
+  },
+  {
+    "id": "faculty-msu-bmb-939e5db8",
+    "name": "Olorunseun O Ogunwobi",
+    "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+    "rank": "Chairperson",
+    "active": true
+  },
+  {
+    "id": "faculty-msu-ees-211ade4b",
+    "name": "Jeffrey Freymueller",
+    "official": "https://directory.natsci.msu.edu/directory/Profiles/Person/101198",
+    "rank": "Chairperson, Faculty",
+    "active": true
+  }
+]
