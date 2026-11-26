@@ -1,0 +1,181 @@
+{
+  "public_probe": {
+    "start": [
+      "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "091c3800c9b5310fba6c591d3eaa1f588390055f"
+    ],
+    "utc": "2026-11-26T16:24:11.501526+00:00",
+    "reads": {
+      "old_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-tamu-ece-74ee208c",
+        "http": 404,
+        "returned_id": null,
+        "name": null,
+        "actionable": null,
+        "duplicate_of": null
+      },
+      "current_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-tamu-ece-44b0285f",
+        "http": 200,
+        "returned_id": "faculty-tamu-ece-44b0285f",
+        "name": "Su-in Yi",
+        "actionable": true,
+        "duplicate_of": null
+      },
+      "source": {
+        "url": "https://engineering.tamu.edu/electrical/profiles/yi-suin.html",
+        "http": 200,
+        "heading": "Su-in Yi",
+        "original_links_to_current": 0,
+        "page_title": "Yi, Su-in | Texas A&M University Engineering"
+      },
+      "old_page": {
+        "url": "https://joinalab.com/opportunities/faculty-tamu-ece-74ee208c",
+        "http": 200,
+        "heading": null,
+        "original_links_to_current": 0,
+        "page_title": "Opportunity not found · JoinALab"
+      },
+      "current_page": {
+        "url": "https://joinalab.com/opportunities/faculty-tamu-ece-44b0285f",
+        "http": 200,
+        "heading": "Su-in Yi",
+        "original_links_to_current": 0,
+        "page_title": "Su-in Yi at Texas A&M University · JoinALab"
+      }
+    },
+    "end": [
+      "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "091c3800c9b5310fba6c591d3eaa1f588390055f"
+    ]
+  },
+  "historical_change": "https://github.com/EricXu-0805/opportunity-filter-engine/commit/b405dce48d415d494db85f9446e5acb68ec1852d",
+  "last_commit_with_original_active": "fa74dc9dc7c934e851daa36c2d43ac5471d9e01f",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1448",
+  "source_candidate": "7d760fc3c9af12e8b26b389c350676c12a5b9e93",
+  "school_feed": {
+    "url": "https://engineering.tamu.edu/profile-data.json",
+    "http": 200,
+    "bytes_sha256": "d1906fa97f3a3d41be0393a547ad27300b555a848ffa8c07011187f2654f01cd",
+    "all_college_cards": 1578,
+    "electrical_faculty_tagged": 77,
+    "history_comparison": {
+      "same_individual_profile": true,
+      "same_individual_contact": true,
+      "same_department": true,
+      "same_academic_role": true
+    }
+  },
+  "old_unchanged_first_seen": "2026-07-18T15:02:26.412977",
+  "old_unchanged_last_seen": "2026-10-13T15:10:14.537813",
+  "current_unchanged_last_seen": "2026-11-24T18:35:31.791603",
+  "prior_school_rows_preserved": 3313,
+  "post_fix_local_assembled_count": 149822,
+  "unchanged_school_stats": 115,
+  "local_replays": [
+    {
+      "phase": "current name",
+      "school_rows": 3314,
+      "school_prior_ids_retained": 3314,
+      "source_fetched": 77,
+      "source_status": "ok",
+      "unit_coverage": {
+        "observed_count": 77,
+        "baseline_active_count": 78,
+        "matched_identity_count": 77,
+        "missed_present_identities": null,
+        "failure_reason": "empty_roster",
+        "retirement_authorized": false
+      },
+      "historical_id": "faculty-tamu-ece-74ee208c",
+      "historical_actionable": false,
+      "historical_last_seen": "2026-10-13T15:10:14.537813",
+      "current_pointer": "faculty-tamu-ece-44b0285f",
+      "current_name": "Su-in Yi",
+      "current_actionable": true,
+      "active_ids_at_the_official_profile": [
+        "faculty-tamu-ece-44b0285f"
+      ]
+    },
+    {
+      "phase": "older spelling",
+      "school_rows": 3314,
+      "school_prior_ids_retained": 3314,
+      "source_fetched": 77,
+      "source_status": "ok",
+      "unit_coverage": {
+        "observed_count": 77,
+        "baseline_active_count": 78,
+        "matched_identity_count": 77,
+        "missed_present_identities": null,
+        "failure_reason": "empty_roster",
+        "retirement_authorized": false
+      },
+      "historical_id": "faculty-tamu-ece-74ee208c",
+      "historical_actionable": false,
+      "historical_last_seen": "2026-10-13T15:10:14.537813",
+      "current_pointer": "faculty-tamu-ece-44b0285f",
+      "current_name": "Suin Yi",
+      "current_actionable": true,
+      "active_ids_at_the_official_profile": [
+        "faculty-tamu-ece-44b0285f"
+      ]
+    },
+    {
+      "phase": "unavailable",
+      "school_rows": 3314,
+      "school_prior_ids_retained": 3314,
+      "source_fetched": 0,
+      "source_status": "suspicious_zero",
+      "unit_coverage": {
+        "observed_count": 0,
+        "baseline_active_count": null,
+        "matched_identity_count": null,
+        "missed_present_identities": null,
+        "failure_reason": null,
+        "retirement_authorized": false
+      },
+      "historical_id": "faculty-tamu-ece-74ee208c",
+      "historical_actionable": false,
+      "historical_last_seen": "2026-10-13T15:10:14.537813",
+      "current_pointer": "faculty-tamu-ece-44b0285f",
+      "current_name": "Suin Yi",
+      "current_actionable": true,
+      "active_ids_at_the_official_profile": [
+        "faculty-tamu-ece-44b0285f"
+      ]
+    },
+    {
+      "phase": "restored current name",
+      "school_rows": 3314,
+      "school_prior_ids_retained": 3314,
+      "source_fetched": 77,
+      "source_status": "ok",
+      "unit_coverage": {
+        "observed_count": 77,
+        "baseline_active_count": 78,
+        "matched_identity_count": 77,
+        "missed_present_identities": null,
+        "failure_reason": "empty_roster",
+        "retirement_authorized": false
+      },
+      "historical_id": "faculty-tamu-ece-74ee208c",
+      "historical_actionable": false,
+      "historical_last_seen": "2026-10-13T15:10:14.537813",
+      "current_pointer": "faculty-tamu-ece-44b0285f",
+      "current_name": "Su-in Yi",
+      "current_actionable": true,
+      "active_ids_at_the_official_profile": [
+        "faculty-tamu-ece-44b0285f"
+      ]
+    }
+  ],
+  "tests_passed": 931,
+  "future_evidence": [
+    "GitHub CI",
+    "main merge",
+    "exact deployed public versions",
+    "localised historical link to current detail",
+    "natural school refresh"
+  ]
+}
