@@ -1,0 +1,49 @@
+{
+  "at": "2026-11-26T16:31:23.840619+00:00",
+  "base": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "head": "212da65efa6f0c76fe04c313de3ea639b144e0a0",
+  "identical_reviewed_tree": "2aeda873479532bbd04ba0e810fa69717f8d86cf",
+  "github_test_merge": "2ed4cf9b60bdec5500fa816e32e171991acb5149",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1384",
+  "pr_merge_state": "clean",
+  "merged": false,
+  "is_draft": false,
+  "source_ci_event": "pull_request",
+  "finish": "2026-11-26T16:29:10Z",
+  "conclusion": "success",
+  "immutable_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306",
+  "jobs": [
+    {
+      "name": "Decide (run or skip the suite)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306/job/140026148295"
+    },
+    {
+      "name": "Frontend (typecheck + build)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306/job/140026229763"
+    },
+    {
+      "name": "Backend (lint + pytest)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306/job/140026229814"
+    },
+    {
+      "name": "Migrations (Flow B merge + CLI replay)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306/job/140026229853"
+    },
+    {
+      "name": "E2E (Playwright)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306/job/140026229967"
+    },
+    {
+      "name": "Deploy backend (Render hook)",
+      "conclusion": "skipped",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306/job/140045465626"
+    }
+  ],
+  "deployment": "Separate from source CI. At this observation the source PR had not merged.",
+  "earlier_tree_and_corpus_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/1df1141f1fc1a457258d512bca7866be6a78e4db/data/audits/batch10-final-same-tree-and-actual-main-2026-11-26.json"
+}
