@@ -167,6 +167,13 @@ REVIEWS = {
     "faculty-sbu-cs-890dcd54": ProfileReview(
         "sbu", "Department of Computer Science", "Ting Wang", "https://www.cs.stonybrook.edu/people/faculty/tingwang",
         "https://alps-lab.github.io/", _SBU_CS, _NOV_25),
+    "faculty-tamu-ece-d96cfd82": ProfileReview(
+        "tamu", "Department of Electrical and Computer Engineering", "Serap Savari",
+        "https://engineering.tamu.edu/electrical/profiles/ssavari.html",
+        "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/"
+        "#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty",
+        datetime(2026, 11, 26, 17, 42, tzinfo=UTC)),
     "faculty-tamu-inta-c32e8252": ProfileReview(
         "tamu", "Department of International Affairs", "John Schuessler", "https://bush.tamu.edu/faculty/jschuessler",
         "https://bush.tamu.edu/directory/john-schuessler/",
