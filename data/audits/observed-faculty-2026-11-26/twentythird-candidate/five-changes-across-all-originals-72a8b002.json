@@ -1,0 +1,75 @@
+{
+  "checked_at": "2026-11-26T21:18:08.853330+00:00",
+  "base": "f81bbd400ff0c9696787bed97a6a1aa88eded309",
+  "candidate_head": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "candidate_tree": "25ef9755a95d77f54033d21d8412e0d149b6d259",
+  "shard_count": 117,
+  "original_ids_in_order": 149944,
+  "differing_sources": {
+    "msu": {
+      "original_ids": 1063,
+      "changed": {
+        "faculty-msu-bmb-350c8c60": [
+          "description_clean",
+          "eligibility",
+          "metadata"
+        ],
+        "faculty-msu-mgi-6af109e0": [
+          "application",
+          "contact_email",
+          "description_clean",
+          "eligibility",
+          "metadata",
+          "source_type",
+          "source_url"
+        ]
+      },
+      "source": "4e5a1bd98240fc4b7fa006297e15600914b959c9"
+    },
+    "national": {
+      "original_ids": 14198,
+      "changed": {
+        "sro-d6b78515": [
+          "compensation_details",
+          "deadline",
+          "deadline_is_estimate",
+          "metadata"
+        ],
+        "uchicago-8cd2def060b6": [
+          "compensation_details",
+          "deadline",
+          "deadline_is_estimate",
+          "description",
+          "description_clean",
+          "eligibility",
+          "is_rolling",
+          "metadata"
+        ]
+      },
+      "source": "cd745b4016ff29e23001de9cf6614e94ee6d94b2"
+    },
+    "pitt": {
+      "original_ids": 1147,
+      "changed": {
+        "faculty-pitt-cs-bb6c586d": [
+          "metadata"
+        ]
+      },
+      "source": "47ec64a7f03318464c08555c4533813f398bdfea"
+    }
+  },
+  "other_rows_byte_equivalent_when_serialized": 149939,
+  "directly_reused_stored_donor_rows": 5,
+  "coverage_deltas": {
+    "msu": {
+      "faculty_contact_count": -2,
+      "total_count": -2
+    },
+    "pitt": {
+      "faculty_contact_count": -1,
+      "total_count": -1
+    }
+  },
+  "national_count": 5630,
+  "counted_schools": 115
+}
