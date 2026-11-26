@@ -556,3 +556,104 @@ def test_ligo_surf_keeps_its_two_application_routes_separate():
     assert "U.S. national status" in eligibility["work_auth_notes"]
     assert "institutions in India" in eligibility["work_auth_notes"]
     assert evidence.configured_note_last_date(emitted) == date(2027, 1, 15)
+
+
+def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monkeypatch, tmp_path):
+    from src.collectors.base import RawOpportunity
+    from src.collectors.nsf_reu import normalize_award
+    from src.collectors.uiuc_sro import raw_to_normalized
+    from src.program_windows import public_opening
+    from src.reviewed_program_pairs import SMU, pairs_in_records
+    from src.saved_searches.filter import matching_ids
+
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
+    award = {
+        "id": "2447670", "title": "REU Site: Advancing Data Science in the Public Interest",
+        "awardeeName": "Southern Methodist University", "startDate": "12/01/2025",
+    }
+    crisp_url = "https://researchops.web.illinois.edu/opportunity/cancer-research-internship-summer-program-crisp"
+    crisp_host = "https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html"
+    smu_host = (
+        "https://www.smu.edu/Provost/saes/academic-enrichment/engaged-learning/"
+        "research/research-experiences-undergraduates/data-science-reu"
+    )
+
+    def directory(url, deadline, host):
+        return raw_to_normalized(RawOpportunity(
+            "uiuc_sro", "https://researchops.web.illinois.edu/?page=4", "Program", "", url,
+            extra_fields={"deadline_raw": "Anticipated " + deadline, "program_url": host},
+        ))
+
+    grant = normalize_award(award)
+    smu = directory(SMU.directory_url, "2/15/27", smu_host)
+    crisp = directory(crisp_url, "2/1/27", crisp_host)
+    for row, close, opening, page in (
+        (crisp, "2027-01-31", "2026-11-15", crisp_host),
+        (grant, "2027-02-22", "2026-11-19", SMU.window.page),
+        (smu, "2027-02-22", "2026-11-19", SMU.window.page),
+    ):
+        assert row["deadline"] == close and not row["deadline_is_estimate"] and not row["is_rolling"]
+        assert public_opening(row)["on"] == opening
+        timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
+        assert timing["explicit"]["deadline"] == close and timing["quotes"]["deadline"]["source_url"] == page
+        first = copy.deepcopy(row)
+        apply_program_window(row)
+        assert row == first
+    from src.normalizers import host_program_terms
+    for row in (grant, smu):
+        fields = build_detail_fields(copy.deepcopy(row), row)["fields"]
+        assert fields["funding"]["explicit"]["compensation"] == "$5,600 stipend"
+        assert fields["timing"]["explicit"]["duration"] == "8 weeks"
+        assert fields["funding"]["quotes"]["compensation"]["source_url"].startswith("https://www.smu.edu/")
+        assert row["eligibility"]["skills_required"] == [] and row["eligibility"]["preferred_year"] == ["sophomore", "junior"]
+        details = fields["eligibility"]
+        assert details["explicit"]["work_authorization_notes"] == "U.S. citizen or permanent resident"
+        assert details["explicit"]["international_students"] == "no" and details["explicit"]["citizenship"] == "required"
+        for key in ("work_authorization_notes", "international_students", "citizenship"):
+            assert details["quotes"][key]["source_url"].startswith("https://www.smu.edu/")
+        assert host_program_terms.quote({**row, "compensation_details": "$4,800"}, "compensation") is None
+    crisp_fields = build_detail_fields(copy.deepcopy(crisp), crisp)["fields"]
+    assert crisp_fields["funding"]["quotes"]["paid"]["source_url"] == crisp_host
+    assert crisp_fields["eligibility"]["explicit"]["min_gpa"] == 3.2
+    assert crisp_fields["location"]["explicit"] == {"location": "Indianapolis, IN", "remote_option": "no"}
+    assert crisp_fields["location"]["quotes"]["location"]["source_url"] == "https://cancer.iu.edu/education/summer/index.html"
+    assert grant["metadata"]["superseded_work_auth_notes"]["basis"] == "nsf_reu_solicitation"
+    assert grant["start_date"] is None and grant["metadata"]["nsf_award_start_date"] == "12/01/2025"
+    assert grant["application"]["application_url"] == SMU.window.page
+    assert grant["metadata"]["superseded_award_deadline_estimate"]["date"] == "2026-02-15"
+    assert smu["metadata"]["superseded_directory_deadline"]["date"] == "2027-02-15"
+    assert crisp["metadata"]["superseded_directory_deadline"]["date"] == "2027-02-01"
+    assert pairs_in_records([crisp, smu, grant]) == (SMU,)
+    assert matching_ids([smu, grant], {}) == [SMU.host_id]
+    assert matching_ids([smu, grant], {"source": "uiuc_sro"}) == [SMU.directory_id]
+    assert matching_ids([smu, grant], {"source": "nsf_reu"}) == [SMU.host_id]
+    assert matching_ids([smu, grant], {}, preferred_ids=[SMU.directory_id]) == [SMU.directory_id]
+    later = directory(SMU.directory_url, "2/15/28", smu_host)
+    assert later["deadline"] == "2028-02-15" and later["deadline_is_estimate"]
+    assert pairs_in_records([later, grant]) == ()
+    from src.collectors.uiuc_sro import merge_into_processed
+    for old, new in ((smu, later), (crisp, directory(crisp_url, "2/1/28", crisp_url))):
+        stored = tmp_path / (old["id"] + ".json")
+        stored.write_text(json.dumps([old]))
+        merge_into_processed([new], str(stored))
+        [changed] = json.loads(stored.read_text())
+        assert changed["deadline"].startswith("2028") and changed["deadline_is_estimate"]
+        assert changed["eligibility"]["min_gpa"] is None and changed["paid"] == new["paid"] != "yes"
+        assert changed["compensation_details"] != "$5,600 stipend" and host_program_terms.checked_window(changed) is None
+        assert changed["location"] != "Indianapolis, IN" and changed["eligibility"]["work_auth_notes"] != "U.S. citizen or permanent resident"
+    for item in (directory(crisp_url, "2/1/27", smu_host), directory(SMU.directory_url, "2/15/27", crisp_host),
+                 normalize_award({**award, "awardeeName": "Another university"}),
+                 normalize_award({**award, "title": "REU Site: Different program"}),
+                 normalize_award({**award, "startDate": "12/01/2027"})):
+        assert reviewed_window(item) is None and item["deadline_is_estimate"]
+
+    # A legacy partial input may contain the new external link but no deep
+    # capture receipt. Never restore the prior program behind its back.
+    moved = directory(SMU.directory_url, "2/15/27", crisp_host)
+    stored = tmp_path / "redirected.json"
+    stored.write_text(json.dumps([smu]))
+    merge_into_processed([moved], str(stored))
+    [merged] = json.loads(stored.read_text())
+    assert merged["application"]["application_url"] == crisp_host
+    assert merged["deadline"] == "2027-02-15" and merged["deadline_is_estimate"]
+    assert merged["compensation_details"] != "$5,600 stipend" and reviewed_window(merged) is None

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import requests
 
+from src.normalizers import host_program_terms
 from src.program_windows import apply_program_window
 
 logger = logging.getLogger(__name__)
@@ -368,6 +369,7 @@ def normalize_award(award: dict) -> dict:
         },
     }
     apply_program_window(record)
+    host_program_terms.apply_terms(record)
     return record
 
 

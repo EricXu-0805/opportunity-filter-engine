@@ -3,7 +3,15 @@
 from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass, replace
 
-from src.program_windows import NCSA_DIRECTORY, WINDOWS, WISCONSIN_DIRECTORY, ProgramWindow, reviewed_window
+from src.program_windows import (
+    NCSA_DIRECTORY,
+    SMU_DIRECTORY,
+    SMU_WINDOW,
+    WINDOWS,
+    WISCONSIN_DIRECTORY,
+    ProgramWindow,
+    reviewed_window,
+)
 
 
 @dataclass(frozen=True)
@@ -89,7 +97,8 @@ _WISCONSIN_FALLBACK = replace(
 )
 # In the interim both SRO pages can be present. Respect the collector's
 # preferred live entry, including the other entry when the original withdraws.
-SOURCES_BY_PROGRAM = ((NCSA,), (WISCONSIN, _WISCONSIN_FALLBACK))
+SMU = ProgramPair("nsf-reu-2447670", "nsf_reu", SMU_WINDOW, "sro-44f176cd", SMU_DIRECTORY)
+SOURCES_BY_PROGRAM = ((NCSA,), (WISCONSIN, _WISCONSIN_FALLBACK), (SMU,))
 ALL_IDS = frozenset(oid for choices in SOURCES_BY_PROGRAM for pair in choices for oid in pair.ids)
 
 
