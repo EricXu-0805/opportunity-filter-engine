@@ -2056,6 +2056,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _BR_RE = re.compile(r"(?i)<br\s*/?>")
+_NUMERIC_SUP_RE = re.compile(r"<sup>\s*([0-9+-]+)\s*</sup>", re.I)
+_SUPERSCRIPT = str.maketrans("0123456789+-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻")
 
 # A research-area taxonomy is usually short (a handful of controlled terms); cap
 # the per-profile selector harvest so an over-broad selector that accidentally
@@ -2326,7 +2328,10 @@ def _research_html_text(fragment: str) -> str:
     # The regex captured serialized markup. Keep line-break delimiters and
     # decode once after stripping tags, just as readers see the text.
     separated = _BR_RE.sub("; ", fragment)
-    return " ".join(html.unescape(_HTML_TAG_RE.sub(" ", separated)).split())
+    separated = _NUMERIC_SUP_RE.sub(lambda m: m[1].translate(_SUPERSCRIPT), separated)
+    text = " ".join(html.unescape(_HTML_TAG_RE.sub(" ", separated)).split())
+    # Some campus directories clip their excerpt inside a nonbreaking space.
+    return re.sub(r",?&(?:n|nb|nbs|nbsp)\.{3}$", "...", text)
 
 
 def _wp_text(raw: str) -> str:
