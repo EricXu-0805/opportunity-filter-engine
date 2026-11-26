@@ -5557,6 +5557,8 @@ def merge_into_processed(new_opps: list[dict]):
     """
     import json
 
+    from src.normalizers.reviewed_faculty_profiles import carry_forward_reviewed_appointment
+
     from .ucb_common import PROCESSED_FILE
 
     if not PROCESSED_FILE.exists() or not new_opps:
@@ -5580,6 +5582,7 @@ def merge_into_processed(new_opps: list[dict]):
             # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
             # enrichment on the same stable id.
             _carry_forward_enrichment(cur, opp)
+            carry_forward_reviewed_appointment(cur, opp)
             cur.update(opp)
             updated += 1
         else:
