@@ -35,13 +35,22 @@ def main():
         c=shared.cold(b);p=shared.home(c);p.set_viewport_size({'width':390,'height':844})
         p.locator('#student_name').fill(shared.student);p.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)')
         p.locator('#major').select_option(label='Integrative Biology');p.locator('#grade').select_option(label='Freshman')
-        with p.expect_response(lambda r:urlsplit(r.url).path=='/rest/v1/rpc/commit_profile_patch_cas' and r.ok and 'Beacon field map' in r.request.post_data,timeout=60000):
-            p.locator('input[type=file][accept*="pdf"]').first.set_input_files({'name':'two-column-qa.pdf','mimeType':'application/pdf','buffer':pdf})
-        expect(p.get_by_role('button',name='Remove file')).to_be_visible()
+        path=Path(os.environ['OFE_M44_COLUMNS_RECEIPT'])
+        receipt={'release':release,'pdf_sha256':hashlib.sha256(pdf).hexdigest(),'first_party_anonymous_signup':bool(shared.auth),'visual_columns_disjoint':True,'synthetic_input_pages':1,'first_row_statuses':[]}
+        def store():path.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
+        store()
+        p.locator('input[type=file][accept*="pdf"]').first.set_input_files({'name':'two-column-qa.pdf','mimeType':'application/pdf','buffer':pdf})
+        try:
+            expect(p.get_by_role('button',name='Remove file',exact=True)).to_be_visible(timeout=60000)
+            receipt['upload_icon_visible']=True
+        except AssertionError:
+            receipt['visible_upload_status']=p.locator('main [role="alert"]').all_text_contents()
+            store();raise
+        p.wait_for_timeout(4000)
         c2=shared.cold(b);p2,(rv,data)=stable_read(c2)
-        raw=data['resume_text'];source_lines=[v.strip() for v in raw.splitlines() if v.strip()]
-        receipt={'release':release,'pdf_sha256':hashlib.sha256(pdf).hexdigest(),'first_party_anonymous_signup':bool(shared.auth),'profile_revision_after_upload':rv,'visual_columns_disjoint':True,'synthetic_input_pages':1,'source_lines':source_lines,'extracted_sha256':hashlib.sha256(raw.encode()).hexdigest(),'first_row_statuses':[]}
-        path=Path(os.environ['OFE_M44_COLUMNS_RECEIPT']);path.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
+        raw=data.get('resume_text','');source_lines=[v.strip() for v in raw.splitlines() if v.strip()]
+        receipt.update({'profile_revision_after_upload':rv,'source_lines':source_lines,'extracted_sha256':hashlib.sha256(raw.encode()).hexdigest()})
+        store()
         flat=normalize(raw)
         assert all(flat.count(normalize(s))==1 for s in LEFT+RIGHT)
         for block in [LEFT,RIGHT]:
