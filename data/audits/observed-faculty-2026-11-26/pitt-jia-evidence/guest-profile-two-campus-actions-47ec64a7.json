@@ -1,0 +1,41 @@
+{
+  "checked_at": "2026-11-26T20:38:58.701231+00:00",
+  "site": "http://127.0.0.1:3000",
+  "guest_account": {
+    "signup_http": 200,
+    "profile_saved": true
+  },
+  "release": "47ec64a7f03318464c08555c4533813f398bdfea",
+  "rows": [
+    {
+      "id": "faculty-pitt-cs-bb6c586d",
+      "campus": "University of Pittsburgh",
+      "h1": "Xiaowei Jia",
+      "saved_status": 200,
+      "active": false,
+      "inactive_banner": true,
+      "visible_person_link": "https://www.cs.pitt.edu/people/full-time-faculty/xiaowei-jia",
+      "draft_button_visible": false,
+      "generic_invitation_visible": false,
+      "retained_archived_paper_titles": [
+        "Flow Learners for PDEs: Toward a Physics-to-Physics Paradigm for Scientific Computing",
+        "Knowledge-Guided Machine Learning: A Paradigm Shift in AI for Science",
+        "PEST: Physics-Enhanced Swin Transformer for 3D Turbulence Simulation"
+      ],
+      "release": "47ec64a7f03318464c08555c4533813f398bdfea"
+    },
+    {
+      "id": "faculty-rutgers-cs-bb6c586d",
+      "campus": "Rutgers University-New Brunswick",
+      "h1": "Xiaowei Jia",
+      "saved_status": 200,
+      "active": true,
+      "inactive_banner": false,
+      "visible_person_link": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia",
+      "draft_button_visible": true,
+      "generic_invitation_visible": true,
+      "retained_archived_paper_titles": [],
+      "release": "47ec64a7f03318464c08555c4533813f398bdfea"
+    }
+  ]
+}
