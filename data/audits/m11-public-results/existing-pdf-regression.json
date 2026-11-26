@@ -1,0 +1,44 @@
+{
+  "base": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "head": "db6fb322c68f3ded04a238a80830f4e70c6f5ac0",
+  "comparison": "All properties returned from parseResumePDF, including raw_text, skills, evidence, coursework and interests",
+  "identical": true,
+  "pdfs": [
+    {
+      "name": "resume-boundaries.pdf",
+      "raw_chars": 5877,
+      "course_count": 5,
+      "whole_result_sha256": "4436c47631f16edf6c6c77cfdefeabfeef12b29a286239b8d83c9f0064ad4257"
+    },
+    {
+      "name": "resume-ce2.pdf",
+      "raw_chars": 1252,
+      "course_count": 9,
+      "whole_result_sha256": "be8773532057db252cbe8750a08ddcce6f47e3d59d5027504f8d4e8285fef609"
+    },
+    {
+      "name": "resume-layouts.pdf",
+      "raw_chars": 1621,
+      "course_count": 4,
+      "whole_result_sha256": "cf263d0b91a996cb9b6d7af995c5ceb807c2f305d0f3fc7d6a3595ccc76fcbd5"
+    },
+    {
+      "name": "resume-noperiod.pdf",
+      "raw_chars": 2256,
+      "course_count": 1,
+      "whole_result_sha256": "c59a47b31974dce360d7ce5db99983688f722ed96ec759ce3b9dcf4ee4fe75f6"
+    },
+    {
+      "name": "resume-renovate.pdf",
+      "raw_chars": 1252,
+      "course_count": 9,
+      "whole_result_sha256": "f8d94c8ca8798c7cc6a3073c9679fc46776abeede3350966afa3261cb2773f8d"
+    },
+    {
+      "name": "resume-tr04.pdf",
+      "raw_chars": 1252,
+      "course_count": 9,
+      "whole_result_sha256": "be8773532057db252cbe8750a08ddcce6f47e3d59d5027504f8d4e8285fef609"
+    }
+  ]
+}
