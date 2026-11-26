@@ -50,6 +50,16 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         ctx=pw.chromium.launch_persistent_context(str(Path(tmp)/locale),channel='chromium',headless=False,no_viewport=True,locale='en-US',args=['--no-sandbox','--disable-dev-shm-usage','--window-size='+str(width)+',940','--disable-extensions-except='+str(ext),'--load-extension='+str(ext)])
         worker=ctx.service_workers[0] if ctx.service_workers else ctx.wait_for_event('serviceworker',timeout=40000)
         sessions=[];revisions=[];drafts=[];registered=[]
+        copy_only=os.environ.get('OFE_CHECK_DRAFT_RECOPY')=='1'
+        contact_writes=[]
+        if copy_only:
+            ctx.grant_permissions(['clipboard-read','clipboard-write'],origin=SITE)
+            def track_write(req):
+                loc=urlsplit(req.url)
+                if req.method in ('POST','PATCH','PUT','DELETE') and (
+                        loc.path.startswith('/rest/v1/interactions') or 'confirm_contact' in loc.path):
+                    contact_writes.append(req.method)
+            ctx.on('request',track_write)
         def response(r):
             u=urlsplit(r.url)
             if not r.ok:return
@@ -144,9 +154,39 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
             focus(p,expand);case['conditions_focus']=state(p);p.keyboard.press('Enter');p.wait_for_timeout(250)
             case['conditions_expanded']=expand.evaluate("e=>e.tagName==='SUMMARY'?e.parentElement.open:e.getAttribute('aria-expanded')==='true'")
         focus(p,body);case['editor_body_focus']=state(p)
-        local='Synthetic keyboard-only draft, kept in this browser.';p.keyboard.press('Control+a');p.keyboard.type(local)
+        original=body.input_value()
+        local=original if copy_only else 'Synthetic keyboard-only draft, kept in this browser.'
+        if not copy_only:
+            p.keyboard.press('Control+a');p.keyboard.type(local)
         expect(body).to_have_value(local)
         close=p.get_by_role('button',name='Close email editor' if locale=='en' else '关闭邮件编辑器',exact=True)
+        if copy_only:
+            copy=p.get_by_test_id('copy-draft-only').filter(visible=True)
+            expect(copy).to_have_count(1)
+            subject=p.locator('#cold-email-subject').input_value()
+            expected_clipboard='Subject: '+subject+'\n\n'+original
+            idle_label='Copy draft only' if locale=='en' else '仅复制草稿'
+            copied_label='Draft copied' if locale=='en' else '草稿已复制'
+            expect(copy).to_have_text(idle_label)
+            for _ in range(2):
+                copy.click()
+                expect(copy).to_have_text(copied_label)
+                assert p.evaluate('navigator.clipboard.readText()')==expected_clipboard
+            # Close while the second receipt is still visible.
+            expect(copy).to_have_text(copied_label)
+            close.click()
+            expect(body).to_have_count(0,timeout=25000)
+            draft.click()
+            expect(body).not_to_have_value('',timeout=70000)
+            expect(copy).to_have_text(idle_label)
+            fresh_body=body.input_value()
+            assert fresh_body==original, 'Reopened draft text differs from the copied original'
+            p.wait_for_timeout(2200)
+            expect(copy).to_have_text(idle_label)
+            assert p.evaluate('navigator.clipboard.readText()')==expected_clipboard and not contact_writes
+            case['draft_only_recopy']={'real_clipboard_equal_after_first':True,
+                'real_clipboard_equal_after_second':True,'original_text_returned_on_reopen':True,
+                'new_dialog_clear_through_timer':True,'contact_writes':len(contact_writes)}
         focus(p,close,reverse=True);case['editor_close_focus']=state(p);p.keyboard.press('Enter');expect(body).to_have_count(0,timeout=25000)
         case['focus_returns_to_card']=draft.evaluate('e=>document.activeElement===e')
         case['results_geometry_after_close']=dims(p);case['templates']=len(drafts[0]['variants']);case['external_messages_sent']=0
