@@ -71,6 +71,48 @@ def _cas(short: str, name: str, majors: list[str], slug: str, path: str) -> dict
                        "profile_enrich": _CAS_ENRICH}}
 
 
+_CHEMISTRY_URL = "https://as.vanderbilt.edu/chemistry/faculty/"
+_CHEMISTRY_DIRECTORIES = {
+    "faculty-vanderbilt-chem-b0f20085": ("Primary Faculty Directory", "primary-faculty"),
+    "faculty-vanderbilt-chem-6968c3d1": ("Teaching Faculty Directory", "teaching-faculty"),
+}
+
+
+def _chemistry_department() -> dict:
+    dept = _cas("CHEM", "Department of Chemistry", ["Chemistry"], "chemistry", "faculty/")
+    # The two navigation rows have the same markup as individual faculty. Their
+    # group filter links to this directory, while faculty link to their bios.
+    dept["scrape"]["link_filter"] = r"^(?!(?:[^?#]*/faculty/?)?\?group=)"
+    return dept
+
+
+def _restore_directory_links(stored: dict, _incoming: list[dict]) -> None:
+    """Keep both published directory IDs readable without treating them as people."""
+    for record_id, (label, group) in _CHEMISTRY_DIRECTORIES.items():
+        record = stored.get(record_id)
+        source_url = f"{_CHEMISTRY_URL}?group={group}"
+        if (not record or record.get("source") != "vanderbilt_faculty"
+                or record.get("source_type") != "faculty_research"
+                or record.get("url") != source_url or record.get("source_url") != source_url
+                or record.get("pi_name") != label):
+            continue
+        record.update(
+            source_type="campus_department", title=label, pi_name=None, contact_email=None,
+            description_clean=f"Browse Vanderbilt’s Department of Chemistry {label.lower()} for individual faculty profiles.",
+        )
+        if isinstance(record.get("eligibility"), dict):
+            record["eligibility"]["eligibility_text_raw"] = ""
+        if isinstance(record.get("application"), dict):
+            record["application"].update(contact_method="website", application_url=None)
+        metadata = record.get("metadata")
+        if not isinstance(metadata, dict):
+            record["metadata"] = metadata = {}
+        metadata.update(reference_only=True, notes="Department of Chemistry faculty directory navigation.")
+        for key in ("faculty_title", "research_areas_raw", "_faculty_major_labels",
+                    "contact_instruction_sources", "contact_instruction_pages", "contact_instruction_capture"):
+            metadata.pop(key, None)
+
+
 # Keep ladder faculty across the FutureVU JSON rosters (Engineering, Blair):
 # titles carry every rank; drop emeriti.
 _LADDER = {"require": r"\bprofessor\b|\blecturer\b|\bartist\b", "drop": r"emerit"}
@@ -101,7 +143,7 @@ SCHOOL: dict = {
         _cas("ANTH", "Department of Anthropology", ["Anthropology"], "anthropology", "faculty/"),
         _cas("BSCI", "Department of Biological Sciences", ["Biological Sciences"],
              "biological-sciences", "people/"),
-        _cas("CHEM", "Department of Chemistry", ["Chemistry"], "chemistry", "faculty/"),
+        _chemistry_department(),
         _cas("ECON", "Department of Economics", ["Economics"], "economics", "people/"),
         _cas("ENGL", "Department of English", ["English"], "english", "people/"),
         _cas("FRIT", "Department of French & Italian", ["French", "Italian"],
@@ -166,4 +208,4 @@ def fetch_and_normalize(deep: bool = True,
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps)
+    return faculty_graph.merge_into_processed(opps, reconcile_snapshot=_restore_directory_links)
