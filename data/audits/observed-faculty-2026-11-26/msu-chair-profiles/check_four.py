@@ -104,13 +104,34 @@ def check(site, sha, scope, output):
                     action_labels=all_controls,
                     api_contact_status=payload.get("contact_email_status"),
                 )
-                assert row["inactive_banner"] == (not active), row
+                assert row["inactive_banner"] == (not active and not staff), row
                 assert row["view_faculty_profile"] == (not staff), row
                 assert row["generic_contact_invitation"] == active and row["draft_button_visible"] == active, row
                 if not active:
                     assert not row["apply_action_visible"], row
                 if staff:
-                    assert row["has_staff_summary"] and not row["text_has_faculty_profile"], row
+                    assert row["has_staff_summary"] and "Department staff profile." in text and not row["text_has_faculty_profile"], row
+                    for selector in ('meta[name="description"]', 'meta[property="og:description"]', 'meta[name="twitter:description"]'):
+                        assert "Department staff profile." in (page.locator(selector).get_attribute("content") or ""), selector
+                    alternate = browser.new_context(storage_state=context.storage_state(), locale="en-US")
+                    chinese = alternate.new_page()
+                    chinese.goto(site + "/opportunities/" + pid, wait_until="domcontentloaded", timeout=60000)
+                    chinese.get_by_role("button", name="切换到中文", exact=True).first.click()
+                    chinese.get_by_text("院系工作人员资料。校方名录所列现职为系主任行政助理兼传播事务经理。", exact=True).wait_for(timeout=30000)
+                    chinese.reload(wait_until="domcontentloaded", timeout=60000)
+                    chinese.get_by_text("院系工作人员资料。校方名录所列现职为系主任行政助理兼传播事务经理。", exact=True).wait_for(timeout=30000)
+                    chinese_main = chinese.get_by_role("main")
+                    chinese_text = chinese_main.inner_text()
+                    assert "这条记录已不再有效" not in chinese_text and "邮件草稿" not in chinese_text and "撰写邮件" not in chinese_text
+                    assert any(a.get_attribute("href") == case["official"] for a in chinese_main.locator("a:visible").all())
+                    row["zh_role"] = "系主任行政助理兼传播事务经理"
+                    row["zh_meta"] = {}
+                    for selector in ('meta[name="description"]', 'meta[property="og:description"]', 'meta[name="twitter:description"]'):
+                        content = chinese.locator(selector).get_attribute("content") or ""
+                        assert row["zh_role"] in content, (selector, content)
+                        row["zh_meta"][selector] = content
+                    chinese.screenshot(path=str(output.with_name(pid + "-zh.png")), full_page=True)
+                    alternate.close()
                 row["verdict"] = "passed"
             except Exception as exc:
                 row["verdict"] = "requires review"

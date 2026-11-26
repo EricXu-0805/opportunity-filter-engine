@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      CANDIDATE: 5f55abeca5aa9cebcd509dbb5a20539ee33bb780
+      CANDIDATE: 4e5a1bd98240fc4b7fa006297e15600914b959c9
       BACKEND_URL: http://127.0.0.1:8100
-      OFE_RELEASE_SHA: 5f55abeca5aa9cebcd509dbb5a20539ee33bb780
+      OFE_RELEASE_SHA: 4e5a1bd98240fc4b7fa006297e15600914b959c9
       OFE_ENVIRONMENT: isolated-candidate
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v6
         with:
-          ref: 5f55abeca5aa9cebcd509dbb5a20539ee33bb780
+          ref: 4e5a1bd98240fc4b7fa006297e15600914b959c9
           path: candidate
           persist-credentials: false
       - uses: actions/setup-python@v6
