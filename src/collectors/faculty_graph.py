@@ -81,6 +81,7 @@ from src.normalizers.deactivate_stale_faculty import (
     listed_name_key,
     page_name_keys,
 )
+from src.normalizers.pitt_cs_appointments import reviewed_cs_appointment
 
 from ..contact_instructions import (
     CAPTURE_KEY,
@@ -100,6 +101,7 @@ from ..evidence import (
     is_deceased_listing,
     is_directory_discipline,
     is_inferred,
+    is_known_unit_mailbox,
     is_professor_rank,
     is_research_clause_fragment,
     is_retired_title,
@@ -1046,6 +1048,8 @@ def _clean_email(raw: str) -> str | None:
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-
     # insensitive, so lowercasing is safe and canonical.
+    if is_known_unit_mailbox(result):
+        return None
     return result.lower() if result else None
 
 
@@ -1465,6 +1469,9 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         directory_rank = sel.get("directory_rank")
         if directory_rank:
             title = directory_rank(card)
+            if title is None:
+                _cover("partial_render_rows")
+                continue
         elif not title and (review_rank := sel.get("review_profile_rank")):
             title = review_rank(card, name, href)
         # Some university directories list an administrative office before the
@@ -1953,6 +1960,22 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # The renderer returned no usable page. It does not expose an HTTP
             # status, so keep this distinct from both a 403 and a parsed empty page.
             _ACTIVE_COVERAGE["_directory_fetch_failure"] = "rendered_directory_unavailable"
+        if alternate := cfg.get("supplemental_roster"):
+            # This roster can attest to present appointments. The department's
+            # own unread page still withholds authority to retire anyone absent.
+            _cover("partial_render_rows")
+            alternate_page = fetch(alternate["url"])
+            if alternate_page is not None:
+                if _ACTIVE_COVERAGE is not None:
+                    _ACTIVE_COVERAGE["supplemental_roster_url"] = alternate["url"]
+                    if primary_failure := _ACTIVE_COVERAGE.get("_directory_fetch_failure"):
+                        _ACTIVE_COVERAGE["primary_roster_failure"] = primary_failure
+                try:
+                    return _parse_cards(alternate_page, alternate["selectors"], alternate["url"], lf,
+                                        link_filter=alternate["person_link"])
+                except Exception as e:  # noqa: BLE001 — same fail-closed path as the primary parser
+                    _cover("parser_errors")
+                    logger.warning("faculty_graph: supplemental roster parse failed for %s: %s", dept.get("short"), e)
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
@@ -4418,7 +4441,8 @@ def _merge_faculty_fields(survivor: dict, loser: dict,
     spelling the page no longer writes would otherwise keep its old
     ``last_seen_at`` after every refresh."""
     _carry_sighting(survivor, loser, person_pages)
-    if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
+    if (not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip()
+            and not is_known_unit_mailbox(loser["contact_email"])):
         survivor["contact_email"] = loser["contact_email"]
         # This cross-record dedup is weaker than the stable-id carry path. Move
         # the address as legacy data, but never move a verified five-field claim
@@ -4449,6 +4473,11 @@ def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
 
     from .uiuc_faculty import _faculty_is_richer
 
+    if appointment := reviewed_cs_appointment(group[0]):
+        if all(reviewed_cs_appointment(row) == appointment for row in group):
+            original = next((row for row in group if row.get("id") == appointment.published_id), None)
+            if original is not None:
+                return original
     primary = reviewed_primary_appointment(group)
     if primary is not None:
         return primary
@@ -4581,10 +4610,14 @@ def collapse_same_person_faculty(opps: list[dict],
     # data-quality invariant (no two faculty at one URL) and is conservative: a
     # genuine joint appointment across peer departments has a DIFFERENT profile
     # URL per department, so this only ever collapses true duplicates.
+    # Pitt's faculty and college sites independently give 38 verified CS
+    # appointments different profile links. Use the reviewed pairs only.
     by_url_name: dict[tuple, list[dict]] = defaultdict(list)
     for o in active:
         u = (o.get("url") or o.get("source_url") or "").strip().rstrip("/").lower()
         nn = _norm_person_name(o.get("pi_name"))
+        if appointment := reviewed_cs_appointment(o):
+            u, nn = appointment.college_url, _norm_person_name(appointment.college_name)
         if u and nn:
             by_url_name[(o.get("school"), u, nn)].append(o)
     for (school, _u, _nn), group in by_url_name.items():
@@ -4819,6 +4852,8 @@ def _listing_urls(school: dict) -> set[str]:
         for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
+                if alternate := cfg.get("supplemental_roster"):
+                    urls.add(alternate["url"].strip().lower())
                 for page in cfg.get("extra_urls", []):
                     url = page["url"] if isinstance(page, dict) else page
                     urls.add(url.strip().lower())

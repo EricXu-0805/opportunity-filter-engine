@@ -572,6 +572,13 @@ export default function ColdEmailModal({
   const [freshness, setFreshness] =
     useState<'fresh' | 'stale' | 'inactive' | 'unknown'>('unknown');
   const [copiedFor, setCopiedFor] = useState<{ contents: string; backup: boolean } | null>(null);
+  useEffect(() => {
+    if (!copiedFor) return;
+    const timer = setTimeout(() => {
+      setCopiedFor(current => current === copiedFor ? null : current);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [copiedFor]);
   const [copyFailedFor, setCopyFailedFor] = useState<string | null>(null);
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
   // evidence the email was sent (the user may close the compose window), so
@@ -2134,9 +2141,7 @@ export default function ColdEmailModal({
     catch { if (current()) setCopyFailedFor(contents); return false; }
     if (!current()) return false;
     setCopyFailedFor(null);
-    const feedback = { contents, backup: !checked };
-    setCopiedFor(feedback);
-    setTimeout(() => setCopiedFor(currentFeedback => currentFeedback === feedback ? null : currentFeedback), 2000);
+    setCopiedFor({ contents, backup: !checked });
     // A backup copy has no contact/attestation side effect.
     if (checked && sourceReadyRef.current) markContacted();
     return true;

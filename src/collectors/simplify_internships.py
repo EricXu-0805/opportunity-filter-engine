@@ -200,7 +200,7 @@ def normalize_listing(raw: dict, *, employer_title: str | None = None) -> dict |
 
     listing_id = str(raw.get("id") or "").strip()
     title = (raw.get("title") or "").strip()
-    company = (raw.get("company_name") or "").strip()
+    company = (raw.get("company_name") or "").strip().replace("&amp;", "&")
     apply_url = (raw.get("url") or "").strip()
     if not listing_id or not title or not company:
         return None

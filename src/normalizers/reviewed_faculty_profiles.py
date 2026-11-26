@@ -125,6 +125,17 @@ REVIEWS = {
     "faculty-ucsd-nano-27240933": _ucsd_nano_adjunct("Sheng Xu", "http://xugroup.eng.ucsd.edu/", 387),
     "faculty-ucsd-nano-25a6d469": _ucsd_nano("Sadik Esener", "Esener", 31),
     "faculty-ucsd-nano-dc9e3de3": _ucsd_nano("Michael Heller", "Mike Heller", 1),
+    "faculty-pitt-cs-0a7196f1": ProfileReview(
+        "pitt", "Department of Computer Science", "Erin Walker",
+        "https://www.cs.pitt.edu/people/full-time-faculty/erin-walker",
+        "https://www.sci.pitt.edu/people/erin-walker",
+        "https://www.sci.pitt.edu/sites/default/files/inline-images/PDFs/SCI_2025_Research_Report-compressed.pdf#page=15",
+        datetime(2026, 11, 26, 20, 30, tzinfo=UTC),
+        title="Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, "
+              "Research Scientist, Learning Research & Development Center",
+        previous_title="Associate Professor; Research Scientist, LRDC; Associate Dean for Research, SCI",
+        appointment_summary="Erin Walker is a Professor in the Department of Computer Science and Associate Dean "
+                            "for Research in Pitt’s School of Computing and Information."),
     "faculty-pitt-ling-14fc90c7": ProfileReview(
         "pitt", "Department of Linguistics", "Charles Perfetti",
         "http://www.pitt.edu/~perfetti/charles-perfetti.htm",
@@ -173,6 +184,23 @@ REVIEWS = {
         previous_title="Assistant Professor, Philosophy &",
         independently_verified_profile=True, appointment_summary="Kate Stanton is an associate professor of philosophy at Pitt "
                             "with a secondary appointment in Linguistics."),
+    "faculty-pitt-ling-0dbe04f3": ProfileReview(
+        "pitt", "Department of Linguistics", "Amanda Godley",
+        "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+        "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+        "https://www.education.pitt.edu/wp-content/uploads/2023/06/Amanda-Godley-CV.pdf",
+        datetime(2026, 11, 26, 19, 40, tzinfo=UTC),
+        title="Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+        previous_title="Associate Professor, English Education and", independently_verified_profile=True,
+        appointment_summary="Pitt lists Amanda Godley as a professor in the School of Education "
+                            "with a secondary appointment in Linguistics."),
+    "faculty-pitt-ling-84276229": ProfileReview(
+        "pitt", "Department of Linguistics", "Richard Donato",
+        "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+        "https://www.iise.pitt.edu/people/richard-donato", "https://www.app.education.pitt.edu/people/faculty",
+        datetime(2026, 11, 26, 19, 40, tzinfo=UTC), title="Emeritus Faculty, School of Education",
+        previous_title="Professor of foreign language education,", independently_verified_profile=True,
+        appointment_summary="Pitt's School of Education identifies Richard Donato as emeritus faculty."),
     "faculty-pitt-phil-2930bf5f": ProfileReview(
         "pitt", "Department of Philosophy", "Kate Stanton", "https://www.philosophy.pitt.edu/people",
         "https://www.philosophy.pitt.edu/people/kstanton", "https://www.philosophy.pitt.edu/people/kstanton",

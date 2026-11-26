@@ -362,7 +362,10 @@ export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   // A faculty row's inferred topics come from a matched publication record or
   // a department tag; a listing's from our keyword bank, category map or
   // listing config.
-  const note = opportunityRecordKind(opp) === 'faculty_contact' ? 'detail.keywordsInferred' : 'detail.keywordsInferredListing';
+  let note = 'detail.keywordsInferredListing';
+  if (opportunityRecordKind(opp) === 'faculty_contact') {
+    note = targetPosture(opp) === 'actionable' ? 'detail.keywordsInferred' : 'favorites.keywordsInferred';
+  }
   return (
     <Section title={t('detail.sections.keywords')}>
       <div className="flex flex-wrap gap-1.5">
