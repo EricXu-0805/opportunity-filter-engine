@@ -3,7 +3,8 @@ import asyncio
 import json
 import re
 import sys
-from urllib.parse import urlsplit, unquote
+from urllib.parse import urlsplit, unquote, quote
+from urllib import request
 
 TITLE = 'Synthetic campus archive fellowship'
 ORG = 'Fictional Campus Archive'
@@ -28,7 +29,13 @@ from verify_m52_historical_link import account, req, site
 async def audit():
     owner = account('Private Opportunity QA', 'uiuc', 'Archive databases and documentary research')
     def records(session=owner):
-        return req('/rest/v1/private_import_targets?select=id,revision,opportunity',session=session)
+        # The table is intentionally not a browser surface. Read the ordinary owner's API.
+        base='http://127.0.0.1:8100/api/private-import-targets'
+        query='?expected_owner_id='+session['user']['id']
+        def get(path):
+            with request.urlopen(request.Request(base+path+query,headers={'Authorization':'Bearer '+session['access_token']}),timeout=12) as res:
+                return json.load(res)
+        return [get('/'+quote(item['id'],safe=''))['target'] for item in get('')['items']]
     async with async_playwright() as pw:
         b=await pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
         async def fresh(session,name):
@@ -115,7 +122,7 @@ async def audit():
             assert r.ok and 'private-import-targets/' in r.url,(r.status,draft)
             v,=draft['variants'];assert v['id']=='private-first-contact' and v['subject'] and v['body']
             await expect(p.locator('#cold-email-body')).not_to_have_value('')
-            recipient=draft.get('recipient_status',v.get('recipient_status'))
+            recipient=draft['recipient_status'];assert recipient=='unavailable' and not draft['recipient_email'] and not v['mailto_link'] and draft['method']=='template'
             stage('private résumé workspace')
             await p.goto(site+path,wait_until='domcontentloaded')
             await button('Prepare résumé').click(timeout=45000)
