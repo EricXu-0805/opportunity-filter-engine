@@ -19,16 +19,22 @@ def capture(response):
     url = urlsplit(response.url)
     if url.hostname != DATABASE or response.status != 200:
         return
+    try:
+        payload = response.json()
+    except Exception:
+        # A reload can cancel access to a prior navigation's response body.
+        # The independent profile read verifies what the server committed.
+        return
     if url.path == '/auth/v1/signup':
-        session = response.json()
+        session = payload
         assert session['user']['is_anonymous']
         sessions.append(session)
     if url.path == '/rest/v1/rpc/commit_profile_patch_cas':
-        result = response.json()
+        result = payload
         if result.get('status') == 'applied':
             writes.append(result['revision'])
     if url.path == '/rest/v1/profiles' and response.request.method == 'GET':
-        result = response.json()
+        result = payload
         row = result[0] if isinstance(result, list) and result else result
         if isinstance(row, dict) and row.get('profile_data'):
             reads.append(row)

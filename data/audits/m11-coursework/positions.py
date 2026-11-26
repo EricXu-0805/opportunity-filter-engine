@@ -24,6 +24,15 @@ def wait_for_write(page, before):
     raise AssertionError(f'No confirmed production write after revision {before}')
 
 
+def record_recovery_state(page, label):
+    storage = page.evaluate("word => Object.keys(localStorage).filter(key => (localStorage.getItem(key)||'').includes(word)).map(key => key.replace(/[0-9a-f]{8}-[0-9a-f-]{20,}/gi,'OWNER').slice(0,80))", combined)
+    retry = page.get_by_role('button', name='Retry sync', exact=True)
+    visible = retry.count() == 1 and retry.is_visible()
+    print(label, 'saved revisions', writes, 'cloud reads', [value.get('revision') for value in reads],
+          'confirmed wording in local keys', storage, 'Retry sync visible', visible, flush=True)
+    return visible
+
+
 def fresh(browser, predicate):
     count = len(reads)
     page = home(browser, sessions[0])
@@ -150,9 +159,25 @@ with sync_playwright() as pw:
         expect(panel.get_by_role('status')).to_contain_text('Confirmed experiences')
         prior.wait_for_timeout(1600)
         assert not writes or writes[-1]==before
+        record_recovery_state(prior, 'after confirming offline')
         prior.context.set_offline(False)
         prior.reload(wait_until='domcontentloaded')
-        wait_for_write(prior,before)
+        try:
+            wait_for_write(prior,before)
+        except AssertionError:
+            can_retry = record_recovery_state(prior, 'after reconnecting and reloading')
+            observed, snapshot = fresh(browser,lambda value: original in (value.get('resume_text') or ''))
+            has_text = any(e.get('text')==combined and e.get('status')=='confirmed' for e in snapshot['profile_data'].get('experience_entries',[]))
+            print('Independent first-party cloud read', snapshot['revision'], 'confirmed import', has_text, flush=True)
+            observed.context.close()
+            receipt['cloud_read_before_manual_retry'] = {'revision': snapshot['revision'], 'confirmed_import':has_text}
+            if not has_text and can_retry:
+                prior.get_by_role('button', name='Retry sync',exact=True).click()
+                receipt['retried_through_visible_control'] = True
+            elif not has_text:
+                folder=Path('m11-results');folder.mkdir(exist_ok=True)
+                (folder/'offline-recovery.json').write_text(json.dumps(receipt,indent=2))
+                raise AssertionError('The independent production read still had no confirmed experience after reconnect and reload.')
         restored,r1=fresh(browser,lambda p: any(e['text']==combined and e['status']=='confirmed' for e in p.get('experience_entries',[])))
         entries=r1['profile_data']['experience_entries']
         assert len(entries)==2, [(e['status'],e['text']) for e in entries]
