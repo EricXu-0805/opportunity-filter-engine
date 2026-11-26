@@ -10,7 +10,7 @@ SITE = 'https://joinalab.com'
 DATABASE = 'mjpirkyduibkakvlbdko.supabase.co'
 FIXTURE = Path(__file__).with_name('resume-zh-courses.pdf')
 EXPECTED = sorted(['统计', '数据结构', '线性代数', '算法', '機器學習', 'CS 225 Data Structures'])
-REQUIRED = 'baseline-or-fixed'
+REQUIRED = 'baseline'
 sessions, reads, writes = [], [], []
 
 
@@ -86,29 +86,57 @@ with sync_playwright() as pw:
     page.locator('#college').select_option(label='Grainger College of Engineering')
     page.locator('#major').select_option(label='Computer Science')
     page.locator('#grade').select_option(label='Sophomore')
-    page.locator('input[type=file][accept*="pdf"]').first.set_input_files(str(FIXTURE))
-    expect(page.get_by_role('button', name='Remove file', exact=True)).to_be_visible(timeout=55000)
-    page.get_by_text('CS 225', exact=False).first.wait_for(timeout=20000)
+    picker = page.locator('input[type=file][accept*="pdf"]').first
+    doc = browser.new_page()
+    doc.set_content('<p>Coursework: Discrete Mathematics; Computer Vision</p>')
+    seed = doc.pdf()
+    doc.close()
+    picker.set_input_files({'name': 'earlier-synthetic.pdf', 'mimeType': 'application/pdf', 'buffer': seed})
+    expect(page.get_by_text('Discrete Mathematics', exact=True)).to_be_visible(timeout=55000)
+    page.wait_for_timeout(2500)
+    old = home(browser, sessions[0])
+    expect(old.get_by_text('Computer Vision', exact=True)).to_be_visible(timeout=45000)
+    old_row = next(x for x in reversed(reads) if 'Computer Vision' in (x['profile_data'].get('coursework') or []))
+    old_picker = old.locator('input[type=file][accept*="pdf"]').first
+    old_picker.set_input_files({'name': 'damaged-synthetic.pdf', 'mimeType': 'application/pdf', 'buffer': b'Not a PDF file. Synthetic test.'})
+    expect(old.get_by_role('alert').filter(has_text='PDF').first).to_be_visible(timeout=15000)
+    expect(old.get_by_text('Computer Vision', exact=True)).to_be_visible()
+    check = home(browser, sessions[0])
+    expect(check.get_by_text('Computer Vision', exact=True)).to_be_visible()
+    preserved = next(x for x in reversed(reads) if 'Computer Vision' in (x['profile_data'].get('coursework') or []))
+    assert preserved['profile_data']['resume_text'] == old_row['profile_data']['resume_text']
+    check.context.close()
+    old_picker.set_input_files(str(FIXTURE))
+    expected = EXPECTED if REQUIRED == 'fixed' else ['CS 225']
+    expect(old.get_by_text(expected[0], exact=True)).to_be_visible(timeout=55000)
     for _ in range(60):
-        page.wait_for_timeout(300)
-        if writes:
+        old.wait_for_timeout(300)
+        if writes and writes[-1] > old_row['revision']:
             break
-    assert writes
+    assert writes[-1] > old_row['revision']
     fresh = home(browser, sessions[0])
     expect(fresh.get_by_role('button', name='Remove file', exact=True)).to_be_visible(timeout=55000)
     row = next(x for x in reversed(reads) if '主修课程' in (x['profile_data'].get('resume_text') or ''))
     courses = sorted(row['profile_data']['coursework'])
-    assert courses in (EXPECTED, ['CS 225']), courses
-    if REQUIRED == 'fixed':
-        assert courses == EXPECTED, courses
+    assert courses == expected, courses
     for name in courses:
-        expect(fresh.get_by_text(name, exact=True).first).to_be_visible()
+        course = fresh.get_by_text(name, exact=True).first
+        expect(course).to_be_visible()
+        entry = course.locator('xpath=ancestor::li[1]')
+        expect(entry.locator('select')).to_have_value('unknown')
+        expect(entry.locator('summary')).to_contain_text(name)
+    expect(fresh.get_by_text('Computer Vision', exact=True)).to_have_count(0)
+    expect(fresh.locator('#student_name')).to_have_value('Synthetic coursework test')
     out = Path('m11-results')
     out.mkdir(exist_ok=True)
     fresh.get_by_text(courses[0], exact=True).first.locator('xpath=../..').screenshot(path=str(out / 'courses.png'))
     receipt = {
         'time':datetime.now(timezone.utc).isoformat(), 'url':SITE,
         'release':fresh.request.get(SITE+'/api/health').json()['release_sha'],
+        'frontend_sha':fresh.locator('html').get_attribute('data-release-sha'),
+        'earlier_revision':old_row['revision'], 'preserved_after_invalid_upload_revision':preserved['revision'],
+        'old_pdf_preserved_after_error':True, 'retry_completed_after_reopen':True,
+        'visible_source_lines':len(courses), 'unknown_course_statuses':len(courses), 'previous_courses_cleared':True,
         'anonymous_accounts':len(sessions), 'save_revisions':writes, 'read_revision':row['revision'],
         'first_party_profile_read':True, 'stored_source_text_contains_course_list':True,
         'courses_displayed_after_reopen':courses, 'expected_after_fix':EXPECTED,
