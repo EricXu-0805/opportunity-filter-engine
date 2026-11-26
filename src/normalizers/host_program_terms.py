@@ -1,7 +1,7 @@
 """Student-facing terms checked on the same host pages as reviewed 2027 cohorts."""
 
 from src.normalizers import bu_stars
-from src.program_windows import SMU_WINDOW, ProgramWindow, reviewed_window
+from src.program_windows import DSI_IDS, DSI_SUPPORT, DSI_WINDOW, SMU_WINDOW, ProgramWindow, reviewed_window
 
 CRISP_ID = "sro-3ec4ea4e"
 SMU_IDS = ("nsf-reu-2447670", "sro-44f176cd")
@@ -89,6 +89,12 @@ def apply_terms(record: dict) -> None:
 
 
 def quote(record: dict, field: str) -> dict | None:
+    if record.get("id") in DSI_IDS and field in {"paid", "compensation"}:
+        window = reviewed_window(record)
+        if window and window.page == DSI_WINDOW.page and record.get("compensation_details") == DSI_SUPPORT:
+            return {"text": "$1,800 travel and food stipend along with the $5,600 program stipend",
+                    "source_url": window.page, "observed_at": window.reviewed_on.isoformat()}
+        return None
     if record.get("id") in bu_stars.IDS:
         return bu_stars.quote(record, field)
     window = checked_window(record)
