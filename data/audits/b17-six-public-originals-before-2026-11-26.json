@@ -1,0 +1,150 @@
+{
+  "observed_utc": "2026-11-26T17:24:10.871649+00:00",
+  "deployed_sha": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "stage": "before",
+  "checked": 6,
+  "failures": [
+    "faculty-georgetown-engl-19ef3e36",
+    "faculty-georgetown-engl-be9bd333",
+    "faculty-indiana-kelley-ff454afe",
+    "faculty-indiana-ds-ea99afa1"
+  ],
+  "details": [
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": false,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": false,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-19ef3e36",
+        "name": "Patricia Akhimie",
+        "actionable": true,
+        "profile": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-9b02f5b4",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_current": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "current_link": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-9b02f5b4",
+        "name": "Marisa Koulen",
+        "actionable": false,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "roster": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "current": "faculty-georgetown-engl-be9bd333",
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": false,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": false
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-be9bd333",
+        "name": "Marisa Holmes",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "roster": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-debbaefc",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_current": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-debbaefc",
+        "name": "Ricardo Ortíz",
+        "actionable": false,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RvKaAAK/ricardo-l-ortiz-phd?searchType=Contact-Info&searchText=ortiz",
+        "roster": "https://gufaculty360.georgetown.edu/s/contact/00336000014RvKaAAK/ricardo-l-ortiz-phd?searchType=Contact-Info&searchText=ortiz",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-indiana-ds-ea99afa1",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": false,
+        "api_profile": true,
+        "api_current": false,
+        "api_contact_status": false,
+        "visible_details": true,
+        "frontend_release": true,
+        "current_link": false,
+        "inactive_banner": false,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-indiana-ds-ea99afa1",
+        "name": "Jeff Prince",
+        "actionable": true,
+        "profile": "https://luddy.iu.edu/people/prince-jeff.html",
+        "roster": "https://luddy.iu.edu/people/prince-jeff.html",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-ff454afe",
+      "status": 404,
+      "checks": {
+        "public_api": false
+      }
+    }
+  ]
+}
