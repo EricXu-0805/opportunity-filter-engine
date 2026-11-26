@@ -4,13 +4,17 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from backend.lib.request_body import known_keys
 
 GITHUB_LOGIN = r"[A-Za-z0-9](?:[A-Za-z0-9]|-[A-Za-z0-9]){0,38}"
 GITHUB_REPO = r"[A-Za-z0-9_.-]{1,100}"
 
 
 def valid_repository(value: str) -> bool:
+    if len(value) > 140:
+        return False
     parts = value.split("/")
     return (len(parts) == 2 and len(parts[0]) <= 39 and parts[1] not in {".", ".."}
             and bool(re.fullmatch(GITHUB_LOGIN, parts[0]) and re.fullmatch(GITHUB_REPO, parts[1])))
@@ -18,6 +22,7 @@ def valid_repository(value: str) -> bool:
 
 class GitHubPullSource(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     kind: Literal["github"]
     repository: str
     head_repository: str | None
