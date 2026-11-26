@@ -1,0 +1,425 @@
+{
+  "checked_at": "2026-11-26T17:37:14.791836+00:00",
+  "source_head": "44526d4ce9d313d72efa95cd489352484b2bf1a4",
+  "batch": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "roster": "https://www.math.princeton.edu/people?combine=&field_position_target_id=115",
+  "raw_cards": 95,
+  "school_originals": 658,
+  "rows": [
+    {
+      "id": "faculty-princeton-math-0a3b5211",
+      "name": "Michael Aizenman",
+      "source": "https://www.math.princeton.edu/people/michael-aizenman",
+      "http": 200,
+      "terms": [
+        "Mathematical Physics"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-4448a014",
+      "name": "Noga Alon",
+      "source": "https://www.math.princeton.edu/people/noga-alon",
+      "http": 200,
+      "terms": [
+        "Combinatorics"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-213fb372",
+      "name": "Manjul Bhargava",
+      "source": "https://www.math.princeton.edu/people/manjul-bhargava",
+      "http": 200,
+      "terms": [
+        "Number Theory"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-367f333b",
+      "name": "Bhargav Bhatt",
+      "source": "https://www.math.princeton.edu/people/bhargav-bhatt",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-2bc4f244",
+      "name": "Guido Bosco",
+      "source": "https://www.math.princeton.edu/people/guido-bosco",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-81717fad",
+      "name": "Sun-Yung Alice Chang",
+      "source": "https://www.math.princeton.edu/people/sun-yung-alice-chang",
+      "http": 200,
+      "terms": [
+        "Geometric Analysis"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-1e8d9a73",
+      "name": "Maria Chudnovsky",
+      "source": "https://www.math.princeton.edu/people/maria-chudnovsky",
+      "http": 200,
+      "terms": [
+        "Graph Theory",
+        "Applied Mathematics"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-ac2c4b7c",
+      "name": "Peter Constantin",
+      "source": "https://www.math.princeton.edu/people/peter-constantin",
+      "http": 200,
+      "terms": [
+        "Analysis",
+        "Mathematical Physics",
+        "Applied Mathematics"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-508a2fbf",
+      "name": "Mihalis Dafermos",
+      "source": "https://www.math.princeton.edu/people/mihalis-dafermos",
+      "http": 200,
+      "terms": [
+        "Mathematical Physics",
+        "Partial Differential Equations"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-67fb324d",
+      "name": "Camillo De Lellis",
+      "source": "https://www.math.princeton.edu/people/camillo-de-lellis",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-9f854696",
+      "name": "Zeev Dvir",
+      "source": "https://www.math.princeton.edu/people/zeev-dvir",
+      "http": 200,
+      "terms": [
+        "Discrete Mathematics",
+        "Applied Mathematics"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-5e514677",
+      "name": "Charles Fefferman",
+      "source": "https://www.math.princeton.edu/people/charles-fefferman",
+      "http": 200,
+      "terms": [
+        "Analysis"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-2fde5b92",
+      "name": "David Gabai",
+      "source": "https://www.math.princeton.edu/people/david-gabai",
+      "http": 200,
+      "terms": [
+        "Topology"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-6bc4ebc8",
+      "name": "Marc A. Gilles",
+      "source": "https://www.math.princeton.edu/people/marc-gilles",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-7ca4f281",
+      "name": "Susanna V. Haziot",
+      "source": "https://www.math.princeton.edu/people/susanna-v-haziot",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-fdc91218",
+      "name": "Helmut H. Hofer",
+      "source": "https://www.math.princeton.edu/people/helmut-h-hofer",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-b11e2997",
+      "name": "June Huh",
+      "source": "https://www.math.princeton.edu/people/june-huh-0",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-ad232dab",
+      "name": "Thomas M. Hutchcroft",
+      "source": "https://www.math.princeton.edu/people/thomas-m-hutchcroft",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-544ca149",
+      "name": "Alexandru Ionescu",
+      "source": "https://www.math.princeton.edu/people/alexandru-ionescu",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-969b7ed6",
+      "name": "Nicholas Katz",
+      "source": "https://www.math.princeton.edu/people/nicholas-katz",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-5348bdbb",
+      "name": "Sergiu Klainerman",
+      "source": "https://www.math.princeton.edu/people/sergiu-klainerman",
+      "http": 200,
+      "terms": [
+        "Partial Differential Equations"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-b7ff93cb",
+      "name": "János Kollár",
+      "source": "https://www.math.princeton.edu/people/janos-kollar",
+      "http": 200,
+      "terms": [
+        "Algebraic Geometry"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-bf86c099",
+      "name": "Elon Lindenstrauss",
+      "source": "https://www.math.princeton.edu/people/elon-lindenstrauss",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-1d1e69ca",
+      "name": "Fernando Codá Marques",
+      "source": "https://www.math.princeton.edu/people/fernando-coda-marques",
+      "http": 200,
+      "terms": [
+        "Differential Geometry"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-e36f0caa",
+      "name": "Aaron Naber",
+      "source": "https://www.math.princeton.edu/people/aaron-naber-0",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-6afc8974",
+      "name": "Assaf Naor",
+      "source": "https://www.math.princeton.edu/people/assaf-naor",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-d459f31c",
+      "name": "Peter Ozsváth",
+      "source": "https://www.math.princeton.edu/people/peter-ozsvath",
+      "http": 200,
+      "terms": [
+        "Topology"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-ac69a7b1",
+      "name": "Stan Palasek",
+      "source": "https://www.math.princeton.edu/people/stan-palasek",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-6dad9124",
+      "name": "Igor Rodnianski",
+      "source": "https://www.math.princeton.edu/people/igor-rodnianski",
+      "http": 200,
+      "terms": [
+        "Analysis",
+        "Partial Differential Equations"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-3316625a",
+      "name": "Peter Sarnak",
+      "source": "https://www.math.princeton.edu/people/peter-sarnak",
+      "http": 200,
+      "terms": [
+        "Number Theory"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-d92edaa1",
+      "name": "Will Sawin",
+      "source": "https://www.math.princeton.edu/people/will-sawin",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-8cf71423",
+      "name": "Paul Seymour",
+      "source": "https://www.math.princeton.edu/people/paul-seymour",
+      "http": 200,
+      "terms": [
+        "Graph Theory"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-22055a6d",
+      "name": "Ravi Shankar",
+      "source": "https://www.math.princeton.edu/people/ravi-shankar",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-15876a68",
+      "name": "Jacob Shapiro",
+      "source": "https://www.math.princeton.edu/people/jacob-shapiro",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-f161866c",
+      "name": "Amit Singer",
+      "source": "https://www.math.princeton.edu/people/amit-singer",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-56d81c19",
+      "name": "Christopher Skinner",
+      "source": "https://www.math.princeton.edu/people/christopher-skinner",
+      "http": 200,
+      "terms": [
+        "Number Theory"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-cb5e2142",
+      "name": "Allan Sly",
+      "source": "https://www.math.princeton.edu/people/allan-sly",
+      "http": 200,
+      "terms": [
+        "Probability"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-1bb82b28",
+      "name": "Zoltán Szabó",
+      "source": "https://www.math.princeton.edu/people/zoltan-szabo",
+      "http": 200,
+      "terms": [
+        "Topology"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-c82a9a90",
+      "name": "Jonathan Tidor",
+      "source": "https://www.math.princeton.edu/people/jonathan-tidor",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-2cd22652",
+      "name": "Ramon van Handel",
+      "source": "https://www.math.princeton.edu/people/ramon-van-handel-0",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-9272a519",
+      "name": "Akshay Venkatesh",
+      "source": "https://www.math.princeton.edu/people/akshay-venkatesh",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-597545eb",
+      "name": "Chenyang Xu",
+      "source": "https://www.math.princeton.edu/people/chenyang-xu",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-e7a85785",
+      "name": "Paul C. Yang",
+      "source": "https://www.math.princeton.edu/people/paul-c-yang",
+      "http": 200,
+      "terms": [
+        "Differential Geometry",
+        "Partial Differential Equations"
+      ],
+      "changed": true
+    },
+    {
+      "id": "faculty-princeton-math-52f0b1f1",
+      "name": "Mingjia Zhang",
+      "source": "https://www.math.princeton.edu/people/mingjia-zhang",
+      "http": 200,
+      "terms": [],
+      "changed": false
+    },
+    {
+      "id": "faculty-princeton-math-674ed5e8",
+      "name": "Shou-Wu Zhang",
+      "source": "https://www.math.princeton.edu/people/shou-wu-zhang",
+      "http": 200,
+      "terms": [
+        "Number Theory"
+      ],
+      "changed": true
+    }
+  ],
+  "labels_present": 22,
+  "unchanged_negative_controls": 23,
+  "historical_unchanged": 5,
+  "source_and_combined_shard_identical": true
+}

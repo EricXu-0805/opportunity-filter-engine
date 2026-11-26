@@ -1,0 +1,33 @@
+{
+  "at": "2026-11-26T17:38:22.863866+00:00",
+  "batch": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "source": "6c039e0b523cea810723fd70093daa412426f22f",
+  "id": "faculty-princeton-math-508a2fbf",
+  "works": [
+    {
+      "doi": "10.2140/apde.2026.19.909",
+      "title": "Quasilinear wave equations on asymptotically flat spacetimes with applications to Kerr black holes",
+      "author": "Dafermos, Mihalis",
+      "publisher": "https://msp.org/apde/2026/19-5/p02.xhtml"
+    },
+    {
+      "doi": "10.4007/annals.2025.202.2.1",
+      "title": "The interior of dynamical vacuum black holes I: The $C^0$-stability of the Kerr Cauchy horizon",
+      "author": "Mihalis Dafermos",
+      "publisher": "https://annals.math.princeton.edu/2025/202-2/p01"
+    },
+    {
+      "doi": "10.1007/s10714-025-03394-1",
+      "title": "The stability problem for extremal black holes",
+      "author": "Dafermos, Mihalis",
+      "publisher": "https://link.springer.com/article/10.1007/s10714-025-03394-1"
+    }
+  ],
+  "previous_third": {
+    "title": "Yvonne Choquet-Bruhat obituary: mathematician who established that Einstein’s equations mirror the real world",
+    "year": 2025
+  },
+  "previous_third_confirmed_source": "https://www.nature.com/articles/d41586-025-01763-z",
+  "personal_bibliography_for_first_two": "https://web.math.princeton.edu/~dafermos/publications.html",
+  "institutional_record_for_third": "https://collaborate.princeton.edu/en/publications/the-stability-problem-for-extremal-black-holes/"
+}

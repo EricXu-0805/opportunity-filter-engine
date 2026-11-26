@@ -1,0 +1,130 @@
+{
+  "record": "faculty-tamu-ece-d96cfd82",
+  "submitted_at": "2026-11-26T17:57:31.360151+00:00",
+  "scope": "M140/M196 exact saved Texas A&M electrical engineering original",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1460",
+  "source_head": "f668e73546040abaa9bcd7ce84db924465ad8ca4",
+  "standard_suite": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45871804898",
+  "reproduction_on_deployed_release": {
+    "observed_at": "2026-11-26T17:38:06.319041+00:00",
+    "pages": {
+      "opportunity": {
+        "http": 200,
+        "requested": "https://joinalab.com/opportunities/faculty-tamu-ece-d96cfd82",
+        "final": "https://joinalab.com/opportunities/faculty-tamu-ece-d96cfd82",
+        "title": "Serap Savari at Texas A&M University · JoinALab",
+        "matched": [
+          "inquiries · openings not confirmed Serap Savari Texas A&M University · Department of Electrical and Computer Engineering Faculty affiliation: College Station, TX ",
+          "ption Faculty research profile for Serap Savari in Department of Electrical and Computer Engineering at Texas A&M University. Contact this faculty member to ask w",
+          "PRINCIPAL INVESTIGATOR SOURCE SAYS Serap Savari RANK SOURCE SAYS Associate Professor, Electrical & Computer Engineering LAB OR PROGRAM NOT PROVIDED Not provided S"
+        ],
+        "frontend_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+        "faculty_profile_destination": "https://engineering.tamu.edu/electrical/profiles/ssavari.html"
+      },
+      "former_individual": {
+        "http": 404,
+        "requested": "https://engineering.tamu.edu/electrical/profiles/ssavari.html",
+        "final": "https://engineering.tamu.edu/electrical/profiles/ssavari.html",
+        "title": "404 | Texas A&M University Engineering",
+        "matched": [],
+        "frontend_release": null,
+        "faculty_profile_destination": null
+      },
+      "university_scholars": {
+        "http": 403,
+        "requested": "https://scholars.library.tamu.edu/vivo/display/n226ff000",
+        "title": "Just a moment...",
+        "matched": [],
+        "frontend_release": null,
+        "faculty_profile_destination": null
+      },
+      "current_catalog": {
+        "http": 200,
+        "requested": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/",
+        "final": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/",
+        "title": "Department of Electrical and Computer Engineering < Texas A&M Catalogs < Texas A&M University, College Station, TX",
+        "matched": [],
+        "frontend_release": null,
+        "faculty_profile_destination": null
+      }
+    }
+  },
+  "direct_adopted_university_url_in_chromium": {
+    "observed_at": "2026-11-26T17:43:07.361117+00:00",
+    "earlier_product_and_scholars_check": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45869355231",
+    "previous_visible_catalog_tab": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45869651816",
+    "pages": {
+      "current_catalog": {
+        "http": 200,
+        "requested": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "final": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty",
+        "title": "Department of Electrical and Computer Engineering < Texas A&M Catalogs < Texas A&M University, College Station, TX",
+        "matched": [
+          " PHD, University of Oklahoma, 1975 Savari, Serap A, Associate Professor Electrical & Computer Eng PHD, Massachusetts Inst of Technology, 1996 Serpedin, Erchin, Profe"
+        ],
+        "frontend_release": null,
+        "faculty_profile_destination": null
+      }
+    }
+  },
+  "public_chromium_runs": [
+    "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45869355231",
+    "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45869651816",
+    "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45870046204"
+  ],
+  "normal_release_candidate_replay": {
+    "observed_at": "2026-11-26T17:50:04.937207+00:00",
+    "original": "faculty-tamu-ece-d96cfd82",
+    "catalog": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+    "newer_identity_confirmed_original_may_return": true,
+    "other_new_professional_url_preserved": true,
+    "wrong_person_cannot_restore_broken_url": true,
+    "changed_tamu_ids": [
+      "faculty-tamu-ece-d96cfd82"
+    ],
+    "tamu_originals": 3314,
+    "changes_in_ordinary_pipeline": [
+      {
+        "phase": "live 77",
+        "returned_faculty": 77,
+        "tamu_originals_retained": 3314,
+        "raw_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "normal_api_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "source_status": "ok",
+        "record_was_observed_in_current_roster": false,
+        "person_last_seen_at": "2026-08-25T07:05:56.904696",
+        "actionable": true
+      },
+      {
+        "phase": "unavailable",
+        "returned_faculty": 0,
+        "tamu_originals_retained": 3314,
+        "raw_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "normal_api_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "source_status": "suspicious_zero",
+        "record_was_observed_in_current_roster": false,
+        "person_last_seen_at": "2026-08-25T07:05:56.904696",
+        "actionable": true
+      },
+      {
+        "phase": "restored 77",
+        "returned_faculty": 77,
+        "tamu_originals_retained": 3314,
+        "raw_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "normal_api_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+        "source_status": "ok",
+        "record_was_observed_in_current_roster": false,
+        "person_last_seen_at": "2026-08-25T07:05:56.904696",
+        "actionable": true
+      }
+    ]
+  },
+  "local_checks": {
+    "backend_tests": 839,
+    "frontend_tests": 215,
+    "tsc": "passed",
+    "corpus_unique_ids": 149871,
+    "school_counts_verified": 115
+  },
+  "pending": "Reopen the old product ID on both deployed services, inspect the English/Chinese source control in a normal browser, and compare individual IDs and unit counts in a real later Texas A&M refresh containing the fix."
+}

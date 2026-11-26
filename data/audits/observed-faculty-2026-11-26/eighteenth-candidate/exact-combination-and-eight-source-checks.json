@@ -1,0 +1,208 @@
+{
+  "checked_at_utc": "2026-11-26T17:57:49.368113+00:00",
+  "base": "1d6b6ce706a22a5e29883913801413d3eb943125",
+  "head": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "tree": "e6150a1d07709a3fa1f0ea6238222b4a28d7034f",
+  "current_pulls_and_suites": [
+    {
+      "baseRefOid": "9a2b2560e81f708cfeaecdecfb8ece9d74a8d06e",
+      "headRefOid": "6c039e0b523cea810723fd70093daa412426f22f",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1437,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1437",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45848781500",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "6c039e0b523cea810723fd70093daa412426f22f",
+      "headRefOid": "44526d4ce9d313d72efa95cd489352484b2bf1a4",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1442,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1442",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45850829001",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "E2E (Playwright)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "65d14e6968a093c66b2273d971ffb749d796c82a",
+      "headRefOid": "ef0dba3ab48bffdb94a14f48efacda87cf665ea9",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1445,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1445",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45854874547",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "Backend (lint + pytest)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "E2E (Playwright)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "ef0dba3ab48bffdb94a14f48efacda87cf665ea9",
+      "headRefOid": "3ca46d67d891a23cc863829308e3ae7f347b2f41",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1447,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1447",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45857819392",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "3ca46d67d891a23cc863829308e3ae7f347b2f41",
+      "headRefOid": "dd9788759db71960f20cfb48c7ff2b6bad4979aa",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1448,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1448",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861266219",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "E2E (Playwright)": "success",
+        "Backend (lint + pytest)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+      "headRefOid": "6220628d2572716132f1ab879d1b3a758eef9139",
+      "isDraft": false,
+      "mergeable": "UNKNOWN",
+      "number": 1449,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1449",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45862917007",
+      "trigger": "pull_request",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Backend (lint + pytest)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "65d14e6968a093c66b2273d971ffb749d796c82a",
+      "headRefOid": "129266290d13c325f55163c42eeb86d84d9135ed",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1450,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1450",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45863052470",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "Backend (lint + pytest)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+      "headRefOid": "025fdfcb361f340d1fd358a78deb99b8441a894e",
+      "isDraft": false,
+      "mergeable": "MERGEABLE",
+      "number": 1452,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1452",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45865900518",
+      "trigger": "pull_request",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "baseRefOid": "1d6b6ce706a22a5e29883913801413d3eb943125",
+      "headRefOid": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+      "isDraft": true,
+      "mergeable": "MERGEABLE",
+      "number": 1453,
+      "state": "OPEN",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1453",
+      "source_ancestor": true,
+      "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45868178637",
+      "trigger": "workflow_dispatch",
+      "conclusion": "success",
+      "suites": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    }
+  ],
+  "standard_candidate_ci": "complete",
+  "real_main_target_ci": "pending actual seventeenth release",
+  "production": "pending",
+  "natural_source_refresh": "pending",
+  "original_ids": 149869,
+  "current_unique_ids": 149871,
+  "shards": 117,
+  "school_counts_match": 115,
+  "backend_pass": 1469,
+  "frontend_pass": 10,
+  "typescript": "passed"
+}
