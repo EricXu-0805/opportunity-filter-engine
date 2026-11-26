@@ -639,6 +639,20 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
   }
   const parseFixture = async (name: string) => (await readFixture(name)).raw_text;
 
+  it('reads Chinese course lists with their original evidence and leaves course status unconfirmed', async () => {
+    const line = '主修课程：数据结构、统计，线性代数；专业技能：Python';
+    // This PDF also lists courses taught and recommended to others, and an empty course field.
+    const result = await readFixture('resume-zh-courses.pdf');
+    const names = ['CS 225 Data Structures', '数据结构', '统计', '线性代数', '機器學習', '算法'].sort();
+    expect(result.extracted_coursework).toEqual(names);
+    expect(courseRows({ coursework: names, resume_text: result.raw_text })).toContainEqual({
+      name: '统计', source: 'resume', status: 'unknown', line,
+    });
+    expect(courseRows({ coursework: ['统计'], resume_text: '' })).toEqual([
+      { name: '统计', source: 'resume', status: 'unknown' },
+    ]);
+  });
+
   // One file per stranger-walk report. Each wraps different lines: after
   // "baseline," and "(MATH" (CE-2), before "AUC", "& Statistics", "maps;" and
   // "78%" (TR-04), and inside "integrated-gradients" (tailor-renovate-02).
