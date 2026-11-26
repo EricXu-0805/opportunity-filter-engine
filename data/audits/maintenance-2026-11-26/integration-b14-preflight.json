@@ -1,0 +1,373 @@
+{
+  "base_pr": 1404,
+  "base": "71d6f51a38d0bb7d133855e066998489388c1797",
+  "head": "92e09d9f79dd00dd481f60498af962274e6a96ce",
+  "tree": "b85de2f3cfb022bd07151f0c9aa0d625ab7c4ed3",
+  "source_heads": {
+    "1405": "56e38a70fd41dac4b20cd75e7ef477d22ebf0544",
+    "1406": "568d420fac609b823881ab7e4608b86b58c3bee1",
+    "1408": "91da71d0d2052ffaf0988fb6639346a26cc244c2",
+    "1409": "b9f9f37109d9922bec4626784cf06eb20f168a10",
+    "1410": "1b909cbd82e473cc1df51db32f885a08906b479d",
+    "1412": "e5546eeef2bc4e7c8cbf1696bf8df9cfe9585e03"
+  },
+  "changed_paths": {
+    "frontend/e2e/application-materials.spec.ts": [
+      1405
+    ],
+    "data/processed/shards/ncsu.json": [
+      1406
+    ],
+    "frontend/src/lib/school-stats.json": [
+      1406
+    ],
+    "src/collectors/faculty_graph.py": [
+      1406,
+      1409
+    ],
+    "src/collectors/ncsu_chass.py": [
+      1406
+    ],
+    "src/collectors/schools/ncsu_faculty.py": [
+      1406
+    ],
+    "tests/test_ncsu_chass_retirement.py": [
+      1406
+    ],
+    "frontend/src/app/dashboard/page.test.tsx": [
+      1408
+    ],
+    "frontend/src/app/dashboard/page.tsx": [
+      1408
+    ],
+    "frontend/src/app/favorites/FavoritesHeader.tsx": [
+      1408
+    ],
+    "frontend/src/app/favorites/page-headings.test.tsx": [
+      1408
+    ],
+    "frontend/src/app/favorites/page.tsx": [
+      1408
+    ],
+    "frontend/src/components/PrivateImportList.test.tsx": [
+      1408
+    ],
+    "frontend/src/components/PrivateImportList.tsx": [
+      1408
+    ],
+    "frontend/src/i18n/dictionaries.ts": [
+      1408
+    ],
+    "frontend/src/lib/use-saved-import-count.test.tsx": [
+      1408
+    ],
+    "frontend/src/lib/use-saved-import-count.ts": [
+      1408
+    ],
+    "backend/lib/opportunity_detail.py": [
+      1409,
+      1410
+    ],
+    "data/processed/shards/bu.json": [
+      1409
+    ],
+    "src/collectors/bu_questrom_research.py": [
+      1409
+    ],
+    "src/collectors/schools/bu_faculty.py": [
+      1409
+    ],
+    "tests/test_bu_reviewed_research_home.py": [
+      1409
+    ],
+    "tests/test_opportunity_detail_m03.py": [
+      1410
+    ],
+    "backend/lib/public_projection.py": [
+      1412
+    ],
+    "backend/routes/matches.py": [
+      1412
+    ],
+    "src/matcher/ranker.py": [
+      1412
+    ],
+    "src/program_windows.py": [
+      1412
+    ],
+    "src/reviewed_program_pairs.py": [
+      1412
+    ],
+    "src/saved_searches/filter.py": [
+      1412
+    ],
+    "tests/test_bu_stars_identity.py": [
+      1412
+    ],
+    "tests/test_program_windows.py": [
+      1412
+    ]
+  },
+  "assembled_unique_records": 149810,
+  "shard_comparison": {
+    "bu": {
+      "count": 1968,
+      "changed": [
+        "faculty-bu-qst-3cc6c010"
+      ],
+      "original_order_and_origin_dates_preserved": true,
+      "record_identical_to_source": true
+    },
+    "ncsu": {
+      "count": 2334,
+      "changed": [
+        "faculty-ncsu-chass-e417d225"
+      ],
+      "original_order_and_origin_dates_preserved": true,
+      "record_identical_to_source": true
+    }
+  },
+  "school_stats_verified": {
+    "count": 115,
+    "changed_schools": [
+      "ncsu"
+    ],
+    "ncsu_before": {
+      "listing_count": 5,
+      "faculty_contact_count": 2199,
+      "unreviewed_count": 0,
+      "total_count": 2204
+    },
+    "ncsu_after": {
+      "listing_count": 5,
+      "faculty_contact_count": 2198,
+      "unreviewed_count": 0,
+      "total_count": 2203
+    }
+  },
+  "facets": {
+    "bu_research_source": {
+      "source_url": "https://camillaschneier.github.io/",
+      "observed_at": "2026-11-26T13:56:46.406527+00:00"
+    },
+    "ncsu_rank_receipts": 234,
+    "ncsu_archive": "faculty-ncsu-chass-e417d225",
+    "ncsu_active_control": "faculty-ncsu-chass-8026d528"
+  },
+  "eligibility_logic_preserved": true,
+  "verified_utc": "2026-11-26T14:17:17.811695+00:00",
+  "integration_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1414",
+  "local_checks": {
+    "checked_out_tree": "b85de2f3cfb022bd07151f0c9aa0d625ab7c4ed3",
+    "backend_and_data_tests": 1150,
+    "frontend_tests": 64,
+    "typescript_no_emit": "passed",
+    "school_stats_generation_check": "passed",
+    "freshly_assembled_corpus": true,
+    "stars_public_testclient_routes": {
+      "corpus": 149810,
+      "rank_reads": {
+        "domestic": [
+          "bu-bbc659c6ac92"
+        ],
+        "campus": [
+          "bu-bbc659c6ac92"
+        ],
+        "directory": [
+          "sro-60f60fbd",
+          "sro-bc33bc08"
+        ],
+        "star-primary": [
+          "sro-60f60fbd"
+        ],
+        "star-alias": [
+          "sro-bc33bc08"
+        ],
+        "star-both-dir": [
+          "sro-60f60fbd"
+        ],
+        "starred-all": [
+          "bu-bbc659c6ac92",
+          "sro-60f60fbd",
+          "sro-bc33bc08"
+        ],
+        "hidden-campus": [
+          "sro-60f60fbd",
+          "sro-bc33bc08"
+        ],
+        "visa": [],
+        "student7": [
+          "bu-bbc659c6ac92"
+        ],
+        "recommender7": []
+      },
+      "detail_reads": {
+        "bu-bbc659c6ac92": {
+          "student_deadline": "2027-01-15",
+          "materials": {
+            "application_url": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+            "requirements": [
+              "three_recommendations"
+            ],
+            "recommendation_deadline": "BU must receive all three letters by February 1. The FAQ gives the month and day without specifying a year."
+          },
+          "eligibility": {
+            "class_year": [
+              "sophomore",
+              "junior"
+            ],
+            "majors": "STEM",
+            "min_gpa": 3.0,
+            "international_students": "no",
+            "citizenship": "required",
+            "work_authorization_notes": "U.S. citizen or permanent resident",
+            "degree_path": "Full-time or part-time STEM studies leading to a bachelor's degree. Expected graduation in 2028 or later.",
+            "transfer_students": "Two-year college students may apply. In the statement of interest, name the bachelor's programs you are applying to and say whether you have been admitted.",
+            "medical_students": "Medical students may apply only in their first year at Boston University.",
+            "gpa_context": "The application lets you explain a GPA below 3.0 on a 4.0 scale.",
+            "research_background": "An interest in biological research is required. Previous research experience is optional."
+          }
+        },
+        "sro-60f60fbd": {
+          "student_deadline": "2027-01-15",
+          "materials": {
+            "application_url": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+            "requirements": [
+              "three_recommendations"
+            ],
+            "recommendation_deadline": "BU must receive all three letters by February 1. The FAQ gives the month and day without specifying a year."
+          },
+          "eligibility": {
+            "class_year": [
+              "sophomore",
+              "junior"
+            ],
+            "majors": "STEM",
+            "min_gpa": 3.0,
+            "international_students": "no",
+            "citizenship": "required",
+            "work_authorization_notes": "U.S. citizen or permanent resident",
+            "degree_path": "Full-time or part-time STEM studies leading to a bachelor's degree. Expected graduation in 2028 or later.",
+            "transfer_students": "Two-year college students may apply. In the statement of interest, name the bachelor's programs you are applying to and say whether you have been admitted.",
+            "medical_students": "Medical students may apply only in their first year at Boston University.",
+            "gpa_context": "The application lets you explain a GPA below 3.0 on a 4.0 scale.",
+            "research_background": "An interest in biological research is required. Previous research experience is optional."
+          }
+        },
+        "sro-bc33bc08": {
+          "student_deadline": "2027-01-15",
+          "materials": {
+            "application_url": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+            "requirements": [
+              "three_recommendations"
+            ],
+            "recommendation_deadline": "BU must receive all three letters by February 1. The FAQ gives the month and day without specifying a year."
+          },
+          "eligibility": {
+            "class_year": [
+              "sophomore",
+              "junior"
+            ],
+            "majors": "STEM",
+            "min_gpa": 3.0,
+            "international_students": "no",
+            "citizenship": "required",
+            "work_authorization_notes": "U.S. citizen or permanent resident",
+            "degree_path": "Full-time or part-time STEM studies leading to a bachelor's degree. Expected graduation in 2028 or later.",
+            "transfer_students": "Two-year college students may apply. In the statement of interest, name the bachelor's programs you are applying to and say whether you have been admitted.",
+            "medical_students": "Medical students may apply only in their first year at Boston University.",
+            "gpa_context": "The application lets you explain a GPA below 3.0 on a 4.0 scale.",
+            "research_background": "An interest in biological research is required. Previous research experience is optional."
+          }
+        }
+      }
+    }
+  },
+  "ci_link": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45837184310",
+  "ci_snapshot": {
+    "observed_at": "2026-11-26T14:16:52.433949+00:00",
+    "runs": {
+      "1405": [
+        {
+          "id": 45833175486,
+          "event": "pull_request",
+          "head_sha": "56e38a70fd41dac4b20cd75e7ef477d22ebf0544",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45833175486"
+        }
+      ],
+      "1406": [
+        {
+          "id": 45833275270,
+          "event": "workflow_dispatch",
+          "head_sha": "568d420fac609b823881ab7e4608b86b58c3bee1",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45833275270"
+        }
+      ],
+      "1408": [
+        {
+          "id": 45834319949,
+          "event": "pull_request",
+          "head_sha": "91da71d0d2052ffaf0988fb6639346a26cc244c2",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834319949"
+        }
+      ],
+      "1409": [
+        {
+          "id": 45834470233,
+          "event": "workflow_dispatch",
+          "head_sha": "b9f9f37109d9922bec4626784cf06eb20f168a10",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834470233"
+        }
+      ],
+      "1410": [
+        {
+          "id": 45835723415,
+          "event": "workflow_dispatch",
+          "head_sha": "1b909cbd82e473cc1df51db32f885a08906b479d",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45835723415"
+        }
+      ],
+      "1412": [
+        {
+          "id": 45836714552,
+          "event": "workflow_dispatch",
+          "head_sha": "e5546eeef2bc4e7c8cbf1696bf8df9cfe9585e03",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45836714552"
+        }
+      ],
+      "1404": [
+        {
+          "id": 45834354717,
+          "event": "workflow_dispatch",
+          "head_sha": "71d6f51a38d0bb7d133855e066998489388c1797",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45834354717"
+        }
+      ],
+      "1414": [
+        {
+          "id": 45837184310,
+          "event": "workflow_dispatch",
+          "head_sha": "92e09d9f79dd00dd481f60498af962274e6a96ce",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45837184310"
+        }
+      ]
+    }
+  },
+  "status_at_recording": "Draft. Combined CI and release observation remain pending."
+}
