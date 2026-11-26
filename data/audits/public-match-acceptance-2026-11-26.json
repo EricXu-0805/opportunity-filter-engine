@@ -316,7 +316,7 @@
         }
       ],
       "ai_refined": false,
-      "scope": "Production result payload; the visual card in a real Amherst freshman session and production lane saturation were not exercised."
+      "scope": "Production match API. See real_browser for independent visible-card observations."
     },
     {
       "case": "M188/UIUC cohomology word boundary",
@@ -389,7 +389,7 @@
       "privacy": "https://joinalab.com/privacy"
     }
   },
-  "scope": "A scoped production receipt. No screenshot, profile persistence, email draft generation, or production saturation test.",
+  "scope": "Anonymous-match and campus-release receipts, public-page observations and the isolated real guest browser evidence described under real_browser.",
   "prior_work": {
     "M188_berkeley_regression_script": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/124bcddf3/scripts/probe-berkeley-attribution.py",
     "note": "Only the response observations above were replayed by this receipt. Broader offline corpus comparisons and browser-cache behavior are separate evidence."
@@ -457,5 +457,172 @@
     "legacy_id": "faculty-georgetown-engl-9b02f5b4",
     "current_id": "faculty-georgetown-engl-be9bd333",
     "legacy_public_detail_observation": "Production API with release scope target-truth-v2 returns legacy ID, actionable false and duplicate_of current ID. Public current record points to its personal faculty page."
+  },
+  "real_browser": {
+    "successful_actions_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45764581825",
+    "conclusion": "success",
+    "utc": "2026-11-26T05:55:24Z",
+    "script": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/9f3df6b483eb14afd7b4f6d5e65293fe37fc0671/data/audits/verify_public_guest_20261126.py",
+    "service": "joinalab.com production on two fresh isolated Chrome contexts, each signed in automatically through the site's real anonymous guest service. No existing personal browser profile, persisted credentials, Supabase stub, account IDs, or real student materials used. Only synthetic data.",
+    "M88": {
+      "status": "card clause verified; item pending",
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45764581825/job/139722306432",
+      "screenshot": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/4a64fef3b56f217b51d78b34a913698087b670d8/data/audits/public-guest-2026-11-26/amherst-card.png",
+      "guest": "Amherst undergraduate • Freshman • English",
+      "account_http": [
+        [
+          "signup",
+          200
+        ],
+        [
+          "commit_profile_patch_cas",
+          200
+        ],
+        [
+          "read profiles after submit",
+          200
+        ]
+      ],
+      "clicks": "Change institution, Amherst, complete required fields, Generate, All, search Gregory, Show details on the original award ID.",
+      "match_http": 200,
+      "rule_only": true,
+      "match_card_id": "amherst-8b2e68d735f0",
+      "match_score": 66,
+      "visible_potential_concerns": "Our listing suggests junior, senior students — not confirmed on the program page",
+      "outstanding": "No natural production contact/tailor lane capacity rejection and Retry-After evidence was available. The local controlled 503 case remains separate. No saturation traffic was sent."
+    },
+    "M213": {
+      "status": "pending original previously shared production URL",
+      "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45764581825/job/139722306137",
+      "archive": {
+        "when": "2026-10-16",
+        "provenance": "Original QA v1 query from a recorded localhost GET in the synthetic input-completeness scenario; same archived bytes were opened in production on 2026-11-26. This was not a previously distributed production link.",
+        "source_scenario": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/9cff64d75b98ff3ededfc435969a627fa4fd4fec/frontend/e2e/profile-input-completeness.spec.ts",
+        "encoded_length": 7106,
+        "sha256": "9cb06e26a2aa3fc4d02fb73a11c9963c83ce9b8a278f66786aba4f3e422424f0",
+        "original_production_link_lookup": {
+          "scope": "Public repository QA material only. The local non-shallow Git history contained 4,859 reachable commits and 103 remote-tracking refs at review. Checked frontend/e2e, docs, data/audits, scripts, tests and .github for a literal production share URL and long literal share payload. GitHub default-branch code and issue/PR body search returned no matches for joinalab.com/?share=. The M213 PR body/comments and its CI logs did not contain such a literal.",
+          "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1248",
+          "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45611601067",
+          "result": "No attributable nonpersonal previously distributed production v1 URL identified in those sources. No private histories or profiles searched."
+        }
+      },
+      "browser_before": {
+        "shared": 60,
+        "confirmed": 0,
+        "opportunity_id": "faculty-cs-321c7f13",
+        "checked": "Draft email opened the unsent editor. The public free deterministic endpoint returned three variants. None named any of the 60 inherited numbered skills.",
+        "screenshot": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/4a64fef3b56f217b51d78b34a913698087b670d8/data/audits/public-guest-2026-11-26/unconfirmed-template.png"
+      },
+      "browser_after": {
+        "action": "Back to form, choose Keep this level for Skill 1. Generate new matches. Open the second result's Draft email.",
+        "shared": 60,
+        "confirmed": 1,
+        "opportunity_id": "faculty-cs-9fae1071",
+        "id_provenance": "The editor screenshot names professor Wenzhen Yuan, whose published UIUC record has this ID. The editor initially tested before confirmation was a different faculty record.",
+        "confirmed_skill_mentions_across_variants": 0,
+        "screenshot": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/4a64fef3b56f217b51d78b34a913698087b670d8/data/audits/public-guest-2026-11-26/confirmed-template.png"
+      },
+      "account_http": [
+        [
+          "signup",
+          200
+        ],
+        [
+          "commit_profile_patch_cas (two requests)",
+          200
+        ],
+        [
+          "read profiles on return",
+          200
+        ]
+      ],
+      "positive_control": {
+        "endpoint": "https://joinalab.com/api/cold-email/variants",
+        "method": "POST",
+        "kind": "Separate anonymous, same-target positive control. Only the recipient-confirmation bit differs between requests, in the same production endpoint as the guest UI.",
+        "cases": [
+          {
+            "request": {
+              "profile": {
+                "name": "Sample Student",
+                "school": "University of Colorado Boulder",
+                "home_school": "boulder",
+                "year": "sophomore",
+                "major": "Engineering",
+                "college": "Engineering",
+                "hard_skills": [
+                  {
+                    "name": "PyTorch",
+                    "level": "beginner",
+                    "source": "shared"
+                  }
+                ]
+              },
+              "opportunity_id": "boulder-0d8edc5782f3"
+            },
+            "case": "inherited, unconfirmed",
+            "status": 200,
+            "pipeline_version": "w12.26",
+            "variants": [
+              {
+                "id": "balanced",
+                "mentions": 0
+              },
+              {
+                "id": "skills",
+                "mentions": 0
+              },
+              {
+                "id": "concise",
+                "mentions": 0
+              }
+            ]
+          },
+          {
+            "request": {
+              "profile": {
+                "name": "Sample Student",
+                "school": "University of Colorado Boulder",
+                "home_school": "boulder",
+                "year": "sophomore",
+                "major": "Engineering",
+                "college": "Engineering",
+                "hard_skills": [
+                  {
+                    "name": "PyTorch",
+                    "level": "beginner",
+                    "source": "shared",
+                    "confirmed": true
+                  }
+                ]
+              },
+              "opportunity_id": "boulder-0d8edc5782f3"
+            },
+            "case": "confirmed",
+            "status": 200,
+            "pipeline_version": "w12.26",
+            "variants": [
+              {
+                "id": "balanced",
+                "mentions": 1
+              },
+              {
+                "id": "skills",
+                "mentions": 1
+              },
+              {
+                "id": "concise",
+                "mentions": 1
+              }
+            ]
+          }
+        ]
+      },
+      "scope": "The browser opened only unsent, free deterministic drafts. AI and Tailor were not exercised. The branch workflow blocks paid/send POSTs, the number of blocked requests observed in each run was zero."
+    },
+    "M57": {
+      "status": "Production About page's public link confirmed separately. The guest draft path now also reached a populated free editor. Still missing a registered-member sign-in through the About path and an owner decision on the existing privacy section 7 commitment."
+    }
   }
 }
