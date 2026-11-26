@@ -202,10 +202,11 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
   });
 
-  it('opens the personal link on a Berkeley CDSS roster card', () => {
-    const directory = 'https://ccb.berkeley.edu/people/core-faculty';
-    const personal = 'https://ccb.berkeley.edu/people/michael-boots';
-    renderHeader({ opp: facultyOpp({ source: 'ucb_datascience_faculty', source_url: directory, url: personal }) });
+  it.each([
+    ['ucb_datascience_faculty', 'https://ccb.berkeley.edu/people/core-faculty', 'https://ccb.berkeley.edu/people/michael-boots'],
+    ['msu_faculty', 'https://directory.natsci.msu.edu/Directory/Directory/Department/6', 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493'],
+  ])('opens the person listed on the %s roster card', (source, directory, personal) => {
+    renderHeader({ opp: facultyOpp({ source, source_url: directory, url: personal }) });
     expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
     expect(screen.queryByRole('link', { name: 'detail.apply' })).toBeNull();
   });
@@ -217,6 +218,13 @@ describe('OpportunityHeader MVP release surface', () => {
   ])('labels a Berkeley faculty card with no usable person link as a source', (destination) => {
     const directory = 'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty';
     renderHeader({ opp: facultyOpp({ source: 'ucb_datascience_faculty', source_url: directory, url: destination }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
+  it('labels an unresolved MSU Natural Science destination as the department source', () => {
+    const directory = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
+    renderHeader({ opp: facultyOpp({ source: 'msu_faculty', source_url: directory, url: directory }) });
     expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
     expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
   });

@@ -26,16 +26,10 @@ department is live-verified real faculty AND majority-emailed. Live-verified
   Sciences, and Technology Engineering deliberately not exposed (admin /
   interdisciplinary / small program units).
 
-* **College of Natural Science — Chemistry (dedicated table) + Physics (partial).**
-  ``chemistry.msu.edu`` is an old-CMS ASP.NET page: one ``responsiveTable``, 45
-  rows, positional ``p:nth-of-type`` selectors, mailto emails, research-focus
-  blurb → keywords. Physics ships the verified condensed-matter group table only
-  (``pa.msu.edu/condensed-matter-physics/people/faculty.aspx``, name_flip); the
-  department-wide directory (pa.msu.edu / directory.natsci.msu.edu) is JS +
-  Incapsula. The other Natural Science departments (Math, Statistics, BMB,
-  Microbiology-Genetics-Immunology, Integrative Biology, Plant Biology, Earth &
-  Environmental Sciences, Physiology, Neuroscience) are all Incapsula-walled
-  and/or JS-rendered — see the phase-2 list.
+* **College of Natural Science.** Chemistry uses its department table. Eight
+  other departments use the college directory JSON roster. A person's campus
+  ID opens their individual profile, and the department directory remains the
+  citation for the appointment observed in its feed.
 
 * **College of Communication Arts and Sciences — Drupal college directory pool.**
   ``comartsci.msu.edu/about/directory`` server-renders the WHOLE college roster
@@ -147,6 +141,7 @@ def _eng(short: str, name: str, majors: list[str], dept_text: str) -> dict:
 # interests come free. The roster mixes grad students / staff / emeriti / adjuncts
 # heavily, so a rank gate keeping professor/chair ranks is required.
 _NATSCI_BASE = "https://directory.natsci.msu.edu/Directory/api/Directory"
+_NATSCI_PROFILE = "https://directory.natsci.msu.edu/directory/Profiles/Person/"
 # require professor|chair already excludes Graduate Student / Postdoc / Research
 # Associate / staff titles; the drop list removes non-ladder professor variants.
 # "Fixed Term …Professor" (teaching faculty) is intentionally KEPT.
@@ -169,6 +164,11 @@ def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
                                 "match_value": org_id, "value_field": "title"},
             "email_field": "email",
             "link_field": "id",
+            # The same campus person ID is used for joint appointments.
+            "link_base": _NATSCI_PROFILE,
+            "link_rewrite": (r"https://directory\.natsci\.msu\.edu/directory/Profiles/Person/([1-9][0-9]*)",
+                             _NATSCI_PROFILE + r"\1"),
+            "cite_directory": True,
             "research_field": "researchInterests",
             "ladder_filter": _NATSCI_LADDER,
         },
