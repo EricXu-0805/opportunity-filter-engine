@@ -26,7 +26,7 @@ from bs4 import BeautifulSoup
 
 from src.normalizers import fodommat, host_program_terms
 from src.normalizers.deadlines import normalize_deadline, to_legacy
-from src.program_windows import apply_program_window, reviewed_window
+from src.program_windows import STARS_SRO_IDS, apply_program_window, reviewed_window
 
 from ..contact_instructions import (
     CAPTURE_KEY,
@@ -1036,6 +1036,19 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                         carried.remove("eligibility")
                     carried = [key for key in carried
                                if key not in ("deadline", "deadline_is_estimate", "is_rolling")]
+                if opp["id"] in STARS_SRO_IDS and reviewed_window(prior):
+                    # A partial page can supply a new sponsor or destination. The old
+                    # cohort's reviewed fields cannot override that observation.
+                    new_org = opp.get("organization")
+                    new_link = (opp.get("application") or {}).get("application_url")
+                    if ((new_org and new_org != prior.get("organization"))
+                            or (new_link and new_link != opp.get("url") and reviewed_window(opp) is None)):
+                        carried = [k for k in carried if k not in ("organization", "application", "eligibility", "deadline", "deadline_is_estimate", "is_rolling")]
+                    if opp.get("deadline") and not reviewed_window(opp):
+                        # A recommender requirement belongs to the old cycle.
+                        carried = [k for k in carried if k != "application"]
+                    if "deadline" in carried and "superseded_directory_deadline" in prior["metadata"]:
+                        opp["metadata"]["superseded_directory_deadline"] = deepcopy(prior["metadata"]["superseded_directory_deadline"])
                 if host_program_terms.checked_window(prior) and not host_program_terms.checked_window(opp):
                     application_url = (opp.get("application") or {}).get("application_url")
                     old_url = (prior.get("application") or {}).get("application_url")

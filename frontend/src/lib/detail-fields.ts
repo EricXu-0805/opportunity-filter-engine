@@ -52,6 +52,12 @@ export const FIELD_FACETS: Record<DetailFieldName, readonly string[]> = {
   application_method: ['application_url', 'contact_method', 'requirements', 'effort'],
 };
 
+// Optional source-specific facts appear only when the host publishes a rule.
+const OPTIONAL_FACETS: Partial<Record<DetailFieldName, readonly string[]>> = {
+  eligibility: ['degree_path', 'transfer_students', 'medical_students', 'gpa_context', 'research_background'],
+  application_method: ['recommendation_deadline'],
+};
+
 export const INFERENCE_BASES = [
   'text_scan',
   'model_extraction',
@@ -168,7 +174,9 @@ function readFacet(raw: Record<string, unknown>, facet: string): FacetTruth[] {
 
 function readField(raw: unknown, name: DetailFieldName): FieldTruth {
   const field = isRecord(raw) ? raw : {};
-  const facets = FIELD_FACETS[name].flatMap((facet) =>
+  const explicit = isRecord(field.explicit) ? field.explicit : {};
+  const optional = (OPTIONAL_FACETS[name] ?? []).filter((facet) => asFacetValue(explicit[facet]) !== null);
+  const facets = [...FIELD_FACETS[name], ...optional].flatMap((facet) =>
     readFacet(field, facet).map((truth) => ({ facet, truth })),
   );
   // Recomputed from the facets rather than trusted from `state`: a payload

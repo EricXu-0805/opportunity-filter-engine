@@ -219,6 +219,7 @@ def ambiguous_author_ids(records: list[dict]) -> set[str]:
 # re-derive it for free after any full corpus rebuild — and where future harvests
 # accumulate. Kept out of the corpus so the metered data survives independently.
 WORKS_STORE = os.path.join(os.path.dirname(PROCESSED_FILE), "faculty_works.json")
+_WORKS_SELECT = "display_name,publication_year,primary_topic,authorships,doi"
 # Over-fetch so the per-work field filter (drops OpenAlex same-name conflation
 # outliers) still leaves _MAX_WORKS survivors in the common case.
 _WORKS_FETCH = 10
@@ -779,6 +780,13 @@ def _version_key(title: str) -> str:
     return " ".join(re.findall(r"[^\W_]+", folded))
 
 
+def _is_cassyni_seminar(work: dict) -> bool:
+    # Cassyni deposits a DOI per seminar or individual talk. The discussed
+    # paper has its own DOI, even when both titles and authors are the same.
+    doi = canonical_doi(work.get("doi"))
+    return bool(doi and doi.lower().startswith("https://doi.org/10.52843/cassyni."))
+
+
 def _work_version_key(work: dict) -> str:
     return _version_key(str(work.get("display_name") or ""))
 
@@ -839,6 +847,7 @@ def _usable_works(raw: list[dict], dept: str = "",
     """
     allowed = set(author_fields) if author_fields else _dept_fields(dept)
     aid = str(author_id or "").rsplit("/", 1)[-1]
+    raw = [w for w in raw if not _is_cassyni_seminar(w)]
     verdicts: dict[str, set[str]] = {}
     for w in raw:
         verdicts.setdefault(_work_version_key(w), set()).add(_paper_affiliation(w, aid, inst_id))
@@ -872,7 +881,7 @@ def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WO
         "filter": f"author.id:{author_id}",
         "sort": "publication_date:desc",
         "per-page": _WORKS_FETCH,
-        "select": "display_name,publication_year,primary_topic,authorships",
+        "select": _WORKS_SELECT,
     }, url=_WORKS_API)
     return _usable_works(j.get("results") or [], dept, max_works, author_fields,
                          author_id=author_id, inst_id=inst_id)
@@ -909,7 +918,7 @@ def works_for_authors(author_ids: list[str], *, want: int = _MAX_WORKS,
             "filter": "author.id:" + "|".join(sorted(pending)),
             "sort": "publication_date:desc",
             "per-page": _WORKS_PAGE_SIZE,
-            "select": "display_name,publication_year,primary_topic,authorships",
+            "select": _WORKS_SELECT,
         }, url=_WORKS_API)
         results = j.get("results") or []
         for w in results:
@@ -2159,7 +2168,7 @@ def _research_work(raw: dict, author_id: str, fields: set[str]) -> dict | None:
     if type(title) is str:
         title = re.sub(r'\s+', ' ', title).strip()
     if (type(title) is not str or not title.strip() or len(title) > MAX_RESEARCH_TITLE
-            or _is_front_matter(title) or is_additional_file(title)):
+            or _is_front_matter(title) or is_additional_file(title) or _is_cassyni_seminar(raw)):
         return None
     work_id = normalized_openalex_id(raw.get('id'), 'W')
     if work_id is None:
@@ -2532,7 +2541,7 @@ def _apply_research_cli(argv: list[str]) -> int:
 # request. What lands is then exactly what was reviewed, and the credits are
 # spent once, not again on a second fetch that could answer differently.
 
-_RECHECK_SELECT = "id,display_name,publication_year,primary_topic,authorships"
+_RECHECK_SELECT = "id," + _WORKS_SELECT
 _RECHECK_PAGE_SIZE = 200
 # Requests one batch of authors may spend finding its stored papers before the
 # rest are reported as not found.
@@ -2640,7 +2649,7 @@ def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget,
 
 
 def _recheck_record(record: dict, found: dict) -> dict:
-    """What the per-paper affiliation check says about each paper this record holds.
+    """Recheck the publication type and author affiliation for each held title.
 
     A paper is removed only on evidence: it was found, and no version of it
     (a preprint and its journal version share a title) is admitted. A paper
@@ -2670,14 +2679,17 @@ def _recheck_record(record: dict, found: dict) -> dict:
             outcome["unfound"].append(paper)
             kept.append(paper)
             continue
-        verdict = _strongest_affiliation({_paper_affiliation(w, aid, inst) for w in candidates})
+        publications = [w for w in candidates if not _is_cassyni_seminar(w)]
+        verdict = (_strongest_affiliation({_paper_affiliation(w, aid, inst) for w in publications})
+                   if publications else "seminar_recording")
         if verdict == "school":
             kept.append(paper)
         elif _affiliation_admits(verdict):
             outcome["kept_unlisted"].append(paper)
             kept.append(paper)
         else:
-            own = [_own_authorship(w, aid) or {} for w in candidates]
+            evidence = publications or candidates
+            own = [_own_authorship(w, aid) or {} for w in evidence]
             outcome["removed"].append({
                 **paper,
                 "verdict": verdict,
@@ -2686,7 +2698,7 @@ def _recheck_record(record: dict, found: dict) -> dict:
                     for a in own for i in a.get("institutions") or [] if isinstance(i, dict)}),
                 "raw_affiliations": sorted({
                     s for a in own for s in a.get("raw_affiliation_strings") or [] if isinstance(s, str)}),
-                "work_ids": [w.get("id") for w in candidates],
+                "work_ids": [w.get("id") for w in evidence],
             })
     outcome["after"] = kept
     outcome["status"] = "partial" if outcome["unfound"] else "checked"

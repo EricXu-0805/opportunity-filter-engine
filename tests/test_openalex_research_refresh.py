@@ -484,3 +484,10 @@ def test_duplicate_record_ids_also_refuse_candidate_apply(monkeypatch):
     with pytest.raises(ValueError, match='duplicate_research_record_id'):
         oa.apply_research_refresh(rows, patch, now=NOW)
     assert rows == before
+
+
+def test_research_snapshot_skips_the_recorded_talk_and_keeps_the_underlying_preprint():
+    talk = work(doi="HTTPS://DOI.ORG/10.52843/CASSYNI.fvcg0s.5")
+    paper = work(2, doi="10.26434/chemrxiv-2025-kj1m5")
+    assert oa._research_work(talk, A, {"Computer Science"}) is None
+    assert oa._research_work(paper, A, {"Computer Science"})["title"] == paper["display_name"]

@@ -184,3 +184,39 @@ def test_live_chass_rank_is_bound_to_one_named_card_and_survives_only_an_outage(
     promoted = fetch(card(target, "Cynthia Hyman", "Teaching Professor"))
     assert promoted["id"] == old["id"]
     assert promoted["metadata"]["faculty_title"] == "Teaching Professor"
+
+
+def test_active_rank_name_variant_requires_the_reviewed_post_profile_and_spelling(monkeypatch):
+    post, (slug, canonical_name, alias) = next(
+        (k, v) for k, v in ncsu_chass.CURRENT_RANK_NAME_VARIANTS.items() if v[1] == "Victoria J. Gallagher"
+    )
+    target = person(slug, canonical_name, [11847])
+    target["id"] = post
+    dept = next(d for d in ncsu_faculty.SCHOOL["departments"] if d["short"] == "CHASS")
+    monkeypatch.setitem(ncsu_faculty.SCHOOL, "departments", [dept])
+    monkeypatch.setattr(faculty_graph, "_wp_get_json", lambda _url: [target])
+    monkeypatch.delenv("OFE_ENRICH_PROFILES", raising=False)
+
+    def fetch(display, title):
+        roster = BeautifulSoup(card(target, display, title), "html.parser")
+        monkeypatch.setattr(ncsu_chass.ucb_common, "fetch_soup", lambda *_args, **_kwargs: roster)
+        row, = ncsu_faculty.fetch_and_normalize()
+        return row
+
+    for wp_name, public_name in [(canonical_name, alias), (alias, alias), (alias, canonical_name)]:
+        target["title"] = {"rendered": wp_name}
+        row = fetch(public_name, "Teaching Professor")
+        assert row["id"] == "faculty-ncsu-chass-c0cf55cb"
+        assert row["metadata"]["faculty_title"] == "Teaching Professor"
+        observation = row["metadata"]["faculty_title_observation"]
+        assert observation["cms_post_id"] == post and observation["directory_name"] == public_name
+
+    target["title"] = {"rendered": canonical_name}
+    assert not fetch("Victoria K. Gallagher", "Professor")["metadata"]["faculty_title"]
+    assert not fetch(alias, "Professor Emerita")["metadata"]["faculty_title"]
+
+    target["id"] = -99
+    assert not fetch(alias, "Professor")["metadata"]["faculty_title"]
+    target["id"] = post
+    target["link"] = "https://chass.ncsu.edu/people/different-profile/"
+    assert not fetch(alias, "Professor")["metadata"]["faculty_title"]
