@@ -3187,14 +3187,15 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     return true;
   }, [identityGeneration, editingOrigin, editProfile]);
 
-  const handleResumeMasterChange = useCallback((master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }): boolean => {
+  const handleResumeMasterChange = useCallback((master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string; scholarUrl?: string }): boolean => {
     if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     const origin = editingOrigin();
     if (!origin) return false;
     const current = profileRef.current;
     // Confirm only the complete source bundle the editor actually displayed.
     const currentBase = resumeMasterEditBase(current);
-    if (currentBase.resumeText !== expected.resumeText
+    if ((expected.scholarUrl !== undefined && current.scholar_url !== expected.scholarUrl)
+      || currentBase.resumeText !== expected.resumeText
       || currentBase.entriesJson !== expected.entriesJson
       || currentBase.masterJson !== expected.masterJson
       || !validateExperienceEntries(current.experience_entries).ok

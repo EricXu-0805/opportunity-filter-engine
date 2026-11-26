@@ -16,10 +16,12 @@ from backend.lib import target_resume_ai as engine
 from backend.lib.evidence_map import target_anchors
 from backend.lib.target_resume_ai_schema import MAX_DIRECTION_CHARACTERS, MAX_PROMPT_CHARACTERS, FullTargetRequest
 from backend.lib.target_resume_ai_validation import (
+    InvalidTargetResume,
     confirmed_document,
     fingerprint,
     units_for,
     validate_document,
+    validate_master,
 )
 from backend.main import RequestBodyLimitMiddleware, _full_target_body_limit_from_env, _release_feature_for_path, app
 from backend.routes import target_resume_ai as route
@@ -120,6 +122,21 @@ def endpoint(monkeypatch):
 
     monkeypatch.setattr(engine, "chat_completion", model)
     return TestClient(app), doc, opp, calls
+
+
+def test_confirmed_student_work_preserves_its_private_identity_receipt_outside_resume_text():
+    snapshot = make_doc()["base_snapshot"]
+    master = snapshot["resume_master"]
+    receipt = {"scholar_id": "StudentExample", "author_id": "A123", "work_id": "W456", "orcid": "0000-0002-1825-0097"}
+    master["publications"].append({"id": "work", "details": [], "title": fact("work-title", "Example publication"),
+                                   "student_authorship": receipt})
+    validate_master(master)
+    printed = json.dumps(confirmed_document(snapshot, master["source_signature"]))
+    assert "Example publication" in printed
+    assert all(value not in printed for value in receipt.values())
+    receipt["orcid"] = "0000-0002-1825-0098"
+    with pytest.raises(InvalidTargetResume):
+        validate_master(master)
 
 
 def test_golden_cross_language_document_and_manifest():
