@@ -11,6 +11,9 @@ skill_case = '--independent-github-skill' in sys.argv
 repo_evidence = []
 email_case = '--historical-email' in sys.argv
 template_reads = 0
+fresh_email_case = '--check-new-material' in sys.argv
+fresh_listing = 'simplify-intern-f5c86f4d-394f-4270-9bb3-1a362fbddbcb'
+fresh_email_rows = []
 listing_id = 'simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95'
 match_case = '--verify-match-input' in sys.argv
 if skill_case: marker += ' PyTorch'
@@ -34,6 +37,15 @@ blocked = 0
 
 def capture(r):
     u=urlsplit(r.url)
+    if fresh_email_case and u.hostname=='joinalab.com' and u.path=='/api/cold-email/variants' and r.ok and r.request.method=='POST':
+        body=r.request.post_data_json
+        if body.get('opportunity_id')==fresh_listing:
+            skills={skill['name']:skill for skill in body['profile']['hard_skills']}
+            assert 'MATLAB' not in skills and skills['SPSS']['confirmed'] and skills['PyTorch']['evidenced'] and skills['PyTorch']['source']=='github'
+            variants=r.json()['variants']
+            assert len(variants)>=3 and len({v['id'] for v in variants})==len(variants)
+            assert all('matlab' not in (v['subject']+' '+v['body']).lower() and 'synthetic sensor measurements' not in (v['subject']+' '+v['body']).lower() for v in variants)
+            fresh_email_rows.append({'target':fresh_listing,'http':r.status,'variants':[v['id'] for v in variants],'removed_matlab_in_profile':False,'removed_matlab_or_old_pdf_line_in_new_drafts':False,'confirmed_spss_in_request':True,'github_evidenced_pytorch_in_request':True})
     if match_case and u.hostname=='joinalab.com' and r.ok and u.path=='/api/matches/view' and r.request.method=='POST':
         body=r.request.post_data_json
         payload=r.json()
@@ -80,7 +92,7 @@ def guard(route):
             return route.continue_()
         if email_case and u.path=='/api/cold-email/variants':
             body=r.post_data_json
-            assert body['opportunity_id']==listing_id and body['profile']['name']=='Synthetic PDF check'
+            assert body['opportunity_id'] in ((listing_id,fresh_listing) if fresh_email_case else (listing_id,)) and body['profile']['name']=='Synthetic PDF check'
             template_reads+=1
             return route.continue_()
     return route.abort()
@@ -222,9 +234,9 @@ with sync_playwright() as pw:
                         subject='Synthetic historical subject'
                         message='I wrote these three lines myself for an unsent synthetic draft.'
                         changed='资料或目标信息已更新，主题、正文和收件人已保留。点击重新生成才会替换文稿。'
-                        def email():
+                        def email(opportunity=listing_id):
                             target=cold.new_page()
-                            target.goto(site+'/opportunities/'+listing_id,wait_until='domcontentloaded')
+                            target.goto(site+'/opportunities/'+opportunity,wait_until='domcontentloaded')
                             target.get_by_role('button',name='起草邮件',exact=True).click(timeout=35000)
                             expect(target.locator('#cold-email-body')).to_be_visible(timeout=35000)
                             return target
@@ -296,6 +308,13 @@ with sync_playwright() as pw:
                         expect(letter.get_by_text(changed,exact=True)).to_be_visible(timeout=20000)
                         receipt['historical_email']={'subject_and_handwritten_body_retained':True,'revision_before_pdf_removal':mid['revision'],'revision_after_pdf_removal':raw['revision'],'newly_shown_review_notice':True,'free_template_reads':template_reads,'email_open_or_send_actions':0}
                         letter.close()
+                    if fresh_email_case:
+                        new_letter=email(fresh_listing)
+                        expect(new_letter.locator('#cold-email-body')).not_to_have_value('')
+                        assert fresh_email_rows and len(fresh_email_rows)==1
+                        assert 'matlab' not in new_letter.locator('#cold-email-body').input_value().lower()
+                        receipt['new_material_after_withdrawal']=dict(fresh_email_rows[0],rendered_new_draft=True,email_open_or_send_actions=0)
+                        new_letter.close()
                     receipt['independent_skill']={'legacy_source':'resume','github_import':repo_evidence[0],'detail_after_import':by_name(mid['profile_data'],'PyTorch'),'other_github_skill_retained':'Python','after_removal':surviving,'revision_after_import':mid['revision'],'revision_after_removal':raw['revision'],'fresh_read':True}
                     cold.close()
                     continue

@@ -39,4 +39,4 @@ jobs:
               time.sleep(45)
           else:raise SystemExit('Public release not converged; no test account was created')
           PYWAIT
-      - run: python -u scripts/verify_public_guest_pdf_390.py --independent-github-skill --verify-match-input --expect-retained --confirm-independent-level --historical-tailor --historical-email
+      - run: python -u scripts/verify_public_guest_pdf_390.py --independent-github-skill --verify-match-input --expect-retained --confirm-independent-level --historical-tailor --historical-email --check-new-material
