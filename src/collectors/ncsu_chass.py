@@ -332,6 +332,17 @@ REVIEWED_CONTACT_URL = "https://chass.ncsu.edu/people/jrclayt2/"
 REVIEWED_CONTACT_IDS = {"faculty-ncsu-chass-e417d225", "faculty-ncsu-chass-8026d528"}
 
 
+def reviewed_archive_directory(record: dict) -> str | None:
+    """Return the campus roster that identified the current owner of the disputed URL."""
+    review = (record.get("metadata") or {}).get("faculty_profile_review")
+    record_id = record.get("id")
+    if (record.get("source") == "ncsu_faculty" and isinstance(record_id, str) and record_id in REVIEWED_CONTACT_IDS
+            and isinstance(review, dict) and review.get("source_url") == record.get("url") == REVIEWED_CONTACT_URL
+            and review.get("roster_url") == FACULTY_URL):
+        return FACULTY_URL
+    return None
+
+
 def _confirmed_current_contact(row: dict) -> bool:
     meta = row.get("metadata") or {}
     source = meta.get("faculty_title_observation")
