@@ -1465,6 +1465,9 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         directory_rank = sel.get("directory_rank")
         if directory_rank:
             title = directory_rank(card)
+            if title is None:
+                _cover("partial_render_rows")
+                continue
         elif not title and (review_rank := sel.get("review_profile_rank")):
             title = review_rank(card, name, href)
         # Some university directories list an administrative office before the
