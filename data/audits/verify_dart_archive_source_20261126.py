@@ -19,7 +19,10 @@ try:
             pass
         if welcome.is_visible():
             welcome.get_by_role('button',name='Skip tour',exact=True).click()
-            welcome.wait_for(state='hidden');report['tour']='dismissed with visible Skip tour button'
+            school=welcome.get_by_test_id('onboarding-school-wlu');school.click()
+            assert school.get_attribute('aria-pressed')=='true'
+            welcome.get_by_test_id('onboarding-primary').click()
+            welcome.wait_for(state='hidden',timeout=30000);report['tour']='Used Skip tour, chose W&L in the ordinary school selector, confirmed in a fresh synthetic visitor, then returned to the DART detail'
         api=context.request.get('https://joinalab.com/api/opportunities/wlu-88e9e20591ba',params={'_release_scope':'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2'},timeout=30000)
         assert api.ok;detail=api.json(); hosts=['University of Illinois Chicago','University of Florida','University of Michigan']; assert detail['id']=='wlu-88e9e20591ba' and detail['organization']=='Washington and Lee University' and all(v in detail['location'] for v in hosts)
         text=page.locator('body').inner_text(); visible=[v for v in hosts if v in text]; source_control=page.get_by_role('link',name='View source',exact=True);source_control.wait_for(state='visible')
