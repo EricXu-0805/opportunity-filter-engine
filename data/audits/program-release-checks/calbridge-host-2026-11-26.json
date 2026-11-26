@@ -1,0 +1,20 @@
+{
+  "checked_at_utc": "2026-11-26T20:52:48+00:00",
+  "original_opportunity_id": "ucsb-45d0bef1a207",
+  "official_host": {
+    "requested_url": "https://calbridge.org/undergraduate-program/",
+    "effective_url": "https://calbridge.org/undergraduate-program/",
+    "status": 200,
+    "title": "Undergraduate Program - Calbridge",
+    "received_bytes": 259944,
+    "sha256": "80c8cdd26309febe681c76050bcef81cd0d1f229ba2982c3886663c74af00deb"
+  },
+  "host_page_facts": {
+    "eligible_fall_school": true,
+    "application_opening_month": true,
+    "graduate_students_excluded": true
+  },
+  "verification_method": "Public HTTPS GET and parsed document text. On the same deployed version, the real browser reached this URL through Apply now. The hosted browser could not confirm the three FAQ excerpts from its own popup.",
+  "published_release": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "production_link_observation": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45893954614"
+}
