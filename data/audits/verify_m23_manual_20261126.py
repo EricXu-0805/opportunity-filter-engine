@@ -24,7 +24,7 @@ with sync_playwright() as pw:
             official = page.request.get(source)
             assert official.ok and qualifier in official.text().lower()
             entry["source_http"] = official.status
-            api = page.request.get(site + "/api/opportunities/" + oid)
+            api = page.request.get(site + "/api/opportunities/" + oid, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
             entry["detail_http"] = api.status
             if not api.ok:
                 assert oid == "ext-utexas-tacc" and api.status in (404, 410)
