@@ -166,6 +166,37 @@ def test_records_behind_a_rejected_certificate_skip_the_fetch_and_the_delay(monk
     assert report == {"hosts": {"www.math.ucla.edu": 4}, "skipped": 4}
 
 
+@pytest.mark.parametrize(("source", "directory"), [
+    ("colby_faculty", "https://www.colby.edu/people/people-directory"),
+    ("haverford_faculty", "https://www.haverford.edu/users"),
+])
+def test_repeated_distinct_profile_refusals_defer_only_that_directory_for_this_run(monkeypatch, source, directory):
+    from requests import Response
+
+    calls = []
+    responses = iter([403, 403, 200, 403, 403, 403, 403, 200, 200])
+
+    def get(url, **kwargs):
+        calls.append(url)
+        response = Response()
+        response.url = url
+        response.status_code = next(responses)
+        response._content = b"<p>Faculty profile</p>"
+        return response
+
+    monkeypatch.setattr(pi_enricher.requests, "get", get)
+    monkeypatch.setattr(pi_enricher, "DELAY", 0)
+    urls = [f"{directory}/{name}/" for name in ("a", "b", "c", "d", "d", "e", "f", "g")]
+    other = directory.rsplit("/", 1)[0] + "/department/contact"
+    rows = [_fac(source, url) for url in [*urls, other]]
+    stats = enrich_opportunities(rows, max_scrapes=8)
+    assert calls == [*urls[:7], other]
+    assert (stats["scraped"], stats["skipped_forbidden"], stats["skipped_budget"]) == (8, 1, 0)
+    assert all("contact_email" not in row for row in rows)
+    assert enrich_opportunities([rows[-2]])["skipped_forbidden"] == 0
+    assert calls[-1] == urls[-1]
+
+
 def test_profile_fetch_completes_the_incommon_chain(monkeypatch):
     """Georgia Tech's department sites omit their InCommon intermediate.
 

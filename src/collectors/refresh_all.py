@@ -1673,6 +1673,7 @@ def refresh_all(
             "skipped_deadline": pi_stats.get("skipped_deadline", 0),
             "skipped_tombstoned": pi_stats.get("skipped_tombstoned", 0),
             "skipped_certificate": pi_stats.get("skipped_certificate", 0),
+            "skipped_forbidden": pi_stats.get("skipped_forbidden", 0),
             "skipped_inactive": pi_stats.get("skipped_inactive", 0),
             "status": "ok",
         }
