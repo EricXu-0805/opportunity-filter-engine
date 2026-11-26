@@ -1,0 +1,1570 @@
+{
+  "integrated_commit": "ef2373387e31618a60f378c03264a5dc28e7007c",
+  "base": "652b8fefe6add02fde5165b680e46c39c6d12efa",
+  "observed_utc": "2026-11-26T10:33:59.745425+00:00",
+  "source_heads": {
+    "1328": "25e988c7eaf3b0348b64fb51bbe5f11ad50d3f42",
+    "1329": "a5ab7c96761dd7c180cd3faf7517536fc019005a",
+    "1330": "97157a4c5a96b62e76ab4aee7aa2c0df3d13501e",
+    "1331": "793c9be3a1fd00ce900e9c8b87d00674acdea54d",
+    "1332": "cd827e36cd79d2fc7ac56d22c48175a8d6d97e13",
+    "1334": "643480d5b47ed6ed48569fa8f1a5c66d8bfb446d",
+    "1335": "b5c1d9e630e374c4e560a7f307946e41f75b62dd",
+    "1336": "73a045fb51298f4d90b45aa43b4057e0d5b2d1c5",
+    "1337": "6547674b1986d2ef9bd8d550d4f928fb2721bdc3",
+    "1338": "e8c29300ba1afcd666074f0a0d9390116ceb9e3d",
+    "1339": "b3405dfec7751111eae22832a4d2349f99d6145c",
+    "1340": "c6782d03ad2db424078e4346da609fe4618a33df"
+  },
+  "shard_files_checked": 117,
+  "shard_rows": 149774,
+  "unique_original_ids": 149774,
+  "duplicate_ids_before_and_after": 0,
+  "unchanged_shard_blobs": 109,
+  "changed_shards": {
+    "data/processed/shards/caltech.json": {
+      "rows": 456,
+      "changed_ids": 1,
+      "before_blob": "0cd8f99902dcd3e35440c662f279dc0880d2a902",
+      "after_blob": "5ead501c473dceb24f5a5e8153a32e4c0b2be9bc"
+    },
+    "data/processed/shards/cincinnati.json": {
+      "rows": 1092,
+      "changed_ids": 1,
+      "before_blob": "13eba233aaa34cd59cc27c081e7f047baa40b2ef",
+      "after_blob": "fba303aecc0837f8f74a5464e6b608d0177a4080"
+    },
+    "data/processed/shards/emory.json": {
+      "rows": 1490,
+      "changed_ids": 1,
+      "before_blob": "dde4d751482fdfc63ba0fade1c21fbae7c40c834",
+      "after_blob": "6a3e2d201042b38c18c0595122e017eba0cc0a4f"
+    },
+    "data/processed/shards/national.json": {
+      "rows": 14139,
+      "changed_ids": 49,
+      "before_blob": "fecc9a4b5233979d72504b67c7539b361bad17fd",
+      "after_blob": "a67db3c51635cf73d140664484aac9a472f3ddb4"
+    },
+    "data/processed/shards/ncsu.json": {
+      "rows": 2334,
+      "changed_ids": 101,
+      "before_blob": "d5401ae58139a1047762433a5b2736940f917ffb",
+      "after_blob": "1c86871979f3dcf1e18ee93232927769c4baacc1"
+    },
+    "data/processed/shards/uconn.json": {
+      "rows": 1196,
+      "changed_ids": 11,
+      "before_blob": "81b304aacdb0fd259d66f059247348c6b1dbbee7",
+      "after_blob": "e989e1800ddcbd0b2b5f989278b2e0415e7c981d"
+    },
+    "data/processed/shards/wisc.json": {
+      "rows": 2024,
+      "changed_ids": 1,
+      "before_blob": "d7c25d20a7e71e26cd14561282412be274405e56",
+      "after_blob": "762b02b3f708650768da46ee828e9324d0528a86"
+    },
+    "data/processed/shards/wlu.json": {
+      "rows": 245,
+      "changed_ids": 1,
+      "before_blob": "ab308082eaf9c8f667fb9b32e5a2030f8987d445",
+      "after_blob": "768ab7eba8c400008fa998900f4e78d2447f69fd"
+    }
+  },
+  "changed_ids": 166,
+  "source_field_mapping": {
+    "1328": {},
+    "1329": {
+      "data/processed/shards/wisc.json": {
+        "changed_ids": {
+          "faculty-wisc-cs-0ead07e9": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ]
+        },
+        "fields": {
+          "metadata.deactivated_at": 1,
+          "metadata.deactivation_reason": 1,
+          "metadata.faculty_profile_review": 1,
+          "metadata.faculty_title": 1,
+          "metadata.is_active": 1
+        },
+        "source_rows": 2024,
+        "integrated_rows": 2024
+      },
+      "frontend/src/lib/school-stats.json": {
+        "fields": {
+          "schools.wisc.faculty_contact_count": {
+            "source_before": 1935,
+            "source_after": 1934,
+            "integrated_before": 1935,
+            "integrated_after": 1934
+          },
+          "schools.wisc.total_count": {
+            "source_before": 1955,
+            "source_after": 1954,
+            "integrated_before": 1955,
+            "integrated_after": 1954
+          }
+        }
+      }
+    },
+    "1330": {},
+    "1331": {
+      "data/processed/shards/cincinnati.json": {
+        "changed_ids": {
+          "faculty-cincinnati-cs-00772f54": [
+            "keywords",
+            "metadata.inferred_fields",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ]
+        },
+        "fields": {
+          "keywords": 1,
+          "metadata.inferred_fields": 1,
+          "metadata.research_areas_raw": 1,
+          "metadata.research_areas_verified_at": 1
+        },
+        "source_rows": 1092,
+        "integrated_rows": 1092
+      }
+    },
+    "1332": {
+      "data/processed/shards/national.json": {
+        "changed_ids": {
+          "ext-uhouston-reu": [
+            "application.application_url",
+            "compensation_details",
+            "deadline",
+            "description_clean",
+            "duration",
+            "eligibility.citizenship_required",
+            "eligibility.eligibility_text_raw",
+            "eligibility.international_friendly",
+            "eligibility.majors",
+            "eligibility.preferred_year",
+            "eligibility.skills_required",
+            "eligibility.work_auth_notes",
+            "is_rolling",
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.is_active",
+            "metadata.last_seen_at",
+            "metadata.last_verified",
+            "metadata.listing_status",
+            "metadata.notes",
+            "paid",
+            "start_date"
+          ]
+        },
+        "fields": {
+          "application.application_url": 1,
+          "compensation_details": 1,
+          "deadline": 1,
+          "description_clean": 1,
+          "duration": 1,
+          "eligibility.citizenship_required": 1,
+          "eligibility.eligibility_text_raw": 1,
+          "eligibility.international_friendly": 1,
+          "eligibility.majors": 1,
+          "eligibility.preferred_year": 1,
+          "eligibility.skills_required": 1,
+          "eligibility.work_auth_notes": 1,
+          "is_rolling": 1,
+          "metadata.deactivated_at": 1,
+          "metadata.deactivation_reason": 1,
+          "metadata.is_active": 1,
+          "metadata.last_seen_at": 1,
+          "metadata.last_verified": 1,
+          "metadata.listing_status": 1,
+          "metadata.notes": 1,
+          "paid": 1,
+          "start_date": 1
+        },
+        "source_rows": 14139,
+        "integrated_rows": 14139
+      },
+      "frontend/src/lib/school-stats.json": {
+        "fields": {
+          "national_count": {
+            "source_before": 5603,
+            "source_after": 5600,
+            "integrated_before": 5601,
+            "integrated_after": 5598
+          }
+        }
+      }
+    },
+    "1334": {},
+    "1335": {
+      "data/processed/shards/national.json": {
+        "changed_ids": {
+          "simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-f42adf96-f242-4f29-8953-d237b9a04ad2": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-e764c6d5-8016-405f-9cf4-3ab1d55828be": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-e88effb2-7748-41ae-9be2-407af5870c56": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-e9282391-e76d-43c0-99fe-824b03704b2c": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-6b159730-9852-401d-b64d-e07e1b5e80ba": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-9f31b43a-95ad-41c8-aef4-c59287ea5477": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a27b01fe-9ba5-4ec8-894b-61cfd1f1fdf6": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-865a11a8-4b8f-4167-99a1-2b819a80bdf2": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-dcfc9399-37e0-42cc-965a-fd425dfbb1ce": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-3548b466-2e50-4b00-9af5-beccc61fd77d": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-557e1909-4373-42e8-847b-ee26942d838b": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-6acc24ca-3ff2-4d56-a40c-e531d2a57522": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-cdebfd0a-6bc1-4ec9-904b-67106dabdb42": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-d275435a-21ef-455d-80a8-3d9afd93c8a9": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a6dbbd93-025c-446e-9591-2e57776b8c43": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-5cd416b9-4e14-4c94-ba8f-96c9143bd4dc": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-87566803-f6c9-48c3-a131-43c4bfe824ee": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a6a5ed46-6265-445b-abcd-f0a3316ee4ec": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-c8f21f2d-6090-47e0-9b3c-d232b71af4e6": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4": [
+            "description_clean",
+            "duration",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-90fc898a-0084-4663-aec5-a815133f8492": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-e80ebee1-3fe9-4a36-ad51-08f17f3179c8": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-342edb51-b682-4daa-80fd-21c355143f3e": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-e5fc4725-7c7e-4f70-8b44-393f041df42f": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-d6b3c17b-06b4-4829-928b-91ee1bba4851": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-64a04930-5ef0-4b6e-a89b-0ef7d8a6cf17": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-f20248ee-cb81-4a5b-8c0c-1af93286831e": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a1081a4b-fb8c-4479-9220-d7baabef2872": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-87448ebb-0faa-4adb-8da5-961c6675e99c": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-2925b61d-685b-4e5f-9dfd-2135a9e1f5eb": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-5ff8900e-61d6-4596-aada-70ac75491c47": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-6bd2bc4c-a45f-43fc-85b7-a95cc3796271": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-a37b7658-0363-49fa-878d-5f9db8bfb47b": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-983f493f-336e-4200-b72e-8c62140cf351": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ],
+          "simplify-intern-62a276ae-a9d7-4971-91d6-af6673585530": [
+            "description_clean",
+            "eligibility.eligibility_text_raw",
+            "eligibility.preferred_year",
+            "metadata.employer_job",
+            "title"
+          ]
+        },
+        "fields": {
+          "description_clean": 46,
+          "eligibility.eligibility_text_raw": 46,
+          "eligibility.preferred_year": 46,
+          "metadata.employer_job": 46,
+          "title": 46,
+          "duration": 1
+        },
+        "source_rows": 14139,
+        "integrated_rows": 14139
+      }
+    },
+    "1336": {
+      "data/processed/shards/caltech.json": {
+        "changed_ids": {
+          "caltech-a7fedb84058b": [
+            "application.application_url",
+            "compensation_details",
+            "description_clean",
+            "description_raw",
+            "eligibility.eligibility_text_raw",
+            "eligibility.majors",
+            "eligibility.preferred_year",
+            "is_rolling",
+            "metadata.deadline_note",
+            "metadata.reference_only"
+          ]
+        },
+        "fields": {
+          "application.application_url": 1,
+          "compensation_details": 1,
+          "description_clean": 1,
+          "description_raw": 1,
+          "eligibility.eligibility_text_raw": 1,
+          "eligibility.majors": 1,
+          "eligibility.preferred_year": 1,
+          "is_rolling": 1,
+          "metadata.deadline_note": 1,
+          "metadata.reference_only": 1
+        },
+        "source_rows": 456,
+        "integrated_rows": 456
+      },
+      "data/processed/shards/national.json": {
+        "changed_ids": {
+          "nsf-reu-2447669": [
+            "deadline",
+            "deadline_is_estimate",
+            "is_rolling",
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.inferred_fields.deadline",
+            "metadata.is_active"
+          ],
+          "sro-3c378261": [
+            "deadline",
+            "deadline_is_estimate",
+            "metadata.deadline_note"
+          ]
+        },
+        "fields": {
+          "deadline": 2,
+          "deadline_is_estimate": 2,
+          "is_rolling": 1,
+          "metadata.deactivated_at": 1,
+          "metadata.deactivation_reason": 1,
+          "metadata.inferred_fields.deadline": 1,
+          "metadata.is_active": 1,
+          "metadata.deadline_note": 1
+        },
+        "source_rows": 14139,
+        "integrated_rows": 14139
+      },
+      "frontend/src/lib/school-stats.json": {
+        "fields": {
+          "national_count": {
+            "source_before": 5600,
+            "source_after": 5599,
+            "integrated_before": 5598,
+            "integrated_after": 5597
+          },
+          "schools.caltech.listing_count": {
+            "source_before": 14,
+            "source_after": 13,
+            "integrated_before": 14,
+            "integrated_after": 13
+          },
+          "schools.caltech.total_count": {
+            "source_before": 446,
+            "source_after": 445,
+            "integrated_before": 446,
+            "integrated_after": 445
+          }
+        }
+      }
+    },
+    "1337": {
+      "data/processed/shards/emory.json": {
+        "changed_ids": {
+          "faculty-emory-rsph-6e024408": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ]
+        },
+        "fields": {
+          "keywords": 1,
+          "metadata.research_areas_raw": 1,
+          "metadata.research_areas_verified_at": 1
+        },
+        "source_rows": 1490,
+        "integrated_rows": 1490
+      }
+    },
+    "1338": {
+      "data/processed/shards/uconn.json": {
+        "changed_ids": {
+          "faculty-uconn-pols-47788aa2": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-6dc33c27": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-575aaad4": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-bf0fc3c1": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-5848a244": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-93c3ed50": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-8d5dc144": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-ccda92a5": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-739644c6": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-ab090aec": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ],
+          "faculty-uconn-pols-840e7c22": [
+            "keywords",
+            "metadata.research_areas_raw",
+            "metadata.research_areas_verified_at"
+          ]
+        },
+        "fields": {
+          "keywords": 11,
+          "metadata.research_areas_raw": 11,
+          "metadata.research_areas_verified_at": 11
+        },
+        "source_rows": 1196,
+        "integrated_rows": 1196
+      }
+    },
+    "1339": {
+      "data/processed/shards/ncsu.json": {
+        "changed_ids": {
+          "faculty-ncsu-chass-6cb0c1b0": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-da735178": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-c8c748bd": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-f6c04422": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-618da59b": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-7127258e": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-01017fff": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-2c5ca7f5": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-8a7b1a0e": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-5b9403a0": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-766b7906": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-53a980d5": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-af259a1c": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-ea98ec3c": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-ed249065": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-86a2f80f": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-ca7b565e": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-ebe42923": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-27a2fc46": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-982a2d82": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-bb2a287f": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-77beffdf": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-53cdfe9a": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-6691c85c": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-0d338337": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-2f83bf51": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-fee3291c": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-1d403578": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-a3b3f627": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-4c6f69c7": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-c42f300a": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-31aed8b9": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-0bd3e213": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-f7f96c30": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-7bd17d24": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-5ed4f6d7": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-c60e7c19": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-a3f975b4": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-3ada8e26": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-f600e4ac": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-3e0037ac": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-a802f469": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-9cd4b0a6": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-b1f59d0e": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-141f03e6": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-a4f06c3b": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-26df05d8": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-6c8352f5": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-d4e39c02": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-dc604573": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-595cab57": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-7fd5e8b6": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-93b95a67": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-0096f675": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-43f8b3c4": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-0fead013": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-7dab7a46": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-48f6179f": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-1308dd4b": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-6317da3f": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-abfe3ef9": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-eb130a81": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-720c8b8d": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-cbb0d8d9": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-433f5e0f": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-6b705305": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-67420b77": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-1e045b11": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-34394e34": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-4574a4b4": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-af33539f": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-c87be0e0": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-71f33bad": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-cae62c8a": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-57f02900": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-38b8ddf0": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-52f21ae0": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-ee4950c7": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-96c8e0ea": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-89084a58": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-2245f23c": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-23293f4c": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-a8da80ea": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-043b7940": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-333b7b71": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-4efb3edd": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-9e6e4815": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-cefc8c15": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-4152431b": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-4b621e05": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-c07541fe": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-a71e7ad9": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-30622ea2": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-f4808c47": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-07f045ac": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-b48ebdaa": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-37744c16": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-68e03470": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-0533fcc5": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-1a99c291": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ],
+          "faculty-ncsu-chass-103a03af": [
+            "metadata.deactivated_at",
+            "metadata.deactivation_reason",
+            "metadata.faculty_profile_review",
+            "metadata.faculty_title",
+            "metadata.is_active"
+          ]
+        },
+        "fields": {
+          "metadata.deactivated_at": 101,
+          "metadata.deactivation_reason": 101,
+          "metadata.faculty_profile_review": 101,
+          "metadata.faculty_title": 101,
+          "metadata.is_active": 101
+        },
+        "source_rows": 2334,
+        "integrated_rows": 2334
+      },
+      "frontend/src/lib/school-stats.json": {
+        "fields": {
+          "schools.ncsu.faculty_contact_count": {
+            "source_before": 2322,
+            "source_after": 2221,
+            "integrated_before": 2322,
+            "integrated_after": 2221
+          },
+          "schools.ncsu.total_count": {
+            "source_before": 2327,
+            "source_after": 2226,
+            "integrated_before": 2327,
+            "integrated_after": 2226
+          }
+        }
+      }
+    },
+    "1340": {
+      "data/processed/shards/wlu.json": {
+        "changed_ids": {
+          "wlu-88e9e20591ba": [
+            "application.application_url",
+            "compensation_details",
+            "deadline",
+            "deadline_is_estimate",
+            "department",
+            "description",
+            "description_clean",
+            "description_raw",
+            "eligibility.eligibility_text_raw",
+            "eligibility.majors",
+            "eligibility.preferred_year",
+            "is_rolling",
+            "keywords",
+            "lab_or_program",
+            "metadata.deadline_note",
+            "metadata.inferred_fields",
+            "metadata.last_verified",
+            "metadata.seed_page_verified",
+            "paid",
+            "source_url",
+            "title",
+            "url"
+          ]
+        },
+        "fields": {
+          "application.application_url": 1,
+          "compensation_details": 1,
+          "deadline": 1,
+          "deadline_is_estimate": 1,
+          "department": 1,
+          "description": 1,
+          "description_clean": 1,
+          "description_raw": 1,
+          "eligibility.eligibility_text_raw": 1,
+          "eligibility.majors": 1,
+          "eligibility.preferred_year": 1,
+          "is_rolling": 1,
+          "keywords": 1,
+          "lab_or_program": 1,
+          "metadata.deadline_note": 1,
+          "metadata.inferred_fields": 1,
+          "metadata.last_verified": 1,
+          "metadata.seed_page_verified": 1,
+          "paid": 1,
+          "source_url": 1,
+          "title": 1,
+          "url": 1
+        },
+        "source_rows": 245,
+        "integrated_rows": 245
+      },
+      "frontend/src/lib/school-stats.json": {
+        "fields": {
+          "schools.wlu.listing_count": {
+            "source_before": 6,
+            "source_after": 5,
+            "integrated_before": 6,
+            "integrated_after": 5
+          },
+          "schools.wlu.total_count": {
+            "source_before": 239,
+            "source_after": 238,
+            "integrated_before": 239,
+            "integrated_after": 238
+          }
+        }
+      }
+    }
+  },
+  "all_original_ids_order_preserved": true,
+  "all_shard_content_matches_reviewed_deltas": true,
+  "canonical_full_school_stats": {
+    "school_mismatches": 0,
+    "national_count": 5599,
+    "source": "scripts/gen_school_stats.py with all 117 shards",
+    "rule": "Recompute over the combined records. Donor school fallback arithmetic double-counts two prior edits to national availability."
+  },
+  "final_code_applied_to_intermediate_national_inputs": [
+    {
+      "head": "652b8fefe",
+      "count": 5600,
+      "removed_since_prior": [],
+      "added_since_prior": []
+    },
+    {
+      "head": "7669e42f2",
+      "count": 5599,
+      "removed_since_prior": [
+        "ext-uhouston-reu"
+      ],
+      "added_since_prior": []
+    },
+    {
+      "head": "cf950ae4f",
+      "count": 5599,
+      "removed_since_prior": [],
+      "added_since_prior": []
+    },
+    {
+      "head": "3d85c9eba",
+      "count": 5599,
+      "removed_since_prior": [],
+      "added_since_prior": []
+    },
+    {
+      "head": "eac95ee22",
+      "count": 5599,
+      "removed_since_prior": [],
+      "added_since_prior": []
+    }
+  ],
+  "independent_source_count": 12,
+  "release_audit": {
+    "decision": "NO-GO",
+    "open_critical": 9
+  }
+}
