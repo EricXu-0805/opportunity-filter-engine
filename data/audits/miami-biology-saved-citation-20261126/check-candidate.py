@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 import json
 import re
 import sys
+import time
 
 import requests
 from playwright.sync_api import expect, sync_playwright
@@ -28,8 +29,16 @@ try:
         for key, wanted in expected.items():
             row = {"id": key, "name": wanted["person"]}
             result["rows"].append(row)
+            if len(result["rows"]) > 1:
+                time.sleep(25)
             url = "/opportunities/" + key
-            api = requests.get(site + "/api" + url, params={"_release_scope": scope}, timeout=55)
+            for attempt in range(2):
+                api = requests.get(site + "/api" + url, params={"_release_scope": scope}, timeout=55)
+                row.setdefault("api_attempts", []).append(api.status_code)
+                if api.status_code != 429 or attempt:
+                    break
+                delay = api.headers.get("Retry-After", "")
+                time.sleep((int(delay) if delay.isdecimal() else 60) + 1)
             api.raise_for_status()
             body = api.json()
             assert body["id"] == key and body["pi_name"] == wanted["person"]

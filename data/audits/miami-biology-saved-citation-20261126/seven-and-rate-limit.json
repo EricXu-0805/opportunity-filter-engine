@@ -1,0 +1,118 @@
+{
+  "at": "2026-11-26T23:41:27.518335+00:00",
+  "stage": "isolated complete candidate",
+  "release": "f3e470077b6e198300248bf3f83f16b54f09a580",
+  "rows": [
+    {
+      "id": "faculty-miami-bio-4dfe1b88",
+      "name": "Don DeAngelis",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "Don DeAngelis",
+      "source_actions": [
+        {
+          "label": "View source",
+          "href": "https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis"
+        }
+      ],
+      "active": true,
+      "archived_banner": false,
+      "contact_email_status": "sign_in_required",
+      "rank": "Research Professor",
+      "last_seen_listed_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-miami-bio-bccf1363",
+      "name": "Michelle E. Afkhami",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "Michelle E. Afkhami",
+      "source_actions": [
+        {
+          "label": "View faculty profile",
+          "href": "https://people.miami.edu/profile/defb78091b377054cfe5647a009f2c6a"
+        }
+      ],
+      "active": true,
+      "archived_banner": false,
+      "contact_email_status": "sign_in_required",
+      "rank": "Professor",
+      "last_seen_listed_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-miami-bio-24adf167",
+      "name": "James D Baker",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "James D Baker",
+      "source_actions": [
+        {
+          "label": "View faculty profile",
+          "href": "https://people.miami.edu/profile/d38177c1012c90941168db9af1f3f347"
+        }
+      ],
+      "active": true,
+      "archived_banner": false,
+      "contact_email_status": "sign_in_required",
+      "rank": "Research Associate Professor",
+      "last_seen_listed_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-miami-chem-d89d76d6",
+      "name": "Leslie D Knecht",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "Leslie D Knecht",
+      "source_actions": [],
+      "active": false,
+      "archived_banner": true,
+      "contact_email_status": "unavailable",
+      "rank": "Distinguished Senior Lecturer",
+      "last_seen_listed_at": "2026-08-14"
+    },
+    {
+      "id": "faculty-miami-chem-bb2aa9f3",
+      "name": "Marc R Knecht",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "Marc R Knecht",
+      "source_actions": [],
+      "active": false,
+      "archived_banner": true,
+      "contact_email_status": "unavailable",
+      "rank": "Professor",
+      "last_seen_listed_at": "2026-08-14"
+    },
+    {
+      "id": "faculty-miami-eng-4c63f134",
+      "name": "Kimberly Reyes",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "Kimberly Reyes",
+      "source_actions": [],
+      "active": false,
+      "archived_banner": true,
+      "contact_email_status": "unavailable",
+      "rank": "Asst. Professor",
+      "last_seen_listed_at": "2026-10-23"
+    },
+    {
+      "id": "faculty-miami-soc-333506ca",
+      "name": "Kathryn M Nowotny",
+      "html_status": 200,
+      "api_http": 200,
+      "heading": "Kathryn M Nowotny",
+      "source_actions": [],
+      "active": false,
+      "archived_banner": true,
+      "contact_email_status": "unavailable",
+      "rank": "Professor",
+      "last_seen_listed_at": "2026-09-11"
+    },
+    {
+      "id": "faculty-miami-phil-adf5263e",
+      "name": "Hwan Ryu"
+    }
+  ],
+  "passed": false
+}
