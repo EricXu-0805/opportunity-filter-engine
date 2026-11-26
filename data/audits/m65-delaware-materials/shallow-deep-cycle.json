@@ -1,0 +1,131 @@
+{
+  "cycles": {
+    "deployed_scrape_only_configuration": {
+      "deep_read": {
+        "asserted_original_title_name_date_url_and_activity_on_ids": {
+          "faculty-udel-mseg-0544ab79": "observed",
+          "faculty-udel-mseg-191c5afc": "observed",
+          "faculty-udel-mseg-22466e16": "observed",
+          "faculty-udel-mseg-25082bef": "observed",
+          "faculty-udel-mseg-58d683fd": "observed",
+          "faculty-udel-mseg-5ade1fd3": "observed",
+          "faculty-udel-mseg-5dbd4670": "observed",
+          "faculty-udel-mseg-7fa44ddf": "observed",
+          "faculty-udel-mseg-8adc049f": "observed",
+          "faculty-udel-mseg-8f445ad2": "observed",
+          "faculty-udel-mseg-a2bd5d6e": "observed",
+          "faculty-udel-mseg-c091c4cd": "observed",
+          "faculty-udel-mseg-ed9f22f8": "observed",
+          "faculty-udel-mseg-f765ff5d": "observed"
+        },
+        "directory_requests": 7,
+        "profile_requests": 14
+      },
+      "deep_unread": {
+        "asserted_original_title_name_date_url_and_activity_on_ids": {
+          "faculty-udel-mseg-0544ab79": "unavailable",
+          "faculty-udel-mseg-191c5afc": "unavailable",
+          "faculty-udel-mseg-22466e16": "unavailable",
+          "faculty-udel-mseg-25082bef": "unavailable",
+          "faculty-udel-mseg-58d683fd": "unavailable",
+          "faculty-udel-mseg-5ade1fd3": "unavailable",
+          "faculty-udel-mseg-5dbd4670": "unavailable",
+          "faculty-udel-mseg-7fa44ddf": "unavailable",
+          "faculty-udel-mseg-8adc049f": "unavailable",
+          "faculty-udel-mseg-8f445ad2": "unavailable",
+          "faculty-udel-mseg-a2bd5d6e": "unavailable",
+          "faculty-udel-mseg-c091c4cd": "unavailable",
+          "faculty-udel-mseg-ed9f22f8": "unavailable",
+          "faculty-udel-mseg-f765ff5d": "unavailable"
+        },
+        "directory_requests": 7,
+        "profile_requests": 14
+      },
+      "shallow": {
+        "asserted_original_title_name_date_url_and_activity_on_ids": {
+          "faculty-udel-mseg-0544ab79": "observed",
+          "faculty-udel-mseg-191c5afc": "observed",
+          "faculty-udel-mseg-22466e16": "observed",
+          "faculty-udel-mseg-25082bef": "observed",
+          "faculty-udel-mseg-58d683fd": "observed",
+          "faculty-udel-mseg-5ade1fd3": "observed",
+          "faculty-udel-mseg-5dbd4670": "observed",
+          "faculty-udel-mseg-7fa44ddf": "observed",
+          "faculty-udel-mseg-8adc049f": "observed",
+          "faculty-udel-mseg-8f445ad2": "observed",
+          "faculty-udel-mseg-a2bd5d6e": "observed",
+          "faculty-udel-mseg-c091c4cd": "observed",
+          "faculty-udel-mseg-ed9f22f8": "observed",
+          "faculty-udel-mseg-f765ff5d": "observed"
+        },
+        "directory_requests": 0,
+        "profile_requests": 0
+      }
+    },
+    "retained_original_ids": {
+      "deep_read": {
+        "asserted_original_title_name_date_url_and_activity_on_ids": {
+          "faculty-udel-mseg-0544ab79": "observed",
+          "faculty-udel-mseg-191c5afc": "observed",
+          "faculty-udel-mseg-22466e16": "observed",
+          "faculty-udel-mseg-25082bef": "observed",
+          "faculty-udel-mseg-58d683fd": "observed",
+          "faculty-udel-mseg-5ade1fd3": "observed",
+          "faculty-udel-mseg-5dbd4670": "observed",
+          "faculty-udel-mseg-7fa44ddf": "observed",
+          "faculty-udel-mseg-8adc049f": "observed",
+          "faculty-udel-mseg-8f445ad2": "observed",
+          "faculty-udel-mseg-a2bd5d6e": "observed",
+          "faculty-udel-mseg-c091c4cd": "observed",
+          "faculty-udel-mseg-ed9f22f8": "observed",
+          "faculty-udel-mseg-f765ff5d": "observed"
+        },
+        "directory_requests": 7,
+        "profile_requests": 14
+      },
+      "deep_unread": {
+        "asserted_original_title_name_date_url_and_activity_on_ids": {
+          "faculty-udel-mseg-0544ab79": "unavailable",
+          "faculty-udel-mseg-191c5afc": "unavailable",
+          "faculty-udel-mseg-22466e16": "unavailable",
+          "faculty-udel-mseg-25082bef": "unavailable",
+          "faculty-udel-mseg-58d683fd": "unavailable",
+          "faculty-udel-mseg-5ade1fd3": "unavailable",
+          "faculty-udel-mseg-5dbd4670": "unavailable",
+          "faculty-udel-mseg-7fa44ddf": "unavailable",
+          "faculty-udel-mseg-8adc049f": "unavailable",
+          "faculty-udel-mseg-8f445ad2": "unavailable",
+          "faculty-udel-mseg-a2bd5d6e": "unavailable",
+          "faculty-udel-mseg-c091c4cd": "unavailable",
+          "faculty-udel-mseg-ed9f22f8": "unavailable",
+          "faculty-udel-mseg-f765ff5d": "unavailable"
+        },
+        "directory_requests": 7,
+        "profile_requests": 14
+      },
+      "shallow": {
+        "asserted_original_title_name_date_url_and_activity_on_ids": {
+          "faculty-udel-mseg-0544ab79": "not_attempted",
+          "faculty-udel-mseg-191c5afc": "not_attempted",
+          "faculty-udel-mseg-22466e16": "not_attempted",
+          "faculty-udel-mseg-25082bef": "not_attempted",
+          "faculty-udel-mseg-58d683fd": "not_attempted",
+          "faculty-udel-mseg-5ade1fd3": "not_attempted",
+          "faculty-udel-mseg-5dbd4670": "not_attempted",
+          "faculty-udel-mseg-7fa44ddf": "not_attempted",
+          "faculty-udel-mseg-8adc049f": "not_attempted",
+          "faculty-udel-mseg-8f445ad2": "not_attempted",
+          "faculty-udel-mseg-a2bd5d6e": "not_attempted",
+          "faculty-udel-mseg-c091c4cd": "not_attempted",
+          "faculty-udel-mseg-ed9f22f8": "not_attempted",
+          "faculty-udel-mseg-f765ff5d": "not_attempted"
+        },
+        "directory_requests": 0,
+        "profile_requests": 0
+      }
+    }
+  },
+  "original_profiles_evidence": "e2b0e2263ca4331d6747381f1e7b3ce9425d501e",
+  "source": "The 21 actual source responses from November 26 replayed using the normal Delaware school wrapper and corpus upsert. The retained-seed case uses the same 14 original names and URLs to exercise shallow output if originals are configured as curated. Unavailable returns a failed HTTP read, with the real seven directory captures still readable.",
+  "source_commit": "66b894664e674b0441194312e2ac9b0054ac05a7"
+}
