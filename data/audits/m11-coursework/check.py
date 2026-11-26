@@ -70,6 +70,14 @@ def home(browser, session=None):
     return page
 
 
+def confirm_school(page):
+    picker = page.get_by_test_id('university-card-uiuc')
+    if picker.is_visible():
+        picker.click()
+        page.get_by_test_id('switcher-confirm').click()
+    expect(page.get_by_role('dialog', name='Choose your university')).to_have_count(0)
+
+
 with sync_playwright() as pw:
     browser = pw.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
     page = home(browser)
@@ -78,10 +86,7 @@ with sync_playwright() as pw:
         if sessions and not page.get_by_test_id('hydration-note').is_visible():
             break
     assert len(sessions) == 1
-    uiuc = page.get_by_test_id('university-card-uiuc')
-    if uiuc.is_visible():
-        uiuc.click()
-        page.get_by_test_id('switcher-confirm').click()
+    confirm_school(page)
     page.locator('#student_name').fill('Synthetic coursework test')
     page.locator('#college').select_option(label='Grainger College of Engineering')
     page.locator('#major').select_option(label='Computer Science')
@@ -97,6 +102,7 @@ with sync_playwright() as pw:
     old = home(browser, sessions[0])
     expect(old.get_by_text('Computer Vision', exact=True)).to_be_visible(timeout=45000)
     old_row = next(x for x in reversed(reads) if 'Computer Vision' in (x['profile_data'].get('coursework') or []))
+    confirm_school(old)
     old_picker = old.locator('input[type=file][accept*="pdf"]').first
     old_picker.set_input_files({'name': 'damaged-synthetic.pdf', 'mimeType': 'application/pdf', 'buffer': b'Not a PDF file. Synthetic test.'})
     retry = old.get_by_role('button', name='Try again', exact=True)
@@ -109,6 +115,7 @@ with sync_playwright() as pw:
     expect(old.get_by_text('Computer Vision', exact=True)).to_be_visible()
     check = home(browser, sessions[0])
     expect(check.get_by_text('Computer Vision', exact=True)).to_be_visible()
+    confirm_school(check)
     preserved = next(x for x in reversed(reads) if 'Computer Vision' in (x['profile_data'].get('coursework') or []))
     assert preserved['profile_data']['resume_text'] == old_row['profile_data']['resume_text']
     check.context.close()
@@ -123,6 +130,7 @@ with sync_playwright() as pw:
     assert writes[-1] > old_row['revision']
     fresh = home(browser, sessions[0])
     expect(fresh.get_by_role('button', name='Remove file', exact=True)).to_be_visible(timeout=55000)
+    confirm_school(fresh)
     row = next(x for x in reversed(reads) if '主修课程' in (x['profile_data'].get('resume_text') or ''))
     courses = sorted(row['profile_data']['coursework'])
     assert courses == expected, courses
