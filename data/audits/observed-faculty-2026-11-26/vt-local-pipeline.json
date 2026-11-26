@@ -1,0 +1,211 @@
+{
+  "observed_utc": "2026-11-26T09:06:19.172378+00:00",
+  "head": "9c898b990cab0e1a9fbe93baf79eab53705183cf",
+  "scope": "Local only. Original 1928-record VT shard, official 37-card VT Chemical Engineering response saved on 2026-11-26, all other departments/sources isolated. Unmodified parsing, normalization, merge, refresh retirement/reporting, disk reload, and FastAPI public detail. Two successive refreshes plus repeat public requests.",
+  "before_refresh_api": {
+    "faculty-vt-che-be391032": [
+      false,
+      "retired_title"
+    ],
+    "faculty-vt-che-762a80d6": [
+      false,
+      "retired_title"
+    ],
+    "faculty-vt-che-8d99f667": [
+      false,
+      "retired_title"
+    ],
+    "faculty-vt-che-23e0354e": [
+      false,
+      "retired_title"
+    ],
+    "faculty-vt-che-2b84e643": [
+      false,
+      "trainee_title"
+    ],
+    "faculty-vt-che-b0225752": [
+      false,
+      "trainee_title"
+    ],
+    "faculty-vt-che-31a343a7": [
+      true,
+      null
+    ]
+  },
+  "after_first_refresh": {
+    "source_status": "ok",
+    "real_roster_emitted": 30,
+    "retired": {
+      "vt": 4
+    },
+    "trainees": {
+      "vt": 2
+    },
+    "persisted": {
+      "faculty-vt-che-be391032": [
+        false,
+        "retired_title",
+        "Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Baird.html"
+      ],
+      "faculty-vt-che-762a80d6": [
+        false,
+        "retired_title",
+        "Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Cox.html"
+      ],
+      "faculty-vt-che-31a343a7": [
+        true,
+        null,
+        "",
+        null
+      ],
+      "faculty-vt-che-8d99f667": [
+        false,
+        "retired_title",
+        "Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Oyama.html"
+      ],
+      "faculty-vt-che-23e0354e": [
+        false,
+        "retired_title",
+        "Joseph H. Collie Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Whiting.html"
+      ],
+      "faculty-vt-che-2b84e643": [
+        false,
+        "trainee_title",
+        "Postdoctoral researchers",
+        "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html"
+      ],
+      "faculty-vt-che-b0225752": [
+        false,
+        "trainee_title",
+        "Postdoctoral researcher",
+        "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html"
+      ]
+    },
+    "api": {
+      "faculty-vt-che-be391032": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-762a80d6": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-8d99f667": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-23e0354e": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-2b84e643": [
+        false,
+        "trainee_title"
+      ],
+      "faculty-vt-che-b0225752": [
+        false,
+        "trainee_title"
+      ],
+      "faculty-vt-che-31a343a7": [
+        true,
+        null
+      ]
+    }
+  },
+  "after_second_refresh": {
+    "source_status": "ok",
+    "real_roster_emitted": 30,
+    "retired": {},
+    "trainees": {},
+    "persisted": {
+      "faculty-vt-che-be391032": [
+        false,
+        "retired_title",
+        "Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Baird.html"
+      ],
+      "faculty-vt-che-762a80d6": [
+        false,
+        "retired_title",
+        "Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Cox.html"
+      ],
+      "faculty-vt-che-31a343a7": [
+        true,
+        null,
+        "",
+        null
+      ],
+      "faculty-vt-che-8d99f667": [
+        false,
+        "retired_title",
+        "Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Oyama.html"
+      ],
+      "faculty-vt-che-23e0354e": [
+        false,
+        "retired_title",
+        "Joseph H. Collie Professor Emeritus",
+        "https://che.vt.edu/People/faculty/Whiting.html"
+      ],
+      "faculty-vt-che-2b84e643": [
+        false,
+        "trainee_title",
+        "Postdoctoral researchers",
+        "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html"
+      ],
+      "faculty-vt-che-b0225752": [
+        false,
+        "trainee_title",
+        "Postdoctoral researcher",
+        "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html"
+      ]
+    },
+    "api": {
+      "faculty-vt-che-be391032": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-762a80d6": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-8d99f667": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-23e0354e": [
+        false,
+        "retired_title"
+      ],
+      "faculty-vt-che-2b84e643": [
+        false,
+        "trainee_title"
+      ],
+      "faculty-vt-che-b0225752": [
+        false,
+        "trainee_title"
+      ],
+      "faculty-vt-che-31a343a7": [
+        true,
+        null
+      ]
+    }
+  },
+  "hypothetical_future_promotion_Qiang_Gao": [
+    true,
+    null,
+    "Assistant Professor",
+    null
+  ],
+  "after_following_ordinary_unranked_refresh": [
+    true,
+    null,
+    "Assistant Professor",
+    null
+  ]
+}
