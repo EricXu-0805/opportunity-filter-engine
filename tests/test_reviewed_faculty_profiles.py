@@ -4,18 +4,28 @@ from datetime import date
 import pytest
 
 from backend.data_loader import _sanitize_opportunity
-from src.normalizers.deactivate_stale_faculty import deactivate_retired_title_faculty
+from src.normalizers.deactivate_stale_faculty import deactivate_retired_title_faculty, deactivate_trainee_faculty
 from src.normalizers.reviewed_faculty_profiles import REVIEWS, apply_reviewed_faculty_profiles
 
-AS_OF = date(2026, 11, 25)
+AS_OF = date(2026, 11, 26)
 BEISE = "faculty-umd-phys-5e8e0edd"
 HERSHATTER = "faculty-ucsc-hist-d64a8110"
-UCSC_PREVIOUS_TITLES = {
+VT_APPOINTMENTS = {
+    "faculty-vt-che-be391032": ("Professor Emeritus", "retired_title"),
+    "faculty-vt-che-762a80d6": ("Professor Emeritus", "retired_title"),
+    "faculty-vt-che-8d99f667": ("Professor Emeritus", "retired_title"),
+    "faculty-vt-che-23e0354e": ("Joseph H. Collie Professor Emeritus", "retired_title"),
+    "faculty-vt-che-2b84e643": ("Postdoctoral researchers", "trainee_title"),
+    "faculty-vt-che-b0225752": ("Postdoctoral researcher", "trainee_title"),
+}
+PREVIOUS_TITLES = {
+    **dict.fromkeys(VT_APPOINTMENTS, ""),
     "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
     "faculty-ucsc-lit-f8043691": "Professor of Literature",
 }
 ARCHIVED = {
+    **VT_APPOINTMENTS,
     "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),
     HERSHATTER: ("Research Professor and Distinguished Professor of History Emerita", "retired_title"),
@@ -32,7 +42,7 @@ def _old(oid):
         "source_type": "faculty_research", "source": f"{review.school}_faculty",
         "url": review.previous_url, "source_url": review.previous_url,
         "application": {"application_url": review.previous_url},
-        "metadata": {"faculty_title": UCSC_PREVIOUS_TITLES.get(oid, "Professor"), "last_verified": "2026-07-25",
+        "metadata": {"faculty_title": PREVIOUS_TITLES.get(oid, "Professor"), "last_verified": "2026-07-25",
                      "last_seen_at": "2026-07-25", "is_active": True},
     }
 
@@ -50,9 +60,9 @@ def test_reviewed_urls_and_title_replay_once_without_freshening_other_evidence()
         if row["id"] in ARCHIVED:
             title, reason = ARCHIVED[row["id"]]
             assert md["faculty_title"] == title
-            assert md["faculty_profile_review"]["previous_title"] == UCSC_PREVIOUS_TITLES.get(row["id"], "Professor")
+            assert md["faculty_profile_review"]["previous_title"] == PREVIOUS_TITLES.get(row["id"], "Professor")
             assert md["is_active"] is False and md["deactivation_reason"] == reason
-            assert md["deactivated_at"] == AS_OF.isoformat()
+            assert md["deactivated_at"] == review.reviewed_on.isoformat()
         else:
             assert md["is_active"] is True
     before = deepcopy(rows)
@@ -221,3 +231,33 @@ def test_texas_profile_labels_department_and_preserves_other_readings(raw, expec
     assert ("Research areas:" in public["description_clean"]) == bool(expected)
     assert row["metadata"]["last_seen_at"] == "2026-07-25"
     assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 0
+
+
+def test_vt_chemical_review_only_retires_the_same_unranked_appointment(monkeypatch):
+    class ReviewDate(date):
+        @classmethod
+        def today(cls):
+            return AS_OF
+
+    monkeypatch.setattr("src.normalizers.reviewed_faculty_profiles.date", ReviewDate)
+    for oid, (_, reason) in VT_APPOINTMENTS.items():
+        old = _old(oid)
+        served = _sanitize_opportunity(deepcopy(old))
+        assert served["metadata"]["deactivation_reason"] == reason
+        assert served["metadata"]["faculty_profile_review"]["source_url"] == old["url"]
+        assert served["id"] == old["id"]
+        assert served["metadata"]["last_seen_at"] == old["metadata"]["last_seen_at"]
+        for field, new_value in (("pi_name", "Different Person"), ("url", "https://che.vt.edu/People/other.html")):
+            changed = {**old, field: new_value}
+            assert apply_reviewed_faculty_profiles([changed], today=AS_OF) == 0
+        old["metadata"]["faculty_title"] = "Assistant Professor"
+        assert apply_reviewed_faculty_profiles([old], today=AS_OF) == 0
+        assert old["metadata"]["is_active"] is True
+
+
+def test_vt_chemical_refresh_counts_reviewed_appointments_before_comparing_the_roster():
+    rows = [_old(oid) for oid in VT_APPOINTMENTS]
+    assert apply_reviewed_faculty_profiles(rows, today=AS_OF, classify_title=False) == 6
+    assert deactivate_retired_title_faculty(rows, today=AS_OF)["by_school"] == {"vt": 4}
+    assert deactivate_trainee_faculty(rows, today=AS_OF)["by_school"] == {"vt": 2}
+    assert apply_reviewed_faculty_profiles(rows, today=AS_OF, classify_title=False) == 0

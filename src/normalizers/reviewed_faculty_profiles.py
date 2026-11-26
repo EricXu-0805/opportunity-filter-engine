@@ -5,7 +5,11 @@ from datetime import UTC, date, datetime
 from src.contact_instructions import contact_instruction_pages, same_source_page
 from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method, stamp_inferred
 
-from .deactivate_stale_faculty import deactivate_deceased_faculty, deactivate_retired_title_faculty
+from .deactivate_stale_faculty import (
+    deactivate_deceased_faculty,
+    deactivate_retired_title_faculty,
+    deactivate_trainee_faculty,
+)
 
 
 @dataclass(frozen=True)
@@ -31,7 +35,32 @@ _NOV_25 = datetime(2026, 11, 25, 12, 2, tzinfo=UTC)
 _SBU_CS = "https://www.cs.stonybrook.edu/people/index.html"
 _SBU_GEO = "https://www.stonybrook.edu/geosciences/people/faculty.html"
 _SBU_GEO_REVIEW = datetime(2026, 11, 25, 17, 19, tzinfo=UTC)
+
+
+def _vt_che(name: str, profile_path: str, title: str) -> ProfileReview:
+    # The roster card links to the person but omits rank outside enrichment runs.
+    # Only that exact, unranked row can inherit the title on the reviewed profile.
+    profile = f"https://che.vt.edu/People/{profile_path}"
+    return ProfileReview(
+        "vt", "Department of Chemical Engineering", name, profile, profile, profile,
+        datetime(2026, 11, 26, 8, 42, tzinfo=UTC),
+        title=title, previous_title="",
+    )
+
+
 REVIEWS = {
+    "faculty-vt-che-be391032": _vt_che("Donald Baird",
+        "faculty/Baird.html", "Professor Emeritus"),
+    "faculty-vt-che-762a80d6": _vt_che("David Cox",
+        "faculty/Cox.html", "Professor Emeritus"),
+    "faculty-vt-che-8d99f667": _vt_che("Ted Oyama",
+        "faculty/Oyama.html", "Professor Emeritus"),
+    "faculty-vt-che-23e0354e": _vt_che("Gary Whiting",
+        "faculty/Whiting.html", "Joseph H. Collie Professor Emeritus"),
+    "faculty-vt-che-2b84e643": _vt_che("Qiang Gao",
+        "postdoctoral-researchers/qiang-gao.html", "Postdoctoral researchers"),
+    "faculty-vt-che-b0225752": _vt_che("Fangxi Wang",
+        "postdoctoral-researchers/fangxi-wang.html", "Postdoctoral researcher"),
     "faculty-utexas-neuro-ed6d4734": ProfileReview(
         "utexas", "Department of Neuroscience", "Harold Zakon",
         "https://neuroscience.utexas.edu/directory/harold-zakon",
@@ -113,7 +142,8 @@ def _old_page_restored(row: dict, review: ProfileReview) -> bool:
     return False
 
 
-def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | None = None) -> bool:
+def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | None = None,
+                                 classify_title: bool = True) -> bool:
     """Correct a known URL or appointment while a reset record still claims it."""
     review = REVIEWS.get(row.get("id"))
     if not review or (today or date.today()) < review.reviewed_on:
@@ -127,7 +157,7 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
     metadata = row.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("is_active") is False:
         return False
-    if review.previous_title and metadata.get("faculty_title") != review.previous_title:
+    if review.previous_title is not None and (metadata.get("faculty_title") or "") != review.previous_title:
         return False
     update_url = (row["url"] == review.previous_url and review.previous_url != review.profile_url
                   and not _old_page_restored(row, review))
@@ -158,10 +188,14 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
     if review.title:
         metadata["faculty_profile_review"]["previous_title"] = metadata.get("faculty_title")
         metadata["faculty_title"] = review.title
-        deactivate_deceased_faculty([row], today=review.reviewed_on)
-        deactivate_retired_title_faculty([row], today=review.reviewed_on)
+        if classify_title:
+            deactivate_deceased_faculty([row], today=review.reviewed_on)
+            deactivate_retired_title_faculty([row], today=review.reviewed_on)
+            deactivate_trainee_faculty([row], today=review.reviewed_on)
     return True
 
 
-def apply_reviewed_faculty_profiles(rows: list[dict], selected=None, *, today: date | None = None) -> int:
-    return sum(apply_reviewed_faculty_profile(row, selected, today=today) for row in rows)
+def apply_reviewed_faculty_profiles(rows: list[dict], selected=None, *, today: date | None = None,
+                                  classify_title: bool = True) -> int:
+    return sum(apply_reviewed_faculty_profile(row, selected, today=today, classify_title=classify_title)
+               for row in rows)
