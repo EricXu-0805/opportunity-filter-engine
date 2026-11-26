@@ -64,7 +64,7 @@
       "severity": "critical",
       "reviewer": "Codex (official-source review)",
       "reviewed_at": "2026-11-26T10:02:46+00:00",
-      "notes": "The NCSU page also places Michele Darrah in its Retired Faculty group. The committed title is empty and the real detail API returned actionable=true on release 59297be5, last listed 2026-11-23. Public detail https://joinalab.com/opportunities/faculty-ncsu-chass-141f03e6 Source: https://chass.ncsu.edu/people/msdarrah/",
+      "notes": "RESOLVED: The original faculty detail retains the exact emerita title and the real browser shows the inactive banner without a contact or application action. Verified on production 50d4aca1 on 2026-11-26. https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json Original review: The NCSU page also places Michele Darrah in its Retired Faculty group. The committed title is empty and the real detail API returned actionable=true on release 59297be5, last listed 2026-11-23. Public detail https://joinalab.com/opportunities/faculty-ncsu-chass-141f03e6 Source: https://chass.ncsu.edu/people/msdarrah/",
       "risk_case": "empty_title"
     },
     {

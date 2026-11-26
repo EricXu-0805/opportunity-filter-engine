@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-26T10:09:37.604265+00:00",
+  "generated_at": "2026-11-26T12:58:17.122200+00:00",
   "categories": {
     "school": {
       "present": true,
@@ -263,14 +263,6 @@
     }
   },
   "critical_open": [
-    "school-009",
-    "position-003",
-    "program-002",
-    "program-003",
-    "program-006",
-    "deadline-001",
-    "deadline-002",
-    "deadline-003",
     "publication-002"
   ],
   "truthfulness_approved": false,

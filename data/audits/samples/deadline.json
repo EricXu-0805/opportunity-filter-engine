@@ -38,7 +38,7 @@
       "severity": "critical",
       "reviewer": "OpenAI Codex, live-source review",
       "reviewed_at": "2026-11-26T10:05:47+00:00",
-      "notes": "Illinois lists February 15 as anticipated on the named program detail. The host explicitly identifies its renamed Biological Interactions program and its announced cutoff five days earlier. The live JoinALab detail still displays 2027-02-15 with “Estimated by us”. Directory: https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program . Host: https://wiscience.wisc.edu/research/summer_research_program/",
+      "notes": "RESOLVED: The original Wisconsin ID now displays the announced February 10, 2027 date without an estimate. Two separate Wisconsin IDs disagree; follow #1378 and #1382. Verified on production 50d4aca1 on 2026-11-26. https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json Original review: Illinois lists February 15 as anticipated on the named program detail. The host explicitly identifies its renamed Biological Interactions program and its announced cutoff five days earlier. The live JoinALab detail still displays 2027-02-15 with “Estimated by us”. Directory: https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program . Host: https://wiscience.wisc.edu/research/summer_research_program/",
       "risk_case": "estimated_deadline"
     },
     {
@@ -65,7 +65,7 @@
       "severity": "critical",
       "reviewer": "OpenAI Codex, live-source review",
       "reviewed_at": "2026-11-26T10:05:47+00:00",
-      "notes": "Rendered NSF award 2447669 identifies Genes & the Environment at UND. The host accepted the 2026 cohort through March 15; the formal JoinALab detail displays February 15 as an estimate. The host also dates this cohort May 27–July 31. Source: https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
+      "notes": "RESOLVED: The UND original has the confirmed March 15, 2026 cutoff and is closed. Its browser detail shows a closed notice and no application. The archived layout omits the date. Verified on production 50d4aca1 on 2026-11-26. https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json Original review: Rendered NSF award 2447669 identifies Genes & the Environment at UND. The host accepted the 2026 cohort through March 15; the formal JoinALab detail displays February 15 as an estimate. The host also dates this cohort May 27–July 31. Source: https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
       "risk_case": "past_deadline"
     },
     {
@@ -92,7 +92,7 @@
       "severity": "critical",
       "reviewer": "OpenAI Codex, live-source review",
       "reviewed_at": "2026-11-26T10:05:47+00:00",
-      "notes": "The institute homepage is a research institute and events page. The official JoinALab detail says “Applications reviewed on a rolling basis” and quotes Jan 9 for WAVE and Mar 1 for SURF. Caltech lists Jan 8 and Feb 22 in the respective current instructions. Sources: https://sfp.caltech.edu/undergraduate-research/programs/wavefellows/application_information and https://sfp.caltech.edu/undergraduate-research/programs/surf/application_information",
+      "notes": "RESOLVED: The Chen Institute has no common deadline, rolling flag or application control. WAVE and SURF maintain their own terms on the two checked host pages. Verified on production 50d4aca1 on 2026-11-26. https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json Original review: The institute homepage is a research institute and events page. The official JoinALab detail says “Applications reviewed on a rolling basis” and quotes Jan 9 for WAVE and Mar 1 for SURF. Caltech lists Jan 8 and Feb 22 in the respective current instructions. Sources: https://sfp.caltech.edu/undergraduate-research/programs/wavefellows/application_information and https://sfp.caltech.edu/undergraduate-research/programs/surf/application_information",
       "risk_case": "rolling_with_note"
     },
     {
