@@ -1,0 +1,103 @@
+{
+  "observed_utc": "2026-11-26T17:55:43.646154+00:00",
+  "production_release": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "public_originals": [
+    {
+      "original": "faculty-ucb-phys-2909d662",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-phys-d73bffe2",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-phys-2dbb6beb",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-phys-292ba95b",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-eecs-a609e862",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-phys-d628a3a7",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-eecs-4e5dd01e",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-phys-aaf0186c",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-ucb-phys-d3349d5d",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    }
+  ],
+  "school_coverage": {
+    "listing_count": 71,
+    "faculty_contact_count": 2161,
+    "unreviewed_count": 0,
+    "total_count": 2232
+  },
+  "future_appointment_detail_http": 404
+}
