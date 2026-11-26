@@ -16,6 +16,8 @@ Reviewed template evidence: the preserved `PROFILE_WITH_INTERESTS_HTML` fixture 
 
 Same names do not transfer authority between records: snapshots bind record ID, complete identity, school, department and exact profile URL. This is a finite template/identity check, not a universal people-disambiguation system.
 
+Caltech Physics records on `www.pma.caltech.edu/people/<person>` support the individually named Research Interests field and the labelled topic list in the person's Overview. A fresh, public source can fill the detail page's missing research areas. The website excerpt retains the complete fields, including annotations, with the observation time and original URL.
+
 ## Explicit invocation
 
 Run from the repository root in the project environment:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 
 from backend.lib.position_truth import displayed_title
@@ -94,7 +95,21 @@ def project_public_detail(opp: dict) -> dict:
     # to offer an action on it. The projector owns the contact/URL boundary,
     # the envelope and the neutralization; this function only decides which
     # fields a detail response starts from.
-    return project_public_opportunity_payload(out, opp)
+    projected = project_public_opportunity_payload(out, opp)
+    lab = projected.get("lab_context", {})
+    metadata = projected.get("metadata", {})
+    if (opp.get("source") == "caltech_faculty" and lab.get("status") == "available"
+            and not (metadata.get("research_areas_raw") or projected.get("research_areas"))):
+        # Only a current, public, identity-bound profile may supply the missing
+        # detail fact. Keep the complete annotated source in the website panel.
+        snapshot = lab["snapshot"]
+        topics = [re.sub(r"\s+\((?:we are hiring!|see [^()]+ for a published version)\)$", "", section["text"])
+                  for section in snapshot["pages"][0]["sections"]
+                  if section["heading"].casefold().rstrip(":") in ("research interest", "research interests")]
+        if topics:
+            projected["research_areas"] = topics
+            metadata["research_areas_verified_at"] = snapshot["checked_at"]
+    return projected
 
 
 

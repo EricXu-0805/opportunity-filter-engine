@@ -96,6 +96,62 @@ def fetch_lab_page(url, *, timeout=15, resolver=None, session_factory=None, cloc
         return None, 'request_failed'
 
 
+def _caltech_physics_sections(soup, expected_name):
+    main = soup.select('main#content.person-page2')
+    names = soup.select('main#content.person-page2 > div.width-1440-container > h1.sr-only')
+    if len(main) != 1 or len(names) != 1 or main[0].select('h1') != names:
+        return None, 'unsupported_template'
+    identity = names[0].get_text(' ', strip=True)
+    if not _same_complete_name(identity, expected_name):
+        return None, 'identity_mismatch'
+
+    sections = []
+    fields = main[0].select('section.block-PersonPageAttributeBlock > .person-page2__field.field__research_summary')
+    if len(fields) != len(main[0].select('.field__research_summary')) or len(fields) > 1:
+        return None, 'unsupported_template'
+    if fields:
+        heading = fields[0].find('h4', recursive=False)
+        if heading is None or not _only_reviewed_children(fields[0], [heading]):
+            return None, 'unsupported_template'
+        label, separator, value = heading.get_text(' ', strip=True).partition(':')
+        if not separator or label.casefold() not in ('research interest', 'research interests') or not value.strip():
+            return None, 'unsupported_template'
+        sections.append({'section_id': 's1', 'heading': label, 'text': value.strip()})
+
+    # The Overview can contain seminars, publications and personal links directly
+    # after the research list. Retain only the items belonging to its own heading.
+    headings = [node for node in main[0].select(
+        'section.block-PersonProfileBlock > .person-page2__profile-block > '
+        '.person-page2__profile-block__profile.profile-text > .rich-text > h4'
+    ) if node.get_text(' ', strip=True).casefold().rstrip(':') in ('research interests', 'research interest')]
+    if len(headings) > 1:
+        return None, 'unsupported_template'
+    if headings:
+        label = headings[0]
+        section = []
+        for node in label.next_siblings:
+            if isinstance(node, Comment) or (isinstance(node, NavigableString) and not node.strip()):
+                continue
+            if node.name == 'h4':
+                break
+            section.append(node)
+        if len(section) != 1 or section[0].name != 'ul':
+            return None, 'unsupported_template'
+        listing = section[0]
+        items = listing.find_all('li', recursive=False)
+        if not items or not _only_reviewed_children(listing, items):
+            return None, 'unsupported_template'
+        for item in items:
+            if any(tag.name not in {'a', 'b', 'i', 'em', 'strong', 'span', 'sup', 'sub'} for tag in item.find_all()):
+                return None, 'unsupported_template'
+            excerpt = ' '.join(item.get_text().split())
+            if not excerpt:
+                return None, 'unsupported_template'
+            sections.append({'section_id': f's{len(sections) + 1}', 'heading': label.get_text(strip=True),
+                             'text': excerpt})
+    return ((identity, sections), None) if sections else (None, 'missing_sections')
+
+
 def _profile_snapshot(opp, policy, page, checked_at):
     if (type(page) is not dict or set(page) != {'requested_url', 'source_url', 'html'}
             or page['requested_url'] != policy['url'] or page['source_url'] != policy['url']):
@@ -105,6 +161,12 @@ def _profile_snapshot(opp, policy, page, checked_at):
     soup = BeautifulSoup(page['html'], 'html.parser')
     if profile_page_is_denial(soup):
         return None, 'unsupported_template'
+    if policy.get('layout') == 'caltech_pma':
+        result, error = _caltech_physics_sections(soup, opp['pi_name'])
+        if error:
+            return None, error
+        identity, sections = result
+        return _verified_profile_snapshot(opp, policy, soup, identity, sections, checked_at)
     containers = soup.select(policy['container'])
     if len(containers) != 1:
         return None, 'unsupported_template'
@@ -180,6 +242,10 @@ def _profile_snapshot(opp, policy, page, checked_at):
                 sections.append({'section_id': f's{len(sections) + 1}', 'heading': heading, 'text': text})
     if not sections:
         return None, 'missing_sections'
+    return _verified_profile_snapshot(opp, policy, soup, identity, sections, checked_at)
+
+
+def _verified_profile_snapshot(opp, policy, soup, identity, sections, checked_at):
     snapshot = {'version': 1, 'source': 'official_website', 'record_id': opp['id'],
                 'record_source_url': policy['url'], 'school': opp['school'], 'department': opp['department'],
                 'identity_name': opp['pi_name'], 'policy_version': 1, 'checked_at': checked_at,
