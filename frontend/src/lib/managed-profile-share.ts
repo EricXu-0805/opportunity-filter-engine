@@ -37,11 +37,14 @@ export async function previewShare(uid: string, selected: ShareField[]) {
   return { profileRevision: data.profile_revision as number, snapshot: snapshot(data.snapshot) };
 }
 
-export async function listShares(uid: string) {
+const sharePageSize = 50;
+
+export async function listShares(uid: string, page: number) {
   const { data, error } = await supabase.from('profile_shares').select('token,version,fields,expires_at,revoked_at')
-    .eq('owner_id', uid).order('updated_at', { ascending: false });
+    .eq('owner_id', uid).order('updated_at', { ascending: false }).order('token')
+    .range(page * sharePageSize, (page + 1) * sharePageSize);
   if (error) throw error;
-  return data as PublishedShare[];
+  return { items: (data as PublishedShare[]).slice(0, sharePageSize), hasNext: data.length > sharePageSize };
 }
 
 export async function publishShare(uid: string, token: string, version: number, selected: ShareField[], expiresAt: string, profileRevision: number) {

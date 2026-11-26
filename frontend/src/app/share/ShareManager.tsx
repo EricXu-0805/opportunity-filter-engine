@@ -13,7 +13,7 @@ function localDate(date: Date) {
 function nextWeek() { return localDate(new Date(Date.now() + 7 * 86400000)); }
 function shareUrl(token: string) { return window.location.origin + '/share#' + token; }
 
-export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
+export function ShareManager({ uid, zh, allowCreate }: { uid: string; zh: boolean; allowCreate: boolean }) {
   const txt = (en: string, cn: string) => zh ? cn : en;
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => {
@@ -22,6 +22,8 @@ export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
   }, []);
   const [links, setLinks] = useState<PublishedShare[] | null>(null);
   const [load, setLoad] = useState(0);
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
   const [readFailed, setReadFailed] = useState(false);
   const [edit, setEdit] = useState<PublishedShare | null>(null);
   const [selected, setSelected] = useState<ShareField[]>([]);
@@ -35,12 +37,15 @@ export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
   useEffect(() => {
     const owner = captureOwnerToken();
     let live = true;
-    listShares(uid).then(items => {
-      if (live && isOwnerTokenValid(owner, uid)) { setLinks(items); setReadFailed(false); }
+    listShares(uid, page).then(({ items, hasNext: more }) => {
+      if (live && isOwnerTokenValid(owner, uid)) { setLinks(items); setHasNext(more); setReadFailed(false); }
     }).catch(() => { if (live && isOwnerTokenValid(owner, uid)) setReadFailed(true); });
     return () => { live = false; };
-  }, [uid, load]);
+  }, [uid, page, load]);
 
+  function showPage(next: number) {
+    setLinks(null); setReadFailed(false); setHasNext(false); setPage(next);
+  }
   function reset(item: PublishedShare | null) {
     setEdit(item); setSelected(item?.fields ?? []); setExpiry(item ? localDate(new Date(item.expires_at)) : nextWeek());
     setPreview(null); setPublished(''); setNotice(''); pendingToken.current = null;
@@ -62,12 +67,12 @@ export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
     });
   }
   function save() {
-    if (!preview) return;
+    if (!preview || (!edit && !allowCreate)) return;
     void run(async current => {
       const token = edit?.token ?? (pendingToken.current ??= crypto.randomUUID());
       const status = await publishShare(uid, token, edit?.version ?? 0, selected, new Date(expiry).toISOString(), preview.profileRevision);
       if (!current()) return;
-      if (status === 'published') { reset(null); setPublished(shareUrl(token)); setLoad(n => n + 1); return; }
+      if (status === 'published') { reset(null); setPublished(shareUrl(token)); setPage(0); setLoad(n => n + 1); return; }
       setPreview(null);
       if (status === 'profile_changed') setNotice(txt('Your saved profile changed. Preview the updated fields.', '已保存的资料有变化，请重新预览。'));
       else { reset(null); setNotice(txt('This link changed. Select its current version below.', '分享链接有变化，请从下方选择最新版本。')); setLoad(n => n + 1); }
@@ -86,9 +91,9 @@ export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
   const end = Date.parse(expiry);
   return (
     <div className="space-y-7">
-      <section className="space-y-4">
+      {(allowCreate || edit) && <section className="space-y-4">
         <h1 className="text-2xl font-semibold">{edit ? txt('Replace shared profile', '替换已分享的资料') : txt('Share your profile', '分享我的资料')}</h1>
-        <p>{txt('Choose fields from your saved profile. Anyone with the link can view them until it expires or you revoke it.', '选择已保存资料的字段。拿到链接的人可在到期或撤销之前查看。')}</p>
+        <p>{txt('Anyone with this link can view your selected fields until it expires or you revoke it. Recipients keep copies they already accepted.', '拿到链接的人可在到期或撤销前查看所选字段；对方已经接受的副本会保留。')}</p>
         <fieldset disabled={busy} className="grid gap-2 sm:grid-cols-2">
           <legend className="mb-2 font-medium">{txt('Fields to share', '要分享的字段')}</legend>
           {fields.map(field => <label key={field} className="flex gap-2">
@@ -107,9 +112,11 @@ export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
             : <button type="button" className={primary} disabled={busy || !(end > clock)} onClick={save}>{edit ? txt('Replace at the same link', '替换原链接内容') : txt('Create share link', '创建分享链接')}</button>}
           {edit && <button type="button" className={button} disabled={busy} onClick={() => reset(null)}>{txt('Cancel replacement', '取消替换')}</button>}
         </div>
+      </section>}
+      <div aria-live="polite">
         {published && <label className="block">{txt('Share link', '分享链接')}<input className="mt-1 w-full rounded border px-2 py-2" readOnly value={published} onFocus={e => e.target.select()} /></label>}
         {notice && <p role="status">{notice}</p>}
-      </section>
+      </div>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{txt('Your links', '我的分享链接')}</h2>
         {readFailed ? <button className={button} type="button" onClick={() => setLoad(n => n + 1)}>{txt('Could not load links. Retry', '读取失败，重试')}</button>
@@ -123,6 +130,11 @@ export function ShareManager({ uid, zh }: { uid: string; zh: boolean }) {
             <button type="button" className={button} disabled={busy} onClick={() => revoke(item)}>{txt('Revoke link', '撤销链接')}</button>
           </div>}
         </div>)}
+        {(page > 0 || hasNext) && <nav aria-label={txt('Share link pages', '分享链接分页')} className="flex items-center gap-3">
+          <button type="button" className={button} disabled={page === 0} onClick={() => showPage(page - 1)}>{txt('Previous', '上一页')}</button>
+          <span>{txt('Page', '第')} {page + 1}</span>
+          <button type="button" className={button} disabled={!hasNext} onClick={() => showPage(page + 1)}>{txt('Next', '下一页')}</button>
+        </nav>}
       </section>
     </div>
   );

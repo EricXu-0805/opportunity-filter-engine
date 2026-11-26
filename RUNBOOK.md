@@ -167,6 +167,17 @@ workflow above also has a manual Run workflow button (**operator**).
 
 ## 4. Database migrations
 
+### Publishing managed profile links
+
+Before enabling `NEXT_PUBLIC_MANAGED_PROFILE_SHARES=true` in the frontend build,
+verify production migration version `20261126120000` is applied. The owner
+applies the migration under the operator procedure below. After deployment,
+check two designated test accounts can preview selected fields, replace the
+contents at the same link, decline an import and revoke the link. Clearing the
+flag stops offering new links. Existing recipients can still open their links
+and signed-in authors can manage them at `/share`. Historical `/?share=` links
+contain their original snapshot and have no server-side expiry or revocation.
+
 ### Why the 52 names look different
 
 `supabase/migrations/` held 52 files on 2026-10-15. A migration's version is
@@ -323,7 +334,7 @@ list.
 |---|---|
 | `id` (the uid) | `profiles` |
 | `device_id` | `profile_versions`, `favorites`, `interactions`, `interaction_status_changes`, `interaction_merge_archive` (also `source_device_id`), `saved_searches`, `match_feedback`, `push_subscriptions`, `analytics_events`, `waitlist`, `feedback`, `orders`, `usage_events`, `resume_renovations` and `resume_renovation_versions` (also `owner_id`), `professor_follows`, `professor_update_reads`, `contact_events`, `application_events`, `outcome_notes` |
-| `owner_id` (uuid) | `target_resumes`, `target_resume_versions`, `private_import_targets`, `material_artifacts`, `application_material_records`, `contact_material_records` |
+| `owner_id` (uuid) | `profile_shares`, `target_resumes`, `target_resume_versions`, `private_import_targets`, `material_artifacts`, `application_material_records`, `contact_material_records` |
 | something else | `feedback_events` (`ticket_id` of the student's `feedback`); `ops_incidents` (a reminder or digest failure names the uid or a saved search id in `dedup_key`); `merge_grants` (`source_device_id`, `redeemed_by`, `target_email`); `merged_devices` |
 | Storage | `tracker-attachments`: objects named `<device_id>/<opportunity_id>/<file>`. `application-materials`: objects named `pdf/<material_id>.pdf`, found through `material_artifacts.object_key` |
 
@@ -442,6 +453,7 @@ export(source, rows) AS (
   UNION ALL SELECT 'contact_events', (SELECT jsonb_agg(t) FROM public.contact_events t, ids WHERE t.device_id = ANY (ids.a))
   UNION ALL SELECT 'application_events', (SELECT jsonb_agg(t) FROM public.application_events t, ids WHERE t.device_id = ANY (ids.a))
   UNION ALL SELECT 'outcome_notes', (SELECT jsonb_agg(t) FROM public.outcome_notes t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'profile_shares', (SELECT jsonb_agg(t) FROM public.profile_shares t, ids WHERE t.owner_id::text = ANY (ids.a))
   UNION ALL SELECT 'target_resumes', (SELECT jsonb_agg(t) FROM public.target_resumes t, ids WHERE t.owner_id::text = ANY (ids.a))
   UNION ALL SELECT 'target_resume_versions', (SELECT jsonb_agg(t) FROM public.target_resume_versions t, ids WHERE t.owner_id::text = ANY (ids.a))
   UNION ALL SELECT 'private_import_targets', (SELECT jsonb_agg(t) FROM public.private_import_targets t, ids WHERE t.owner_id::text = ANY (ids.a))
@@ -563,7 +575,7 @@ Export first, so the counts can be compared afterwards. Then, in this order:
      them (`ON DELETE CASCADE`, which the records' guard allows once the auth
      row is gone);
    - `ON DELETE CASCADE` from `auth.users` removes `target_resumes` (and their
-     `target_resume_versions`), `private_import_targets`, and any
+     `target_resume_versions`), `profile_shares`, `private_import_targets`, and any
      `resume_renovations` or `resume_renovation_versions` step 2 left.
 4. **The merge tombstones**, last, so no guest session counts as active again
    while its auth user still exists. First re-run the id-list query from
