@@ -1,14 +1,14 @@
 {
-  "batch": 19,
-  "release_sha": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "batch": 21,
+  "release_sha": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
   "release_scope": "public detail observations",
   "same_version_before_probe": {
-    "observed": "2026-11-26T22:25:09+00:00",
-    "target": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "observed": "2026-11-26T23:28:44+00:00",
+    "target": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
     "sha_by_url": {
-      "https://joinalab.com/about": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
-      "https://joinalab.com/api/health": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
-      "https://opportunity-filter-engine-api.onrender.com/api/health": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+      "https://joinalab.com/about": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+      "https://joinalab.com/api/health": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+      "https://opportunity-filter-engine-api.onrender.com/api/health": "428516b07eb63bdc1bc31693a7d399f51bc6bd96"
     }
   }
 }
