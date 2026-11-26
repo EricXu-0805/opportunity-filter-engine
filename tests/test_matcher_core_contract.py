@@ -472,3 +472,28 @@ class TestAMixedSelectionListsItsLabelsInOrder:
         ]
         assert pairs, "the fixture must contain an internship Reach that outscores a research Good Match"
         assert all(position[good.opportunity_id] < position[reach.opportunity_id] for good, reach in pairs)
+
+
+@pytest.mark.parametrize("major,year", [("History", "freshman"), ("Computer Science", "junior")])
+def test_simplify_category_and_default_requirements_are_not_posting_claims(major, year):
+    from backend.lib.public_opportunity_detail import project_public_detail
+
+    row = _opp(source="simplify_internships", source_type="internship", opportunity_type="internship",
+               eligibility={"preferred_year": ["sophomore", "junior", "senior"],
+                            "majors": ["Computer Science", "Statistics", "Data Science"]},
+               application={"requires_resume": "yes", "contact_method": "online"})
+    profile = _profile(major=major, year=year, resume_ready=False)
+    result = ranker.rank_opportunity(profile, row)
+    assert result is not None
+    assert {"opportunity.preferred_year", "opportunity.majors", "opportunity.resume_required"} <= set(result.unknowns)
+    assert not any(line.startswith(("Accepts ", "Prefers ", "Typically targets ", "Resume required"))
+                   or "is a direct match" in line for line in result.reasons_gap + result.reasons_fit)
+    assert "Prepare a research-focused resume" not in result.next_steps
+    if major == "Computer Science":
+        assert "Your major may fit this field" in result.reasons_fit
+    assert project_public_detail(row)["majors_attribution"] == "inferred"
+    # Curated source statements still produce concrete advice.
+    manual = ranker.rank_opportunity(profile, {**row, "id": "manual", "source": "manual"})
+    assert "Resume required — prepare one before applying" in manual.reasons_gap
+    assert "Prepare a research-focused resume" in manual.next_steps
+    assert "opportunity.resume_required" not in manual.unknowns

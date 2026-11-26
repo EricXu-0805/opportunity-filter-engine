@@ -659,7 +659,7 @@ describe('MatchCard', () => {
       // "Why it fits" / "Potential concerns" above translated body copy.
       const match = makeMatch();
       match.reasons_fit = ['a fit reason'];
-      match.unknowns = ['opportunity.deadline', 'profile.gpa', 'opportunity.deadline', 'future.field'];
+      match.unknowns = ['opportunity.deadline', 'profile.gpa', 'opportunity.resume_required', 'opportunity.deadline', 'future.field'];
       match.reasons_gap = ['a gap reason'];
       match.next_steps = ['a next step'];
       render(<MatchCard match={match} profile={PROFILE} onDraftEmail={() => {}} />);
@@ -670,6 +670,7 @@ describe('MatchCard', () => {
       expect(screen.getByText('card.nextSteps')).toBeInTheDocument();
       expect(screen.getByText('card.verifyConditions')).toBeInTheDocument();
       expect(screen.getAllByText('card.unknownFields.opportunity_deadline')).toHaveLength(1);
+      expect(screen.getByText('card.unknownFields.opportunity_resume_required')).toBeInTheDocument();
       expect(screen.getByText('card.unknownFields.profile_gpa')).toBeInTheDocument();
       expect(screen.getByText('card.unknownFields.other')).toBeInTheDocument();
       for (const english of ['Why it fits', 'Potential concerns', 'Next steps']) {
