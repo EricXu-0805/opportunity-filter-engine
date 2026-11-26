@@ -147,8 +147,10 @@ try {
     if (inject) {
       await page.getByRole('button',{name:'Retry export'}).click();
       const abandoned=[await save('Download part 1 of 2'),await save('Download part 2 of 2')];
+      const receiptButton = page.getByRole('button',{name:'Download completion checksums'});
+      await receiptButton.waitFor();
       driftArmed=true;
-      await page.getByRole('button',{name:'Download completion checksums'}).click();
+      await receiptButton.click();
       await page.getByRole('button',{name:'Retry export'}).waitFor();
       assert.ok(changedDuringSecondPage); assert.equal(dl,2);
       await page.getByRole('button',{name:'Retry export'}).click();
