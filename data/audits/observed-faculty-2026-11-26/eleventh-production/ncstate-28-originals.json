@@ -1,0 +1,463 @@
+{
+  "release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "initial": [
+    "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+    "daa5a43eb3b91974869c59dfb9a3c342b9082c6b"
+  ],
+  "started_at": "2026-11-26T17:21:45.646952+00:00",
+  "details": [
+    {
+      "id": "faculty-ncsu-chass-d8c4ba8d",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-d8c4ba8d",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-d8c4ba8d",
+      "name": "Samuel Pond",
+      "source": "https://chass.ncsu.edu/people/pond/",
+      "actionable": false,
+      "rank": "Emeritus Associate Professor",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Samuel Pond",
+        "faculty_link": "https://chass.ncsu.edu/people/pond/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-165fe06b",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-165fe06b",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-165fe06b",
+      "name": "David Greene",
+      "source": "https://chass.ncsu.edu/people/dbgreene/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "David Greene",
+        "faculty_link": "https://chass.ncsu.edu/people/dbgreene/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-1894dc04",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-1894dc04",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-1894dc04",
+      "name": "Philip Blank",
+      "source": "https://chass.ncsu.edu/people/peblank/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Philip Blank",
+        "faculty_link": "https://chass.ncsu.edu/people/peblank/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-825124c2",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-825124c2",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-825124c2",
+      "name": "Ron Czaja",
+      "source": "https://chass.ncsu.edu/people/ronczaja/",
+      "actionable": false,
+      "rank": "Emeritus Faculty",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Ron Czaja",
+        "faculty_link": "https://chass.ncsu.edu/people/ronczaja/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-8874c982",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-8874c982",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-8874c982",
+      "name": "Patty McCall",
+      "source": "https://chass.ncsu.edu/people/pmccall/",
+      "actionable": false,
+      "rank": "Emeritus Faculty",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Patty McCall",
+        "faculty_link": "https://chass.ncsu.edu/people/pmccall/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-d8305216",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-d8305216",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-d8305216",
+      "name": "Bob Moog",
+      "source": "https://chass.ncsu.edu/people/rsmoog/",
+      "actionable": false,
+      "rank": "Unpaid Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Bob Moog",
+        "faculty_link": "https://chass.ncsu.edu/people/rsmoog/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-49e38fb4",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-49e38fb4",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-49e38fb4",
+      "name": "Louise Salstad",
+      "source": "https://chass.ncsu.edu/people/mlsalsta/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Louise Salstad",
+        "faculty_link": "https://chass.ncsu.edu/people/mlsalsta/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-f779aad1",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-f779aad1",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-f779aad1",
+      "name": "Wilton Barnhardt",
+      "source": "https://chass.ncsu.edu/people/wwbarnha/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Wilton Barnhardt",
+        "faculty_link": "https://chass.ncsu.edu/people/wwbarnha/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-84e6cecc",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-84e6cecc",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-84e6cecc",
+      "name": "RV Young",
+      "source": "https://chass.ncsu.edu/people/ryoung/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "RV Young",
+        "faculty_link": "https://chass.ncsu.edu/people/ryoung/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-b1612d52",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-b1612d52",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-b1612d52",
+      "name": "Mike Carter",
+      "source": "https://chass.ncsu.edu/people/mpc/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Mike Carter",
+        "faculty_link": "https://chass.ncsu.edu/people/mpc/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-98d2e744",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-98d2e744",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-98d2e744",
+      "name": "Nancy Penrose",
+      "source": "https://chass.ncsu.edu/people/penrose/",
+      "actionable": false,
+      "rank": "Emerita",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Nancy Penrose",
+        "faculty_link": "https://chass.ncsu.edu/people/penrose/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-34b13b74",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-34b13b74",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-34b13b74",
+      "name": "Jim Clark",
+      "source": "https://chass.ncsu.edu/people/jwclark/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Jim Clark",
+        "faculty_link": "https://chass.ncsu.edu/people/jwclark/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-0ed45fbe",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-0ed45fbe",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-0ed45fbe",
+      "name": "Michael Grimwood",
+      "source": "https://chass.ncsu.edu/people/grimwood/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Michael Grimwood",
+        "faculty_link": "https://chass.ncsu.edu/people/grimwood/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-5148f03d",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-5148f03d",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-5148f03d",
+      "name": "Cat Warren",
+      "source": "https://chass.ncsu.edu/people/cwarren/",
+      "actionable": false,
+      "rank": "Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Cat Warren",
+        "faculty_link": "https://chass.ncsu.edu/people/cwarren/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-fbcc8754",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-fbcc8754",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-fbcc8754",
+      "name": "Bob Larson",
+      "source": "https://chass.ncsu.edu/people/rblarson/",
+      "actionable": false,
+      "rank": "Senior Lecturer Emeritus",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Bob Larson",
+        "faculty_link": "https://chass.ncsu.edu/people/rblarson/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-74ae94c6",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-74ae94c6",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-74ae94c6",
+      "name": "Edward Funkhouser",
+      "source": "https://chass.ncsu.edu/people/edwardt/",
+      "actionable": false,
+      "rank": "Former Associate Professor & Associate Dean",
+      "reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Edward Funkhouser",
+        "faculty_link": "https://chass.ncsu.edu/people/edwardt/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-c5da53cb",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-c5da53cb",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-c5da53cb",
+      "name": "Jeffrey Leiter",
+      "source": "https://chass.ncsu.edu/people/leiter/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Jeffrey Leiter",
+        "faculty_link": "https://chass.ncsu.edu/people/leiter/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-e7bd2a4f",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-e7bd2a4f",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-e7bd2a4f",
+      "name": "Risa Ellovich",
+      "source": "https://chass.ncsu.edu/people/ellovich/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Risa Ellovich",
+        "faculty_link": "https://chass.ncsu.edu/people/ellovich/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-8426ed71",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-8426ed71",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-8426ed71",
+      "name": "G Garson",
+      "source": "https://chass.ncsu.edu/people/garson/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "G Garson",
+        "faculty_link": "https://chass.ncsu.edu/people/garson/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-b36ff5aa",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-b36ff5aa",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-b36ff5aa",
+      "name": "Katharine Stewart",
+      "source": "https://chass.ncsu.edu/people/kestewa4/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Katharine Stewart",
+        "faculty_link": "https://chass.ncsu.edu/people/kestewa4/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-08a6a48e",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-08a6a48e",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-08a6a48e",
+      "name": "Walt Wolfram",
+      "source": "https://chass.ncsu.edu/people/wolfram/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Walt Wolfram",
+        "faculty_link": "https://chass.ncsu.edu/people/wolfram/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-66ccd11d",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-66ccd11d",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-66ccd11d",
+      "name": "Susan Katz",
+      "source": "https://chass.ncsu.edu/people/smk/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Susan Katz",
+        "faculty_link": "https://chass.ncsu.edu/people/smk/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-6ae5927d",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-6ae5927d",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-6ae5927d",
+      "name": "Linda Holley",
+      "source": "https://chass.ncsu.edu/people/lth/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Linda Holley",
+        "faculty_link": "https://chass.ncsu.edu/people/lth/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-c48a2e7d",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-c48a2e7d",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-c48a2e7d",
+      "name": "Maria Rouphail",
+      "source": "https://chass.ncsu.edu/people/mgr/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Maria Rouphail",
+        "faculty_link": "https://chass.ncsu.edu/people/mgr/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-e8200533",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-e8200533",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-e8200533",
+      "name": "John Easley",
+      "source": "https://chass.ncsu.edu/people/jbeasley/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "John Easley",
+        "faculty_link": "https://chass.ncsu.edu/people/jbeasley/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-f1ef75b0",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-f1ef75b0",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-f1ef75b0",
+      "name": "Etta Barksdale",
+      "source": "https://chass.ncsu.edu/people/hcbarksd/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Etta Barksdale",
+        "faculty_link": "https://chass.ncsu.edu/people/hcbarksd/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-14382765",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-14382765",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-14382765",
+      "name": "Sandy Stallings",
+      "source": "https://chass.ncsu.edu/people/spstalli/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Sandy Stallings",
+        "faculty_link": "https://chass.ncsu.edu/people/spstalli/"
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ncsu-chass-9dc91fcb",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-9dc91fcb",
+      "api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-9dc91fcb",
+      "name": "Charlotte Elleman",
+      "source": "https://chass.ncsu.edu/people/aellema/",
+      "actionable": true,
+      "rank": "",
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "html": {
+        "heading": "Charlotte Elleman",
+        "faculty_link": "https://chass.ncsu.edu/people/aellema/"
+      },
+      "passed": true
+    }
+  ],
+  "final": [
+    "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+    "daa5a43eb3b91974869c59dfb9a3c342b9082c6b"
+  ],
+  "finished_at": "2026-11-26T17:24:04.246499+00:00"
+}
