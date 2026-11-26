@@ -1,0 +1,63 @@
+{
+  "release_frontend": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "release_backend": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "observed_start": "2026-11-26T11:47:51.818Z",
+  "observed_until": "2026-11-26T11:47:59.807Z",
+  "method": "Direct production Chrome navigation in the existing browser session. Waited for each exact visible heading and the profile-update indicator to clear. Counted visible contact/application labels. No actions or drafts were opened.",
+  "rows": [
+    {
+      "original_id": "faculty-ncsu-chass-089a76c8",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-089a76c8",
+      "visible_heading": "Jeffery Braden",
+      "visible_inactive_banner": false,
+      "draft_email_buttons": 1,
+      "apply_now_buttons": 0,
+      "retry_required": false
+    },
+    {
+      "original_id": "faculty-ncsu-chass-dcb028fb",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-dcb028fb",
+      "visible_heading": "Mary E Haskett",
+      "visible_inactive_banner": false,
+      "draft_email_buttons": 1,
+      "apply_now_buttons": 0,
+      "retry_required": false
+    },
+    {
+      "original_id": "faculty-ncsu-chass-ff4905cc",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ff4905cc",
+      "visible_heading": "Donald H. Mershon",
+      "visible_inactive_banner": false,
+      "draft_email_buttons": 1,
+      "apply_now_buttons": 0,
+      "retry_required": false
+    },
+    {
+      "original_id": "faculty-ncsu-chass-38b191e6",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-38b191e6",
+      "visible_heading": "William Shaw",
+      "visible_inactive_banner": false,
+      "draft_email_buttons": 1,
+      "apply_now_buttons": 0,
+      "retry_required": false
+    },
+    {
+      "original_id": "faculty-ncsu-chass-98436171",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-98436171",
+      "visible_heading": "John N Wall",
+      "visible_inactive_banner": false,
+      "draft_email_buttons": 1,
+      "apply_now_buttons": 0,
+      "retry_required": false
+    },
+    {
+      "original_id": "faculty-ncsu-chass-acb2eb75",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-acb2eb75",
+      "visible_heading": "Melissa A. Johnson",
+      "visible_inactive_banner": false,
+      "draft_email_buttons": 1,
+      "apply_now_buttons": 0,
+      "retry_required": false
+    }
+  ]
+}
