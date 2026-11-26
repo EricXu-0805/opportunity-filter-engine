@@ -45,8 +45,19 @@
   "legacy_followup": {
     "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1369",
     "commit": "6904fb607aa519704a18c0fd3418e550006062ef",
-    "isolated_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45813730225",
-    "status": "pending"
+    "isolated_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45813730225/job/139887938101",
+    "status": "isolated functional verification passed",
+    "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45814010310",
+    "results": {
+      "profile_revision_after_first_publication": 3,
+      "revision_after_manually_confirming_prior_citation": 4,
+      "revision_after_attaching_identity_to_same_object": 5,
+      "paper_count_after_link": 2,
+      "linked_by": "existing confirmed DOI, matched case-insensitively",
+      "unchanged_old_fields": "The publication object exactly matched its previous value after removing the newly attached authorship receipt. Compared original record ID, title, author order, publisher URL, original DOI spelling, field sources, confirmation statuses and revisions.",
+      "new_browser_new_local_storage": "Both works restored and repeated import disabled for both. No extra profile revision.",
+      "remote_service_calls": "No Scholar scrape, paid service or third-party data fetch. Official citations available for individual review."
+    }
   },
   "production_acceptance": "pending"
 }
