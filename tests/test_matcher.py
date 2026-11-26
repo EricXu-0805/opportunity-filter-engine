@@ -728,6 +728,25 @@ class TestRankOpportunity:
 
 
 class TestGraduateLevelGating:
+    @pytest.mark.parametrize("description", [
+        "Our workshops give guidance on applying to a PhD program.",
+        "Applicants are encouraged to consider pursuing a doctoral degree.",
+        "This program targets students interested in pursuing a PhD.",
+        "Undergraduates with a strong interest in pursuing a PhD degree in microbiology may apply.",
+        "Fellows work closely with a PhD student or postdoctoral researcher as their mentor.",
+    ])
+    def test_future_plans_and_mentors_do_not_set_applicant_standing(self, description):
+        assert not _requires_graduate_standing({"description_clean": description})
+
+    def test_separate_current_enrollment_evidence_still_sets_applicant_standing(self):
+        for text in (
+            "You will work closely with a PhD student. Graduate students only.",
+            "Our office provides guidance on applying to a PhD program. Applicants must be currently pursuing a doctorate.",
+            "Candidates must be a doctoral student at an accredited university.",
+        ):
+            assert _requires_graduate_standing({"description_clean": text})
+        assert _requires_graduate_standing({"title": "PhD candidate", "description_clean": "You work with a PhD student."})
+
     def test_detects_graduate_level_titles(self):
         for title in [
             "PhD Autonomy Engineer Intern - Deep Learning",

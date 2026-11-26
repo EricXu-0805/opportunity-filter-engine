@@ -5335,6 +5335,7 @@ export const en = {
   import: {
     title: 'Import opportunity',
     intro: 'Paste a link or the full job description. We\'ll extract the structured fields with AI.',
+    modeLabel: 'Import method',
     modeUrl: 'By URL',
     modeText: 'By text',
     urlLabel: 'URL',
@@ -5465,6 +5466,7 @@ export const en = {
     copied: 'Copied',
     duplicateNote: 'This was already sent — we did not open a second ticket.',
     errorOffline: "Couldn't reach your account — you're offline, or storage is blocked in this browser. Your text is saved.",
+    earlierVersion: 'Your earlier feedback was received. Your edits are saved here. Send again to submit them as a new ticket.',
     errorTimeout: 'That took too long to send. Your text is saved — try again.',
   },
   onboarding: {
@@ -10760,6 +10762,7 @@ export const zh = {
   import: {
     title: '导入机会',
     intro: '粘贴链接或职位描述全文,我们会用 AI 提取结构化字段。',
+    modeLabel: '导入方式',
     modeUrl: '按链接',
     modeText: '按文本',
     urlLabel: '链接',
@@ -10890,6 +10893,7 @@ export const zh = {
     copied: '已复制',
     duplicateNote: '这条之前已经发送成功,我们没有重复创建工单。',
     errorOffline: '联系不上你的账号 —— 可能是网络不通,或浏览器禁用了存储。你写的内容已保存。',
+    earlierVersion: '我们已收到之前的反馈。修改后的内容已保留，再次发送即可新建一条反馈。',
     errorTimeout: '发送超时。你写的内容已保存,请重试。',
   },
   onboarding: {

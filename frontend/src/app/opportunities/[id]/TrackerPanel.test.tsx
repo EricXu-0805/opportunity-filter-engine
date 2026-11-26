@@ -216,6 +216,30 @@ describe('TrackerPanel — notes editor', () => {
     expect(editTab).toHaveAttribute('aria-selected', 'false');
   });
 
+  it('keeps one keyboard stop and moves focus and selection without saving a note', () => {
+    const save = vi.fn();
+    render(<TrackerPanel detail={detail({ notes: 'Earlier note' })} onSave={save}
+      opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    const edit = screen.getByRole('tab', { name: /detail.tracker.editTab/ });
+    const preview = screen.getByRole('tab', { name: /detail.tracker.previewTab/ });
+    edit.focus();
+    fireEvent.keyDown(edit, { key: 'ArrowRight' });
+    expect(preview).toHaveFocus();
+    expect(preview).toHaveAttribute('aria-selected', 'true');
+    expect(edit.tabIndex).toBe(-1);
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', preview.id);
+    fireEvent.keyDown(preview, { key: 'ArrowRight' });
+    expect(edit).toHaveFocus();
+    fireEvent.keyDown(edit, { key: 'ArrowLeft' });
+    expect(preview).toHaveFocus();
+    fireEvent.keyDown(preview, { key: 'Home' });
+    expect(edit).toHaveFocus();
+    expect(screen.getByRole('textbox')).toHaveValue('Earlier note');
+    fireEvent.keyDown(edit, { key: 'End' });
+    expect(preview).toHaveFocus();
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('Preview tab renders MarkdownPreview with the current notes', async () => {
     render(
       <TrackerPanel

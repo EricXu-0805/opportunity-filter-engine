@@ -343,3 +343,25 @@ describe('ImportPage — current request wins within one account', () => {
     expect(screen.queryByText('import.errorFetch')).toBeNull();
   });
 });
+
+it('keeps keyboard focus on the selected import mode and connects it to the input panel', () => {
+  render(<ImportPage />);
+  const url = screen.getByRole('tab', { name: 'import.modeUrl' });
+  const text = screen.getByRole('tab', { name: 'import.modeText' });
+  url.focus();
+  fireEvent.keyDown(url, { key: 'ArrowRight' });
+  expect(text).toHaveFocus();
+  expect(text).toHaveAttribute('aria-selected', 'true');
+  expect(text).toHaveAttribute('tabindex', '0');
+  expect(url).toHaveAttribute('tabindex', '-1');
+  const panel = screen.getByRole('tabpanel', { name: 'import.modeText' });
+  expect(text).toHaveAttribute('aria-controls', panel.id);
+  fireEvent.change(screen.getByPlaceholderText('import.textPlaceholder'), { target: { value: 'An unfinished draft' } });
+  fireEvent.keyDown(text, { key: 'Home' });
+  expect(url).toHaveFocus();
+  fireEvent.keyDown(url, { key: 'End' });
+  expect(text).toHaveFocus();
+  expect(screen.getByPlaceholderText('import.textPlaceholder')).toHaveValue('An unfinished draft');
+  fireEvent.keyDown(text, { key: 'ArrowLeft' });
+  expect(url).toHaveFocus();
+});

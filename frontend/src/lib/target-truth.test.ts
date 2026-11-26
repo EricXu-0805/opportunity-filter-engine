@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Opportunity, PublicTargetTruth } from './types';
 import {
+  facultyProfileUrl,
   opportunityApplicationUrl,
   opportunitySourceUrl,
   targetPosture,
@@ -496,6 +497,28 @@ it('expires a cached URAP application at its project deadline', () => {
   } finally {
     clock.mockRestore();
   }
+});
+
+describe('Michigan State Natural Science faculty destinations', () => {
+  const source = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
+  const person = 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493';
+  const row = { source: 'msu_faculty', source_url: source, url: person };
+
+  it('opens the individual campus profile and cites the department roster', () => {
+    expect(facultyProfileUrl(row)).toBe(person);
+    expect(opportunitySourceUrl(row)).toBe(source);
+  });
+
+  it('never labels the roster or an unrelated link as this faculty member’s profile', () => {
+    for (const url of [source, 'https://example.edu/person/100493', person + '?other=1']) {
+      expect(facultyProfileUrl({ ...row, url })).toBeUndefined();
+    }
+  });
+
+  it('retains the ordinary MSU engineering profile path', () => {
+    const engineering = 'https://engineering.msu.edu/directory/faculty/sample';
+    expect(facultyProfileUrl({ ...row, source_url: engineering, url: engineering })).toBe(engineering);
+  });
 });
 
 it('withdraws Apply after the verified program cutoff and keeps the source accessible', () => {

@@ -1,17 +1,9 @@
 /*
  * submitFeedback cloud-write contract (W15, migration 026).
  *
- * The pin that matters: a duplicate-key insert (Postgres 23505 on the
- * feedback_client_token_uniq partial index) means the ticket from an earlier
- * attempt ALREADY EXISTS — the response to that attempt was lost, not the
- * write. Reporting a failure there would push the user into a third attempt
- * over a ticket we already hold, so the client re-reads the existing row and
- * returns its id as a SUCCESS. Mirrors the toggleFavorite / followProfessor
- * 23505 contract.
- *
- * The other pin: success is only claimed on a CONFIRMED insert, and the
- * returned id is the real ticket UUID (026's feedback_select_own is what
- * lets the RETURNING clause come back at all).
+ * A retry can hit the existing token after its first response was lost.
+ * Confirm the ticket's submitted fields before clearing the draft. When the
+ * user has edited it, the widget keeps the new version for a separate ticket.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -93,7 +85,7 @@ beforeEach(async () => {
   mockInsertSingle.mockReset().mockResolvedValue({ data: { id: TICKET_ID }, error: null });
   mockInsert.mockReset().mockReturnValue({ select: () => ({ single: mockInsertSingle }) });
 
-  mockMaybeSingle.mockReset().mockResolvedValue({ data: { id: TICKET_ID }, error: null });
+  mockMaybeSingle.mockReset().mockResolvedValue({ data: { id: TICKET_ID, ...baseInput() }, error: null });
   mockReadSelect.mockReset().mockImplementation(() => {
     const chain = {
       eq: (column: string, value: unknown) => { readFilters.push([column, value]); return chain; },
@@ -157,7 +149,7 @@ describe('submitFeedback (23505 duplicate → idempotent success)', () => {
     expect(mockInsert).toHaveBeenCalledTimes(1);
   });
 
-  it('still reports success when the re-read fails — the row provably exists', async () => {
+  it('retains the draft when the original contents cannot be read', async () => {
     mockInsertSingle.mockResolvedValueOnce({
       data: null,
       error: { code: '23505', message: 'duplicate key value' },
@@ -166,7 +158,24 @@ describe('submitFeedback (23505 duplicate → idempotent success)', () => {
 
     const result = await submitFeedback(baseInput(), captureOwnerToken());
 
-    expect(result).toEqual({ ok: true, reason: 'duplicate', id: null });
+    expect(result).toEqual({ ok: false, reason: 'error' });
+  });
+
+  it.each([
+    { message: 'I found a second symptom' },
+    { subject: 'New subject' },
+    { email: 'other@example.org' },
+    { category: 'idea' as const },
+  ])('retains edited feedback after a lost receipt: %o', async (change) => {
+    mockInsertSingle.mockResolvedValueOnce({ data: null, error: { code: '23505' } });
+    const result = await submitFeedback({ ...baseInput(), ...change }, captureOwnerToken());
+    expect(result).toEqual({ ok: false, reason: 'earlier-version' });
+  });
+
+  it('keeps the draft when no original row is visible', async () => {
+    mockInsertSingle.mockResolvedValueOnce({ data: null, error: { code: '23505' } });
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    expect(await submitFeedback(baseInput(), captureOwnerToken())).toEqual({ ok: false, reason: 'error' });
   });
 
   it('does NOT treat a tokenless 23505 as a duplicate ticket', async () => {
@@ -214,8 +223,6 @@ describe('submitFeedback (failures)', () => {
 
     const result = await submitFeedback(baseInput(), captureOwnerToken());
 
-    // The retry then collides on the token and resolves to 'duplicate', so
-    // the user converges on the truth instead of filing a second ticket.
     expect(result).toEqual({ ok: false, reason: 'error' });
   });
 });

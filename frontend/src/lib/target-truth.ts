@@ -326,8 +326,15 @@ export function opportunitySourceUrl(
   return opp.source_url || opp.url || undefined;
 }
 
+const MSU_NATSCI_DIRECTORY = /^https:\/\/directory\.natsci\.msu\.edu\/Directory\/Directory\/Department\/\d+\/?$/i;
+const MSU_NATSCI_PROFILE = /^https:\/\/directory\.natsci\.msu\.edu\/directory\/Profiles\/Person\/[1-9]\d*\/?$/i;
+
 /** A person link for a faculty action. A source citation can instead be a roster. */
 export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url' | 'url'>): string | undefined {
+  if (opp.source === 'msu_faculty' && MSU_NATSCI_DIRECTORY.test(opp.source_url || '')) {
+    const destination = safeHttpUrl(opp.url);
+    return destination && MSU_NATSCI_PROFILE.test(destination) ? destination : undefined;
+  }
   if (opp.source === 'ucb_datascience_faculty') {
     // The CDSS collector stores the link on the person's name in url. A
     // roster-only card has the same URL in both fields (or lacks provenance).

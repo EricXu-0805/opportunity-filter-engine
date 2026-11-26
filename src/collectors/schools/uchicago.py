@@ -171,19 +171,12 @@ SCHOOL: dict = {
                     "The 2027 Data Science Institute Summer Lab runs June 14 through August 6 and "
                     "pairs undergraduates and Chicago-area high school students with research "
                     "mentors. Paid projects span computing, social science, climate, public policy, "
-                    "materials and biomedical research. Prior research experience is not required. "
-                    "College applicants must remain enrolled in fall 2027; high school applicants "
-                    "must live and attend school in the Chicago area. International undergraduates "
-                    "can apply with documented U.S. work authorization.",
+                    "materials and biomedical research. Prior research experience is not required.",
                     organization="UChicago Data Science Institute",
                     lab_or_program="DSI Summer Lab",
                     opportunity_type="summer_program",
                     paid="stipend",
-                    compensation=(
-                        "$5,600 for eight weeks in 2027. Optional housing is free for college students. "
-                        "Selected NSF-funded undergraduates who are U.S. citizens or permanent "
-                        "residents receive an additional $1,800 for travel and food."
-                    ),
+                    compensation="$5,600 stipend for 8 weeks (2026), plus free optional housing",
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
                     deadline_note="Applications close January 11, 2027 at 11:59 p.m. Central.",
