@@ -261,4 +261,19 @@ describe('Tracker attachment export', () => {
     }
     expect(fixture.download).not.toHaveBeenCalled();
   });
+
+  it('matches the database fingerprint for a Unicode legacy path and preserves the observed verification time', async () => {
+    const uid = '3b000000-0000-4000-8000-000000000001';
+    const anchorId = '3b000000-0000-4000-8000-000000000003';
+    const path = uid + '/retired/é.pdf';
+    fixture.uid = uid;
+    fixture.list.mockImplementation(async (prefix: string) => ok(prefix === uid ? [folder('retired')] : [{ ...row('é.pdf'), id: anchorId }]));
+    fixture.resolve.mockResolvedValue(new Map([[path, { ...legacy(path), anchorId, sizeBytes: 8, mimeType: 'application/pdf',
+      revision: 'o:' + anchorId + ':legacy-1:1767225600.000000:one' }]]));
+    fixture.rpc.mockResolvedValue(ok({ count: 1, observedAt,
+      digest: '905256d7e66e23e42435de6bcc517df70bcec4ca8649a4d6081faee7d33cc003' }));
+    fixture.download.mockResolvedValue(ok(new Blob(['original'])));
+    await expect(exportTrackerAttachments(uid, { ...token, uid }, new AbortController().signal, vi.fn()))
+      .resolves.toMatchObject({ count: 1, verifiedAt: observedAt, filename: 'tracker-attachments.zip' });
+  });
 });
