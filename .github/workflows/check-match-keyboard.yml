@@ -1,4 +1,4 @@
-name: Check the official match and free-draft keyboard journey
+name: Check official match categories and the free-draft keyboard journey
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
