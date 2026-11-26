@@ -1,0 +1,206 @@
+{
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45887716516",
+  "checked_at": "2026-11-26T19:59:47.738063+00:00",
+  "sources": [
+    {
+      "authority": "cs",
+      "url": "https://www.cs.pitt.edu/people/full-time-faculty",
+      "http": 403,
+      "final_url": "https://www.cs.pitt.edu/people/full-time-faculty",
+      "rows": []
+    },
+    {
+      "authority": "school",
+      "url": "https://www.sci.pitt.edu/people/department-computer-science-faculty",
+      "http": 200,
+      "final_url": "https://www.sci.pitt.edu/people/department-computer-science-faculty",
+      "rows": [
+        {
+          "name": "Wonsun Ahn",
+          "official_rank": "Teaching Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/wonsun-ahn"
+        },
+        {
+          "name": "Amy Babay",
+          "official_rank": "Assistant Professor, Department of Informatics and Networked Systems, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/amy-babay-0"
+        },
+        {
+          "name": "Marina Barsky",
+          "official_rank": "Teaching Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/marina-barsky"
+        },
+        {
+          "name": "Jacob Biehl",
+          "official_rank": "Associate Professor, Department of Information Culture and Data Stewardship, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/jacob-biehl"
+        },
+        {
+          "name": "Bruce R. Childers",
+          "official_rank": "Dean, Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/bruce-r-childers"
+        },
+        {
+          "name": "Panos Chrysanthis",
+          "official_rank": "Associate Dean for Graduate Studies, Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/panos-chrysanthis"
+        },
+        {
+          "name": "Paul Cohen",
+          "official_rank": "Director, Modeling and Managing Complicated Systems Institute, Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/paul-cohen"
+        },
+        {
+          "name": "Nicholas L. Farnan",
+          "official_rank": "Teaching Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/nicholas-l-farnan"
+        },
+        {
+          "name": "William C. Garrison",
+          "official_rank": "Associate Dean for Undergraduate Studies, Teaching Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/william-c-garrison"
+        },
+        {
+          "name": "Aakash Gautam",
+          "official_rank": "Assistant Professor, Department of Information Culture and Data Stewardship, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/aakash-gautam"
+        },
+        {
+          "name": "Milos Hauskrecht",
+          "official_rank": "Professor, Department of Computer Science, Intelligent Systems Program",
+          "individual_url": "https://www.sci.pitt.edu/people/milos-hauskrecht"
+        },
+        {
+          "name": "Timothy L. Hoffman",
+          "official_rank": "Teaching Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/timothy-l-hoffman"
+        },
+        {
+          "name": "Emma Jordan",
+          "official_rank": "Teaching Assistant Professor",
+          "individual_url": "https://www.sci.pitt.edu/people/emma-jordan"
+        },
+        {
+          "name": "Sherif Khattab",
+          "official_rank": "Teaching Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/sherif-khattab"
+        },
+        {
+          "name": "Thumrongsak Kosiyatrakul",
+          "official_rank": "Teaching Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul"
+        },
+        {
+          "name": "Adriana I. Kovashka",
+          "official_rank": "Chair, Department of Computer Science, Associate Professor, Intelligent Systems Program",
+          "individual_url": "https://www.sci.pitt.edu/people/adriana-i-kovashka"
+        },
+        {
+          "name": "Alexandros Labrinidis",
+          "official_rank": "Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/alexandros-labrinidis"
+        },
+        {
+          "name": "John R. Lange",
+          "official_rank": "Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/john-r-lange"
+        },
+        {
+          "name": "Adam J. Lee",
+          "official_rank": "Vice Provost for Undergraduate Studies, Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/adam-j-lee"
+        },
+        {
+          "name": "Stephen Lee",
+          "official_rank": "Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/stephen-lee"
+        },
+        {
+          "name": "Lorraine (Xiang) Li",
+          "official_rank": "Assistant Professor, Department of Computer Science, Intelligent Systems Program",
+          "individual_url": "https://www.sci.pitt.edu/people/lorraine-xiang-li"
+        },
+        {
+          "name": "Diane J. Litman",
+          "official_rank": "Associate Dean for Mentoring and Development, Professor, Department of Computer Science, Intelligent Systems Program, Senior Scientist, Learning Research & Development Center",
+          "individual_url": "https://www.sci.pitt.edu/people/diane-litman"
+        },
+        {
+          "name": "Junyu Liu",
+          "official_rank": "Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/junyu-liu"
+        },
+        {
+          "name": "Daniel Mosse",
+          "official_rank": "Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/daniel-mosse"
+        },
+        {
+          "name": "Nils Murrugarra Llerena",
+          "official_rank": "Teaching Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/nils-murrugarra-llerena"
+        },
+        {
+          "name": "Brian T. Nixon",
+          "official_rank": "Teaching Assistant Professor",
+          "individual_url": "https://www.sci.pitt.edu/people/brian-t-nixon"
+        },
+        {
+          "name": "Luis de Oliveira",
+          "official_rank": "Teaching Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/luis-de-oliveira"
+        },
+        {
+          "name": "Kirk R. Pruhs",
+          "official_rank": "Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/kirk-r-pruhs"
+        },
+        {
+          "name": "John C. Ramirez",
+          "official_rank": "Director, Undergraduate program in Computer Science, Teaching Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/john-c-ramirez"
+        },
+        {
+          "name": "Rob A. Rutenbar",
+          "official_rank": "Senior Vice Chancellor of Research, University of Pittsburgh, Distinguished Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/rob-rutenbar"
+        },
+        {
+          "name": "Longfei Shangguan",
+          "official_rank": "Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/longfei-shangguan"
+        },
+        {
+          "name": "Ryan Shi",
+          "official_rank": "Assistant Professor, Department of Computer Science, Intelligent Systems Program",
+          "individual_url": "https://www.sci.pitt.edu/people/ryan-shi"
+        },
+        {
+          "name": "Patrick Skeba",
+          "official_rank": "Teaching Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/patrick-skeba"
+        },
+        {
+          "name": "Xulong Tang",
+          "official_rank": "Associate Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/xulong-tang"
+        },
+        {
+          "name": "Nadine von Frankenberg",
+          "official_rank": "Teaching Assistant Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/nadine-von-frankenberg"
+        },
+        {
+          "name": "Erin Walker",
+          "official_rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "individual_url": "https://www.sci.pitt.edu/people/erin-walker"
+        },
+        {
+          "name": "Youtao Zhang",
+          "official_rank": "Professor, Department of Computer Science",
+          "individual_url": "https://www.sci.pitt.edu/people/youtao-zhang"
+        }
+      ]
+    }
+  ]
+}

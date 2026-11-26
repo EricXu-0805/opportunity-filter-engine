@@ -1,0 +1,4610 @@
+{
+  "tested_at": "2026-11-26T20:22:50.030232+00:00",
+  "source_sha": "ab2aba702669a18706476a6fcbbdb844f30af66e",
+  "runs": {
+    "original-primary": [
+      {
+        "stage": "normal",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "reverse",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "blocked",
+        "department_count": 37,
+        "department_emitted": 30,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "all-registries-unavailable",
+        "department_count": 0,
+        "department_emitted": 0,
+        "department_parse": "zero_rows",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "normal",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      }
+    ],
+    "original-secondary": [
+      {
+        "stage": "blocked",
+        "department_count": 37,
+        "department_emitted": 30,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "blocked",
+        "department_count": 37,
+        "department_emitted": 30,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "both-unavailable",
+        "department_count": 0,
+        "department_emitted": 0,
+        "department_parse": "zero_rows",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "all-registries-unavailable",
+        "department_count": 0,
+        "department_emitted": 0,
+        "department_parse": "zero_rows",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "normal",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "reverse",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "reverse-blocked",
+        "department_count": 37,
+        "department_emitted": 10,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      }
+    ],
+    "repaired": [
+      {
+        "stage": "blocked",
+        "department_count": 37,
+        "department_emitted": 30,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "blocked",
+        "department_count": 37,
+        "department_emitted": 30,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "both-unavailable",
+        "department_count": 0,
+        "department_emitted": 0,
+        "department_parse": "zero_rows",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "all-registries-unavailable",
+        "department_count": 0,
+        "department_emitted": 0,
+        "department_parse": "zero_rows",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "normal",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "reverse",
+        "department_count": 38,
+        "department_emitted": 38,
+        "department_parse": "ok",
+        "partial": 0,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      },
+      {
+        "stage": "reverse-blocked",
+        "department_count": 37,
+        "department_emitted": 10,
+        "department_parse": "ok",
+        "partial": 1,
+        "all_1147_saved_and_first_seen_kept": true,
+        "contacts": [
+          {
+            "current_id": "faculty-pitt-cs-37b1191a",
+            "saved_aliases": [],
+            "name": "Wonsun Ahn"
+          },
+          {
+            "current_id": "faculty-pitt-cs-56354f0d",
+            "saved_aliases": [
+              "faculty-pitt-sci-2be4c8fe"
+            ],
+            "name": "Amy Babay"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f9ffe0f",
+            "saved_aliases": [
+              "faculty-pitt-sci-14a56204"
+            ],
+            "name": "Marina Barsky"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0c5994c8",
+            "saved_aliases": [],
+            "name": "Jacob Biehl"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e47a8796",
+            "saved_aliases": [
+              "faculty-pitt-sci-69cd00cb"
+            ],
+            "name": "Bruce R. Childers"
+          },
+          {
+            "current_id": "faculty-pitt-cs-c488d791",
+            "saved_aliases": [],
+            "name": "Panos Chrysanthis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-6314125a",
+            "saved_aliases": [],
+            "name": "Paul Cohen"
+          },
+          {
+            "current_id": "faculty-pitt-cs-2ba882dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-2572b392"
+            ],
+            "name": "Nicholas L. Farnan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-af900fe5",
+            "saved_aliases": [
+              "faculty-pitt-sci-4f79f9e2"
+            ],
+            "name": "William C. Garrison"
+          },
+          {
+            "current_id": "faculty-pitt-sci-6f929413",
+            "saved_aliases": [],
+            "name": "Aakash Gautam"
+          },
+          {
+            "current_id": "faculty-pitt-cs-19abea97",
+            "saved_aliases": [],
+            "name": "Milos Hauskrecht"
+          },
+          {
+            "current_id": "faculty-pitt-cs-fa134731",
+            "saved_aliases": [
+              "faculty-pitt-sci-8fbba638"
+            ],
+            "name": "Timothy L. Hoffman"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a32cf06c",
+            "saved_aliases": [
+              "faculty-pitt-sci-7726e23a"
+            ],
+            "name": "Emma Jordan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-904e37e9",
+            "saved_aliases": [
+              "faculty-pitt-sci-28c8e3a8"
+            ],
+            "name": "Sherif Khattab"
+          },
+          {
+            "current_id": "faculty-pitt-cs-a2c06c2d",
+            "saved_aliases": [
+              "faculty-pitt-sci-bb87d09b"
+            ],
+            "name": "Thumrongsak Kosiyatrakul"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4adac42c",
+            "saved_aliases": [
+              "faculty-pitt-sci-b90f8e25"
+            ],
+            "name": "Adriana I. Kovashka"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3f53f93b",
+            "saved_aliases": [],
+            "name": "Alexandros Labrinidis"
+          },
+          {
+            "current_id": "faculty-pitt-cs-d11d4a3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-e43bbb6b"
+            ],
+            "name": "John R. Lange"
+          },
+          {
+            "current_id": "faculty-pitt-cs-3af1e2c9",
+            "saved_aliases": [
+              "faculty-pitt-sci-70eaa1ec"
+            ],
+            "name": "Adam J. Lee"
+          },
+          {
+            "current_id": "faculty-pitt-sci-754eb010",
+            "saved_aliases": [],
+            "name": "Stephen Lee"
+          },
+          {
+            "current_id": "faculty-pitt-cs-5d973318",
+            "saved_aliases": [
+              "faculty-pitt-sci-a942a486"
+            ],
+            "name": "Lorraine (Xiang) Li"
+          },
+          {
+            "current_id": "faculty-pitt-cs-4cb65ded",
+            "saved_aliases": [],
+            "name": "Diane J. Litman"
+          },
+          {
+            "current_id": "faculty-pitt-sci-c98f98a1",
+            "saved_aliases": [],
+            "name": "Junyu Liu"
+          },
+          {
+            "current_id": "faculty-pitt-cs-484b0709",
+            "saved_aliases": [],
+            "name": "Daniel Mosse"
+          },
+          {
+            "current_id": "faculty-pitt-sci-68e4dc1f",
+            "saved_aliases": [],
+            "name": "Nils Murrugarra Llerena"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7856039c",
+            "saved_aliases": [],
+            "name": "Brian T. Nixon"
+          },
+          {
+            "current_id": "faculty-pitt-cs-dff77505",
+            "saved_aliases": [
+              "faculty-pitt-sci-4589e830"
+            ],
+            "name": "Luis de Oliveira"
+          },
+          {
+            "current_id": "faculty-pitt-cs-74aa7171",
+            "saved_aliases": [
+              "faculty-pitt-sci-59ad971d"
+            ],
+            "name": "Kirk R. Pruhs"
+          },
+          {
+            "current_id": "faculty-pitt-cs-82cfa3dd",
+            "saved_aliases": [
+              "faculty-pitt-sci-32611613"
+            ],
+            "name": "John C. Ramirez"
+          },
+          {
+            "current_id": "faculty-pitt-cs-51874e7c",
+            "saved_aliases": [
+              "faculty-pitt-sci-29d93956"
+            ],
+            "name": "Rob A. Rutenbar"
+          },
+          {
+            "current_id": "faculty-pitt-sci-1a259c98",
+            "saved_aliases": [],
+            "name": "Longfei Shangguan"
+          },
+          {
+            "current_id": "faculty-pitt-cs-e643e15e",
+            "saved_aliases": [
+              "faculty-pitt-sci-812bd33b"
+            ],
+            "name": "Ryan Shi"
+          },
+          {
+            "current_id": "faculty-pitt-cs-ca9eac3e",
+            "saved_aliases": [
+              "faculty-pitt-sci-7fd7738f"
+            ],
+            "name": "Patrick Skeba"
+          },
+          {
+            "current_id": "faculty-pitt-cs-8e9a39d1",
+            "saved_aliases": [],
+            "name": "Xulong Tang"
+          },
+          {
+            "current_id": "faculty-pitt-sci-7f74cde0",
+            "saved_aliases": [],
+            "name": "Nadine von Frankenberg"
+          },
+          {
+            "current_id": "faculty-pitt-cs-0a7196f1",
+            "saved_aliases": [
+              "faculty-pitt-sci-f9905a2c"
+            ],
+            "name": "Erin Walker"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1e95f188",
+            "saved_aliases": [],
+            "name": "Youtao Zhang"
+          },
+          {
+            "current_id": "faculty-pitt-cs-1c364170",
+            "saved_aliases": [
+              "faculty-pitt-sci-5e1411ba"
+            ],
+            "name": "Michael Miller Yoder"
+          }
+        ]
+      }
+    ]
+  }
+}

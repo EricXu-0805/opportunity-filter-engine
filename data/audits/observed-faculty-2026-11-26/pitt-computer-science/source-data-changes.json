@@ -1,0 +1,175 @@
+{
+  "source_sha": "ab2aba702669a18706476a6fcbbdb844f30af66e",
+  "pitt_ids": 1147,
+  "original_order_preserved": true,
+  "first_and_last_seen_dates_preserved": true,
+  "only_changed_original_ids": [
+    "faculty-pitt-cs-37b1191a",
+    "faculty-pitt-cs-56354f0d",
+    "faculty-pitt-cs-3f9ffe0f",
+    "faculty-pitt-cs-0c5994c8",
+    "faculty-pitt-cs-e47a8796",
+    "faculty-pitt-cs-c488d791",
+    "faculty-pitt-cs-6314125a",
+    "faculty-pitt-cs-2ba882dd",
+    "faculty-pitt-cs-af900fe5",
+    "faculty-pitt-cs-19abea97",
+    "faculty-pitt-cs-fa134731",
+    "faculty-pitt-cs-904e37e9",
+    "faculty-pitt-cs-a2c06c2d",
+    "faculty-pitt-cs-4adac42c",
+    "faculty-pitt-cs-3f53f93b",
+    "faculty-pitt-cs-d11d4a3e",
+    "faculty-pitt-cs-3af1e2c9",
+    "faculty-pitt-cs-5d973318",
+    "faculty-pitt-cs-4cb65ded",
+    "faculty-pitt-cs-484b0709",
+    "faculty-pitt-cs-dff77505",
+    "faculty-pitt-cs-74aa7171",
+    "faculty-pitt-cs-82cfa3dd",
+    "faculty-pitt-cs-51874e7c",
+    "faculty-pitt-cs-e643e15e",
+    "faculty-pitt-cs-ca9eac3e",
+    "faculty-pitt-cs-8e9a39d1",
+    "faculty-pitt-cs-0a7196f1",
+    "faculty-pitt-cs-1c364170",
+    "faculty-pitt-cs-1e95f188",
+    "faculty-pitt-sci-2be4c8fe",
+    "faculty-pitt-sci-14a56204",
+    "faculty-pitt-sci-69cd00cb",
+    "faculty-pitt-sci-2572b392",
+    "faculty-pitt-sci-4f79f9e2",
+    "faculty-pitt-sci-8fbba638",
+    "faculty-pitt-sci-7726e23a",
+    "faculty-pitt-sci-28c8e3a8",
+    "faculty-pitt-sci-bb87d09b",
+    "faculty-pitt-sci-b90f8e25",
+    "faculty-pitt-sci-e43bbb6b",
+    "faculty-pitt-sci-70eaa1ec",
+    "faculty-pitt-sci-a942a486",
+    "faculty-pitt-sci-4589e830",
+    "faculty-pitt-sci-59ad971d",
+    "faculty-pitt-sci-32611613",
+    "faculty-pitt-sci-29d93956",
+    "faculty-pitt-sci-812bd33b",
+    "faculty-pitt-sci-7fd7738f",
+    "faculty-pitt-sci-f9905a2c",
+    "faculty-pitt-sci-5e1411ba",
+    "faculty-pitt-cs-a32cf06c"
+  ],
+  "existing_contact_matches_on_named_college_cards": [
+    {
+      "id": "faculty-pitt-cs-56354f0d",
+      "source": "https://www.sci.pitt.edu/people/amy-babay-0",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-3f9ffe0f",
+      "source": "https://www.sci.pitt.edu/people/marina-barsky",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "source": "https://www.sci.pitt.edu/people/nicholas-l-farnan",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-af900fe5",
+      "source": "https://www.sci.pitt.edu/people/william-c-garrison",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-fa134731",
+      "source": "https://www.sci.pitt.edu/people/timothy-l-hoffman",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-904e37e9",
+      "source": "https://www.sci.pitt.edu/people/sherif-khattab",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-a2c06c2d",
+      "source": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-4adac42c",
+      "source": "https://www.sci.pitt.edu/people/adriana-i-kovashka",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-d11d4a3e",
+      "source": "https://www.sci.pitt.edu/people/john-r-lange",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-3af1e2c9",
+      "source": "https://www.sci.pitt.edu/people/adam-j-lee",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-5d973318",
+      "source": "https://www.sci.pitt.edu/people/lorraine-xiang-li",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-dff77505",
+      "source": "https://www.sci.pitt.edu/people/luis-de-oliveira",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-74aa7171",
+      "source": "https://www.sci.pitt.edu/people/kirk-r-pruhs",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-82cfa3dd",
+      "source": "https://www.sci.pitt.edu/people/john-c-ramirez",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-51874e7c",
+      "source": "https://www.sci.pitt.edu/people/rob-rutenbar",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-e643e15e",
+      "source": "https://www.sci.pitt.edu/people/ryan-shi",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-ca9eac3e",
+      "source": "https://www.sci.pitt.edu/people/patrick-skeba",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-0a7196f1",
+      "source": "https://www.sci.pitt.edu/people/erin-walker",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-1c364170",
+      "source": "https://www.sci.pitt.edu/people/michael-miller-yoder",
+      "college_person_card_contact_agrees": true
+    },
+    {
+      "id": "faculty-pitt-cs-a32cf06c",
+      "source": "https://www.sci.pitt.edu/people/emma-jordan",
+      "college_person_card_contact_agrees": true
+    }
+  ],
+  "office_mailboxes": {
+    "member": "faculty-pitt-cs-e47a8796",
+    "historical_college_id": "faculty-pitt-sci-69cd00cb",
+    "status": "Dean office and signature forms are not personal addresses",
+    "sources": [
+      "https://www.sci.pitt.edu/contact-us",
+      "https://www.sci.pitt.edu/people/bruce-r-childers"
+    ]
+  },
+  "contact_count_before": 1117,
+  "contact_count_after": 1096,
+  "pitt_listings": 3,
+  "unchanged_Jia_record": "faculty-pitt-cs-bb6c586d"
+}

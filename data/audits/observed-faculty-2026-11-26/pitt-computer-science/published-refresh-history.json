@@ -1,0 +1,603 @@
+{
+  "monthly_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/42045511430/job/127307266882",
+  "thursday_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861578824/job/140053691464",
+  "thursday": {
+    "department_http": 403,
+    "primary_fetch_at": "2026-11-26T17:14:13.9475621Z",
+    "record_preservation_at": "2026-11-26T18:10:54.2992744Z",
+    "records_preserved": 32
+  },
+  "snapshots": {
+    "november_monthly": {
+      "ref": "b1d224a6",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-37b1191a",
+          "name": "Wonsun Ahn",
+          "last_seen_at": "2026-10-29T13:22:00.143003",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-56354f0d",
+          "name": "Amy Babay",
+          "last_seen_at": "2026-10-29T13:22:00.143114",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3f9ffe0f",
+          "name": "Marina Barsky",
+          "last_seen_at": "2026-10-29T13:22:00.143192",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-0c5994c8",
+          "name": "Jacob Biehl",
+          "last_seen_at": "2026-10-29T13:22:00.143274",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-e47a8796",
+          "name": "Bruce Childers",
+          "last_seen_at": "2026-10-29T13:22:00.143349",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-c488d791",
+          "name": "Panos Chrysanthis",
+          "last_seen_at": "2026-10-29T13:22:00.143456",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-6314125a",
+          "name": "Paul Cohen",
+          "last_seen_at": "2026-10-29T13:22:00.143533",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-2ba882dd",
+          "name": "Nicholas Farnan",
+          "last_seen_at": "2026-10-29T13:22:00.143606",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-af900fe5",
+          "name": "William Garrison",
+          "last_seen_at": "2026-10-29T13:22:00.143694",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-19abea97",
+          "name": "Milos Hauskrecht",
+          "last_seen_at": "2026-10-29T13:22:00.143832",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-fa134731",
+          "name": "Timothy Hoffman",
+          "last_seen_at": "2026-10-29T13:22:00.143899",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-bb6c586d",
+          "name": "Xiaowei Jia",
+          "last_seen_at": "2026-08-27T09:24:00.986533",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-904e37e9",
+          "name": "Sherif Khattab",
+          "last_seen_at": "2026-10-29T13:22:00.144036",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-a2c06c2d",
+          "name": "Thumtongsak Kosiyatrkul",
+          "last_seen_at": "2026-10-29T13:22:00.144104",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-4adac42c",
+          "name": "Adriana Kovashka",
+          "last_seen_at": "2026-10-29T13:22:00.144178",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3f53f93b",
+          "name": "Alexandros Labrinidis",
+          "last_seen_at": "2026-10-29T13:22:00.144242",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-d11d4a3e",
+          "name": "John Lange",
+          "last_seen_at": "2026-10-29T13:22:00.144314",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3af1e2c9",
+          "name": "Adam Lee",
+          "last_seen_at": "2026-10-29T13:22:00.144482",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-5d973318",
+          "name": "Lorraine (Xiang) Li",
+          "last_seen_at": "2026-10-29T13:22:00.144555",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-4cb65ded",
+          "name": "Diane Litman",
+          "last_seen_at": "2026-10-29T13:22:00.144648",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-484b0709",
+          "name": "Daniel Mosse",
+          "last_seen_at": "2026-10-29T13:22:00.144781",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-dff77505",
+          "name": "Luis Oliveira",
+          "last_seen_at": "2026-10-29T13:22:00.144989",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-74aa7171",
+          "name": "Kirk Pruhs",
+          "last_seen_at": "2026-10-29T13:22:00.145051",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-82cfa3dd",
+          "name": "John Ramirez",
+          "last_seen_at": "2026-10-29T13:22:00.145114",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-51874e7c",
+          "name": "Rob Rutenbar",
+          "last_seen_at": "2026-10-29T13:22:00.145193",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-e643e15e",
+          "name": "Ryan Shi",
+          "last_seen_at": "2026-10-29T13:22:00.145326",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-ca9eac3e",
+          "name": "Patrick Skeba",
+          "last_seen_at": "2026-10-29T13:22:00.145412",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-8e9a39d1",
+          "name": "Xulong Tang",
+          "last_seen_at": "2026-10-29T13:22:00.145482",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "name": "Erin Walker",
+          "last_seen_at": "2026-10-29T13:22:00.145641",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-1c364170",
+          "name": "Michael Miller Yoder",
+          "last_seen_at": "2026-10-29T13:22:00.145714",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-1e95f188",
+          "name": "Youtao Zhang",
+          "last_seen_at": "2026-10-29T13:22:00.145776",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-a32cf06c",
+          "name": "Emma Jordan",
+          "last_seen_at": "2026-10-29T13:22:00.143967",
+          "faculty_status": true
+        }
+      ]
+    },
+    "november_26_scheduled": {
+      "ref": "31984a4c",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-37b1191a",
+          "name": "Wonsun Ahn",
+          "last_seen_at": "2026-10-29T13:22:00.143003",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-56354f0d",
+          "name": "Amy Babay",
+          "last_seen_at": "2026-10-29T13:22:00.143114",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3f9ffe0f",
+          "name": "Marina Barsky",
+          "last_seen_at": "2026-10-29T13:22:00.143192",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-0c5994c8",
+          "name": "Jacob Biehl",
+          "last_seen_at": "2026-10-29T13:22:00.143274",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-e47a8796",
+          "name": "Bruce Childers",
+          "last_seen_at": "2026-10-29T13:22:00.143349",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-c488d791",
+          "name": "Panos Chrysanthis",
+          "last_seen_at": "2026-10-29T13:22:00.143456",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-6314125a",
+          "name": "Paul Cohen",
+          "last_seen_at": "2026-10-29T13:22:00.143533",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-2ba882dd",
+          "name": "Nicholas Farnan",
+          "last_seen_at": "2026-10-29T13:22:00.143606",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-af900fe5",
+          "name": "William Garrison",
+          "last_seen_at": "2026-10-29T13:22:00.143694",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-19abea97",
+          "name": "Milos Hauskrecht",
+          "last_seen_at": "2026-10-29T13:22:00.143832",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-fa134731",
+          "name": "Timothy Hoffman",
+          "last_seen_at": "2026-10-29T13:22:00.143899",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-bb6c586d",
+          "name": "Xiaowei Jia",
+          "last_seen_at": "2026-08-27T09:24:00.986533",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-904e37e9",
+          "name": "Sherif Khattab",
+          "last_seen_at": "2026-10-29T13:22:00.144036",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-a2c06c2d",
+          "name": "Thumtongsak Kosiyatrkul",
+          "last_seen_at": "2026-10-29T13:22:00.144104",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-4adac42c",
+          "name": "Adriana Kovashka",
+          "last_seen_at": "2026-10-29T13:22:00.144178",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3f53f93b",
+          "name": "Alexandros Labrinidis",
+          "last_seen_at": "2026-10-29T13:22:00.144242",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-d11d4a3e",
+          "name": "John Lange",
+          "last_seen_at": "2026-10-29T13:22:00.144314",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3af1e2c9",
+          "name": "Adam Lee",
+          "last_seen_at": "2026-10-29T13:22:00.144482",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-5d973318",
+          "name": "Lorraine (Xiang) Li",
+          "last_seen_at": "2026-10-29T13:22:00.144555",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-4cb65ded",
+          "name": "Diane Litman",
+          "last_seen_at": "2026-10-29T13:22:00.144648",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-484b0709",
+          "name": "Daniel Mosse",
+          "last_seen_at": "2026-10-29T13:22:00.144781",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-dff77505",
+          "name": "Luis Oliveira",
+          "last_seen_at": "2026-10-29T13:22:00.144989",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-74aa7171",
+          "name": "Kirk Pruhs",
+          "last_seen_at": "2026-10-29T13:22:00.145051",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-82cfa3dd",
+          "name": "John Ramirez",
+          "last_seen_at": "2026-10-29T13:22:00.145114",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-51874e7c",
+          "name": "Rob Rutenbar",
+          "last_seen_at": "2026-10-29T13:22:00.145193",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-e643e15e",
+          "name": "Ryan Shi",
+          "last_seen_at": "2026-10-29T13:22:00.145326",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-ca9eac3e",
+          "name": "Patrick Skeba",
+          "last_seen_at": "2026-10-29T13:22:00.145412",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-8e9a39d1",
+          "name": "Xulong Tang",
+          "last_seen_at": "2026-10-29T13:22:00.145482",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "name": "Erin Walker",
+          "last_seen_at": "2026-10-29T13:22:00.145641",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-1c364170",
+          "name": "Michael Miller Yoder",
+          "last_seen_at": "2026-10-29T13:22:00.145714",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-1e95f188",
+          "name": "Youtao Zhang",
+          "last_seen_at": "2026-10-29T13:22:00.145776",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-a32cf06c",
+          "name": "Emma Jordan",
+          "last_seen_at": "2026-10-29T13:22:00.143967",
+          "faculty_status": true
+        }
+      ]
+    },
+    "before_source_fix": {
+      "ref": "6a9570cd",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-37b1191a",
+          "name": "Wonsun Ahn",
+          "last_seen_at": "2026-10-29T13:22:00.143003",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-56354f0d",
+          "name": "Amy Babay",
+          "last_seen_at": "2026-10-29T13:22:00.143114",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3f9ffe0f",
+          "name": "Marina Barsky",
+          "last_seen_at": "2026-10-29T13:22:00.143192",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-0c5994c8",
+          "name": "Jacob Biehl",
+          "last_seen_at": "2026-10-29T13:22:00.143274",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-e47a8796",
+          "name": "Bruce Childers",
+          "last_seen_at": "2026-10-29T13:22:00.143349",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-c488d791",
+          "name": "Panos Chrysanthis",
+          "last_seen_at": "2026-10-29T13:22:00.143456",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-6314125a",
+          "name": "Paul Cohen",
+          "last_seen_at": "2026-10-29T13:22:00.143533",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-2ba882dd",
+          "name": "Nicholas Farnan",
+          "last_seen_at": "2026-10-29T13:22:00.143606",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-af900fe5",
+          "name": "William Garrison",
+          "last_seen_at": "2026-10-29T13:22:00.143694",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-19abea97",
+          "name": "Milos Hauskrecht",
+          "last_seen_at": "2026-10-29T13:22:00.143832",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-fa134731",
+          "name": "Timothy Hoffman",
+          "last_seen_at": "2026-10-29T13:22:00.143899",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-bb6c586d",
+          "name": "Xiaowei Jia",
+          "last_seen_at": "2026-08-27T09:24:00.986533",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-904e37e9",
+          "name": "Sherif Khattab",
+          "last_seen_at": "2026-10-29T13:22:00.144036",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-a2c06c2d",
+          "name": "Thumtongsak Kosiyatrkul",
+          "last_seen_at": "2026-10-29T13:22:00.144104",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-4adac42c",
+          "name": "Adriana Kovashka",
+          "last_seen_at": "2026-10-29T13:22:00.144178",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3f53f93b",
+          "name": "Alexandros Labrinidis",
+          "last_seen_at": "2026-10-29T13:22:00.144242",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-d11d4a3e",
+          "name": "John Lange",
+          "last_seen_at": "2026-10-29T13:22:00.144314",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-3af1e2c9",
+          "name": "Adam Lee",
+          "last_seen_at": "2026-10-29T13:22:00.144482",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-5d973318",
+          "name": "Lorraine (Xiang) Li",
+          "last_seen_at": "2026-10-29T13:22:00.144555",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-4cb65ded",
+          "name": "Diane Litman",
+          "last_seen_at": "2026-10-29T13:22:00.144648",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-484b0709",
+          "name": "Daniel Mosse",
+          "last_seen_at": "2026-10-29T13:22:00.144781",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-dff77505",
+          "name": "Luis Oliveira",
+          "last_seen_at": "2026-10-29T13:22:00.144989",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-74aa7171",
+          "name": "Kirk Pruhs",
+          "last_seen_at": "2026-10-29T13:22:00.145051",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-82cfa3dd",
+          "name": "John Ramirez",
+          "last_seen_at": "2026-10-29T13:22:00.145114",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-51874e7c",
+          "name": "Rob Rutenbar",
+          "last_seen_at": "2026-10-29T13:22:00.145193",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-e643e15e",
+          "name": "Ryan Shi",
+          "last_seen_at": "2026-10-29T13:22:00.145326",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-ca9eac3e",
+          "name": "Patrick Skeba",
+          "last_seen_at": "2026-10-29T13:22:00.145412",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-8e9a39d1",
+          "name": "Xulong Tang",
+          "last_seen_at": "2026-10-29T13:22:00.145482",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "name": "Erin Walker",
+          "last_seen_at": "2026-10-29T13:22:00.145641",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-1c364170",
+          "name": "Michael Miller Yoder",
+          "last_seen_at": "2026-10-29T13:22:00.145714",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-1e95f188",
+          "name": "Youtao Zhang",
+          "last_seen_at": "2026-10-29T13:22:00.145776",
+          "faculty_status": true
+        },
+        {
+          "id": "faculty-pitt-cs-a32cf06c",
+          "name": "Emma Jordan",
+          "last_seen_at": "2026-10-29T13:22:00.143967",
+          "faculty_status": true
+        }
+      ]
+    }
+  }
+}

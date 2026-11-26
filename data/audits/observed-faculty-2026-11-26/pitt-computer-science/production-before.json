@@ -1,0 +1,1176 @@
+{
+  "release": [
+    "87b1e916c0c88c32bba327256706a2beff293346",
+    "87b1e916c0c88c32bba327256706a2beff293346"
+  ],
+  "read_completed_at": [
+    "2026-11-26T20:16:18.644779+00:00",
+    "2026-11-26T20:13:01.101013+00:00"
+  ],
+  "note": "32 department IDs, all 28 additional overlapping/current SCI IDs, plus the independent Rutgers person. Display dates for last observation are read from the deployed corpus, not the public views.",
+  "earlier_subset_release": [
+    "bdb523bec33c71f682e0d895f06a8bad859863b6",
+    "bdb523bec33c71f682e0d895f06a8bad859863b6"
+  ],
+  "rows": [
+    {
+      "id": "faculty-pitt-cs-37b1191a",
+      "persisted_name": "Wonsun Ahn",
+      "public_name": "Wonsun Ahn",
+      "public_rank": "Teaching Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/wonsun-ahn",
+      "actionable": true,
+      "headings": [
+        "Wonsun Ahn"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/wonsun-ahn"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-37b1191a"
+    },
+    {
+      "id": "faculty-pitt-cs-56354f0d",
+      "persisted_name": "Amy Babay",
+      "public_name": "Amy Babay",
+      "public_rank": "Assistant Professor, DINS & CS",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/amy-babay",
+      "actionable": true,
+      "headings": [
+        "Amy Babay"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/amy-babay"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-56354f0d"
+    },
+    {
+      "id": "faculty-pitt-cs-3f9ffe0f",
+      "persisted_name": "Marina Barsky",
+      "public_name": "Marina Barsky",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/marina-barsky",
+      "actionable": true,
+      "headings": [
+        "Marina Barsky"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/marina-barsky"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-3f9ffe0f"
+    },
+    {
+      "id": "faculty-pitt-cs-0c5994c8",
+      "persisted_name": "Jacob Biehl",
+      "public_name": "Jacob Biehl",
+      "public_rank": "Associate Professor, ICDS & CS",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/jacob-biehl",
+      "actionable": true,
+      "headings": [
+        "Jacob Biehl"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/jacob-biehl"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-0c5994c8"
+    },
+    {
+      "id": "faculty-pitt-cs-e47a8796",
+      "persisted_name": "Bruce Childers",
+      "public_name": "Bruce Childers",
+      "public_rank": "Professor and Dean, SCI",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/bruce-childers",
+      "actionable": true,
+      "headings": [
+        "Bruce Childers"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/bruce-childers"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-e47a8796"
+    },
+    {
+      "id": "faculty-pitt-cs-c488d791",
+      "persisted_name": "Panos Chrysanthis",
+      "public_name": "Panos Chrysanthis",
+      "public_rank": "Professor and Associate Dean for Graduate Studies, SCI",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/panos-chrysanthis",
+      "actionable": true,
+      "headings": [
+        "Panos Chrysanthis"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/panos-chrysanthis"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-c488d791"
+    },
+    {
+      "id": "faculty-pitt-cs-6314125a",
+      "persisted_name": "Paul Cohen",
+      "public_name": "Paul Cohen",
+      "public_rank": "Professor and Director, MOMACS",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/paul-cohen",
+      "actionable": true,
+      "headings": [
+        "Paul Cohen"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/paul-cohen"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-6314125a"
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "persisted_name": "Nicholas Farnan",
+      "public_name": "Nicholas Farnan",
+      "public_rank": "Teaching Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/nicholas-farnan",
+      "actionable": true,
+      "headings": [
+        "Nicholas Farnan"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/nicholas-farnan"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-2ba882dd"
+    },
+    {
+      "id": "faculty-pitt-cs-af900fe5",
+      "persisted_name": "William Garrison",
+      "public_name": "William Garrison",
+      "public_rank": "Teaching Associate Professor and Associate Dean for Undergraduate Studies, SCI",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/william-garrison",
+      "actionable": true,
+      "headings": [
+        "William Garrison"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/william-garrison"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-af900fe5"
+    },
+    {
+      "id": "faculty-pitt-cs-19abea97",
+      "persisted_name": "Milos Hauskrecht",
+      "public_name": "Milos Hauskrecht",
+      "public_rank": "Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/milos-hauskrecht",
+      "actionable": true,
+      "headings": [
+        "Milos Hauskrecht"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/milos-hauskrecht"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-19abea97"
+    },
+    {
+      "id": "faculty-pitt-cs-fa134731",
+      "persisted_name": "Timothy Hoffman",
+      "public_name": "Timothy Hoffman",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/timothy-hoffman",
+      "actionable": true,
+      "headings": [
+        "Timothy Hoffman"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/timothy-hoffman"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-fa134731"
+    },
+    {
+      "id": "faculty-pitt-cs-bb6c586d",
+      "persisted_name": "Xiaowei Jia",
+      "public_name": "Xiaowei Jia",
+      "public_rank": "Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/xiaowei-jia",
+      "actionable": true,
+      "headings": [
+        "Xiaowei Jia"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/xiaowei-jia"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-bb6c586d"
+    },
+    {
+      "id": "faculty-pitt-cs-904e37e9",
+      "persisted_name": "Sherif Khattab",
+      "public_name": "Sherif Khattab",
+      "public_rank": "Teaching Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/sherif-khattab",
+      "actionable": true,
+      "headings": [
+        "Sherif Khattab"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/sherif-khattab"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-904e37e9"
+    },
+    {
+      "id": "faculty-pitt-cs-a2c06c2d",
+      "persisted_name": "Thumtongsak Kosiyatrkul",
+      "public_name": "Thumtongsak Kosiyatrkul",
+      "public_rank": "Teaching Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/thumtongsak-kosiyatrkul",
+      "actionable": true,
+      "headings": [
+        "Thumtongsak Kosiyatrkul"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/thumtongsak-kosiyatrkul"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-a2c06c2d"
+    },
+    {
+      "id": "faculty-pitt-cs-4adac42c",
+      "persisted_name": "Adriana Kovashka",
+      "public_name": "Adriana Kovashka",
+      "public_rank": "Associate Professor and Department Chair",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/adriana-kovashka",
+      "actionable": true,
+      "headings": [
+        "Adriana Kovashka"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/adriana-kovashka"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-4adac42c"
+    },
+    {
+      "id": "faculty-pitt-cs-3f53f93b",
+      "persisted_name": "Alexandros Labrinidis",
+      "public_name": "Alexandros Labrinidis",
+      "public_rank": "Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/alexandros-labrinidis",
+      "actionable": true,
+      "headings": [
+        "Alexandros Labrinidis"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/alexandros-labrinidis"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-3f53f93b"
+    },
+    {
+      "id": "faculty-pitt-cs-d11d4a3e",
+      "persisted_name": "John Lange",
+      "public_name": "John Lange",
+      "public_rank": "Associate Professor (on leave at ORNL)",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/john-lange",
+      "actionable": true,
+      "headings": [
+        "John Lange"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/john-lange"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-d11d4a3e"
+    },
+    {
+      "id": "faculty-pitt-cs-3af1e2c9",
+      "persisted_name": "Adam Lee",
+      "public_name": "Adam Lee",
+      "public_rank": "Professor and Vice Provost for Undergraduate Studies",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/adam-lee",
+      "actionable": true,
+      "headings": [
+        "Adam Lee"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/adam-lee"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-3af1e2c9"
+    },
+    {
+      "id": "faculty-pitt-cs-5d973318",
+      "persisted_name": "Lorraine (Xiang) Li",
+      "public_name": "Lorraine (Xiang) Li",
+      "public_rank": "Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/lorraine-xiang-li",
+      "actionable": true,
+      "headings": [
+        "Lorraine (Xiang) Li"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/lorraine-xiang-li"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-5d973318"
+    },
+    {
+      "id": "faculty-pitt-cs-4cb65ded",
+      "persisted_name": "Diane Litman",
+      "public_name": "Diane Litman",
+      "public_rank": "Professor; Senior Scientist, LRDC; Associate Dean for Mentoring and Development, SCI",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/diane-litman",
+      "actionable": true,
+      "headings": [
+        "Diane Litman"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/diane-litman"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-4cb65ded"
+    },
+    {
+      "id": "faculty-pitt-cs-484b0709",
+      "persisted_name": "Daniel Mosse",
+      "public_name": "Daniel Mosse",
+      "public_rank": "Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/daniel-mosse",
+      "actionable": true,
+      "headings": [
+        "Daniel Mosse"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/daniel-mosse"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-484b0709"
+    },
+    {
+      "id": "faculty-pitt-cs-dff77505",
+      "persisted_name": "Luis Oliveira",
+      "public_name": "Luis Oliveira",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/luis-oliveira",
+      "actionable": true,
+      "headings": [
+        "Luis Oliveira"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/luis-oliveira"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-dff77505"
+    },
+    {
+      "id": "faculty-pitt-cs-74aa7171",
+      "persisted_name": "Kirk Pruhs",
+      "public_name": "Kirk Pruhs",
+      "public_rank": "Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/kirk-pruhs",
+      "actionable": true,
+      "headings": [
+        "Kirk Pruhs"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/kirk-pruhs"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-74aa7171"
+    },
+    {
+      "id": "faculty-pitt-cs-82cfa3dd",
+      "persisted_name": "John Ramirez",
+      "public_name": "John Ramirez",
+      "public_rank": "Teaching Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/john-ramirez",
+      "actionable": true,
+      "headings": [
+        "John Ramirez"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/john-ramirez"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-82cfa3dd"
+    },
+    {
+      "id": "faculty-pitt-cs-51874e7c",
+      "persisted_name": "Rob Rutenbar",
+      "public_name": "Rob Rutenbar",
+      "public_rank": "Distinguished Professor and Senior Vice Chancellor for Research",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/rob-rutenbar",
+      "actionable": true,
+      "headings": [
+        "Rob Rutenbar"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/rob-rutenbar"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-51874e7c"
+    },
+    {
+      "id": "faculty-pitt-cs-e643e15e",
+      "persisted_name": "Ryan Shi",
+      "public_name": "Ryan Shi",
+      "public_rank": "Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/ryan-shi",
+      "actionable": true,
+      "headings": [
+        "Ryan Shi"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/ryan-shi"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-e643e15e"
+    },
+    {
+      "id": "faculty-pitt-cs-ca9eac3e",
+      "persisted_name": "Patrick Skeba",
+      "public_name": "Patrick Skeba",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/patrick-skeba",
+      "actionable": true,
+      "headings": [
+        "Patrick Skeba"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/patrick-skeba"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-ca9eac3e"
+    },
+    {
+      "id": "faculty-pitt-cs-8e9a39d1",
+      "persisted_name": "Xulong Tang",
+      "public_name": "Xulong Tang",
+      "public_rank": "Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/xulong-tang",
+      "actionable": true,
+      "headings": [
+        "Xulong Tang"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/xulong-tang"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-8e9a39d1"
+    },
+    {
+      "id": "faculty-pitt-cs-0a7196f1",
+      "persisted_name": "Erin Walker",
+      "public_name": "Erin Walker",
+      "public_rank": "Associate Professor; Research Scientist, LRDC; Associate Dean for Research, SCI",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/erin-walker",
+      "actionable": true,
+      "headings": [
+        "Erin Walker"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/erin-walker"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-0a7196f1"
+    },
+    {
+      "id": "faculty-pitt-cs-1c364170",
+      "persisted_name": "Michael Miller Yoder",
+      "public_name": "Michael Miller Yoder",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/michael-miller-yoder-0",
+      "actionable": true,
+      "headings": [
+        "Michael Miller Yoder"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/michael-miller-yoder-0"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-1c364170"
+    },
+    {
+      "id": "faculty-pitt-cs-1e95f188",
+      "persisted_name": "Youtao Zhang",
+      "public_name": "Youtao Zhang",
+      "public_rank": "Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/youtao-zhang",
+      "actionable": true,
+      "headings": [
+        "Youtao Zhang"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/youtao-zhang"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-1e95f188"
+    },
+    {
+      "id": "faculty-pitt-cs-a32cf06c",
+      "persisted_name": "Emma Jordan",
+      "public_name": "Emma Jordan",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.pitt.edu/people/full-time-faculty/emma-jordan",
+      "actionable": true,
+      "headings": [
+        "Emma Jordan"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.pitt.edu/people/full-time-faculty/emma-jordan"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-cs-a32cf06c"
+    },
+    {
+      "id": "faculty-pitt-sci-6f929413",
+      "persisted_name": "Aakash Gautam",
+      "public_name": "Aakash Gautam",
+      "public_rank": "Assistant Professor, Department of Information Culture and Data Stewardship, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/aakash-gautam",
+      "actionable": true,
+      "headings": [
+        "Aakash Gautam"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/aakash-gautam"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-6f929413"
+    },
+    {
+      "id": "faculty-pitt-sci-754eb010",
+      "persisted_name": "Stephen Lee",
+      "public_name": "Stephen Lee",
+      "public_rank": "Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/stephen-lee",
+      "actionable": true,
+      "headings": [
+        "Stephen Lee"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/stephen-lee"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-754eb010"
+    },
+    {
+      "id": "faculty-pitt-sci-c98f98a1",
+      "persisted_name": "Junyu Liu",
+      "public_name": "Junyu Liu",
+      "public_rank": "Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/junyu-liu",
+      "actionable": true,
+      "headings": [
+        "Junyu Liu"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/junyu-liu"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-c98f98a1"
+    },
+    {
+      "id": "faculty-pitt-sci-68e4dc1f",
+      "persisted_name": "Nils Murrugarra Llerena",
+      "public_name": "Nils Murrugarra Llerena",
+      "public_rank": "Teaching Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/nils-murrugarra-llerena",
+      "actionable": true,
+      "headings": [
+        "Nils Murrugarra Llerena"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/nils-murrugarra-llerena"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-68e4dc1f"
+    },
+    {
+      "id": "faculty-pitt-sci-1a259c98",
+      "persisted_name": "Longfei Shangguan",
+      "public_name": "Longfei Shangguan",
+      "public_rank": "Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+      "actionable": true,
+      "headings": [
+        "Longfei Shangguan"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-1a259c98"
+    },
+    {
+      "id": "faculty-pitt-sci-7f74cde0",
+      "persisted_name": "Nadine von Frankenberg",
+      "public_name": "Nadine von Frankenberg",
+      "public_rank": "Teaching Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/nadine-von-frankenberg",
+      "actionable": true,
+      "headings": [
+        "Nadine von Frankenberg"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/nadine-von-frankenberg"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-7f74cde0"
+    },
+    {
+      "id": "faculty-pitt-sci-7856039c",
+      "persisted_name": "Brian T. Nixon",
+      "public_name": "Brian T. Nixon",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/brian-t-nixon",
+      "actionable": true,
+      "headings": [
+        "Brian T. Nixon"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/brian-t-nixon"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-7856039c"
+    },
+    {
+      "id": "faculty-rutgers-cs-bb6c586d",
+      "persisted_name": "Xiaowei Jia",
+      "public_name": "Xiaowei Jia",
+      "public_rank": "Associate Professor",
+      "public_department": "Department of Computer Science",
+      "public_url": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia",
+      "actionable": true,
+      "headings": [
+        "Xiaowei Jia"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-rutgers-cs-bb6c586d"
+    },
+    {
+      "id": "faculty-pitt-sci-2be4c8fe",
+      "persisted_name": "Amy Babay",
+      "public_name": "Amy Babay",
+      "public_rank": "Assistant Professor, Department of Informatics and Networked Systems, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/amy-babay-0",
+      "actionable": true,
+      "headings": [
+        "Amy Babay"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/amy-babay-0"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-2be4c8fe"
+    },
+    {
+      "id": "faculty-pitt-sci-14a56204",
+      "persisted_name": "Marina Barsky",
+      "public_name": "Marina Barsky",
+      "public_rank": "Teaching Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/marina-barsky",
+      "actionable": true,
+      "headings": [
+        "Marina Barsky"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/marina-barsky"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-14a56204"
+    },
+    {
+      "id": "faculty-pitt-sci-69cd00cb",
+      "persisted_name": "Bruce R. Childers",
+      "public_name": "Bruce R. Childers",
+      "public_rank": "Dean, Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/bruce-r-childers",
+      "actionable": true,
+      "headings": [
+        "Bruce R. Childers"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/bruce-r-childers"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-69cd00cb"
+    },
+    {
+      "id": "faculty-pitt-sci-2572b392",
+      "persisted_name": "Nicholas L. Farnan",
+      "public_name": "Nicholas L. Farnan",
+      "public_rank": "Teaching Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/nicholas-l-farnan",
+      "actionable": true,
+      "headings": [
+        "Nicholas L. Farnan"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/nicholas-l-farnan"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-2572b392"
+    },
+    {
+      "id": "faculty-pitt-sci-4f79f9e2",
+      "persisted_name": "William C. Garrison",
+      "public_name": "William C. Garrison",
+      "public_rank": "Associate Dean for Undergraduate Studies, Teaching Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/william-c-garrison",
+      "actionable": true,
+      "headings": [
+        "William C. Garrison"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/william-c-garrison"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-4f79f9e2"
+    },
+    {
+      "id": "faculty-pitt-sci-8fbba638",
+      "persisted_name": "Timothy L. Hoffman",
+      "public_name": "Timothy L. Hoffman",
+      "public_rank": "Teaching Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/timothy-l-hoffman",
+      "actionable": true,
+      "headings": [
+        "Timothy L. Hoffman"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/timothy-l-hoffman"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-8fbba638"
+    },
+    {
+      "id": "faculty-pitt-sci-7726e23a",
+      "persisted_name": "Emma Jordan",
+      "public_name": "Emma Jordan",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/emma-jordan",
+      "actionable": true,
+      "headings": [
+        "Emma Jordan"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/emma-jordan"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-7726e23a"
+    },
+    {
+      "id": "faculty-pitt-sci-28c8e3a8",
+      "persisted_name": "Sherif Khattab",
+      "public_name": "Sherif Khattab",
+      "public_rank": "Teaching Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/sherif-khattab",
+      "actionable": true,
+      "headings": [
+        "Sherif Khattab"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/sherif-khattab"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-28c8e3a8"
+    },
+    {
+      "id": "faculty-pitt-sci-bb87d09b",
+      "persisted_name": "Thumrongsak Kosiyatrakul",
+      "public_name": "Thumrongsak Kosiyatrakul",
+      "public_rank": "Teaching Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul",
+      "actionable": true,
+      "headings": [
+        "Thumrongsak Kosiyatrakul"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/thumrongsak-kosiyatrkul"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-bb87d09b"
+    },
+    {
+      "id": "faculty-pitt-sci-b90f8e25",
+      "persisted_name": "Adriana I. Kovashka",
+      "public_name": "Adriana I. Kovashka",
+      "public_rank": "Chair, Department of Computer Science, Associate Professor, Intelligent Systems Program",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/adriana-i-kovashka",
+      "actionable": true,
+      "headings": [
+        "Adriana I. Kovashka"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/adriana-i-kovashka"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-b90f8e25"
+    },
+    {
+      "id": "faculty-pitt-sci-e43bbb6b",
+      "persisted_name": "John R. Lange",
+      "public_name": "John R. Lange",
+      "public_rank": "Associate Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/john-r-lange",
+      "actionable": true,
+      "headings": [
+        "John R. Lange"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/john-r-lange"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-e43bbb6b"
+    },
+    {
+      "id": "faculty-pitt-sci-70eaa1ec",
+      "persisted_name": "Adam J. Lee",
+      "public_name": "Adam J. Lee",
+      "public_rank": "Vice Provost for Undergraduate Studies, Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/adam-j-lee",
+      "actionable": true,
+      "headings": [
+        "Adam J. Lee"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/adam-j-lee"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-70eaa1ec"
+    },
+    {
+      "id": "faculty-pitt-sci-a942a486",
+      "persisted_name": "Lorraine (Xiang) Li",
+      "public_name": "Lorraine (Xiang) Li",
+      "public_rank": "Assistant Professor, Department of Computer Science, Intelligent Systems Program",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/lorraine-xiang-li",
+      "actionable": true,
+      "headings": [
+        "Lorraine (Xiang) Li"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/lorraine-xiang-li"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-a942a486"
+    },
+    {
+      "id": "faculty-pitt-sci-4589e830",
+      "persisted_name": "Luis de Oliveira",
+      "public_name": "Luis de Oliveira",
+      "public_rank": "Teaching Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/luis-de-oliveira",
+      "actionable": true,
+      "headings": [
+        "Luis de Oliveira"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/luis-de-oliveira"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-4589e830"
+    },
+    {
+      "id": "faculty-pitt-sci-59ad971d",
+      "persisted_name": "Kirk R. Pruhs",
+      "public_name": "Kirk R. Pruhs",
+      "public_rank": "Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/kirk-r-pruhs",
+      "actionable": true,
+      "headings": [
+        "Kirk R. Pruhs"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/kirk-r-pruhs"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-59ad971d"
+    },
+    {
+      "id": "faculty-pitt-sci-32611613",
+      "persisted_name": "John C. Ramirez",
+      "public_name": "John C. Ramirez",
+      "public_rank": "Director, Undergraduate program in Computer Science, Teaching Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/john-c-ramirez",
+      "actionable": true,
+      "headings": [
+        "John C. Ramirez"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/john-c-ramirez"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-32611613"
+    },
+    {
+      "id": "faculty-pitt-sci-29d93956",
+      "persisted_name": "Rob A. Rutenbar",
+      "public_name": "Rob A. Rutenbar",
+      "public_rank": "Senior Vice Chancellor of Research, University of Pittsburgh, Distinguished Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/rob-rutenbar",
+      "actionable": true,
+      "headings": [
+        "Rob A. Rutenbar"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/rob-rutenbar"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-29d93956"
+    },
+    {
+      "id": "faculty-pitt-sci-812bd33b",
+      "persisted_name": "Ryan Shi",
+      "public_name": "Ryan Shi",
+      "public_rank": "Assistant Professor, Department of Computer Science, Intelligent Systems Program",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/ryan-shi",
+      "actionable": true,
+      "headings": [
+        "Ryan Shi"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/ryan-shi"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-812bd33b"
+    },
+    {
+      "id": "faculty-pitt-sci-7fd7738f",
+      "persisted_name": "Patrick Skeba",
+      "public_name": "Patrick Skeba",
+      "public_rank": "Teaching Assistant Professor, Department of Computer Science",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/patrick-skeba",
+      "actionable": true,
+      "headings": [
+        "Patrick Skeba"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/patrick-skeba"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-7fd7738f"
+    },
+    {
+      "id": "faculty-pitt-sci-f9905a2c",
+      "persisted_name": "Erin Walker",
+      "public_name": "Erin Walker",
+      "public_rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/erin-walker",
+      "actionable": true,
+      "headings": [
+        "Erin Walker"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/erin-walker"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-f9905a2c"
+    },
+    {
+      "id": "faculty-pitt-sci-5e1411ba",
+      "persisted_name": "Michael Miller Yoder",
+      "public_name": "Michael Miller Yoder",
+      "public_rank": "Teaching Assistant Professor",
+      "public_department": "School of Computing and Information",
+      "public_url": "https://www.sci.pitt.edu/people/michael-miller-yoder",
+      "actionable": true,
+      "headings": [
+        "Michael Miller Yoder"
+      ],
+      "links": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.sci.pitt.edu/people/michael-miller-yoder"
+        }
+      ],
+      "product_url": "https://joinalab.com/opportunities/faculty-pitt-sci-5e1411ba"
+    }
+  ]
+}

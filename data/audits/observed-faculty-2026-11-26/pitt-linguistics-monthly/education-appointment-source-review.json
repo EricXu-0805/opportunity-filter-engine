@@ -1,0 +1,59 @@
+{
+  "person": "Richard Donato",
+  "source_record": "faculty-pitt-ling-84276229",
+  "school_tables": [
+    {
+      "url": "https://www.app.education.pitt.edu/people/faculty#:~:text=Donato%2C%20Richard",
+      "source_title": "School of Education Faculty and Instructors",
+      "row_number_in_text_view": 164,
+      "row_identity": "Donato, Richard",
+      "classification": "Emeritus Faculty",
+      "unit": "TLL",
+      "text_view_source_age_at_2026_11_26": "two weeks"
+    },
+    {
+      "url": "https://app.education.pitt.edu/People/ByDept#:~:text=Donato%2C%20Richard",
+      "source_title": "School of Education Employees by Department",
+      "row_number_in_text_view": 497,
+      "row_identity": "Donato, Richard",
+      "classification": "Emeritus Faculty",
+      "text_view_source_age_at_2026_11_26": "one week"
+    },
+    {
+      "url": "https://app.education.pitt.edu/people/index#:~:text=Donato%2C%20Richard",
+      "source_title": "School of Education Directory by Name",
+      "row_number_in_text_view": 235,
+      "row_identity": "Donato, Richard",
+      "classification": "Emeritus Faculty",
+      "unit": "TLL",
+      "text_view_source_age_at_2026_11_26": "one month"
+    }
+  ],
+  "additional_observation": {
+    "current_campus_roster": "https://www.iise.pitt.edu/people/iise-emeritus-faculty",
+    "current_classification": "IISE Emeritus Faculty",
+    "named_person_page": "https://www.iise.pitt.edu/people/richard-donato",
+    "note": "The individual IISE biography also reports his Research Fellow affiliation; that biography alone does not establish his School of Education faculty status."
+  },
+  "fresh_hosted_direct_read": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889571623",
+    "checked_at": "2026-11-26T20:14:36.422850+00:00",
+    "offices": [
+      {
+        "url": "https://www.app.education.pitt.edu/people/faculty",
+        "http": 403,
+        "rows": []
+      },
+      {
+        "url": "https://app.education.pitt.edu/People/ByDept",
+        "http": 403,
+        "rows": []
+      },
+      {
+        "url": "https://app.education.pitt.edu/people/index",
+        "http": 403,
+        "rows": []
+      }
+    ]
+  }
+}
