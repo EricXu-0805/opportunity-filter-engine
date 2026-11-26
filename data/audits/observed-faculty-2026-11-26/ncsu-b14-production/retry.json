@@ -1,0 +1,63 @@
+{
+  "start": "2026-11-26T19:30:58.107313+00:00",
+  "end": "2026-11-26T19:31:06.962242+00:00",
+  "initial_services": [
+    "bdb523bec33c71f682e0d895f06a8bad859863b6",
+    "bdb523bec33c71f682e0d895f06a8bad859863b6"
+  ],
+  "final_services": [
+    "bdb523bec33c71f682e0d895f06a8bad859863b6",
+    "bdb523bec33c71f682e0d895f06a8bad859863b6"
+  ],
+  "retried": {
+    "api": {
+      "faculty-ncsu-chass-ae3b88dd": {
+        "id": "faculty-ncsu-chass-ae3b88dd",
+        "path": "/api/opportunities/faculty-ncsu-chass-ae3b88dd",
+        "rank_source_matches": true,
+        "actionable": true,
+        "passed": true
+      },
+      "faculty-ncsu-chass-b1ac962a": {
+        "id": "faculty-ncsu-chass-b1ac962a",
+        "path": "/api/opportunities/faculty-ncsu-chass-b1ac962a",
+        "rank_source_matches": true,
+        "actionable": true,
+        "passed": true
+      },
+      "faculty-ncsu-chass-b2e752bd": {
+        "id": "faculty-ncsu-chass-b2e752bd",
+        "path": "/api/opportunities/faculty-ncsu-chass-b2e752bd",
+        "rank_source_matches": true,
+        "actionable": true,
+        "passed": true
+      },
+      "faculty-ncsu-chass-b9ecb2db": {
+        "id": "faculty-ncsu-chass-b9ecb2db",
+        "path": "/api/opportunities/faculty-ncsu-chass-b9ecb2db",
+        "rank_source_matches": true,
+        "actionable": true,
+        "passed": true
+      }
+    },
+    "pages": {}
+  },
+  "requests": [
+    {
+      "path": "/api/opportunities/faculty-ncsu-chass-ae3b88dd",
+      "http": 200
+    },
+    {
+      "path": "/api/opportunities/faculty-ncsu-chass-b1ac962a",
+      "http": 200
+    },
+    {
+      "path": "/api/opportunities/faculty-ncsu-chass-b2e752bd",
+      "http": 200
+    },
+    {
+      "path": "/api/opportunities/faculty-ncsu-chass-b9ecb2db",
+      "http": 200
+    }
+  ]
+}
