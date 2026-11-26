@@ -2,8 +2,8 @@
   "date": "2026-11-26",
   "item": "M17",
   "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1376",
-  "feature_commit": "cd28aa79a298c44d172aab25a42a5153e1002473",
-  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45818516665",
+  "feature_commit": "ef6fdc6f9a6f4452bd22de3938fc3266ad072970",
+  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820862026",
   "before_fix_production": {
     "site": "https://joinalab.com",
     "request": "POST /api/matches/view?llm=false",
@@ -28,7 +28,9 @@
     "experience_receipts": [
       null,
       null
-    ]
+    ],
+    "university_source": "https://sib.illinois.edu/directory/profile/mjlara",
+    "university_check": "HTTP 200; the named profile lists GIS and Society under Research Interests."
   },
   "isolated_exact_corpus_replay": {
     "profile": "Synthetic junior Integrative Biology profile, beginner, manual work originally confirmed by its author. Same input and target for each state.",
@@ -70,6 +72,12 @@
           56.8,
           56.8,
           56.8
+        ],
+        "current_source_check": "Historical corpus replay only. The person URL now returns 404; the current faculty roster does not list this person. The department still describes the past application of GIS on its archaeology research page. Referred to directory maintenance; no departure decision assumed.",
+        "current_sources": [
+          "https://anthro.illinois.edu/directory/profile/britch",
+          "https://anthro.illinois.edu/directory/faculty",
+          "https://anthro.illinois.edu/research/archaeology"
         ]
       },
       "faculty-ucb-cee-30f276d1": {
@@ -95,8 +103,18 @@
     "date_and_actionability": "Corpus figures are before requester-specific campus, release, date, and eligibility filters. Each actual match still uses the ordinary visible universe."
   },
   "end_to_end": {
-    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45818677731",
-    "status": "pending"
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822446353",
+    "status": "pending",
+    "earlier_observations": {
+      "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45819966106",
+      "tested": [
+        "Recovered and read the explicitly confirmed Positions.csv entry from real GoTrue and PostgREST in another Chromium context.",
+        "Matching ranked the named-method target higher; a second target and eligibility did not change.",
+        "Three free variant bodies and their source receipts reproduced the whole confirmed job, employer, dates, duties and result.",
+        "After explicit rejection, a new Chromium context read the lower baseline score and no reference to the withdrawn job."
+      ],
+      "remaining": "Requesting new variants after rejection did not finish in that run; the final assertion was not reached."
+    }
   },
   "production_acceptance": "pending"
 }
