@@ -145,8 +145,11 @@ _NATSCI_PROFILE = "https://directory.natsci.msu.edu/directory/Profiles/Person/"
 # require professor|chair already excludes Graduate Student / Postdoc / Research
 # Associate / staff titles; the drop list removes non-ladder professor variants.
 # "Fixed Term …Professor" (teaching faculty) is intentionally KEPT.
-_NATSCI_LADDER = {"require": r"professor|chair",
-                  "drop": r"emerit|adjunct|visiting"}
+_NATSCI_LADDER = {
+    "require": (r"professor|chair|^(?:Red Cedar Distinguished(?: Asc)?|"
+                r"Geological Sciences Endow|Geological Sci Endow Assc) Prof$"),
+    "drop": r"emerit|adjunct|visiting",
+}
 
 
 def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
