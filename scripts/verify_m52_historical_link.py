@@ -68,11 +68,23 @@ async def main():
         await expect(recipient.locator('#research_interests')).to_have_value('Private recipient interests')
         await recipient.goto(url,wait_until='domcontentloaded')
         await expect(recipient.locator('#research_interests')).to_have_value('Original materials QA')
+        writes=[]
+        def observe(response):
+            if response.request.method=='POST' and 'commit_profile_patch_cas' in response.url:
+                data=response.request.post_data_json
+                writes.append((response.status,data.get('p_expected_revision'),sorted(data.get('p_patch',{}))))
+        recipient.on('response',observe)
+        print('Old URL contains only the public fields; independent edit did not change old link; views/dismissal made zero writes.',flush=True)
         await recipient.get_by_test_id('generate-matches').click(timeout=40000)
         for _ in range(160):
             r=row(b)
             if r['profile_data']['research_interests']=='Original materials QA':break
             await asyncio.sleep(.2)
+        if r['profile_data']['research_interests']!='Original materials QA':
+            print('Recipient diagnostics:',recipient.url.split('?')[0],writes,
+              await recipient.locator('[role=status],[role=alert]').all_inner_texts(),
+              await recipient.get_by_test_id('conflict-keep-mine').count(),flush=True)
+            print('Recipient synthetic displayed school/profile:', await recipient.locator('#research_interests').input_value() if await recipient.locator('#research_interests').count() else None,flush=True)
         assert r['profile_data']['research_interests']=='Original materials QA'
         assert r['profile_data']['home_school']=='purdue' and r['profile_data']['name']=='Recipient QA'
         assert r['profile_data']['resume_text']=='private résumé text from Recipient QA'
