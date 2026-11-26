@@ -203,6 +203,20 @@ describe('OpportunityHeader MVP release surface', () => {
   });
 
   it.each([
+    [undefined, true],
+    ['unavailable', true],
+    ['sign_in_required', false],
+    ['revealed', false],
+  ] as const)('emphasizes the individual faculty page when contact is unavailable (%s)', (status, primary) => {
+    const person = 'https://example.edu/profiles/example-professor';
+    renderHeader({ opp: facultyOpp({ url: person, contact_email_status: status }) });
+    const link = screen.getByRole('link', { name: 'detail.viewFacultyProfile' });
+    expect(link).toHaveAttribute('href', person);
+    expect(link.classList.contains('bg-indigo-600')).toBe(primary);
+    expect(screen.getByRole('button', { name: 'detail.draftEmail' })).toBeInTheDocument();
+  });
+
+  it.each([
     [undefined, 'https://chass.ncsu.edu/people/jrclayt2/'],
     ['https://chass.ncsu.edu/group/faculty/', undefined],
   ])('offers only the reviewed directory for an inactive contact whose profile belongs to someone else', (directory, oldUrl) => {

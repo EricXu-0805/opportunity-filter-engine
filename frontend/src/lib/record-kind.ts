@@ -46,8 +46,12 @@ export function opportunityRecordKind(
 }
 
 /** The source confirms a way to inquire. It says nothing about a vacancy. */
+export function hasFacultyInquiryContact(opp: { contact_email_status?: string }): boolean {
+  return opp.contact_email_status === 'sign_in_required' || opp.contact_email_status === 'revealed';
+}
+
 export function facultyOutreachLabel(opp: { contact_email_status?: string }): string {
-  return opp.contact_email_status === 'sign_in_required' || opp.contact_email_status === 'revealed'
+  return hasFacultyInquiryContact(opp)
     ? 'card.facultyInquiryUnconfirmed'
     : 'card.facultyContactUnconfirmed';
 }
