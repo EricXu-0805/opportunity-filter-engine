@@ -1,0 +1,61 @@
+{
+  "release_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "generated_at": "2026-11-26T13:52:36.172878+00:00",
+  "summary": {
+    "passed": 5,
+    "failed": 4,
+    "blocked": 7,
+    "cannot_verify": 0,
+    "unverified": 6,
+    "skipped": 4,
+    "not_run": 0,
+    "not_applicable": 2,
+    "release_blocking": 21
+  },
+  "final_decision": "NO-GO",
+  "freshness_percent": 83.91,
+  "freshness_threshold": 95.0,
+  "fully_stale_schools": [],
+  "active_records": 137000,
+  "gate_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45833161396",
+  "merge_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912",
+  "main_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45832410887",
+  "deployment_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/d951716f1f412b82da5f46fb2b772925df631849/data/audits/maintenance-2026-11-26/seventh-release-production.json",
+  "gates": [
+    {
+      "gate": "ledger_currency",
+      "status": "FAIL",
+      "detail": "committed ledger describes aaab34b3, candidate is 77603b9e (1870 commits behind): a verdict from another SHA is not evidence about this one"
+    },
+    {
+      "gate": "corpus",
+      "status": "PASS",
+      "detail": "149775 records across 117 shards"
+    },
+    {
+      "gate": "corpus_freshness",
+      "status": "FAIL",
+      "detail": "83.91% of 137,000 active records were re-observed within 14d, below the 95.0% floor; 2 school(s) with a fresh record have no faculty record re-observed within 14d: colby, haverford"
+    },
+    {
+      "gate": "no_fully_stale_school",
+      "status": "FAIL",
+      "detail": "2 school(s) have no fresh source at all: colby, haverford"
+    },
+    {
+      "gate": "truthfulness",
+      "status": "FAIL",
+      "detail": "decision='NO-GO'"
+    },
+    {
+      "gate": "flag_parity",
+      "status": "PASS",
+      "detail": "13 flags aligned in name and value"
+    },
+    {
+      "gate": "release_record",
+      "status": "PASS",
+      "detail": "backend and frontend both serve 77603b9e with shard commit d50eb004 and 13 flags aligned in name and value"
+    }
+  ]
+}
