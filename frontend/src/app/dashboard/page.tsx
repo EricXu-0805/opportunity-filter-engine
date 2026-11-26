@@ -23,6 +23,8 @@ import PushToggle from '@/components/PushToggle';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import { getShortlistOpportunities, getStats } from '@/lib/api';
+import { usePrivateImportList } from '@/lib/use-private-import-list';
+import { useSavedImportCount } from '@/lib/use-saved-import-count';
 import { useCustomImportStorageState, type CustomImport } from '@/lib/custom-imports';
 import { daysUntil, opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -152,6 +154,8 @@ function browserDeadlines(entries: CustomImport[]): FavoriteDeadline[] {
 export default function DashboardPage() {
   const { t } = useT();
   const customStorage = useCustomImportStorageState();
+  const accountImports = usePrivateImportList();
+  const importCount = useSavedImportCount(accountImports.state, customStorage.entries);
   const [saved, setSaved] = useState<SavedState>({ status: 'loading', count: 0 });
   const [deadlines, setDeadlines] = useState<DeadlineState>({
     status: 'loading',
@@ -437,7 +441,10 @@ export default function DashboardPage() {
     };
   }, [reloadNonce]);
 
-  const retry = () => setReloadNonce((n) => n + 1);
+  const retry = () => {
+    setReloadNonce(n => n + 1);
+    void accountImports.refresh();
+  };
 
   // One list, so a status added to the tracker cannot be missed here. It was:
   // migration 024 introduced 'contacted' precisely so a confirmed cold-email
@@ -456,6 +463,7 @@ export default function DashboardPage() {
   // /favorites counts opportunities imported and saved in this browser beside
   // account favorites, and hides its count while that storage is unreadable.
   const browserSaved = customStorage.status === 'ready' ? customStorage.entries.length : null;
+  const savedStatus = saved.status === 'ready' ? importCount.status : saved.status;
   const browserDeadlineItems = customStorage.status === 'ready' ? browserDeadlines(customStorage.entries) : [];
 
   return (
@@ -485,8 +493,8 @@ export default function DashboardPage() {
               regression away. A real 0 must still render as 0. */}
           <StatCard
             testId="saved-summary"
-            state={saved.status}
-            value={browserSaved === null ? null : saved.count + browserSaved}
+            state={savedStatus}
+            value={browserSaved === null ? null : saved.count + browserSaved + importCount.cloudOnly}
             label={t('dashboard.summary.saved')}
             color="text-amber-600"
             t={t}
@@ -504,7 +512,7 @@ export default function DashboardPage() {
           ))}
         </div>
         <div className="mt-3 space-y-1">
-          {saved.status === 'error' && (
+          {savedStatus === 'error' && (
             <p className="flex items-center gap-2 text-xs text-red-600">
               {t('dashboard.saved.errorTitle')}
               <RetryButton onClick={retry} t={t} />
@@ -530,6 +538,7 @@ export default function DashboardPage() {
             browserItems={browserDeadlineItems}
             savedCount={saved}
             browserSaved={browserSaved}
+            accountDatesUnknown={importCount.status !== 'ready' || importCount.cloudOnly > 0}
             onRetry={retry}
             t={t}
           />
@@ -856,6 +865,7 @@ function DeadlineContent({
   browserItems,
   savedCount,
   browserSaved,
+  accountDatesUnknown,
   onRetry,
   t,
 }: {
@@ -865,6 +875,7 @@ function DeadlineContent({
   savedCount: SavedState;
   /** Opportunities saved in this browser; null while that storage is unreadable. */
   browserSaved: number | null;
+  accountDatesUnknown: boolean;
   onRetry: () => void;
   t: Replier;
 }) {
@@ -877,8 +888,14 @@ function DeadlineContent({
       <Link href="/favorites" className="font-semibold underline">{t('dashboard.deadlines.browserImportsLink')}</Link>
     </p>
   ) : null;
+  const accountDateNote = accountDatesUnknown ? (
+    <p className="px-6 py-3 text-xs text-gray-600">
+      {t('dashboard.deadlines.accountImportsHint')}{' '}
+      <Link href="/favorites" className="font-semibold underline">{t('privateImport.listTitle')}</Link>
+    </p>
+  ) : null;
   const items = [...state.items, ...browserItems].sort(sortDeadlines).slice(0, 8);
-  if (items.length === 0 && readWarning) return readWarning;
+  if (items.length === 0 && readWarning) return <>{readWarning}{accountDateNote}</>;
   if (items.length === 0 && state.unavailableCount > 0) {
     // Every saved item that could have shown a deadline is unresolvable.
     // Claiming "none of your saves list a deadline" here would be a
@@ -890,6 +907,7 @@ function DeadlineContent({
           messageKey="dashboard.unavailable.saved"
           t={t}
         />
+        {accountDateNote}
         <div className="px-6 py-9 text-center">
           <p className="text-xs text-gray-500">{t('dashboard.unavailable.body')}</p>
           <p className="mt-3 text-xs">
@@ -900,6 +918,7 @@ function DeadlineContent({
     );
   }
   if (items.length === 0) {
+    if (accountDateNote) return accountDateNote;
     const noSaves = savedCount.status === 'ready' && savedCount.count === 0 && browserSaved === 0;
     return (
       <div className="px-6 py-9 text-center">
@@ -925,6 +944,7 @@ function DeadlineContent({
   return (
     <>
       {readWarning}
+      {accountDateNote}
       {state.unavailableCount > 0 && (
         <UnavailableNote
           count={state.unavailableCount}

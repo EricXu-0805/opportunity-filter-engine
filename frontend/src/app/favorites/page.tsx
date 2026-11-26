@@ -12,6 +12,8 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import CustomImportStorageNotice from '@/components/CustomImportStorageNotice';
 import PrivateImportAdoptionPanel from '@/components/PrivateImportAdoptionPanel';
 import PrivateImportList from '@/components/PrivateImportList';
+import { usePrivateImportList } from '@/lib/use-private-import-list';
+import { useSavedImportCount } from '@/lib/use-saved-import-count';
 import { usePrivateImportAdoption } from '@/lib/use-private-import-adoption';
 import { captureOwnerToken } from '@/lib/identity-owner';
 import { customImportFailureKey } from '@/lib/custom-import-feedback';
@@ -101,7 +103,13 @@ export default function FavoritesPage() {
   const rawProfile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const customStorage = useCustomImportStorageState();
   const customImports = customStorage.entries;
+  const accountImports = usePrivateImportList();
+  const importCount = useSavedImportCount(accountImports.state, customImports);
   const adoption = usePrivateImportAdoption();
+  const { refresh: refreshAccountImports } = accountImports;
+  useEffect(() => {
+    if (adoption.state.status === 'saved') void refreshAccountImports();
+  }, [adoption.state.status, refreshAccountImports]);
   const [savedSearchesEpoch, setSavedSearchesEpoch] = useState(0);
   const {
     selectionMode,
@@ -232,6 +240,8 @@ export default function FavoritesPage() {
   const tailorTargetActionable = modalTargetActionable(tailorModal.id);
   const emailTargetActionable = modalTargetActionable(emailModal.id);
 
+  const savedCount = !error && customStorage.status === 'ready' && importCount.status === 'ready'
+    ? opportunities.length + unavailableCount + importCount.cloudOnly : null;
   return (
     <div className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 ${selectionMode ? 'pb-32' : ''}`}>
       <button
@@ -262,9 +272,9 @@ export default function FavoritesPage() {
         // clean; Email/Compare are omitted rather than acting on it.
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{t('favorites.title')}</h1>
-          {!error && customStorage.status === 'ready' && (
+          {savedCount !== null && (
             <p className="mt-2 text-[15px] text-gray-600">
-              {t('favorites.count', { count: opportunities.length + unavailableCount })}
+              {t('favorites.count', { count: savedCount })}
             </p>
           )}
         </div>
@@ -272,6 +282,7 @@ export default function FavoritesPage() {
         <FavoritesHeader
           opportunities={opportunities}
           serverOpportunitiesCount={serverOpportunities.length}
+          savedCount={savedCount}
           selectionMode={RELEASE_SCOPE.compare && selectionMode}
           onEnterSelection={enterSelection}
           onCancelSelection={cancelSelection}
@@ -279,7 +290,13 @@ export default function FavoritesPage() {
         />
       )}
 
-      <PrivateImportList />
+      {importCount.status === 'error' && accountImports.state.status === 'ready' && (
+        <p role="status" className="mb-3 text-sm text-amber-800">
+          {t('dashboard.saved.errorTitle')}{' '}
+          <button type="button" className="font-semibold underline" onClick={() => void accountImports.refresh()}>{t('common.retry')}</button>
+        </p>
+      )}
+      <PrivateImportList list={accountImports} />
       <PrivateImportAdoptionPanel adoption={adoption} onReread={(entry) => {
         void adoption.prepare(customImports.find(item => item.id === entry.id) ?? entry, captureOwnerToken());
       }} />
@@ -290,7 +307,7 @@ export default function FavoritesPage() {
         hasOpportunities={opportunities.length > 0}
       />
 
-      {opportunities.length === 0 && !error && unavailableCount === 0 && customStorage.status === 'ready' ? (
+      {savedCount === 0 ? (
         <FavoritesEmptyState t={t} />
       ) : (<>
         {/* The card titles are h3. The h2s above head other sections (saved

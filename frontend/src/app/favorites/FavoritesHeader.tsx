@@ -16,6 +16,7 @@ const MAX_EMAIL_ITEMS = 50;
 export interface FavoritesHeaderProps {
   opportunities: Opp[];
   serverOpportunitiesCount: number;
+  savedCount?: number | null;
   selectionMode: boolean;
   onEnterSelection: () => void;
   onCancelSelection: () => void;
@@ -25,6 +26,7 @@ export interface FavoritesHeaderProps {
 export function FavoritesHeader({
   opportunities,
   serverOpportunitiesCount,
+  savedCount = opportunities.length,
   selectionMode,
   onEnterSelection,
   onCancelSelection,
@@ -52,9 +54,9 @@ export function FavoritesHeader({
     <div className="mb-10 flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{t('favorites.title')}</h1>
-        <p className="mt-2 text-[15px] text-gray-600">
-          {opportunities.length === 0 ? t('favorites.empty') : t('favorites.count', { count: opportunities.length })}
-        </p>
+        {savedCount !== null && <p className="mt-2 text-[15px] text-gray-600">
+          {savedCount === 0 ? t('favorites.empty') : t('favorites.count', { count: savedCount })}
+        </p>}
         {selectionMode && (
           <p className="mt-1 text-[13px] text-indigo-600 font-medium">
             {t('favorites.selectionHint', { min: MIN_COMPARE, max: MAX_COMPARE })}

@@ -23,6 +23,9 @@ vi.mock('./use-compare-selection', async original => {
 });
 vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 vi.mock('@/components/SaveFavoritesAnchor', () => ({ default: () => null }));
+vi.mock('@/lib/use-private-import-list', () => ({ usePrivateImportList: () => ({
+  state: { status: 'sign_in_required', items: [], cursor: null }, refresh: vi.fn(),
+}) }));
 vi.mock('@/components/PrivateImportList', () => ({ default: () => null }));
 vi.mock('@/components/PrivateImportAdoptionPanel', () => ({ default: () => null }));
 vi.mock('./SelectionFooter', () => ({ SelectionFooter: () => null }));
