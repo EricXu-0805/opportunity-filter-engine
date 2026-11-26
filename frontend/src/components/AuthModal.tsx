@@ -55,6 +55,7 @@ import {
   type SignInOutcome,
 } from '@/lib/supabase';
 import { synchronizePushOwner, releasePushForSignOut, withPushSessionLock } from '@/lib/push';
+import { OwnerMismatchError } from '@/lib/identity-owner';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -304,6 +305,7 @@ export default function AuthModal() {
   }, [lastProvider, submitting]);
 
   const confirmSignOut = useCallback(async () => {
+    const expectedUid = authState?.user?.id ?? null;
     setSigningOut(true);
     setSignOutFailed(false);
     setRetiredPushOwner(null);
@@ -311,14 +313,14 @@ export default function AuthModal() {
       // A push row can only be deleted by its own account's session, so it
       // goes while that session still exists.
       const { release, signedOut } = await withPushSessionLock(async () => {
-        const release = await releasePushForSignOut(authState?.user?.id ?? null);
+        const release = await releasePushForSignOut(expectedUid);
         let signedOut = false;
         try {
-          signedOut = await signOutOfAccount();
+          signedOut = await signOutOfAccount(expectedUid);
           return { release, signedOut };
         } finally {
           if (!signedOut) {
-            if (release.outcome === 'browser-unsubscribed') setRetiredPushOwner(authState?.user?.id ?? null);
+            if (release.outcome === 'browser-unsubscribed') setRetiredPushOwner(expectedUid);
             await release.restore?.();
           }
         }
@@ -342,8 +344,11 @@ export default function AuthModal() {
         sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
       } catch { /* private mode */ }
       closeModal();
-    } catch {
-      setSignOutFailed(true);
+    } catch (error) {
+      // This confirmation belonged to the previous account. Dismiss it without
+      // setting a sign-out banner or reporting a failure for the new account.
+      if (error instanceof OwnerMismatchError) closeModal();
+      else setSignOutFailed(true);
     } finally {
       setSigningOut(false);
     }

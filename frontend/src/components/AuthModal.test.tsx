@@ -26,14 +26,14 @@ vi.mock('@/lib/supabase', () => ({
   signInExistingEmail: (email: string, redirect: string) => mockSignInExisting(email, redirect),
   signInWithOAuthProvider: (provider: string, redirect: string) => mockOAuth(provider, redirect),
   signInExistingOAuth: (provider: string, redirect: string) => mockOAuthExisting(provider, redirect),
-  signOutOfAccount: () => mockSignOut(),
+  signOutOfAccount: (uid: string | null) => mockSignOut(uid),
 }));
 
 const mockReleasePush = vi.fn();
 const mockSyncPush = vi.fn();
 vi.mock('@/lib/push', () => ({
   withPushSessionLock: (work: () => Promise<unknown>) => work(),
-  releasePushForSignOut: () => mockReleasePush(),
+  releasePushForSignOut: (uid: string | null) => mockReleasePush(uid),
   synchronizePushOwner: () => mockSyncPush(),
 }));
 
@@ -71,6 +71,7 @@ vi.mock('@/lib/auth-modal-context', () => ({
 }));
 
 import AuthModal from './AuthModal';
+import { OwnerMismatchError } from '@/lib/identity-owner';
 import { translate } from '@/i18n/translate';
 
 const ANON: unknown = {
@@ -712,6 +713,23 @@ describe('AuthModal — signout-confirm phase', () => {
     const alert = await screen.findByRole('alert');
     if (outcome === 'browser-unsubscribed') expect(alert).toHaveTextContent('auth.modal.signOutConfirm.notificationsRetired');
     else expect(alert).not.toHaveTextContent('auth.modal.signOutConfirm.notificationsRetired');
+  });
+
+  it.each(['endpoint-changed', 'no-subscription', 'muted', 'server-row-removed'])('keeps A’s sign-out bound to A when B signs in during push preparation (%s)', async outcome => {
+    let finish!: (value: { outcome: string }) => void;
+    mockReleasePush.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    mockSignOut.mockRejectedValueOnce(new OwnerMismatchError());
+    render(<AuthModal />);
+    await waitFor(() => expect(screen.getByText(/eric@illinois.edu/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText('auth.modal.signOutConfirm.confirm'));
+    await waitFor(() => expect(mockReleasePush).toHaveBeenCalledWith('p'));
+    const observe = mockOnAuthChange.mock.lastCall![0];
+    act(() => observe({ user: { id: 'B' }, isAnonymous: false, email: 'b@example.com' }));
+    await act(async () => finish({ outcome }));
+    expect(mockSignOut).toHaveBeenCalledWith('p');
+    expect(closeModalMock).toHaveBeenCalledOnce();
+    expect(mockSyncPush).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('ofe_just_signed_out')).toBeNull();
   });
 
   it('runs one sign-out at a time', async () => {
