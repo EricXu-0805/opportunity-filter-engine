@@ -159,7 +159,7 @@ describe('AcademicProfileCard — when the selected school was last checked (che
     const college = document.querySelector('label[for="college"]')!;
     expect(change.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(note.compareDocumentPosition(college) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness');
+    expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness?schema=school-freshness-v2');
     // Someone tabbing through the form hears it with the one control on the
     // row, after the name of the school it is about.
     expect(screen.getByRole('button', { name: 'home.form.changeSchool' })).toHaveAccessibleDescription(

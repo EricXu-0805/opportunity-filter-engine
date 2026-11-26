@@ -1022,6 +1022,119 @@ class TestPublicSchoolFreshness:
         assert sh.next_freshness_change(ledger, OCT18, monitored_sources()) is None
 
 
+def _professor(source: str, seen: datetime | None, **metadata) -> dict:
+    return {"source": source, "metadata": {
+        "is_active": True, "last_seen_at": seen.isoformat() if seen else None, **metadata}}
+
+
+class TestReObservedProfessors:
+    """A school is stale to a public page when its sources re-observed under
+    half of its active professors in the 14 days up to their latest attempt,
+    however healthy each source reports itself."""
+
+    def _school(self, counts: dict[str, tuple[int, int] | None]) -> dict:
+        ledger = sh.empty_ledger()
+        for source, count in counts.items():
+            _attempt(ledger, source, shard_of_source(source), sh.SUCCESS_NONZERO, 10, OCT18, 10)
+            if count is not None:
+                ledger["sources"][source]["faculty_sightings"] = {
+                    "active": count[0], "reobserved": count[1]}
+        return ledger
+
+    def test_a_refresh_counts_the_active_rows_its_sources_re_observed(self):
+        ledger = sh.empty_ledger()
+        _attempt(ledger, "njit_faculty", "njit", sh.SUCCESS_NONZERO, 80, OCT18, 504)
+        _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500,
+                 OCT18 - timedelta(days=7), 1500)
+        two_runs_ago = OCT18 - timedelta(days=14)
+        rows = [
+            _professor("njit_faculty", OCT18 - timedelta(minutes=40)),
+            _professor("njit_faculty", OCT18 - timedelta(days=7, hours=5)),
+            _professor("njit_faculty", datetime(2026, 10, 5, tzinfo=UTC)),
+            _professor("njit_faculty", datetime(2026, 10, 4, 23, 59, 59, tzinfo=UTC)),
+            # The run two weeks earlier, whichever of the two started later
+            # in its day: NJIT's 262 rows of 11-10 were 3 h 44 min outside a
+            # 14.0-day window on 11-24, in a month whose runs began anywhere
+            # from 10:48 to 17:57 UTC.
+            _professor("njit_faculty", two_runs_ago - timedelta(hours=4)),
+            _professor("njit_faculty", two_runs_ago + timedelta(hours=4)),
+            _professor("njit_faculty", None),
+            # A configured seed no roster listed: its date is a run's clock.
+            _professor("njit_faculty", OCT18, verification_scope="curated"),
+            _professor("njit_faculty", OCT18, verification_scope="curated",
+                       listing_seen_on_source=True),
+            _professor("njit_faculty", OCT18, is_active=False),
+            # Not attempted in this run, and not a faculty source at all.
+            _professor("yale_faculty", OCT18),
+            _professor("campus_graph:njit", OCT18),
+        ]
+        assert sh.record_faculty_sightings(ledger, rows, OCT18) == 1
+        assert ledger["sources"]["njit_faculty"]["faculty_sightings"] == {
+            "active": 9, "reobserved": 4}
+        assert "faculty_sightings" not in ledger["sources"]["yale_faculty"]
+
+    def test_a_later_attempt_does_not_keep_an_earlier_attempts_counts(self):
+        ledger = self._school({"njit_faculty": (504, 80)})
+        _attempt(ledger, "njit_faculty", "njit", sh.SUCCESS_NONZERO, 80,
+                 OCT18 + timedelta(days=7), 504)
+        assert "faculty_sightings" not in ledger["sources"]["njit_faculty"]
+        assert sh.public_school_freshness(
+            ledger, OCT18 + timedelta(days=7), {"njit_faculty"})["njit"]["status"] == sh.PUBLIC_CURRENT
+
+    @pytest.mark.parametrize(("active", "reobserved", "status"), [
+        (4557, 78, sh.PUBLIC_STALE),
+        (10, 4, sh.PUBLIC_STALE),
+        (10, 5, sh.PUBLIC_CURRENT),
+        (9, 4, sh.PUBLIC_STALE),
+        (9, 5, sh.PUBLIC_CURRENT),
+        (0, 0, sh.PUBLIC_CURRENT),
+    ])
+    def test_under_half_re_observed_is_stale(self, active, reobserved, status):
+        ledger = self._school({"jhu_faculty": (active, reobserved)})
+        assert sh.public_school_freshness(ledger, OCT18, {"jhu_faculty"})["jhu"] == {
+            "last_checked_at": OCT18.isoformat(), "status": status}
+
+    def test_a_school_with_no_count_yet_keeps_the_status_it_had(self):
+        ledger = self._school({"jhu_faculty": None})
+        assert sh.public_school_freshness(ledger, OCT18, {"jhu_faculty"})["jhu"]["status"] == sh.PUBLIC_CURRENT
+        ledger["sources"]["jhu_faculty"]["unchecked_faculty_units"] = ["bsph"]
+        assert sh.public_school_freshness(
+            ledger, OCT18, {"jhu_faculty"})["jhu"]["status"] == sh.PUBLIC_PARTLY_UNCHECKED
+
+    def test_a_school_is_judged_on_all_of_its_faculty_sources_or_none(self):
+        eligible = {"ucb_eecs_faculty", "ucb_ling_faculty"}
+        ledger = self._school({"ucb_eecs_faculty": (10, 10), "ucb_ling_faculty": (30, 0)})
+        row = sh.school_rows(ledger, OCT18, eligible)[0]
+        assert (row["faculty_active_row_count"], row["faculty_reobserved_row_count"]) == (40, 10)
+        assert sh.public_school_freshness(ledger, OCT18, eligible)["ucb"]["status"] == sh.PUBLIC_STALE
+        # One department not counted yet: the other's rows are not the school's.
+        ledger = self._school({"ucb_eecs_faculty": None, "ucb_ling_faculty": (30, 0)})
+        row = sh.school_rows(ledger, OCT18, eligible)[0]
+        assert (row["faculty_active_row_count"], row["faculty_reobserved_row_count"]) == (None, None)
+        assert sh.public_school_freshness(ledger, OCT18, eligible)["ucb"]["status"] == sh.PUBLIC_CURRENT
+
+    @pytest.mark.parametrize("stored", [
+        {"active": "4557", "reobserved": 78}, {"active": 10, "reobserved": 11},
+        {"active": 10}, {"active": True, "reobserved": 0}, [10, 4], None,
+    ])
+    def test_a_count_that_cannot_be_read_decides_nothing(self, stored):
+        ledger = self._school({"jhu_faculty": None})
+        ledger["sources"]["jhu_faculty"]["faculty_sightings"] = stored
+        assert sh.public_school_freshness(ledger, OCT18, {"jhu_faculty"})["jhu"]["status"] == sh.PUBLIC_CURRENT
+
+    def test_the_statuses_an_older_page_reads_never_weigh_the_count(self):
+        ledger = self._school({"jhu_faculty": (4557, 78), "umich_faculty": (1483, 129)})
+        ledger["sources"]["umich_faculty"]["unchecked_faculty_units"] = ["chem"]
+        eligible = {"jhu_faculty", "umich_faculty"}
+        older = sh.public_school_freshness(ledger, OCT18, eligible, judge_sightings=False)
+        assert {school: entry["status"] for school, entry in older.items()} == {
+            "jhu": sh.PUBLIC_CURRENT, "umich": sh.PUBLIC_PARTLY_UNCHECKED}
+        newer = sh.public_school_freshness(ledger, OCT18, eligible)
+        assert {entry["status"] for entry in newer.values()} == {sh.PUBLIC_STALE}
+        assert {school: entry["last_checked_at"] for school, entry in older.items()} == {
+            school: entry["last_checked_at"] for school, entry in newer.items()}
+
+
 class TestLedgerIO:
     def test_absent_ledger_reads_as_empty(self, tmp_path):
         assert sh.load_ledger(tmp_path / "nope.json") == sh.empty_ledger()

@@ -2178,6 +2178,21 @@ def refresh_all(
 
         atomic_write_json(PROCESSED_FILE, all_opps)
 
+        # How many of each attempted faculty source's active rows were
+        # re-observed, for the public school status. Counted in the rows just
+        # persisted: the retirement and same-person passes ran after the
+        # attempts were recorded and removed some.
+        if "source_health" in summary:
+            try:
+                ledger_path = source_health.ledger_path_for(PROCESSED_FILE.parent)
+                health = source_health.load_ledger(ledger_path)
+                source_health.record_faculty_sightings(
+                    health, all_opps,
+                    datetime.fromisoformat(summary["source_health"]["generated_at"]))
+                source_health.save_ledger(health, ledger_path)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("source_health faculty sighting count failed: %s", e)
+
         # Professor tracking ledger: derive verified change events from the
         # exact corpus just persisted. The tracking artifact's own refresh_ok
         # marker comes from the complete target-source contract, not merely

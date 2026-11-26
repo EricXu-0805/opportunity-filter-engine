@@ -962,6 +962,50 @@ def test_refresh_persists_a_retained_department_for_public_freshness(monkeypatch
     assert saved[chem["id"]]["metadata"]["last_seen_at"] == chem["metadata"]["last_seen_at"]
 
 
+def test_refresh_counts_the_professors_a_school_did_not_re_observe(monkeypatch, tmp_path):
+    from datetime import UTC, datetime
+
+    from src.collectors import source_health
+
+    unread = [_seed_faculty("umich_faculty", f"faculty-umich-chem-0000ccc{i}", 60) for i in range(2)]
+    bio = _seed_faculty("umich_faculty", "faculty-umich-bio-0000dddd", 0)
+    _stub_with_processed_file(monkeypatch, tmp_path, [*unread, bio])
+
+    def fetch(unit_ledger):
+        unit_ledger["chem"] = {
+            "source": "umich_faculty", "unit_id": "chem", "fetch_status": "ok",
+            "parse_status": "zero_rows", "validation_status": "ok", "observed_count": 0,
+            "observed_entity_ids": [], "observed_identities": [],
+        }
+        return [dict(bio)]
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    refresh_all.refresh_all(deep=True, schools={"umich"})
+    ledger = source_health.load_ledger(tmp_path / "source_health.json")
+    assert ledger["sources"]["umich_faculty"]["faculty_sightings"] == {"active": 3, "reobserved": 1}
+    assert source_health.public_school_freshness(ledger, datetime.now(UTC), {"umich_faculty"})[
+        "umich"]["status"] == "stale"
+
+
+def test_refresh_counts_professors_in_the_rows_it_persists(monkeypatch, tmp_path):
+    """The stale pass retires two of three rows after the attempts are
+    recorded. Counted before it, the school would read one third re-observed."""
+    from src.collectors import source_health
+
+    seeded = [
+        _seed_faculty("umich_faculty", "fac-gone-1", days_ago=30),
+        _seed_faculty("umich_faculty", "fac-gone-2", days_ago=30),
+        _seed_faculty("umich_faculty", "fac-fresh", days_ago=1),
+    ]
+    _stub_with_processed_file(monkeypatch, tmp_path, seeded)
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(3)])
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 2
+    ledger = source_health.load_ledger(tmp_path / "source_health.json")
+    assert ledger["sources"]["umich_faculty"]["faculty_sightings"] == {"active": 1, "reobserved": 1}
+
+
 def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     monkeypatch, tmp_path,
 ):

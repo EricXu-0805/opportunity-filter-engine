@@ -539,7 +539,7 @@ describe('ResultsPage — when the schools on screen were last checked (checklis
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => null }) as unknown as Response));
     render(<ResultsPage />);
     await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness'));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness?schema=school-freshness-v2'));
     await act(async () => {});
     expect(screen.queryByTestId('results-school-freshness')).toBeNull();
   });

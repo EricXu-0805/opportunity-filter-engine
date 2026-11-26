@@ -389,8 +389,14 @@ async def opportunity_coverage() -> dict:
 
 
 #: Mirrored in frontend/src/lib/school-freshness.ts. Bumped when the meaning of
-#: a status or of ``last_checked_at`` changes.
-SCHOOL_FRESHNESS_SCHEMA = "school-freshness-v1"
+#: a status or of ``last_checked_at`` changes. v2: ``stale`` also covers a
+#: school whose sources re-observed under half of its professors.
+SCHOOL_FRESHNESS_SCHEMA = "school-freshness-v2"
+#: What a request that names no schema is answered in, with the statuses as v1
+#: defined them. A page loaded before v2 asks that way, shows no freshness line
+#: at all for an id it does not know, and words ``stale`` as "no recent read".
+#: Delete, with the ``schema`` parameter, once no such page can still be open.
+_SCHOOL_FRESHNESS_V1 = "school-freshness-v1"
 
 
 class SchoolFreshness(BaseModel):
@@ -417,9 +423,10 @@ class SchoolFreshnessResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-# (ledger file version + thresholds, payload, valid until). The statuses are
-# ages, so a hit also has to be younger than the first moment a source crosses
-# a bound: a ledger nobody rewrites must still turn a school stale on time.
+# (ledger file version + thresholds, payload per schema, valid until). The
+# statuses are ages, so a hit also has to be younger than the first moment a
+# source crosses a bound: a ledger nobody rewrites must still turn a school
+# stale on time.
 _freshness_cache: tuple[tuple, dict, datetime | None] | None = None
 _SOURCE_HEALTH_PATH = source_health.LEDGER_FILE
 
@@ -433,17 +440,22 @@ def _ledger_version() -> tuple[int, int] | None:
 
 
 def _school_freshness_payload(now: datetime) -> tuple[dict, datetime | None, bool]:
-    """``(payload, valid_until, cacheable)`` from the committed ledger."""
+    """``({schema: payload}, valid_until, cacheable)`` from the committed ledger."""
     ledger = source_health.load_ledger(_SOURCE_HEALTH_PATH)
     eligible = source_health.monitored_source_names()
+    schemas = (SCHOOL_FRESHNESS_SCHEMA, _SCHOOL_FRESHNESS_V1)
     if eligible is None:
         # Without the monitored set every carried row would be judged on the
         # weekly clock. Say nothing rather than that, and ask again next time.
-        return {"schema": SCHOOL_FRESHNESS_SCHEMA, "schools": {}}, None, False
+        return {schema: {"schema": schema, "schools": {}} for schema in schemas}, None, False
     return (
         {
-            "schema": SCHOOL_FRESHNESS_SCHEMA,
-            "schools": source_health.public_school_freshness(ledger, now, eligible),
+            schema: {
+                "schema": schema,
+                "schools": source_health.public_school_freshness(
+                    ledger, now, eligible, judge_sightings=schema != _SCHOOL_FRESHNESS_V1),
+            }
+            for schema in schemas
         },
         source_health.next_freshness_change(ledger, now, eligible),
         True,
@@ -451,7 +463,7 @@ def _school_freshness_payload(now: datetime) -> tuple[dict, datetime | None, boo
 
 
 @router.get("/opportunities/freshness", response_model=SchoolFreshnessResponse)
-async def school_freshness() -> dict:
+async def school_freshness(schema: str | None = None) -> dict:
     """Per-school "last successful check" date and status for the public pages.
 
     Computed only from the committed per-source ledger
@@ -459,22 +471,25 @@ async def school_freshness() -> dict:
     time: one school publishing says nothing about another, and one working
     department says nothing about its dead siblings, which is what ``status``
     is for. Definitions live in ``source_health.public_school_freshness``.
+
+    ``schema`` is the schema the page reads. Any other value, or none, is
+    answered in v1.
     """
     global _freshness_cache
 
     now = datetime.now(UTC)
     key = (_ledger_version(), source_health.staleness_thresholds())
     if _freshness_cache is not None:
-        cached_key, payload, valid_until = _freshness_cache
+        cached_key, payloads, valid_until = _freshness_cache
         if cached_key == key and (valid_until is None or now < valid_until):
-            return payload
+            return payloads.get(schema) or payloads[_SCHOOL_FRESHNESS_V1]
 
     # A miss parses the whole ledger and judges every source in it.
-    payload, valid_until, cacheable = await asyncio.to_thread(
+    payloads, valid_until, cacheable = await asyncio.to_thread(
         _school_freshness_payload, now)
     if cacheable:
-        _freshness_cache = (key, payload, valid_until)
-    return payload
+        _freshness_cache = (key, payloads, valid_until)
+    return payloads.get(schema) or payloads[_SCHOOL_FRESHNESS_V1]
 
 
 @router.post("/opportunities/batch")
