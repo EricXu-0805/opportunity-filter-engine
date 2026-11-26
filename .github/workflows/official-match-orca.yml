@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     env:
-      OFE_EXPECTED_SITE_SHA: 85f20cfad2dbb0f0600cdecdc14c976cf100f913
+      OFE_EXPECTED_SITE_SHA: b23afca130ade46a8a643dcd95f6afa1d492630f
     steps:
       - uses: actions/checkout@v6
         with:

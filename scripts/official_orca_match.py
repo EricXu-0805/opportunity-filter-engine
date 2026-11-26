@@ -25,6 +25,11 @@ LABELS = {
 SAFE_LABELS = {label for labels in LABELS.values() for label in labels.values()} | {'所有'}
 SAFE_ROLES = {'push button','button','page tab','tab list','multi-line','text','entry','panel',
               'expanded','collapsed','toggle button','selected','not selected','text area','editable'}
+DISCLOSURE_SPEECH = re.compile(
+    r'(?P<summary>Target conditions for this draft (?:Application conditions need review|[0-9]{1,3} sourced · [0-9]{1,3} to review)'
+    r'|本次参考的目标条件 (?:申请条件尚未核对|[0-9]{1,3} 项有依据 · [0-9]{1,3} 项需核对))'
+    r'(?: (?:(?:toggle )?button|collapsed|expanded|panel|focused))*[.]?'
+)
 ORCA_OUTPUT = re.compile(r"SPEECH OUTPUT: '(.*)'(?:\s+\{|\s*$)")
 
 
@@ -33,6 +38,9 @@ def tokens(utterance):
     # the full Orca event stream nor the draft or account's form data is recorded.
     clean = utterance.strip().casefold()
     result = []
+    spoken_summary = DISCLOSURE_SPEECH.fullmatch(utterance.strip())
+    if spoken_summary:
+        result.append(spoken_summary.group('summary'))
     for label in sorted(SAFE_LABELS):
         needle = label.casefold()
         if clean.startswith(needle):
@@ -121,6 +129,12 @@ def heard(page, target, locale, control, start, keyname):
            'spoken_roles':sorted({s for s in spoken if s in SAFE_ROLES}),'heard_on_key':spoken_on_key,
            'query_labels':[s for s in query if s in labels], 'peak_after_key':max((f[1] for f in frames),default=0),
            'frames_after_key':sum(f[2] for f in frames),**metrics}
+    if control == 'conditions':
+        summary = target.text_content().strip()
+        assert DISCLOSURE_SPEECH.fullmatch(summary), ('Unexpected visible disclosure', locale)
+        entry['visible_disclosure_title_and_status'] = summary
+        entry['screen_reader_spoke_exact_title_and_status_on_tab'] = summary in spoken
+        assert summary in spoken and 'collapsed' in spoken and entry['peak_after_key'] > 40, entry
     print('READER CONTROL',locale,json.dumps(entry,ensure_ascii=False),flush=True)
     return entry
 
