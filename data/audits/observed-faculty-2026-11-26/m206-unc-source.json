@@ -1,0 +1,21 @@
+{
+  "observed_utc": "2026-11-26T09:35:38.155216+00:00",
+  "owner_window": "M206, beginning December 1. No changes made.",
+  "faculty_record": {
+    "http": 200,
+    "name": "Madison Sturdivant",
+    "id": "faculty-unc-educ-c9538316",
+    "source_url": "https://ed.unc.edu/people/madison-sturdivant/",
+    "actionable": true,
+    "reason": null,
+    "last_seen_listed_at": "2026-07-28",
+    "detail": "https://joinalab.com/opportunities/faculty-unc-educ-c9538316"
+  },
+  "source_directory": "https://ed.unc.edu/people/",
+  "official_name": "Madison Meyer",
+  "official_appointment": "Carolina Community Academy First Grade Teacher",
+  "official_individual_url": "https://ed.unc.edu/people/madison-sturdivant/",
+  "same_source_url_and_contact": true,
+  "existing_name": "Madison Sturdivant",
+  "existing_id": "faculty-unc-educ-c9538316"
+}
