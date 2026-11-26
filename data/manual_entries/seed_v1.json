@@ -819,60 +819,61 @@
     "source": "manual",
     "source_url": "https://reufinder.com/2025/10/10/programs-that-accept-first-year-students/",
     "source_type": "external",
-    "title": "REU Finder — Programs That Accept First-Year Students (2026)",
+    "title": "REU Finder — Summer Research Programs for Summer 2026",
     "organization": "REU Finder (Community)",
     "department": "",
     "lab_or_program": "",
     "pi_name": null,
     "url": "https://reufinder.com/2025/10/10/programs-that-accept-first-year-students/",
-    "location": "Various (USA)",
-    "on_campus": false,
+    "location": "",
+    "on_campus": null,
     "remote_option": "unknown",
     "opportunity_type": "summer_program",
-    "paid": "yes",
-    "compensation_details": "Most REUs offer stipend + housing",
+    "paid": "unknown",
+    "compensation_details": "",
     "deadline": null,
     "posted_date": "2025-10-10",
     "start_date": null,
-    "duration": "8-10 weeks",
+    "duration": null,
     "eligibility": {
-      "preferred_year": [
-        "freshman"
-      ],
+      "preferred_year": [],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": true,
-      "international_friendly": "no",
-      "work_auth_notes": "Most REU sites require US citizenship/PR",
-      "eligibility_text_raw": "Curated list of REU programs that explicitly accept first-year students."
+      "citizenship_required": null,
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
+      "eligibility_text_raw": ""
     },
     "application": {
-      "contact_method": "portal",
-      "requires_resume": "yes",
+      "contact_method": "unknown",
+      "requires_resume": "unknown",
       "requires_cover_letter": "unknown",
       "requires_transcript": "unknown",
       "requires_recommendation": "unknown",
-      "application_effort": "medium",
-      "application_url": "https://reufinder.com/2025/10/10/programs-that-accept-first-year-students/"
+      "application_effort": "unknown",
+      "application_url": null
     },
-    "description_raw": "Community-curated list of summer research programs that explicitly accept first-year undergraduates for summer 2026.",
-    "description_clean": "Curated list of REU programs accepting freshmen. Community resource.",
+    "description_raw": "REU Finder collected links to summer 2026 programs across multiple institutions. Entries list each program’s class years, citizenship rules, deadlines and application site.",
+    "description_clean": "REU Finder collected links to summer 2026 programs across multiple institutions. Entries list each program’s class years, citizenship rules, deadlines and application site.",
     "keywords": [
       "REU",
-      "freshman",
-      "first-year",
-      "summer research"
+      "summer research",
+      "program directory"
     ],
     "metadata": {
       "confidence_score": 0.8,
-      "last_verified": "2026-03-16",
+      "last_verified": "2026-11-26T10:29:37+00:00",
       "first_seen_at": "2025-10-10",
-      "last_seen_at": "2026-03-16",
+      "last_seen_at": "2026-11-26T10:29:37+00:00",
       "is_active": true,
       "manually_reviewed": true,
-      "notes": "Meta-listing. Good for freshmen. Most are US-only."
-    }
+      "notes": "REU Finder links to independent summer 2026 programs. Each host determines its terms and eligibility.",
+      "reference_only": true
+    },
+    "school": null,
+    "audience": "unknown",
+    "is_rolling": false
   }
 ]

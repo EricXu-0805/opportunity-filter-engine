@@ -276,8 +276,13 @@ SCHOOL: dict = {
     ),
     "departments": [
         # ---- College of Arts & Sciences: natural sciences ------------------
-        _teaser("BIOL", "Department of Biology", ["Biology"],
-                "https://bio.as.virginia.edu/faculty"),
+        {**_teaser("BIOL", "Department of Biology", ["Biology"], "https://bio.as.virginia.edu/faculty"),
+         "research_join": {
+             "url": "https://bio.as.virginia.edu/molecular-genetics",
+             "lab_cards": ".research-blocks > .views-row",
+             "pi_link": ".views-field-field-pi a[href]",
+             "lab_description": ".views-field-field-intro-text .field-content",
+         }},
         _teaser("CHEM", "Department of Chemistry", ["Chemistry"],
                 "https://chemistry.as.virginia.edu/faculty"),
         _teaser("EVSC", "Department of Environmental Sciences",

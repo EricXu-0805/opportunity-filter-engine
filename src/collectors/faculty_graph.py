@@ -477,6 +477,10 @@ def _clean_keywords(person: dict) -> list[str]:
         # so a curated list shipped its junk verbatim.
         return _hygiene_keywords(kws)[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
+    if person.get("_research_areas_source_url"):
+        # A lab card supplies one complete description. Splitting its prose
+        # can turn a dependent clause into an unrelated matching keyword.
+        return _hygiene_keywords([raw]) if 2 <= len(raw) <= 70 and len(raw.split()) <= 8 else []
     # Split on ; | and , — directories delimit a research list with any of them
     # (Stanford Education uses " | " between areas; most use commas/semicolons).
     parts = [p.strip() for chunk in re.split(r"[;|]", raw) for p in chunk.split(",")]
@@ -777,6 +781,11 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
+    if person.get("_checked_research_index"):
+        metadata["checked_research_index"] = person["_checked_research_index"]
+    if research_areas and person.get("_research_areas_source_url"):
+        metadata["research_areas_source_url"] = person["_research_areas_source_url"]
+        metadata["research_areas_verified_at"] = person["_research_areas_observed_at"]
     email_source = person.get("_email_source")
     if email and isinstance(email_source, str) and email_source:
         metadata["email_source"] = email_source
@@ -1324,6 +1333,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     Arts) instead of one umbrella label.
     """
     people: list[dict] = []
+    leadership = sel.get("leadership_title_re")
+    rank_filter = ladder_filter or {}
+    rank_patterns = [rank_filter[key] for key in ("require", "drop") if rank_filter.get(key)]
+    academic_rank = re.compile("|".join(rank_patterns), re.I) if leadership and rank_patterns else None
     if _ACTIVE_COVERAGE is not None:
         try:
             _ACTIVE_COVERAGE["_document_hrefs"].update(
@@ -1416,6 +1429,16 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # unreachable by a descendant selector from the card.
             title_el = card.find_next_sibling(sel["title_sibling"])
         title = title_el.get_text(" ", strip=True) if title_el else ""
+        # Some university directories list an administrative office before the
+        # person's academic appointment. Keep the first academic/excluded rank
+        # in source order so a later professorship cannot override an adjunct.
+        if (academic_rank and re.search(leadership, title, re.I) and not academic_rank.search(title)
+                and not is_trainee_title(title) and not is_retired_title(title)):
+            for node in card.select(sel["title"])[1:]:
+                rank = node.get_text(" ", strip=True)
+                if academic_rank.search(rank) or is_trainee_title(rank) or is_retired_title(rank):
+                    title = rank
+                    break
         if sel.get("title_re"):
             # Hand-edited CMS cards sometimes keep the rank as loose text with no
             # stable element path (UCSD Communication/Urban Studies); a regex over
@@ -4692,6 +4715,46 @@ def _join_slug(url: str) -> str:
     return path.rsplit("/", 1)[-1] if "/" in path else path
 
 
+def _join_lab_cards(cfg: dict, specs: list[dict]) -> None:
+    """Read a lab description only from a card that links and names the same PI."""
+    from .ucb_common import fetch_soup
+
+    source = cfg["url"]
+    soup = fetch_soup(source)
+    if soup is None or getattr(soup, "_ofe_final_url", None) != source:
+        return
+    observed_at = getattr(soup, "_ofe_observed_at", None)
+    if not observed_at:
+        return
+    descriptions: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for card in soup.select(cfg["lab_cards"]):
+        persons = card.select(cfg["pi_link"])
+        description = card.select_one(cfg["lab_description"])
+        if len(persons) != 1 or description is None:
+            continue
+        target = urljoin(source, persons[0].get("href") or "")
+        area = " ".join(description.stripped_strings)
+        target_key = canonical_profile_url(target)
+        name = _identity(persons[0].get_text(" ", strip=True))
+        if (target_key and name and urlsplit(target).netloc == urlsplit(source).netloc
+                and 0 < len(area) <= 300):
+            descriptions[(target_key, name)].add(area)
+    if not descriptions:
+        return
+    for person in specs:
+        if person.get("research_areas") or person.get("keywords"):
+            continue
+        # A successfully read index that no longer binds this PI's summary
+        # withdraws the previous index claim. A failed fetch carries no check.
+        person["_checked_research_index"] = source
+        key = (canonical_profile_url(person.get("url")), _identity(person.get("name")))
+        areas = descriptions.get(key, set())
+        if len(areas) == 1:
+            person["research_areas"] = next(iter(areas))
+            person["_research_areas_source_url"] = source
+            person["_research_areas_observed_at"] = observed_at
+
+
 def _apply_research_join(dept: dict, specs: list[dict]) -> None:
     """Fill research areas from one shared page keyed by each person's slug/name.
 
@@ -4708,6 +4771,9 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
 
     cfg = dept.get("research_join")
     if not cfg:
+        return
+    if "lab_cards" in cfg:
+        _join_lab_cards(cfg, specs)
         return
     try:
         import requests

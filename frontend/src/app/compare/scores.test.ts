@@ -97,6 +97,24 @@ describe('compare score truth source', () => {
     expect(withEvidence.eligibility).toBe(100);
   });
 
+  it.each([
+    { major: '', grade: 'Junior' },
+    { major: '   ', grade: 'Junior' },
+    { major: 'Computer Science', grade: '' },
+    { major: 'Unknown', grade: 'Junior' },
+    { major: 'Computer Science', grade: 'unknown' },
+  ])('keeps eligibility unknown when the student comparison is missing: %o', (fields) => {
+    const listed = opportunity('qualified-program', 'low');
+    listed.eligibility = { ...listed.eligibility, majors: ['Computer Science'], preferred_year: ['Junior'] };
+    expect(computeDecisionFactors({ ...PROFILE, ...fields }, listed).eligibility).toBeNull();
+  });
+
+  it('recognizes the same major written in Chinese on both sides', () => {
+    const listed = opportunity('exact-major', 'low');
+    listed.eligibility = { ...listed.eligibility, majors: ['计算机科学'], preferred_year: ['Junior'] };
+    expect(computeDecisionFactors({ ...PROFILE, major: '计算机科学' }, listed).eligibility).toBe(100);
+  });
+
   it('treats an explicit unknown year sentinel as missing evidence', () => {
     const factors = computeDecisionFactors(PROFILE, {
       ...opportunity('unknown-year', 'unknown'),
