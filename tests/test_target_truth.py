@@ -846,14 +846,14 @@ class TestStagedRolloutWireContract:
             MATCH_VIEW_CONTRACT_VERSION,
         )
 
-        assert MATCH_SNAPSHOT_VERSION == "match-snapshot-v5-record-kind"
+        assert MATCH_SNAPSHOT_VERSION == "match-snapshot-v6-reviewed-program-pair"
         assert MATCH_SNAPSHOT_VERSION != MATCH_VIEW_CONTRACT_VERSION
 
     def test_the_snapshot_key_keys_off_the_snapshot_version(self, monkeypatch):
         from backend.routes import matches as matches_module
 
         before = matches_module._snapshot_key({"school": "uiuc"}, False, "corpus-1")
-        monkeypatch.setattr(matches_module, "MATCH_SNAPSHOT_VERSION", "match-snapshot-v5")
+        monkeypatch.setattr(matches_module, "MATCH_SNAPSHOT_VERSION", "match-snapshot-v5-record-kind")
         after = matches_module._snapshot_key({"school": "uiuc"}, False, "corpus-1")
         assert before != after
 

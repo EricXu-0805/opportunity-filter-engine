@@ -5,7 +5,7 @@ the generic ``campus_graph`` engine: the central undergraduate-research office +
 its signature scholarships/fellowships/summer programs, a department research
 program, the career center, and research-institute cold-email targets.
 
-The OPEN-bucket program(s) — Cellular and Molecular Biology of Stress Summer Research Program (IBS-SRP / NSF REU) — explicitly recruit students from other institutions, so they are national/open rather than campus-gated. Everything else is UW-Madison-enrollment-gated.
+The OPEN-bucket program(s) — Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress) — explicitly recruit students from other institutions, so they are national/open rather than campus-gated. Everything else is UW-Madison-enrollment-gated.
 
 URLs verified HTTP-200 against the official .edu domains (Jun 2026).
 
@@ -145,12 +145,13 @@ SCHOOL: dict = {
             "programs": [
                 program(
                     "ibs_srp_cmbs_reu",
-                    "Cellular and Molecular Biology of Stress Summer Research Program (IBS-SRP / NSF REU)",
+                    "Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)",
                     "https://wiscience.wisc.edu/IBS-SRP",
                     "An NSF REU summer research program (part of the Integrated Biological Sciences Summer Research Program) primarily for students from other institutions; UW-Madison students are excluded by funding rules. Participants receive a $7,000 stipend plus housing, partial meal plan, health insurance, and round-trip travel. Requires at least 2 completed semesters with at least 1 semester remaining after the program.",
                     organization="UW-Madison WISCIENCE",
-                    lab_or_program="Integrated Biological Sciences Summer Research Program (IBS-SRP), Cellular and Molecular Biology of Stress REU",
+                    lab_or_program="Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)",
                     opportunity_type="summer_program",
+                    is_rolling=False,
                     paid="stipend",
                     compensation="$7,000 stipend plus housing, partial meal plan, health insurance, and round-trip travel",
                     preferred_year=["sophomore", "junior", "senior"],
