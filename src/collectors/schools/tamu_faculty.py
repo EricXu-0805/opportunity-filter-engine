@@ -357,8 +357,11 @@ SCHOOL: dict = {
              ["Computer Science", "Computer Engineering"], "csce"),
         _eng("ECE", "Department of Electrical and Computer Engineering",
              ["Electrical Engineering", "Computer Engineering"], "electrical") | {
-            "profile_id_names": {
-                "engineering.tamu.edu/electrical/profiles/yi-suin.html": ("Suin Yi", "Su-in Yi"),
+            # Both name-derived IDs were published. The source's numeric ID is its array index.
+            "reserved_profile_identity": {
+                "name": "Su-in Yi", "names": ("Suin Yi", "Su-in Yi"),
+                "profile": "engineering.tamu.edu/electrical/profiles/yi-suin.html",
+                "email": "yisuin@tamu.edu",
             },
         },
         _eng("ME", "J. Mike Walker '66 Department of Mechanical Engineering",
