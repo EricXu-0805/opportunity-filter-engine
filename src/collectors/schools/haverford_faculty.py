@@ -99,11 +99,9 @@ SCHOOL: dict = {
         "the arrangement; ask the professor."
     ),
     # 19 departments live-verified 2026-07-23 (per-dept ladder counts in the
-    # comment); all share the same faculty-staff render template. Nine further
-    # units 404 at ``/<slug>/faculty-staff`` and are DEFERRED: Political Science
-    # and French & Francophone Studies (dept exists but its people page lives at
-    # a non-standard path — revisit), plus the interdisciplinary /
-    # Bi-Co-hosted programs Biochemistry & Biophysics, Scientific Computing,
+    # comment). Political Science and French use the same cards at their own
+    # published URLs, checked 2026-11-26. The seven deferred interdisciplinary /
+    # Bi-Co-hosted programs are Biochemistry & Biophysics, Scientific Computing,
     # Mathematical Economics, African & Africana Studies, Latin American Iberian
     # & Latinx Studies, Middle East & Islamic Studies, and the Writing Program
     # (these cross-list faculty whose home department is already captured
@@ -139,6 +137,10 @@ SCHOOL: dict = {
         # ---- Arts --------------------------------------------------------
         _dept("ARTS", "Department of Fine Arts", ["Fine Arts"], "fine-arts"),  # 4
         _dept("MUSI", "Department of Music", ["Music"], "music"),  # 6
+        _dept("POLS", "Department of Political Science", ["Political Science"],
+              "political-science", path="faculty"),
+        _dept("FREN", "Department of French and Francophone Studies", ["French and Francophone Studies"],
+              "french-francophone-studies"),
     ],
 }
 
