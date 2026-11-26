@@ -366,6 +366,69 @@ def test_two_aggregated_estimates_use_the_reviewed_host_date_only_for_the_same_c
     assert raw_to_normalized(raw)["deadline_is_estimate"] is True
 
 
+def test_fodommat_directory_and_host_share_the_stated_2027_calendar(tmp_path):
+    from src.collectors.base import RawOpportunity
+    from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+    from src.normalizers import fodommat
+    from src.program_windows import public_opening
+
+    directory = (
+        "https://researchops.web.illinois.edu/opportunity/"
+        "future-discovery-training-students-build-and-apply-open-source-machine-learning-models"
+    )
+    host = "https://reu.ncsa.illinois.edu/"
+    raw = RawOpportunity("uiuc_sro", "https://researchops.web.illinois.edu/?page=11", "FoDOMMaT", "", directory,
+                         extra_fields={"deadline_raw": "Anticipated 3/15/27", "program_url": host})
+    row = raw_to_normalized(raw)
+    manual = _row("manual", "ext-uiuc-ncsa-reu")
+    assert row["id"] == "sro-1532726e" and row["id"] != manual["id"]
+    for record in (row, manual):
+        assert record["deadline"] == "2027-02-15"
+        assert record["deadline_is_estimate"] is False and record["is_rolling"] is False
+        assert public_opening(record)["on"] == "2026-12-15"
+        timing = build_detail_fields(copy.deepcopy(record), record)["fields"]["timing"]
+        assert timing["quotes"]["deadline"]["source_url"] == host
+        fields = build_detail_fields(copy.deepcopy(record), record)["fields"]
+        assert fields["eligibility"]["explicit"]["majors"] == ["all"]
+        assert fields["eligibility"]["quotes"]["class_year"]["source_url"] == host
+        assert fields["required_skills"]["explicit"]["required"] == ["Python", "machine learning"]
+        assert fields["required_skills"]["quotes"]["required"]["source_url"] == host
+    assert row["metadata"]["superseded_directory_deadline"] == {
+        "date": "2027-03-15", "anticipated": True, "source_url": directory,
+    }
+    current = copy.deepcopy(row)
+    apply_program_window(row)
+    assert row == current
+    # A shallow same-cycle refresh can retain the verified host evidence.
+    output = tmp_path / "sro.json"
+    output.write_text(json.dumps([row]))
+    raw.extra_fields = {"deadline_raw": "Anticipated 3/15/27"}
+    merge_into_processed([raw_to_normalized(raw)], str(output))
+    [merged] = json.loads(output.read_text())
+    assert fodommat.host_quote(merged, "skills_required")
+    # A reused directory, a different host, or the next year's call cannot.
+    for changed in (
+        {"deadline_raw": "Anticipated 3/15/28", "program_url": host},
+        {"deadline_raw": "3/15/27", "deadline_anticipated": "No", "program_url": host},
+        {"deadline_raw": "Anticipated 3/15/27", "program_url": "https://wiscience.wisc.edu/research/srp/"},
+    ):
+        raw.extra_fields = changed
+        other = raw_to_normalized(raw)
+        assert reviewed_window(other) is None and public_opening(other) is None
+        assert "superseded_directory_deadline" not in other["metadata"]
+        assert not fodommat.host_quote(other, "skills_required")
+    output.write_text(json.dumps([row]))
+    raw.extra_fields = {"deadline_raw": "Anticipated 3/15/28"}
+    merge_into_processed([raw_to_normalized(raw)], str(output))
+    [later] = json.loads(output.read_text())
+    assert later["deadline"] == "2028-03-15" and later["eligibility"]["skills_required"] == []
+    assert "superseded_directory_deadline" not in later["metadata"]
+    later_manual = {**manual, "deadline": "2028-02-26"}
+    apply_program_window(later_manual)
+    assert later_manual["deadline"] == "2028-02-26"
+    assert not fodommat.host_quote(later_manual, "skills_required")
+
+
 def test_chen_institute_remains_a_reference_while_the_two_fellowships_have_separate_windows():
     institute = _row("caltech", "chen_institute")
     assert institute["metadata"]["reference_only"] is True

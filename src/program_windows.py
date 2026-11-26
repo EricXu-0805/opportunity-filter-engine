@@ -8,7 +8,7 @@ PURA page did on 2026-11-05.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -108,10 +108,17 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
 # Aggregator IDs can outlive the cohort their source pages described. Keep the
 # exact incoming estimate with the host window so it cannot migrate to another
 # year, a replaced program, or a newly confirmed date.
+_NCSA_DIRECTORY = (
+    "https://researchops.web.illinois.edu/opportunity/"
+    "future-discovery-training-students-build-and-apply-open-source-machine-learning-models"
+)
 _WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
 _WISCONSIN_HOST = "https://wiscience.wisc.edu/research/summer_research_program/"
 _UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
 _AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-1532726e"): (
+        "2027-03-15", replace(WINDOWS[("manual", "ext-uiuc-ncsa-reu")], url=_NCSA_DIRECTORY),
+    ),
     ("uiuc_sro", "sro-3c378261"): ("2027-02-15", ProgramWindow(
         _WISCONSIN_DIRECTORY, _WISCONSIN_HOST, date(2026, 11, 26), date(2027, 2, 10),
         "Apply by February 10, 2027.",
@@ -120,6 +127,12 @@ _AGGREGATOR_WINDOWS = {
         _UND_AWARD, "https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
         date(2026, 11, 26), date(2026, 3, 15), "Applications will be accepted through March 15, 2026.",
     )),
+}
+
+
+_SRO_APPLICATION_LINKS = {
+    _WISCONSIN_DIRECTORY: {_WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
+    _NCSA_DIRECTORY: {_NCSA_DIRECTORY, _NCSA},
 }
 
 
@@ -141,9 +154,7 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
             return None
         application = record.get("application")
-        if not isinstance(application, dict) or application.get("application_url") not in (
-            window.url, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/",
-        ):
+        if not isinstance(application, dict) or application.get("application_url") not in _SRO_APPLICATION_LINKS[window.url]:
             return None
     return window
 
@@ -178,6 +189,8 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     window = WINDOWS.get((school, key))
     if window is None or record.get("url") != window.url or record.get("source_url") != window.url:
         return None
+    if school == "manual" and record.get("deadline") not in (None, window.closes_on.isoformat()):
+        return None
     return window
 
 
@@ -195,6 +208,12 @@ def apply_program_window(record: dict) -> None:
         record["is_rolling"] = False
         if record.get("source") in ("nsf_reu", "uiuc_sro"):
             metadata = record["metadata"]
+            if window.url == _NCSA_DIRECTORY:
+                # Keep the earlier, explicitly anticipated directory date as
+                # historical evidence without treating it as the active window.
+                metadata["superseded_directory_deadline"] = {
+                    "date": "2027-03-15", "anticipated": True, "source_url": window.url,
+                }
             metadata.pop("deadline_note", None)
             stamps = metadata.get("inferred_fields")
             if isinstance(stamps, dict):

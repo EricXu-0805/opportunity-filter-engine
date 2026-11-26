@@ -85,6 +85,7 @@ from src.evidence import (
     record_kind,
     source_last_seen_at,
 )
+from src.normalizers import fodommat
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
 
@@ -336,7 +337,8 @@ def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str 
     stamped = _basis_for(canonical, path)
     if stamped is not None:
         return stamped, None
-    return _configured(canonical, facet)
+    quote = fodommat.host_quote(canonical, path.removeprefix("eligibility."))
+    return (None, quote) if quote is not None else _configured(canonical, facet)
 
 
 def class_years_are_template(years: object) -> bool:
@@ -591,6 +593,8 @@ def skills_basis(canonical: dict, path: str) -> str | None:
     detail facts' skills row cannot disagree.
     """
     stamped = _basis_for(canonical, path)
+    if stamped is None and fodommat.host_quote(canonical, path.removeprefix("eligibility.")):
+        return None
     if stamped is None and not _is_curated_source(str(canonical.get("source") or "")):
         # Outside hand-curated rows every skill list is a keyword-bank or
         # tagger read of prose, stamped or not (the tagger's pre-stamp runs
@@ -701,7 +705,7 @@ def _required_skills(payload: dict, canonical: dict) -> _Field:
     required_basis = skills_basis(canonical, "eligibility.skills_required")
     preferred_basis = skills_basis(canonical, "eligibility.skills_preferred")
     if required and required_basis is None:
-        field.source("required", required)
+        field.source("required", required, fodommat.host_quote(canonical, "skills_required"))
     if preferred and preferred_basis is None:
         field.source("preferred", preferred)
     mentioned: list[str] = []
