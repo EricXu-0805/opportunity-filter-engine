@@ -49,6 +49,28 @@ describe('complete résumé master editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
     expect(stored().publications[0].student_authorship).toBeUndefined();
   });
+  it('attaches authorship to a confirmed legacy DOI without changing the student’s citation or its sources', () => {
+    const master = createEmptyResumeMaster();
+    const original = { id: 'old-paper', details: [], title: fact('My preserved title'),
+      authors: fact('Coauthor, A.; Student, B.'), doi: fact('10.1234/OldTitle'), url: fact('https://publisher.example/old') };
+    master.publications.push(original);
+    render(<Harness initial={{ ...DEFAULT_PROFILE, scholar_url: 'https://scholar.google.com/citations?user=DemoStudent', resume_master: master }} />);
+    open();
+    screen.getByText('Import my publications from OpenAlex').closest('details')!.open = true;
+    change('Your OpenAlex author ID or ORCID', 'A99');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm that these author profiles are mine.' }));
+    change('Paste your public OpenAlex Works JSON export (up to 200 works).', JSON.stringify({
+      id: 'https://openalex.org/W66', display_name: 'Publisher spelling', doi: 'https://doi.org/10.1234/oldtitle',
+      authorships: [{ author: { id: 'A99', display_name: 'Student, B.' } }],
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Check authorships' }));
+    expect(screen.getByText('Existing confirmed citation', { exact: false })).toHaveTextContent('My preserved title');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm authorship for this existing citation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().publications).toEqual([{ ...original, student_authorship: {
+      scholar_id: 'DemoStudent', author_id: 'A99', work_id: 'W66', linked_by: '10.1234/oldtitle' } }]);
+    expect(screen.queryByText('Your OpenAlex export', { exact: false })).toBeNull();
+  });
   it('waits for hydration and opens a collapsed editor without inventing profile facts', () => {
     const onChange = vi.fn(() => true);
     const profile = { ...DEFAULT_PROFILE, name: 'Do not infer', university: 'Do not infer a degree' };

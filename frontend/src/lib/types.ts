@@ -137,6 +137,8 @@ export interface StudentAuthorship {
   author_id: string;
   work_id: string;
   orcid?: string;
+  /** Existing confirmed citation matched by this DOI or work URL, preserving its original facts. */
+  linked_by?: string;
 }
 export interface ResumePublicationItem {
   student_authorship?: StudentAuthorship;

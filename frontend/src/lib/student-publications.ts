@@ -43,10 +43,12 @@ function openalexWork(input: unknown): string | null {
 }
 
 export function validStudentAuthorship(value: unknown): value is StudentAuthorship {
-  return record(value) && Object.keys(value).every((key) => ['scholar_id', 'author_id', 'work_id', 'orcid'].includes(key))
+  return record(value) && Object.keys(value).every((key) => ['scholar_id', 'author_id', 'work_id', 'orcid', 'linked_by'].includes(key))
     && typeof value.scholar_id === 'string' && scholarId.test(value.scholar_id)
     && typeof value.author_id === 'string' && authorId.test(value.author_id)
     && typeof value.work_id === 'string' && workId.test(value.work_id)
+    && (!Object.hasOwn(value, 'linked_by') || (typeof value.linked_by === 'string' && (
+      value.linked_by === 'https://openalex.org/' + value.work_id || publicDoi(value.linked_by)?.toLowerCase() === value.linked_by)))
     && (!Object.hasOwn(value, 'orcid') || (typeof value.orcid === 'string' && canonicalOrcid(value.orcid) !== null));
 }
 
@@ -103,9 +105,46 @@ function publicDoi(value: unknown): string | null {
   return /^10\.\d{4,9}\/\S+$/u.test(doi) && !Array.from(doi).some((char) => char.charCodeAt(0) < 32) ? doi : null;
 }
 
-export function alreadyImported(items: ResumePublicationItem[], work: StudentWork): boolean {
-  return items.some((item) => item.student_authorship?.work_id === work.source.work_id || openalexWork(item.url?.value) === work.source.work_id
-    || (!!work.doi && [item.doi?.value, item.url?.value].some((value) => publicDoi(value)?.toLowerCase() === work.doi?.toLowerCase())));
+export function studentAuthorshipBound(source: unknown, url: unknown, doi: unknown): boolean {
+  if (!validStudentAuthorship(source)) return false;
+  const link = record(url) ? url.value : null;
+  const workUrl = 'https://openalex.org/' + source.work_id;
+  if (!source.linked_by) return link === workUrl;
+  if (source.linked_by === workUrl) return openalexWork(link) === source.work_id;
+  return [record(doi) ? doi.value : null, link].some((value) => publicDoi(value)?.toLowerCase() === source.linked_by);
+}
+
+type PublicationMatch = { kind: 'new' | 'present' | 'conflict' } |
+  { kind: 'link'; item: ResumePublicationItem; locator: string };
+
+export function existingStudentWork(items: ResumePublicationItem[], work: StudentWork): PublicationMatch {
+  const workUrl = 'https://openalex.org/' + work.source.work_id;
+  const doi = work.doi?.toLowerCase();
+  const sameDoi = (value?: string) => !!doi && publicDoi(value)?.toLowerCase() === doi;
+  const rows = items.filter((item) => item.student_authorship?.work_id === work.source.work_id
+    || openalexWork(item.url?.value) === work.source.work_id || sameDoi(item.doi?.value) || sameDoi(item.url?.value));
+  if (!rows.length) return { kind: 'new' };
+  if (rows.length !== 1) return { kind: 'conflict' };
+  const item = rows[0];
+  if (item.student_authorship) {
+    const source = item.student_authorship;
+    return { kind: source.work_id === work.source.work_id && source.author_id === work.source.author_id
+      && source.scholar_id === work.source.scholar_id ? 'present' : 'conflict' };
+  }
+  const otherWork = openalexWork(item.url?.value);
+  const conflictingDoi = doi && [item.url?.value, item.doi?.value].some((value) => publicDoi(value) && !sameDoi(value));
+  if (item.title?.status !== 'confirmed' || (otherWork && otherWork !== work.source.work_id) || conflictingDoi) return { kind: 'conflict' };
+  if (item.url?.status === 'confirmed' && otherWork === work.source.work_id) return { kind: 'link', item, locator: workUrl };
+  if (doi && [item.doi, item.url].some((fact) => fact?.status === 'confirmed' && sameDoi(fact.value))) {
+    return { kind: 'link', item, locator: doi };
+  }
+  return { kind: 'conflict' };
+}
+
+export function addStudentWork(items: ResumePublicationItem[], work: StudentWork): void {
+  const match = existingStudentWork(items, work);
+  if (match.kind === 'new') items.push(confirmedStudentWork(work));
+  if (match.kind === 'link') match.item.student_authorship = { ...work.source, linked_by: match.locator };
 }
 
 export function confirmedStudentWork(work: StudentWork): ResumePublicationItem {

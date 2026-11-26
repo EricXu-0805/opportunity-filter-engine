@@ -2,7 +2,7 @@ import type {
   ExperienceEntry, ExperienceSource, ProfileData, ResumeActivityItem, ResumeFact, ResumeMasterV1,
   ResumeExperienceRef, ResumeMasterSectionKind,
 } from './types';
-import { validStudentAuthorship } from './student-publications';
+import { studentAuthorshipBound } from './student-publications';
 import { isActiveExperience, validateExperienceEntries, type ExperienceSourceContext } from './experience-evidence';
 import {
   BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_FIELD_SEPARATOR as FIELD_SEPARATOR, RESUME_PERSON as PERSON,
@@ -154,8 +154,7 @@ export function validateResumeMaster(value: unknown): ResumeMasterValidation {
     }
     for (const item of list(value.publications)) {
       shape(item, ['id', 'details'], [...PUBLICATION_FIELDS, 'student_authorship']);
-      if (Object.hasOwn(item, 'student_authorship') && (!validStudentAuthorship(item.student_authorship)
-        || !record(item.url) || item.url.value !== 'https://openalex.org/' + item.student_authorship.work_id)) fail('invalid_source');
+      if (Object.hasOwn(item, 'student_authorship') && !studentAuthorshipBound(item.student_authorship, item.url, item.doi)) fail('invalid_source');
       addRecord(item.id); fields(item, PUBLICATION_FIELDS); references(item.details);
     }
     for (const fact of list(value.skills)) addFact(fact);

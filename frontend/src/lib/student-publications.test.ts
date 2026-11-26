@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alreadyImported, authorIdentifier, confirmedStudentWork, scholarUser, studentWorks, validStudentAuthorship } from './student-publications';
+import { addStudentWork, existingStudentWork, authorIdentifier, confirmedStudentWork, scholarUser, studentWorks, validStudentAuthorship } from './student-publications';
 import { createEmptyResumeMaster, validateResumeMaster } from './resume-master';
 
 const orcid = '0000-0002-1825-0097';
@@ -26,7 +26,7 @@ describe('student-supplied OpenAlex Works', () => {
       const saved = confirmedStudentWork(result.works[1]);
       expect(saved.student_authorship).toEqual({ scholar_id: scholar, author_id: 'A123', work_id: 'W12', ...(identity === orcid ? { orcid } : {}) });
       expect(saved.authors).toBeUndefined();
-      expect(alreadyImported([saved], result.works[1])).toBe(true);
+      expect(existingStudentWork([saved], result.works[1]).kind).toBe('present');
       expect(validateResumeMaster({ ...createEmptyResumeMaster(), publications: [saved] }).ok).toBe(true);
       const changedLink = { ...saved, url: { ...saved.url!, value: 'https://openalex.org/W99' } };
       expect(validateResumeMaster({ ...createEmptyResumeMaster(), publications: [changedLink] }).ok).toBe(false);
@@ -46,7 +46,17 @@ describe('student-supplied OpenAlex Works', () => {
     delete existing.url;
     expect(existing.doi?.value).toBe('10.1234/Fiction');
     existing.doi!.value = '10.1234/fiction';
-    expect(alreadyImported([existing], matched)).toBe(true);
+    expect(existingStudentWork([existing], matched).kind).toBe('link');
+    const previousCitation = structuredClone(existing);
+    const items = [existing];
+    addStudentWork(items, matched);
+    expect(items).toHaveLength(1);
+    expect(items[0].student_authorship?.linked_by).toBe('10.1234/fiction');
+    expect({ ...existing, student_authorship: undefined }).toEqual({ ...previousCitation, student_authorship: undefined });
+    expect(validateResumeMaster({ ...createEmptyResumeMaster(), publications: items }).ok).toBe(true);
+    expect(existingStudentWork(items, matched).kind).toBe('present');
+    expect(existingStudentWork([previousCitation, existing], matched).kind).toBe('conflict');
+    expect(existingStudentWork([{ ...previousCitation, title: { ...previousCitation.title!, status: 'rejected' } }], matched).kind).toBe('conflict');
   });
   it('accepts canonical public routes, validates ORCID checksums, and rejects incorrect exports and stored metadata', () => {
     expect(scholarUser('https://scholar.google.com/citations?hl=en&user=' + scholar)).toBe(scholar);
