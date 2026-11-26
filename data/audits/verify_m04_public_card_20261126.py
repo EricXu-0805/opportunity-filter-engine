@@ -10,8 +10,9 @@ from urllib.parse import urlsplit, parse_qs
 from playwright.sync_api import sync_playwright, expect
 
 SITE = "https://joinalab.com"
-OID = "faculty-cs-321c7f13"
-NAME = "Girish Chowdhary"
+ORIGINAL = os.environ.get("M04_CASE") == "berkeley"
+OID = "faculty-ucb-eecs-d683bc2c" if ORIGINAL else "faculty-cs-321c7f13"
+NAME = "Ahmed Alaa" if ORIGINAL else "Girish Chowdhary"
 OUT = Path(os.environ.get("RECEIPT_DIRECTORY", "evidence"))
 OUT.mkdir(parents=True, exist_ok=True)
 guest = {"signup_http": None, "profile_commit_http": None, "match_http": None}
@@ -61,23 +62,42 @@ def run(page):
     archived_script=Path(os.environ.get("ARCHIVED_GUEST_SCRIPT","data/audits/verify_public_guest_20261126.py")).read_text()
     archive=re.search(r'^ARCHIVE = "([^"]+)"',archived_script,re.M).group(1)
     payload=zlib.decompress(base64.b64decode(archive)).decode()
-    source="https://siebelschool.illinois.edu/about/people/faculty/girishc"
+    source=("https://www2.eecs.berkeley.edu/Faculty/Homepages/amalaa.html" if ORIGINAL
+            else "https://siebelschool.illinois.edu/about/people/faculty/girishc")
+    official_mail="mailto:amalaa@berkeley.edu" if ORIGINAL else "mailto:girishc@illinois.edu"
     official=page.request.get(source,timeout=30000)
-    assert official.ok and NAME in official.text() and 'mailto:girishc@illinois.edu' in official.text().lower()
+    assert official.ok and NAME in official.text() and official_mail in official.text().lower()
     receipt["official_contact"]={"url":source,"http":official.status,"display_name":NAME,"published_professional_email_verified":True}
-    page.goto(SITE+"/?share="+payload,wait_until="domcontentloaded",timeout=90000)
+    page.goto(SITE+"/" if ORIGINAL else SITE+"/?share="+payload,wait_until="domcontentloaded",timeout=90000)
     page.locator("#student_name").wait_for(timeout=50000)
     for _ in range(100):
         page.wait_for_timeout(250)
         if guest["signup_http"] == 200 and not page.get_by_test_id("hydration-note").is_visible() and not page.get_by_test_id("profile-refresh-status").is_visible():
             break
     assert guest["signup_http"] == 200, "The site's real anonymous account service did not confirm a fresh guest"
-    campus=page.get_by_test_id("university-card-uiuc")
+    campus=page.get_by_test_id("university-card-ucb" if ORIGINAL else "university-card-uiuc")
+    if ORIGINAL and not campus.is_visible():
+        toggle=page.get_by_role("button",name="Change",exact=True)
+        toggle.click()
+        page.wait_for_timeout(500)
+        if not campus.is_visible():
+            toggle.click()
+        expect(campus).to_be_visible(timeout=10000)
     if campus.is_visible():
         campus.click()
         page.get_by_test_id("switcher-confirm").click()
-    expect(page.locator("#research_interests")).to_have_value(re.compile("LATE_INTEREST"),timeout=30000)
     page.locator("#student_name").fill("Sample Student")
+    if ORIGINAL:
+        for selector,value in (("#college","College of Computing, Data Science, and Society"),("#major","Computer Science")):
+            field=page.locator(selector)
+            if field.evaluate("e=>e.tagName")=="SELECT":
+                field.select_option(label=value)
+            else:
+                field.fill(value)
+        page.locator("#grade").select_option(label="Junior")
+        page.locator("#research_interests").fill("machine learning, artificial intelligence, healthcare")
+    else:
+        expect(page.locator("#research_interests")).to_have_value(re.compile("LATE_INTEREST"),timeout=30000)
     generate=page.get_by_test_id("generate-matches")
     expect(generate).to_be_enabled(timeout=45000)
     generate.click()
@@ -88,6 +108,16 @@ def run(page):
     if urlsplit(page.url).path=="/" and generate.is_enabled():
         generate.click()
     page.wait_for_url(re.compile("/results"),timeout=55000)
+    if ORIGINAL:
+        page.locator("[id^=match-card-]").first.wait_for(timeout=90000)
+        page.goto(SITE+"/opportunities/"+OID,wait_until="domcontentloaded")
+        expect(page.get_by_role("heading",level=1)).to_have_text(NAME)
+        save=page.get_by_role("button",name="Add to favorites",exact=True)
+        expect(save).to_be_enabled(timeout=30000)
+        save.click()
+        expect(page.get_by_role("button",name="Remove from favorites",exact=True)).to_be_enabled(timeout=20000)
+        page.goto(SITE+"/results?tab=starred&ai=0",wait_until="domcontentloaded")
+        receipt["entry"]="Normal form, Generate, public detail, Add to favorites on this new guest, Starred matches"
     card=page.locator("#match-card-"+OID)
     expect(card).to_be_visible(timeout=90000)
     if page.get_by_test_id("switcher-confirm").is_visible():
@@ -98,6 +128,8 @@ def run(page):
     card.get_by_role("button",name="Show details",exact=True).click()
     why=card.get_by_role("heading",name="Why it fits",exact=True)
     expect(why).to_be_visible()
+    if ORIGINAL:
+        expect(card.get_by_text("Faculty contact for inquiries · openings not confirmed",exact=True)).to_be_visible()
     reasons=why.locator("..").locator("li").all_inner_texts()
     assert any(s.strip() for s in reasons)
     receipt["card"]["displayed_fit_reasons"]=reasons
@@ -111,7 +143,7 @@ def run(page):
     expect(body).to_be_visible(timeout=70000)
     subject=page.locator("#cold-email-subject").input_value().strip()
     body_text=body.input_value().strip()
-    assert subject and body_text and "Chowdhary" in body_text, "The unsent editor does not identify its target"
+    assert subject and body_text and NAME.split()[-1] in body_text, "The unsent editor does not identify its target"
     variants=draft.pop("variants")
     assert any(v.get("subject","").strip()==subject and v.get("body","").strip()==body_text for v in variants), "Wrong variant in the editor"
     assert draft["opportunity_id"]==OID and set(draft["variant_ids"])=={"balanced","skills","concise"}
