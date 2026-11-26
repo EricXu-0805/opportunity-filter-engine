@@ -1,0 +1,164 @@
+{
+  "release_sha": "cfa698298e413e02eb8222f0f99ac5684c264137",
+  "site": "http://127.0.0.1:39785",
+  "simulated": true,
+  "source_states": [
+    {
+      "tested_clock": "2027-01-12T05:58:59Z",
+      "rows": [
+        {
+          "id": "uchicago-8cd2def060b6",
+          "title": "DSI Summer Lab (Data Science Institute)",
+          "api_actionable": true,
+          "apply_action_links": [
+            {
+              "name": "Apply now",
+              "href": "https://datascience.uchicago.edu/education/summerlab/"
+            }
+          ],
+          "university_citations": [
+            {
+              "name": "Source page",
+              "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+            },
+            {
+              "name": "Source page",
+              "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+            }
+          ],
+          "stipend_5600": true,
+          "conditional_1800": true,
+          "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+          "official_deadline": "2027-01-11",
+          "cutoff": "2027-01-11T23:59:00-06:00",
+          "closed_message": false,
+          "eligibility": {
+            "citizenship": {
+              "value": "not_required",
+              "source": "https://datascience.uchicago.edu/education/summerlab/faq/"
+            },
+            "international_students": {
+              "value": "yes",
+              "source": "https://datascience.uchicago.edu/education/summerlab/faq/"
+            },
+            "work_authorization_notes": {
+              "value": "All participants need U.S. work authorization and documentation for their stipend.",
+              "source": "https://datascience.uchicago.edu/education/summerlab/faq/"
+            }
+          },
+          "rendered_faq_citations": 3
+        },
+        {
+          "id": "sro-d6b78515",
+          "title": "Data Science Institute Summer Lab",
+          "api_actionable": true,
+          "apply_action_links": [
+            {
+              "name": "Apply now",
+              "href": "https://datascience.uchicago.edu/education/summerlab/#program-overview"
+            }
+          ],
+          "university_citations": [
+            {
+              "name": "Source page",
+              "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+            },
+            {
+              "name": "Source page",
+              "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+            },
+            {
+              "name": "Source page",
+              "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+            }
+          ],
+          "stipend_5600": true,
+          "conditional_1800": true,
+          "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+          "official_deadline": "2027-01-11",
+          "cutoff": "2027-01-11T23:59:00-06:00",
+          "closed_message": false,
+          "eligibility": {
+            "citizenship": {
+              "value": "not_required",
+              "source": "https://datascience.uchicago.edu/education/summerlab/faq/"
+            },
+            "international_students": {
+              "value": "yes",
+              "source": "https://datascience.uchicago.edu/education/summerlab/faq/"
+            },
+            "work_authorization_notes": {
+              "value": "All participants need U.S. work authorization and documentation for their stipend.",
+              "source": "https://datascience.uchicago.edu/education/summerlab/faq/"
+            }
+          },
+          "rendered_faq_citations": 3
+        }
+      ]
+    },
+    {
+      "tested_clock": "2027-01-12T05:59:00Z",
+      "rows": [
+        {
+          "id": "uchicago-8cd2def060b6",
+          "title": "DSI Summer Lab (Data Science Institute)",
+          "api_actionable": false,
+          "apply_action_links": [],
+          "university_citations": [],
+          "stipend_5600": false,
+          "conditional_1800": false,
+          "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+          "official_deadline": "2027-01-11",
+          "cutoff": "2027-01-11T23:59:00-06:00",
+          "closed_message": true
+        },
+        {
+          "id": "sro-d6b78515",
+          "title": "Data Science Institute Summer Lab",
+          "api_actionable": false,
+          "apply_action_links": [],
+          "university_citations": [],
+          "stipend_5600": false,
+          "conditional_1800": false,
+          "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+          "official_deadline": "2027-01-11",
+          "cutoff": "2027-01-11T23:59:00-06:00",
+          "closed_message": true
+        }
+      ]
+    },
+    {
+      "tested_clock": "2027-01-12T13:59:00Z",
+      "rows": [
+        {
+          "id": "uchicago-8cd2def060b6",
+          "title": "DSI Summer Lab (Data Science Institute)",
+          "api_actionable": false,
+          "apply_action_links": [],
+          "university_citations": [],
+          "stipend_5600": false,
+          "conditional_1800": false,
+          "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+          "official_deadline": "2027-01-11",
+          "cutoff": "2027-01-11T23:59:00-06:00",
+          "closed_message": true
+        },
+        {
+          "id": "sro-d6b78515",
+          "title": "Data Science Institute Summer Lab",
+          "api_actionable": false,
+          "apply_action_links": [],
+          "university_citations": [],
+          "stipend_5600": false,
+          "conditional_1800": false,
+          "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+          "official_deadline": "2027-01-11",
+          "cutoff": "2027-01-11T23:59:00-06:00",
+          "closed_message": true
+        }
+      ]
+    }
+  ],
+  "same_release_after": true,
+  "observed_utc": "2026-11-26T21:34:33.377Z"
+}

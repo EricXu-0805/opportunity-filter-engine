@@ -1,0 +1,43 @@
+{
+  "environment": "production, public read-only scoring, no account, no LLM",
+  "started": "2026-11-26T21:32:49.160615+00:00",
+  "release": [
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  ],
+  "results": [
+    {
+      "source": "",
+      "paid": "yes",
+      "intl": "yes",
+      "http": 200,
+      "count": 1,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    },
+    {
+      "source": "uchicago_external_research",
+      "paid": "yes",
+      "intl": "yes",
+      "http": 200,
+      "count": 0,
+      "ids": []
+    },
+    {
+      "source": "uiuc_sro",
+      "paid": "yes",
+      "intl": "yes",
+      "http": 200,
+      "count": 1,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    }
+  ],
+  "ended": "2026-11-26T21:32:59.173273+00:00",
+  "release_after": [
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  ]
+}

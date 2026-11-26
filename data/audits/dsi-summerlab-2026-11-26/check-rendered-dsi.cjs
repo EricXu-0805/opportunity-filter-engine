@@ -64,6 +64,10 @@ async function main() {
             assert(row.stipend_5600 && row.conditional_1800);assert(cites.length>0);
             if (process.env.DSI_VERIFY_WORK_AUTH === "1") {
               const eligibility=record.detail_fields.fields.eligibility;
+              const funding=record.detail_fields.fields.funding;
+              assert.equal(funding.explicit.paid,"yes");
+              assert.equal(funding.quotes.paid.source_url,official);
+              row.confirmed_pay={value:funding.explicit.paid,source:funding.quotes.paid.source_url};
               assert.equal(eligibility.explicit.citizenship,"not_required");
               assert.equal(eligibility.explicit.international_students,"yes");
               assert.equal(eligibility.explicit.work_authorization_notes,"All participants need U.S. work authorization and documentation for their stipend.");

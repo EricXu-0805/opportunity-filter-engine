@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      OFE_RELEASE_SHA: cfa698298e413e02eb8222f0f99ac5684c264137
+      OFE_RELEASE_SHA: 47ad3568fadbb395588e10f917f0d20e278aa603
       DSI_VERIFY_WORK_AUTH: '1'
       OFE_ENVIRONMENT: isolated-candidate
       NEXT_TELEMETRY_DISABLED: '1'
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           path: candidate
-          ref: cfa698298e413e02eb8222f0f99ac5684c264137
+          ref: 47ad3568fadbb395588e10f917f0d20e278aa603
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:

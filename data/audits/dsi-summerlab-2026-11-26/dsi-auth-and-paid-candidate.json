@@ -1,0 +1,137 @@
+{
+  "head": "47ad3568fadbb395588e10f917f0d20e278aa603",
+  "corpus": 149892,
+  "total_national": 14198,
+  "changed": {
+    "sro-d6b78515": [
+      "eligibility",
+      "metadata"
+    ],
+    "uchicago-8cd2def060b6": [
+      "eligibility",
+      "paid"
+    ]
+  },
+  "details": {
+    "uchicago-8cd2def060b6": {
+      "http": 200,
+      "fields": {
+        "citizenship": "not_required",
+        "international_students": "yes",
+        "work_authorization_notes": "All participants need U.S. work authorization and documentation for their stipend."
+      },
+      "sources": {
+        "citizenship": {
+          "text": "international undergraduate students are eligible to apply",
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+          "observed_at": "2026-11-26"
+        },
+        "international_students": {
+          "text": "international undergraduate students are eligible to apply",
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+          "observed_at": "2026-11-26"
+        },
+        "work_authorization_notes": {
+          "text": "all students must be authorized to work in the United States",
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "funding": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food.",
+      "funding_source": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+      "source_url": "https://datascience.uchicago.edu/education/summerlab/",
+      "original_first_seen": "2026-07-04T06:06:43.940136"
+    },
+    "sro-d6b78515": {
+      "http": 200,
+      "fields": {
+        "citizenship": "not_required",
+        "international_students": "yes",
+        "work_authorization_notes": "All participants need U.S. work authorization and documentation for their stipend."
+      },
+      "sources": {
+        "citizenship": {
+          "text": "international undergraduate students are eligible to apply",
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+          "observed_at": "2026-11-26"
+        },
+        "international_students": {
+          "text": "international undergraduate students are eligible to apply",
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+          "observed_at": "2026-11-26"
+        },
+        "work_authorization_notes": {
+          "text": "all students must be authorized to work in the United States",
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "funding": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food.",
+      "funding_source": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+      "source_url": "https://researchops.web.illinois.edu/?page=0",
+      "original_first_seen": "2026-04-06T04:51:38.824935"
+    }
+  },
+  "views": [
+    {
+      "international_student": true,
+      "source": "",
+      "intl_filter": "yes",
+      "paid_filter": "yes",
+      "total": 1,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    },
+    {
+      "international_student": true,
+      "source": "uiuc_sro",
+      "intl_filter": "yes",
+      "paid_filter": "yes",
+      "total": 1,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    },
+    {
+      "international_student": true,
+      "source": "uchicago_external_research",
+      "intl_filter": "yes",
+      "paid_filter": "yes",
+      "total": 1,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    },
+    {
+      "international_student": false,
+      "source": "",
+      "intl_filter": "yes",
+      "paid_filter": "yes",
+      "total": 1,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    },
+    {
+      "international_student": false,
+      "source": "uiuc_sro",
+      "intl_filter": "yes",
+      "paid_filter": "yes",
+      "total": 1,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    },
+    {
+      "international_student": false,
+      "source": "uchicago_external_research",
+      "intl_filter": "yes",
+      "paid_filter": "yes",
+      "total": 1,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    }
+  ]
+}
