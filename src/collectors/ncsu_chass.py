@@ -10,6 +10,7 @@ from . import faculty_graph, ucb_common
 FACULTY_URL = "https://chass.ncsu.edu/group/faculty/"
 FACULTY_TERM = 11847
 BRADEN_POST = 89880
+FUNKHOUSER_POST = 89838
 # CHASS uses one retirement term per academic unit. A separate faculty or staff
 # term is positive evidence of another role, even when this appointment ended.
 CURRENT_FACULTY_TERMS = {11937, 11970}  # CRDM doctoral and linguistics faculty
@@ -34,11 +35,13 @@ REVIEWED_PROFILES = {
     89828: ("alchedia", "Jim Alchediak"),
     89831: ("casmith5", "Craig Smith"),
     89834: ("ddejoy", "Daniel DeJoy"),
+    FUNKHOUSER_POST: ("edwardt", "Edward Funkhouser"),
     89845: ("jkeyton", "Joann Keyton"),
     89846: ("jkiwanu", "James Kiwanuka-Tondo"),
     89855: ("mjohnson", "Melissa A. Johnson"),
     89859: ("nhsnow", "Nancy Snow"),
     89861: ("pcaple", "Patricia Caple"),
+    89862: ("rblarson", "Bob Larson"),
     89864: ("rleonard", "Becky Leonard"),
     89866: ("schrag", "Robert Schrag"),
     89868: ("sstein", "Sarah Stein"),
@@ -52,17 +55,20 @@ REVIEWED_PROFILES = {
     90833: ("bcpittma", "Beryl Pittman"),
     90847: ("charlott", "Charlotte Gross"),
     90853: ("covingto", "David Covington"),
+    90855: ("cwarren", "Cat Warren"),
     90857: ("daorgero", "Devin Orgeron"),
     90859: ("djreavis", "Dick Reavis"),
     90861: ("dllaux", "Dorianne Laux"),
     90868: ("engahh", "Antony Harrison"),
     90871: ("gaitens", "Judi Gaitens"),
     90874: ("gomez", "Joseph Gomez"),
+    90875: ("grimwood", "Michael Grimwood"),
     90883: ("jbalaba", "John Balaban"),
     90886: ("jferster", "Judith Ferster"),
     90894: ("jnwall", "John N Wall"),
     90895: ("jont", "Jon Thompson"),
     90896: ("josmall", "Judy Small"),
+    90903: ("jwclark", "Jim Clark"),
     90910: ("leila", "Leila May"),
     90913: ("lsmith", "Lee Smith"),
     90915: ("macketha", "Lucinda MacKethan"),
@@ -70,9 +76,13 @@ REVIEWED_PROFILES = {
     90923: ("mhthuent", "Mary Thuente"),
     90924: ("mhunt", "Marvin Hunt"),
     90928: ("morillo", "John Morillo"),
+    90929: ("mpc", "Mike Carter"),
     90932: ("pacolby", "Paul Colby"),
+    90936: ("peblank", "Philip Blank"),
+    90937: ("penrose", "Nancy Penrose"),
     90938: ("prioli", "Carmine Prioli"),
     90942: ("rckeg", "Robert Kochersberger"),
+    90948: ("ryoung", "RV Young"),
     90949: ("sdicks", "Stan Dicks"),
     90957: ("smoot", "Jeanne Smoot"),
     90958: ("ssetzer", "Sharon Setzer"),
@@ -81,6 +91,7 @@ REVIEWED_PROFILES = {
     90966: ("west", "Harry West"),
     90968: ("wjramm", "Wanda Ramm"),
     90971: ("wpshaw", "William Shaw"),
+    90972: ("wwbarnha", "Wilton Barnhardt"),
     90984: ("achekhov", "Vladimir Bilenkin"),
     90997: ("dsbeckma", "Diane Beckman"),
     91001: ("etai", "Eika Tai"),
@@ -91,6 +102,7 @@ REVIEWED_PROFILES = {
     91024: ("kent", "E Lioret"),
     91029: ("lamfll", "Larysa Mykyta"),
     91036: ("mbell", "Martine Bell"),
+    91041: ("mlsalsta", "Louise Salstad"),
     91042: ("mmmagill", "Michele Magill"),
     91045: ("msdarrah", "Michele Darrah"),
     91062: ("tkhovers", "Turi Hoversten"),
@@ -103,6 +115,7 @@ REVIEWED_PROFILES = {
     91180: ("edsssl", "Edith Sylla"),
     91249: ("slspenc2", "Stephanie Spencer"),
     91265: ("wcharri2", "William Harris"),
+    91286: ("dbgreene", "David Greene"),
     91339: ("dvphi", "A. Donald VandeVeer"),
     91349: ("levin", "Hal Levin"),
     91354: ("mjpendle", "Michael Pendlebury"),
@@ -119,17 +132,21 @@ REVIEWED_PROFILES = {
     91417: ("mark-wilson", "Mark Wilson"),
     91419: ("mehasket", "Mary E Haskett"),
     91420: ("mershon", "Donald H. Mershon"),
+    91424: ("pond", "Samuel Pond"),
     91425: ("remitche", "Roger Mitchell"),
     91431: ("schulte", "Ann Schulte"),
     91434: ("tmhess", "Thomas Hess"),
     91438: ("wogalter", "Michael Wogalter"),
     91490: ("jgilbert", "John Gilbert"),
+    91510: ("rsmoog", "Bob Moog"),
     91516: ("soroos", "Marvin Soroos"),
     91589: ("acdavis", "Adam Davis"),
     91594: ("atkinson", "Maxine Atkinson"),
     91598: ("clifford", "William Clifford"),
     91606: ("duckpond", "Michael Schwalbe"),
     91627: ("mazahn", "Margaret Zahn"),
+    91634: ("pmccall", "Patty McCall"),
+    91638: ("ronczaja", "Ron Czaja"),
     91656: ("ted", "Theodore Greenstein"),
     91663: ("tlparcel", "Toby Parcel"),
     91667: ("twallace", "Tim Wallace"),
@@ -144,11 +161,33 @@ REVIEWED_PROFILES = {
 # personal URL and official departmental retirement card.
 REVIEWED_PUBLIC_ALIASES = {
     89855: "Melissa Johnson",
+    89862: "Robert Larson",
     BRADEN_POST: "Jeff Braden",
+    90855: "Catherine Warren",
+    90875: "James Grimwood",
     90894: "John Wall",
+    90903: "James Clark Jr",
+    90929: "Michael Carter",
+    90936: "Philip Blank Jr",
+    90937: "Ann Penrose",
+    90948: "Robert Young Jr",
     90971: "William Shaw PhD",
+    90972: "William Barnhardt",
+    91041: "M Salstad",
+    91286: "David Greene Jr",
     91419: "Mary Haskett",
     91420: "Donald Mershon",
+    91424: "Samuel Pond III",
+    91510: "Robert Moog",
+    91634: "Patricia McCall",
+    91638: "Ronald Czaja",
+}
+
+
+# These combined ranks were verified against the named former appointments.
+RETIRED_TITLES_BY_POST = {
+    BRADEN_POST: "Dean and Professor Emeritus",
+    FUNKHOUSER_POST: "Former Associate Professor & Associate Dean",
 }
 
 
@@ -210,9 +249,7 @@ def current_faculty(records: list[dict]) -> list[dict]:
             if not names <= expected_names:
                 faculty_graph._cover("ambiguous_rows")
                 continue
-            retired_rank = rank in RETIRED_TITLES or (
-                person["id"] == BRADEN_POST and rank == "Dean and Professor Emeritus"
-            )
+            retired_rank = rank in RETIRED_TITLES or rank == RETIRED_TITLES_BY_POST.get(person["id"])
             if _retirement_group_only(person) and retired_rank:
                 faculty_graph._cover("classified_nonfaculty_rows")
                 continue

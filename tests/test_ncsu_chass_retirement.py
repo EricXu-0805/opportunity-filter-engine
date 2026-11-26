@@ -90,14 +90,29 @@ def test_bradens_preferred_name_can_restore_only_his_confirmed_appointment(monke
         assert row['metadata']['is_active']
 
 
-def test_five_reviewed_public_names_keep_the_same_id_when_reappointed(monkeypatch):
+def test_reviewed_public_names_keep_the_same_id_when_reappointed(monkeypatch):
     dept = next(d for d in ncsu_faculty.SCHOOL['departments'] if d['short'] == 'CHASS')
     cases = [
         ('mehasket', 'Mary E Haskett', 'Mary Haskett', 'dcb028fb', 11927),
         ('mershon', 'Donald H. Mershon', 'Donald Mershon', 'ff4905cc', 11927),
         ('wpshaw', 'William Shaw', 'William Shaw PhD', '38b191e6', 11869),
+        ('peblank', 'Philip Blank', 'Philip Blank Jr', '1894dc04', 11869),
+        ('dbgreene', 'David Greene', 'David Greene Jr', '165fe06b', 11967),
+        ('pond', 'Samuel Pond', 'Samuel Pond III', 'd8c4ba8d', 11927),
         ('jnwall', 'John N Wall', 'John Wall', '98436171', 11869),
         ('mjohnson', 'Melissa A. Johnson', 'Melissa Johnson', 'acb2eb75', 11866),
+        ('ronczaja', 'Ron Czaja', 'Ronald Czaja', '825124c2', 11945),
+        ('pmccall', 'Patty McCall', 'Patricia McCall', '8874c982', 11945),
+        ('rsmoog', 'Bob Moog', 'Robert Moog', 'd8305216', 11936),
+        ('mlsalsta', 'Louise Salstad', 'M Salstad', '49e38fb4', 11872),
+        ('wwbarnha', 'Wilton Barnhardt', 'William Barnhardt', 'f779aad1', 11869),
+        ('ryoung', 'RV Young', 'Robert Young Jr', '84e6cecc', 11869),
+        ('mpc', 'Mike Carter', 'Michael Carter', 'b1612d52', 11869),
+        ('penrose', 'Nancy Penrose', 'Ann Penrose', '98d2e744', 11869),
+        ('jwclark', 'Jim Clark', 'James Clark Jr', '34b13b74', 11869),
+        ('grimwood', 'Michael Grimwood', 'James Grimwood', '0ed45fbe', 11869),
+        ('cwarren', 'Cat Warren', 'Catherine Warren', '5148f03d', 11869),
+        ('rblarson', 'Bob Larson', 'Robert Larson', 'fbcc8754', 11866),
     ]
     rows = [person(slug, full, [11847, term]) for slug, full, _, _, term in cases]
     monkeypatch.setattr(faculty_graph, '_wp_get_json', lambda url: rows)
@@ -116,3 +131,16 @@ def test_five_reviewed_public_names_keep_the_same_id_when_reappointed(monkeypatc
     assert {faculty_graph._normalize(ncsu_faculty.SCHOOL, dept, r)['id'] for r in listed} == {
         'faculty-ncsu-chass-' + suffix for _, _, _, suffix, _ in cases
     }
+
+
+def test_funkhousers_former_deanship_retires_only_his_reviewed_post(monkeypatch):
+    target = person('edwardt', 'Edward Funkhouser', [11847, 11866])
+    rank = 'Former Associate Professor & Associate Dean'
+    roster = BeautifulSoup(card(target, 'Edward Funkhouser', rank), 'html.parser')
+    monkeypatch.setattr(ncsu_chass.ucb_common, 'fetch_soup', lambda url, **kw: roster)
+    assert ncsu_chass.current_faculty([target]) == []
+    assert ncsu_chass.RETIRED_TITLES_BY_POST.get(ncsu_chass.BRADEN_POST) != rank
+
+    roster.select_one('.title').string = 'Professor'
+    target['group'] = [11847]
+    assert ncsu_chass.current_faculty([target]) == [target]

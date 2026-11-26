@@ -109,6 +109,7 @@ def program(
     opportunity_type: str = "research", paid: str = "unknown", compensation: str = "",
     eligibility_majors: list[str] | None = None, preferred_year: list[str] | None = None,
     international_friendly: str = "unknown", deadline_note: str = "",
+    work_auth_notes: str = "",
     keywords: list[str] | None = None, reference_only: bool = False, is_rolling: bool = True,
     placement_location: str = "",
 ) -> dict:
@@ -121,6 +122,7 @@ def program(
         "eligibility_majors": eligibility_majors or [],
         "preferred_year": preferred_year if preferred_year is not None else ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
+        "work_auth_notes": work_auth_notes,
         "keywords": keywords or [], "reference_only": reference_only, "is_rolling": is_rolling,
         "placement_location": placement_location,
     }
@@ -273,7 +275,7 @@ def _normalize_program(
             # None — never asserted False without evidence.
             "citizenship_required": True if intl == "no" else (False if intl == "yes" else None),
             "international_friendly": intl,
-            "work_auth_notes": "",
+            "work_auth_notes": program_spec.get("work_auth_notes", ""),
             "eligibility_text_raw": (program_spec.get("deadline_note", "") or "")[:300],
         },
         "application": {

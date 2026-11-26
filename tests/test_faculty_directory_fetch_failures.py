@@ -52,3 +52,44 @@ def test_empty_umn_roster_reports_the_terminal_fetch_or_a_real_empty_page(monkey
     assert unit["fetch_status"] == ("failed" if reason else "ok")
     assert unit.get("directory_fetch_failure") == reason
     assert unit["failure_reason"] == reason
+
+
+@pytest.mark.parametrize("paginated", [False, True], ids=["ordinary-render", "hash-render"])
+def test_missing_render_is_distinct_from_a_received_empty_page_and_recovers(monkeypatch, paginated):
+    from bs4 import BeautifulSoup
+
+    from src.collectors.schools.haverford_faculty import SCHOOL as HAVERFORD
+
+    dept = next(d for d in HAVERFORD["departments"] if d["short"] == "CHEM")
+    if paginated:
+        dept = dict(dept, scrape={**dept["scrape"], "paginate": {"mode": "hash"}})
+    school = dict(HAVERFORD, departments=[dept])
+    record = fg._normalize(school, dept, fg.faculty("Clyde Daly", title="Assistant Professor of Chemistry",
+                           url="https://www.haverford.edu/users/cdaly2"))
+    person = BeautifulSoup(
+        '<div class="faculty-staff-row"><div class="profile_link-full-name">'
+        '<a href="/users/cdaly2">Clyde Daly</a></div>'
+        '<div class="italic">Assistant Professor of Chemistry</div></div>',
+        "html.parser",
+    )
+    empty = BeautifulSoup("<main>Faculty directory</main>", "html.parser")
+    render = Mock(side_effect=[None, empty, person])
+    monkeypatch.setattr(fg, "_render_paginated_soup" if paginated else "_render_soup", render)
+    for expected_fetch, reason, expected_ids in [
+        ("failed", "rendered_directory_unavailable", []),
+        ("ok", None, []),
+        ("ok", None, ["faculty-haverford-chem-c5fbfe2f"]),
+    ]:
+        ledger = {}
+        result = fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        finalize_unit_ledger(ledger, [record], school["source"])
+        unit = ledger["chem"]
+        assert [r["id"] for r in result] == expected_ids
+        assert unit["fetch_status"] == expected_fetch
+        assert unit.get("directory_fetch_failure") == reason
+        if not expected_ids:
+            assert unit["parse_status"] == "zero_rows"
+            assert unit["failure_reason"] == reason and not unit["retirement_authorized"]
+        else:
+            assert unit["parse_status"] == "ok" and unit["observed_count"] == 1
+    assert render.call_count == 3

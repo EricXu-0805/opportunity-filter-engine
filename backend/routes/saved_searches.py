@@ -56,9 +56,9 @@ from backend.routes.push import (
     _required_env,
     _verify_cron_secret,
 )
+from src import reviewed_program_pairs as program_pairs
 from src.evidence import is_actionable_target
 from src.matcher.ranker import _filter_context, hard_exclusion
-from src.normalizers import fodommat
 from src.saved_searches.filter import matching_ids, out_of_scope_ids, queued_deadline_supported
 
 router = APIRouter()
@@ -561,7 +561,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
             else None
         )
 
-        same_program = fodommat.records_share_offering(opportunities)
+        pairs = program_pairs.pairs_in_records(opportunities)
         for row in rows:
             try:
                 ineligible = ineligible_by_device.get(row.get("device_id") or "", set())
@@ -593,19 +593,18 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     and queued_deadline_supported(corpus_by_id.get(opportunity_id), filters.get("deadline"))
                 ]
 
-                preferred = fodommat.HOST_ID
-                if same_program:
-                    source = filters.get("source") or ""
-                    pending_ids = fodommat.reconcile_pending(pending_ids, source)
-                    queued_program_ids = set(pending_ids).intersection(fodommat.IDS)
-                    preferred = fodommat.preferred_source_id(source, queued_program_ids or prior_ids)
-                    # Switching which source represents the same checked cohort
-                    # must not queue a new notification for an existing result.
-                    if prior_ids.intersection(fodommat.IDS):
-                        prior_ids.update(fodommat.IDS)
+                source = filters.get("source") or ""
+                preferred_ids = set()
+                for pair in pairs:
+                    pending_ids = pair.reconcile_pending(pending_ids, source)
+                    queued_program_ids = set(pending_ids).intersection(pair.ids)
+                    preferred_ids.add(pair.preferred_id(queued_program_ids or prior_ids))
+                    # Changing the source for a verified cohort is not a new match.
+                    if prior_ids.intersection(pair.historical_ids):
+                        prior_ids.update(pair.ids)
                 current_ids = matching_ids(
                     opportunities, filters, query, served=served, home_school=home_school,
-                    view_rows=view_rows, excluded_ids=ineligible, preferred_id=preferred,
+                    view_rows=view_rows, excluded_ids=ineligible, preferred_ids=preferred_ids,
                 )
                 # A search that has never run has no prior set to diff against
                 # — last_result_ids defaults to '{}' — so everything it matches
@@ -712,7 +711,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         return {"status": "skipped", "reason": "no opportunities loaded"}
     opportunities = actionable_opportunities(release_visible_opportunities(corpus))
     opp_by_id = {o.get("id"): o for o in opportunities if o.get("id")}
-    same_program = fodommat.same_offering(opp_by_id.get(fodommat.HOST_ID), opp_by_id.get(fodommat.DIRECTORY_ID))
+    pairs = program_pairs.verified_pairs(opp_by_id)
     # Ids the queue must stop carrying: hidden by release scope, or stated
     # closed / reference-only / inactive / not-accepting by the source.
     #
@@ -808,9 +807,9 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     and opportunity_id not in ineligible
                     and queued_deadline_supported(opp_by_id.get(opportunity_id), deadline_filter)
                 ]
-                if same_program:
-                    source = (row.get("filters_json") or {}).get("source") or ""
-                    new_ids = fodommat.reconcile_pending(new_ids, source)
+                source = (row.get("filters_json") or {}).get("source") or ""
+                for pair in pairs:
+                    new_ids = pair.reconcile_pending(new_ids, source)
                 if new_ids != stored_new_ids:
                     cleanup_resp = await client.patch(
                         f"{supabase_url}/rest/v1/saved_searches",

@@ -132,17 +132,17 @@ NCSA_DIRECTORY = (
     "https://researchops.web.illinois.edu/opportunity/"
     "future-discovery-training-students-build-and-apply-open-source-machine-learning-models"
 )
-_WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
+WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
 _UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
 _AGGREGATOR_WINDOWS = {
     ("uiuc_sro", "sro-1532726e"): (
         "2027-03-15", replace(WINDOWS[("manual", "ext-uiuc-ncsa-reu")], url=NCSA_DIRECTORY),
     ),
     ("uiuc_sro", "sro-595e912d"): (
-        "2027-02-15", replace(_WISCONSIN_WINDOW, url=_WISCONSIN_DIRECTORY + "-0"),
+        "2027-02-15", replace(_WISCONSIN_WINDOW, url=WISCONSIN_DIRECTORY + "-0"),
     ),
     ("uiuc_sro", "sro-3c378261"): (
-        "2027-02-15", replace(_WISCONSIN_WINDOW, url=_WISCONSIN_DIRECTORY),
+        "2027-02-15", replace(_WISCONSIN_WINDOW, url=WISCONSIN_DIRECTORY),
     ),
     ("nsf_reu", "nsf-reu-2447669"): ("2026-02-15", ProgramWindow(
         _UND_AWARD, "https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
@@ -152,9 +152,9 @@ _AGGREGATOR_WINDOWS = {
 
 
 _SRO_APPLICATION_LINKS = {
-    _WISCONSIN_DIRECTORY: {_WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
+    WISCONSIN_DIRECTORY: {WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
     NCSA_DIRECTORY: {NCSA_DIRECTORY, _NCSA},
-    _WISCONSIN_DIRECTORY + "-0": {_WISCONSIN_DIRECTORY + "-0", _WISCONSIN_HOST, _WISCONSIN_OLD_HOST},
+    WISCONSIN_DIRECTORY + "-0": {WISCONSIN_DIRECTORY + "-0", _WISCONSIN_HOST, _WISCONSIN_OLD_HOST},
 }
 
 

@@ -51,7 +51,7 @@ def test_only_the_bound_pair_collapses_after_the_students_filters(programs):
     assert matching_ids(rows, {"source": "uiuc_sro"}) == [directory["id"], another["id"]]
     assert matching_ids(rows, {"source": "manual"}) == [host["id"]]
     assert matching_ids(rows, {}, excluded_ids={host["id"]}) == [directory["id"], another["id"]]
-    assert matching_ids(rows, {}, preferred_id=directory["id"]) == [directory["id"], another["id"]]
+    assert matching_ids(rows, {}, preferred_ids=[directory["id"]]) == [directory["id"], another["id"]]
     for change in ({"deadline": "2028-02-15"}, {"url": host["url"]}, {"source": "manual"}):
         candidate = {**directory, **change}
         assert matching_ids([candidate, host], {}) == [directory["id"], host["id"]]
