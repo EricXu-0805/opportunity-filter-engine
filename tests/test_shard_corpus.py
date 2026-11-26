@@ -159,6 +159,11 @@ def test_target_only_split_never_replays_stale_non_target_over_new_main(tmp_path
     assert _shard_count(sd, "alpha") == 3
     assert (sd / "beta.json").read_text(encoding="utf-8") == latest_beta
 
+    assert assemble(wf, sd, force=True, min_records=4) == 4
+    assert [row["id"] for row in json.loads(wf.read_text())] == [
+        "alpha-0", "alpha-1", "alpha-2", "beta-new-main",
+    ]
+
 
 def test_target_only_split_rejects_missing_targets_and_prune(tmp_path):
     wf, sd = tmp_path / "work.json", tmp_path / "shards"
@@ -570,3 +575,8 @@ def test_publication_workflow_splits_only_authorized_shards():
     assert "shard_corpus.py split\n" not in workflow, (
         "an unbounded split would rewrite every school from run-start data"
     )
+    publish = workflow[workflow.index("shard_corpus.py split --only-shards"):]
+    retire = publish.index("python3 -m src.normalizers.deactivate_past --shards --save")
+    assemble = publish.index("python3 scripts/shard_corpus.py assemble --force")
+    count = publish.index("python3 scripts/gen_school_stats.py")
+    assert retire < assemble < count
