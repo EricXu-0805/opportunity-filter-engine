@@ -19,18 +19,18 @@ serves four distinct Drupal markup families plus one hand-built WordPress page:
     and Lally, which runs the same component).
   - ``_SEL_ENG`` — rank in ``.profile-card-title``; ``.profile-card-text`` here
     holds link furniture ("Google Scholar"), so it is deliberately NOT read as
-    research (BME, ISE).
+    research (BME, CBE, ISE).
   - ``_SEL_MANE`` — rank in ``.profile-card-title`` AND research areas in
     ``.profile-card-text``, so MANE lands keyworded in one pass.
 
-* **``personbox`` component (older engineering Drupal).** ECSE/CBE/MSE/CEE serve
+* **``personbox`` component (older engineering Drupal).** ECSE/MSE/CEE serve
   ``div.personbox.views-row``: name in ``.field-title``, rank in ``.position``,
   research in ``.focus-area``. ``_RANKED`` (``field_filter require_present`` on
   ``.position``) drops the rank-less rows — CEE lists five such cards, and
   without the gate the engine's "Professor" default would ship them as
   professors. CEE additionally splits ``CEE Faculty`` / ``CEE Staff`` under h2,
   and is the one department whose LISTING already carries the address
-  (``.contact-info`` mailto); CBE/MSE carry none.
+  (``.contact-info`` mailto); MSE carries none.
 
 * **HASS ``card-title``/``card-subtitle`` variant.** The six HASS departments
   publish at ``hass.rpi.edu/departments-<dept>/<dept>-faculty`` with the name in
@@ -235,8 +235,8 @@ SCHOOL: dict = {
               section=None, field=_RANKED),
         _dept("CBE", "Department of Chemical and Biological Engineering",
               ["Chemical Engineering"],
-              "https://cbe.rpi.edu/people", _SEL_BOX,
-              section=None, field=_RANKED),
+              "https://cbe.rpi.edu/people", _SEL_ENG,
+              field={"selector": ".profile-card-title", "require_present": True}),
         _dept("MSE", "Department of Materials Science and Engineering",
               ["Materials Engineering"],
               "https://mse.rpi.edu/people", _SEL_BOX,
