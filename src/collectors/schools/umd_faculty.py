@@ -108,7 +108,7 @@ _CLARK_SELECTORS = {
     # Clark explicitly lists a second current appointment on this same line.
     # Celi's faculty biography confirms ongoing work and advising in that role.
     "title_html_re": r'<div class="title-wrapper">\s*<h3>Professor Emeritus,\s*(Research Professor)\s*</h3>',
-    "email": ".contact-wrapper a[href^='mailto:']",
+    "bound_contact": {"allowed_email_domains": ["umd.edu"]},
 }
 
 # "IN MEMORIAM" rides the name anchor on deceased-faculty rows — drop the card
@@ -422,7 +422,7 @@ SCHOOL: dict = {
         _clark("ECE", "Department of Electrical and Computer Engineering",
                ["Electrical Engineering", "Computer Engineering"], "ece"),
         _clark("ME", "Department of Mechanical Engineering",
-               ["Mechanical Engineering"], "enme"),
+               ["Mechanical Engineering"], "me"),
         _clark("BIOE", "Fischell Department of Bioengineering",
                ["Bioengineering", "Biomedical Engineering"], "bioe"),
         _clark("AE", "Department of Aerospace Engineering",
