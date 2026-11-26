@@ -28,6 +28,27 @@ function Harness({ initial = DEFAULT_PROFILE }: { initial?: ProfileData }) {
   }} /><output data-testid="master">{JSON.stringify(profile.resume_master ?? null)}</output></>;
 }
 describe('complete résumé master editor', () => {
+  it('requires confirmation of both identity and publication, retains original IDs after save, and refuses duplicate imports', () => {
+    const data = { results: [{ id: 'https://openalex.org/W22', display_name: 'Example paper',
+      authorships: [{ author: { id: 'https://openalex.org/A99', display_name: 'A. Student' } }] }] };
+    render(<Harness initial={{ ...DEFAULT_PROFILE, scholar_url: 'https://scholar.google.com/citations?user=DemoStudent' }} />);
+    open();
+    screen.getByText('Import my publications from OpenAlex').closest('details')!.open = true;
+    expect(screen.queryByRole('button', { name: 'Check authorships' })).toBeNull();
+    change('Your OpenAlex author ID or ORCID', 'A99');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm that these author profiles are mine.' }));
+    change('Paste your public OpenAlex Works JSON export (up to 200 works).', JSON.stringify(data));
+    fireEvent.click(screen.getByRole('button', { name: 'Check authorships' }));
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm this is my publication' }));
+    expect(screen.getByRole('button', { name: 'Already in résumé' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().publications[0].student_authorship).toEqual({ scholar_id: 'DemoStudent', author_id: 'A99', work_id: 'W22' });
+    expect(stored().publications[0].title?.status).toBe('confirmed');
+    change('Publication title', 'Different work');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().publications[0].student_authorship).toBeUndefined();
+  });
   it('waits for hydration and opens a collapsed editor without inventing profile facts', () => {
     const onChange = vi.fn(() => true);
     const profile = { ...DEFAULT_PROFILE, name: 'Do not infer', university: 'Do not infer a degree' };

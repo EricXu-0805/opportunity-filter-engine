@@ -109,6 +109,25 @@ def valid_source(source, max_quote):
         fail("invalid_source")
 
 
+def validate_student_authorship(source):
+    shape(source, ("scholar_id", "author_id", "work_id"), ("orcid",))
+    for key, pattern in (("scholar_id", r"[a-zA-Z0-9_-]{1,40}"), ("author_id", r"A[1-9][0-9]{0,18}"),
+                         ("work_id", r"W[1-9][0-9]{0,18}")):
+        if not re.fullmatch(pattern, text(source[key], 40, True)):
+            fail("invalid_source")
+    if "orcid" in source:
+        value = text(source["orcid"], 19, True)
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]", value):
+            fail("invalid_source")
+        digits = value.replace("-", "")
+        total = 0
+        for digit in digits[:-1]:
+            total = (total + int(digit)) * 2
+        check = (12 - total % 11) % 11
+        if digits[-1] != ("X" if check == 10 else str(check)):
+            fail("invalid_source")
+
+
 def validate_entries(entries):
     seen = set()
     total = quotes = 0
@@ -191,7 +210,13 @@ def validate_master(master):
         fact(link["url"])
     for name, keys in (("education", EDUCATION), ("activities", ACTIVITY), ("publications", PUBLICATION)):
         for item in array(master[name]):
-            shape(item, ("id", "details", "kind") if name == "activities" else ("id", "details"), keys)
+            optional = (*keys, "student_authorship") if name == "publications" else keys
+            shape(item, ("id", "details", "kind") if name == "activities" else ("id", "details"), optional)
+            if "student_authorship" in item:
+                validate_student_authorship(item["student_authorship"])
+                work_url = item.get("url")
+                if type(work_url) is not dict or work_url.get("value") != "https://openalex.org/" + item["student_authorship"]["work_id"]:
+                    fail("invalid_source")
             unique(item["id"], True)
             if name == "activities" and item["kind"] not in {"employment", "research", "project", "volunteer", "other"}:
                 fail("invalid_master")

@@ -131,7 +131,15 @@ export interface ResumeActivityItem {
   url?: ResumeFact;
   details: ResumeExperienceRef[];
 }
+/** Stable public identifiers the student explicitly associated with this work. */
+export interface StudentAuthorship {
+  scholar_id: string;
+  author_id: string;
+  work_id: string;
+  orcid?: string;
+}
 export interface ResumePublicationItem {
+  student_authorship?: StudentAuthorship;
   id: string;
   title?: ResumeFact;
   authors?: ResumeFact;
