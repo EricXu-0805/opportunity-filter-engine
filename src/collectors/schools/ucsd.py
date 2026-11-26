@@ -88,6 +88,7 @@ SCHOOL: dict = {
             "seeds": [
                 "https://ugresearch.ucsd.edu/programs/urh-academic-year/index.html",
                 "https://ugresearch.ucsd.edu/programs/urh-summer/index.html",
+                "https://ucsd-research.academicworks.com/opportunities/2368",
             ],
             "crawl": STATIC,
             "programs": [
@@ -204,20 +205,22 @@ SCHOOL: dict = {
                 ),
                 program(
                     "mcnair",
-                    "McNair Program — Doctoral-Prep Research (UCSD)",
-                    "https://mcnair.ucsd.edu/",
-                    "UC San Diego's McNair Program (federal TRIO) prepares "
-                    "undergraduates for doctoral study through faculty-mentored "
-                    "research running winter quarter through the summer, plus "
-                    "graduate-school application support. Eligibility follows U.S. "
-                    "Department of Education TRIO criteria.",
-                    lab_or_program="McNair Program",
+                    "McNair Scholars Program — UC San Diego Undergraduate Research (2026–27)",
+                    "https://ucsd-research.academicworks.com/opportunities/2368",
+                    "UC San Diego undergraduates in any major can take part in mentored research "
+                    "during winter, spring and summer. Applicants need 90 units by the end of fall, "
+                    "U.S. citizenship or permanent residence, and federal TRIO eligibility. The "
+                    "application lists a 2.8 cumulative GPA; a 3.0 is needed by summer. One "
+                    "recommendation is required. Prior research is optional.",
+                    lab_or_program="McNair Scholars Program",
                     opportunity_type="research",
                     paid="stipend",
-                    compensation="Research stipend",
-                    preferred_year=["sophomore", "junior"],
+                    compensation="$2,800 for eight weeks of summer research plus housing assistance",
+                    preferred_year=["junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Annual cycle — research runs winter quarter through summer.",
+                    deadline_note="2026–27: the program overview describes the November 11 priority deadline. "
+                                  "The application portal lists November 20, 2026; it separately gives "
+                                  "October 29, 2026 at 11:59 p.m. for the recommendation.",
                     keywords=["mcnair", "doctoral preparation", "TRIO", "mentored research"],
                 ),
             ],

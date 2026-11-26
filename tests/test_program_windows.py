@@ -832,3 +832,40 @@ def test_stanford_application_window_is_for_the_reviewed_cycle_and_source():
         {**row, "deadline": None, "metadata": {**row["metadata"], "deadline_note": "Applications for 2028."}},
     ):
         assert reviewed_window(mismatch) is None
+
+
+def test_mcnair_student_portal_deadline_and_undergraduate_admissions(monkeypatch):
+    from backend.routes.matches import _match_card
+    from src.matcher.ranker import _requires_graduate_standing
+
+    row = _row("ucsd", "mcnair")
+    assert row["id"] == "ucsd-c6d547c9321a" and not _requires_graduate_standing(row)
+    assert row["eligibility"]["majors"] == [] and row["eligibility"]["preferred_year"] == ["junior", "senior"]
+    assert "2.8" in row["description"] and "3.0" in row["description"]
+    assert row["application"]["application_url"] == "https://ucsd-research.academicworks.com/opportunities/2368"
+    assert row["deadline"] == "2026-11-20" and row["is_rolling"] is False
+    assert "November 11 priority" in row["metadata"]["deadline_note"] and "October 29" in row["metadata"]["deadline_note"]
+    assert _match_card(row)["deadline"] == "2026-11-20"
+    timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
+    assert timing["quotes"]["deadline"]["source_url"] == row["url"]
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
+    assert evidence.target_truth(row).reason_code == "listing_closed"
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 19))
+    assert evidence.target_truth(row).actionable
+    for changed in ({"url": row["url"] + "0"}, {"id": "another-mcnair"}, {"deadline": "2027-11-20"}):
+        assert reviewed_window({**row, **changed}) is None
+
+
+def test_calbridge_undergraduate_program_preserves_transfer_eligibility_and_its_own_website():
+    from src.matcher.ranker import _requires_graduate_standing
+
+    row = _row("ucsb", "cal_bridge")
+    assert row["id"] == "ucsb-45d0bef1a207" and not _requires_graduate_standing(row)
+    source = "https://calbridge.org/undergraduate-program/"
+    assert row["source_url"] == row["url"] == row["application"]["application_url"] == source
+    assert "Community College students transferring" in row["description"]
+    assert set(row["eligibility"]["majors"]) == {"Physics", "Astronomy", "Computer Science", "Computer Engineering",
+                                                "Mathematics", "Statistics"}
+    assert "April" in row["metadata"]["deadline_note"] and "2026 cohort" in row["metadata"]["deadline_note"]
+    assert row["deadline"] is None and row["is_rolling"] is False
+    assert "Santa Barbara" not in row["location"] and row["organization"] == "Cal-Bridge"

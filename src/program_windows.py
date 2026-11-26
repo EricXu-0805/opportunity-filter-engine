@@ -60,6 +60,7 @@ _SSRP_WINDOW = ProgramWindow(
     date(2026, 11, 26), date(2027, 2, 1), "Application Deadline: February 1, 2027 at 11:59 PM PDT",
     date(2026, 11, 1), "Application Open Date: November 1, 2026", "America/Los_Angeles", "November 1, 2026",
 )
+_MCNAIR_APPLICATION = "https://ucsd-research.academicworks.com/opportunities/2368"
 _DART = "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web"
 _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 
@@ -69,6 +70,9 @@ _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 WINDOWS: dict[tuple[str, str], ProgramWindow] = {
     ("bu", "stars"): STARS_WINDOW,
     ("stanford", "ssrp_amgen_scholars"): _SSRP_WINDOW,
+    ("ucsd", "mcnair"): ProgramWindow(
+        _MCNAIR_APPLICATION, _MCNAIR_APPLICATION, date(2026, 11, 26), date(2026, 11, 20), "Deadline: 11/20/2026",
+    ),
     ("duke", "focus_program"): ProgramWindow(
         "https://focus.duke.edu/", "https://focus.duke.edu/for-students/prospective-students/entryprocess",
         date(2026, 11, 26), date(2026, 5, 13), _DUKE_FOCUS_DATES,
@@ -289,6 +293,11 @@ def reviewed_window(record: object) -> ProgramWindow | None:
         return None
     window = WINDOWS.get((school, key))
     if window is None or record.get("url") != window.url or record.get("source_url") != window.url:
+        return None
+    if (school, key) == ("ucsd", "mcnair") and (
+        record.get("id") != "ucsd-c6d547c9321a" or record.get("source") != "ucsd_research_programs"
+        or record.get("deadline") not in (None, window.closes_on.isoformat())
+    ):
         return None
     if school == "manual" and record.get("deadline") not in (None, window.closes_on.isoformat()):
         return None

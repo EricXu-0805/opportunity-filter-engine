@@ -194,7 +194,6 @@ _REFERENCE_PAGES = {
 # sees them at GRAD_LEVEL_PENALTY with a "Targets graduate / PhD students"
 # concern. A configured text newly read that way fails here.
 _GRADUATE_ONLY_ROWS = {
-    ("ucsb", "cal_bridge"), ("ucsd", "mcnair"),
     ("umich", "sure"), ("upenn", "hillman_scholars"),
 }
 
@@ -250,6 +249,7 @@ class TestSeedNormalization:
             nonrolling = (o["metadata"]["collector_school"], o["metadata"]["collector_key"]) in {
                 ("caltech", "ligo_surf"), ("caltech", "chen_institute"), ("ucr", "ucr_cnas_student_research"), ("umd", "honors_college"),
                 ("udel", "udel_undergraduate_research_program"), ("bc", "bc_undergrad_research_opportunities"),
+                ("ucsb", "cal_bridge"),
             }
             assert o.get("is_rolling") is (window is None and not nonrolling)
 
@@ -2151,7 +2151,10 @@ class TestUcsb:
         for o in recs:
             assert o["school"] in ("ucsb", None)
             assert o["organization"]
-            assert o["location"] == "Santa Barbara, CA"
+            if o["metadata"]["collector_key"] == "cal_bridge":
+                assert o["location"] == "Participating California State University campuses, California"
+            else:
+                assert o["location"] == "Santa Barbara, CA"
 
     def test_breakdown_totals_consistent(self, recs):
         bd = cg.source_breakdown(recs)

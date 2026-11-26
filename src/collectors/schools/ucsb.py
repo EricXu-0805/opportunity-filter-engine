@@ -257,21 +257,32 @@ SCHOOL: dict = {
             "source_name": "ucsb_external",
             "source_type": PROGRAM,
             "emit": "open",
-            "seeds": ["https://www.cal-bridge.org/"],
+            "seeds": ["https://calbridge.org/undergraduate-program/"],
             "crawl": STATIC,
             "programs": [
                 program(
                     "cal_bridge",
-                    "Cal-Bridge — Physics, Astronomy & Computing PhD Pathway",
-                    "https://www.cal-bridge.org/",
-                    "A statewide CSU/UC/community-college scholarship and mentoring "
-                    "consortium moving underrepresented students into physics, "
-                    "astronomy, and computer-science PhD programs. UC Santa Barbara is "
-                    "a partner campus; open to students across California.",
-                    lab_or_program="Cal-Bridge",
-                    paid="yes",
+                    "Cal-Bridge Undergraduate Scholars Program",
+                    "https://calbridge.org/undergraduate-program/",
+                    "This scholarship and mentoring program serves undergraduates who will attend "
+                    "a California State University by the fall they enter and remain there through "
+                    "graduation. California Community College students transferring to a CSU can apply. "
+                    "Eligible fields include physics, astronomy, computer science, computer engineering, "
+                    "mathematics and statistics. Students planning to switch to an eligible major "
+                    "may also apply. CSU and UC faculty mentor scholars preparing for doctoral study.",
+                    organization="Cal-Bridge",
+                    placement_location="Participating California State University campuses, California",
+                    lab_or_program="Cal-Bridge Undergraduate Program",
+                    opportunity_type="research",
+                    paid="stipend",
+                    compensation="Eligible recipients may receive up to $15,000 per academic year.",
+                    is_rolling=False,
                     preferred_year=["sophomore", "junior"],
-                    keywords=["physics", "astronomy", "doctoral pathway"],
+                    eligibility_majors=["Physics", "Astronomy", "Computer Science", "Computer Engineering",
+                                        "Mathematics", "Statistics"],
+                    deadline_note="The undergraduate program opens applications in April for fall entry. "
+                                  "The currently linked portal names the 2026 cohort.",
+                    keywords=["physics", "astronomy", "computer science", "mathematics", "undergraduate scholarship"],
                 ),
             ],
         },
