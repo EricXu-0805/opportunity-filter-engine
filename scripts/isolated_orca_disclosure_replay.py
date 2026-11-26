@@ -48,7 +48,18 @@ def transcript(page, mark, audio_mark):
 def press_and_read(page, keyname, target):
     mark=SPEECH.stat().st_size
     audio_mark=AUDIO.stat().st_size
-    key(keyname)
+    if keyname=='Tab':
+        for attempt in range(24):
+            mark=SPEECH.stat().st_size
+            audio_mark=AUDIO.stat().st_size
+            key('Tab')
+            page.wait_for_timeout(200)
+            if target.evaluate('el=>el===document.activeElement'):
+                break
+        else:
+            raise AssertionError(('Native Tab did not reach synthetic summary', page.evaluate("()=>[document.activeElement.tagName,document.activeElement.id]"), spoken(mark)))
+    else:
+        key(keyname)
     expect(target).to_be_focused()
     return transcript(page,mark,audio_mark)
 
@@ -114,18 +125,19 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
     for name,(join,status) in candidates.items():
         (directory/(name+'.html')).write_text(shell+'<details><summary style="font-weight:600">'+TITLE+join+'<span style="margin-left:8px;font-weight:400">'+status+'</span></summary><p>Public condition source</p></details></main></html>')
     (directory/'dialog.html').write_text(shell+'<button id="opener" onclick="panel.showModal()">Draft email</button><dialog id="panel" aria-label="Editor"><button autofocus onclick="panel.close()">Close email editor</button></dialog></main></html>')
-    chrome=pw.chromium.launch(channel='chromium',headless=False,args=['--no-sandbox','--force-renderer-accessibility','--disable-dev-shm-usage'])
-    ctx=chrome.new_context(locale='en-US')
+    ctx=pw.chromium.launch_persistent_context(str(directory/'browser'),channel='chromium',headless=False,no_viewport=True,
+        locale='en-US',args=['--no-sandbox','--force-renderer-accessibility','--disable-dev-shm-usage','--window-size=1400,940'])
     ctx.route('**/*',lambda route: route.continue_() if urlparse(route.request.url).hostname=='127.0.0.1' else route.abort())
-    page=ctx.new_page()
+    page=ctx.pages[0]
     result={'local_disclosures':{},'interface_language':'en'}
     for name in candidates:
         result['local_disclosures'][name]=measure_disclosure(page,base+'/'+name+'.html')
+        print('LOCAL DISCLOSURE',name,json.dumps(result['local_disclosures'][name],ensure_ascii=False),flush=True)
     result['native_dialog_return']=measure_dialog(page,base+'/dialog.html')
     for case in result['local_disclosures'].values():
         assert case['peak']>40 and case['frames']>0
     assert result['native_dialog_return']['peak']>40 and result['native_dialog_return']['focus_on_original_button']
     result['orca']=subprocess.check_output(['orca','--version'],text=True).strip()
     print('LOCAL ORCA COMPARISON',json.dumps(result,ensure_ascii=False),flush=True)
-    chrome.close()
+    ctx.close()
     actual_server.shutdown()
