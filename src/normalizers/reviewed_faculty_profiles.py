@@ -25,6 +25,8 @@ class ProfileReview:
     previous_title: str | None = None
     previous_department_label: str | None = None
     previous_is_directory: bool = False
+    previous_name: str | None = None
+    outside_unit_ladder: bool = False
 
     @property
     def reviewed_on(self) -> date:
@@ -32,6 +34,7 @@ class ProfileReview:
 
 
 # The source runner finished reading the six identity-checked destinations at 12:01:59 UTC.
+_OUTSIDE_UNIT_LADDER = "outside_unit_ladder"
 _NOV_25 = datetime(2026, 11, 25, 12, 2, tzinfo=UTC)
 _SBU_CS = "https://www.cs.stonybrook.edu/people/index.html"
 _SBU_GEO = "https://www.stonybrook.edu/geosciences/people/faculty.html"
@@ -68,6 +71,25 @@ def _gatech_arch_emeritus(name: str, slug: str, previous_title: str, title: str)
 
 _MSU_MGI_DIRECTORY = "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
 
+def _ucsd_nano(name: str, previous_name: str, jacobs_id: int) -> ProfileReview:
+    return ProfileReview(
+        "ucsd", "Department of NanoEngineering", name,
+        f"http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid={jacobs_id}",
+        f"https://jacobsschool.ucsd.edu/faculty/profile?id={jacobs_id}",
+        "https://nanoengineering.ucsd.edu/fac/nanoe-faculty", datetime(2026, 11, 26, 17, 12, tzinfo=UTC),
+        title="Professor Emeritus", previous_title="", previous_name=previous_name,
+    )
+
+
+def _ucsd_nano_adjunct(name: str, old_url: str, jacobs_id: int, *, previous_name: str | None = None) -> ProfileReview:
+    return ProfileReview(
+        "ucsd", "Department of NanoEngineering", name, old_url,
+        f"https://jacobsschool.ucsd.edu/faculty/profile?id={jacobs_id}",
+        "https://www.nanoengineering.ucsd.edu/index.php/fac", datetime(2026, 11, 26, 17, 35, tzinfo=UTC),
+        title="Adjunct Professor", previous_title="", previous_name=previous_name, outside_unit_ladder=True,
+    )
+
+
 REVIEWS = {
     # Keep the former school's own named appointment as historical provenance.
     # The ordinary directory pass owns whether this old Georgia Tech ID is active.
@@ -93,6 +115,12 @@ REVIEWS = {
         "https://bld.natsci.msu.edu/news/dr-kathy-hoag-retires-after-25-years-at-the-BLD-Program.aspx",
         datetime(2026, 11, 26, 15, 48, tzinfo=UTC),
         title="Professor Emeritum", previous_title="Professor"),
+    "faculty-ucsd-nano-2aa92754": _ucsd_nano_adjunct("Darren Lipomi", "https://www.lipomigroup.org/", 345),
+    "faculty-ucsd-nano-04ac1d79": _ucsd_nano_adjunct("Ying Shirley Meng", "http://smeng.ucsd.edu/", 284,
+                                                    previous_name="Shirley Meng"),
+    "faculty-ucsd-nano-27240933": _ucsd_nano_adjunct("Sheng Xu", "http://xugroup.eng.ucsd.edu/", 387),
+    "faculty-ucsd-nano-25a6d469": _ucsd_nano("Sadik Esener", "Esener", 31),
+    "faculty-ucsd-nano-dc9e3de3": _ucsd_nano("Michael Heller", "Mike Heller", 1),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
         "faculty/Baird.html", "Professor Emeritus"),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
@@ -210,8 +238,30 @@ def _matches_review(row: dict, review: ProfileReview) -> bool:
     return (
         row.get("school") == review.school and row.get("department") == review.department
         and row.get("source") == f"{review.school}_faculty" and row.get("source_type") == "faculty_research"
-        and row.get("pi_name") == review.name and row.get("url") in (review.previous_url, review.profile_url)
+        and (row.get("pi_name") == review.name
+             or (review.previous_name is not None and row.get("pi_name") == review.previous_name))
+        and row.get("url") in (review.previous_url, review.profile_url)
     )
+
+
+def _restore_reviewed_name(row: dict, review: ProfileReview) -> None:
+    if not (review.previous_name or review.outside_unit_ladder):
+        return
+    previous_name = review.previous_name or review.name
+    if row.get("pi_name") != previous_name:
+        return
+    row["pi_name"] = review.name
+    if row.get("title", "").startswith(previous_name + " — "):
+        row["title"] = review.name + row["title"][len(previous_name):]
+    # Replace only this collector's unranked boilerplate. Other material,
+    # including reviewed research text and evidence, stays in its own field.
+    old_text = (f"Faculty research profile for {previous_name} in the {review.department} at {row.get('organization')}. "
+                "Contact this faculty member to ask whether undergraduate research opportunities are currently available.")
+    new_text = f"{review.name} is listed as {review.title} in the {review.department} at {row.get('organization')}."
+    for fields, key in ((row, "description_clean"), (row, "description_raw"),
+                        (row.get("eligibility") or {}, "eligibility_text_raw")):
+        if fields.get(key) == old_text:
+            fields[key] = new_text
 
 
 def carry_forward_reviewed_appointment(previous: dict, incoming: dict) -> None:
@@ -229,8 +279,9 @@ def carry_forward_reviewed_appointment(previous: dict, incoming: dict) -> None:
         prior_review = old.get("faculty_profile_review") or {}
         if (old_title != review.title or prior_review.get("source_url") != review.roster_url
                 or prior_review.get("reviewed_on") != review.reviewed_on.isoformat()
-                or old.get("deactivation_reason") not in ("retired_title", "trainee_title")):
+                or old.get("deactivation_reason") not in ("retired_title", "trainee_title", _OUTSIDE_UNIT_LADDER)):
             return
+        _restore_reviewed_name(incoming, review)
         new.update(is_active=False, deactivated_at=old.get("deactivated_at"),
                    deactivation_reason=old["deactivation_reason"], faculty_profile_review=prior_review.copy())
     elif (old.get("last_seen_at") or "")[:10] < review.reviewed_on.isoformat():
@@ -250,8 +301,10 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
         return False
     if review.previous_title is not None and (metadata.get("faculty_title") or "") != review.previous_title:
         return False
+    # An old laboratory website can still belong to the person without
+    # verifying their current appointment in this university's ladder roster.
     update_url = (row["url"] == review.previous_url and review.previous_url != review.profile_url
-                  and not _old_page_restored(row, review))
+                  and (review.outside_unit_ladder or not _old_page_restored(row, review)))
     # Even a successful fetch of a restored URL establishes the address only.
     # An old directory title cannot overturn the appointment on the reviewed
     # emeritus roster and profile. A different appointment URL is outside this review.
@@ -276,6 +329,7 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
         "previous_url": review.previous_url, "source_url": review.roster_url,
         "reviewed_on": review.reviewed_on.isoformat(),
     }
+    _restore_reviewed_name(row, review)
     if review.title:
         previous_title = metadata.get("faculty_title")
         metadata["faculty_profile_review"]["previous_title"] = previous_title
@@ -293,7 +347,12 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
                     if not research or research.startswith(" Research areas: "):
                         target[field] = corrected + research
         metadata["faculty_title"] = review.title
-        if classify_title:
+        if review.outside_unit_ladder:
+            # This is the policy of the reviewed unit, not a reason to archive
+            # this person's other appointments or adjuncts across the corpus.
+            metadata.update(is_active=False, deactivated_at=review.reviewed_on.isoformat(),
+                            deactivation_reason=_OUTSIDE_UNIT_LADDER)
+        elif classify_title:
             deactivate_deceased_faculty([row], today=review.reviewed_on)
             deactivate_retired_title_faculty([row], today=review.reviewed_on)
             deactivate_trainee_faculty([row], today=review.reviewed_on)
