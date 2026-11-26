@@ -2747,7 +2747,15 @@ def _enrich_profile(
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
     email = None
-    if enrich.get("email_selector"):
+    if contact_config := enrich.get("bound_contact"):
+        from .ucb_common import unique_bound_container_contact
+
+        fields = soup.select(enrich["email_selector"])
+        if len(fields) == 1:
+            email = unique_bound_container_contact(
+                fields[0], contact_config, nested_record_selector=contact_config["nested_record_selector"],
+            )
+    elif enrich.get("email_selector"):
         e_el = soup.select_one(enrich["email_selector"])
         if e_el is not None:
             email = _email_from_el(e_el)
