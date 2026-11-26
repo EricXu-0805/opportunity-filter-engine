@@ -1,0 +1,3325 @@
+{
+  "checked_at": "2026-11-26T19:36:07.750945+00:00",
+  "base": "970cc272",
+  "count": 1147,
+  "changed_ids": {
+    "faculty-pitt-ling-e0bda033": [
+      "metadata"
+    ],
+    "faculty-pitt-phil-d41160dd": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-4e0c21eb": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-7b9d049f": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-3bc2a27e": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-04473822": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-f8df8e27": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-e7593149": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-d740c0a3": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-5239754e": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-8ba5545b": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-9f1dfd0f": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-15cd0388": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-01e44da7": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-8316b779": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-b5e102fb": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-fd9a1a31": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-52256215": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-d1104248": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-5aa6030b": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-eb764410": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-2930bf5f": [
+      "metadata",
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-a0adc9be": [
+      "source_url",
+      "url"
+    ],
+    "faculty-pitt-phil-cd6487c5": [
+      "source_url",
+      "url"
+    ]
+  },
+  "stages": [
+    {
+      "stage": "candidate",
+      "combined_fetched": null,
+      "by_department": {},
+      "records": [
+        {
+          "id": "faculty-pitt-ling-e0bda033",
+          "unit": "Department of Linguistics",
+          "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false,
+          "current_faculty_id": "faculty-pitt-phil-2930bf5f",
+          "verified_secondary_appointment": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T17:14:32.529307"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d41160dd",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/rbatterman",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Batterman",
+              "faculty_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+              "observed_at": "2026-11-26T17:14:41.412341"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-4e0c21eb",
+          "unit": "Department of Philosophy",
+          "rank": "Mellon Professorship",
+          "url": "https://www.philosophy.pitt.edu/people/dwallace",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "David Wallace",
+              "faculty_rank": "Mellon Professorship"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/dwallace",
+              "observed_at": "2026-11-26T17:14:41.413767"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-7b9d049f",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jwhiting",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jennifer Whiting",
+              "faculty_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+              "observed_at": "2026-11-26T17:14:41.413852"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-3bc2a27e",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+          "url": "https://www.philosophy.pitt.edu/people/pwilliams",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Porter Williams",
+              "faculty_rank": "Associate Professor of Philosophy and Director of Graduate Studies"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+              "observed_at": "2026-11-26T17:14:41.413923"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-04473822",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mwilson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Mark Wilson",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mwilson",
+              "observed_at": "2026-11-26T17:14:41.413982"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-f8df8e27",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+          "url": "https://www.philosophy.pitt.edu/people/tberry",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Thomas Berry",
+              "faculty_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/tberry",
+              "observed_at": "2026-11-26T17:14:41.412489"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-e7593149",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor and Website Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-75",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Douglas Blue",
+              "faculty_rank": "Assistant Professor and Website Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-75",
+              "observed_at": "2026-11-26T17:14:41.412559"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d740c0a3",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/rbrandom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Brandom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+              "observed_at": "2026-11-26T17:14:41.412618"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5239754e",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/sengstrom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Stephen Engstrom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+              "observed_at": "2026-11-26T17:14:41.412677"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8ba5545b",
+          "unit": "Department of Philosophy",
+          "rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Anil Gupta",
+              "faculty_rank": "Alan Ross Anderson Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+              "observed_at": "2026-11-26T17:14:41.412741"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-9f1dfd0f",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-115",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Josefine Klingspor",
+              "faculty_rank": "Assistant Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-115",
+              "observed_at": "2026-11-26T17:14:41.412813"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-15cd0388",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jed Lewinsohn",
+              "faculty_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+              "observed_at": "2026-11-26T17:14:41.412891"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-01e44da7",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/smagrin",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sara Magrin",
+              "faculty_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/smagrin",
+              "observed_at": "2026-11-26T17:14:41.412978"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8316b779",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-74",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sven Neth",
+              "faculty_rank": "Assistant Professor, Career Director, and Philosophy Club Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-74",
+              "observed_at": "2026-11-26T17:14:41.413049"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-b5e102fb",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Japa Pallikkathayil",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+              "observed_at": "2026-11-26T17:14:41.413112"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-fd9a1a31",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-60",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Larkin Philpot",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-60",
+              "observed_at": "2026-11-26T17:14:41.413168"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-52256215",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-114",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Amy Ramirez",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-114",
+              "observed_at": "2026-11-26T17:14:41.413220"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d1104248",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jrosen",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jacob Rosen",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jrosen",
+              "observed_at": "2026-11-26T17:14:41.413276"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5aa6030b",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy and Department Chair",
+          "url": "https://www.philosophy.pitt.edu/people/jshaw",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "James Shaw",
+              "faculty_rank": "Professor of Philosophy and Department Chair"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jshaw",
+              "observed_at": "2026-11-26T17:14:41.413335"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-eb764410",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-113",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Matthew Soteriou",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-113",
+              "observed_at": "2026-11-26T17:14:41.413390"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-2930bf5f",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+          "url": "https://www.philosophy.pitt.edu/people/kstanton",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T17:14:41.413456"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-a0adc9be",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mthompson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Michael Thompson",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mthompson",
+              "observed_at": "2026-11-26T17:14:41.413511"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-cd6487c5",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-116",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Adam Zweber",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-116",
+              "observed_at": "2026-11-26T17:14:41.414037"
+            }
+          }
+        }
+      ],
+      "original_school_ids_retained": 1147
+    },
+    {
+      "stage": "normal",
+      "combined_fetched": 51,
+      "by_department": {
+        "ling": {
+          "observed_count": 28,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 28
+        },
+        "phil": {
+          "observed_count": 23,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 23
+        }
+      },
+      "records": [
+        {
+          "id": "faculty-pitt-ling-e0bda033",
+          "unit": "Department of Linguistics",
+          "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false,
+          "current_faculty_id": "faculty-pitt-phil-2930bf5f",
+          "verified_secondary_appointment": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:04.552881"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d41160dd",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/rbatterman",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Batterman",
+              "faculty_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+              "observed_at": "2026-11-26T19:36:04.606160"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-4e0c21eb",
+          "unit": "Department of Philosophy",
+          "rank": "Mellon Professorship",
+          "url": "https://www.philosophy.pitt.edu/people/dwallace",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "David Wallace",
+              "faculty_rank": "Mellon Professorship"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/dwallace",
+              "observed_at": "2026-11-26T19:36:04.606818"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-7b9d049f",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jwhiting",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jennifer Whiting",
+              "faculty_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+              "observed_at": "2026-11-26T19:36:04.606852"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-3bc2a27e",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+          "url": "https://www.philosophy.pitt.edu/people/pwilliams",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Porter Williams",
+              "faculty_rank": "Associate Professor of Philosophy and Director of Graduate Studies"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+              "observed_at": "2026-11-26T19:36:04.606887"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-04473822",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mwilson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Mark Wilson",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mwilson",
+              "observed_at": "2026-11-26T19:36:04.606917"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-f8df8e27",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+          "url": "https://www.philosophy.pitt.edu/people/tberry",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Thomas Berry",
+              "faculty_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/tberry",
+              "observed_at": "2026-11-26T19:36:04.606254"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-e7593149",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor and Website Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-75",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Douglas Blue",
+              "faculty_rank": "Assistant Professor and Website Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-75",
+              "observed_at": "2026-11-26T19:36:04.606300"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d740c0a3",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/rbrandom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Brandom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+              "observed_at": "2026-11-26T19:36:04.606333"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5239754e",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/sengstrom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Stephen Engstrom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+              "observed_at": "2026-11-26T19:36:04.606365"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8ba5545b",
+          "unit": "Department of Philosophy",
+          "rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Anil Gupta",
+              "faculty_rank": "Alan Ross Anderson Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+              "observed_at": "2026-11-26T19:36:04.606400"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-9f1dfd0f",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-115",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Josefine Klingspor",
+              "faculty_rank": "Assistant Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-115",
+              "observed_at": "2026-11-26T19:36:04.606432"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-15cd0388",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jed Lewinsohn",
+              "faculty_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+              "observed_at": "2026-11-26T19:36:04.606469"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-01e44da7",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/smagrin",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sara Magrin",
+              "faculty_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/smagrin",
+              "observed_at": "2026-11-26T19:36:04.606513"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8316b779",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-74",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sven Neth",
+              "faculty_rank": "Assistant Professor, Career Director, and Philosophy Club Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-74",
+              "observed_at": "2026-11-26T19:36:04.606549"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-b5e102fb",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Japa Pallikkathayil",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+              "observed_at": "2026-11-26T19:36:04.606579"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-fd9a1a31",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-60",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Larkin Philpot",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-60",
+              "observed_at": "2026-11-26T19:36:04.606608"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-52256215",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-114",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Amy Ramirez",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-114",
+              "observed_at": "2026-11-26T19:36:04.606636"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d1104248",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jrosen",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jacob Rosen",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jrosen",
+              "observed_at": "2026-11-26T19:36:04.606664"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5aa6030b",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy and Department Chair",
+          "url": "https://www.philosophy.pitt.edu/people/jshaw",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "James Shaw",
+              "faculty_rank": "Professor of Philosophy and Department Chair"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jshaw",
+              "observed_at": "2026-11-26T19:36:04.606695"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-eb764410",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-113",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Matthew Soteriou",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-113",
+              "observed_at": "2026-11-26T19:36:04.606727"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-2930bf5f",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+          "url": "https://www.philosophy.pitt.edu/people/kstanton",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:04.606761"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-a0adc9be",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mthompson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Michael Thompson",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mthompson",
+              "observed_at": "2026-11-26T19:36:04.606791"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-cd6487c5",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-116",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Adam Zweber",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-116",
+              "observed_at": "2026-11-26T19:36:04.606944"
+            }
+          }
+        }
+      ],
+      "original_school_ids_retained": 1147
+    },
+    {
+      "stage": "unavailable",
+      "combined_fetched": 28,
+      "by_department": {
+        "ling": {
+          "observed_count": 28,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 28
+        },
+        "phil": {
+          "observed_count": 0,
+          "fetch_status": "ok",
+          "parse_status": "zero_rows",
+          "failure_reason": null,
+          "live_roster_count": 0
+        }
+      },
+      "records": [
+        {
+          "id": "faculty-pitt-ling-e0bda033",
+          "unit": "Department of Linguistics",
+          "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false,
+          "current_faculty_id": "faculty-pitt-phil-2930bf5f",
+          "verified_secondary_appointment": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:05.327474"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d41160dd",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/rbatterman",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Batterman",
+              "faculty_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+              "observed_at": "2026-11-26T19:36:04.606160"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-4e0c21eb",
+          "unit": "Department of Philosophy",
+          "rank": "Mellon Professorship",
+          "url": "https://www.philosophy.pitt.edu/people/dwallace",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "David Wallace",
+              "faculty_rank": "Mellon Professorship"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/dwallace",
+              "observed_at": "2026-11-26T19:36:04.606818"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-7b9d049f",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jwhiting",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jennifer Whiting",
+              "faculty_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+              "observed_at": "2026-11-26T19:36:04.606852"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-3bc2a27e",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+          "url": "https://www.philosophy.pitt.edu/people/pwilliams",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Porter Williams",
+              "faculty_rank": "Associate Professor of Philosophy and Director of Graduate Studies"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+              "observed_at": "2026-11-26T19:36:04.606887"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-04473822",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mwilson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Mark Wilson",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mwilson",
+              "observed_at": "2026-11-26T19:36:04.606917"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-f8df8e27",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+          "url": "https://www.philosophy.pitt.edu/people/tberry",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Thomas Berry",
+              "faculty_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/tberry",
+              "observed_at": "2026-11-26T19:36:04.606254"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-e7593149",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor and Website Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-75",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Douglas Blue",
+              "faculty_rank": "Assistant Professor and Website Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-75",
+              "observed_at": "2026-11-26T19:36:04.606300"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d740c0a3",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/rbrandom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Brandom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+              "observed_at": "2026-11-26T19:36:04.606333"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5239754e",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/sengstrom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Stephen Engstrom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+              "observed_at": "2026-11-26T19:36:04.606365"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8ba5545b",
+          "unit": "Department of Philosophy",
+          "rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Anil Gupta",
+              "faculty_rank": "Alan Ross Anderson Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+              "observed_at": "2026-11-26T19:36:04.606400"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-9f1dfd0f",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-115",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Josefine Klingspor",
+              "faculty_rank": "Assistant Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-115",
+              "observed_at": "2026-11-26T19:36:04.606432"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-15cd0388",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jed Lewinsohn",
+              "faculty_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+              "observed_at": "2026-11-26T19:36:04.606469"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-01e44da7",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/smagrin",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sara Magrin",
+              "faculty_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/smagrin",
+              "observed_at": "2026-11-26T19:36:04.606513"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8316b779",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-74",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sven Neth",
+              "faculty_rank": "Assistant Professor, Career Director, and Philosophy Club Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-74",
+              "observed_at": "2026-11-26T19:36:04.606549"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-b5e102fb",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Japa Pallikkathayil",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+              "observed_at": "2026-11-26T19:36:04.606579"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-fd9a1a31",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-60",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Larkin Philpot",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-60",
+              "observed_at": "2026-11-26T19:36:04.606608"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-52256215",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-114",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Amy Ramirez",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-114",
+              "observed_at": "2026-11-26T19:36:04.606636"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d1104248",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jrosen",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jacob Rosen",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jrosen",
+              "observed_at": "2026-11-26T19:36:04.606664"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5aa6030b",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy and Department Chair",
+          "url": "https://www.philosophy.pitt.edu/people/jshaw",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "James Shaw",
+              "faculty_rank": "Professor of Philosophy and Department Chair"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jshaw",
+              "observed_at": "2026-11-26T19:36:04.606695"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-eb764410",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-113",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Matthew Soteriou",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-113",
+              "observed_at": "2026-11-26T19:36:04.606727"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-2930bf5f",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+          "url": "https://www.philosophy.pitt.edu/people/kstanton",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:04.606761"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-a0adc9be",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mthompson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Michael Thompson",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mthompson",
+              "observed_at": "2026-11-26T19:36:04.606791"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-cd6487c5",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-116",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Adam Zweber",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-116",
+              "observed_at": "2026-11-26T19:36:04.606944"
+            }
+          }
+        }
+      ],
+      "original_school_ids_retained": 1147
+    },
+    {
+      "stage": "recovery",
+      "combined_fetched": 51,
+      "by_department": {
+        "ling": {
+          "observed_count": 28,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 28
+        },
+        "phil": {
+          "observed_count": 23,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 23
+        }
+      },
+      "records": [
+        {
+          "id": "faculty-pitt-ling-e0bda033",
+          "unit": "Department of Linguistics",
+          "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false,
+          "current_faculty_id": "faculty-pitt-phil-2930bf5f",
+          "verified_secondary_appointment": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:05.995924"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d41160dd",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/rbatterman",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Batterman",
+              "faculty_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+              "observed_at": "2026-11-26T19:36:06.049902"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-4e0c21eb",
+          "unit": "Department of Philosophy",
+          "rank": "Mellon Professorship",
+          "url": "https://www.philosophy.pitt.edu/people/dwallace",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "David Wallace",
+              "faculty_rank": "Mellon Professorship"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/dwallace",
+              "observed_at": "2026-11-26T19:36:06.050536"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-7b9d049f",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jwhiting",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jennifer Whiting",
+              "faculty_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+              "observed_at": "2026-11-26T19:36:06.050570"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-3bc2a27e",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+          "url": "https://www.philosophy.pitt.edu/people/pwilliams",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Porter Williams",
+              "faculty_rank": "Associate Professor of Philosophy and Director of Graduate Studies"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+              "observed_at": "2026-11-26T19:36:06.050605"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-04473822",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mwilson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Mark Wilson",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mwilson",
+              "observed_at": "2026-11-26T19:36:06.050634"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-f8df8e27",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+          "url": "https://www.philosophy.pitt.edu/people/tberry",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Thomas Berry",
+              "faculty_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/tberry",
+              "observed_at": "2026-11-26T19:36:06.049981"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-e7593149",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor and Website Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-75",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Douglas Blue",
+              "faculty_rank": "Assistant Professor and Website Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-75",
+              "observed_at": "2026-11-26T19:36:06.050022"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d740c0a3",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/rbrandom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Brandom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+              "observed_at": "2026-11-26T19:36:06.050056"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5239754e",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/sengstrom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Stephen Engstrom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+              "observed_at": "2026-11-26T19:36:06.050088"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8ba5545b",
+          "unit": "Department of Philosophy",
+          "rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Anil Gupta",
+              "faculty_rank": "Alan Ross Anderson Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+              "observed_at": "2026-11-26T19:36:06.050121"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-9f1dfd0f",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-115",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Josefine Klingspor",
+              "faculty_rank": "Assistant Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-115",
+              "observed_at": "2026-11-26T19:36:06.050151"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-15cd0388",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jed Lewinsohn",
+              "faculty_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+              "observed_at": "2026-11-26T19:36:06.050188"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-01e44da7",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/smagrin",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sara Magrin",
+              "faculty_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/smagrin",
+              "observed_at": "2026-11-26T19:36:06.050231"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8316b779",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-74",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sven Neth",
+              "faculty_rank": "Assistant Professor, Career Director, and Philosophy Club Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-74",
+              "observed_at": "2026-11-26T19:36:06.050268"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-b5e102fb",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Japa Pallikkathayil",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+              "observed_at": "2026-11-26T19:36:06.050299"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-fd9a1a31",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-60",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Larkin Philpot",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-60",
+              "observed_at": "2026-11-26T19:36:06.050327"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-52256215",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-114",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Amy Ramirez",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-114",
+              "observed_at": "2026-11-26T19:36:06.050356"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d1104248",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jrosen",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jacob Rosen",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jrosen",
+              "observed_at": "2026-11-26T19:36:06.050385"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5aa6030b",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy and Department Chair",
+          "url": "https://www.philosophy.pitt.edu/people/jshaw",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "James Shaw",
+              "faculty_rank": "Professor of Philosophy and Department Chair"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jshaw",
+              "observed_at": "2026-11-26T19:36:06.050417"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-eb764410",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-113",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Matthew Soteriou",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-113",
+              "observed_at": "2026-11-26T19:36:06.050447"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-2930bf5f",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+          "url": "https://www.philosophy.pitt.edu/people/kstanton",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:06.050481"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-a0adc9be",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mthompson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Michael Thompson",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mthompson",
+              "observed_at": "2026-11-26T19:36:06.050509"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-cd6487c5",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-116",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Adam Zweber",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-116",
+              "observed_at": "2026-11-26T19:36:06.050661"
+            }
+          }
+        }
+      ],
+      "original_school_ids_retained": 1147
+    },
+    {
+      "stage": "repeat",
+      "combined_fetched": 51,
+      "by_department": {
+        "ling": {
+          "observed_count": 28,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 28
+        },
+        "phil": {
+          "observed_count": 23,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null,
+          "live_roster_count": 23
+        }
+      },
+      "records": [
+        {
+          "id": "faculty-pitt-ling-e0bda033",
+          "unit": "Department of Linguistics",
+          "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false,
+          "current_faculty_id": "faculty-pitt-phil-2930bf5f",
+          "verified_secondary_appointment": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:06.756553"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d41160dd",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/rbatterman",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Batterman",
+              "faculty_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+              "observed_at": "2026-11-26T19:36:06.810216"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-4e0c21eb",
+          "unit": "Department of Philosophy",
+          "rank": "Mellon Professorship",
+          "url": "https://www.philosophy.pitt.edu/people/dwallace",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "David Wallace",
+              "faculty_rank": "Mellon Professorship"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/dwallace",
+              "observed_at": "2026-11-26T19:36:06.811047"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-7b9d049f",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jwhiting",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jennifer Whiting",
+              "faculty_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+              "observed_at": "2026-11-26T19:36:06.811082"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-3bc2a27e",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+          "url": "https://www.philosophy.pitt.edu/people/pwilliams",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Porter Williams",
+              "faculty_rank": "Associate Professor of Philosophy and Director of Graduate Studies"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+              "observed_at": "2026-11-26T19:36:06.811116"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-04473822",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mwilson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Mark Wilson",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mwilson",
+              "observed_at": "2026-11-26T19:36:06.811146"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-f8df8e27",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+          "url": "https://www.philosophy.pitt.edu/people/tberry",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Thomas Berry",
+              "faculty_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/tberry",
+              "observed_at": "2026-11-26T19:36:06.810293"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-e7593149",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor and Website Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-75",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Douglas Blue",
+              "faculty_rank": "Assistant Professor and Website Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-75",
+              "observed_at": "2026-11-26T19:36:06.810424"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d740c0a3",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/rbrandom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Robert Brandom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+              "observed_at": "2026-11-26T19:36:06.810484"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5239754e",
+          "unit": "Department of Philosophy",
+          "rank": "Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/sengstrom",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Stephen Engstrom",
+              "faculty_rank": "Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+              "observed_at": "2026-11-26T19:36:06.810566"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8ba5545b",
+          "unit": "Department of Philosophy",
+          "rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Anil Gupta",
+              "faculty_rank": "Alan Ross Anderson Distinguished Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+              "observed_at": "2026-11-26T19:36:06.810617"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-9f1dfd0f",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-115",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Josefine Klingspor",
+              "faculty_rank": "Assistant Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-115",
+              "observed_at": "2026-11-26T19:36:06.810654"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-15cd0388",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+          "url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jed Lewinsohn",
+              "faculty_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+              "observed_at": "2026-11-26T19:36:06.810695"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-01e44da7",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+          "url": "https://www.philosophy.pitt.edu/people/smagrin",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sara Magrin",
+              "faculty_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/smagrin",
+              "observed_at": "2026-11-26T19:36:06.810739"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-8316b779",
+          "unit": "Department of Philosophy",
+          "rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+          "url": "https://www.philosophy.pitt.edu/people/ant-74",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Sven Neth",
+              "faculty_rank": "Assistant Professor, Career Director, and Philosophy Club Director"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-74",
+              "observed_at": "2026-11-26T19:36:06.810777"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-b5e102fb",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Japa Pallikkathayil",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+              "observed_at": "2026-11-26T19:36:06.810807"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-fd9a1a31",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-60",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Larkin Philpot",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-60",
+              "observed_at": "2026-11-26T19:36:06.810836"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-52256215",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-114",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Amy Ramirez",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-114",
+              "observed_at": "2026-11-26T19:36:06.810864"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-d1104248",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/jrosen",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Jacob Rosen",
+              "faculty_rank": "Associate Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jrosen",
+              "observed_at": "2026-11-26T19:36:06.810893"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-5aa6030b",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy and Department Chair",
+          "url": "https://www.philosophy.pitt.edu/people/jshaw",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "James Shaw",
+              "faculty_rank": "Professor of Philosophy and Department Chair"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/jshaw",
+              "observed_at": "2026-11-26T19:36:06.810924"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-eb764410",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/ant-113",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Matthew Soteriou",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-113",
+              "observed_at": "2026-11-26T19:36:06.810954"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-2930bf5f",
+          "unit": "Department of Philosophy",
+          "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+          "url": "https://www.philosophy.pitt.edu/people/kstanton",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Kate Stanton",
+              "faculty_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "observed_at": "2026-11-26T19:36:06.810988"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-a0adc9be",
+          "unit": "Department of Philosophy",
+          "rank": "Professor of Philosophy",
+          "url": "https://www.philosophy.pitt.edu/people/mthompson",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Michael Thompson",
+              "faculty_rank": "Professor of Philosophy"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/mthompson",
+              "observed_at": "2026-11-26T19:36:06.811020"
+            }
+          }
+        },
+        {
+          "id": "faculty-pitt-phil-cd6487c5",
+          "unit": "Department of Philosophy",
+          "rank": "Teaching Assistant Professor",
+          "url": "https://www.philosophy.pitt.edu/people/ant-116",
+          "active": true,
+          "current_faculty_id": null,
+          "verified_secondary_appointment": null,
+          "contact": "unavailable",
+          "role_clue": {
+            "state": "source",
+            "explicit": {
+              "principal_investigator": "Adam Zweber",
+              "faculty_rank": "Teaching Assistant Professor"
+            },
+            "inferred": {},
+            "unknown": [
+              "lab_or_program"
+            ],
+            "quotes": {},
+            "provenance": {
+              "source_url": "https://www.philosophy.pitt.edu/people/ant-116",
+              "observed_at": "2026-11-26T19:36:06.811174"
+            }
+          }
+        }
+      ],
+      "original_school_ids_retained": 1147
+    }
+  ]
+}

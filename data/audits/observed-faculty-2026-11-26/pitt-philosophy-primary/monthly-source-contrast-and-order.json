@@ -1,0 +1,446 @@
+{
+  "checked_at": "2026-11-26T19:30:35.574845+00:00",
+  "scope": "Actual captured Philosophy and Linguistics rosters and all 23 Philosophy person pages. Enrichment enabled on Philosophy only. Rows started at the real source-parent revision.",
+  "runs": [
+    {
+      "selectors": "production selectors",
+      "rounds": [
+        {
+          "normal_profile_reads": 0,
+          "directory_reads": 25,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 23,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd",
+            "faculty-pitt-phil-f8df8e27",
+            "faculty-pitt-phil-e7593149",
+            "faculty-pitt-phil-d740c0a3",
+            "faculty-pitt-phil-5239754e",
+            "faculty-pitt-phil-8ba5545b",
+            "faculty-pitt-phil-9f1dfd0f",
+            "faculty-pitt-phil-15cd0388",
+            "faculty-pitt-phil-01e44da7",
+            "faculty-pitt-phil-8316b779",
+            "faculty-pitt-phil-b5e102fb",
+            "faculty-pitt-phil-fd9a1a31",
+            "faculty-pitt-phil-52256215",
+            "faculty-pitt-phil-d1104248",
+            "faculty-pitt-phil-5aa6030b",
+            "faculty-pitt-phil-eb764410",
+            "faculty-pitt-phil-2930bf5f",
+            "faculty-pitt-phil-a0adc9be",
+            "faculty-pitt-phil-4e0c21eb",
+            "faculty-pitt-phil-7b9d049f",
+            "faculty-pitt-phil-3bc2a27e",
+            "faculty-pitt-phil-04473822",
+            "faculty-pitt-phil-cd6487c5"
+          ],
+          "philosophy_with_email_in_emitted_rows": 0,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 51,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        },
+        {
+          "normal_profile_reads": 0,
+          "directory_reads": 25,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 23,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd",
+            "faculty-pitt-phil-f8df8e27",
+            "faculty-pitt-phil-e7593149",
+            "faculty-pitt-phil-d740c0a3",
+            "faculty-pitt-phil-5239754e",
+            "faculty-pitt-phil-8ba5545b",
+            "faculty-pitt-phil-9f1dfd0f",
+            "faculty-pitt-phil-15cd0388",
+            "faculty-pitt-phil-01e44da7",
+            "faculty-pitt-phil-8316b779",
+            "faculty-pitt-phil-b5e102fb",
+            "faculty-pitt-phil-fd9a1a31",
+            "faculty-pitt-phil-52256215",
+            "faculty-pitt-phil-d1104248",
+            "faculty-pitt-phil-5aa6030b",
+            "faculty-pitt-phil-eb764410",
+            "faculty-pitt-phil-2930bf5f",
+            "faculty-pitt-phil-a0adc9be",
+            "faculty-pitt-phil-4e0c21eb",
+            "faculty-pitt-phil-7b9d049f",
+            "faculty-pitt-phil-3bc2a27e",
+            "faculty-pitt-phil-04473822",
+            "faculty-pitt-phil-cd6487c5"
+          ],
+          "philosophy_with_email_in_emitted_rows": 0,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 51,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "selectors": "link only",
+      "rounds": [
+        {
+          "normal_profile_reads": 23,
+          "directory_reads": 2,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 1,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd"
+          ],
+          "philosophy_with_email_in_emitted_rows": 1,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 29,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        },
+        {
+          "normal_profile_reads": 23,
+          "directory_reads": 2,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 1,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd"
+          ],
+          "philosophy_with_email_in_emitted_rows": 1,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 29,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "selectors": "candidate",
+      "rounds": [
+        {
+          "normal_profile_reads": 23,
+          "directory_reads": 2,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 23,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd",
+            "faculty-pitt-phil-f8df8e27",
+            "faculty-pitt-phil-e7593149",
+            "faculty-pitt-phil-d740c0a3",
+            "faculty-pitt-phil-5239754e",
+            "faculty-pitt-phil-8ba5545b",
+            "faculty-pitt-phil-9f1dfd0f",
+            "faculty-pitt-phil-15cd0388",
+            "faculty-pitt-phil-01e44da7",
+            "faculty-pitt-phil-8316b779",
+            "faculty-pitt-phil-b5e102fb",
+            "faculty-pitt-phil-fd9a1a31",
+            "faculty-pitt-phil-52256215",
+            "faculty-pitt-phil-d1104248",
+            "faculty-pitt-phil-5aa6030b",
+            "faculty-pitt-phil-eb764410",
+            "faculty-pitt-phil-2930bf5f",
+            "faculty-pitt-phil-a0adc9be",
+            "faculty-pitt-phil-4e0c21eb",
+            "faculty-pitt-phil-7b9d049f",
+            "faculty-pitt-phil-3bc2a27e",
+            "faculty-pitt-phil-04473822",
+            "faculty-pitt-phil-cd6487c5"
+          ],
+          "philosophy_with_email_in_emitted_rows": 0,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 51,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        },
+        {
+          "normal_profile_reads": 23,
+          "directory_reads": 2,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 23,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd",
+            "faculty-pitt-phil-f8df8e27",
+            "faculty-pitt-phil-e7593149",
+            "faculty-pitt-phil-d740c0a3",
+            "faculty-pitt-phil-5239754e",
+            "faculty-pitt-phil-8ba5545b",
+            "faculty-pitt-phil-9f1dfd0f",
+            "faculty-pitt-phil-15cd0388",
+            "faculty-pitt-phil-01e44da7",
+            "faculty-pitt-phil-8316b779",
+            "faculty-pitt-phil-b5e102fb",
+            "faculty-pitt-phil-fd9a1a31",
+            "faculty-pitt-phil-52256215",
+            "faculty-pitt-phil-d1104248",
+            "faculty-pitt-phil-5aa6030b",
+            "faculty-pitt-phil-eb764410",
+            "faculty-pitt-phil-2930bf5f",
+            "faculty-pitt-phil-a0adc9be",
+            "faculty-pitt-phil-4e0c21eb",
+            "faculty-pitt-phil-7b9d049f",
+            "faculty-pitt-phil-3bc2a27e",
+            "faculty-pitt-phil-04473822",
+            "faculty-pitt-phil-cd6487c5"
+          ],
+          "philosophy_with_email_in_emitted_rows": 0,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 51,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "selectors": "candidate reverse",
+      "rounds": [
+        {
+          "normal_profile_reads": 23,
+          "directory_reads": 2,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 23,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd",
+            "faculty-pitt-phil-f8df8e27",
+            "faculty-pitt-phil-e7593149",
+            "faculty-pitt-phil-d740c0a3",
+            "faculty-pitt-phil-5239754e",
+            "faculty-pitt-phil-8ba5545b",
+            "faculty-pitt-phil-9f1dfd0f",
+            "faculty-pitt-phil-15cd0388",
+            "faculty-pitt-phil-01e44da7",
+            "faculty-pitt-phil-8316b779",
+            "faculty-pitt-phil-b5e102fb",
+            "faculty-pitt-phil-fd9a1a31",
+            "faculty-pitt-phil-52256215",
+            "faculty-pitt-phil-d1104248",
+            "faculty-pitt-phil-5aa6030b",
+            "faculty-pitt-phil-eb764410",
+            "faculty-pitt-phil-2930bf5f",
+            "faculty-pitt-phil-a0adc9be",
+            "faculty-pitt-phil-4e0c21eb",
+            "faculty-pitt-phil-7b9d049f",
+            "faculty-pitt-phil-3bc2a27e",
+            "faculty-pitt-phil-04473822",
+            "faculty-pitt-phil-cd6487c5"
+          ],
+          "philosophy_with_email_in_emitted_rows": 0,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 51,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        },
+        {
+          "normal_profile_reads": 23,
+          "directory_reads": 2,
+          "linguistics_live": 28,
+          "philosophy_live": 23,
+          "philosophy_observed": 23,
+          "philosophy_emitted_original_ids": [
+            "faculty-pitt-phil-d41160dd",
+            "faculty-pitt-phil-f8df8e27",
+            "faculty-pitt-phil-e7593149",
+            "faculty-pitt-phil-d740c0a3",
+            "faculty-pitt-phil-5239754e",
+            "faculty-pitt-phil-8ba5545b",
+            "faculty-pitt-phil-9f1dfd0f",
+            "faculty-pitt-phil-15cd0388",
+            "faculty-pitt-phil-01e44da7",
+            "faculty-pitt-phil-8316b779",
+            "faculty-pitt-phil-b5e102fb",
+            "faculty-pitt-phil-fd9a1a31",
+            "faculty-pitt-phil-52256215",
+            "faculty-pitt-phil-d1104248",
+            "faculty-pitt-phil-5aa6030b",
+            "faculty-pitt-phil-eb764410",
+            "faculty-pitt-phil-2930bf5f",
+            "faculty-pitt-phil-a0adc9be",
+            "faculty-pitt-phil-4e0c21eb",
+            "faculty-pitt-phil-7b9d049f",
+            "faculty-pitt-phil-3bc2a27e",
+            "faculty-pitt-phil-04473822",
+            "faculty-pitt-phil-cd6487c5"
+          ],
+          "philosophy_with_email_in_emitted_rows": 0,
+          "full_pitt_ids": 1147,
+          "ids_added": 0,
+          "total_updated": 51,
+          "two_kate_and_two_david_saved_ids": {
+            "faculty-pitt-hps-b2ee9191": {
+              "active": true,
+              "rank": "Mellon Professor • Department Chair",
+              "current": null
+            },
+            "faculty-pitt-ling-e0bda033": {
+              "active": false,
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "current": "faculty-pitt-phil-2930bf5f"
+            },
+            "faculty-pitt-phil-4e0c21eb": {
+              "active": true,
+              "rank": "Mellon Professorship",
+              "current": null
+            },
+            "faculty-pitt-phil-2930bf5f": {
+              "active": true,
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "current": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

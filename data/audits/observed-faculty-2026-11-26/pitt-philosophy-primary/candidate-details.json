@@ -1,0 +1,414 @@
+{
+  "checked_at": "2026-11-26T19:37:12.223876+00:00",
+  "site": "isolated Next.js and FastAPI; full candidate corpus",
+  "results": [
+    {
+      "id": "faculty-pitt-hps-b2ee9191",
+      "heading": [
+        "David Wallace"
+      ],
+      "displayed_rank": "Mellon Professor • Department Chair",
+      "contact_email_status": "sign_in_required",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.hps.pitt.edu/people/david-wallace"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "heading": [
+        "Kate Stanton"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+      "contact_email_status": "unavailable",
+      "actionable": false,
+      "current_faculty_id": "faculty-pitt-phil-2930bf5f",
+      "visible_links": [
+        {
+          "text": "View current faculty record",
+          "href": "/opportunities/faculty-pitt-phil-2930bf5f"
+        },
+        {
+          "text": "View faculty profile",
+          "href": "https://philosophy.pitt.edu/people/kstanton"
+        },
+        {
+          "text": "Faculty profile · openings not confirmed Kate Stanton University of Pittsburgh",
+          "href": "/opportunities/faculty-pitt-phil-2930bf5f"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-d41160dd",
+      "heading": [
+        "Robert Batterman"
+      ],
+      "displayed_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/rbatterman"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-4e0c21eb",
+      "heading": [
+        "David Wallace"
+      ],
+      "displayed_rank": "Mellon Professorship",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/dwallace"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-7b9d049f",
+      "heading": [
+        "Jennifer Whiting"
+      ],
+      "displayed_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/jwhiting"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-3bc2a27e",
+      "heading": [
+        "Porter Williams"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/pwilliams"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-04473822",
+      "heading": [
+        "Mark Wilson"
+      ],
+      "displayed_rank": "Distinguished Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/mwilson"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-f8df8e27",
+      "heading": [
+        "Thomas Berry"
+      ],
+      "displayed_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/tberry"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-e7593149",
+      "heading": [
+        "Douglas Blue"
+      ],
+      "displayed_rank": "Assistant Professor and Website Director",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-75"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-d740c0a3",
+      "heading": [
+        "Robert Brandom"
+      ],
+      "displayed_rank": "Distinguished Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/rbrandom"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-5239754e",
+      "heading": [
+        "Stephen Engstrom"
+      ],
+      "displayed_rank": "Distinguished Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/sengstrom"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-8ba5545b",
+      "heading": [
+        "Anil Gupta"
+      ],
+      "displayed_rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-9f1dfd0f",
+      "heading": [
+        "Josefine Klingspor"
+      ],
+      "displayed_rank": "Assistant Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-115"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-15cd0388",
+      "heading": [
+        "Jed Lewinsohn"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/jlewinsohn"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-01e44da7",
+      "heading": [
+        "Sara Magrin"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/smagrin"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-8316b779",
+      "heading": [
+        "Sven Neth"
+      ],
+      "displayed_rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-74"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-b5e102fb",
+      "heading": [
+        "Japa Pallikkathayil"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/jpallikkathayil"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-fd9a1a31",
+      "heading": [
+        "Larkin Philpot"
+      ],
+      "displayed_rank": "Teaching Assistant Professor",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-60"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-52256215",
+      "heading": [
+        "Amy Ramirez"
+      ],
+      "displayed_rank": "Teaching Assistant Professor",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-114"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-d1104248",
+      "heading": [
+        "Jacob Rosen"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/jrosen"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-5aa6030b",
+      "heading": [
+        "James Shaw"
+      ],
+      "displayed_rank": "Professor of Philosophy and Department Chair",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/jshaw"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-eb764410",
+      "heading": [
+        "Matthew Soteriou"
+      ],
+      "displayed_rank": "Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-113"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-2930bf5f",
+      "heading": [
+        "Kate Stanton"
+      ],
+      "displayed_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/kstanton"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-a0adc9be",
+      "heading": [
+        "Michael Thompson"
+      ],
+      "displayed_rank": "Professor of Philosophy",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/mthompson"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-cd6487c5",
+      "heading": [
+        "Adam Zweber"
+      ],
+      "displayed_rank": "Teaching Assistant Professor",
+      "contact_email_status": "unavailable",
+      "actionable": true,
+      "current_faculty_id": null,
+      "visible_links": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people/ant-116"
+        }
+      ]
+    }
+  ]
+}

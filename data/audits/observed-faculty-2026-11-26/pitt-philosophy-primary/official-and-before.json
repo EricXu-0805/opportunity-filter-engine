@@ -1,0 +1,484 @@
+{
+  "checked_at": "2026-11-26T19:30:00.299686+00:00",
+  "production_release_before_and_after": [
+    [
+      "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "bdb523bec33c71f682e0d895f06a8bad859863b6"
+    ],
+    [
+      "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "bdb523bec33c71f682e0d895f06a8bad859863b6"
+    ]
+  ],
+  "roster": "https://www.philosophy.pitt.edu/people",
+  "listing_by_official_heading": {
+    "Primary Faculty": 23,
+    "Graduate Students": 49,
+    "Staff": 6,
+    "Associated Faculty": 10,
+    "Emeritus Faculty": 6,
+    "Faculty": 4
+  },
+  "records": [
+    {
+      "original_id": "faculty-pitt-phil-d41160dd",
+      "name": "Robert Batterman",
+      "official_profile": "https://www.philosophy.pitt.edu/people/rbatterman",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/rbatterman",
+      "school_heading": [
+        "Robert Batterman"
+      ],
+      "official_status": 200,
+      "roster_rank": "Distinguished Professor of Philosophy and Admissions Director (Fall 2026)",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-d41160dd",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-d41160dd",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-f8df8e27",
+      "name": "Thomas Berry",
+      "official_profile": "https://www.philosophy.pitt.edu/people/tberry",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/tberry",
+      "school_heading": [
+        "Thomas Berry"
+      ],
+      "official_status": 200,
+      "roster_rank": "Teaching Professor, Director of Undergraduate Studies, and Chair's Assistant",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-f8df8e27",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-f8df8e27",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-e7593149",
+      "name": "Douglas Blue",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-75",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-75",
+      "school_heading": [
+        "Douglas Blue"
+      ],
+      "official_status": 200,
+      "roster_rank": "Assistant Professor and Website Director",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-e7593149",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-e7593149",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-d740c0a3",
+      "name": "Robert Brandom",
+      "official_profile": "https://www.philosophy.pitt.edu/people/rbrandom",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/rbrandom",
+      "school_heading": [
+        "Robert Brandom"
+      ],
+      "official_status": 200,
+      "roster_rank": "Distinguished Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-d740c0a3",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-d740c0a3",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-5239754e",
+      "name": "Stephen Engstrom",
+      "official_profile": "https://www.philosophy.pitt.edu/people/sengstrom",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/sengstrom",
+      "school_heading": [
+        "Stephen Engstrom"
+      ],
+      "official_status": 200,
+      "roster_rank": "Distinguished Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-5239754e",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-5239754e",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-8ba5545b",
+      "name": "Anil Gupta",
+      "official_profile": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/faculty/anil-gupta",
+      "school_heading": [
+        "Anil Gupta"
+      ],
+      "official_status": 200,
+      "roster_rank": "Alan Ross Anderson Distinguished Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-8ba5545b",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-8ba5545b",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-9f1dfd0f",
+      "name": "Josefine Klingspor",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-115",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-115",
+      "school_heading": [
+        "Josefine Klingspor"
+      ],
+      "official_status": 200,
+      "roster_rank": "Assistant Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-9f1dfd0f",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-9f1dfd0f",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-15cd0388",
+      "name": "Jed Lewinsohn",
+      "official_profile": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jlewinsohn",
+      "school_heading": [
+        "Jed Lewinsohn"
+      ],
+      "official_status": 200,
+      "roster_rank": "Associate Professor of Philosophy and Grad Liaison/Climate Director (Spring 2027)",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-15cd0388",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-15cd0388",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-01e44da7",
+      "name": "Sara Magrin",
+      "official_profile": "https://www.philosophy.pitt.edu/people/smagrin",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/smagrin",
+      "school_heading": [
+        "Sara Magrin"
+      ],
+      "official_status": 200,
+      "roster_rank": "Associate Professor of Philosophy, Grad Liaison/Climate Director (Fall 2026), and CPAS Director (Fall 2026)",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-01e44da7",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-01e44da7",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-8316b779",
+      "name": "Sven Neth",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-74",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-74",
+      "school_heading": [
+        "Sven Neth"
+      ],
+      "official_status": 200,
+      "roster_rank": "Assistant Professor, Career Director, and Philosophy Club Director",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-8316b779",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-8316b779",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-b5e102fb",
+      "name": "Japa Pallikkathayil",
+      "official_profile": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jpallikkathayil",
+      "school_heading": [
+        "Japa Pallikkathayil"
+      ],
+      "official_status": 200,
+      "roster_rank": "Associate Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-b5e102fb",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-b5e102fb",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-fd9a1a31",
+      "name": "Larkin Philpot",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-60",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-60",
+      "school_heading": [
+        "Larkin Philpot"
+      ],
+      "official_status": 200,
+      "roster_rank": "Teaching Assistant Professor",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-fd9a1a31",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-fd9a1a31",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-52256215",
+      "name": "Amy Ramirez",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-114",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-114",
+      "school_heading": [
+        "Amy Ramirez"
+      ],
+      "official_status": 200,
+      "roster_rank": "Teaching Assistant Professor",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-52256215",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-52256215",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-d1104248",
+      "name": "Jacob Rosen",
+      "official_profile": "https://www.philosophy.pitt.edu/people/jrosen",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jrosen",
+      "school_heading": [
+        "Jacob Rosen"
+      ],
+      "official_status": 200,
+      "roster_rank": "Associate Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-d1104248",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-d1104248",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-5aa6030b",
+      "name": "James Shaw",
+      "official_profile": "https://www.philosophy.pitt.edu/people/jshaw",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jshaw",
+      "school_heading": [
+        "James Shaw"
+      ],
+      "official_status": 200,
+      "roster_rank": "Professor of Philosophy and Department Chair",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-5aa6030b",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-5aa6030b",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-eb764410",
+      "name": "Matthew Soteriou",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-113",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-113",
+      "school_heading": [
+        "Matthew Soteriou"
+      ],
+      "official_status": 200,
+      "roster_rank": "Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-eb764410",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-eb764410",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-2930bf5f",
+      "name": "Kate Stanton",
+      "official_profile": "https://www.philosophy.pitt.edu/people/kstanton",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/kstanton",
+      "school_heading": [
+        "Kate Stanton"
+      ],
+      "official_status": 200,
+      "roster_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027)",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-2930bf5f",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-2930bf5f",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-a0adc9be",
+      "name": "Michael Thompson",
+      "official_profile": "https://www.philosophy.pitt.edu/people/mthompson",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/mthompson",
+      "school_heading": [
+        "Michael Thompson"
+      ],
+      "official_status": 200,
+      "roster_rank": "Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-a0adc9be",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-a0adc9be",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-4e0c21eb",
+      "name": "David Wallace",
+      "official_profile": "https://www.philosophy.pitt.edu/people/dwallace",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/dwallace",
+      "school_heading": [
+        "David Wallace"
+      ],
+      "official_status": 200,
+      "roster_rank": "Mellon Professorship",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-4e0c21eb",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-4e0c21eb",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-7b9d049f",
+      "name": "Jennifer Whiting",
+      "official_profile": "https://www.philosophy.pitt.edu/people/jwhiting",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/jwhiting",
+      "school_heading": [
+        "Jennifer Whiting"
+      ],
+      "official_status": 200,
+      "roster_rank": "Distinguished Professor of Philosophy and CPAS Director (Spring 2027)",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-7b9d049f",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-7b9d049f",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-3bc2a27e",
+      "name": "Porter Williams",
+      "official_profile": "https://www.philosophy.pitt.edu/people/pwilliams",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/pwilliams",
+      "school_heading": [
+        "Porter Williams"
+      ],
+      "official_status": 200,
+      "roster_rank": "Associate Professor of Philosophy and Director of Graduate Studies",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-3bc2a27e",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-3bc2a27e",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-04473822",
+      "name": "Mark Wilson",
+      "official_profile": "https://www.philosophy.pitt.edu/people/mwilson",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/mwilson",
+      "school_heading": [
+        "Mark Wilson"
+      ],
+      "official_status": 200,
+      "roster_rank": "Distinguished Professor of Philosophy",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-04473822",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-04473822",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    },
+    {
+      "original_id": "faculty-pitt-phil-cd6487c5",
+      "name": "Adam Zweber",
+      "official_profile": "https://www.philosophy.pitt.edu/people/ant-116",
+      "official_final_url": "https://www.philosophy.pitt.edu/people/ant-116",
+      "school_heading": [
+        "Adam Zweber"
+      ],
+      "official_status": 200,
+      "roster_rank": "Teaching Assistant Professor",
+      "production_detail": "https://joinalab.com/opportunities/faculty-pitt-phil-cd6487c5",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-pitt-phil-cd6487c5",
+      "production_api_source": "https://www.philosophy.pitt.edu/people",
+      "production_action": [
+        {
+          "text": "View faculty profile",
+          "href": "https://www.philosophy.pitt.edu/people"
+        }
+      ]
+    }
+  ]
+}
