@@ -121,8 +121,14 @@ with sync_playwright() as pw:
                     row=cold.request.get(target,headers=actual_headers)
                     assert row.status==200
                     return row.json()[0]
-                def add_entry(tab,text):
+                def select_campus_if_needed(tab):
                     tab.bring_to_front()
+                    selection=tab.get_by_test_id('university-card-uiuc')
+                    if selection.is_visible():
+                        selection.click(); tab.get_by_test_id('switcher-confirm').click()
+                        expect(selection).to_be_hidden()
+                def add_entry(tab,text):
+                    select_campus_if_needed(tab)
                     entry=tab.locator('#experience-library details').last
                     if not entry.locator('textarea').is_visible():entry.locator('summary').click()
                     expect(entry.locator('textarea')).to_be_visible()
@@ -139,6 +145,7 @@ with sync_playwright() as pw:
                 initial_revision=row['revision']
                 other=cold.new_page();go(other)
                 remove=other.get_by_role('button',name='移除文件',exact=True);expect(remove).to_be_visible()
+                select_campus_if_needed(other)
                 local_outage=True
                 cold.set_offline(True)
                 add_entry(pg,'I independently rechecked the synthetic sensor calibration.')
