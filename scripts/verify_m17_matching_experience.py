@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 if '--serve' in sys.argv:
     import uvicorn
@@ -50,7 +51,21 @@ async def main():
             assert TARGET in listing and OTHER in listing, list(listing)
             return page,listing,payload
         async def letter(ctx,record,confirmed):
-            p=await ctx.new_page();await p.goto(site+'/opportunities/'+TARGET,wait_until='domcontentloaded')
+            p=await ctx.new_page()
+            seen_api=[]; errors=[]
+            def api(r):
+                path=urlsplit(r.url).path
+                if path.startswith('/api/') or path=='/rest/v1/profiles':
+                    seen_api.append((path,r.status))
+            p.on('response',api)
+            p.on('pageerror',lambda e: errors.append(str(e)[:300]))
+            await p.goto(site+'/opportunities/'+TARGET,wait_until='networkidle')
+            # Detail loads its owner independently when opened in a fresh tab.
+            # Its draft button is early; first wait for this account's ordinary profile read.
+            for _ in range(80):
+                if ('/rest/v1/profiles',200) in seen_api:break
+                await p.wait_for_timeout(150)
+            await p.wait_for_timeout(500)
             generation=asyncio.get_running_loop().create_future()
             def capture(r):
                 if '/api/cold-email/variants' in r.url and not generation.done():
@@ -69,7 +84,12 @@ async def main():
                     show.cancel()
                 if not done:
                     raise AssertionError('Neither generation nor the normal regeneration control appeared')
-            response=await asyncio.wait_for(generation,55)
+            try:
+                response=await asyncio.wait_for(generation,45)
+            except asyncio.TimeoutError:
+                dialog=p.get_by_role('dialog')
+                visible=(await dialog.first.inner_text()) if await dialog.count() else (await p.locator('body').inner_text())
+                raise AssertionError(('no variant request',confirmed,visible[-2000:],seen_api[-22:],errors)) from None
             assert response.ok, (response.status, (await response.text())[:500])
             variants=(await response.json())['variants']
             await expect(p.locator('#cold-email-body')).not_to_have_value('',timeout=30000)
