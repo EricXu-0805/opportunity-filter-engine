@@ -1,0 +1,82 @@
+{
+  "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "observed_at": "2026-11-26T13:38:00.187397+00:00",
+  "originals": [
+    {
+      "id": "bu-bbc659c6ac92",
+      "url": "https://joinalab.com/opportunities/bu-bbc659c6ac92",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "api_deadline": null,
+      "rolling": true,
+      "primary_links": [
+        [
+          "Apply now",
+          "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/"
+        ]
+      ],
+      "candidate": {
+        "id": "bu-bbc659c6ac92",
+        "before": null,
+        "after": "2027-01-15",
+        "old_action": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+        "new_action": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+        "original_directory_observation": null
+      }
+    },
+    {
+      "id": "sro-bc33bc08",
+      "url": "https://joinalab.com/opportunities/sro-bc33bc08",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "api_deadline": "2027-02-01",
+      "rolling": false,
+      "primary_links": [
+        [
+          "Apply now",
+          "https://www.bumc.bu.edu/gms/students/dei/undergraduate-summer-and-youth-programs/stars/"
+        ]
+      ],
+      "candidate": {
+        "id": "sro-bc33bc08",
+        "before": "2027-02-01",
+        "after": "2027-01-15",
+        "old_action": "https://www.bumc.bu.edu/gms/students/dei/undergraduate-summer-and-youth-programs/stars/",
+        "new_action": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+        "original_directory_observation": {
+          "date": "2027-02-01",
+          "anticipated": true,
+          "source_url": "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars-program-stars"
+        }
+      }
+    },
+    {
+      "id": "sro-60f60fbd",
+      "url": "https://joinalab.com/opportunities/sro-60f60fbd",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "api_deadline": "2027-02-01",
+      "rolling": false,
+      "primary_links": [
+        [
+          "Apply now",
+          "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/"
+        ]
+      ],
+      "candidate": {
+        "id": "sro-60f60fbd",
+        "before": "2027-02-01",
+        "after": "2027-01-15",
+        "old_action": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+        "new_action": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+        "original_directory_observation": {
+          "date": "2027-02-01",
+          "anticipated": false,
+          "source_url": "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars-stars-program"
+        }
+      }
+    }
+  ],
+  "host_program": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/",
+  "host_faq": "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/frequently-asked-questions/",
+  "host_application_close": "2027-01-15 11:59pm (timezone unspecified on page)",
+  "faq_letters": "February 1 (FAQ states month/day; no year in that sentence)",
+  "old_alias_application_landing": "https://www.bumc.bu.edu/gms/2024/08/07/stars-scholars-present-at-2024-gms-summer-undergraduate-research-symposium/"
+}
