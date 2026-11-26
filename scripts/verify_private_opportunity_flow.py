@@ -89,6 +89,12 @@ async def audit():
             await expect(dest).to_be_visible(timeout=45000)
             path=await dest.get_attribute('href')
             first,=records();uid=first['id'];assert unquote(path.split('/')[-1])==uid and first['revision']==1
+            stage('count only one on device with both copies of that same opportunity')
+            await p.goto(site+'/favorites',wait_until='domcontentloaded')
+            await expect(p.get_by_text('1 saved',exact=True)).to_be_visible(timeout=40000)
+            await expect(p.get_by_role('link',name='View records',exact=True)).to_be_visible()
+            await p.goto(site+'/dashboard',wait_until='domcontentloaded')
+            await expect(p.get_by_test_id('saved-summary').locator('p').first).to_have_text('1',timeout=40000)
             stage('reimport preserves browser and account provenance until confirmation')
             await paste(SOURCE2,'source_excerpt')
             await button('Review saved import update').click()
@@ -113,6 +119,27 @@ async def audit():
             await expect(p.get_by_role('link',name='View records',exact=True).first).to_be_visible(timeout=40000)
             latest,=records()
             assert latest['id']==uid and latest['revision']==2 and latest['opportunity']['description_raw']==SOURCE2
+            # An independent live writer on this disposable account now changes
+            # the exact revision the open UI reviewed. Raw source must survive
+            # the losing request until the person explicitly rereads and confirms.
+            proposed=SOURCE2+' New offline note to review.'
+            await paste(proposed,'source_excerpt')
+            await button('Review saved import update').click()
+            await button('Confirm update').click()
+            await button('Review save to account').click()
+            await expect(button('Update account copy')).to_be_visible(timeout=40000)
+            other_source=dict(latest['opportunity']);other_source['description_raw']=SOURCE1+' Other authorized device revision.'
+            conflict_body={'expected_owner_id':owner['user']['id'],'expected_revision':2,'opportunity':other_source}
+            competing=request.Request('http://127.0.0.1:8100/api/private-import-targets/'+quote(uid,safe=''),method='PUT',data=json.dumps(conflict_body).encode(),headers={'Authorization':'Bearer '+owner['access_token'],'Content-Type':'application/json'})
+            with request.urlopen(competing,timeout=20) as res:
+                rival=json.load(res)['target'];assert rival['revision']==3
+            await button('Update account copy').click()
+            await expect(p.get_by_text('This account copy changed. Read it again before confirming.',exact=True)).to_be_visible(timeout=45000)
+            assert records()==[rival] and (await imports())[0]['opportunity']['description_raw']==proposed
+            await button('Read current copies again').click()
+            await button('Update account copy').click(timeout=40000)
+            await expect(p.get_by_role('link',name='View records',exact=True).first).to_be_visible(timeout=40000)
+            latest,=records();assert latest['revision']==4 and latest['id']==uid and latest['opportunity']['description_raw']==proposed
             stage('fresh browser, account list, original source, free private draft')
             await c.close();c,p=await fresh(owner,'Private Opportunity QA');listen(p)
             assert (await imports())==[]
@@ -123,7 +150,7 @@ async def audit():
             await link.click()
             await expect(p.get_by_role('heading',name=TITLE,exact=True)).to_be_visible(timeout=60000)
             await p.get_by_text('Full imported text',exact=True).click()
-            await expect(p.get_by_text(SOURCE2,exact=True)).to_be_visible()
+            await expect(p.get_by_text(proposed,exact=True)).to_be_visible()
             await expect(p.get_by_text('Imported content — not independently verified.',exact=False)).to_be_visible()
             async with p.expect_response(lambda r:'/cold-email/variants' in r.url,timeout=65000) as gen:
                 await button('Prepare email').click(timeout=35000)
@@ -132,6 +159,12 @@ async def audit():
             v,=draft['variants'];assert v['id']=='private-first-contact' and v['subject'] and v['body']
             await expect(p.locator('#cold-email-body')).not_to_have_value('')
             recipient=draft['recipient_status'];assert recipient=='unavailable' and not draft['recipient_email'] and not v['mailto_link'] and draft['method']=='template'
+            hand_edit='Personal draft for disposable records. No email was sent.'
+            await p.locator('#cold-email-body').fill(hand_edit)
+            await expect(p.get_by_test_id('cold-email-draft-status')).to_contain_text('Saved on this browser',timeout=45000)
+            await button('Close email editor').click()
+            await button('Prepare email').click()
+            await expect(p.locator('#cold-email-body')).to_have_value(hand_edit,timeout=45000)
             stage('private résumé workspace')
             await p.goto(site+path,wait_until='domcontentloaded')
             await button('Prepare résumé').click(timeout=45000)
@@ -156,7 +189,7 @@ async def audit():
             await p2.goto(site+path,wait_until='domcontentloaded')
             await expect(p2.get_by_text('This import is not available in this account.',exact=True)).to_be_visible(timeout=45000)
             assert records()==[latest]
-            print('ISOLATED RECEIPT',json.dumps({'product':'4ca86798798947e06992538e378baffcaa7a0393','test_users':2,'real_auth_postgrest_browser':True,'model_provider':'controlled synthetic extraction result only','source_lengths':[len(SOURCE1),len(SOURCE2)],'source_scopes':['full_source','source_excerpt'],'explicit_browser_and_account_confirmations':True,'one_failed_update_before_write':True,'account_revisions':[1,1,2],'same_browser_and_account_ids':True,'clean_browser_account_restore':True,'private_template':v['id'],'recipient_status':recipient,'private_resume_workspace_opened':True,'tracker_record_survives_reload':True,'second_user_cannot_read_owner_record':True,'messages_sent':0}),flush=True)
+            print('ISOLATED RECEIPT',json.dumps({'product':'91da71d0d2052ffaf0988fb6639346a26cc244c2','test_users':2,'real_auth_postgrest_browser':True,'model_provider':'controlled synthetic extraction result only','source_lengths':[len(SOURCE1),len(SOURCE2)],'source_scopes':['full_source','source_excerpt'],'explicit_browser_and_account_confirmations':True,'one_failed_update_before_write':True,'account_revisions':[1,1,2,3,3,4],'competing_real_revision_preserved':True,'both_copies_counted_once':True,'hand_edited_draft_restored':True,'same_browser_and_account_ids':True,'clean_browser_account_restore':True,'private_template':v['id'],'recipient_status':recipient,'private_resume_workspace_opened':True,'tracker_record_survives_reload':True,'second_user_cannot_read_owner_record':True,'messages_sent':0}),flush=True)
             await c2.close()
         except Exception:
             print('Last synthetic app response statuses:',events[-16:],flush=True)
