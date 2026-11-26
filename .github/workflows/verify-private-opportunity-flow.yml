@@ -66,7 +66,16 @@ jobs:
           python -m pip install --quiet -r product/requirements.txt playwright==1.55.0
           export PYTHONPATH="$GITHUB_WORKSPACE/product"
           python -u scripts/verify_private_opportunity_flow.py --serve >"$RUNNER_TEMP/m28-api.log" 2>&1 &
-          for attempt in {1..40}; do if curl -fsS --max-time 5 http://127.0.0.1:8100/api/health >/dev/null 2>&1; then break; fi; sleep 1; done
+          api_pid=$!
+          for attempt in {1..40}; do
+            if curl -fsS --max-time 5 http://127.0.0.1:8100/api/health >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if ! curl -fsS --max-time 5 http://127.0.0.1:8100/api/health >/dev/null; then
+            grep -E 'Error:|Exception:|Traceback|^  File' "$RUNNER_TEMP/m28-api.log" | tail -14
+            exit 1
+          fi
           (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/frontend.log" 2>&1 &
           for attempt in {1..80}; do if curl -fsS --max-time 15 http://127.0.0.1:3100/ >/dev/null 2>&1; then break; fi; sleep 1; done
           OFE_EXPECT_COUNT_FIX=1 python -u scripts/check_private_opportunity_counts.py "$cfg"

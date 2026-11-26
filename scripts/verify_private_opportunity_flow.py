@@ -12,8 +12,16 @@ SOURCE1 = TITLE + ' at ' + ORG + '. Review historical catalog records and learn 
 SOURCE2 = TITLE + ' at ' + ORG + '. Second revision. ' + ('Archive catalog calibration notes. ' * 150) + 'Distinct final source sentence.'
 
 if '--serve' in sys.argv:
+    import tempfile
+    from pathlib import Path
     import uvicorn
+    from backend import data_loader
     from backend.lib import llm
+    # Private imports are owned by the real local account database. The public
+    # matching corpus is irrelevant to these flows; use the existing public fixture.
+    corpus=tempfile.TemporaryDirectory()
+    data_loader.DATA_DIR=Path(corpus.name)
+    (data_loader.DATA_DIR/'opportunities.json').write_bytes(Path('product/frontend/e2e/fixtures/actionable-listing.json').read_bytes())
     def extract(messages, **options):
         assert len(messages) == 2 and TITLE in messages[1]['content']
         return json.dumps({'title': TITLE, 'organization': ORG, 'description': 'Archive work, unverified.', 'opportunity_type':'fellowship'})
