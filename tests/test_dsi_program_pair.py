@@ -155,3 +155,55 @@ def test_both_original_funding_fields_link_to_the_host_and_preserve_the_director
     apply_program_window(different_cohort)
     assert different_cohort["compensation_details"] == "New stipend pending"
     assert "compensation" not in build_detail_fields(different_cohort, different_cohort)["fields"]["funding"]["quotes"]
+
+
+def test_summer_lab_separates_admission_work_authorization_and_funding_through_refresh(tmp_path):
+    import json
+
+    from backend.lib.opportunity_detail import build_detail_fields
+    from src.collectors.uiuc_sro import merge_into_processed
+    from src.program_windows import DSI_WORK_AUTHORIZATION
+
+    def directory(deadline, *, deep=True, program_url=DSI_WINDOW.url):
+        details = {"deadline_raw": deadline}
+        if deep:
+            details.update(program_url=program_url, citizenship="No Citizenship Requirements",
+                           compensation="$5,600", detail_page_verified=True)
+        raw = RawOpportunity("uiuc_sro", "https://researchops.web.illinois.edu/?page=0",
+                             "Data Science Institute Summer Lab", "", DSI_DIRECTORY, organization="University of Chicago",
+                             extra_fields=details)
+        return raw_to_normalized(raw)
+
+    def assert_qualifications(row):
+        fields = build_detail_fields(row, row)["fields"]
+        eligibility = fields["eligibility"]
+        assert eligibility["explicit"]["citizenship"] == "not_required"
+        assert eligibility["explicit"]["international_students"] == "yes"
+        assert eligibility["explicit"]["work_authorization_notes"] == DSI_WORK_AUTHORIZATION
+        for key in ("citizenship", "international_students", "work_authorization_notes"):
+            assert eligibility["quotes"][key]["source_url"] == DSI_WINDOW.url + "faq/"
+        assert "U.S. citizens or permanent residents" in fields["funding"]["explicit"]["compensation"]
+        assert fields["funding"]["quotes"]["compensation"]["source_url"] == DSI_WINDOW.page
+
+    host = _row("uchicago", "dsi_summer_lab")
+    first = directory("Anticipated 1/12/27")
+    assert_qualifications(host)
+    assert_qualifications(first)
+    assert first["metadata"]["superseded_work_auth_notes"]["value"] == "No Citizenship Requirements"
+    stored = tmp_path / "directory.json"
+    for incoming in (first, directory("", deep=False), directory("Anticipated 1/12/27")):
+        merge_into_processed([incoming], str(stored))
+        [row] = json.loads(stored.read_text())
+        assert_qualifications(row)
+
+    next_year = directory("Anticipated 1/12/28", deep=False)
+    for incoming in (next_year, directory("", deep=False)):
+        merge_into_processed([incoming], str(stored))
+        [row] = json.loads(stored.read_text())
+        assert row["id"] == first["id"]
+        assert row["eligibility"]["work_auth_notes"] != DSI_WORK_AUTHORIZATION
+        assert "$1,800" not in row["compensation_details"]
+    for other in (directory("Anticipated 1/12/27", program_url="https://example.edu/different"),
+                  _row("stanford", "ssrp_amgen_scholars")):
+        assert DSI_WORK_AUTHORIZATION != other["eligibility"]["work_auth_notes"]
+        assert DSI_WINDOW.url + "faq/" not in str(build_detail_fields(other, other))

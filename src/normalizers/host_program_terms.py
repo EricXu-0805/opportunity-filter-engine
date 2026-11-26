@@ -1,7 +1,15 @@
 """Student-facing terms checked on the same host pages as reviewed 2027 cohorts."""
 
 from src.normalizers import bu_stars
-from src.program_windows import DSI_IDS, DSI_SUPPORT, DSI_WINDOW, SMU_WINDOW, ProgramWindow, reviewed_window
+from src.program_windows import (
+    DSI_IDS,
+    DSI_SUPPORT,
+    DSI_WINDOW,
+    DSI_WORK_AUTHORIZATION,
+    SMU_WINDOW,
+    ProgramWindow,
+    reviewed_window,
+)
 
 CRISP_ID = "sro-3ec4ea4e"
 SMU_IDS = ("nsf-reu-2447670", "sro-44f176cd")
@@ -89,6 +97,18 @@ def apply_terms(record: dict) -> None:
 
 
 def quote(record: dict, field: str) -> dict | None:
+    if record.get("id") in DSI_IDS and field in {"international_students", "work_authorization_notes"}:
+        window = reviewed_window(record)
+        eligibility = record.get("eligibility")
+        if not isinstance(eligibility, dict) or not window or window.page != DSI_WINDOW.page:
+            return None
+        if eligibility.get("work_auth_notes") != DSI_WORK_AUTHORIZATION:
+            return None
+        if field == "international_students" and eligibility.get("international_friendly") != "yes":
+            return None
+        text = ("international undergraduate students are eligible to apply" if field == "international_students"
+                else "all students must be authorized to work in the United States")
+        return {"text": text, "source_url": DSI_WINDOW.url + "faq/", "observed_at": window.reviewed_on.isoformat()}
     if record.get("id") in DSI_IDS and field in {"paid", "compensation"}:
         window = reviewed_window(record)
         if window and window.page == DSI_WINDOW.page and record.get("compensation_details") == DSI_SUPPORT:

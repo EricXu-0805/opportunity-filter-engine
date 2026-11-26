@@ -26,7 +26,7 @@ from bs4 import BeautifulSoup
 
 from src.normalizers import fodommat, host_program_terms
 from src.normalizers.deadlines import normalize_deadline, to_legacy
-from src.program_windows import SRO_WINDOW_ORGANIZATIONS, apply_program_window, reviewed_window
+from src.program_windows import DSI_IDS, SRO_WINDOW_ORGANIZATIONS, apply_program_window, reviewed_window
 
 from ..contact_instructions import (
     CAPTURE_KEY,
@@ -1050,6 +1050,11 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                         carried = [k for k in carried if k not in (
                             "organization", "application", "eligibility", "deadline", "deadline_is_estimate", "is_rolling",
                         )]
+                        if opp["id"] == DSI_IDS[1]:
+                            # The old class's base stipend and NSF supplement cannot follow a new deadline.
+                            carried = [k for k in carried if k not in (
+                                "paid", "compensation_details", "duration", "description_clean", "description_raw",
+                            )]
                     elif "deadline" in carried and "superseded_directory_deadline" in prior["metadata"]:
                         opp["metadata"]["superseded_directory_deadline"] = deepcopy(prior["metadata"]["superseded_directory_deadline"])
                 if host_program_terms.checked_window(prior) and not host_program_terms.checked_window(opp):
