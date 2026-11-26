@@ -1,0 +1,139 @@
+{
+  "observed_at": "2026-11-26T10:53:30.285348+00:00",
+  "caltech": [
+    {
+      "id": "faculty-caltech-phys-68128723",
+      "url": "https://www.pma.caltech.edu/people/bradley-w-filippone",
+      "final_url": "https://www.pma.caltech.edu/people/bradley-w-filippone",
+      "identity": "Bradley W. Filippone",
+      "checked_source_entries": [
+        "Experimental Nuclear Physics & Low Energy Particle Physics"
+      ],
+      "saved_entries_agree": true,
+      "response_body_sha256": "0d168b0a89688a78683ef024a77d498aa23cca34d821eb1e10897f8de3628b7b"
+    },
+    {
+      "id": "faculty-caltech-phys-b6dd07e7",
+      "url": "https://www.pma.caltech.edu/people/gukov",
+      "final_url": "https://www.pma.caltech.edu/people/gukov",
+      "identity": "Sergei Gukov",
+      "checked_source_entries": [
+        "Mathematics and Machine Learning (we are hiring!)",
+        "Future of AI in Mathematics and Automated Theorem Proving",
+        "Quantum Topology (see Quantum Topol. 12, 2021, 1 for a published version)",
+        "geometric Langlands program (see Current Developments in Mathematics 2006, 2008, 35 for a published version)",
+        "gauge theory (see ATMP 27, 2023, no.2 for a published version)",
+        "Rozansky-Witten geometry of Coulomb branches (see J. Geom. Phys. 168, 2021, 104311 for a published version)",
+        "categorification of knot and 3-manifold invariants (see Exp. Math. 15, 2006, 129 and J. Knot Theor. Ramifications 29, 2020, 2040003)",
+        "KLR algebras, DAHA, and (logarithmic) vertex algebras",
+        "Mathematical physics"
+      ],
+      "saved_entries_agree": true,
+      "response_body_sha256": "6fab96b479ec68d47aefe40e531581a6f9c9a19fa17bc59754682664643c2541"
+    },
+    {
+      "id": "faculty-caltech-phys-a55ac716",
+      "url": "https://www.pma.caltech.edu/people/kenneth-g-libbrecht",
+      "final_url": "https://www.pma.caltech.edu/people/kenneth-g-libbrecht",
+      "identity": "Kenneth G. Libbrecht",
+      "checked_source_entries": [
+        "Physics of Crystal Growth and Pattern Formation in Ice"
+      ],
+      "saved_entries_agree": true,
+      "response_body_sha256": "e6ecb32f4c8196b1690c793bbce95970de6d29af741b3a94a94c5bbbc9f538c5"
+    },
+    {
+      "id": "faculty-caltech-phys-ce75d85a",
+      "url": "https://www.pma.caltech.edu/people/e-s-sterl-phinney",
+      "final_url": "https://www.pma.caltech.edu/people/e-s-sterl-phinney",
+      "identity": "E. Sterl Phinney",
+      "checked_source_entries": [
+        "Theoretical High-Energy Astrophysics and Gravitational-Wave Astrophysics"
+      ],
+      "saved_entries_agree": true,
+      "response_body_sha256": "a74e5b23983eb84097140a207337432850421dc59f3a269e2da647a78d1b1514"
+    },
+    {
+      "id": "faculty-caltech-phys-82f76699",
+      "url": "https://www.pma.caltech.edu/people/robert-huang",
+      "final_url": "https://www.pma.caltech.edu/people/robert-huang",
+      "identity": "Hsin-Yuan (Robert) Huang",
+      "checked_source_entries": [
+        "Quantum Information (theory)"
+      ],
+      "saved_entries_agree": true,
+      "response_body_sha256": "9fb3d37a99a0063df38b5ef554dd551a5b05bbfcbea8a3814b1d8e9357e38b08"
+    }
+  ],
+  "jhu": [
+    {
+      "work_id": "W4416285899",
+      "doi": "https://doi.org/10.1523/jneurosci.0577-25.2025",
+      "title": "Temporal and Spatial Scales of Human Resting-State Cortical Activity across the Lifespan",
+      "year": 2025,
+      "university_lab_url": "https://sites.krieger.jhu.edu/daeyeol-lee-lab/publications/",
+      "official_lab_publication_link": "https://www.jneurosci.org/content/46/2/e0577252025",
+      "lab_citation": "J Neurosci 46(2); school lists the 2026 volume",
+      "lab_byline_includes_lee": true,
+      "author": "Daeyeol Lee",
+      "author_id": "https://openalex.org/A5051230082",
+      "orcid": "https://orcid.org/0000-0003-3474-019X",
+      "institutions": [
+        "https://openalex.org/I145311948"
+      ],
+      "openalex_url": "https://openalex.org/W4416285899",
+      "publisher_registration": {
+        "url": "https://api.crossref.org/works/10.1523/jneurosci.0577-25.2025",
+        "published_online": [
+          2025,
+          11,
+          17
+        ],
+        "published_print": [
+          2026,
+          1,
+          14
+        ],
+        "volume": "46",
+        "issue": "2"
+      }
+    },
+    {
+      "work_id": "W4410019178",
+      "doi": "https://doi.org/10.1371/journal.pcbi.1012989",
+      "title": "Foraging animals use dynamic Bayesian updating to model meta-uncertainty in environment representations",
+      "year": 2025,
+      "university_lab_url": "https://sites.krieger.jhu.edu/daeyeol-lee-lab/publications/",
+      "official_lab_publication_link": "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1012989",
+      "lab_citation": "PLOS Computational Biology 21 (4) e1012989",
+      "lab_byline_includes_lee": true,
+      "author": "Daeyeol Lee",
+      "author_id": "https://openalex.org/A5051230082",
+      "orcid": "https://orcid.org/0000-0003-3474-019X",
+      "institutions": [
+        "https://openalex.org/I145311948"
+      ],
+      "openalex_url": "https://openalex.org/W4410019178"
+    },
+    {
+      "work_id": "W4409094552",
+      "doi": "https://doi.org/10.1126/sciadv.adt0200",
+      "title": "Chronic ethanol exposure produces sex-dependent impairments in value computations in the striatum",
+      "year": 2025,
+      "university_lab_url": "https://sites.krieger.jhu.edu/daeyeol-lee-lab/publications/",
+      "official_lab_publication_link": "https://www.science.org/doi/full/10.1126/sciadv.adt0200",
+      "lab_citation": "Science Advances 11(14) eadt0200",
+      "lab_byline_includes_lee": true,
+      "author": "Daeyeol Lee",
+      "author_id": "https://openalex.org/A5051230082",
+      "orcid": "https://orcid.org/0000-0003-3474-019X",
+      "institutions": [
+        "https://openalex.org/I145311948",
+        "https://openalex.org/I2799853436"
+      ],
+      "openalex_url": "https://openalex.org/W4409094552"
+    }
+  ],
+  "bibliography_observation": "Direct local university request returned 403. The independently indexed public university bibliography, crawled six days ago, lists all three publisher links and credits Lee D. OpenAlex author and institution were read directly again.",
+  "passed": true
+}
