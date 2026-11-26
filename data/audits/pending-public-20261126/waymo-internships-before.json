@@ -1,0 +1,724 @@
+{
+  "observed_at": "2026-11-26T10:16:24.232913+00:00",
+  "backend_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "board_url": "https://boards-api.greenhouse.io/v1/boards/waymo/jobs",
+  "total_board_jobs": 356,
+  "original_ids_checked": 46,
+  "site_pages_checked": 4,
+  "rows": [
+    {
+      "original_id": "simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61",
+      "employer_job": "8197899",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8197899",
+      "employer_title": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61",
+      "api_http": 200,
+      "published_title": "Human Behavior Analytics Intern - Safety Research",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009",
+      "employer_job": "8210138",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8210138",
+      "employer_title": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009",
+      "api_http": 200,
+      "published_title": "Conflict Behavior Intern - MS/PhD",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-f42adf96-f242-4f29-8953-d237b9a04ad2",
+      "employer_job": "8203191",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8203191",
+      "employer_title": "2027 Summer Intern, PhD, Learning-Based Behavior for Special Vehicles",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-f42adf96-f242-4f29-8953-d237b9a04ad2",
+      "api_http": 200,
+      "published_title": "Learning-Based Behavior Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-e764c6d5-8016-405f-9cf4-3ab1d55828be",
+      "employer_job": "8221851",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8221851",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software/ML Engineer, Simulation",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-e764c6d5-8016-405f-9cf4-3ab1d55828be",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - MS/PhD - Simulation",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-e88effb2-7748-41ae-9be2-407af5870c56",
+      "employer_job": "8221795",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8221795",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, Simulation Evaluation ML Model",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-e88effb2-7748-41ae-9be2-407af5870c56",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - Simulation Evaluation ML Model",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-e9282391-e76d-43c0-99fe-824b03704b2c",
+      "employer_job": "8223735",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8223735",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning Engineer",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-e9282391-e76d-43c0-99fe-824b03704b2c",
+      "api_http": 200,
+      "published_title": "Machine Learning Engineer Intern - MS/PhD",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-6b159730-9852-401d-b64d-e07e1b5e80ba",
+      "employer_job": "8221956",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8221956",
+      "employer_title": "2027 Summer Intern, PhD, Data Science",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-6b159730-9852-401d-b64d-e07e1b5e80ba",
+      "api_http": 200,
+      "published_title": "Data Science Intern - PhD",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-9f31b43a-95ad-41c8-aef4-c59287ea5477",
+      "employer_job": "8224729",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8224729",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-9f31b43a-95ad-41c8-aef4-c59287ea5477",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - MS/PhD",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-a27b01fe-9ba5-4ec8-894b-61cfd1f1fdf6",
+      "employer_job": "8227640",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8227640",
+      "employer_title": "2027 Summer Intern, PhD, Research Scientist, Foundation Models",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a27b01fe-9ba5-4ec8-894b-61cfd1f1fdf6",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-865a11a8-4b8f-4167-99a1-2b819a80bdf2",
+      "employer_job": "8231711",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8231711",
+      "employer_title": "2027 Summer Intern, MS/PhD, Systems Engineer, Autonomous Vehicle Networks & Diagnostics",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-865a11a8-4b8f-4167-99a1-2b819a80bdf2",
+      "api_http": 200,
+      "published_title": "Systems Engineer Intern - Autonomous Vehicle Networks & Diagnostics",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-dcfc9399-37e0-42cc-965a-fd425dfbb1ce",
+      "employer_job": "8234161",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8234161",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineering, Onboard Software Integrity",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-dcfc9399-37e0-42cc-965a-fd425dfbb1ce",
+      "api_http": 200,
+      "published_title": "Software Engineering Intern - MS/PhD - Sys Intel & ML",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-3548b466-2e50-4b00-9af5-beccc61fd77d",
+      "employer_job": "8233746",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8233746",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, Sys Intel & Machine Learning",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-3548b466-2e50-4b00-9af5-beccc61fd77d",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - MS/PhD - Systems Intelligence & Machine Learning",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-557e1909-4373-42e8-847b-ee26942d838b",
+      "employer_job": "8227411",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8227411",
+      "employer_title": "2027 Summer Intern, MS/PhD, Perception, Machine Learning",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-557e1909-4373-42e8-847b-ee26942d838b",
+      "api_http": 200,
+      "published_title": "Perception Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-6acc24ca-3ff2-4d56-a40c-e531d2a57522",
+      "employer_job": "8237997",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8237997",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning Research, Planning/Prediction",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-6acc24ca-3ff2-4d56-a40c-e531d2a57522",
+      "api_http": 200,
+      "published_title": "Machine Learning Research Intern - Planning/Prediction",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-cdebfd0a-6bc1-4ec9-904b-67106dabdb42",
+      "employer_job": "8234876",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8234876",
+      "employer_title": "2027 Summer Intern, PhD, Planner Machine Learning",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-cdebfd0a-6bc1-4ec9-904b-67106dabdb42",
+      "api_http": 200,
+      "published_title": "Planner Machine Learning Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-d275435a-21ef-455d-80a8-3d9afd93c8a9",
+      "employer_job": "8240198",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8240198",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, Onboard Developer Platform",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-d275435a-21ef-455d-80a8-3d9afd93c8a9",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - MS/PhD - Onboard Developer Platform",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-a6dbbd93-025c-446e-9591-2e57776b8c43",
+      "employer_job": "8243556",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8243556",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a6dbbd93-025c-446e-9591-2e57776b8c43",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-5cd416b9-4e14-4c94-ba8f-96c9143bd4dc",
+      "employer_job": "8243732",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8243732",
+      "employer_title": "2027 Summer Intern, PhD, Research, World Action Model",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-5cd416b9-4e14-4c94-ba8f-96c9143bd4dc",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1",
+      "employer_job": "8198582",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8198582",
+      "employer_title": "2027 Summer Intern, MBA, Salesforce Product Owner",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1",
+      "api_http": 200,
+      "published_title": "Salesforce Product Owner Intern - MBA",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ],
+      "page_http": 200,
+      "heading": "Salesforce Product Owner Intern - MBA",
+      "apply_now": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8198582"
+      ],
+      "duration_present": true
+    },
+    {
+      "original_id": "simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841",
+      "employer_job": "8257205",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8257205",
+      "employer_title": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - MS/PhD - Eval Data Infra",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ],
+      "page_http": 200,
+      "heading": "Software Engineer Intern - MS/PhD - Eval Data Infra",
+      "apply_now": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8257205"
+      ],
+      "duration_present": true
+    },
+    {
+      "original_id": "simplify-intern-87566803-f6c9-48c3-a131-43c4bfe824ee",
+      "employer_job": "8257159",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8257159",
+      "employer_title": "2027 Summer Intern, MS/PhD, ML Systems & Behavior Discovery",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-87566803-f6c9-48c3-a131-43c4bfe824ee",
+      "api_http": 200,
+      "published_title": "MS/PhD, ML Systems & Behavior Discovery Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-a6a5ed46-6265-445b-abcd-f0a3316ee4ec",
+      "employer_job": "8257801",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8257801",
+      "employer_title": "2027 Summer Intern, MS/PhD,  Research, Perception Foundation Models",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a6a5ed46-6265-445b-abcd-f0a3316ee4ec",
+      "api_http": 200,
+      "published_title": "Research Intern - Perception Foundation Models",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-c8f21f2d-6090-47e0-9b3c-d232b71af4e6",
+      "employer_job": "8227633",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8227633",
+      "employer_title": "2027 Summer Intern, MS/PhD, Perception, Robotics",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-c8f21f2d-6090-47e0-9b3c-d232b71af4e6",
+      "api_http": 200,
+      "published_title": "Perception Intern - Robotics",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "employer_job": "8265173",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8265173",
+      "employer_title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "api_http": 200,
+      "published_title": "Summer Intern - Multiple Teams",
+      "published_duration": "Summer 2026",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ],
+      "page_http": 200,
+      "heading": "Summer Intern - Multiple Teams",
+      "apply_now": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8265173"
+      ],
+      "duration_present": true
+    },
+    {
+      "original_id": "simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754",
+      "employer_job": "8262154",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8262154",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning, Planning/Prediction",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754",
+      "api_http": 200,
+      "published_title": "Summer Intern - Machine Learning - Planning/Prediction",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011",
+      "employer_job": "8257006",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8257006",
+      "employer_title": "2027 Summer Intern, PhD, Research, Post Training",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011",
+      "api_http": 200,
+      "published_title": "Summer Intern - Research - Post Training",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-90fc898a-0084-4663-aec5-a815133f8492",
+      "employer_job": "8258070",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8258070",
+      "employer_title": "2027 Summer Intern, PhD, Research, AV Planning",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-90fc898a-0084-4663-aec5-a815133f8492",
+      "api_http": 200,
+      "published_title": "Research Intern - AV Planning",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-e80ebee1-3fe9-4a36-ad51-08f17f3179c8",
+      "employer_job": "8265868",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8265868",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning, Simulation Realism",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-e80ebee1-3fe9-4a36-ad51-08f17f3179c8",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-342edb51-b682-4daa-80fd-21c355143f3e",
+      "employer_job": "8279620",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8279620",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning, Planning/Prediction",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-342edb51-b682-4daa-80fd-21c355143f3e",
+      "api_http": 200,
+      "published_title": "Machine Learning Intern - Planning/Prediction",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91",
+      "employer_job": "8244128",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8244128",
+      "employer_title": "2027 Summer Intern, MS/PhD, Semantics",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91",
+      "api_http": 200,
+      "published_title": "Semantics Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-e5fc4725-7c7e-4f70-8b44-393f041df42f",
+      "employer_job": "8301854",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8301854",
+      "employer_title": "2027 Summer Intern, PhD, Research, VLM Harnesses for AV Planning",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-e5fc4725-7c7e-4f70-8b44-393f041df42f",
+      "api_http": 200,
+      "published_title": "2027 Summer Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-d6b3c17b-06b4-4829-928b-91ee1bba4851",
+      "employer_job": "8289816",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8289816",
+      "employer_title": "2027 Summer Intern, PhD, Research, Behavior Post-training",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-d6b3c17b-06b4-4829-928b-91ee1bba4851",
+      "api_http": 200,
+      "published_title": "Summer Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-64a04930-5ef0-4b6e-a89b-0ef7d8a6cf17",
+      "employer_job": "8283558",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8283558",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning - Simulation & Closed-Loop Training",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-64a04930-5ef0-4b6e-a89b-0ef7d8a6cf17",
+      "api_http": 200,
+      "published_title": "Machine Learning Intern - Simulation & Closed-Loop Training",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf",
+      "employer_job": "8292367",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8292367",
+      "employer_title": "2027 Summer Intern, PhD, Research Scientist, Visual Reasoning",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-f20248ee-cb81-4a5b-8c0c-1af93286831e",
+      "employer_job": "8306841",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8306841",
+      "employer_title": "2027 Summer Intern, PhD, AI Foundations - Recipes",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-f20248ee-cb81-4a5b-8c0c-1af93286831e",
+      "api_http": 200,
+      "published_title": "2027 Summer Intern - AI Foundations - Recipes",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-a1081a4b-fb8c-4479-9220-d7baabef2872",
+      "employer_job": "8306779",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8306779",
+      "employer_title": "2027 Summer Intern, PhD, Research, RSI for Autonomous Driving",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a1081a4b-fb8c-4479-9220-d7baabef2872",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-87448ebb-0faa-4adb-8da5-961c6675e99c",
+      "employer_job": "8306867",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8306867",
+      "employer_title": "2027 Summer Intern, PhD, Research, Multimodal Foundation Models",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-87448ebb-0faa-4adb-8da5-961c6675e99c",
+      "api_http": 200,
+      "published_title": "Research Intern - Multimodal Foundation Models",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444",
+      "employer_job": "8287385",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8287385",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, ML Frameworks and Efficiency",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern - MS/PhD - ML Frameworks and Efficiency",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a",
+      "employer_job": "8304574",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8304574",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a",
+      "api_http": 200,
+      "published_title": "Summer Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-2925b61d-685b-4e5f-9dfd-2135a9e1f5eb",
+      "employer_job": "8319171",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8319171",
+      "employer_title": "2027 Summer Intern, MS/PhD, Sensor Performance Engineer Intern",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-2925b61d-685b-4e5f-9dfd-2135a9e1f5eb",
+      "api_http": 200,
+      "published_title": "Sensor Performance Engineer Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-5ff8900e-61d6-4596-aada-70ac75491c47",
+      "employer_job": "8337719",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8337719",
+      "employer_title": "2027 Summer Intern, PhD, Research Scientist Intern",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-5ff8900e-61d6-4596-aada-70ac75491c47",
+      "api_http": 200,
+      "published_title": "Research Scientist Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-6bd2bc4c-a45f-43fc-85b7-a95cc3796271",
+      "employer_job": "8350687",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8350687",
+      "employer_title": "2027 Summer Intern, MS/PhD, Depot Automation",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-6bd2bc4c-a45f-43fc-85b7-a95cc3796271",
+      "api_http": 200,
+      "published_title": "Depot Automation Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085",
+      "employer_job": "8350832",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8350832",
+      "employer_title": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085",
+      "api_http": 200,
+      "published_title": "Software Engineer Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ],
+      "page_http": 200,
+      "heading": "Software Engineer Intern",
+      "apply_now": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8350832"
+      ],
+      "duration_present": true
+    },
+    {
+      "original_id": "simplify-intern-a37b7658-0363-49fa-878d-5f9db8bfb47b",
+      "employer_job": "8351210",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8351210",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning - Generative World Models & Controllable Simulation",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-a37b7658-0363-49fa-878d-5f9db8bfb47b",
+      "api_http": 200,
+      "published_title": "Machine Learning Intern - Generative World Models & Controllable Simulation",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-983f493f-336e-4200-b72e-8c62140cf351",
+      "employer_job": "8358262",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8358262",
+      "employer_title": "2027 Summer Intern, Machine Learning, MS/PhD, Simulation Realism (World Model)",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-983f493f-336e-4200-b72e-8c62140cf351",
+      "api_http": 200,
+      "published_title": "Intern - Multiple Teams",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    },
+    {
+      "original_id": "simplify-intern-62a276ae-a9d7-4971-91d6-af6673585530",
+      "employer_job": "8401116",
+      "job_url": "https://careers.withwaymo.com/jobs?gh_jid=8401116",
+      "employer_title": "2027 Summer Intern, PhD, Agentic AI",
+      "site_detail": "https://joinalab.com/opportunities/simplify-intern-62a276ae-a9d7-4971-91d6-af6673585530",
+      "api_http": 200,
+      "published_title": "Agentic AI Intern",
+      "published_duration": "Summer 2027",
+      "published_preferred_years": [
+        "sophomore",
+        "junior",
+        "senior"
+      ]
+    }
+  ]
+}
