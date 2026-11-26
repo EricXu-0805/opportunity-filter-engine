@@ -1,0 +1,111 @@
+{
+  "browser": {
+    "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "observed_utc": "2026-11-26T16:44:08.582Z",
+    "rows": [
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-2973bc22",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-2973bc22",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-5363449f",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-5363449f",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-d539e435",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-d539e435",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-bcbccb7d",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-bcbccb7d",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-82b8ef8c",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-82b8ef8c",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-ea121a2f",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-ea121a2f",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "POLS",
+        "original_id": "faculty-haverford-pols-6fc963c1",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-pols-6fc963c1",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "FREN",
+        "original_id": "faculty-haverford-fren-9869b546",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-fren-9869b546",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "FREN",
+        "original_id": "faculty-haverford-fren-28da6fed",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-fren-28da6fed",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      },
+      {
+        "department": "FREN",
+        "original_id": "faculty-haverford-fren-d3091a6d",
+        "visible_person": true,
+        "visible_official_rank": true,
+        "personal_url_matches_source": true,
+        "product_page": "https://joinalab.com/opportunities/faculty-haverford-fren-d3091a6d",
+        "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+      }
+    ]
+  },
+  "details_api": {
+    "start_sha": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "end_sha": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "original_ids_matching_person_role_and_both_source_urls": 10,
+    "per_department": {
+      "POLS": 7,
+      "FREN": 3
+    }
+  },
+  "merge": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1384",
+  "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45853622306",
+  "production_browser": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861329058/job/140052821983",
+  "scheduled_refresh": "2026-12-02; independent unit and original ID reconciliation pending"
+}
