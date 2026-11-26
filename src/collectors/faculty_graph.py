@@ -63,6 +63,7 @@ import re
 import time
 import unicodedata
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, date, datetime
@@ -5549,7 +5550,7 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
     return [r for r in records if id(r) not in displaced]
 
 
-def merge_into_processed(new_opps: list[dict]):
+def merge_into_processed(new_opps: list[dict], *, prepare_update: Callable[[dict, dict], None] | None = None):
     """Upsert faculty records into processed/opportunities.json by id.
 
     School-scoped (unlike ucb_common.merge_into_processed, which is hard-wired
@@ -5557,6 +5558,8 @@ def merge_into_processed(new_opps: list[dict]):
     fetch_and_normalize, and ids are stable (dept+name hash), so a re-run
     upserts cleanly. We deliberately do NOT cross-dedup against other schools'
     faculty by name — two schools can have a professor with the same name.
+    A source can use prepare_update(previous, incoming) to preserve an observed
+    field when its own current read explicitly failed.
     """
     import json
 
@@ -5573,6 +5576,8 @@ def merge_into_processed(new_opps: list[dict]):
     for opp in new_opps:
         if opp["id"] in index:
             cur = index[opp["id"]]
+            if prepare_update is not None:
+                prepare_update(cur, opp)
             opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
             if (opp["metadata"].get("verification_scope") == "curated"
