@@ -129,7 +129,7 @@ async def run(mode):
             test_unsubscribe = False
             delete_allowed = False
             switching = mode == 'push-switch-after'
-            push_rows = {uid}
+            push_rows = set() if enrollment else {uid}
             owner_events = []
             large = mode.startswith('large-')
             table = 'interactions' if 'tracker' in mode else 'favorites'
@@ -152,6 +152,7 @@ async def run(mode):
                             outcomes.append('UPSERT')
                             if fail:
                                 return await route.fulfill(status=403, headers=cors, json={'message':'controlled account registration failure'})
+                            push_rows.add(uid)
                             return await route.fulfill(status=201, headers=cors, json=[])
                         if switching:
                             claims = req.headers['authorization'].split('.')[1]
@@ -173,7 +174,7 @@ async def run(mode):
                             return await route.abort()
                         reads += 1
                         if enrollment:
-                            return await route.fulfill(headers=cors, json=[])
+                            return await route.fulfill(headers=cors, json=[{'endpoint': endpoint}] if uid in push_rows else [])
                         if '-account-' in mode and fail:
                             return await route.fulfill(status=503, headers={**cors, 'Retry-After': '0'}, json={'message':'controlled subscription read failure'})
                         return await route.fulfill(headers=cors, json=[{'endpoint': endpoint}])
@@ -266,14 +267,18 @@ async def run(mode):
                             fail = False
                             await enabled.click()
                             await expect(page.get_by_role('button',name='Notifications on',exact=True)).to_have_attribute('aria-pressed','true')
-                            assert outcomes == ['UPSERT','UPSERT'], outcomes
+                            assert outcomes == ['UPSERT','UPSERT'] and push_rows == {uid}, outcomes
+                            prior_reads = reads
+                            await page.reload(wait_until='domcontentloaded')
+                            await expect(page.get_by_role('button',name='Notifications on',exact=True)).to_have_attribute('aria-pressed','true')
+                            assert reads > prior_reads and outcomes == ['UPSERT','UPSERT'], outcomes
                     else:
                         assert await page.evaluate('Notification.permission') == 'denied'
                         if mode.endswith('-before'):
                             await expect(enabled).to_be_enabled()
                         else:
                             await expect(enabled).to_have_count(0)
-                        assert not outcomes
+                        assert not outcomes and not push_rows
                     print('PASS',mode,'permission',await page.evaluate('Notification.permission'),'local registration attempts',len(outcomes),'frontend',await page.locator('html').get_attribute('data-release-sha'),flush=True)
                     await browser.close()
                     return
