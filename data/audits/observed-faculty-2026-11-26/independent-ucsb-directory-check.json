@@ -1,0 +1,127 @@
+{
+  "source_head": "3c3e3cdc1baa8fbf197d963624f87c3b071fff22",
+  "source_capture": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800540394",
+  "records": 253,
+  "unchanged_non_urca": 888,
+  "raw_projects": 252,
+  "directory_rows": 88,
+  "outcomes": {
+    "reference": 165,
+    "actionable": 86,
+    "inactive": 2
+  },
+  "ambiguous": [
+    {
+      "id": "ucsb-urca-proj-4db029eba3be",
+      "source": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000eIcF7UAK/morphological-variation-in-a-threatened-amphibian"
+    },
+    {
+      "id": "ucsb-urca-proj-7e0212eeb861",
+      "source": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000eIcGFUA0/costeffective-hydrogen-production-without-co2-from-hydrocarbon-resources"
+    },
+    {
+      "id": "ucsb-urca-proj-3341fa96421c",
+      "source": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000eIcGPUA0/costeffective-hydrogen-production-without-co2-from-hydrocarbon-resources"
+    }
+  ],
+  "each_individual_detail_outage": {
+    "a0W4X00000eIcF7UAK": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcFRUA0"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcFRUA0": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcFRUA0"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcGBUA0": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcGBUA0"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcGFUA0": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcGPUA0": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcH0UAK": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcH0UAK",
+        "a0W4X00000eIcH1UAK"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcH1UAK": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcH0UAK",
+        "a0W4X00000eIcH1UAK"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcHDUA0": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcHDUA0"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000eIcHvUAK": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000eIcHvUAK"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0W4X00000gOVmPUAW": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0W4X00000gOVmPUAW"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0WHt00000Fl6yWMAR": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0WHt00000Fl6yWMAR",
+        "a0WVt000009bn7pMAA"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0WHt00000HBwJyMAL": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0WHt00000HBwJyMAL"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0WVt000007ZH1xMAG": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0WVt000007ZH1xMAG"
+      ],
+      "previously_listed_dropped": []
+    },
+    "a0WVt000009bn7pMAA": {
+      "false_promotions": [],
+      "previously_listed_retained_by_prior_state": [
+        "a0WHt00000Fl6yWMAR",
+        "a0WVt000009bn7pMAA"
+      ],
+      "previously_listed_dropped": []
+    }
+  }
+}
