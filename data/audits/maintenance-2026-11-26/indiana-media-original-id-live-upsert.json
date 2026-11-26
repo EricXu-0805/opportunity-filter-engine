@@ -1,0 +1,40 @@
+{
+  "source": "https://mediaschool.indiana.edu/people/faculty/index.html",
+  "http_fetch": "ok",
+  "started_at": "2026-11-26T15:01:11.301179+00:00",
+  "completed_at": "2026-11-26T15:01:16.579793+00:00",
+  "fields": {
+    "observed_count": 146,
+    "baseline_identity_count": 171,
+    "matched_identity_count": 144,
+    "new_identity_count": 2,
+    "completeness_status": "partial",
+    "retirement_authorized": false,
+    "failure_reason": "blocked_identity_match_failures"
+  },
+  "coverage": {
+    "raw_roster_rows": 207,
+    "parsed_faculty_rows": 146,
+    "classified_nonfaculty_rows": 61,
+    "identity_match_failures": 5,
+    "duplicate_rows": 0
+  },
+  "original_active_ids": 171,
+  "new_source_keys": [
+    "ccaddoo",
+    "mguschwa"
+  ],
+  "normal_upsert": {
+    "added": 2,
+    "updated_original_ids": 144
+  },
+  "renamed_original": {
+    "original_id": "faculty-indiana-msch-50ba2d25",
+    "old_name": "Kamady Lewis",
+    "official_name": "Kamady Rudd",
+    "official_url": "https://mediaschool.indiana.edu/people/profile.html?p=krrudd",
+    "preserved_first_seen": true,
+    "absent_duplicate_id": "faculty-indiana-msch-0c3da265"
+  },
+  "data_writes": "Full normal collector and upsert on isolated copy. No Media source rows published."
+}
