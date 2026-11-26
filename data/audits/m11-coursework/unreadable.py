@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import os
 from check import confirm_school, expect, home, reads, sessions, sync_playwright
 
 warning='Some pages have no readable text. Check the original PDF for missing content before using the extracted text.'
@@ -36,7 +37,15 @@ with sync_playwright() as pw:
     confirm_school(fresh)
     expect(fresh.get_by_text('Linear Algebra',exact=True).first).to_be_visible()
     prior=next(row for row in reversed(reads) if marker in row['profile_data'].get('resume_text',''))
+    stored=prior['profile_data']
+    digest=stored.get('resume_incomplete_digest')
+    fixed=os.environ.get('PDF_ACCEPTANCE_MODE')=='fixed'
+    if fixed:
+        from hashlib import sha256
+        assert digest==sha256(stored['resume_text'].encode()).hexdigest()
+        expect(fresh.get_by_text(warning,exact=True)).to_be_visible(timeout=15000)
     warning_on_reopen=fresh.get_by_text(warning,exact=True).is_visible()
+
     picker=fresh.locator('input[type=file][accept*="pdf"]').first
     picker.set_input_files({'name':'image-only.pdf','mimeType':'application/pdf','buffer':empty})
     expect(fresh.get_by_text(failure,exact=True)).to_be_visible(timeout=55000)
@@ -47,7 +56,23 @@ with sync_playwright() as pw:
     current=next(row for row in reversed(reads) if marker in row['profile_data'].get('resume_text',''))
     assert prior['revision']==current['revision']
     assert current['profile_data']['coursework']==['Linear Algebra']
-    receipt={'utc':datetime.now(timezone.utc).isoformat(),'site':'https://joinalab.com','frontend_sha':page.locator('html').get_attribute('data-release-sha'),'mixed_warning_after_upload':warning,'mixed_warning_visible_after_reopening_same_saved_profile':warning_on_reopen,'image_only_error':failure,'saved_revision_before_and_after':[prior['revision'],current['revision']],'earlier_source_and_course_retained':True}
+    assert current['profile_data'].get('resume_incomplete_digest')==digest
+    replacement_clears=False
+    if fixed:
+        expect(again.get_by_text(warning,exact=True)).to_be_visible()
+        readable=browser.new_page()
+        readable.set_content('<p>Complete synthetic replacement.</p><p>Coursework: Computer Vision</p>')
+        replacement=readable.pdf();readable.close()
+        again.locator('input[type=file][accept*="pdf"]').first.set_input_files({'name':'all-readable.pdf','mimeType':'application/pdf','buffer':replacement})
+        expect(again.get_by_text('Computer Vision',exact=True).first).to_be_visible()
+        again.wait_for_timeout(2500)
+        final=home(browser,sessions[0])
+        expect(final.get_by_text('Computer Vision',exact=True).first).to_be_visible(timeout=35000)
+        end=next(r for r in reversed(reads) if 'Complete synthetic replacement' in r['profile_data'].get('resume_text',''))
+        assert end['revision']>current['revision'] and end['profile_data'].get('resume_incomplete_digest') is None
+        expect(final.get_by_text(warning,exact=True)).to_have_count(0)
+        replacement_clears=True
+    receipt={'complete_replacement_clears_warning':replacement_clears,'utc':datetime.now(timezone.utc).isoformat(),'site':'https://joinalab.com','frontend_sha':page.locator('html').get_attribute('data-release-sha'),'mixed_warning_after_upload':warning,'mixed_warning_visible_after_reopening_same_saved_profile':warning_on_reopen,'image_only_error':failure,'saved_revision_before_and_after':[prior['revision'],current['revision']],'earlier_source_and_course_retained':True}
     out=Path('m11-results')
     out.mkdir(exist_ok=True)
     (out/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2))
