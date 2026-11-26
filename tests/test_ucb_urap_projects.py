@@ -72,6 +72,32 @@ class TestParseListPage:
         assert "12 or more hours" in r["weekly_hours"]
         assert "neural networks" in r["description"].lower()
 
+    def test_flat_official_roster_keeps_each_mentor_and_summary_with_its_project(self):
+        soup = self._soup("""
+            <main>
+              <div class="mt-3 h5"><a href="detail.php?id=1-1">Coastal ecology</a></div>
+              <p><strong>First Mentor - Professor, Biology</strong></p>
+              <p>Status: Full   Weekly Hours: 12 or more hours   Location: On Campus</p>
+              <p>This longer description belongs only to the first professor's coastal research.</p>
+              <a href="list.php?category=Biology">Biology</a>
+              <div class="mt-3 h5"><a href="detail.php?id=2-1">Local history</a></div>
+              <p><strong>Second Mentor - Lecturer, History</strong></p>
+              <p>Status: Closed   Weekly Hours: 3 hours   Location: Remote</p>
+              <p>Archival research.</p>
+              <div class="mt-3 h5"><a href="detail.php?id=3-1">New title
+              Sponsored by the local program</a></div>
+            </main>
+        """)
+        first, second, incomplete = up.parse_list_page(soup)
+        assert (first["faculty"], first["department"]) == ("First Mentor", "Biology")
+        assert second["faculty"] == "Second Mentor"
+        assert second["department"] == "History"
+        assert second["description"] == "Archival research."
+        assert second["weekly_hours"] == "3 hours"
+        assert second["location"] == "Remote"
+        assert incomplete["title"] == "New title"
+        assert incomplete["faculty"] == incomplete["description"] == ""
+
     def test_closed_row_survives_html_parse_into_a_non_actionable_record(self):
         """End to end on real markup, with the un-spaced dash URAP actually emits.
 

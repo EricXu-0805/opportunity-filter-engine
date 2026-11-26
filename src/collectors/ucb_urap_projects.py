@@ -73,7 +73,7 @@ _PAGE_DELAY = 1.0      # politeness between page fetches
 _FACULTY_RE = re.compile(r"^\s*(.+?)\s+-\s+(.+?),\s+(.+?)\s*$")
 _HOURS_RE = re.compile(r"Weekly Hours:\s*([^\n]+?)(?:\s{2,}|\n|Location:|$)", re.IGNORECASE)
 _LOCATION_RE = re.compile(r"Location:\s*([^\n]+?)(?:\s{2,}|\n|$)", re.IGNORECASE)
-_STATUS_RE = re.compile(r"Status:\s*([^\n]+?)(?:\s{2,}|\n|Weekly Hours:|$)", re.IGNORECASE)
+_STATUS_RE = re.compile(r"Status:\s*([^\n]+?)(?:\s{2,}|\n|Weekly Hours:|Location:|$)", re.IGNORECASE)
 _LIST_COUNT = re.compile(r"\bShowing (\d+(?:,\d{3})*) projects? out of (\d+(?:,\d{3})*) found\.", re.I)
 _ID_RE = re.compile(r"id=([\w-]+)")
 
@@ -104,24 +104,23 @@ def parse_list_page(soup) -> list[dict]:
         if not m:
             continue
         pid = m.group(1)
-        title = a.get_text(" ", strip=True)
+        title = re.split(r"\n\s*Sponsored by\s+", a.get_text(" ", strip=True), maxsplit=1, flags=re.I)[0].strip()
         if not title or pid in seen:
             continue
         seen.add(pid)
 
-        # Walk up to the row container — the nearest ancestor whose text carries
-        # the status/hours line that's part of every entry.
-        container = a
-        for _ in range(5):
-            parent = getattr(container, "parent", None)
-            if parent is None:
+        # The live roster repeats a heading and its paragraphs as siblings in
+        # one <main>. A shared ancestor would bind the first mentor and the
+        # longest description on the page to every project.
+        blocks = []
+        for block in a.parent.find_next_siblings():
+            if block.select_one("a[href*='detail.php?id=']") or (
+                block.name == "a" and "detail.php?id=" in block.get("href", "")
+            ):
                 break
-            container = parent
-            ctext = container.get_text(" ", strip=True)
-            if "Weekly Hours" in ctext or "Location:" in ctext:
-                break
-
-        fields = _extract_row_fields(container.get_text("\n", strip=True), title)
+            if block.name in {"p", "div"}:
+                blocks.append(block)
+        fields = _extract_row_fields(blocks)
         projects.append({
             "id": pid,
             "title": title,
@@ -131,38 +130,29 @@ def parse_list_page(soup) -> list[dict]:
     return projects
 
 
-def _extract_row_fields(block_text: str, title: str) -> dict:
-    """Best-effort pull faculty / department / description / hours from a row's
-    text. Every field degrades to '' when the heuristic doesn't match."""
+def _extract_row_fields(blocks: list) -> dict:
+    """Read only this heading's mentor, status line and following summary."""
     faculty = department = faculty_title = description = hours = location = status = ""
-    lines = [ln.strip() for ln in block_text.split("\n") if ln.strip() and ln.strip() != title]
-    for ln in lines:
-        if not faculty:
-            fm = _FACULTY_RE.match(ln)
-            # Guard against matching the description: faculty line is short.
-            if fm and len(ln) < 120:
-                faculty, faculty_title, department = (g.strip() for g in fm.groups())
+    for idx, block in enumerate(blocks):
+        text = block.get_text(" ", strip=True)
+        if idx == 0:
+            text = " ".join(text.split())
+            match = _FACULTY_RE.fullmatch(text)
+            if match:
+                faculty, faculty_title, department = (part.strip() for part in match.groups())
                 continue
-        if not hours:
-            hm = _HOURS_RE.search(ln)
-            if hm:
-                hours = hm.group(1).strip()
-        if not location:
-            lm = _LOCATION_RE.search(ln)
-            if lm:
-                location = lm.group(1).strip()
-        if not status:
-            sm = _STATUS_RE.search(ln)
-            if sm:
-                status = sm.group(1).strip()
-    # Description = the longest line that isn't the faculty/status line.
-    candidates = [
-        ln for ln in lines
-        if ln not in (faculty,) and "Weekly Hours" not in ln and not ln.startswith("Status:")
-        and not _FACULTY_RE.match(ln)
-    ]
-    if candidates:
-        description = max(candidates, key=len)
+            if block.select_one("strong") and "," in text and len(text) < 120:
+                faculty, department = (part.strip() for part in text.rsplit(",", 1))
+                continue
+        if text.startswith("Status:"):
+            if match := _HOURS_RE.search(text):
+                hours = match.group(1).strip()
+            if match := _LOCATION_RE.search(text):
+                location = match.group(1).strip()
+            if match := _STATUS_RE.search(text):
+                status = match.group(1).strip()
+        elif text:
+            description = " ".join(filter(None, (description, text)))
     return {
         "faculty": faculty,
         "faculty_title": faculty_title,
@@ -279,9 +269,9 @@ def normalize_project(raw: dict, past: bool = False, *, now: datetime | None = N
             "research this lab offers; check the live URAP portal for current openings.]"
         )
     if faculty:
-        ftitle = raw.get("faculty_title", "") or "Faculty"
+        ftitle = raw.get("faculty_title", "")
         verb = "Past URAP research project with" if past else "URAP research project with"
-        desc_parts.append(f"{verb} {ftitle} {faculty}"
+        desc_parts.append(" ".join(filter(None, (verb, ftitle, faculty)))
                           + (f" ({dept})" if dept else "") + ".")
     if raw.get("description"):
         desc_parts.append(raw["description"])
@@ -296,7 +286,7 @@ def normalize_project(raw: dict, past: bool = False, *, now: datetime | None = N
         desc_parts.append("URAP is for matriculated UC Berkeley undergraduates seeking academic credit.")
     description = " ".join(desc_parts)[:1500]
 
-    lab = f"Prof. {faculty}'s URAP project" if faculty else "URAP project"
+    lab = f"URAP project with {faculty}" if faculty else "URAP project"
 
     return {
         "id": opp_id,
