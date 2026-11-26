@@ -1,0 +1,535 @@
+{
+  "observed_at": "2026-11-26T17:27:53.254773+00:00",
+  "base": "1d6b6ce706a22a5e29883913801413d3eb943125",
+  "head": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "tree": "e6150a1d07709a3fa1f0ea6238222b4a28d7034f",
+  "source_checks": {
+    "1437": {
+      "head": "6c039e0b523cea810723fd70093daa412426f22f",
+      "reviewed_base": "9a2b2560e81f708cfeaecdecfb8ece9d74a8d06e",
+      "data_changes": [
+        {
+          "id": "faculty-princeton-math-508a2fbf",
+          "name": "Mihalis Dafermos",
+          "fields": [
+            "metadata"
+          ],
+          "added": false
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/princeton.json"
+      ]
+    },
+    "1442": {
+      "head": "44526d4ce9d313d72efa95cd489352484b2bf1a4",
+      "reviewed_base": "6c039e0b523cea810723fd70093daa412426f22f",
+      "data_changes": [
+        {
+          "id": "faculty-princeton-math-0a3b5211",
+          "name": "Michael Aizenman",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-4448a014",
+          "name": "Noga Alon",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-213fb372",
+          "name": "Manjul Bhargava",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-81717fad",
+          "name": "Sun-Yung Alice Chang",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-1e8d9a73",
+          "name": "Maria Chudnovsky",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-ac2c4b7c",
+          "name": "Peter Constantin",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-508a2fbf",
+          "name": "Mihalis Dafermos",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-9f854696",
+          "name": "Zeev Dvir",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-5e514677",
+          "name": "Charles Fefferman",
+          "fields": [
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-2fde5b92",
+          "name": "David Gabai",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-5348bdbb",
+          "name": "Sergiu Klainerman",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-b7ff93cb",
+          "name": "János Kollár",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-1d1e69ca",
+          "name": "Fernando Codá Marques",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-d459f31c",
+          "name": "Peter Ozsváth",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-6dad9124",
+          "name": "Igor Rodnianski",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-3316625a",
+          "name": "Peter Sarnak",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-8cf71423",
+          "name": "Paul Seymour",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-56d81c19",
+          "name": "Christopher Skinner",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-cb5e2142",
+          "name": "Allan Sly",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-1bb82b28",
+          "name": "Zoltán Szabó",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-e7a85785",
+          "name": "Paul C. Yang",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-princeton-math-674ed5e8",
+          "name": "Shou-Wu Zhang",
+          "fields": [
+            "keywords",
+            "metadata"
+          ],
+          "added": false
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/princeton.json"
+      ]
+    },
+    "1445": {
+      "head": "ef0dba3ab48bffdb94a14f48efacda87cf665ea9",
+      "reviewed_base": "65d14e6968a093c66b2273d971ffb749d796c82a",
+      "data_changes": [
+        {
+          "id": "faculty-msu-mgi-5ca9b09b",
+          "name": "Kathleen A Hoag",
+          "fields": [
+            "metadata"
+          ],
+          "added": false
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/msu.json"
+      ]
+    },
+    "1447": {
+      "head": "3ca46d67d891a23cc863829308e3ae7f347b2f41",
+      "reviewed_base": "ef0dba3ab48bffdb94a14f48efacda87cf665ea9",
+      "data_changes": [
+        {
+          "id": "faculty-vt-che-e1d3b3cb",
+          "name": "Julia Ross",
+          "fields": [
+            "id",
+            "source",
+            "source_url",
+            "source_type",
+            "title",
+            "organization",
+            "department",
+            "lab_or_program",
+            "pi_name",
+            "contact_email",
+            "url",
+            "location",
+            "on_campus",
+            "remote_option",
+            "opportunity_type",
+            "paid",
+            "compensation_details",
+            "deadline",
+            "is_rolling",
+            "posted_date",
+            "start_date",
+            "duration",
+            "eligibility",
+            "application",
+            "description_raw",
+            "description_clean",
+            "keywords",
+            "school",
+            "audience",
+            "metadata"
+          ],
+          "added": true
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/vt.json"
+      ]
+    },
+    "1448": {
+      "head": "dd9788759db71960f20cfb48c7ff2b6bad4979aa",
+      "reviewed_base": "3ca46d67d891a23cc863829308e3ae7f347b2f41",
+      "data_changes": [
+        {
+          "id": "faculty-tamu-ece-74ee208c",
+          "name": "Suin Yi",
+          "fields": [
+            "id",
+            "source",
+            "source_url",
+            "source_type",
+            "title",
+            "organization",
+            "department",
+            "lab_or_program",
+            "pi_name",
+            "contact_email",
+            "url",
+            "location",
+            "on_campus",
+            "remote_option",
+            "opportunity_type",
+            "paid",
+            "compensation_details",
+            "deadline",
+            "is_rolling",
+            "posted_date",
+            "start_date",
+            "duration",
+            "eligibility",
+            "application",
+            "description_clean",
+            "keywords",
+            "school",
+            "audience",
+            "metadata"
+          ],
+          "added": true
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/tamu.json"
+      ]
+    },
+    "1449": {
+      "head": "6220628d2572716132f1ab879d1b3a758eef9139",
+      "reviewed_base": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+      "data_changes": [],
+      "changed_shards": []
+    },
+    "1450": {
+      "head": "129266290d13c325f55163c42eeb86d84d9135ed",
+      "reviewed_base": "65d14e6968a093c66b2273d971ffb749d796c82a",
+      "data_changes": [
+        {
+          "id": "faculty-vanderbilt-chem-b0f20085",
+          "name": "Primary Faculty Directory",
+          "fields": [
+            "application",
+            "description_clean",
+            "eligibility",
+            "metadata",
+            "pi_name",
+            "source_type",
+            "title"
+          ],
+          "added": false
+        },
+        {
+          "id": "faculty-vanderbilt-chem-6968c3d1",
+          "name": "Teaching Faculty Directory",
+          "fields": [
+            "application",
+            "description_clean",
+            "eligibility",
+            "metadata",
+            "pi_name",
+            "source_type",
+            "title"
+          ],
+          "added": false
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/vanderbilt.json"
+      ]
+    },
+    "1452": {
+      "head": "025fdfcb361f340d1fd358a78deb99b8441a894e",
+      "reviewed_base": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+      "data_changes": [
+        {
+          "id": "faculty-ucsd-nano-2097ee48",
+          "name": "Ping Liu",
+          "fields": [
+            "source_url",
+            "url"
+          ],
+          "added": false
+        }
+      ],
+      "changed_shards": [
+        "data/processed/shards/ucsd.json"
+      ]
+    }
+  },
+  "corpus": {
+    "baseline": 149869,
+    "result": 149871,
+    "unique": 149871,
+    "shards": 117,
+    "unchanged_shards": 111,
+    "changed_shards": [
+      "data/processed/shards/msu.json",
+      "data/processed/shards/princeton.json",
+      "data/processed/shards/tamu.json",
+      "data/processed/shards/ucsd.json",
+      "data/processed/shards/vanderbilt.json",
+      "data/processed/shards/vt.json"
+    ],
+    "source_additions": 2,
+    "per_shard_count": {
+      "amherst": 276,
+      "arizona": 1520,
+      "asu": 2505,
+      "barnard": 231,
+      "bates": 192,
+      "bc": 854,
+      "boulder": 1630,
+      "bowdoin": 244,
+      "brown": 1224,
+      "brynmawr": 163,
+      "bu": 1968,
+      "buffalo": 862,
+      "caltech": 456,
+      "carleton": 320,
+      "casewestern": 749,
+      "cincinnati": 1092,
+      "clemson": 929,
+      "cmc": 169,
+      "cmu": 962,
+      "colby": 247,
+      "colgate": 330,
+      "coloradocollege": 222,
+      "colostate": 959,
+      "columbia": 1109,
+      "cornell": 1683,
+      "dartmouth": 967,
+      "davidson": 234,
+      "drexel": 588,
+      "duke": 1316,
+      "emory": 1490,
+      "fsu": 687,
+      "gatech": 1419,
+      "georgetown": 892,
+      "grinnell": 265,
+      "hamilton": 255,
+      "harvard": 480,
+      "haverford": 147,
+      "houston": 1090,
+      "iastate": 682,
+      "indiana": 1697,
+      "jhu": 4600,
+      "kenyon": 183,
+      "lehigh": 580,
+      "lsu": 1249,
+      "macalester": 213,
+      "miami": 494,
+      "middlebury": 335,
+      "mit": 1509,
+      "msu": 1063,
+      "national": 14139,
+      "ncsu": 2334,
+      "nd": 1302,
+      "neu": 2098,
+      "njit": 538,
+      "northwestern": 2857,
+      "nyu": 2299,
+      "oregonstate": 619,
+      "osu": 2585,
+      "pitt": 1147,
+      "pomona": 288,
+      "princeton": 658,
+      "psu": 2826,
+      "purdue": 2311,
+      "rice": 1015,
+      "rochester": 869,
+      "rpi": 472,
+      "rutgers": 2088,
+      "sbu": 940,
+      "smith": 323,
+      "stanford": 1429,
+      "stevens": 348,
+      "swarthmore": 243,
+      "syracuse": 843,
+      "tamu": 3314,
+      "tufts": 2156,
+      "ucb": 3339,
+      "ucd": 7,
+      "ucf": 824,
+      "uchicago": 1225,
+      "uci": 1332,
+      "ucla": 2117,
+      "uconn": 1196,
+      "ucr": 1178,
+      "ucsb": 1141,
+      "ucsc": 753,
+      "ucsd": 1508,
+      "udel": 1047,
+      "uf": 2190,
+      "uga": 2220,
+      "uiowa": 964,
+      "uiuc": 3463,
+      "uky": 792,
+      "umass": 1623,
+      "umd": 1455,
+      "umich": 1497,
+      "umn": 1479,
+      "unc": 617,
+      "unl": 1286,
+      "upenn": 1946,
+      "usc": 1603,
+      "usf": 799,
+      "utah": 1153,
+      "utdallas": 1112,
+      "utexas": 2328,
+      "utk": 1105,
+      "uva": 1668,
+      "uw": 2328,
+      "vanderbilt": 1175,
+      "vassar": 271,
+      "vt": 1929,
+      "washu": 1130,
+      "wellesley": 299,
+      "wesleyan": 368,
+      "wisc": 2024,
+      "wlu": 245,
+      "wpi": 481,
+      "yale": 1282
+    }
+  }
+}

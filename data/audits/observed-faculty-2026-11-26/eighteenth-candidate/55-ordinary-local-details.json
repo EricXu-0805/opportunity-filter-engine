@@ -1,0 +1,412 @@
+{
+  "observed_at": "2026-11-26T17:34:56.191940+00:00",
+  "method": "Local FastAPI application on the real assembled 149871-record release candidate, no production data writes.",
+  "release": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "originals": {
+    "faculty-princeton-math-0a3b5211": {
+      "name": "Michael Aizenman",
+      "url": "https://www.math.princeton.edu/people/michael-aizenman",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Mathematical Physics"
+    },
+    "faculty-princeton-math-4448a014": {
+      "name": "Noga Alon",
+      "url": "https://www.math.princeton.edu/people/noga-alon",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Combinatorics"
+    },
+    "faculty-princeton-math-213fb372": {
+      "name": "Manjul Bhargava",
+      "url": "https://www.math.princeton.edu/people/manjul-bhargava",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Number Theory"
+    },
+    "faculty-princeton-math-367f333b": {
+      "name": "Bhargav Bhatt",
+      "url": "https://www.math.princeton.edu/people/bhargav-bhatt",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-2bc4f244": {
+      "name": "Guido Bosco",
+      "url": "https://www.math.princeton.edu/people/guido-bosco",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-81717fad": {
+      "name": "Sun-Yung Alice Chang",
+      "url": "https://www.math.princeton.edu/people/sun-yung-alice-chang",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Geometric Analysis"
+    },
+    "faculty-princeton-math-1e8d9a73": {
+      "name": "Maria Chudnovsky",
+      "url": "https://www.math.princeton.edu/people/maria-chudnovsky",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Graph Theory; Applied Mathematics"
+    },
+    "faculty-princeton-math-ac2c4b7c": {
+      "name": "Peter Constantin",
+      "url": "https://www.math.princeton.edu/people/peter-constantin",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Analysis; Mathematical Physics; Applied Mathematics"
+    },
+    "faculty-princeton-math-508a2fbf": {
+      "name": "Mihalis Dafermos",
+      "url": "https://www.math.princeton.edu/people/mihalis-dafermos",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Mathematical Physics; Partial Differential Equations",
+      "publisher_crosswalk": [
+        {
+          "public_work": {
+            "title": "Quasilinear wave equations on asymptotically flat spacetimes with applications to Kerr black holes",
+            "year": 2026
+          },
+          "source_doi": "10.2140/apde.2026.19.909",
+          "publisher_page": "https://msp.org/apde/2026/19-5/p02.xhtml"
+        },
+        {
+          "public_work": {
+            "title": "The interior of dynamical vacuum black holes I: The $C^0$-stability of the Kerr Cauchy horizon",
+            "year": 2025
+          },
+          "source_doi": "10.4007/annals.2025.202.2.1",
+          "publisher_page": "https://annals.math.princeton.edu/2025/202-2/p01"
+        },
+        {
+          "public_work": {
+            "title": "The stability problem for extremal black holes",
+            "year": 2025
+          },
+          "source_doi": "10.1007/s10714-025-03394-1",
+          "publisher_page": "https://link.springer.com/article/10.1007/s10714-025-03394-1"
+        }
+      ]
+    },
+    "faculty-princeton-math-67fb324d": {
+      "name": "Camillo De Lellis",
+      "url": "https://www.math.princeton.edu/people/camillo-de-lellis",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-9f854696": {
+      "name": "Zeev Dvir",
+      "url": "https://www.math.princeton.edu/people/zeev-dvir",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Discrete Mathematics; Applied Mathematics"
+    },
+    "faculty-princeton-math-5e514677": {
+      "name": "Charles Fefferman",
+      "url": "https://www.math.princeton.edu/people/charles-fefferman",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Analysis"
+    },
+    "faculty-princeton-math-2fde5b92": {
+      "name": "David Gabai",
+      "url": "https://www.math.princeton.edu/people/david-gabai",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Topology"
+    },
+    "faculty-princeton-math-6bc4ebc8": {
+      "name": "Marc A. Gilles",
+      "url": "https://www.math.princeton.edu/people/marc-gilles",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-7ca4f281": {
+      "name": "Susanna V. Haziot",
+      "url": "https://www.math.princeton.edu/people/susanna-v-haziot",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-fdc91218": {
+      "name": "Helmut H. Hofer",
+      "url": "https://www.math.princeton.edu/people/helmut-h-hofer",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-b11e2997": {
+      "name": "June Huh",
+      "url": "https://www.math.princeton.edu/people/june-huh-0",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-ad232dab": {
+      "name": "Thomas M. Hutchcroft",
+      "url": "https://www.math.princeton.edu/people/thomas-m-hutchcroft",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-544ca149": {
+      "name": "Alexandru Ionescu",
+      "url": "https://www.math.princeton.edu/people/alexandru-ionescu",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-969b7ed6": {
+      "name": "Nicholas Katz",
+      "url": "https://www.math.princeton.edu/people/nicholas-katz",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-5348bdbb": {
+      "name": "Sergiu Klainerman",
+      "url": "https://www.math.princeton.edu/people/sergiu-klainerman",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Partial Differential Equations"
+    },
+    "faculty-princeton-math-b7ff93cb": {
+      "name": "János Kollár",
+      "url": "https://www.math.princeton.edu/people/janos-kollar",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Algebraic Geometry"
+    },
+    "faculty-princeton-math-bf86c099": {
+      "name": "Elon Lindenstrauss",
+      "url": "https://www.math.princeton.edu/people/elon-lindenstrauss",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-1d1e69ca": {
+      "name": "Fernando Codá Marques",
+      "url": "https://www.math.princeton.edu/people/fernando-coda-marques",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Differential Geometry"
+    },
+    "faculty-princeton-math-e36f0caa": {
+      "name": "Aaron Naber",
+      "url": "https://www.math.princeton.edu/people/aaron-naber-0",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-6afc8974": {
+      "name": "Assaf Naor",
+      "url": "https://www.math.princeton.edu/people/assaf-naor",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-d459f31c": {
+      "name": "Peter Ozsváth",
+      "url": "https://www.math.princeton.edu/people/peter-ozsvath",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Topology"
+    },
+    "faculty-princeton-math-ac69a7b1": {
+      "name": "Stan Palasek",
+      "url": "https://www.math.princeton.edu/people/stan-palasek",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-6dad9124": {
+      "name": "Igor Rodnianski",
+      "url": "https://www.math.princeton.edu/people/igor-rodnianski",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Analysis; Partial Differential Equations"
+    },
+    "faculty-princeton-math-3316625a": {
+      "name": "Peter Sarnak",
+      "url": "https://www.math.princeton.edu/people/peter-sarnak",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Number Theory"
+    },
+    "faculty-princeton-math-d92edaa1": {
+      "name": "Will Sawin",
+      "url": "https://www.math.princeton.edu/people/will-sawin",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-8cf71423": {
+      "name": "Paul Seymour",
+      "url": "https://www.math.princeton.edu/people/paul-seymour",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Graph Theory"
+    },
+    "faculty-princeton-math-22055a6d": {
+      "name": "Ravi Shankar",
+      "url": "https://www.math.princeton.edu/people/ravi-shankar",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-15876a68": {
+      "name": "Jacob Shapiro",
+      "url": "https://www.math.princeton.edu/people/jacob-shapiro",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-f161866c": {
+      "name": "Amit Singer",
+      "url": "https://www.math.princeton.edu/people/amit-singer",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-56d81c19": {
+      "name": "Christopher Skinner",
+      "url": "https://www.math.princeton.edu/people/christopher-skinner",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Number Theory"
+    },
+    "faculty-princeton-math-cb5e2142": {
+      "name": "Allan Sly",
+      "url": "https://www.math.princeton.edu/people/allan-sly",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Probability"
+    },
+    "faculty-princeton-math-1bb82b28": {
+      "name": "Zoltán Szabó",
+      "url": "https://www.math.princeton.edu/people/zoltan-szabo",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Topology"
+    },
+    "faculty-princeton-math-c82a9a90": {
+      "name": "Jonathan Tidor",
+      "url": "https://www.math.princeton.edu/people/jonathan-tidor",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-2cd22652": {
+      "name": "Ramon van Handel",
+      "url": "https://www.math.princeton.edu/people/ramon-van-handel-0",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-9272a519": {
+      "name": "Akshay Venkatesh",
+      "url": "https://www.math.princeton.edu/people/akshay-venkatesh",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-597545eb": {
+      "name": "Chenyang Xu",
+      "url": "https://www.math.princeton.edu/people/chenyang-xu",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-e7a85785": {
+      "name": "Paul C. Yang",
+      "url": "https://www.math.princeton.edu/people/paul-c-yang",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Differential Geometry; Partial Differential Equations"
+    },
+    "faculty-princeton-math-52f0b1f1": {
+      "name": "Mingjia Zhang",
+      "url": "https://www.math.princeton.edu/people/mingjia-zhang",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": null
+    },
+    "faculty-princeton-math-674ed5e8": {
+      "name": "Shou-Wu Zhang",
+      "url": "https://www.math.princeton.edu/people/shou-wu-zhang",
+      "actionable": true,
+      "reference_only": false,
+      "official_fields": "Number Theory"
+    },
+    "faculty-vanderbilt-chem-b0f20085": {
+      "name": "Primary Faculty Directory",
+      "url": "https://as.vanderbilt.edu/chemistry/faculty/?group=primary-faculty",
+      "actionable": false,
+      "reference_only": true,
+      "source_type": "campus_department"
+    },
+    "faculty-vanderbilt-chem-6968c3d1": {
+      "name": "Teaching Faculty Directory",
+      "url": "https://as.vanderbilt.edu/chemistry/faculty/?group=teaching-faculty",
+      "actionable": false,
+      "reference_only": true,
+      "source_type": "campus_department"
+    },
+    "faculty-vanderbilt-chem-bb4f8725": {
+      "name": "Brian O. Bachmann",
+      "url": "https://as.vanderbilt.edu/chemistry/bio/brian-bachmann",
+      "actionable": true,
+      "reference_only": false,
+      "source_type": "faculty_research"
+    },
+    "faculty-msu-mgi-5ca9b09b": {
+      "name": "Kathleen A Hoag",
+      "url": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": false,
+      "reference_only": false
+    },
+    "faculty-vt-che-e1d3b3cb": {
+      "name": "Julia Ross",
+      "url": "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+      "actionable": true,
+      "reference_only": false
+    },
+    "faculty-vt-che-31a343a7": {
+      "name": "Chang Lu",
+      "url": "https://che.vt.edu/People/faculty/Lu.html",
+      "actionable": true,
+      "reference_only": false
+    },
+    "faculty-vt-che-2b84e643": {
+      "name": "Qiang Gao",
+      "url": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+      "actionable": false,
+      "reference_only": false
+    },
+    "faculty-tamu-ece-74ee208c": {
+      "name": "Suin Yi",
+      "url": "https://engineering.tamu.edu/electrical/profiles/yi-suin.html",
+      "actionable": false,
+      "reference_only": false,
+      "current_faculty_id": "faculty-tamu-ece-44b0285f"
+    },
+    "faculty-tamu-ece-44b0285f": {
+      "name": "Su-in Yi",
+      "url": "https://engineering.tamu.edu/electrical/profiles/yi-suin.html",
+      "actionable": true,
+      "reference_only": false
+    },
+    "faculty-ucsd-nano-2097ee48": {
+      "name": "Ping Liu",
+      "url": "https://jacobsschool.ucsd.edu/faculty/profile?id=396",
+      "actionable": true,
+      "reference_only": false
+    }
+  }
+}

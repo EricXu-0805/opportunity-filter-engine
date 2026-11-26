@@ -1,0 +1,106 @@
+[
+  {
+    "phase": "current name",
+    "school_rows": 3314,
+    "school_prior_ids_retained": 3314,
+    "source_fetched": 77,
+    "source_status": "ok",
+    "unit_coverage": {
+      "observed_count": 77,
+      "baseline_active_count": 78,
+      "matched_identity_count": 77,
+      "live_roster_count": 77,
+      "retained_only_count": 0,
+      "missed_present_identities": null,
+      "failure_reason": "count_is_not_authority",
+      "retirement_authorized": false
+    },
+    "historical_id": "faculty-tamu-ece-74ee208c",
+    "historical_actionable": false,
+    "historical_last_seen": "2026-10-13T15:10:14.537813",
+    "current_pointer": "faculty-tamu-ece-44b0285f",
+    "current_name": "Su-in Yi",
+    "current_actionable": true,
+    "active_ids_at_the_official_profile": [
+      "faculty-tamu-ece-44b0285f"
+    ]
+  },
+  {
+    "phase": "older spelling",
+    "school_rows": 3314,
+    "school_prior_ids_retained": 3314,
+    "source_fetched": 77,
+    "source_status": "ok",
+    "unit_coverage": {
+      "observed_count": 77,
+      "baseline_active_count": 78,
+      "matched_identity_count": 77,
+      "live_roster_count": 77,
+      "retained_only_count": 0,
+      "missed_present_identities": null,
+      "failure_reason": "count_is_not_authority",
+      "retirement_authorized": false
+    },
+    "historical_id": "faculty-tamu-ece-74ee208c",
+    "historical_actionable": false,
+    "historical_last_seen": "2026-10-13T15:10:14.537813",
+    "current_pointer": "faculty-tamu-ece-44b0285f",
+    "current_name": "Suin Yi",
+    "current_actionable": true,
+    "active_ids_at_the_official_profile": [
+      "faculty-tamu-ece-44b0285f"
+    ]
+  },
+  {
+    "phase": "unavailable",
+    "school_rows": 3314,
+    "school_prior_ids_retained": 3314,
+    "source_fetched": 0,
+    "source_status": "suspicious_zero",
+    "unit_coverage": {
+      "observed_count": 0,
+      "baseline_active_count": null,
+      "matched_identity_count": null,
+      "live_roster_count": 0,
+      "retained_only_count": 0,
+      "missed_present_identities": null,
+      "failure_reason": null,
+      "retirement_authorized": false
+    },
+    "historical_id": "faculty-tamu-ece-74ee208c",
+    "historical_actionable": false,
+    "historical_last_seen": "2026-10-13T15:10:14.537813",
+    "current_pointer": "faculty-tamu-ece-44b0285f",
+    "current_name": "Suin Yi",
+    "current_actionable": true,
+    "active_ids_at_the_official_profile": [
+      "faculty-tamu-ece-44b0285f"
+    ]
+  },
+  {
+    "phase": "restored current name",
+    "school_rows": 3314,
+    "school_prior_ids_retained": 3314,
+    "source_fetched": 77,
+    "source_status": "ok",
+    "unit_coverage": {
+      "observed_count": 77,
+      "baseline_active_count": 78,
+      "matched_identity_count": 77,
+      "live_roster_count": 77,
+      "retained_only_count": 0,
+      "missed_present_identities": null,
+      "failure_reason": "count_is_not_authority",
+      "retirement_authorized": false
+    },
+    "historical_id": "faculty-tamu-ece-74ee208c",
+    "historical_actionable": false,
+    "historical_last_seen": "2026-10-13T15:10:14.537813",
+    "current_pointer": "faculty-tamu-ece-44b0285f",
+    "current_name": "Su-in Yi",
+    "current_actionable": true,
+    "active_ids_at_the_official_profile": [
+      "faculty-tamu-ece-44b0285f"
+    ]
+  }
+]
