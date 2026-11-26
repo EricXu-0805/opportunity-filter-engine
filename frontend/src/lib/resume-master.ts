@@ -394,11 +394,20 @@ const LABELS = new Map<string, string>(Object.entries({
   title: 'title', role: 'title', position: 'title', 职位: 'title',
 }));
 
+// Mixed lists of presentations, reading lists and cited works do not establish
+// which items the student is reporting as their own publications.
+const PUBLICATIONS_HEADING = /^(?:(?:selected )?publications|发表论文|论文与出版物|論文與出版物|發表論文)[:：]?$/iu;
+const PUBLICATION_LABELS = new Map<string, string>(Object.entries({
+  title: 'title', 'publication title': 'title', 论文标题: 'title', 論文標題: 'title',
+  authors: 'authors', 作者: 'authors', venue: 'venue', journal: 'venue', 期刊: 'venue',
+  date: 'date', 'publication date': 'date', 发表日期: 'date', 發表日期: 'date',
+}));
+
 interface SourceLine { text: string; start: number }
 interface ProposedItem { fields: Partial<Record<string, ResumeFact>>; kind?: ResumeActivityItem['kind'] }
 
 /** Candidate facts found verbatim in the résumé: contact details, schools and
- *  degrees, roles and projects with their dates, and the skills list. Every
+ *  degrees, roles and projects with their dates, labeled publications, and the skills list. Every
  *  fact quotes its exact source span and starts unconfirmed; nothing is
  *  inferred beyond where a span begins and ends. Fields the master already
  *  holds stay as they are, and a span that was proposed before is never
@@ -451,6 +460,7 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
   const links: ResumeFact[] = [];
   const education: ProposedItem[] = [];
   const activities: ProposedItem[] = [];
+  const publications: ProposedItem[] = [];
   const skills: ResumeFact[] = [];
   /** Name (first line only), email, phone, place and profile links. */
   const contact = (line: SourceLine, first: boolean) => {
@@ -494,26 +504,65 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
   let section: { kind: ResumeSectionKind; heading: string } | null = null;
   let current: ProposedItem | null = null;
   let headerOpen = false;
+  let publicationLabels = false;
   let opening = true;
   for (const [index, line] of lines.entries()) {
     const text = line.text.trim();
-    if (!text) continue;
+    if (!text) {
+      if (publicationLabels) current = null;
+      continue;
+    }
+    const publicationHeading = PUBLICATIONS_HEADING.test(text);
+    const heading = publicationHeading ? 'publications' : resumeSectionHeading(text);
     // The first line names the student, even when it is set in capitals,
     // unless it is a heading (a layout that prints the main column first).
     if (opening) {
       opening = false;
-      if (PERSON.test(text.split(/\s[|•·]\s|\t/u)[0].trim()) && !resumeSectionHeading(text)) {
+      if (PERSON.test(text.split(/\s[|•·]\s|\t/u)[0].trim()) && !heading) {
         contact(line, true);
         continue;
       }
     }
     const role = section && (section.kind === 'experience' || section.kind === 'projects');
-    const heading = resumeSectionHeading(text);
     if (heading && !(role && heading === 'other' && ROLE.test(text))) {
       section = { kind: heading, heading: text.toLowerCase() };
+      publicationLabels = publicationHeading;
       current = null;
       headerOpen = false;
       continue;
+    }
+    const labelled = LABELLED.exec(line.text);
+    if (publicationLabels) {
+      const field = labelled && PUBLICATION_LABELS.get(labelled[1].toLowerCase());
+      if (field && labelled) {
+        const value = labelled[2];
+        const extraLabel = value.split(/[;；]/u).slice(1).some((part) => {
+          const label = LABELLED.exec(part);
+          return label && PUBLICATION_LABELS.has(label[1].toLowerCase());
+        });
+        if (/[\t|•]/u.test(value) || extraLabel) {
+          current = null;
+          continue;
+        }
+        if (field === 'title') {
+          current = { fields: {} };
+          publications.push(current);
+        }
+        if (current) {
+          const old = current.fields[field];
+          if (!old) {
+            current.fields[field] = fact(line, line.text.search(/[:：]/u) + 1, line.text.length);
+          } else if (old.value !== value) {
+            delete current.fields[field];
+            current = null;
+          }
+        }
+        continue;
+      }
+      // A citation, a subsection such as “Recommended reading”, or any
+      // other unrecognized row ends this run of explicitly labeled works.
+      publicationLabels = false;
+      current = null;
     }
     // Above the first heading, and any contact line elsewhere (a sidebar
     // printed after the main column).
@@ -525,7 +574,6 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
       headerOpen = false;
       continue;
     }
-    const labelled = LABELLED.exec(line.text);
     const label = labelled ? LABELS.get(labelled[1].toLowerCase()) : undefined;
     if (label && section.kind === 'education' && ['school', 'degree', 'field', 'start', 'end'].includes(label)) {
       if (!current || (label === 'school' && current.fields.school)) {
@@ -659,6 +707,10 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
   for (const item of activities) {
     const fields = unseen(item);
     if (fields) next.activities.push({ id: globalThis.crypto.randomUUID(), kind: item.kind!, ...fields, details: [] });
+  }
+  for (const item of publications) {
+    const fields = unseen(item);
+    if (fields) next.publications.push({ id: globalThis.crypto.randomUUID(), ...fields, details: [] });
   }
   const named = new Set(next.skills.filter(holds).map((skill) => skill.value.trim().toLowerCase()));
   for (const skill of skills) {

@@ -358,6 +358,44 @@ describe('résumé master candidates proposed from the résumé text', () => {
     await read(`Jordan Lee\nEDUCATION\nx${' - A'.repeat(14_740)}`, 250);
   });
 
+  it('quotes explicitly labeled publication fields without confirming authorship or linking another paper', async () => {
+    const raw = [
+      '🧪 Synthetic Student', 'Publications', 'Title: Title', 'Authors: A. Example; B. Example',
+      'Venue: Synthetic Proceedings', 'Venue: Synthetic Proceedings', 'Date: 2025', '',
+      'Authors: Orphan Author', 'Title: Across columns\t2024', 'Authors: Ignored', 'Title: Mixed; Authors: Other', 'Title: A Second Paper', 'Authors: Two Authors', 'Authors: Conflicting Authors',
+      'Recommended reading', 'Title: Not My Paper', 'Authors: Other Researcher',
+      '发表论文', '论文标题：研究记录', '作者：甲、乙', '期刊：中文期刊', '发表日期：2024年',
+      'Papers Read', 'Title: Other Reading', 'PUBLICATIONS AND PRESENTATIONS', 'Title: A Talk',
+    ].join('\n');
+    const signature = await sourceDigest(raw);
+    const master = proposeResumeMaster(null, raw, signature);
+    const papers = master.publications.map(({ id: _id, details: _details, ...fields }) =>
+      Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, (value as ResumeFact).value])));
+    expect(papers).toEqual([
+      { title: 'Title', authors: 'A. Example; B. Example', venue: 'Synthetic Proceedings', date: '2025' },
+      { title: 'A Second Paper' },
+      { title: '研究记录', authors: '甲、乙', venue: '中文期刊', date: '2024年' },
+    ]);
+    const publicationTitle = master.publications[0].title!;
+    expect(publicationTitle.source).toMatchObject({ start: Array.from(raw.slice(0, raw.indexOf('Title: Title') + 7)).length });
+    for (const field of master.publications.flatMap(({ id: _id, details: _details, ...fields }) => Object.values(fields))) {
+      const item = field as ResumeFact;
+      expect(item.status).toBe('candidate');
+      if (item.source.kind !== 'resume') throw new Error('expected an exact résumé quote');
+      expect(Array.from(raw).slice(item.source.start, item.source.end).join('')).toBe(item.value);
+      expect(isActiveResumeFact(item, { rawText: raw, expectedDigest: signature })).toBe(false);
+    }
+    master.publications[0].title!.status = 'rejected';
+    expect(proposeResumeMaster(master, raw, signature)).toEqual(master);
+  });
+
+  it('recognizes a first-page publication heading without assigning it as the student name', async () => {
+    const raw = 'Selected Publications\nTitle: Study of Maps\nAuthors: A. Example';
+    const master = proposeResumeMaster(null, raw, await sourceDigest(raw));
+    expect(master.basics.name).toBeUndefined();
+    expect(master.publications[0].title?.value).toBe('Study of Maps');
+  });
+
   it('offers every contact, education, role, date and skill fact of the persona as an exact, unconfirmed quote', async () => {
     const signature = await sourceDigest(persona);
     const master = proposeResumeMaster(null, persona, signature);
