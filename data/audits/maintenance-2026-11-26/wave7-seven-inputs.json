@@ -1,0 +1,165 @@
+{
+  "base": "2aac9ef2727d5d518a3e454ee4c9fbeb7697df28",
+  "head": "dd1a7aaa9914d8c9cb9e14ea4f832c0b7a8a9534",
+  "total_unique_ids": 149775,
+  "shard_files": 117,
+  "inputs": {
+    "1350": {
+      "head": "ce5aa3afae45edfe7a23988a0d23422a32f931d7",
+      "source_files": [
+        "src/collectors/openalex_enrich.py",
+        "src/publication_materials.py",
+        "tests/test_openalex_enrich.py",
+        "tests/test_openalex_research_refresh.py"
+      ]
+    },
+    "1357": {
+      "head": "da53bfe7307f151b80b7c528431a7d0aa582adec",
+      "source_files": [
+        "frontend/src/i18n/dictionaries.ts"
+      ]
+    },
+    "1359": {
+      "head": "334aa5631d4865683adf0d8d5a730ed32e317ccc",
+      "source_files": [
+        "data/processed/shards/ucb.json"
+      ]
+    },
+    "1360": {
+      "head": "a6036fe20a08139f2848dbe405cab4933e5a6cfe",
+      "source_files": [
+        "src/matcher/ranker.py"
+      ]
+    },
+    "1361": {
+      "head": "7bbb43aa5d97447219485219de18f00d6b558af3",
+      "source_files": [
+        "data/processed/shards/ucsd.json",
+        "frontend/src/lib/school-stats.json"
+      ]
+    },
+    "1367": {
+      "head": "117044d3d0064ae4a682542cc5c37304c3697989",
+      "source_files": [
+        "data/processed/shards/ucsd.json",
+        "frontend/src/lib/school-stats.json",
+        "src/collectors/schools/ucsd_faculty.py",
+        "tests/test_ucsd_physics_roster.py"
+      ]
+    },
+    "1366": {
+      "head": "f1e0cc8e447edc664c40442daeb4a14e9ccb7406",
+      "source_files": [
+        "Makefile",
+        "archive/streamlit/streamlit_app.py",
+        "pyproject.toml",
+        "src/app/streamlit_app.py"
+      ]
+    }
+  },
+  "schools": {
+    "ucb": {
+      "original_ids": 3332,
+      "changed": 1,
+      "changed_ids": [
+        "faculty-ucb-stat-5558a1b1"
+      ],
+      "unchanged_first_seen": true,
+      "unchanged_order": true
+    },
+    "ucsd": {
+      "original_ids": 1508,
+      "changed": 61,
+      "changed_ids": [
+        "faculty-ucsd-phys-df968327",
+        "faculty-ucsd-phys-e807ac88",
+        "faculty-ucsd-phys-d3c666b0",
+        "faculty-ucsd-phys-d3c54ebd",
+        "faculty-ucsd-phys-472c2a50",
+        "faculty-ucsd-phys-376aeb40",
+        "faculty-ucsd-phys-7011bbae",
+        "faculty-ucsd-phys-8fe28f0b",
+        "faculty-ucsd-phys-64b9acbc",
+        "faculty-ucsd-phys-73030256",
+        "faculty-ucsd-phys-21d6acea",
+        "faculty-ucsd-phys-526e74c3",
+        "faculty-ucsd-phys-0370093f",
+        "faculty-ucsd-phys-6e4ae821",
+        "faculty-ucsd-phys-ee7dc055",
+        "faculty-ucsd-phys-43a38bc0",
+        "faculty-ucsd-phys-e4db6c91",
+        "faculty-ucsd-phys-9fad8c63",
+        "faculty-ucsd-phys-1dff91ca",
+        "faculty-ucsd-phys-9e8c2319",
+        "faculty-ucsd-phys-b026c45d",
+        "faculty-ucsd-phys-350f5272",
+        "faculty-ucsd-phys-d1bdb2ff",
+        "faculty-ucsd-phys-6c8e05f6",
+        "faculty-ucsd-phys-644b2b09",
+        "faculty-ucsd-phys-918092da",
+        "faculty-ucsd-phys-cd5776ea",
+        "faculty-ucsd-phys-8822888c",
+        "faculty-ucsd-phys-651f3a74",
+        "faculty-ucsd-phys-a15abe3e",
+        "faculty-ucsd-phys-f6b40970",
+        "faculty-ucsd-phys-34de0c54",
+        "faculty-ucsd-phys-a07d14cc",
+        "faculty-ucsd-phys-19f90538",
+        "faculty-ucsd-phys-e72a39bd",
+        "faculty-ucsd-phys-a57a1776",
+        "faculty-ucsd-phys-8fb1ab73",
+        "faculty-ucsd-phys-119a8c8f",
+        "faculty-ucsd-phys-2d58cbff",
+        "faculty-ucsd-phys-d0b391f6",
+        "faculty-ucsd-phys-dc9aab87",
+        "faculty-ucsd-phys-5c2226d7",
+        "faculty-ucsd-phys-889b0cc9",
+        "faculty-ucsd-phys-9b753dae",
+        "faculty-ucsd-phys-6b694610",
+        "faculty-ucsd-phys-6ee1e49f",
+        "faculty-ucsd-phys-b9c71903",
+        "faculty-ucsd-phys-d0668c09",
+        "faculty-ucsd-phys-bb365b31",
+        "faculty-ucsd-phys-7549ad8c",
+        "faculty-ucsd-phys-a7482326",
+        "faculty-ucsd-phys-d6fa004a",
+        "faculty-ucsd-phys-3ed7134c",
+        "faculty-ucsd-phys-fe463583",
+        "faculty-ucsd-phys-34c8541c",
+        "faculty-ucsd-phys-d186fec3",
+        "faculty-ucsd-phys-3bfbd803",
+        "faculty-ucsd-phys-81af8b59",
+        "faculty-ucsd-phys-d779b29b",
+        "faculty-ucsd-math-5a86bec6",
+        "faculty-ucsd-phys-98cfc04c"
+      ],
+      "unchanged_first_seen": true,
+      "unchanged_order": true
+    }
+  },
+  "school_count_deltas": {
+    "ucsd": [
+      {
+        "listing_count": 32,
+        "faculty_contact_count": 1464,
+        "unreviewed_count": 0,
+        "total_count": 1496
+      },
+      {
+        "listing_count": 32,
+        "faculty_contact_count": 1454,
+        "unreviewed_count": 0,
+        "total_count": 1486
+      }
+    ]
+  },
+  "all_ids_sha256": "6dfa77ad69a80e462475a8d29649bd164dd2a7218371c60ab37730f8a39eab74",
+  "local_tests": {
+    "passed": 1262,
+    "skipped": 7,
+    "scope": "UCSD, Berkeley, source publications, corpus, ranking, matches and school counts"
+  },
+  "school_count_regeneration_matches": true,
+  "protected_ranking_function_modified": false,
+  "scope": "Local integrated candidate. Production, scheduled collection and independent acceptance are pending."
+}
