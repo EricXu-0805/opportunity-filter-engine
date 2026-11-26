@@ -4,7 +4,7 @@ import json
 from playwright.async_api import async_playwright, expect
 from verify_m52_historical_link import account, row, site
 
-SCHOLAR = 'https://scholar.google.com/citations?user=QADemoM16'
+SCHOLAR = 'https://scholar.google.com.hk/citations?user=QADemoM16'
 ORCID = '0000-0002-1825-0097'
 
 def slot(author_id, name, campus, orcid=None):
@@ -35,8 +35,9 @@ async def main():
             await expect(tab.locator('#student_name')).to_have_value('Student Publication QA', timeout=60000)
             return tab
         async def panel(tab):
-            await tab.get_by_text('Open full résumé editor', exact=True).click()
-            await tab.get_by_text('Import my publications from OpenAlex', exact=True).click()
+            await tab.get_by_role('link',name='Confirm authorship and import my publications').click()
+            assert await tab.evaluate("location.hash === '#student-publication-import'")
+            await expect(tab.get_by_label('Your OpenAlex author ID or ORCID')).to_be_visible()
         async def upload(tab):
             assert await tab.get_by_text('Check authorships', exact=True).count() == 0
             await tab.get_by_label('Your OpenAlex author ID or ORCID').fill(ORCID)
@@ -80,6 +81,6 @@ async def main():
         print(json.dumps({'synthetic_public_format_export':True,'disposable_named_account':True,'real_chromium':True,
                           'rows':5,'matched':2,'ambiguous_or_namesake_skipped':3,'saved_explicitly':1,
                           'private_receipt':paper['student_authorship'],'no_write_during_preview':True,
-                          'fresh_context_deduplicated':True,'revisions':[initial['revision'],confirmed_link['revision'],saved['revision']]}))
+                          'direct_scholar_entry':True,'fresh_context_deduplicated':True,'revisions':[initial['revision'],confirmed_link['revision'],saved['revision']]}))
         await chrome.close()
 asyncio.run(main())
