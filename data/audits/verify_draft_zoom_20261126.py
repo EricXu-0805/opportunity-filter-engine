@@ -11,15 +11,18 @@ TARGET = "faculty-cs-321c7f13"
 out = Path("evidence")
 out.mkdir(exist_ok=True)
 report = {"site": SITE, "target": TARGET, "started_utc": datetime.now(timezone.utc).isoformat(),
-          "observations": [], "template_http": [], "cloud_profile_saved": False, "external_composer_opens": 0}
+          "observations": [], "template_http": [], "guest_signup_http":None, "profile_commits":[], "cloud_profile_saved": False, "external_composer_opens": 0}
 def capture(response):
     path = urlsplit(response.url).path
     if response.request.method == "POST":
-        if path == "/api/cold-email/variants":
+        if path == "/auth/v1/signup":
+            report["guest_signup_http"]=response.status
+        elif path == "/api/cold-email/variants":
             report["template_http"].append(response.status)
         elif path.endswith("/rpc/commit_profile_patch_cas") and response.ok:
             data = response.json()
             result = (data[0] if data else {}) if isinstance(data, list) else data
+            report["profile_commits"].append({"http":response.status,"outcome":result.get("status"),"fields":sorted(response.request.post_data_json.get("p_patch",{}))})
             if result.get("status") == "applied" and response.request.post_data_json.get("p_patch",{}).get("major") == "Electrical Engineering":
                 report["cloud_profile_saved"] = True
 
@@ -44,6 +47,11 @@ try:
         page = context.new_page()
         page.on("response",capture)
         page.goto(SITE+"/", wait_until="domcontentloaded",timeout=70000)
+        page.locator("#student_name").wait_for(timeout=50000)
+        for _ in range(140):
+            if report["guest_signup_http"]==200: break
+            page.wait_for_timeout(250)
+        assert report["guest_signup_http"]==200,"production guest signup"
         page.get_by_test_id("hydration-note").wait_for(state="hidden",timeout=45000)
         page.get_by_test_id("profile-refresh-status").wait_for(state="hidden",timeout=45000)
         page.add_locator_handler(page.get_by_test_id("switcher-confirm"),lambda:page.keyboard.press("Escape"))
@@ -55,7 +63,9 @@ try:
         major = page.locator("#major")
         if major.evaluate("el=>el.tagName") == "SELECT": major.select_option(label="Electrical Engineering")
         else: major.fill("Electrical Engineering")
-        major.press("Tab")
+        page.locator("#grade").select_option(label="Junior")
+        page.locator("#research_interests").fill("Robotics, adaptive control, engineering")
+        page.locator("#research_interests").press("Tab")
         for _ in range(150):
             if report["cloud_profile_saved"]: break
             page.wait_for_timeout(200)
