@@ -1,0 +1,274 @@
+{
+  "at": "2026-11-26T13:13:10.331686+00:00",
+  "before": [
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+  ],
+  "after": [
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+  ],
+  "current_collector_without_profile_enrichment": 55,
+  "old_physics_records": 41,
+  "directory_pages": [
+    {
+      "index": 0,
+      "rows": 20,
+      "next": "/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=1"
+    },
+    {
+      "index": 1,
+      "rows": 20,
+      "next": "/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=2"
+    },
+    {
+      "index": 2,
+      "rows": 20,
+      "next": "/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=3"
+    },
+    {
+      "index": 3,
+      "rows": 20,
+      "next": "/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=4"
+    },
+    {
+      "index": 4,
+      "rows": 17,
+      "next": null
+    }
+  ],
+  "all_faculty_labeled_rows": 97,
+  "directory_passing_shared_title_filter": 65,
+  "current_area_and_faculty_directory": 64,
+  "ordinary_source_uncaptured": 9,
+  "new_people_without_original_public_id": 7,
+  "existing_people_with_another_department": 2,
+  "current_archived_physics_ids": [
+    [
+      "faculty-ucb-phys-0383a484",
+      "Jonathan Wurtele"
+    ],
+    [
+      "faculty-ucb-phys-b67d00c9",
+      "Petr Horava"
+    ],
+    [
+      "faculty-ucb-phys-0daf2883",
+      "Michael S. Witherell"
+    ],
+    [
+      "faculty-ucb-phys-6f9c22b6",
+      "Edgar Knobloch"
+    ]
+  ],
+  "upcoming_control": {
+    "name": "Ethan Lake",
+    "official_directory_includes": true,
+    "present_on_area_roster": false,
+    "department_announcement": "https://physics.berkeley.edu/news/three-trailblazing-scientists-join-faculty-2027-and-2028",
+    "individual_start_source": "https://ethanlake.github.io/",
+    "start_month": "2027-07"
+  },
+  "people": [
+    {
+      "name": "Victoria Xu",
+      "source_physics_id": "faculty-ucb-phys-2909d662",
+      "ordinary_production_id": "faculty-ucb-phys-2909d662",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-2909d662",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=4",
+      "official_rank": "Assistant Professor",
+      "official_profile": "https://physics.berkeley.edu/people/victoria-xu",
+      "official_h1": [
+        "Victoria Xu"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/astrophysics",
+        "https://physics.berkeley.edu/research-faculty/atomic-molecular-optical-physics",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    },
+    {
+      "name": "Shimon Kolkowitz",
+      "source_physics_id": "faculty-ucb-phys-d73bffe2",
+      "ordinary_production_id": "faculty-ucb-phys-d73bffe2",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-d73bffe2",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=2",
+      "official_rank": "Associate Professor and Herst Chair in Physics",
+      "official_profile": "https://physics.berkeley.edu/people/shimon-kolkowitz",
+      "official_h1": [
+        "Shimon Kolkowitz"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/atomic-molecular-optical-physics",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    },
+    {
+      "name": "Aziza Suleymanzade",
+      "source_physics_id": "faculty-ucb-phys-2dbb6beb",
+      "ordinary_production_id": "faculty-ucb-phys-2dbb6beb",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-2dbb6beb",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=4",
+      "official_rank": "Robert J. Birgeneau Professorship in Physics",
+      "official_profile": "https://physics.berkeley.edu/people/aziza-suleymanzade-0",
+      "official_h1": [
+        "Aziza Suleymanzade"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/atomic-molecular-optical-physics",
+        "https://physics.berkeley.edu/research-faculty/condensed-matter",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    },
+    {
+      "name": "Harry Levine",
+      "source_physics_id": "faculty-ucb-phys-292ba95b",
+      "ordinary_production_id": "faculty-ucb-phys-292ba95b",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-292ba95b",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=2",
+      "official_rank": "Assistant Professor",
+      "official_profile": "https://physics.berkeley.edu/people/harry-levine-0",
+      "official_h1": [
+        "Harry Levine"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/atomic-molecular-optical-physics",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    },
+    {
+      "name": "Kater Murch",
+      "source_physics_id": "faculty-ucb-phys-738b19cd",
+      "ordinary_production_id": "faculty-ucb-eecs-a609e862",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-eecs-a609e862",
+      "production_detail_http": 200,
+      "production_heading": "Kater Murch",
+      "physics_id_http": 404,
+      "cross_appointment": true,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=3",
+      "official_rank": "Professor",
+      "official_profile": "https://physics.berkeley.edu/people/kater-murch",
+      "official_h1": [
+        "Kater Murch"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/atomic-molecular-optical-physics",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    },
+    {
+      "name": "Luca Victor Iliesiu",
+      "source_physics_id": "faculty-ucb-phys-d628a3a7",
+      "ordinary_production_id": "faculty-ucb-phys-d628a3a7",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-d628a3a7",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=1",
+      "official_rank": "Assistant Professor",
+      "official_profile": "https://physics.berkeley.edu/people/luca-victor-iliesiu",
+      "official_h1": [
+        "Luca Victor Iliesiu"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/condensed-matter",
+        "https://physics.berkeley.edu/research-faculty/particle-physics",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    },
+    {
+      "name": "Yuan Cao",
+      "source_physics_id": "faculty-ucb-phys-ad9fe9d7",
+      "ordinary_production_id": "faculty-ucb-eecs-4e5dd01e",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-eecs-4e5dd01e",
+      "production_detail_http": 200,
+      "production_heading": "Yuan Cao",
+      "physics_id_http": 404,
+      "cross_appointment": true,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=0",
+      "official_rank": "Assistant Professor",
+      "official_profile": "https://physics.berkeley.edu/people/yuan-cao",
+      "official_h1": [
+        "Yuan Cao"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/condensed-matter"
+      ]
+    },
+    {
+      "name": "Ra\u00fal Brice\u00f1o",
+      "source_physics_id": "faculty-ucb-phys-aaf0186c",
+      "ordinary_production_id": "faculty-ucb-phys-aaf0186c",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-aaf0186c",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=0",
+      "official_rank": "Assistant Professor",
+      "official_profile": "https://physics.berkeley.edu/people/ra%C3%BAl-brice%C3%B1o",
+      "official_h1": [
+        "Ra\u00fal Brice\u00f1o"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/nuclear-physics",
+        "https://physics.berkeley.edu/research-faculty/particle-physics"
+      ]
+    },
+    {
+      "name": "Chiara Salemi",
+      "source_physics_id": "faculty-ucb-phys-d3349d5d",
+      "ordinary_production_id": "faculty-ucb-phys-d3349d5d",
+      "production_page": "https://joinalab.com/opportunities/faculty-ucb-phys-d3349d5d",
+      "production_detail_http": 404,
+      "production_heading": null,
+      "physics_id_http": 404,
+      "cross_appointment": false,
+      "official_filtered_directory": "https://physics.berkeley.edu/directory?dept=&keywords=&role%5B0%5D=11&topics=All&page=3",
+      "official_rank": "Assistant Professor",
+      "official_profile": "https://physics.berkeley.edu/people/chiara-salemi",
+      "official_h1": [
+        "Chiara Salemi"
+      ],
+      "named_contact_field_count": 1,
+      "named_contact_link_count": 1,
+      "area_pages": [
+        "https://physics.berkeley.edu/research-faculty/particle-physics",
+        "https://physics.berkeley.edu/research-faculty/quantum-physics"
+      ]
+    }
+  ]
+}
