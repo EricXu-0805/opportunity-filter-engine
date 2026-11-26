@@ -372,7 +372,7 @@ SCHOOL: dict = {
                     "link": "a[href^='http']:-soup-contains('Website'), h3.catItemTitle a",
                     "title": "span.catItemExtraFieldsValue",
                     "title_html_re": r"</h3>\s*([^<]+?)\s*<br\b",
-                    "email": "a[href^='mailto:']",
+                    "bound_contact": {"allowed_email_domains": ["umd.edu"]},
                 },
                 "name_flip": True,
                 "ladder_filter": _LADDER,
