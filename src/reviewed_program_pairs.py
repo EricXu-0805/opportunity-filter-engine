@@ -31,7 +31,8 @@ class ProgramPair:
             record = records.get(oid)
             if not record or record.get("id") != oid or record.get("source") != source or record.get("url") != url:
                 return False
-            if (record.get("metadata") or {}).get("is_active") is False:
+            metadata = record.get("metadata")
+            if metadata is not None and (not isinstance(metadata, dict) or metadata.get("is_active") is False):
                 return False
             if record.get("deadline") != self.window.closes_on.isoformat():
                 return False

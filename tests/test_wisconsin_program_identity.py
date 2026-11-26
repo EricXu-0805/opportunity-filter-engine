@@ -62,6 +62,9 @@ def test_the_collector_still_selects_the_preferred_sro_id_and_preserves_its_alia
     assert matching_ids(active, {}, preferred_ids=[pair.directory_id]) == [pair.directory_id]
     assert matching_ids([host, {**directory, "deadline": "2028-02-10"}], {}) == list(pair.ids)
 
+    damaged = {**directory, "metadata": ["unreadable historical row"]}
+    assert not pair.verified({pair.host_id: host, pair.directory_id: damaged})
+
     # If the preferred SRO page goes away, its independently verified alias
     # can again be the SRO result. The old reminder already knew this cohort.
     refreshed[pair.directory_id]["metadata"].update(is_active=False, deactivation_reason="source_removed")
