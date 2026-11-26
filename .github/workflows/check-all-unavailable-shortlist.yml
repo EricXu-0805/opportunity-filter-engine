@@ -1,0 +1,91 @@
+name: Verify the fully unavailable shortlist in five fresh guest sessions
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-all-unavailable-shortlist.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: c3a3f2cda1ae89d583220c0308464b858051a68d
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install backend deps
+        run: pip install -r requirements.txt
+        working-directory: ${{ github.workspace }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        # Normally <1 min; CDN downloads have stalled for hours, so fail fast.
+        timeout-minutes: 5
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps
+        # Browsers restored from cache still need the apt packages each run.
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Build frontend (E2E runs against a production server, not dev)
+        # next dev compiles each route on first hit, which made the suite blow
+        # past the job timeout. Building once + `next start` (see
+        # playwright.config webServer) serves pre-compiled routes, cutting the
+        # run dramatically. The Frontend job already proves `npm run build`
+        # passes in CI.
+        #
+        # BACKEND_URL must be set at BUILD time: next.config.js rewrites are
+        # baked into routes-manifest.json during `next build` and are NOT
+        # re-evaluated by `next start` — without it the built app proxies
+        # /api/* to the LIVE production backend instead of the local uvicorn
+        # the Playwright webServer boots.
+        #
+        # The NEXT_PUBLIC_* pair must ALSO be baked here (values mirror
+        # frontend/playwright.config.ts): the client bundle inlines them at
+        # build time, and the app follows persistence rather than flipping
+        # optimistically — built without a storage backend, tracker/favorites
+        # are correctly inert and every persistence spec fails. `next dev`
+        # injects them per-request, so only the CI production build needs this.
+        run: npm run build
+        env:
+          BACKEND_URL: http://127.0.0.1:8100
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-loopback-stub-anon-key-not-a-real-key
+
+      - name: Run E2E tests
+        run: npm run test:e2e -- e2e/favorites.spec.ts --grep "all favorited ids unavailable" --project=chromium --repeat-each=5 --workers=1 --retries=0
+        env:
+          CI: true
+
