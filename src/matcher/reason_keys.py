@@ -150,17 +150,33 @@ _GAP_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
 )
 
 
+_STEP_EXACT: dict[str, tuple[str, dict[str, str]]] = {
+    "Verify the application deadline on the source page": ("step_verify_deadline", {}),
+    "Prepare a research-focused resume": ("step_research_resume", {}),
+    "Send a brief cold email to the PI expressing interest": ("step_email_pi", {}),
+    "Open the faculty profile and verify a contact channel": ("step_verify_contact", {}),
+    "Review the faculty profile and ask whether current research opportunities are available": ("step_ask_about_research", {}),
+    "Review the posting and prepare your application materials": ("step_prepare_materials", {}),
+}
+_STEP_PATTERNS = (("step_apply_before", re.compile(r"Apply before deadline: (?P<date>[^\r\n]+)")),)
+
+
 def _keyed(key: str, params: dict[str, str]) -> ReasonKey:
     return {"key": key, "params": dict(params)}
 
 
 def reason_key(reason: str, kind: str, *, research_summary: str = "") -> ReasonKey | None:
-    """The template key and params of one fit (``kind="fit"``) or gap
-    (``kind="gap"``) sentence, or None when no template wrote it or the
+    """The template key and params of a fit, gap, or next-step sentence
+    (kinds "fit", "gap", and "step"), or None when no template wrote it or the
     sentence is longer than ``MAX_KEYED_REASON_CHARACTERS``."""
     if not isinstance(reason, str) or not reason or len(reason) > MAX_KEYED_REASON_CHARACTERS:
         return None
-    exact, patterns = (_FIT_EXACT, _FIT_PATTERNS) if kind == "fit" else (_GAP_EXACT, _GAP_PATTERNS)
+    if kind == "step":
+        exact, patterns = _STEP_EXACT, _STEP_PATTERNS
+    elif kind == "fit":
+        exact, patterns = _FIT_EXACT, _FIT_PATTERNS
+    else:
+        exact, patterns = _GAP_EXACT, _GAP_PATTERNS
     found = exact.get(reason)
     if found is not None:
         return _keyed(*found)

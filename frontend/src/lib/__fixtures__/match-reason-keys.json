@@ -617,6 +617,50 @@
       "params": {
         "restriction": "citizenship_required"
       }
+    },
+    {
+      "kind": "step",
+      "english": "Verify the application deadline on the source page",
+      "key": "step_verify_deadline",
+      "params": {}
+    },
+    {
+      "kind": "step",
+      "english": "Prepare a research-focused resume",
+      "key": "step_research_resume",
+      "params": {}
+    },
+    {
+      "kind": "step",
+      "english": "Send a brief cold email to the PI expressing interest",
+      "key": "step_email_pi",
+      "params": {}
+    },
+    {
+      "kind": "step",
+      "english": "Open the faculty profile and verify a contact channel",
+      "key": "step_verify_contact",
+      "params": {}
+    },
+    {
+      "kind": "step",
+      "english": "Review the faculty profile and ask whether current research opportunities are available",
+      "key": "step_ask_about_research",
+      "params": {}
+    },
+    {
+      "kind": "step",
+      "english": "Review the posting and prepare your application materials",
+      "key": "step_prepare_materials",
+      "params": {}
+    },
+    {
+      "kind": "step",
+      "english": "Apply before deadline: 2026-12-12",
+      "key": "step_apply_before",
+      "params": {
+        "date": "2026-12-12"
+      }
     }
   ]
 }
