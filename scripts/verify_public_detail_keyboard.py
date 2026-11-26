@@ -107,5 +107,7 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
               'arrow_changes_focus_and_selection':moved,'fallback_tab_enter_works':not moved,
               'editor_read_only_before_tracking':True,'external_messages':0}
         print('DETAIL KEYBOARD CASE',json.dumps(case,ensure_ascii=False),flush=True)
+        if LOCAL:
+            assert all(item['visible'] and item['uncovered'] and item['focused'] for item in (before_arrow,view)),case
         cases.append(case);ctx.close()
     print('DETAIL KEYBOARD RECEIPT',json.dumps({'site':SITE,'release':health,'cases':cases},ensure_ascii=False))
