@@ -1,0 +1,430 @@
+{
+  "checked_at": "2026-11-26T21:51:01+00:00",
+  "state": "Actual main merged into candidate; protected checks and production follow separately.",
+  "base_commit": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "head": "8465d702d73d182be23317d37afcd500d96c13f0",
+  "old_frozen_head": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "tree": "993024a084319a01155f8f4cf08f6460b69ccca9",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1459",
+  "expected_actual_tree": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/79f54bddd390f4af4f96677791de157c9d415de9/data/audits/maintenance-2026-11-26/b19-full-upstream-merge-rehearsal.json",
+  "changed_files": [
+    {
+      "filename": "backend/lib/opportunity_detail.py",
+      "status": "modified",
+      "sha": "fcde2fcc2a03d3da62aa69a486a27f371604f0c2",
+      "additions": 3,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/lib/public_opportunity_detail.py",
+      "status": "modified",
+      "sha": "27dcd182d2e07d7cbb23f96445cf912a5c8e8f6c",
+      "additions": 5,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/lib/public_projection.py",
+      "status": "modified",
+      "sha": "2045c92b47439650000b0aa3aac2337e1b252e2d",
+      "additions": 2,
+      "deletions": 2
+    },
+    {
+      "filename": "data/processed/shards/national.json",
+      "status": "modified",
+      "sha": "c3d1e92e1452ece7aca4778af74dba0c04928925",
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "filename": "data/processed/shards/ucsd.json",
+      "status": "modified",
+      "sha": "73a101488eda3a321553bc45e29801c33b7e1eea",
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "filename": "data/processed/shards/utexas.json",
+      "status": "modified",
+      "sha": "a757a975fbfeb5e3c1f7da8a0b89a74d37671dbd",
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "filename": "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx",
+      "status": "modified",
+      "sha": "6e0e0999f986d80b3dc173025754f26da473cb96",
+      "additions": 17,
+      "deletions": 0
+    },
+    {
+      "filename": "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx",
+      "status": "modified",
+      "sha": "15f8dae374bf862fba256478113f6720967187a3",
+      "additions": 5,
+      "deletions": 1
+    },
+    {
+      "filename": "frontend/src/lib/faculty-profile-copy.test.ts",
+      "status": "modified",
+      "sha": "ba3ca33c405bbb71b40724385d67f65f1eaa6303",
+      "additions": 14,
+      "deletions": 0
+    },
+    {
+      "filename": "frontend/src/lib/faculty-profile-copy.ts",
+      "status": "modified",
+      "sha": "ff1cdce59b33fdf5a77eb24d932d5a5d431288e3",
+      "additions": 3,
+      "deletions": 1
+    },
+    {
+      "filename": "frontend/src/lib/school-stats.json",
+      "status": "modified",
+      "sha": "b3f6c66e477a6b850a6ea9f6999e7baf8061992f",
+      "additions": 2,
+      "deletions": 2
+    },
+    {
+      "filename": "frontend/src/lib/types.ts",
+      "status": "modified",
+      "sha": "c1928908bb1652e1a642621ec9165bca929d997f",
+      "additions": 1,
+      "deletions": 0
+    },
+    {
+      "filename": "src/collectors/campus_graph.py",
+      "status": "modified",
+      "sha": "e46a6fed6cb89a3d49c1891004923b7b2f40f416",
+      "additions": 2,
+      "deletions": 2
+    },
+    {
+      "filename": "src/collectors/faculty_graph.py",
+      "status": "modified",
+      "sha": "93f33093c0ff0bd2cc8e858dffd90b3931bb55f5",
+      "additions": 3,
+      "deletions": 3
+    },
+    {
+      "filename": "src/collectors/schools/ucsd_faculty.py",
+      "status": "modified",
+      "sha": "f792f0bf22f0a8d8999c45151ebbf411a5479bf3",
+      "additions": 85,
+      "deletions": 4
+    },
+    {
+      "filename": "src/collectors/schools/wisc.py",
+      "status": "modified",
+      "sha": "dd564f79e3dc4e981409b2934d37ef06bd2d7d31",
+      "additions": 1,
+      "deletions": 4
+    },
+    {
+      "filename": "src/collectors/uiuc_sro.py",
+      "status": "modified",
+      "sha": "a5343a903d4639a724c73fd51cb00b5da5bb3824",
+      "additions": 19,
+      "deletions": 9
+    },
+    {
+      "filename": "src/evidence.py",
+      "status": "modified",
+      "sha": "c37eb10f87ec856c0fc2b36ec19cf68a1b0cdf9a",
+      "additions": 5,
+      "deletions": 1
+    },
+    {
+      "filename": "src/normalizers/host_program_terms.py",
+      "status": "modified",
+      "sha": "894e1bfa33c5697df564ee09609a044b4bf5561a",
+      "additions": 42,
+      "deletions": 3
+    },
+    {
+      "filename": "src/normalizers/reviewed_faculty_profiles.py",
+      "status": "modified",
+      "sha": "ae1993b6b2f75ca90c74d32821e522bc356d6409",
+      "additions": 63,
+      "deletions": 4
+    },
+    {
+      "filename": "src/normalizers/wisc_biological_interactions.py",
+      "status": "added",
+      "sha": "4e222f9a815b3dc891880056825572d4c33e4e1d",
+      "additions": 69,
+      "deletions": 0
+    },
+    {
+      "filename": "src/program_windows.py",
+      "status": "modified",
+      "sha": "b44afeee38832d299689f639071e47749a54e737",
+      "additions": 8,
+      "deletions": 2
+    },
+    {
+      "filename": "tests/test_faculty_profile_summary_contract.py",
+      "status": "modified",
+      "sha": "4cf4c7810d6e9e935228b9f045fe47e459c8d1c8",
+      "additions": 19,
+      "deletions": 0
+    },
+    {
+      "filename": "tests/test_program_windows.py",
+      "status": "modified",
+      "sha": "6fe9534c2753a0fdfa17d871ec57e64acd0e963a",
+      "additions": 70,
+      "deletions": 0
+    },
+    {
+      "filename": "tests/test_reviewed_faculty_profiles.py",
+      "status": "modified",
+      "sha": "85026ec0841798f6227da6d4a47b656b141352b9",
+      "additions": 5,
+      "deletions": 0
+    },
+    {
+      "filename": "tests/test_ucsd_nano_adjunct.py",
+      "status": "added",
+      "sha": "cc153f25e004bcc786d10ecb7049a55668f4685d",
+      "additions": 146,
+      "deletions": 0
+    },
+    {
+      "filename": "tests/test_ucsd_nano_emeritus.py",
+      "status": "added",
+      "sha": "1f51ea98deb4f13a1d1a13e1765b9a0987d49f76",
+      "additions": 132,
+      "deletions": 0
+    },
+    {
+      "filename": "tests/test_wisconsin_program_identity.py",
+      "status": "modified",
+      "sha": "02665c64a5b0f1bfced3c71014c27ffbe9964a37",
+      "additions": 3,
+      "deletions": 0
+    }
+  ],
+  "confirmed_all_github_blobs_match_checked_head": true,
+  "actual_data_guard": {
+    "published": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+    "candidate": "8465d702d73d182be23317d37afcd500d96c13f0",
+    "original_parent": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+    "original_b19": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+    "unexpected_changes_outside_reviewed_paths": [],
+    "individually_review_concurrent_changes_in": [],
+    "code_or_test_matches_original_review": {
+      "backend/lib/opportunity_detail.py": true,
+      "backend/lib/public_opportunity_detail.py": true,
+      "backend/lib/public_projection.py": true,
+      "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx": true,
+      "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx": true,
+      "frontend/src/lib/faculty-profile-copy.test.ts": true,
+      "frontend/src/lib/faculty-profile-copy.ts": true,
+      "frontend/src/lib/types.ts": true,
+      "src/collectors/campus_graph.py": true,
+      "src/collectors/faculty_graph.py": true,
+      "src/collectors/schools/ucsd_faculty.py": true,
+      "src/collectors/schools/wisc.py": true,
+      "src/collectors/uiuc_sro.py": true,
+      "src/evidence.py": true,
+      "src/normalizers/host_program_terms.py": true,
+      "src/normalizers/reviewed_faculty_profiles.py": true,
+      "src/normalizers/wisc_biological_interactions.py": true,
+      "src/program_windows.py": true,
+      "tests/test_faculty_profile_summary_contract.py": true,
+      "tests/test_program_windows.py": true,
+      "tests/test_reviewed_faculty_profiles.py": true,
+      "tests/test_ucsd_nano_adjunct.py": true,
+      "tests/test_ucsd_nano_emeritus.py": true,
+      "tests/test_wisconsin_program_identity.py": true
+    },
+    "verified_data": {
+      "national": {
+        "published_rows": 14198,
+        "candidate_rows": 14198,
+        "original_reviewed_ids": [
+          "nsf-reu-2447670",
+          "sro-3c378261",
+          "sro-3ec4ea4e",
+          "sro-44f176cd",
+          "sro-595e912d",
+          "wisc-86cba49b83d7"
+        ],
+        "published_ids_dropped_by_candidate": [],
+        "ids_added_by_candidate": [],
+        "same_order": true,
+        "reviewed_ids_absent_on_published_main": [],
+        "overlapping_source_fields_requiring_individual_review": {},
+        "rows_different_from_current_fields_plus_reviewed_changes": [],
+        "passed": true
+      },
+      "utexas": {
+        "published_rows": 2329,
+        "candidate_rows": 2329,
+        "original_reviewed_ids": [
+          "faculty-utexas-mpdd-5850399f"
+        ],
+        "published_ids_dropped_by_candidate": [],
+        "ids_added_by_candidate": [],
+        "same_order": true,
+        "reviewed_ids_absent_on_published_main": [],
+        "overlapping_source_fields_requiring_individual_review": {},
+        "rows_different_from_current_fields_plus_reviewed_changes": [],
+        "passed": true
+      },
+      "ucsd": {
+        "published_rows": 1508,
+        "candidate_rows": 1508,
+        "original_reviewed_ids": [
+          "faculty-ucsd-nano-04ac1d79",
+          "faculty-ucsd-nano-25a6d469",
+          "faculty-ucsd-nano-27240933",
+          "faculty-ucsd-nano-2aa92754",
+          "faculty-ucsd-nano-dc9e3de3"
+        ],
+        "published_ids_dropped_by_candidate": [],
+        "ids_added_by_candidate": [],
+        "same_order": true,
+        "reviewed_ids_absent_on_published_main": [],
+        "overlapping_source_fields_requiring_individual_review": {},
+        "rows_different_from_current_fields_plus_reviewed_changes": [],
+        "passed": true
+      }
+    },
+    "total_tracked_paths_in_candidate": 2352,
+    "published_processed_paths": 125,
+    "passed": true,
+    "school_stats": "Run the official normal generator from assembled corpus and from a cold shard-only checkout at this exact candidate."
+  },
+  "clean_and_assembled_school_counts": {
+    "assembled_original_ids": 149943,
+    "schools": 115,
+    "campus": 130771,
+    "national": 5630
+  },
+  "targeted_regression_tests_passed": 224,
+  "local_same_origin_route_implementation": [
+    {
+      "original_id": "faculty-ucsd-nano-25a6d469",
+      "heading": "Sadik Esener",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=31"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-dc9e3de3",
+      "heading": "Michael Heller",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=1"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-2aa92754",
+      "heading": "Darren Lipomi",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=345"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-04ac1d79",
+      "heading": "Ying Shirley Meng",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=284"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-27240933",
+      "heading": "Sheng Xu",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=387"
+    },
+    {
+      "original_id": "faculty-ncsu-chass-089a76c8",
+      "heading": "Jeffery Braden",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://chass.ncsu.edu/people/jpbraden/"
+    },
+    {
+      "original_id": "faculty-umd-phys-5e8e0edd",
+      "heading": "Elizabeth Beise",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-e94320ae",
+      "heading": "Shyue Ping Ong",
+      "actionable": true,
+      "status": 200
+    },
+    {
+      "original_id": "faculty-ucsd-che-8330aad7",
+      "heading": "Jinhye Bae",
+      "actionable": true,
+      "status": 200
+    },
+    {
+      "original_id": "faculty-ucsd-nano-d24bdcfa",
+      "heading": "Shaochen Chen",
+      "actionable": true,
+      "status": 200
+    },
+    {
+      "original_id": "faculty-utexas-mpdd-5850399f",
+      "heading": "Zhengrong Cui",
+      "actionable": true,
+      "status": 200,
+      "retained_two_paper_titles": [
+        "Drum Filling of Thin-Film Freeze-Dried Monoclonal Antibody Powder in UniDose Powder Nasal Spray System",
+        "IgM has a better relative distribution in inflammation sites and tumor tissues than IgG"
+      ]
+    },
+    {
+      "original_id": "wisc-86cba49b83d7",
+      "heading": "Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)",
+      "actionable": true,
+      "status": 200,
+      "current_official_amount_and_source_verified": true
+    },
+    {
+      "original_id": "sro-595e912d",
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "actionable": true,
+      "status": 200,
+      "current_official_amount_and_source_verified": true
+    },
+    {
+      "original_id": "sro-3c378261",
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "actionable": true,
+      "status": 200,
+      "current_official_amount_and_source_verified": true
+    },
+    {
+      "original_id": "nsf-reu-2447670",
+      "heading": "REU: Advancing Data Science in the Public Interest",
+      "actionable": true,
+      "status": 200,
+      "current_official_eligibility_and_source_verified": true
+    },
+    {
+      "original_id": "sro-44f176cd",
+      "heading": "REU Advancing Data Science in the Public Interest",
+      "actionable": true,
+      "status": 200,
+      "current_official_eligibility_and_source_verified": true
+    },
+    {
+      "original_id": "sro-3ec4ea4e",
+      "heading": "Cancer Research Internship Summer Program (CRISP)",
+      "actionable": true,
+      "status": 200,
+      "current_official_eligibility_and_source_verified": true
+    }
+  ],
+  "current_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900657044",
+  "security": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900657081"
+}
