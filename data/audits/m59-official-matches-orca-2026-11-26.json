@@ -1,0 +1,253 @@
+{
+  "official_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45860429863/job/140049709603",
+  "observations": {
+    "site": "https://joinalab.com",
+    "release": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "reader": "46.1",
+    "reader_interface_language": "en",
+    "registered_named_accounts": 0,
+    "own_guest_count": 1,
+    "human_listener": false,
+    "physical_device": false,
+    "cases": [
+      {
+        "locale": "en",
+        "actual_page_lang": "en",
+        "zoom": 2,
+        "before": {
+          "width": 1400,
+          "ratio": 1,
+          "visualScale": 1
+        },
+        "after": {
+          "width": 700,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "tested_opportunity_id": "faculty-ib-78788e71",
+        "free_variant_count": 3,
+        "returned_to_original_card": true,
+        "controls": [
+          {
+            "control": "category",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "All"
+            ],
+            "spoken_roles": [
+              "page tab"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 28800,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          },
+          {
+            "control": "draft",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "Draft email"
+            ],
+            "spoken_roles": [
+              "button",
+              "push button"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 28800,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          },
+          {
+            "control": "conditions",
+            "key": "Tab",
+            "spoken_label_after_key": [],
+            "spoken_roles": [],
+            "heard_on_key": false,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 104000,
+            "visible_focus": true,
+            "tag": "SUMMARY"
+          },
+          {
+            "control": "body",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "Body"
+            ],
+            "spoken_roles": [
+              "entry"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 30400,
+            "visible_focus": true,
+            "tag": "TEXTAREA"
+          },
+          {
+            "control": "close",
+            "key": "Shift+Tab",
+            "spoken_label_after_key": [
+              "Close email editor"
+            ],
+            "spoken_roles": [
+              "button",
+              "push button"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 30400,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          },
+          {
+            "control": "returned to original draft button",
+            "key": "Return on Close",
+            "spoken_label_after_key": [],
+            "spoken_roles": [],
+            "heard_on_key": false,
+            "query_labels": [
+              "Draft email"
+            ],
+            "peak_after_key": 32768,
+            "frames_after_key": 102400,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          }
+        ],
+        "external_messages": 0
+      },
+      {
+        "locale": "zh",
+        "actual_page_lang": "zh",
+        "zoom": 2,
+        "before": {
+          "width": 780,
+          "ratio": 1,
+          "visualScale": 1
+        },
+        "after": {
+          "width": 390,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "tested_opportunity_id": "faculty-ib-78788e71",
+        "free_variant_count": 3,
+        "returned_to_original_card": true,
+        "controls": [
+          {
+            "control": "category",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "全部"
+            ],
+            "spoken_roles": [
+              "page tab"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 32000,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          },
+          {
+            "control": "draft",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "起草邮件"
+            ],
+            "spoken_roles": [
+              "button",
+              "push button"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 30400,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          },
+          {
+            "control": "conditions",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "本次参考的目标条件"
+            ],
+            "spoken_roles": [
+              "button",
+              "collapsed",
+              "toggle button"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 30400,
+            "visible_focus": true,
+            "tag": "SUMMARY"
+          },
+          {
+            "control": "body",
+            "key": "Tab",
+            "spoken_label_after_key": [
+              "正文"
+            ],
+            "spoken_roles": [
+              "entry"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 28800,
+            "visible_focus": true,
+            "tag": "TEXTAREA"
+          },
+          {
+            "control": "close",
+            "key": "Shift+Tab",
+            "spoken_label_after_key": [
+              "关闭邮件编辑器"
+            ],
+            "spoken_roles": [
+              "button",
+              "push button"
+            ],
+            "heard_on_key": true,
+            "query_labels": [],
+            "peak_after_key": 32768,
+            "frames_after_key": 30400,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          },
+          {
+            "control": "returned to original draft button",
+            "key": "Return on Close",
+            "spoken_label_after_key": [],
+            "spoken_roles": [],
+            "heard_on_key": false,
+            "query_labels": [
+              "起草邮件"
+            ],
+            "peak_after_key": 32767,
+            "frames_after_key": 102400,
+            "visible_focus": true,
+            "tag": "BUTTON"
+          }
+        ],
+        "external_messages": 0
+      }
+    ]
+  },
+  "scope": "An owned anonymous student used two clean Chromium profiles and the same real Supabase account. Orca 46.1 used its default English desktop interface. Speech evidence includes only allowlisted interface names and roles confirmed after the actual physical X11 key event. The virtual sink retained only peak and frame counts. Audio alone does not prove a specific phrase was spoken. No full event stream, audio, credentials, account identifiers, or draft text was retained.",
+  "remaining": [
+    "The English conditions disclosure expanded, but neither forward Tab nor the reader query yielded its full allowlisted title. A missed exact title cannot establish silence.",
+    "Both close operations restored real focus to the original opportunity. The Orca location command named it in both languages, while the original closing action did not produce the allowlisted name during the observation window.",
+    "Human listening, mobile VoiceOver and TalkBack, and physical devices are outstanding."
+  ]
+}
