@@ -74,6 +74,14 @@ def test_failed_reads_preserve_dated_source_and_successful_removal_withdraws_onl
     rebound = normalized(fg.faculty("Different Person", url=PROFILE))
     _carry_forward_enrichment(stored, rebound)
     assert not rebound["metadata"]["research_areas_raw"] and not rebound["keywords"]
+    updated_area = "Development across a wide range of tissues and the recovery of damaged cells"
+    capture(monkeypatch, card("Avery Sample", PROFILE, updated_area))
+    updated = person()
+    fg._apply_research_join(DEPT, [updated])
+    updated = normalized(updated)
+    _carry_forward_enrichment(stored, updated)
+    assert updated["metadata"]["research_areas_raw"] == updated_area
+    assert not updated["keywords"]
     # A complete index now describes a different person. The earlier summary and its
     # derived keywords must not come back through the regular merge.
     capture(monkeypatch, card("Another Person", "/people/another", "Elsewhere"))

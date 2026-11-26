@@ -1619,11 +1619,13 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         or (incoming_metadata.get("checked_research_index") == old_index
             and not incoming_metadata.get("research_areas_source_url"))
     )
+    changed_index = (old_index and incoming_metadata.get("research_areas_source_url") == old_index
+                     and incoming_metadata.get("research_areas_raw") != prior_metadata.get("research_areas_raw"))
     carry_keywords = True
-    if withdrawn_index:
+    if withdrawn_index or changed_index:
         from .faculty_graph import _clean_keywords
 
-        # Preserve unrelated enrichment even when one source statement goes.
+        # Preserve unrelated enrichment when an index statement changes or goes.
         index_keywords = _clean_keywords({"research_areas": prior_metadata.get("research_areas_raw") or "",
                                           "_research_areas_source_url": old_index})
         carry_keywords = bool(inferred_method(existing, "keywords") or existing.get("keywords") != index_keywords)
@@ -1643,6 +1645,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
                 method = inferred_method(existing, f)
                 if method:
                     stamp_inferred(incoming.setdefault("metadata", {}), f, method)
+    incoming_metadata = incoming.get("metadata") or {}
     if "research_snapshot" in prior_metadata and "research_snapshot" not in incoming_metadata:
         # A new snapshot is bound to its actual person, institution and source.
         # Preserve its original time, including a stale snapshot for display;
