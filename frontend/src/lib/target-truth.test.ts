@@ -520,3 +520,20 @@ describe('Michigan State Natural Science faculty destinations', () => {
     expect(facultyProfileUrl({ ...row, source_url: engineering, url: engineering })).toBe(engineering);
   });
 });
+
+it('withdraws Apply after the verified program cutoff and keeps the source accessible', () => {
+  const cutoff = '2027-01-11T23:59:00-06:00';
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(cutoff) - 1);
+  try {
+    const row = opp({ ...OPEN, expires_at: cutoff }, { application_closes_at: cutoff });
+    expect(opportunityApplicationUrl(row)).toBe('https://example.edu/apply');
+    clock.mockReturnValue(Date.parse(cutoff));
+    expect(targetStatusReason(row)).toBe('listing_closed');
+    expect(opportunityApplicationUrl(row)).toBeUndefined();
+    expect(opportunitySourceUrl(row)).toBe(row.source_url);
+    expect(targetPosture({ ...row, application_closes_at: undefined })).toBe('actionable');
+    expect(targetPosture({ ...row, source_type: 'faculty_research' })).toBe('actionable');
+  } finally {
+    clock.mockRestore();
+  }
+});

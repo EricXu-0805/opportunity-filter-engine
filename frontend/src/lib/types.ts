@@ -440,6 +440,7 @@ export interface Opportunity {
   // The opening date the program's own page states, when we read one there.
   // An older backend sends none.
   application_opens?: ApplicationOpening | null;
+  application_closes_at?: string | null;
   is_rolling?: boolean;
   compensation_details?: string;
   duration?: string | null;

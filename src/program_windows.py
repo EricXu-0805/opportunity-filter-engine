@@ -34,6 +34,19 @@ class ProgramWindow:
 
 
 _REVIEWED = date(2026, 11, 5)
+_DSI_HOST = "https://datascience.uchicago.edu/education/summerlab/"
+DSI_IDS = ("uchicago-8cd2def060b6", "sro-d6b78515")
+DSI_WINDOW = ProgramWindow(
+    _DSI_HOST, _DSI_HOST + "program-details/", date(2026, 11, 26), date(2027, 1, 11),
+    "Application deadline: January 11, 2027, 11:59pm CT",
+)
+_DSI_CLOSES_AT = datetime.combine(DSI_WINDOW.closes_on, time(23, 59), ZoneInfo("America/Chicago"))
+_DSI_2027_NOTES = (
+    "Applications close January 11, 2027 at 11:59 p.m. Central.",
+    "The 2026 program has concluded; the 2027 program application is not posted yet "
+    "(the page says to check back in fall 2026). Graduating college seniors are not eligible.",
+)
+DSI_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab"
 _NCSA = "https://reu.ncsa.illinois.edu/"
 _SUPERB = "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/"
 _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
@@ -113,6 +126,7 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         "March 1: Application deadline.",
         date(2026, 11, 15), "November 15: Online application opens.", "America/Chicago", "November 15",
     ),
+    ("uchicago", "dsi_summer_lab"): DSI_WINDOW,
     ("jhu", "summer_pura"): ProgramWindow(
         "https://hour.jhu.edu/opportunities/summerpura/", "https://hour.jhu.edu/opportunities/summerpura/",
         _REVIEWED, date(2027, 2, 1),
@@ -177,6 +191,7 @@ _MICHHERS = "https://rackham.umich.edu/prospective-students/michhers/"
 _MICROSURP_DIRECTORY = _SRO + "microbiology-summer-undergraduate-research-program-microsurp-trainee-program"
 _MICROSURP = "https://med.uth.edu/mmg/summer-research-program/"
 SRO_WINDOW_ORGANIZATIONS = {
+    "sro-d6b78515": "University of Chicago",
     **dict.fromkeys(STARS_SRO_IDS, "Boston University"),
     "sro-e74d89e9": "University of Michigan",
     "sro-7f860ddc": "McGovern Medical School",
@@ -184,6 +199,7 @@ SRO_WINDOW_ORGANIZATIONS = {
     "sro-3c378261": "University of Wisconsin-Madison",
 }
 _AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-d6b78515"): ("2027-01-12", replace(DSI_WINDOW, url=DSI_DIRECTORY)),
     ("uiuc_sro", "sro-e74d89e9"): ("2027-02-10", ProgramWindow(
         _MICHHERS_DIRECTORY, _MICHHERS, date(2026, 11, 26), date(2027, 2, 1),
         "Application Close: Monday, February 1, 2027", date(2026, 12, 2),
@@ -219,6 +235,7 @@ _AGGREGATOR_WINDOWS = {
 
 
 _SRO_APPLICATION_LINKS = {
+    DSI_DIRECTORY: {_DSI_HOST, _DSI_HOST + "#program-overview"},
     _MICHHERS_DIRECTORY: {_MICHHERS, "https://rackham.umich.edu/rackham-life/diversity-equity-and-inclusion/michhers/"},
     _MICROSURP_DIRECTORY: {_MICROSURP},
     STARS_SRO_CURRENT: {STARS_HOST},
@@ -309,6 +326,12 @@ def reviewed_window(record: object) -> ProgramWindow | None:
         return None
     # The legacy Wisconsin host redirects to a multi-year program. A later
     # campus harvest with a different explicit date describes another cycle.
+    if window is DSI_WINDOW and (
+        record.get("id") != "uchicago-8cd2def060b6" or record.get("source") != "uchicago_external_research"
+        or record.get("deadline") not in (None, window.closes_on.isoformat())
+        or metadata.get("deadline_note") not in _DSI_2027_NOTES
+    ):
+        return None
     if window is _SSRP_WINDOW and (
         record.get("id") != "stanford-1a20b2e045cf" or record.get("source") != "stanford_external_research"
         or record.get("deadline") not in (None, window.closes_on.isoformat())
@@ -328,6 +351,42 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     return window
 
 
+def reviewed_program_cutoff(record: dict) -> datetime | None:
+    """The host's published instant, only for the two verified 2027 DSI records."""
+    if record.get("id") not in DSI_IDS:
+        return None
+    window = reviewed_window(record)
+    if window and window.page == DSI_WINDOW.page and record.get("deadline") == window.closes_on.isoformat():
+        return _DSI_CLOSES_AT
+    return None
+
+
+def _apply_dsi_host_terms(record: dict) -> None:
+    # The campus seed and previously stored rows can still have the old summary.
+    # Preserve any accompanying text captured from the live university page.
+    old_end = "Prior research experience is not required."
+    restrictions = (
+        "College applicants must remain enrolled in fall 2027; high school applicants must live and attend "
+        "school in the Chicago area. International undergraduates can apply with documented U.S. work authorization."
+    )
+    for key in ("description", "description_clean", "description_raw"):
+        value = record.get(key)
+        if not isinstance(value, str):
+            continue
+        summary, separator, source_text = value.partition("\n\nFrom the program page: ")
+        if summary.endswith(old_end):
+            record[key] = f"{summary} {restrictions}{separator}{source_text}"
+    if record.get("compensation_details") in (
+        "$5,600 stipend for 8 weeks (2026), plus free optional housing",
+        "$5,600 stipend for 8 weeks (2027), plus free optional housing",
+    ):
+        record["compensation_details"] = (
+            "$5,600 for eight weeks in 2027. Optional housing is free for college students. "
+            "Selected NSF-funded undergraduates who are U.S. citizens or permanent residents "
+            "receive an additional $1,800 for travel and food."
+        )
+
+
 def apply_program_window(record: dict) -> None:
     """Make the window's stated close the row's deadline, in place.
 
@@ -337,6 +396,8 @@ def apply_program_window(record: dict) -> None:
     """
     window = reviewed_window(record)
     if window is not None:
+        if window is DSI_WINDOW:
+            _apply_dsi_host_terms(record)
         incoming_date = record.get("deadline")
         incoming_estimate = record.get("deadline_is_estimate")
         record["deadline"] = window.closes_on.isoformat()

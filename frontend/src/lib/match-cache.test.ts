@@ -376,7 +376,7 @@ describe('match-cache', () => {
     // historical publication remediation — a page cached before it holds
     // citations the server has since withdrawn.
     expect(JSON.parse(raw).version).toBe(
-      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1-project-deadline-v1',
+      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1-project-deadline-v2',
     );
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');
@@ -397,6 +397,23 @@ describe('match-cache', () => {
     expect(opp.metadata).toBeUndefined();
     expect((opp.eligibility as Record<string, unknown>).international_friendly).toBe('yes');
     expect((opp.eligibility as Record<string, unknown>).eligibility_text_raw).toBeUndefined();
+  });
+
+  it('expires a stored page when the verified application cutoff passes', () => {
+    const cutoff = '2027-01-11T23:59:00-06:00';
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(cutoff) - 1000);
+    try {
+      const resp = makeResponse(1);
+      const row = resp.results[0].opportunity;
+      row.application_closes_at = cutoff;
+      row.target_truth = { ...row.target_truth!, expires_at: cutoff };
+      writeMatchCache('dsi', false, resp);
+      expect(readMatchCache('dsi', false)?.results[0].opportunity.application_closes_at).toBe(cutoff);
+      clock.mockReturnValue(Date.parse(cutoff));
+      expect(readMatchCache('dsi', false)).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('keeps every attribution flag across a cache hit', () => {
