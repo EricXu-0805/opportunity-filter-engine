@@ -794,7 +794,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     record = {
         "id": opp_id,
         "source": school["source"],
-        "source_url": profile_url,
+        # Some JSON rosters publish a person's destination and the appointment
+        # evidence separately. An enriched personal page remains its own source.
+        "source_url": (dept["directory_url"] if scope == "directory"
+                       and (dept.get("json_dir") or {}).get("cite_directory") else profile_url),
         "source_type": "faculty_research",
         "title": opp_title,
         "organization": school["organization"],
