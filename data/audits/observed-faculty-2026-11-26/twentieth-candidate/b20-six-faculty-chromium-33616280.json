@@ -1,0 +1,81 @@
+{
+  "release_sha": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "checked_at": "2026-11-26T19:52:26.353599+00:00",
+  "site": "http://127.0.0.1:3000",
+  "rows": [
+    {
+      "id": "faculty-tamu-ece-d96cfd82",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-tamu-ece-d96cfd82",
+      "name": "Serap Savari",
+      "rank": "Associate Professor, Electrical & Computer Engineering",
+      "rank_source": null,
+      "link_label": "View source",
+      "visible_href": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+      "active": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-vanderbilt-math-1d5fbacf",
+      "name": "Krzysztof Kapulkin",
+      "rank": "Professor of Mathematics · Dual Appointment: Computer Science",
+      "rank_source": {
+        "text": "Professor of Mathematics · Dual Appointment: Computer Science",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      },
+      "link_label": "View faculty profile",
+      "visible_href": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "active": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vanderbilt-math-727dd848",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-vanderbilt-math-727dd848",
+      "name": "Philip Crooke",
+      "rank": "",
+      "rank_source": null,
+      "link_label": "View faculty profile",
+      "visible_href": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+      "active": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-vanderbilt-math-f7a0a768",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-vanderbilt-math-f7a0a768",
+      "name": "Edward Saff",
+      "rank": "",
+      "rank_source": null,
+      "link_label": "View faculty profile",
+      "visible_href": "https://as.vanderbilt.edu/math/bio/edward-saff",
+      "active": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ucsd-nano-8a42e65d",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-8a42e65d",
+      "name": "Zeinab Jahed",
+      "rank": "Associate Professor",
+      "rank_source": {
+        "text": "Associate Professor",
+        "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+        "observed_at": "2026-11-26"
+      },
+      "link_label": "View faculty profile",
+      "visible_href": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "active": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-ucf-cs-edfc1c62",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucf-cs-edfc1c62",
+      "name": "Ali Al Kinoon",
+      "rank": "Lecturer",
+      "rank_source": null,
+      "link_label": "View faculty profile",
+      "visible_href": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "active": true,
+      "passed": true
+    }
+  ]
+}
