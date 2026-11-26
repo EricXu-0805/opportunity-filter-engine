@@ -99,7 +99,7 @@ jobs:
       - run: python -u scripts/verify_public_outreach_paths.py "score-$PHASE-$LOCALE"
         env:
           LOCALE: ${{ matrix.locale }}
-          PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M23 released match after') && 'after' || 'before' }}
+          PHASE: ${{ contains(github.event.head_commit.message, 'M59 fallback') && 'fallback' || contains(github.event.head_commit.message, 'M59 localized') && 'localized' || startsWith(github.event.head_commit.message, 'Verify M23 released match after') && 'after' || 'before' }}
 
   push-status:
     name: Released Dashboard notification read and retry (${{ matrix.fault }})

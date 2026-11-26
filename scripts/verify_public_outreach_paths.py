@@ -236,9 +236,23 @@ def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_p
                 }
                 expected = [labels[k][locale == "zh"] for k in row["unknowns"]]
                 assert toggle.locator("..").locator("li").all_text_contents() == expected
-            for step in row["next_steps"]:
-                expect(card.get_by_text(step,exact=True)).to_be_visible()
-            if score_phase == "after":
+            if score_phase in ('fallback', 'localized'):
+                raw_step = 'Send a brief cold email to the PI expressing interest'
+                translated = '给课题负责人写一封简短的自荐邮件，说明你的研究兴趣'
+                assert row['next_steps'] == [raw_step], row['next_steps']
+                keys = row.get('next_step_keys')
+                if score_phase == 'localized':
+                    assert keys and [k['key'] for k in keys] == ['step_email_pi'], keys
+                else:
+                    assert not keys, keys
+                show_translation = locale == 'zh' and score_phase == 'localized'
+                expect(card.get_by_text(translated if show_translation else raw_step, exact=True)).to_be_visible()
+                expect(card.get_by_text(raw_step if show_translation else translated, exact=True)).to_have_count(0)
+                print('PASS M59', score_phase, locale, 'next step', translated if show_translation else raw_step, 'keys',keys,flush=True)
+            else:
+                for step in row["next_steps"]:
+                    expect(card.get_by_text(step,exact=True)).to_be_visible()
+            if score_phase != "before":
                 state = "可联系教师咨询 · 是否招人待确认" if locale == "zh" else badge
                 expect(card.get_by_text(state, exact=True)).to_be_visible()
                 assert row["opportunity"]["record_kind"] == "faculty_contact"
