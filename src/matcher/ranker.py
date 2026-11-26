@@ -30,6 +30,7 @@ from backend.lib.opportunity_detail import (
 from ..evidence import (
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
+    KEYWORDS_FROM_SOURCE,
     collector_constant_keywords,
     configured_fact,
     configured_value_unstated,
@@ -88,6 +89,7 @@ from .config import (
     TOPIC_UNKNOWN_PENALTY,
     WEIGHTS_DEFAULT,
 )
+from .experience_fit import confirmed_methods, experience_for_target, target_methods
 
 # Every school slug the platform collects for. All are R1s, so records hosted
 # at any of them share one brand score — ranking registered schools against
@@ -205,6 +207,7 @@ class MatchResult:
     # The record's normalised opportunity type, the same key the type filter
     # reads. Buckets are cut per type (see _assign_buckets).
     opportunity_type: str = ""
+    experience_basis: dict | None = None
 
 
 def canonical_sort_key(r: "MatchResult"):
@@ -2280,6 +2283,7 @@ def score_readiness(
     profile: dict,
     opportunity: dict,
     course_sets: tuple[frozenset[str], frozenset[str]] | None = None,
+    experience_basis: dict | None = None,
 ) -> tuple[float, list[str], list[str]]:
     """Score readiness (0-100). ``course_sets`` is ``_student_course_sets(profile)``, read once by rank_all."""
     is_faculty_contact = faculty_contact_claims_unverified(opportunity)
@@ -2310,6 +2314,14 @@ def score_readiness(
             if is_faculty_contact
             else "Limited prior experience — position may be competitive"
         )
+
+    if experience_basis:
+        # One bounded target-specific increment, independent of overlapping terms
+        # or repeated résumé entries. It does not affect eligibility or skill levels.
+        exp_score = min(100.0, exp_score + 20.0)
+        reason = ("Confirmed work used a method named by this listing: " if experience_basis["target_source"] == "stated_requirement"
+                  else "Confirmed work used a method named in the source's research topics: ")
+        reasons_fit.append(reason + experience_basis["method"])
 
     # M13: a planned course is not preparation the student has; in-progress
     # and unmarked courses count as every named course did before statuses
@@ -3139,6 +3151,7 @@ class _OppStatic:
     kw_labels: bool
     # When topics_ours: the row's own words (see _own_words); else ().
     own_words: tuple[str, ...]
+    experience_terms: tuple[tuple[str, str], ...]
     ov_kws: tuple[str, ...]
     course_signals: tuple[frozenset[str], ...]
     first_exp: bool
@@ -3412,6 +3425,11 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         topics_ours=topics_ours,
         kw_labels=kw_labels,
         own_words=_own_words(opp, clean_pi) if topics_ours else (),
+        experience_terms=target_methods(
+            elig.get("skills_required") if not is_faculty_contact and skills_basis(opp, "eligibility.skills_required") is None else (),
+            ((opp.get("metadata") or {}).get("research_areas_raw") if not is_inferred(opp, "metadata.research_areas_raw") else "",
+             *(keywords if opp.get("source") in KEYWORDS_FROM_SOURCE and keywords_are_source_topics(opp) else ())),
+        ),
         ov_kws=ov_kws,
         course_signals=course_signals,
         first_exp=(
@@ -3828,10 +3846,11 @@ class _ProfileInterests:
 
     __slots__ = (
         "desired", "chips", "research_text", "in_research_text", "bonus_tokens",
-        "topic_tokens", "topic_canon", "topic_stems", "in_topic_text", "tfidf_query",
+        "topic_tokens", "topic_canon", "topic_stems", "in_topic_text", "tfidf_query", "confirmed_methods",
     )
 
     def __init__(self, profile: dict) -> None:
+        self.confirmed_methods = confirmed_methods(profile.get("match_experiences"))
         self.desired = {f.lower() for f in profile.get("desired_fields", [])}
         self.chips = _ChipMatch(self.desired, _kw_word_re)
         text = profile.get("research_interests_text")
@@ -3961,7 +3980,8 @@ def _rank_opportunity_unlocked(
         elig_score, elig_fit, elig_gap = precomputed_eligibility
     else:
         elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
-    ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity, course_sets)
+    experience_basis = experience_for_target(interests.confirmed_methods, st.experience_terms) if interests.confirmed_methods else None
+    ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity, course_sets, experience_basis)
     up_score, up_fit, up_gap = score_upside(
         profile, opportunity,
         precomputed_sim=precomputed_sim,
@@ -4090,6 +4110,7 @@ def _rank_opportunity_unlocked(
         opportunity_id=opportunity.get("id", ""),
         eligibility_score=round(elig_score, 1),
         readiness_score=round(ready_score, 1),
+        experience_basis=experience_basis,
         upside_score=round(up_score, 1),
         final_score=round(final, 1),
         bucket=bucket,

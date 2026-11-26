@@ -1,3 +1,5 @@
+import { matchExperienceRows } from './match-experience';
+import type { ExperienceEntry } from './types';
 import { courseEntries } from './course-status';
 import { opportunityRecordKind } from './record-kind';
 import {
@@ -263,6 +265,7 @@ export function matchesToCSV(matches: MatchResult[]): string {
 // (additional_majors, coursework, experience_level, resume presence,
 // exploring) — exploring alone reorders the whole top band.
 export function hashProfile(profile: {
+  experience_entries?: ExperienceEntry[];
   major: string;
   college: string;
   grade: string;
@@ -280,6 +283,7 @@ export function hashProfile(profile: {
   resume_text?: string;
   exploring?: boolean;
 }): string {
+  const confirmedWork = matchExperienceRows(profile.experience_entries);
   const key = JSON.stringify({
     major: profile.major,
     college: profile.college,
@@ -301,6 +305,7 @@ export function hashProfile(profile: {
     courses: courseEntries(profile).map((course) => `${course.name}:${course.status}`),
     // → experience_level: scored in the readiness layer.
     exp: profile.experience_level ?? 'beginner',
+    ...(confirmedWork === null || confirmedWork.length ? { confirmedWork } : {}),
     // → resume_ready (only presence matters to the matcher, so hash presence —
     // resume text edits that keep it non-empty don't need a re-match).
     resume: !!profile.resume_text,

@@ -1,3 +1,4 @@
+import { matchExperienceRows } from './match-experience';
 import type { EmailTargetConditions, EmailConditionIssue } from './email-target-conditions';
 import { assertProfileInput, ProfileInputError } from './profile-input';
 import type { EmailTextSelection } from './email-revision';
@@ -444,6 +445,14 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
 }
 
 /** POST /api/matches — get ranked opportunities for a profile */
+export function toMatchProfileRequest(profile: ProfileData) {
+  const base = toProfileRequest(profile);
+  const experiences = matchExperienceRows(profile.experience_entries);
+  if (!experiences) throw new ApiError(422, 'PROFILE_INPUT_INVALID', 'Review the experience library before matching.', false,
+    undefined, { field: 'profile.match_experiences' });
+  return experiences.length ? { ...base, match_experiences: experiences } : base;
+}
+
 export async function getMatches(
   profile: ProfileData,
   options: {
@@ -461,7 +470,7 @@ export async function getMatches(
   if (options.cursor) params.set('cursor', options.cursor);
   return request<MatchesResponse>(`/matches?${params.toString()}`, {
     method: 'POST',
-    body: JSON.stringify(toProfileRequest(profile)),
+    body: JSON.stringify(toMatchProfileRequest(profile)),
     signal: options.signal,
     timeoutMs: 70_000,
     // Matching computes a snapshot; it writes nothing, so replaying it is safe.
@@ -511,7 +520,7 @@ export async function getMatchView(
   const data = await request<MatchesResponse>(`/matches/view?llm=${llm ? 'true' : 'false'}`, {
     method: 'POST',
     body: JSON.stringify({
-      profile: toProfileRequest(profile),
+      profile: toMatchProfileRequest(profile),
       view,
       page_size: options.pageSize ?? 50,
       cursor: options.cursor ?? null,
@@ -772,7 +781,7 @@ export async function getMatchExplanation(
     `/matches/${encodeURIComponent(opportunityId)}/explain${qs}`,
     {
       method: 'POST',
-      body: JSON.stringify(toProfileRequest(profile)),
+      body: JSON.stringify(toMatchProfileRequest(profile)),
     },
   );
 }

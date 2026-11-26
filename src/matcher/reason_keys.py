@@ -119,6 +119,8 @@ _FIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("major_may_relate", r"Your major \((?P<major>.*)\) may be related to this program"),
         ("major_direct", r"Your major \((?P<major>.*)\) is a direct match"),
         ("major_close", r"Your major \((?P<major>.*)\) is closely related to requirements"),
+        ("experience_topic_method", r"Confirmed work used a method named in the source's research topics: (?P<method>.+)"),
+        ("experience_method", r"Confirmed work used a method named by this listing: (?P<method>.+)"),
         ("skills_fit_required", _SKILL_LEVEL + r": (?P<skills>.+) — (?P<matched>\d+)/(?P<required>\d+) required"),
         ("skills_fit", _SKILL_LEVEL + r": (?P<skills>.+)"),
         ("skills_mentioned", r"Skills mentioned in the description: (?P<skills>.+)"),

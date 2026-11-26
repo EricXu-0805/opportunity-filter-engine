@@ -308,6 +308,22 @@
     },
     {
       "kind": "fit",
+      "english": "Confirmed work used a method named by this listing: Python",
+      "key": "experience_method",
+      "params": {
+        "method": "Python"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Confirmed work used a method named in the source's research topics: GIS",
+      "key": "experience_topic_method",
+      "params": {
+        "method": "GIS"
+      }
+    },
+    {
+      "kind": "fit",
       "english": "Your experience level is competitive",
       "key": "experience_competitive",
       "params": {}

@@ -65,9 +65,11 @@ hard exclusions. GPA is not evaluated; it is surfaced as unknown.
 |--------|--------|-------|
 | Resume available | 25% | Ready 100; absent and required 30, otherwise 60 |
 | Relevant coursework | 20% | No courses 30; otherwise count score max(30,12×unique courses), capped at 70, plus up to 30 for relevant course signals. A course marked planned does not count; completed, in-progress and unmarked courses (every legacy `coursework` string with a letter or digit) do |
-| Prior experience | 20% | strong=100, some=70, beginner=40, none=20 |
+| Prior experience | 20% | strong=100, some=70, beginner=40, none=20. One confirmed work reference can add 20 points to this component, capped at 100. |
 | Cold email capability | 15% | 100 if yes, 40 if no (limits outreach options) |
 | Application effort | 20% | Low 90, medium/unknown 60, high 30; faculty application requirements are neutralized |
+
+The results view and its explanation use the same confirmed work reference. An independently confirmed entry or owner-reviewed GitHub contribution qualifies when it describes a completed action using a method named in the posting's stated required skills or the source's research topics. The first matching entry supplies its ID and revision. The browser shows the full current entry and its GitHub source when available. Removing or withdrawing it recomputes the scores. Matching currently covers a bounded vocabulary of named tools and laboratory methods. Skills, eligibility, and the student's self-reported experience level keep their original values.
 
 Current browser inputs set resume readiness from the presence of resume text and
 set cold-email capability to true. These are not a full-resume quality assessment
