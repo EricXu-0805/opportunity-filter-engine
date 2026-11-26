@@ -123,6 +123,10 @@ def main():
         else:
             assert not entry and baseline==accepted
         c.close()
+        final_backend = probe.get(common.site + '/api/health').json()['release_sha']
+        final_frontend = probe.get(common.site + '/about').text()
+        assert final_backend == release and 'data-release-sha="' + release + '"' in final_frontend
+        print(json.dumps({'stable_frontend_and_backend': release, 'used_synthetic_pdf_only': True}), flush=True)
         probe.dispose()
         b.close()
 
