@@ -1,0 +1,28 @@
+{
+  "started": "2026-11-26T23:35:21.043217+00:00",
+  "release_expected": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "target": "faculty-ib-78788e71",
+  "completed": [
+    "self_created_visitor_manual_project_confirmed_and_cloud_read_back",
+    "unsubmitted_task_entered",
+    "another_tab_does_not_take_open_answers",
+    "closing_then_reopening_restores_selected_project_and_unsubmitted_answers_without_cloud_write",
+    "explicit_reconfirmation_writes_only_the_selected_answer_and_links_the_same_project"
+  ],
+  "profile_revisions": [
+    1,
+    2
+  ],
+  "observed_target_model_calls": 0,
+  "external_messages_sent": 0,
+  "initial_release": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "guest_signup_returned": true,
+  "cloud_versions": [
+    1,
+    1,
+    2
+  ],
+  "final_release": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "passed": true,
+  "finished": "2026-11-26T23:35:41.850024+00:00"
+}

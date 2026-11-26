@@ -53,6 +53,87 @@ def stable_read(c):
         p.wait_for_timeout(250)
     assert prefs,'missing profile readback'
     return p,prefs[-1]
+def verify_downstream(browser, ctx, original_form):
+    """Read the real editor, save an owned target document and inspect its actual exports."""
+    import hashlib
+    import io
+    import zipfile
+    import xml.etree.ElementTree as ET
+    from pypdf import PdfReader
+    def scoped(route):
+        req=route.request
+        path=urlsplit(req.url)
+        if req.method=='POST' and path.hostname==shared.db and path.path=='/rest/v1/rpc/commit_target_resume_with_provenance_cas':
+            data=req.post_data_json
+            assert data['p_expected_owner']==shared.auth[0]['user']['id'] and data['p_opportunity_id']==shared.target and TITLE in req.post_data
+            return route.continue_()
+        if req.method=='POST' and path.hostname=='joinalab.com' and path.path=='/api/resume/full-target/export':
+            assert TITLE in (req.post_data or '') and OMITTED not in (req.post_data or '')
+            return route.continue_()
+        return shared.guard(route)
+    def enable(c):
+        c.route('**/*',scoped)
+    def lines(d):
+        return d.locator('[data-testid^="target-block-"] textarea').evaluate_all('(xs)=>xs.map(x=>x.value)')
+    def save(p,d,expected):
+        with p.expect_response(lambda r: urlsplit(r.url).path=='/rest/v1/rpc/commit_target_resume_with_provenance_cas',timeout=60000) as sent:
+            d.get_by_role('button',name='Save target draft',exact=True).click()
+        res=sent.value
+        assert res.ok and res.json().get('revision')==expected and res.json()['status']=='saved',(res.status,res.json().get('status'))
+        expect(d.get_by_text('Saved version '+str(expected),exact=True)).to_be_visible(timeout=45000)
+    def export(p,d,fmt,keep_task):
+        control=d.get_by_role('region', name='Export current résumé')
+        with p.expect_download(timeout=65000) as file, p.expect_response(lambda r: urlsplit(r.url).path=='/api/resume/full-target/export', timeout=65000) as fetched:
+            control.get_by_role('button', name='Export '+('Word' if fmt=='docx' else 'PDF'),exact=True).click()
+        asset=file.value
+        assert fetched.value.ok and asset.failure() is None
+        raw=Path(asset.path()).read_bytes()
+        if fmt=='pdf':
+            pdf=PdfReader(io.BytesIO(raw))
+            assert len(pdf.pages)==1
+            text=' '.join(pg.extract_text() for pg in pdf.pages)
+        else:
+            with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                tree=ET.fromstring(z.read('word/document.xml'))
+            text=' '.join(node.text or '' for node in tree.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'))
+        flattened=' '.join(text.split())
+        assert TITLE in flattened and (TASK in flattened)==keep_task and OMITTED not in flattened
+        assert all(s not in flattened for s in ('profile_signature',shared.target,'Change records'))
+        return {'format':fmt,'http':fetched.value.status,'included_selected_answer':keep_task,'excluded_unselected_answer':True,'size':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+    enable(ctx)
+    p,d=tab(ctx)
+    d.get_by_role('button',name='Create from confirmed master').click(timeout=60000)
+    expect(d.get_by_role('button',name='Save target draft')).to_be_visible(timeout=45000)
+    assert TASK in ' '.join(lines(d)) and OMITTED not in ' '.join(lines(d))
+    save(p,d,1)
+    report['exports']=[export(p,d,fmt,True) for fmt in ('pdf','docx')]
+    step('confirmed_supplement_is_in_cloud_target_resume_version_1_and_downloaded_pdf_word')
+    p.close()
+    entry=original_form.locator('#experience-library details').filter(has=original_form.locator('summary',has_text='I logged a sample')).first
+    entry.locator('summary').first.click()
+    with original_form.expect_response(lambda r:urlsplit(r.url).path=='/rest/v1/rpc/commit_profile_patch_cas' and r.ok,timeout=60000):
+        entry.get_by_role('button',name='Do not use',exact=True).click()
+    clean=shared.cold(browser);enable(clean);_,(revision,withdrawn)=stable_read(clean)
+    assert withdrawn['experience_entries'][0]['status']=='rejected'
+    p,d=tab(clean)
+    expect(d.get_by_text('Saved version 1',exact=True)).to_be_visible(timeout=60000)
+    assert TASK in ' '.join(lines(d))
+    d.get_by_role('button',name='Rebuild from current confirmed master').click()
+    d.get_by_role('button',name='Create new draft',exact=True).click()
+    expect(d.get_by_text('Unsaved local edits',exact=True)).to_be_visible(timeout=45000)
+    assert TITLE in ' '.join(lines(d)) and TASK not in ' '.join(lines(d)) and OMITTED not in ' '.join(lines(d))
+    save(p,d,2)
+    report['exports'].extend(export(p,d,fmt,False) for fmt in ('pdf','docx'))
+    clean.close()
+    again=shared.cold(browser);enable(again)
+    p,d=tab(again)
+    expect(d.get_by_text('Saved version 2',exact=True)).to_be_visible(timeout=60000)
+    assert TITLE in ' '.join(lines(d)) and TASK not in ' '.join(lines(d))
+    report['saved_target_versions']=[1,2]
+    report['withdrawn_profile_revision']=revision
+    step('original_version_retained_until_rebuilt_and_withdrawn_source_absent_from_new_draft_and_both_exports')
+    again.close()
+
 def run():
     with sync_playwright() as pw:
         browser=pw.chromium.launch(channel='chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
@@ -117,6 +198,7 @@ def run():
         activity=after['resume_master']['activities'][0];assert activity['details']==[{'id':entries[0]['id'],'revision':entries[0]['revision']}]
         assert ra==rr+1
         step('explicit_reconfirmation_writes_only_the_selected_answer_and_links_the_same_project')
+        verify_downstream(browser,c4,p4)
         report['guest_signup_returned']=bool(shared.auth)
         report['cloud_versions']=[rv,rr,ra]
         report['final_release']=versions()

@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -m pip install --quiet playwright==1.55.0 pypdf==5.9.0
       - run: python -u scripts/verify_deployed_m39_supplement.py
       - uses: actions/upload-artifact@v4
         if: always()
