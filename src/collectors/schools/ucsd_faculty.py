@@ -750,7 +750,9 @@ SCHOOL: dict = {
                 "section_filter": {
                     "include": r"^(Department Chair|Faculty)$", "heading": "h2"},
             },
-        ),
+        ) | {
+            "profile_id_names": {"philosophyfaculty.ucsd.edu/~j2carr": ("J. Carr", "Jennifer Rose Carr")},
+        },
         _dept(
             "MUS", "Department of Music",
             ["Music", "Music/Humanities", "Interdisciplinary Computing and the Arts"],

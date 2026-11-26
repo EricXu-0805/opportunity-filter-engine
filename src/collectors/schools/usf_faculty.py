@@ -454,7 +454,11 @@ SCHOOL: dict = {
             name_sel='p a[href*="/people/"]', link_sel='p a[href*="/people/"]',
             section={"heading": "h2", "exclude": r"affiliate|emerit|adjunct"},
             ladder=_LADDER_DROP,
-        ),
+        ) | {
+            "profile_id_names": {
+                "usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx": ("Tameca Jewell", "Tameca Beckett"),
+            },
+        },
         # Political Science — School of Interdisciplinary Global Studies: grid,
         # name a <p><a>; the LISTING carries no email (address is on the profile
         # page only), so a profile-enrich pass lifts it. Drop the "In memoriam"
