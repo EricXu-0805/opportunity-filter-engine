@@ -1,0 +1,400 @@
+{
+  "observed_at": "2026-11-26T18:19:21.871787+00:00",
+  "run": {
+    "conclusion": "",
+    "createdAt": "2026-11-26T16:44:49Z",
+    "databaseId": 45861578824,
+    "event": "schedule",
+    "headSha": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "status": "in_progress",
+    "updatedAt": "2026-11-26T16:44:53Z",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861578824"
+  },
+  "pr": {
+    "baseRefOid": "91140c465b5cd546e129c04f5097064b91fddb57",
+    "headRefName": "auto/refresh-data-45861578824",
+    "headRefOid": "01f83dface53a8499314fe4c5b58264e99d278a6",
+    "mergeCommit": null,
+    "mergedAt": null,
+    "number": 1464,
+    "state": "OPEN",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1464"
+  },
+  "previous_natural": {
+    "school_fetched": 1786,
+    "school_new": 7,
+    "school_updated": 1779,
+    "school_status": "ok",
+    "unit": {
+      "observed_count": 30,
+      "baseline_active_count": 30,
+      "baseline_identity_count": 30,
+      "matched_identity_count": 30,
+      "new_identity_count": 0,
+      "missed_present_identities": [],
+      "roster_source_confirmed": true,
+      "coverage": {
+        "ambiguous_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parsed_faculty_rows": 30,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+        "raw_roster_rows": 30,
+        "unparsed_rows": 0
+      },
+      "retirement_authorized": true,
+      "unit_name": "Department of Chemical Engineering",
+      "unit_url": "https://che.vt.edu/People/faculty.html",
+      "fetch_status": "ok",
+      "parse_status": "ok",
+      "completeness_status": "complete",
+      "started_at": "2026-11-19T16:08:34.413920+00:00",
+      "completed_at": "2026-11-19T16:08:34.955362+00:00",
+      "observed_entity_ids": [
+        "faculty-vt-che-ee55f0de",
+        "faculty-vt-che-be391032",
+        "faculty-vt-che-12c3ae2e",
+        "faculty-vt-che-762a80d6",
+        "faculty-vt-che-27aadf8d",
+        "faculty-vt-che-3beac620",
+        "faculty-vt-che-e8158f6c",
+        "faculty-vt-che-74494234",
+        "faculty-vt-che-24d4a92b",
+        "faculty-vt-che-1d91bd5f",
+        "faculty-vt-che-3bc2de46",
+        "faculty-vt-che-31a343a7",
+        "faculty-vt-che-c330cec8",
+        "faculty-vt-che-143cc216",
+        "faculty-vt-che-8d99f667",
+        "faculty-vt-che-615c5225",
+        "faculty-vt-che-2de6fe37",
+        "faculty-vt-che-edd4befb",
+        "faculty-vt-che-fde918e4",
+        "faculty-vt-che-23e0354e",
+        "faculty-vt-che-07df8fab",
+        "faculty-vt-che-31133646",
+        "faculty-vt-che-a9baa97e",
+        "faculty-vt-che-2b84e643",
+        "faculty-vt-che-b0225752",
+        "faculty-vt-che-1cc3cafb",
+        "faculty-vt-che-105bb804",
+        "faculty-vt-che-da51c363",
+        "faculty-vt-che-43cfe574",
+        "faculty-vt-che-7dc32665"
+      ]
+    }
+  },
+  "thursday_natural": {
+    "school_fetched": 1787,
+    "school_new": 7,
+    "school_updated": 1780,
+    "school_status": "ok",
+    "unit": {
+      "observed_count": 30,
+      "baseline_active_count": 24,
+      "baseline_identity_count": 24,
+      "matched_identity_count": 24,
+      "new_identity_count": 6,
+      "missed_present_identities": [],
+      "roster_source_confirmed": true,
+      "coverage": {
+        "ambiguous_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parsed_faculty_rows": 30,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+        "raw_roster_rows": 30,
+        "unparsed_rows": 0
+      },
+      "retirement_authorized": true,
+      "unit_name": "Department of Chemical Engineering",
+      "unit_url": "https://che.vt.edu/People/faculty.html",
+      "fetch_status": "ok",
+      "parse_status": "ok",
+      "completeness_status": "complete",
+      "started_at": "2026-11-26T17:11:50.625703+00:00",
+      "completed_at": "2026-11-26T17:11:50.951934+00:00",
+      "observed_entity_ids": [
+        "faculty-vt-che-ee55f0de",
+        "faculty-vt-che-be391032",
+        "faculty-vt-che-12c3ae2e",
+        "faculty-vt-che-762a80d6",
+        "faculty-vt-che-27aadf8d",
+        "faculty-vt-che-3beac620",
+        "faculty-vt-che-e8158f6c",
+        "faculty-vt-che-74494234",
+        "faculty-vt-che-24d4a92b",
+        "faculty-vt-che-1d91bd5f",
+        "faculty-vt-che-3bc2de46",
+        "faculty-vt-che-31a343a7",
+        "faculty-vt-che-c330cec8",
+        "faculty-vt-che-143cc216",
+        "faculty-vt-che-8d99f667",
+        "faculty-vt-che-615c5225",
+        "faculty-vt-che-2de6fe37",
+        "faculty-vt-che-edd4befb",
+        "faculty-vt-che-fde918e4",
+        "faculty-vt-che-23e0354e",
+        "faculty-vt-che-07df8fab",
+        "faculty-vt-che-31133646",
+        "faculty-vt-che-a9baa97e",
+        "faculty-vt-che-2b84e643",
+        "faculty-vt-che-b0225752",
+        "faculty-vt-che-1cc3cafb",
+        "faculty-vt-che-105bb804",
+        "faculty-vt-che-da51c363",
+        "faculty-vt-che-43cfe574",
+        "faculty-vt-che-7dc32665"
+      ]
+    }
+  },
+  "originals": [
+    {
+      "id": "faculty-vt-che-be391032",
+      "expected_reason": "retired_title",
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-be391032",
+        "name": "Donald Baird",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Baird.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-be391032",
+        "name": "Donald Baird",
+        "faculty_title": "Professor Emeritus",
+        "url": "https://che.vt.edu/People/faculty/Baird.html",
+        "raw_is_active": false,
+        "deactivation_reason": "retired_title",
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": "https://che.vt.edu/People/faculty/Baird.html"
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-762a80d6",
+      "expected_reason": "retired_title",
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-762a80d6",
+        "name": "David Cox",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Cox.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-762a80d6",
+        "name": "David Cox",
+        "faculty_title": "Professor Emeritus",
+        "url": "https://che.vt.edu/People/faculty/Cox.html",
+        "raw_is_active": false,
+        "deactivation_reason": "retired_title",
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": "https://che.vt.edu/People/faculty/Cox.html"
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-8d99f667",
+      "expected_reason": "retired_title",
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-8d99f667",
+        "name": "Ted Oyama",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Oyama.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-8d99f667",
+        "name": "Ted Oyama",
+        "faculty_title": "Professor Emeritus",
+        "url": "https://che.vt.edu/People/faculty/Oyama.html",
+        "raw_is_active": false,
+        "deactivation_reason": "retired_title",
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": "https://che.vt.edu/People/faculty/Oyama.html"
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-23e0354e",
+      "expected_reason": "retired_title",
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-23e0354e",
+        "name": "Gary Whiting",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Whiting.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-23e0354e",
+        "name": "Gary Whiting",
+        "faculty_title": "Joseph H. Collie Professor Emeritus",
+        "url": "https://che.vt.edu/People/faculty/Whiting.html",
+        "raw_is_active": false,
+        "deactivation_reason": "retired_title",
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": "https://che.vt.edu/People/faculty/Whiting.html"
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-2b84e643",
+      "expected_reason": "trainee_title",
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-2b84e643",
+        "name": "Qiang Gao",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-2b84e643",
+        "name": "Qiang Gao",
+        "faculty_title": "Postdoctoral researchers",
+        "url": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+        "raw_is_active": false,
+        "deactivation_reason": "trainee_title",
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html"
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-b0225752",
+      "expected_reason": "trainee_title",
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-b0225752",
+        "name": "Fangxi Wang",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-b0225752",
+        "name": "Fangxi Wang",
+        "faculty_title": "Postdoctoral researcher",
+        "url": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html",
+        "raw_is_active": false,
+        "deactivation_reason": "trainee_title",
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html"
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-31a343a7",
+      "expected_reason": null,
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-31a343a7",
+        "name": "Chang Lu",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Lu.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-31a343a7",
+        "name": "Chang Lu",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Lu.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "cohort_matches": true
+    },
+    {
+      "id": "faculty-vt-che-ee55f0de",
+      "expected_reason": null,
+      "listed_on_actual_run": true,
+      "run_start": {
+        "id": "faculty-vt-che-ee55f0de",
+        "name": "Luke Achenie",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Achenie.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "published_candidate": {
+        "id": "faculty-vt-che-ee55f0de",
+        "name": "Luke Achenie",
+        "faculty_title": "",
+        "url": "https://che.vt.edu/People/faculty/Achenie.html",
+        "raw_is_active": true,
+        "deactivation_reason": null,
+        "last_seen_at": null,
+        "last_seen_listed_at": null,
+        "profile_source": null
+      },
+      "cohort_matches": true
+    }
+  ],
+  "separate_julia_ross": {
+    "release_contains_fix": false,
+    "observed": false,
+    "candidate": null
+  },
+  "unit_original_id_diff": {
+    "observed_previously_lost": [],
+    "observed_now_only": []
+  },
+  "raw_vt_shard": {
+    "prior_count": 1928,
+    "new_count": 1930,
+    "lost_ids": [],
+    "added_ids": [
+      "faculty-vt-aaec-4fbeb3b6",
+      "faculty-vt-soe-7ca7d866"
+    ]
+  },
+  "scope": "Scheduled collector/per-unit ledger and serialized candidate only. Production HTML/API and any resulting PR merge require independent checks."
+}

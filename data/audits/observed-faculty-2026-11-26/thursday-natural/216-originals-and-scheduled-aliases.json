@@ -1,0 +1,4857 @@
+{
+  "now": "2026-11-26T18:19:24.832000+00:00",
+  "run": {
+    "conclusion": "",
+    "createdAt": "2026-11-26T16:44:49Z",
+    "event": "schedule",
+    "headSha": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "status": "in_progress",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861578824"
+  },
+  "data_pr": {
+    "headRefName": "auto/refresh-data-45861578824",
+    "headRefOid": "01f83dface53a8499314fe4c5b58264e99d278a6",
+    "mergeCommit": null,
+    "mergedAt": null,
+    "number": 1464,
+    "state": "OPEN",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1464"
+  },
+  "pre_run_base": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+  "data_head": "01f83dface53a8499314fe4c5b58264e99d278a6",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1251",
+  "total_originals": 216,
+  "before": {
+    "observed_since_fix": 192,
+    "inactive": 9,
+    "active_date_old": 14,
+    "missing": 1
+  },
+  "after": {
+    "observed_since_fix": 194,
+    "inactive": 9,
+    "active_date_old": 12,
+    "missing": 1
+  },
+  "two_due_aliases": {
+    "faculty-vanderbilt-math-1d5fbacf": {
+      "school": "vanderbilt",
+      "unit_key": "math",
+      "school_fetched": 943,
+      "previous_unit_count": 50,
+      "run_unit_count": 50,
+      "previously_present_original": false,
+      "observed_original": true,
+      "old_ids_missing_from_current": [
+        "faculty-vanderbilt-math-39aeaac5"
+      ],
+      "new_ids_in_current": [
+        "faculty-vanderbilt-math-1d5fbacf"
+      ],
+      "unit_coverage": {
+        "ambiguous_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parsed_faculty_rows": 50,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+        "raw_roster_rows": 50,
+        "unparsed_rows": 0
+      },
+      "new_row": {
+        "status": "observed_since_fix",
+        "name": "Chris Kapulkin",
+        "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "matched_ids_count": 50,
+      "mismatches": [],
+      "published_on_the_original": true
+    },
+    "faculty-utexas-linguistics-ab991fd0": {
+      "school": "utexas",
+      "unit_key": "linguistics",
+      "school_fetched": 1997,
+      "previous_unit_count": 19,
+      "run_unit_count": 19,
+      "previously_present_original": false,
+      "observed_original": true,
+      "old_ids_missing_from_current": [
+        "faculty-utexas-linguistics-01138ffc"
+      ],
+      "new_ids_in_current": [
+        "faculty-utexas-linguistics-ab991fd0"
+      ],
+      "unit_coverage": {
+        "ambiguous_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parsed_faculty_rows": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+        "raw_roster_rows": 0,
+        "unparsed_rows": 0
+      },
+      "new_row": {
+        "status": "observed_since_fix",
+        "name": "Akshay Aitha",
+        "profile": "https://liberalarts.utexas.edu/linguistics/faculty/aa225967",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "matched_ids_count": 19,
+      "mismatches": null,
+      "published_on_the_original": true
+    }
+  },
+  "all_originals": [
+    {
+      "id": "faculty-amherst-enst-878fdc63",
+      "school": "amherst",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rebecca E. Hewitt",
+        "profile": "https://www.amherst.edu/people/facstaff/rhewitt",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rebecca E. Hewitt",
+        "profile": "https://www.amherst.edu/people/facstaff/rhewitt",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-arizona-pbhl-ead8f540",
+      "school": "arizona",
+      "before": {
+        "status": "inactive",
+        "name": "Rebecca Crocker MA",
+        "profile": "https://publichealth.arizona.edu/directory/rebecca-crocker",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-arizona-pbhl-957cd33a",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Rebecca Crocker MA",
+        "profile": "https://publichealth.arizona.edu/directory/rebecca-crocker",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-arizona-pbhl-957cd33a",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-boulder-chem-371636ec",
+      "school": "boulder",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Novella M Keeling",
+        "profile": "https://experts.colorado.edu/display/fisid_169539",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Novella M Keeling",
+        "profile": "https://experts.colorado.edu/display/fisid_169539",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-boulder-envs-727aa8eb",
+      "school": "boulder",
+      "before": {
+        "status": "inactive",
+        "name": "Lev Szentkirályi",
+        "profile": "https://experts.colorado.edu/display/fisid_157853",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-boulder-bus-e111725e",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Lev Szentkirályi",
+        "profile": "https://experts.colorado.edu/display/fisid_157853",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-boulder-bus-e111725e",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-boulder-slhs-3bf64fa7",
+      "school": "boulder",
+      "before": {
+        "status": "inactive",
+        "name": "Pamela Macias",
+        "profile": "https://experts.colorado.edu/display/fisid_167512",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-boulder-ling-63c71add",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Pamela Macias",
+        "profile": "https://experts.colorado.edu/display/fisid_167512",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-boulder-ling-63c71add",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-boulder-wgst-024d363a",
+      "school": "boulder",
+      "before": {
+        "status": "inactive",
+        "name": "Robert Wyrod",
+        "profile": "https://experts.colorado.edu/display/fisid_156319",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-boulder-soc-16ce8166",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Robert Wyrod",
+        "profile": "https://experts.colorado.edu/display/fisid_156319",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-boulder-soc-16ce8166",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-bowdoin-eos-b01d2a34",
+      "school": "bowdoin",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rachel J. Beane",
+        "profile": "https://www.bowdoin.edu/profiles/faculty/rbeane/index.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rachel J. Beane",
+        "profile": "https://www.bowdoin.edu/profiles/faculty/rbeane/index.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-brown-mcm-9fcb6e49",
+      "school": "brown",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Madison Moore",
+        "profile": "https://vivo.brown.edu/display/mmoore61",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Madison Moore",
+        "profile": "https://vivo.brown.edu/display/mmoore61",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-buffalo-polsci-052b0cc3",
+      "school": "buffalo",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Abigail A. Matthews , JD;PhD",
+        "profile": "https://arts-sciences.buffalo.edu/political-science/faculty/department-faculty.host.html/content/shared/arts-sciences/political-science/faculty-staff/faculty-profiles/matthews-abigail.html",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Abigail A. Matthews , JD;PhD",
+        "profile": "https://arts-sciences.buffalo.edu/political-science/faculty/department-faculty.host.html/content/shared/arts-sciences/political-science/faculty-staff/faculty-profiles/matthews-abigail.html",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-carleton-afam-97122731",
+      "school": "carleton",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Anna Estes",
+        "profile": "https://www.carleton.edu/directory/aestes/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Anna Estes",
+        "profile": "https://www.carleton.edu/directory/aestes/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-carleton-ccst-284f2079",
+      "school": "carleton",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Laura Goering",
+        "profile": "https://www.carleton.edu/directory/lgoering/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Laura Goering",
+        "profile": "https://www.carleton.edu/directory/lgoering/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-carleton-dah-5fc0450c",
+      "school": "carleton",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Victoria Morse",
+        "profile": "https://www.carleton.edu/directory/vmorse/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Victoria Morse",
+        "profile": "https://www.carleton.edu/directory/vmorse/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-carleton-ents-32df1fa8",
+      "school": "carleton",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "George Vrtis",
+        "profile": "https://www.carleton.edu/directory/gvrtis/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "George Vrtis",
+        "profile": "https://www.carleton.edu/directory/gvrtis/",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-cincinnati-biol-07d33a23",
+      "school": "cincinnati",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Noelia Marina Lander",
+        "profile": "https://researchdirectory.uc.edu/p/landernm",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Noelia Marina Lander",
+        "profile": "https://researchdirectory.uc.edu/p/landernm",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-cincinnati-psyc-88c48e44",
+      "school": "cincinnati",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rick Newell Tillman",
+        "profile": "https://researchdirectory.uc.edu/p/tillmarn",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rick Newell Tillman",
+        "profile": "https://researchdirectory.uc.edu/p/tillmarn",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-cincinnati-soc-10464c7f",
+      "school": "cincinnati",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Arti Sandhu",
+        "profile": "https://researchdirectory.uc.edu/p/sandhuai",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Arti Sandhu",
+        "profile": "https://researchdirectory.uc.edu/p/sandhuai",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-clemson-chem-4a302aba",
+      "school": "clemson",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jeffrey Anker",
+        "profile": "https://www.clemson.edu/science/academics/departments/chemistry/about/profiles/janker",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jeffrey Anker",
+        "profile": "https://www.clemson.edu/science/academics/departments/chemistry/about/profiles/janker",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-coloradocollege-anth-a2096d8c",
+      "school": "coloradocollege",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Sarah Hautzinger",
+        "profile": "https://www.coloradocollege.edu/basics/contact/directory/people/hautzinger_sarah_j.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Sarah Hautzinger",
+        "profile": "https://www.coloradocollege.edu/basics/contact/directory/people/hautzinger_sarah_j.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-coloradocollege-engl-28857bc4",
+      "school": "coloradocollege",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Brandon Shimoda",
+        "profile": "https://www.coloradocollege.edu/basics/contact/directory/people/shimoda_brandon.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Brandon Shimoda",
+        "profile": "https://www.coloradocollege.edu/basics/contact/directory/people/shimoda_brandon.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-colostate-bus-9d210abe",
+      "school": "colostate",
+      "before": {
+        "status": "active_date_old",
+        "name": "Steven Kofford",
+        "profile": "https://biz.colostate.edu/about/directory/c838568788",
+        "last_seen_at": "2026-08-29",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Steven Kofford",
+        "profile": "https://biz.colostate.edu/about/directory/c838568788",
+        "last_seen_at": "2026-08-29",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-cornell-cs-57676ca4",
+      "school": "cornell",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kuan Fang",
+        "profile": "https://www.cs.cornell.edu/people/kuan-fang",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kuan Fang",
+        "profile": "https://www.cs.cornell.edu/people/kuan-fang",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-cornell-math-c0edc456",
+      "school": "cornell",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Timothy J. Healey",
+        "profile": "https://math.cornell.edu/timothy-j-healey",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Timothy J. Healey",
+        "profile": "https://math.cornell.edu/timothy-j-healey",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-cornell-math-db6a5c52",
+      "school": "cornell",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Alexander Vladimirsky",
+        "profile": "https://math.cornell.edu/alexander-vladimirsky",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Alexander Vladimirsky",
+        "profile": "https://math.cornell.edu/alexander-vladimirsky",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-123137e4",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Minh Q. Phan",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/minh-phan",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Minh Q. Phan",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/minh-phan",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-25e781b6",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Bryce L. Ferguson",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/bryce-ferguson",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Bryce L. Ferguson",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/bryce-ferguson",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-2ddc5b4c",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Keith D. Paulsen",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/keith-paulsen",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Keith D. Paulsen",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/keith-paulsen",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-3787732a",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ethan K. Murphy",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/ethan-murphy",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ethan K. Murphy",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/ethan-murphy",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-3f027b38",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Samuel S. Streeter",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/samuel-streeter",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Samuel S. Streeter",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/samuel-streeter",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-4fce5dd7",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "John X.J. Zhang",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/john-zhang",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "John X.J. Zhang",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/john-zhang",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-5b3a0439",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Barry I. Schweitzer",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/barry-schweitzer",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Barry I. Schweitzer",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/barry-schweitzer",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-5ca6cbd7",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Geoffrey P. Luke",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/geoffrey-luke",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Geoffrey P. Luke",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/geoffrey-luke",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-62110018",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "John R. Hannon",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/john-hannon",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "John R. Hannon",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/john-hannon",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-62e653d2",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Sohail K. Mirza",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/sohail-mirza",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Sohail K. Mirza",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/sohail-mirza",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-6e591040",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Eric R. Fossum",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/eric-fossum",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Eric R. Fossum",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/eric-fossum",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-79c2d5ef",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "David A. Macaulay",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/david-macaulay",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "David A. Macaulay",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/david-macaulay",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-7c9fac50",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Steven O. Peterson",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/steven-peterson",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Steven O. Peterson",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/steven-peterson",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-809b4436",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Charles R. Sullivan",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/charles-sullivan",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Charles R. Sullivan",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/charles-sullivan",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-80ee9e17",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Simon G. Shepherd",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/simon-shepherd",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Simon G. Shepherd",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/simon-shepherd",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-861a4aaf",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Vicki V. May",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/vicki-may",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Vicki V. May",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/vicki-may",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-8c2ffb0f",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Tillman U. Gerngross",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/tillman-gerngross",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Tillman U. Gerngross",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/tillman-gerngross",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-8def6472",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "David J. Gladstone",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/david-gladstone",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "David J. Gladstone",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/david-gladstone",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-9b1a2520",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Peter J. Robbie",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/peter-robbie",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Peter J. Robbie",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/peter-robbie",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-9e2849e9",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Scott C. Davis",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/scott-davis",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Scott C. Davis",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/scott-davis",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-a816e02d",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jason T. Stauth",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/jason-stauth",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jason T. Stauth",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/jason-stauth",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-aa622242",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ronald C. Lasky",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/ronald-lasky",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ronald C. Lasky",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/ronald-lasky",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-adff57fb",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Geoffrey G. Parker",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/geoffrey-parker",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Geoffrey G. Parker",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/geoffrey-parker",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-b4e4f3f0",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Wesley J. Marrero",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/wesley-marrero",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Wesley J. Marrero",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/wesley-marrero",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-b5bcfffd",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kofi M. Odame",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/kofi-odame",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kofi M. Odame",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/kofi-odame",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-ba7aa88b",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Elizabeth L. Murnane",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/elizabeth-murnane",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Elizabeth L. Murnane",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/elizabeth-murnane",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-bcca3a8a",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Hung V.-T. Nguyen",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/hung-nguyen",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Hung V.-T. Nguyen",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/hung-nguyen",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-bcdffeb1",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Mary R. Albert",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/mary-albert",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Mary R. Albert",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/mary-albert",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-c15243bb",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Colin R. Meyer",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/colin-meyer",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Colin R. Meyer",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/colin-meyer",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-c177d451",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Brian W. Pogue",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/brian-pogue",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Brian W. Pogue",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/brian-pogue",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-c87a951e",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Robert L. Barry",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/robert-barry",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Robert L. Barry",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/robert-barry",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-d49d5887",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kimberley S. Samkoe",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/kimberley-samkoe",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kimberley S. Samkoe",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/kimberley-samkoe",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-engs-e7bc4ccc",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jacob J. Buffo",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/jacob-buffo",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jacob J. Buffo",
+        "profile": "https://engineering.dartmouth.edu/community/faculty/jacob-buffo",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-mus-378e759c",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dr. Steve Felix",
+        "profile": "https://music.dartmouth.edu/people/dr-steve-felix",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dr. Steve Felix",
+        "profile": "https://music.dartmouth.edu/people/dr-steve-felix",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-dartmouth-thea-92b6282f",
+      "school": "dartmouth",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dr. Monica White Ndounou",
+        "profile": "https://theater.dartmouth.edu/people/dr-monica-white-ndounou",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dr. Monica White Ndounou",
+        "profile": "https://theater.dartmouth.edu/people/dr-monica-white-ndounou",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-duke-mems-4d3d5cd5",
+      "school": "duke",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Prof Andrew D Jones",
+        "profile": "https://mems.duke.edu/people/akhenaton-andrew-jones/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Prof Andrew D Jones",
+        "profile": "https://mems.duke.edu/people/akhenaton-andrew-jones/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-duke-mems-5c56b1f0",
+      "school": "duke",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Prof Tony Jun Huang",
+        "profile": "https://mems.duke.edu/people/tony-jun-huang/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Prof Tony Jun Huang",
+        "profile": "https://mems.duke.edu/people/tony-jun-huang/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-duke-mems-ea428fc7",
+      "school": "duke",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dr Brian Mann",
+        "profile": "https://mems.duke.edu/people/brian-mann/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dr Brian Mann",
+        "profile": "https://mems.duke.edu/people/brian-mann/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-duke-phil-5f22ad45",
+      "school": "duke",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jorge Morales Ladron de Guevara",
+        "profile": "https://scholars.duke.edu/person/jorge.morales",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jorge Morales Ladron de Guevara",
+        "profile": "https://scholars.duke.edu/person/jorge.morales",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-emory-nurs-98d8dd37",
+      "school": "emory",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Chelsea Hagopian",
+        "profile": "https://www.nursing.emory.edu/faculty-staff/chelsea-hagopian",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Chelsea Hagopian",
+        "profile": "https://www.nursing.emory.edu/faculty-staff/chelsea-hagopian",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-emory-nurs-e83f3643",
+      "school": "emory",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ursula A Kelly",
+        "profile": "https://www.nursing.emory.edu/faculty-staff/ursula-kelly",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ursula A Kelly",
+        "profile": "https://www.nursing.emory.edu/faculty-staff/ursula-kelly",
+        "last_seen_at": "2026-11-23",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-harvard-hls-02551060",
+      "school": "harvard",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Charles R. Nesson",
+        "profile": "https://hls.harvard.edu/faculty/charles-r-nesson/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Charles R. Nesson",
+        "profile": "https://hls.harvard.edu/faculty/charles-r-nesson/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-anth-585b98e5",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Zolani Ngwane",
+        "profile": "https://www.haverford.edu/users/zngwane",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Zolani Ngwane",
+        "profile": "https://www.haverford.edu/users/zngwane",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-6c3bdf7a",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Karl Johnson",
+        "profile": "https://www.haverford.edu/users/kjohnson",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Karl Johnson",
+        "profile": "https://www.haverford.edu/users/kjohnson",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-73903881",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Amy Cooke",
+        "profile": "https://www.haverford.edu/users/acooke1",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Amy Cooke",
+        "profile": "https://www.haverford.edu/users/acooke1",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-8112de5f",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kristen Whalen",
+        "profile": "https://www.haverford.edu/users/kwhalen1",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kristen Whalen",
+        "profile": "https://www.haverford.edu/users/kwhalen1",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-8b0c04ea",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Laura Been",
+        "profile": "https://www.haverford.edu/users/lbeen",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Laura Been",
+        "profile": "https://www.haverford.edu/users/lbeen",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-8b56d5fd",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Roshan Jain",
+        "profile": "https://www.haverford.edu/users/rjain1",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Roshan Jain",
+        "profile": "https://www.haverford.edu/users/rjain1",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-dccd5e1c",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Casey Londergan",
+        "profile": "https://www.haverford.edu/users/clonderg",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Casey Londergan",
+        "profile": "https://www.haverford.edu/users/clonderg",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-biol-e201d23a",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Lou Charkoudian",
+        "profile": "https://www.haverford.edu/users/lcharkou",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Lou Charkoudian",
+        "profile": "https://www.haverford.edu/users/lcharkou",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-haverford-econ-733a49f4",
+      "school": "haverford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Shannon Mudd",
+        "profile": "https://www.haverford.edu/users/smudd",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Shannon Mudd",
+        "profile": "https://www.haverford.edu/users/smudd",
+        "last_seen_at": "2026-11-04",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-houston-bme-1aa0fd3d",
+      "school": "houston",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Aaryani Tipirneni-Sajja",
+        "profile": "https://www.bme.uh.edu/faculty/tipirneni-sajja-aaryani",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Aaryani Tipirneni-Sajja",
+        "profile": "https://www.bme.uh.edu/faculty/tipirneni-sajja-aaryani",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-kenyon-phil-a3b1ca0b",
+      "school": "kenyon",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rebecca Lloyd Waller",
+        "profile": "https://www.kenyon.edu/directory/rebecca-waller/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rebecca Lloyd Waller",
+        "profile": "https://www.kenyon.edu/directory/rebecca-waller/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-lsu-cmst-99509bdb",
+      "school": "lsu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "John Hal Lambert",
+        "profile": "https://www.lsu.edu/hss/cmst/people/faculty/jhlambert.php",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "John Hal Lambert",
+        "profile": "https://www.lsu.edu/hss/cmst/people/faculty/jhlambert.php",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-lsu-soci-a1f3e89d",
+      "school": "lsu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Seth A. Williams",
+        "profile": "https://www.lsu.edu/hss/sociology/people/faculty/profiles/williams_seth.php",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Seth A. Williams",
+        "profile": "https://www.lsu.edu/hss/sociology/people/faculty/profiles/williams_seth.php",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-miami-art-604e3825",
+      "school": "miami",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Nathan James Timpano",
+        "profile": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Nathan James Timpano",
+        "profile": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-miami-sonhs-3042ed43",
+      "school": "miami",
+      "before": {
+        "status": "active_date_old",
+        "name": "Lonar Anthony Umadhay",
+        "profile": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7 ",
+        "last_seen_at": "2026-08-28",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Lonar Anthony Umadhay",
+        "profile": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7 ",
+        "last_seen_at": "2026-08-28",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-njit-chem-cd6f856b",
+      "school": "njit",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Farnaz Alipour Shakib",
+        "profile": "https://people.njit.edu/profile/shakib",
+        "last_seen_at": "2026-11-10",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Farnaz Alipour Shakib",
+        "profile": "https://people.njit.edu/profile/shakib",
+        "last_seen_at": "2026-11-10",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-njit-hss-abded0f8",
+      "school": "njit",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Yelda Semizer Kaplan",
+        "profile": "https://people.njit.edu/profile/ys44",
+        "last_seen_at": "2026-11-10",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Yelda Semizer Kaplan",
+        "profile": "https://people.njit.edu/profile/ys44",
+        "last_seen_at": "2026-11-10",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-northwestern-ciera-9b57ab7e",
+      "school": "northwestern",
+      "before": {
+        "status": "inactive",
+        "name": "Gokul Srinivasaragavanq",
+        "profile": "https://ciera.northwestern.edu/directory/gokul-srinivasaragavanq/",
+        "last_seen_at": "2026-09-11",
+        "active": false,
+        "duplicate_of": null,
+        "deactivation_reason": "not_on_current_faculty_roster"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Gokul Srinivasaragavanq",
+        "profile": "https://ciera.northwestern.edu/directory/gokul-srinivasaragavanq/",
+        "last_seen_at": "2026-09-11",
+        "active": false,
+        "duplicate_of": null,
+        "deactivation_reason": "not_on_current_faculty_roster"
+      }
+    },
+    {
+      "id": "faculty-northwestern-math-7fcda76a",
+      "school": "northwestern",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Yizhaq (Tsachik) Gelander",
+        "profile": "https://www.math.northwestern.edu/people/faculty/tsachik-gelander.html",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Yizhaq (Tsachik) Gelander",
+        "profile": "https://www.math.northwestern.edu/people/faculty/tsachik-gelander.html",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-bme-16e6344f",
+      "school": "osu",
+      "before": {
+        "status": "active_date_old",
+        "name": "Benjamin Walter",
+        "profile": "https://bme.osu.edu/people/walter.367",
+        "last_seen_at": "2026-07-18",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Benjamin Walter",
+        "profile": "https://bme.osu.edu/people/walter.367",
+        "last_seen_at": "2026-07-18",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-design-73e460f2",
+      "school": "osu",
+      "before": {
+        "status": "active_date_old",
+        "name": "Matthew Lewis",
+        "profile": "https://design.osu.edu/people/lewis.239",
+        "last_seen_at": "2026-07-18",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Matthew Lewis",
+        "profile": "https://design.osu.edu/people/lewis.239",
+        "last_seen_at": "2026-07-18",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-earth-132f633d",
+      "school": "osu",
+      "before": {
+        "status": "inactive",
+        "name": "Samuel Walters",
+        "profile": "https://earthsciences.osu.edu/people/walters.1015",
+        "last_seen_at": "2026-09-06",
+        "active": false,
+        "duplicate_of": null,
+        "deactivation_reason": "trainee_title"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Samuel Walters",
+        "profile": "https://earthsciences.osu.edu/people/walters.1015",
+        "last_seen_at": "2026-09-06",
+        "active": false,
+        "duplicate_of": null,
+        "deactivation_reason": "trainee_title"
+      }
+    },
+    {
+      "id": "faculty-osu-engl-0aab76dd",
+      "school": "osu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Beverly J. Moss",
+        "profile": "https://english.osu.edu/people/moss.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Beverly J. Moss",
+        "profile": "https://english.osu.edu/people/moss.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-hist-093c8ed5",
+      "school": "osu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Nicholas B. Breyfogle",
+        "profile": "https://history.osu.edu/people/breyfogle.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Nicholas B. Breyfogle",
+        "profile": "https://history.osu.edu/people/breyfogle.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-hist-7c954a01",
+      "school": "osu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Yigit Akin",
+        "profile": "https://history.osu.edu/people/akin.16",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Yigit Akin",
+        "profile": "https://history.osu.edu/people/akin.16",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-math-97f2049e",
+      "school": "osu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Roberto Hernández Palomares",
+        "profile": "https://math.osu.edu/people/hernandezpalomares.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Roberto Hernández Palomares",
+        "profile": "https://math.osu.edu/people/hernandezpalomares.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-polisci-ae97e652",
+      "school": "osu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Thomas J. Wood",
+        "profile": "https://polisci.osu.edu/people/wood.1080",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Thomas J. Wood",
+        "profile": "https://polisci.osu.edu/people/wood.1080",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-osu-soc-6a23677a",
+      "school": "osu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Hollie Nyseth Nzitatira",
+        "profile": "https://sociology.osu.edu/people/nzitatira.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Hollie Nyseth Nzitatira",
+        "profile": "https://sociology.osu.edu/people/nzitatira.1",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-pitt-che-4aab9df5",
+      "school": "pitt",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Vikas Khanna",
+        "profile": "https://www.engineering.pitt.edu/people/faculty/vikas-khanna/",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Vikas Khanna",
+        "profile": "https://www.engineering.pitt.edu/people/faculty/vikas-khanna/",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-pitt-che-e1310456",
+      "school": "pitt",
+      "before": {
+        "status": "inactive",
+        "name": "Radisav Vidic",
+        "profile": "https://www.engineering.pitt.edu/people/faculty/radisav-vidic/",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-pitt-cee-cee49e73",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Radisav Vidic",
+        "profile": "https://www.engineering.pitt.edu/people/faculty/radisav-vidic/",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-pitt-cee-cee49e73",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "school": "pitt",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Natasha Tokowicz",
+        "profile": "https://psychology.pitt.edu/people/natasha-tokowicz-phd ",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Natasha Tokowicz",
+        "profile": "https://psychology.pitt.edu/people/natasha-tokowicz-phd ",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-psu-csd-f21c1d37",
+      "school": "psu",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Sommar Ane Chilton",
+        "profile": "https://hhd.psu.edu/contact/sommar-chilton",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Sommar Ane Chilton",
+        "profile": "https://hhd.psu.edu/contact/sommar-chilton",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-purdue-bsc-e4bf6c5d",
+      "school": "purdue",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kyu Kang",
+        "profile": "https://polytechnic.purdue.edu/profile/kyukang",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kyu Kang",
+        "profile": "https://polytechnic.purdue.edu/profile/kyukang",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-purdue-cs-bb6831d2",
+      "school": "purdue",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kazem Taram",
+        "profile": "https://www.cs.purdue.edu/people/faculty/mtaram.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kazem Taram",
+        "profile": "https://www.cs.purdue.edu/people/faculty/mtaram.html",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-purdue-soet-e62b3700",
+      "school": "purdue",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Mo Rastgaar",
+        "profile": "https://polytechnic.purdue.edu/profile/rastgaar",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Mo Rastgaar",
+        "profile": "https://polytechnic.purdue.edu/profile/rastgaar",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-stanford-educ-0cd946fb",
+      "school": "stanford",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Adriana Umaña-Taylor",
+        "profile": "https://ed.stanford.edu/faculty/aut",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Adriana Umaña-Taylor",
+        "profile": "https://ed.stanford.edu/faculty/aut",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-syracuse-php-09f48758",
+      "school": "syracuse",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Bhavneet Walia",
+        "profile": "https://www.maxwell.syr.edu/directory/bhavneet-walia",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Bhavneet Walia",
+        "profile": "https://www.maxwell.syr.edu/directory/bhavneet-walia",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-tamu-bme-dccdf5db",
+      "school": "tamu",
+      "before": {
+        "status": "active_date_old",
+        "name": "Jeffery Reynolds",
+        "profile": "https://engineering.tamu.edu/biomedical/profiles/reynolds-jeffery.html",
+        "last_seen_at": "2026-08-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Jeffery Reynolds",
+        "profile": "https://engineering.tamu.edu/biomedical/profiles/reynolds-jeffery.html",
+        "last_seen_at": "2026-08-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-tamu-ece-74ee208c",
+      "school": "tamu",
+      "before": {
+        "status": "missing"
+      },
+      "after": {
+        "status": "missing"
+      }
+    },
+    {
+      "id": "faculty-ucf-cs-edfc1c62",
+      "school": "ucf",
+      "before": {
+        "status": "active_date_old",
+        "name": "Ali Al Kinoon",
+        "profile": "http://www.cs.ucf.edu/person/alialkinoon/",
+        "last_seen_at": "2026-07-31",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Ali Al Kinoon",
+        "profile": "http://www.cs.ucf.edu/person/alialkinoon/",
+        "last_seen_at": "2026-07-31",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-uchicago-crown-609e894a",
+      "school": "uchicago",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rita Xiaochen Hu",
+        "profile": "https://crownschool.uchicago.edu/directory/rita-xiaochen-hu",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rita Xiaochen Hu",
+        "profile": "https://crownschool.uchicago.edu/directory/rita-xiaochen-hu",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-uci-phys-981c4356",
+      "school": "uci",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Pedro Ochoa-Ricoux",
+        "profile": "https://www.physics.uci.edu/people/Juan-Pedro-Ochoa-Ricoux",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Pedro Ochoa-Ricoux",
+        "profile": "https://www.physics.uci.edu/people/Juan-Pedro-Ochoa-Ricoux",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-ucla-epss-417dbefd",
+      "school": "ucla",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Aradhna E. Tripati",
+        "profile": "https://epss.ucla.edu/aradhna-e-tripati/",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Aradhna E. Tripati",
+        "profile": "https://epss.ucla.edu/aradhna-e-tripati/",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-ucsd-phil-a14e93b6",
+      "school": "ucsd",
+      "before": {
+        "status": "active_date_old",
+        "name": "Jennifer Rose Carr",
+        "profile": "http://philosophyfaculty.ucsd.edu/~j2carr/",
+        "last_seen_at": "2026-08-14",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Jennifer Rose Carr",
+        "profile": "http://philosophyfaculty.ucsd.edu/~j2carr/",
+        "last_seen_at": "2026-08-14",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-ucsd-tdps-ed927348",
+      "school": "ucsd",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dr. Mysia Anderson-White",
+        "profile": "https://theatre.ucsd.edu/people/faculty/performance-studies/mysia-anderson-white.html",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dr. Mysia Anderson-White",
+        "profile": "https://theatre.ucsd.edu/people/faculty/performance-studies/mysia-anderson-white.html",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-uf-art3-c6d12231",
+      "school": "uf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Sean Owen Miller",
+        "profile": "https://arts.ufl.edu/people/profiles/sean-owen-miller/",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Sean Owen Miller",
+        "profile": "https://arts.ufl.edu/people/profiles/sean-owen-miller/",
+        "last_seen_at": "2026-11-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-uga-fina-4f496f3a",
+      "school": "uga",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Xu (Ethan) Tian",
+        "profile": "https://www.terry.uga.edu/directory/xu-ethan-tian/",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Xu (Ethan) Tian",
+        "profile": "https://www.terry.uga.edu/directory/xu-ethan-tian/",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-uky-acc-2d66e7fe",
+      "school": "uky",
+      "before": {
+        "status": "active_date_old",
+        "name": "Darcia Fischer",
+        "profile": "https://gatton.uky.edu/people/darcia-fischer",
+        "last_seen_at": "2026-09-16",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Darcia Fischer",
+        "profile": "https://gatton.uky.edu/people/darcia-fischer",
+        "last_seen_at": "2026-09-16",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-unc-educ-c9538316",
+      "school": "unc",
+      "before": {
+        "status": "active_date_old",
+        "name": "Madison Sturdivant",
+        "profile": "https://ed.unc.edu/people/madison-sturdivant/",
+        "last_seen_at": "2026-07-28",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Madison Sturdivant",
+        "profile": "https://ed.unc.edu/people/madison-sturdivant/",
+        "last_seen_at": "2026-07-28",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-unl-agro-f6340208",
+      "school": "unl",
+      "before": {
+        "status": "active_date_old",
+        "name": "Nicholas McMillan",
+        "profile": "https://agronomy.unl.edu/mcmillan/",
+        "last_seen_at": "2026-09-06",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Nicholas McMillan",
+        "profile": "https://agronomy.unl.edu/mcmillan/",
+        "last_seen_at": "2026-09-06",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-info-e14bee11",
+      "school": "usf",
+      "before": {
+        "status": "active_date_old",
+        "name": "Tameca Beckett",
+        "profile": "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+        "last_seen_at": "2026-08-18",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Tameca Beckett",
+        "profile": "https://www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx",
+        "last_seen_at": "2026-08-18",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-07f4d1cf",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Md Roungu Ahmmad",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/ahmmad",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Md Roungu Ahmmad",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/ahmmad",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-12cb0f60",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Danielle Tometich",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/dbtometich",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Danielle Tometich",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/dbtometich",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-135e7481",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kim Rathbun",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/kimberlyr22",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kim Rathbun",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/kimberlyr22",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-22992a9c",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Priscilla Amofa-Ho",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/priscillaamofaho",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Priscilla Amofa-Ho",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/priscillaamofaho",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-2774b516",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Laurie M. Connors",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/lmconnors",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Laurie M. Connors",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/lmconnors",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-355f9fcf",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Herica Torres Alzate",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/hmtorresalzate",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Herica Torres Alzate",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/hmtorresalzate",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-37081ab2",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Christina Cardy",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/ccardy",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Christina Cardy",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/ccardy",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-4077d9af",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Janet Roman",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/janetroman",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Janet Roman",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/janetroman",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-5ce988f5",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Michele Roberts",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/mroberts19",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Michele Roberts",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/mroberts19",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-6c49579e",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Elizabeth Remo",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/efremo",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Elizabeth Remo",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/efremo",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-75c4a850",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ayesha Johnson",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/arjohns2",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ayesha Johnson",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/arjohns2",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-82e5e836",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Victoria Marshall",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/vkmarshall",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Victoria Marshall",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/vkmarshall",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-86fb20b1",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dorothie Durosier Mertilus",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/dorothie",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dorothie Durosier Mertilus",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/dorothie",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-8acd0752",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Candace Burns",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/cburns",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Candace Burns",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/cburns",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-8ece49e8",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Xiaoli Zhang",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/xiaoli18",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Xiaoli Zhang",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/xiaoli18",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-a21c2ada",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Areum Han",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/areumhan",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Areum Han",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/areumhan",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-c2a88f26",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Cynthia Dabney",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/cdabney1",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Cynthia Dabney",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/cdabney1",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-c45637b9",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Catherine Nadeau",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/cnadeau2",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Catherine Nadeau",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/cnadeau2",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-d66ad3e8",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rebecca Koerner",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/rkoerner1",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rebecca Koerner",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/rkoerner1",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-dfa7320c",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Theresa Beckie",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/tbeckie",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Theresa Beckie",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/tbeckie",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-eaf9b91f",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Uma Nair",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/nairu",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Uma Nair",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/nairu",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-f1d6710a",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ashley Curtis",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/ashleycurtis",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ashley Curtis",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/ashleycurtis",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-usf-nurs-f9389d5b",
+      "school": "usf",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kailey Rinaldi",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/kaileytaylor",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kailey Rinaldi",
+        "profile": "https://health.usf.edu/nursing/faculty-staff/directory/kaileytaylor",
+        "last_seen_at": "2026-11-24",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-utexas-aero-00855ada",
+      "school": "utexas",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Srinivas V. Bettadpur",
+        "profile": "https://ae.utexas.edu/person/srinivas-v-bettadpur/",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Srinivas V. Bettadpur",
+        "profile": "https://ae.utexas.edu/person/srinivas-v-bettadpur/",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-utexas-linguistics-ab991fd0",
+      "school": "utexas",
+      "before": {
+        "status": "active_date_old",
+        "name": "Akshayraj Aitha",
+        "profile": "https://liberalarts.utexas.edu/linguistics/faculty/aa225967",
+        "last_seen_at": "2026-10-08",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Akshay Aitha",
+        "profile": "https://liberalarts.utexas.edu/linguistics/faculty/aa225967",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-utexas-td-d00c0f11",
+      "school": "utexas",
+      "before": {
+        "status": "inactive",
+        "name": "Josafath Reynoso Calvillo",
+        "profile": "https://theatredance.utexas.edu/faculty/reynoso-josafath",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-utexas-td-7e88c012",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Josafath Reynoso Calvillo",
+        "profile": "https://theatredance.utexas.edu/faculty/reynoso-josafath",
+        "last_seen_at": "2026-10-29",
+        "active": false,
+        "duplicate_of": "faculty-utexas-td-7e88c012",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-utk-mse-6a18d92d",
+      "school": "utk",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Philip D. Rack",
+        "profile": "https://tickle.utk.edu/mse/faculty/philip-rack/",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Philip D. Rack",
+        "profile": "https://tickle.utk.edu/mse/faculty/philip-rack/",
+        "last_seen_at": "2026-11-21",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-uw-nurs-7107a1f8",
+      "school": "uw",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dr. Letitia Salazar",
+        "profile": "https://nursing.uw.edu/person/7140578-dr-letitia-salazar/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dr. Letitia Salazar",
+        "profile": "https://nursing.uw.edu/person/7140578-dr-letitia-salazar/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-vanderbilt-frit-e7199b52",
+      "school": "vanderbilt",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Nathalie Debrauwere-Miller",
+        "profile": "https://as.vanderbilt.edu/french-italian/bio/debrauwere-miller",
+        "last_seen_at": "2026-11-19",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Nathalie Debrauwere-Miller",
+        "profile": "https://as.vanderbilt.edu/french-italian/bio/debrauwere-miller",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "school": "vanderbilt",
+      "before": {
+        "status": "active_date_old",
+        "name": "Krzysztof Kapulkin",
+        "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+        "last_seen_at": "2026-08-20",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Chris Kapulkin",
+        "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+        "last_seen_at": "2026-11-26",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-consci-cd2160dd",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Katie Fitzpatrick",
+        "profile": "https://humanecology.wisc.edu/staff/fitzpatrick-katie/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Katie Fitzpatrick",
+        "profile": "https://humanecology.wisc.edu/staff/fitzpatrick-katie/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-cs-8742a33d",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Gurmail Singh",
+        "profile": "https://www.cs.wisc.edu/staff/singh-gurmail/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Gurmail Singh",
+        "profile": "https://www.cs.wisc.edu/staff/singh-gurmail/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-cs-b7fae59b",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Meenakshi Syamkumar",
+        "profile": "https://www.cs.wisc.edu/staff/syamkumar-meenakshi/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Meenakshi Syamkumar",
+        "profile": "https://www.cs.wisc.edu/staff/syamkumar-meenakshi/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-cscs-3590dd17",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Carolee Dodge Francis",
+        "profile": "https://humanecology.wisc.edu/staff/francis-carolee-dodge/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Carolee Dodge Francis",
+        "profile": "https://humanecology.wisc.edu/staff/francis-carolee-dodge/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-cscs-3c9426d6",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Zoua M. Vang",
+        "profile": "https://humanecology.wisc.edu/staff/vang-zoua-m/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Zoua M. Vang",
+        "profile": "https://humanecology.wisc.edu/staff/vang-zoua-m/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-econ-7e90db8a",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Carter Braxton",
+        "profile": "https://econ.wisc.edu/staff/braxton-carter/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Carter Braxton",
+        "profile": "https://econ.wisc.edu/staff/braxton-carter/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-econ-8e19eaeb",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Martin O'Connell",
+        "profile": "https://econ.wisc.edu/staff/oconnell-martin/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Martin O'Connell",
+        "profile": "https://econ.wisc.edu/staff/oconnell-martin/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-elpa-4ef6e11a",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Brian Burt",
+        "profile": "https://elpa.education.wisc.edu/fac-staff/burt-brian/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Brian Burt",
+        "profile": "https://elpa.education.wisc.edu/fac-staff/burt-brian/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-elpa-c72c0f7d",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Krystal Williams",
+        "profile": "https://elpa.education.wisc.edu/fac-staff/williams-krystal/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Krystal Williams",
+        "profile": "https://elpa.education.wisc.edu/fac-staff/williams-krystal/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-elpa-fabc11f6",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Anjalé Welton",
+        "profile": "https://elpa.education.wisc.edu/fac-staff/welton-anjale/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Anjalé Welton",
+        "profile": "https://elpa.education.wisc.edu/fac-staff/welton-anjale/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-engl-52878de6",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jess Waggoner",
+        "profile": "https://english.wisc.edu/staff/waggoner-jess/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jess Waggoner",
+        "profile": "https://english.wisc.edu/staff/waggoner-jess/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-engl-5c29bdb9",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Sarah Ensor",
+        "profile": "https://english.wisc.edu/staff/ensor-sarah/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Sarah Ensor",
+        "profile": "https://english.wisc.edu/staff/ensor-sarah/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-geo-3486bf32",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Eric E. Roden",
+        "profile": "https://geoscience.wisc.edu/people/roden-eric-e/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Eric E. Roden",
+        "profile": "https://geoscience.wisc.edu/people/roden-eric-e/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-geo-39d78fb0",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Stephen R. Meyers",
+        "profile": "https://geoscience.wisc.edu/people/meyers-stephen-r/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Stephen R. Meyers",
+        "profile": "https://geoscience.wisc.edu/people/meyers-stephen-r/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-geo-3f0d21b8",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Bradley S. Singer",
+        "profile": "https://geoscience.wisc.edu/people/singer-bradley-s/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Bradley S. Singer",
+        "profile": "https://geoscience.wisc.edu/people/singer-bradley-s/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-geog-f889e88e",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Maddy Kroot",
+        "profile": "https://geography.wisc.edu/staff/kroot-maddy/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Maddy Kroot",
+        "profile": "https://geography.wisc.edu/staff/kroot-maddy/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-056848c2",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Franciska Coleman",
+        "profile": "https://law.wisc.edu/profiles/franciska.coleman",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Franciska Coleman",
+        "profile": "https://law.wisc.edu/profiles/franciska.coleman",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-0a9ca002",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Nathan Atkinson",
+        "profile": "https://law.wisc.edu/profiles/nathan.atkinson",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Nathan Atkinson",
+        "profile": "https://law.wisc.edu/profiles/nathan.atkinson",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-0c778145",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Benjamin Sobel",
+        "profile": "https://law.wisc.edu/profiles/benjamin.sobel",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Benjamin Sobel",
+        "profile": "https://law.wisc.edu/profiles/benjamin.sobel",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-13a479d2",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Zoe Engberg",
+        "profile": "https://law.wisc.edu/profiles/zoe.engberg",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Zoe Engberg",
+        "profile": "https://law.wisc.edu/profiles/zoe.engberg",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-1525b8c7",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Desmund Wu",
+        "profile": "https://law.wisc.edu/profiles/desmund.wu",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Desmund Wu",
+        "profile": "https://law.wisc.edu/profiles/desmund.wu",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-1a404569",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ryan Poe-Gavlinski",
+        "profile": "https://law.wisc.edu/profiles/ryan.poe-gavlinski",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ryan Poe-Gavlinski",
+        "profile": "https://law.wisc.edu/profiles/ryan.poe-gavlinski",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-28f45871",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Rachel Burg",
+        "profile": "https://law.wisc.edu/profiles/rachel.burg",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Rachel Burg",
+        "profile": "https://law.wisc.edu/profiles/rachel.burg",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-3505ca23",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Emily Cauble",
+        "profile": "https://law.wisc.edu/profiles/emily.cauble",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Emily Cauble",
+        "profile": "https://law.wisc.edu/profiles/emily.cauble",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-3f8206c9",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Steven Wright",
+        "profile": "https://law.wisc.edu/profiles/steven.wright",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Steven Wright",
+        "profile": "https://law.wisc.edu/profiles/steven.wright",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-520f6896",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Robert Yablon",
+        "profile": "https://law.wisc.edu/profiles/robert.yablon",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Robert Yablon",
+        "profile": "https://law.wisc.edu/profiles/robert.yablon",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-5390487c",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Joshua Braver",
+        "profile": "https://law.wisc.edu/profiles/joshua.braver",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Joshua Braver",
+        "profile": "https://law.wisc.edu/profiles/joshua.braver",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-60519148",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Pilar Ossorio",
+        "profile": "https://law.wisc.edu/profiles/pilar.ossorio",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Pilar Ossorio",
+        "profile": "https://law.wisc.edu/profiles/pilar.ossorio",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-606a2abf",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ahmed White",
+        "profile": "https://law.wisc.edu/profiles/ahmed.white",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ahmed White",
+        "profile": "https://law.wisc.edu/profiles/ahmed.white",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-62fdb310",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Heinz Klug",
+        "profile": "https://law.wisc.edu/profiles/heinz.klug",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Heinz Klug",
+        "profile": "https://law.wisc.edu/profiles/heinz.klug",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-6cb8ec82",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jason Reinecke",
+        "profile": "https://law.wisc.edu/profiles/jason.reinecke",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jason Reinecke",
+        "profile": "https://law.wisc.edu/profiles/jason.reinecke",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-70e6c22c",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Lisa Washington",
+        "profile": "https://law.wisc.edu/profiles/lisa.washington",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Lisa Washington",
+        "profile": "https://law.wisc.edu/profiles/lisa.washington",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-791c5fed",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Gregory Wiercioch",
+        "profile": "https://law.wisc.edu/profiles/gregory.wiercioch",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Gregory Wiercioch",
+        "profile": "https://law.wisc.edu/profiles/gregory.wiercioch",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-7a0ef2fc",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Steph Tai",
+        "profile": "https://law.wisc.edu/profiles/steph.tai",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Steph Tai",
+        "profile": "https://law.wisc.edu/profiles/steph.tai",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-7f8e204b",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Ion Meyn",
+        "profile": "https://law.wisc.edu/profiles/ion.meyn",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Ion Meyn",
+        "profile": "https://law.wisc.edu/profiles/ion.meyn",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-80177db9",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "John Strange",
+        "profile": "https://law.wisc.edu/profiles/john.strange",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "John Strange",
+        "profile": "https://law.wisc.edu/profiles/john.strange",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-87a50b2f",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Emily Buchholz",
+        "profile": "https://law.wisc.edu/profiles/emily.buchholz",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Emily Buchholz",
+        "profile": "https://law.wisc.edu/profiles/emily.buchholz",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-92945c36",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Lanny Glinberg",
+        "profile": "https://law.wisc.edu/profiles/lanny.glinberg",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Lanny Glinberg",
+        "profile": "https://law.wisc.edu/profiles/lanny.glinberg",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-94355118",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Anuj Desai",
+        "profile": "https://law.wisc.edu/profiles/anuj.desai",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Anuj Desai",
+        "profile": "https://law.wisc.edu/profiles/anuj.desai",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-999570b1",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Megan McDermott",
+        "profile": "https://law.wisc.edu/profiles/megan.mcdermott",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Megan McDermott",
+        "profile": "https://law.wisc.edu/profiles/megan.mcdermott",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-a3c26915",
+      "school": "wisc",
+      "before": {
+        "status": "inactive",
+        "name": "Jeffrey Glazer",
+        "profile": "https://law.wisc.edu/profiles/jeffrey.glazer",
+        "last_seen_at": "2026-10-28",
+        "active": false,
+        "duplicate_of": "faculty-wisc-law-424fd240",
+        "deactivation_reason": "duplicate_of_live_record"
+      },
+      "after": {
+        "status": "inactive",
+        "name": "Jeffrey Glazer",
+        "profile": "https://law.wisc.edu/profiles/jeffrey.glazer",
+        "last_seen_at": "2026-10-28",
+        "active": false,
+        "duplicate_of": "faculty-wisc-law-424fd240",
+        "deactivation_reason": "duplicate_of_live_record"
+      }
+    },
+    {
+      "id": "faculty-wisc-law-ae6a82da",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Sarah Orr",
+        "profile": "https://law.wisc.edu/profiles/sarah.orr",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Sarah Orr",
+        "profile": "https://law.wisc.edu/profiles/sarah.orr",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-b6c70ca9",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Renagh O'Leary",
+        "profile": "https://law.wisc.edu/profiles/renagh.oleary",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Renagh O'Leary",
+        "profile": "https://law.wisc.edu/profiles/renagh.oleary",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-b76d546f",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Erin Barbato",
+        "profile": "https://law.wisc.edu/profiles/erin.barbato",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Erin Barbato",
+        "profile": "https://law.wisc.edu/profiles/erin.barbato",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-c78e99d8",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Andrew Norman",
+        "profile": "https://law.wisc.edu/profiles/andrew.norman",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Andrew Norman",
+        "profile": "https://law.wisc.edu/profiles/andrew.norman",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-e693e446",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Andrew Turner",
+        "profile": "https://law.wisc.edu/profiles/andrew.turner",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Andrew Turner",
+        "profile": "https://law.wisc.edu/profiles/andrew.turner",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-e7fcd9ba",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Christopher Lau",
+        "profile": "https://law.wisc.edu/profiles/christopher.lau",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Christopher Lau",
+        "profile": "https://law.wisc.edu/profiles/christopher.lau",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-e820e73f",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Mitra Sharafi",
+        "profile": "https://law.wisc.edu/profiles/mitra.sharafi",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Mitra Sharafi",
+        "profile": "https://law.wisc.edu/profiles/mitra.sharafi",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-f115312b",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jennifer Binkley",
+        "profile": "https://law.wisc.edu/profiles/jennifer.binkley",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jennifer Binkley",
+        "profile": "https://law.wisc.edu/profiles/jennifer.binkley",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-fc5a102a",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Kevin Kelly",
+        "profile": "https://law.wisc.edu/profiles/kevin.kelly",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Kevin Kelly",
+        "profile": "https://law.wisc.edu/profiles/kevin.kelly",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-law-fe58911e",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Erin McBride",
+        "profile": "https://law.wisc.edu/profiles/erin.mcbride",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Erin McBride",
+        "profile": "https://law.wisc.edu/profiles/erin.mcbride",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-mhr-608e6b9e",
+      "school": "wisc",
+      "before": {
+        "status": "active_date_old",
+        "name": "Chia-Jung Tsay",
+        "profile": "https://business.wisc.edu/directory/profile/chia-jung-tsay/",
+        "last_seen_at": "2026-06-29",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "active_date_old",
+        "name": "Chia-Jung Tsay",
+        "profile": "https://business.wisc.edu/directory/profile/chia-jung-tsay/",
+        "last_seen_at": "2026-06-29",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-0403a858",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jingxi Sheng",
+        "profile": "https://nursing.wisc.edu/staff/sheng-bsn-rn-jingxi/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jingxi Sheng",
+        "profile": "https://nursing.wisc.edu/staff/sheng-bsn-rn-jingxi/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-177f4e4e",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Lacey Alexander",
+        "profile": "https://nursing.wisc.edu/staff/alexander-lacey/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Lacey Alexander",
+        "profile": "https://nursing.wisc.edu/staff/alexander-lacey/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-1f158472",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Anne D. Letocha",
+        "profile": "https://nursing.wisc.edu/staff/ersig-phd-rn-anne-l/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Anne D. Letocha",
+        "profile": "https://nursing.wisc.edu/staff/ersig-phd-rn-anne-l/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-2bfac834",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Maichou Lor",
+        "profile": "https://nursing.wisc.edu/staff/lor-phd-rn-maichou/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Maichou Lor",
+        "profile": "https://nursing.wisc.edu/staff/lor-phd-rn-maichou/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-2c79910f",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Jeneile M. Luebke",
+        "profile": "https://nursing.wisc.edu/staff/luebke-jeneile/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Jeneile M. Luebke",
+        "profile": "https://nursing.wisc.edu/staff/luebke-jeneile/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-47721b50",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Tracy E. Seiler-Schultz",
+        "profile": "https://nursing.wisc.edu/staff/seiler-schultz-tracy/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Tracy E. Seiler-Schultz",
+        "profile": "https://nursing.wisc.edu/staff/seiler-schultz-tracy/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-53146fb7",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Roberta P. Pawlak",
+        "profile": "https://nursing.wisc.edu/staff/pawlak-roberta/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Roberta P. Pawlak",
+        "profile": "https://nursing.wisc.edu/staff/pawlak-roberta/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-53c51e3d",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Wan-chin Kuo",
+        "profile": "https://nursing.wisc.edu/staff/kuo-wan-chin/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Wan-chin Kuo",
+        "profile": "https://nursing.wisc.edu/staff/kuo-wan-chin/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-5e2eeba2",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Megan R. Miller",
+        "profile": "https://nursing.wisc.edu/staff/miller-megan/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Megan R. Miller",
+        "profile": "https://nursing.wisc.edu/staff/miller-megan/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-6c749bdf",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Dana O'Brien",
+        "profile": "https://nursing.wisc.edu/staff/obrien-phd-msn-mha-rn-cne-dana/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Dana O'Brien",
+        "profile": "https://nursing.wisc.edu/staff/obrien-phd-msn-mha-rn-cne-dana/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-7b68bb0c",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Katherine Schneider-Collins",
+        "profile": "https://nursing.wisc.edu/staff/collins-katherine/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Katherine Schneider-Collins",
+        "profile": "https://nursing.wisc.edu/staff/collins-katherine/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-8b0dc54f",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Lydia Weiss",
+        "profile": "https://nursing.wisc.edu/staff/weiss-dnp-apnp-agpcnp-bc-achpn-lydia/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Lydia Weiss",
+        "profile": "https://nursing.wisc.edu/staff/weiss-dnp-apnp-agpcnp-bc-achpn-lydia/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-9f457188",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Katelyn Desorcy-Scherer",
+        "profile": "https://nursing.wisc.edu/staff/descorcy-scherer-phd-rn-katelyn/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Katelyn Desorcy-Scherer",
+        "profile": "https://nursing.wisc.edu/staff/descorcy-scherer-phd-rn-katelyn/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-a3328a13",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Megan Zuelsdorff",
+        "profile": "https://nursing.wisc.edu/staff/zuelsdorff-phd-megan/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Megan Zuelsdorff",
+        "profile": "https://nursing.wisc.edu/staff/zuelsdorff-phd-megan/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-b8fe2339",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Elliot A. Tebbe",
+        "profile": "https://nursing.wisc.edu/staff/tebbe-elliot/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Elliot A. Tebbe",
+        "profile": "https://nursing.wisc.edu/staff/tebbe-elliot/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-nurs-dd10985f",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Pam A. McGranahan",
+        "profile": "https://nursing.wisc.edu/staff/mcgranahan-pam/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Pam A. McGranahan",
+        "profile": "https://nursing.wisc.edu/staff/mcgranahan-pam/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-phil-a4bc8af3",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Hank Southgate",
+        "profile": "https://philosophy.wisc.edu/staff/southgate-hank/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Hank Southgate",
+        "profile": "https://philosophy.wisc.edu/staff/southgate-hank/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    },
+    {
+      "id": "faculty-wisc-pubaff-864d3065",
+      "school": "wisc",
+      "before": {
+        "status": "observed_since_fix",
+        "name": "Manuel P. Teodoro",
+        "profile": "https://lafollette.wisc.edu/people/teodoro-manuel/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      },
+      "after": {
+        "status": "observed_since_fix",
+        "name": "Manuel P. Teodoro",
+        "profile": "https://lafollette.wisc.edu/people/teodoro-manuel/",
+        "last_seen_at": "2026-11-25",
+        "active": true,
+        "duplicate_of": null,
+        "deactivation_reason": null
+      }
+    }
+  ],
+  "scope": "Real scheduled input and resulting data head; verify eventual main merge, deployment and public details separately."
+}
