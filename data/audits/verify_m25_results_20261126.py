@@ -60,7 +60,8 @@ def enter_results(page, school="ucb"):
         else:
             field.fill(value)
     page.locator("#grade").select_option(label="Junior")
-    page.locator("#research_interests").fill("machine learning, artificial intelligence, healthcare")
+    interests = "database systems, computer science, summer research" if school == "uiuc" else "machine learning, artificial intelligence, healthcare"
+    page.locator("#research_interests").fill(interests)
     for label in ("Research", "Summer program", "Internship"):
         target = page.locator('fieldset[aria-describedby="seeking-types-help"]').get_by_role("button", name=label, exact=True)
         if target.get_attribute("aria-pressed") != "true":
