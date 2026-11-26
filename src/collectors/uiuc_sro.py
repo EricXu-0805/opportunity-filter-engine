@@ -1043,7 +1043,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                     new_link = (opp.get("application") or {}).get("application_url")
                     if ((new_org and new_org != prior.get("organization"))
                             or (new_link and new_link != opp.get("url") and reviewed_window(opp) is None)):
-                        carried = [k for k in carried if k not in ("organization", "application", "deadline", "deadline_is_estimate", "is_rolling")]
+                        carried = [k for k in carried if k not in ("organization", "application", "eligibility", "deadline", "deadline_is_estimate", "is_rolling")]
+                    if opp.get("deadline") and not reviewed_window(opp):
+                        # A recommender requirement belongs to the old cycle.
+                        carried = [k for k in carried if k != "application"]
                     if "deadline" in carried and "superseded_directory_deadline" in prior["metadata"]:
                         opp["metadata"]["superseded_directory_deadline"] = deepcopy(prior["metadata"]["superseded_directory_deadline"])
                 if host_program_terms.checked_window(prior) and not host_program_terms.checked_window(opp):
@@ -1071,8 +1074,6 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             carry_forward_contact_instruction_sources(prior, opp)
             # The shallow merge can restore a deep host link or an older set
             # of inferred majors. Recheck against the merged record.
-            if opp["id"] in STARS_SRO_IDS:
-                apply_program_window(opp)
             if opp["id"] in host_program_terms.IDS:
                 apply_program_window(opp)
                 host_program_terms.apply_terms(opp)

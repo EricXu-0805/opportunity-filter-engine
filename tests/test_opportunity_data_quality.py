@@ -1289,11 +1289,12 @@ class TestSchoolAudience:
 
 
 def _configured_program(school, key, url=None):
+    from src.collectors.campus_graph import _hash_id
     from src.normalizers.school_audience import REVIEWED_PROGRAM_AUDIENCES
 
     reviewed = REVIEWED_PROGRAM_AUDIENCES[(school, key)]
     url = url or reviewed.url
-    return {"id": f"{school}-{key}-{len(url)}", "source": reviewed.source, "url": url, "source_url": url,
+    return {"id": _hash_id(school, reviewed.source, key), "source": reviewed.source, "url": url, "source_url": url,
             "title": "Summer research program", "eligibility": {},
             "metadata": {"collector_school": school, "collector_key": key}}
 
