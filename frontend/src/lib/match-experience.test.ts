@@ -32,15 +32,20 @@ describe('experiences used by the actual matching request', () => {
     const start = Array.from(prefix).length;
     const source = { kind: 'resume' as const, signature: await sourceDigest(raw), quote,
       start, end: start + Array.from(quote).length };
-    const entry: ExperienceEntry = { id: 'pdf-excerpt', revision: 7, status: 'confirmed',
+    const entry: ExperienceEntry = { id: `r:${source.signature}:${source.start}:${source.end}`, revision: 7, status: 'confirmed',
       text: 'I mapped wetlands using GIS. 我核对了原文。', source };
     const profile = { ...DEFAULT_PROFILE, resume_text: raw, experience_entries: [entry, project] };
     const request = toMatchProfileRequest(profile);
+    const reference = 'pdf:' + await sourceDigest(entry.id);
     expect(request).toMatchObject({ match_experiences: [
-      { id: entry.id, revision: 7, status: 'confirmed', text: entry.text, source: 'resume' },
+      { id: reference, revision: 7, status: 'confirmed', text: entry.text, source: 'resume' },
       { id: project.id, source: 'github' },
     ] });
     for (const localOnly of [quote, 'Private', source.signature]) expect(JSON.stringify(request)).not.toContain(localOnly);
+    const historicalCollision = { ...manual, id: reference };
+    expect(toMatchProfileRequest({ ...profile, experience_entries: [entry, historicalCollision] }))
+      .toMatchObject({ match_experiences: [{ id: reference + '-1' }, { id: reference }] });
+    expect(profile.experience_entries[0].id).toBe(entry.id);
     const originalHash = hashProfile(profile);
     for (const stale of [
       { ...profile, resume_text: raw + 'x' },

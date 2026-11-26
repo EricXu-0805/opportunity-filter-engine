@@ -25,8 +25,19 @@ export function matchExperienceEntries(entries?: ExperienceEntry[], resumeText?:
     && wellFormedUnicode(resumeText) ? Array.from(resumeText) : [];
   const digest = characters.length > 0 && characters.length <= MAX_RESUME_TEXT_CHARACTERS
     ? bytesToHex(sha256(new TextEncoder().encode(resumeText))) : '';
-  return confirmed.filter(entry => entry.source.kind !== 'resume'
-    || (entry.source.signature === digest && resumeQuoteMatches(entry.source, characters)));
+  const reserved = new Set(checked.value.map(entry => entry.id));
+  return confirmed.flatMap(entry => {
+    if (entry.source.kind !== 'resume') return [entry];
+    if (entry.source.signature !== digest || !resumeQuoteMatches(entry.source, characters)) return [];
+
+    // Historical PDF entry IDs contain the whole-document digest and both offsets.
+    // Use the same opaque reference on the wire and in the local receipt view.
+    const base = 'pdf:' + bytesToHex(sha256(new TextEncoder().encode(entry.id)));
+    let id = base;
+    for (let suffix = 1; reserved.has(id); suffix++) id = base + '-' + suffix;
+    reserved.add(id);
+    return [{ ...entry, id }];
+  });
 }
 
 export function matchExperienceRows(entries?: ExperienceEntry[], resumeText?: string): MatchExperience[] | null {
