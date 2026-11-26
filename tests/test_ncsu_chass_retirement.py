@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
-from src.collectors import faculty_graph
-from src.collectors.schools import ncsu_chass, ncsu_faculty
+from src.collectors import faculty_graph, ncsu_chass
+from src.collectors.schools import ncsu_faculty
 
 
 def person(slug, name, groups):
@@ -32,6 +32,7 @@ def test_chass_compares_taxonomy_name_and_rank_before_filtering(monkeypatch):
     coverage = faculty_graph._new_coverage()
     monkeypatch.setattr(faculty_graph, '_ACTIVE_COVERAGE', coverage)
     dept = next(d for d in ncsu_faculty.SCHOOL['departments'] if d['short'] == 'CHASS')
+    assert dept['api']['filter_records'] is ncsu_chass.current_faculty
     assert dept['api']['query'].endswith('&orderby=id&order=asc')
     assert dept['roster_is_partial']
     assert {spec['name'] for spec in faculty_graph._fetch_wp_api(dept)} == {
