@@ -26,11 +26,10 @@ All wired directories are server-rendered plain HTML (no WAF challenges at a
   cell (``title_re`` extracts; a titleless staff row keeps the raw name cell
   and fails the require-gate), plain-text email in a sibling cell. Cell
   classes vary per site — per-dept title/email selectors.
-* Joomla K2 (physics/math): "Last, First"; physics gates on the
-  /people/faculty/current/ href and has mailto + a "Title … E-mail" extra-field
-  run (``title_re`` bounds it); math's first extra-field value is the rank but
-  its email is a CSS attr() cloak (data-ep-*) the engine can't decode — math
-  lands unemailed.
+* Physics' Joomla K2 cards use "Last, First", a /people/faculty/current/
+  profile and a "Title … E-mail" extra-field. Mathematics now renders names
+  in individual cards followed by the rank, an optional mailto and a Website
+  link. The older K2 mathematics layout is also supported.
 * "profile-card" theme (merrill journalism / SPH): whole roster on one page,
   faculty + staff + adjunct mixed — strict require-professor gate (staff carry
   non-academic titles). Merrill's /directory meta-refreshes to
@@ -358,11 +357,16 @@ SCHOOL: dict = {
             "directory_url": "https://www-math.umd.edu/people/faculty.html",
             "scrape": {
                 "url": "https://www-math.umd.edu/people/faculty.html",
-                # First extra-field value is the rank. Emails are a CSS attr()
-                # cloak (data-ep-*) with no mailto in the DOM — unemailed.
-                "selectors": {"card": "div.catItemView",
-                              "name": "h3.catItemTitle a", "link": "h3.catItemTitle a",
-                              "title": "span.catItemExtraFieldsValue"},
+                # The current directory renders each rank as the first line
+                # after its name. Website and email links belong to that card.
+                "selectors": {
+                    "card": "div.jl-width-expand:has(> h3.tm-title), div.catItemView",
+                    "name": "h3.tm-title, h3.catItemTitle a",
+                    "link": "a[href^='http']:-soup-contains('Website'), h3.catItemTitle a",
+                    "title": "span.catItemExtraFieldsValue",
+                    "title_html_re": r"</h3>\s*([^<]+?)\s*<br\b",
+                    "email": "a[href^='mailto:']",
+                },
                 "name_flip": True,
                 "ladder_filter": _LADDER,
             },
