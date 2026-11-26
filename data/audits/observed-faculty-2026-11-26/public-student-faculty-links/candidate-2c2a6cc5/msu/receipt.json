@@ -1,0 +1,133 @@
+{
+  "utc": "2026-11-26T21:49:25.119111+00:00",
+  "site": "http://127.0.0.1:3000",
+  "campus": "msu",
+  "account": {
+    "signup": 200,
+    "onboarding_attempts": [
+      "closed"
+    ],
+    "college": "College of Natural Science",
+    "major": "Biochemistry and Molecular Biology",
+    "responses": [
+      {
+        "endpoint": "commit_profile_patch_cas",
+        "status": 200,
+        "method": "POST"
+      }
+    ],
+    "profile_commit": "applied"
+  },
+  "records": [
+    {
+      "id": "faculty-msu-bmb-939e5db8",
+      "query": "Ogunwobi",
+      "name": "Olorunseun O Ogunwobi",
+      "person_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+      "official_roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "h1": "Olorunseun O Ogunwobi",
+      "added_normally": true,
+      "detail": {
+        "label": "View faculty profile",
+        "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/opportunities/faculty-msu-bmb-939e5db8",
+        "client_release": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212",
+        "points_to": "stored person URL",
+        "landed_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "title": "",
+        "headings": [],
+        "linked_people": 0,
+        "navigation_responses": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ]
+      },
+      "favorites": {
+        "label": "Faculty page",
+        "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/favorites",
+        "client_release": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212",
+        "points_to": "stored person URL",
+        "landed_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "title": "",
+        "headings": [],
+        "linked_people": 0,
+        "navigation_responses": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ]
+      },
+      "visible_matching_cards": {
+        "all": {
+          "card": "match-card-faculty-msu-bmb-939e5db8",
+          "links": [
+            {
+              "label": "Olorunseun O Ogunwobi",
+              "href": "/opportunities/faculty-msu-bmb-939e5db8?returnTo=%2Fresults%3Ftab%3Dall%26q%3DOgunwobi"
+            },
+            {
+              "label": "Faculty page",
+              "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253"
+            }
+          ]
+        }
+      },
+      "matches_all": {
+        "label": "Faculty page",
+        "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "target": "_blank",
+        "route": "http://127.0.0.1:3000/results?tab=all&q=Ogunwobi",
+        "client_release": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212",
+        "points_to": "stored person URL",
+        "landed_url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "title": "",
+        "headings": [],
+        "linked_people": 0,
+        "navigation_responses": [
+          {
+            "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+            "status": 200
+          },
+          {
+            "url": "https://directory.natsci.msu.edu/_Incapsula_Resource",
+            "status": 200
+          }
+        ]
+      }
+    }
+  ],
+  "matches_requests": [
+    {
+      "http": 200,
+      "query": "Ogunwobi",
+      "tab": "all",
+      "major": "Biochemistry and Molecular Biology"
+    }
+  ],
+  "environment": "isolated candidate, actual local account DB and production-sized corpus",
+  "start": {
+    "front": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212",
+    "back": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212"
+  },
+  "end": {
+    "front": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212",
+    "back": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212"
+  },
+  "stable_release": true,
+  "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900239977",
+  "result": "The campus visitor signed up normally, saved the original opportunity and clicked the institutional person URL from the detail, Favorites and the All matches card. The Berkeley page displayed Michael Boots. Michigan State served its browser check to this runner."
+}
