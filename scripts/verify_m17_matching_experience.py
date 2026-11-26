@@ -50,8 +50,9 @@ async def main():
             listing={r['opportunity_id']:r for r in (await event.json())['results']}
             assert TARGET in listing and OTHER in listing, list(listing)
             return page,listing,payload
-        async def letter(ctx,record,confirmed):
-            p=await ctx.new_page()
+        async def letter(p,record,confirmed):
+            # Open the normal draft action on the target whose score and profile
+            # were just read from this account. This also retains its source binding.
             seen_api=[]; errors=[]
             def api(r):
                 path=urlsplit(r.url).path
@@ -59,19 +60,18 @@ async def main():
                     seen_api.append((path,r.status))
             p.on('response',api)
             p.on('pageerror',lambda e: errors.append(str(e)[:300]))
-            await p.goto(site+'/opportunities/'+TARGET,wait_until='networkidle')
-            # Detail loads its owner independently when opened in a fresh tab.
-            # Its draft button is early; first wait for this account's ordinary profile read.
-            for _ in range(80):
-                if ('/rest/v1/profiles',200) in seen_api:break
-                await p.wait_for_timeout(150)
-            await p.wait_for_timeout(500)
+            async def diagnose(stage):
+                dialog=p.get_by_role('dialog')
+                visible=(await dialog.first.inner_text()) if await dialog.count() else (await p.locator('body').inner_text())
+                return (stage,confirmed,visible[-2500:],seen_api[-22:],errors)
             generation=asyncio.get_running_loop().create_future()
             def capture(r):
                 if '/api/cold-email/variants' in r.url and not generation.done():
                     generation.set_result(r)
             p.on('response',capture)
-            await p.get_by_role('button',name='Draft email',exact=True).click(timeout=60000)
+            action=p.locator('#match-card-'+TARGET).get_by_role('button',name='Draft email',exact=True)
+            try:await action.click(timeout=30000)
+            except Exception:raise AssertionError(await diagnose('target card draft control')) from None
             regen=p.get_by_role('button',name='Regenerate from updated materials',exact=True)
             if not confirmed:
                 # The normal editor deliberately restores a previous saved draft.
@@ -87,9 +87,7 @@ async def main():
             try:
                 response=await asyncio.wait_for(generation,45)
             except asyncio.TimeoutError:
-                dialog=p.get_by_role('dialog')
-                visible=(await dialog.first.inner_text()) if await dialog.count() else (await p.locator('body').inner_text())
-                raise AssertionError(('no variant request',confirmed,visible[-2000:],seen_api[-22:],errors)) from None
+                raise AssertionError(await diagnose('no variant request')) from None
             assert response.ok, (response.status, (await response.text())[:500])
             variants=(await response.json())['variants']
             await expect(p.locator('#cold-email-body')).not_to_have_value('',timeout=30000)
@@ -128,7 +126,7 @@ async def main():
         assert request['match_experiences'][0]['text']==entry['text']
         receipt=pg.get_by_text('Experience used for this match · Python')
         await receipt.click();await expect(pg.get_by_text(entry['text'],exact=True)).to_be_visible()
-        accepted_mail=await letter(ctx,entry,True)
+        accepted_mail=await letter(pg,entry,True)
         assert len(accepted_mail)==3 and all(v[1] for v in accepted_mail),accepted_mail
         await ctx.close();ctx=await fresh()
         home=await ctx.new_page();await home.goto(site,wait_until='domcontentloaded')
@@ -143,7 +141,7 @@ async def main():
         assert not new_request.get('match_experiences') and not after[TARGET]['experience_basis']
         assert baseline[TARGET]['final_score']==after[TARGET]['final_score']
         assert await pg.get_by_text('Experience used for this match · Python').count()==0
-        withdrawn_mail=await letter(ctx,entry,False)
+        withdrawn_mail=await letter(pg,entry,False)
         assert len(withdrawn_mail)==3 and not any(v[1] for v in withdrawn_mail),withdrawn_mail
         print(json.dumps({'controlled_target_fixture':True,'real_chromium_gotrue_postgrest_fastapi':True,
                           'confirmed_from_user_positions_csv':True,'full_entry_in_matches_and_current_receipt':True,'complete_organization_role_dates_duties_results_in_three_free_variant_bodies_and_receipts':True,'source':'LinkedIn file, individually confirmed',
