@@ -7,11 +7,13 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
+from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes
 
 METHOD = "postgres-application-ddl-and-migrations-v2"
 QUERY = """
@@ -61,7 +63,8 @@ def _digest(value: list) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
-def observe(project: str, backup: str, *, include_row_counts: bool = False) -> dict:
+def observe(project: str, backup: str, *, include_row_counts: bool = False,
+            storage_catalogue_out: Path | None = None) -> dict:
     """Use the named project's direct DB endpoint. Read only catalogue and ledger metadata."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
@@ -72,7 +75,12 @@ def observe(project: str, backup: str, *, include_row_counts: bool = False) -> d
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
     env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10",
                PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=20000 -c search_path=pg_catalog")
-    query = restore_row_evidence.capture_query(QUERY) if include_row_counts else QUERY
+    query = QUERY
+    if include_row_counts:
+        row_query = restore_row_evidence.capture_query(QUERY)
+        storage_query = Path(__file__).with_name("restore_storage_catalogue.sql").read_text()
+        query = (f"SELECT snapshot || jsonb_build_object('storage_catalogue', ({storage_query})) "
+                 f"FROM ({row_query}) AS backup(snapshot)")
     try:
         result = subprocess.run(
             ["psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", f"db.{project}.supabase.co",
@@ -108,6 +116,19 @@ def observe(project: str, backup: str, *, include_row_counts: bool = False) -> d
         if not restore_row_evidence.complete(catalogue.get("row_counts")):
             raise ValueError("source table counts incomplete")
         observation["row_counts"] = catalogue["row_counts"]
+        buckets = catalogue.get("storage_catalogue")
+        if (not isinstance(buckets, dict) or set(buckets) not in (set(BUCKETS), set(ALL_BUCKETS))
+                or any(not isinstance(b, dict) or b.get("public") is not False or not isinstance(b.get("objects"), dict)
+                       or any(type(size) is not int or size < 0 for size in b["objects"].values())
+                       for b in buckets.values())):
+            raise ValueError("source private Storage catalogue missing, filtered or incomplete")
+        private = catalogue_bytes(project, backup, buckets)
+        observation["storage_catalogue_sha256"] = hashlib.sha256(private).hexdigest()
+        if storage_catalogue_out is not None:
+            with tempfile.NamedTemporaryFile(dir=storage_catalogue_out.parent) as tmp:
+                tmp.write(private)
+                tmp.flush()
+                os.link(tmp.name, storage_catalogue_out)
     return observation
 
 
@@ -136,6 +157,11 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
         if not restore_row_evidence.complete(part["row_counts"]):
             return None
         validated["row_counts"] = part["row_counts"]
+    if "storage_catalogue_sha256" in part:
+        pin = part["storage_catalogue_sha256"]
+        if not isinstance(pin, str) or not re.fullmatch(r"[a-f0-9]{64}", pin):
+            return None
+        validated["storage_catalogue_sha256"] = pin
     return validated
 
 
@@ -199,9 +225,11 @@ def main() -> int:
     ap.add_argument("--project-ref", required=True)
     ap.add_argument("--source-backup-id", required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
     try:
-        observation = observe(args.project_ref, args.source_backup_id, include_row_counts=True)
+        observation = observe(args.project_ref, args.source_backup_id, include_row_counts=True,
+                              storage_catalogue_out=args.storage_catalogue_out)
         with args.out.open("xb") as dest:
             dest.write(manifest_bytes(observation))
     except (ValueError, OSError) as exc:

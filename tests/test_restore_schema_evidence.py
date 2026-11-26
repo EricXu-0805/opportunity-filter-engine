@@ -114,6 +114,12 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
             "column_count": 23, "migration_count": candidate["count"], "migration_parity": True,
             "matched_filenames_digest": candidate["digest"]}
     part["row_counts"] = dict.fromkeys(drill._REQUIRED_TABLES, 1)
+    from scripts.restore_attachment_evidence import catalogue_bytes
+
+    expected_storage = {name: {"public": False, "objects": {}} for name in (
+        "tracker-attachments", "application-materials", "tracker-attachment-versions")}
+    expected_storage["tracker-attachments"]["objects"]["private.txt"] = len(b"synthetic")
+    part["storage_catalogue_sha256"] = hashlib.sha256(catalogue_bytes("source", "point", expected_storage)).hexdigest()
     source_path = tmp_path / "source-schema.json"
     source_path.write_bytes(schema.manifest_bytes(part))
     body = b"synthetic"
@@ -238,11 +244,9 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
                         "INSERT INTO storage.buckets VALUES ('tracker-attachments', false), ('application-materials', false);"
                         "INSERT INTO storage.objects VALUES ('tracker-attachments', 'mock/user.pdf',"
                         "jsonb_build_object('size', 17))"], check=True, capture_output=True, timeout=15)
-        command = [*db, "-v", "source_ref=source", "-v", "backup_id=point", "-f",
-                   Path(__file__).resolve().parents[1] / "scripts/restore_storage_catalogue.sql"]
+        command = [*db, "-f", Path(__file__).resolve().parents[1] / "scripts/restore_storage_catalogue.sql"]
         exported = json.loads(subprocess.check_output(command, text=True, timeout=15))
-        assert exported == {"source_environment": "source", "source_backup_id": "point", "buckets": {
-            "tracker-attachments": {"public": False, "objects": {"mock/user.pdf": 17}},
-            "application-materials": {"public": False, "objects": {}}}}
+        assert exported == {"tracker-attachments": {"public": False, "objects": {"mock/user.pdf": 17}},
+                            "application-materials": {"public": False, "objects": {}}}
     finally:
         subprocess.run([*ctl, "-m", "immediate", "stop"], check=True, capture_output=True, timeout=30)

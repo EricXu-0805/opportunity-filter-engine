@@ -25,7 +25,7 @@ sys.path.insert(0, str(_REPO))
 
 from scripts import restore_row_evidence, restore_schema_evidence  # noqa: E402
 from scripts.release_gate import migration_set_identity  # noqa: E402
-from scripts.restore_attachment_evidence import attachment_verdict, validate_attachments  # noqa: E402
+from scripts.restore_attachment_evidence import bound_attachment_verdict, validate_attachments  # noqa: E402
 
 # Every table the application depends on, from the committed migration set.
 # A restore that brings back the database but not these is not a recovery.
@@ -233,7 +233,7 @@ def build_record(args, schema: dict, data: dict, rls: dict, app: dict,
         "generated_by": "scripts/restore_drill.py",
     }
     schema_status, reason = restore_schema_evidence.schema_verdict(record, migration_set_identity())
-    storage_status = attachment_verdict(attachments, record)
+    storage_status = bound_attachment_verdict(attachments, record)
     statuses = [schema["result"], data["result"], rls["result"], app["result"], schema_status, storage_status]
     if schema_status != "PASS":
         issues.append(f"schema observations: {reason}")

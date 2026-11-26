@@ -37,6 +37,8 @@ def test_capture_is_one_statement_and_saved_counts_are_in_the_pinned_manifest(tm
     source = dict.fromkeys(rows.TABLES, 0) | {"profiles": 5}
     fake_catalogue = {"columns": [{"table": "example"}], "migrations": [{"version": "1", "name": "test"}],
                       "ddl_sha256": "d" * 64, "ddl_count": 1, "row_counts": source}
+    fake_catalogue["storage_catalogue"] = {name: {"public": False, "objects": {}} for name in
+                                         ("tracker-attachments", "application-materials")}
     import subprocess
 
     def run(args, **kwargs):
@@ -46,7 +48,10 @@ def test_capture_is_one_statement_and_saved_counts_are_in_the_pinned_manifest(tm
         return subprocess.CompletedProcess(args, 0, json.dumps(fake_catalogue))
 
     monkeypatch.setattr(subprocess, "run", run)
-    captured = schema.observe("source", "point", include_row_counts=True)
+    private = tmp_path / "private-storage-catalogue.json"
+    captured = schema.observe("source", "point", include_row_counts=True, storage_catalogue_out=private)
+    assert hashlib.sha256(private.read_bytes()).hexdigest() == captured["storage_catalogue_sha256"]
+    assert private.stat().st_mode & 0o077 == 0
     path = tmp_path / "source.json"
     raw = schema.manifest_bytes(captured)
     path.write_bytes(raw)
