@@ -11,6 +11,18 @@ const receipt: EmailTargetConditions = { version: 1, record_kind: 'listing', tem
 beforeEach(() => { locale = 'en'; });
 const expand = () => fireEvent.click(screen.getByText(/Target conditions for this draft|本次参考的目标条件/));
 describe('email target conditions', () => {
+  it.each([
+    ['en', null, 'Target conditions for this draft Application conditions need review'],
+    ['en', receipt, 'Target conditions for this draft 1 sourced · 1 to review'],
+    ['zh', null, '本次参考的目标条件 申请条件尚未核对'],
+    ['zh', receipt, '本次参考的目标条件 1 项有依据 · 1 项需核对'],
+  ] as const)('separates the %s disclosure title from its status in the text read aloud', (lang, data, spokenText) => {
+    locale = lang;
+    const { container } = render(<EmailTargetConditionsPanel receipt={data} current />);
+    expect(container.querySelector('summary')).toHaveTextContent(spokenText);
+    expect(container.querySelector('details')).not.toHaveAttribute('open');
+  });
+
   it('shows complete evidence on demand without claiming eligibility or attachments', () => {
     render(<EmailTargetConditionsPanel receipt={receipt} current />); expand();
     expect(screen.getByText(/not proof that you qualify/)).toBeVisible();

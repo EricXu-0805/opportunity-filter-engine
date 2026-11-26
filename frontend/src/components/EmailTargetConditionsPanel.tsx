@@ -11,7 +11,10 @@ export default function EmailTargetConditionsPanel({ receipt, current }: { recei
   const sourced = rows.filter(row => row.usage === 'usable').length;
   return <section data-testid="email-target-conditions" className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 min-w-0">
     <details>
-      <summary className="cursor-pointer font-semibold text-gray-800">{zh ? '本次参考的目标条件' : 'Target conditions for this draft'}<span className="ml-2 font-normal text-gray-500">{!sourced ? zh ? '申请条件尚未核对' : 'Application conditions need review' : zh ? `${sourced} 项有依据 · ${rows.length - sourced} 项需核对` : `${sourced} sourced · ${rows.length - sourced} to review`}</span></summary>
+      <summary className="cursor-pointer font-semibold text-gray-800">
+        {zh ? '本次参考的目标条件' : 'Target conditions for this draft'}{' '}
+        <span className="ml-2 font-normal text-gray-500">{!sourced ? zh ? '申请条件尚未核对' : 'Application conditions need review' : zh ? `${sourced} 项有依据 · ${rows.length - sourced} 项需核对` : `${sourced} sourced · ${rows.length - sourced} to review`}</span>
+      </summary>
       {!current ? <p className="mt-2">{zh ? '这份草稿所用的目标资料尚未核对。原稿仍保留。' : 'The target information for this draft has not been checked. Your draft is kept.'}</p>
         : !receipt || !rows.length ? <p className="mt-2">{zh ? '这份资料未提供可确认的申请条件，不代表没有要求。联系前请查看来源。' : 'No confirmed application conditions were provided. This does not mean there are no requirements. Check the source before contacting.'}</p>
         : <div className="mt-2 space-y-3">
