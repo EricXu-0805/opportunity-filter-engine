@@ -1036,12 +1036,15 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                         carried.remove("eligibility")
                     carried = [key for key in carried
                                if key not in ("deadline", "deadline_is_estimate", "is_rolling")]
-                if (
-                    opp.get("deadline") and host_program_terms.checked_window(prior)
-                    and not host_program_terms.checked_window(opp)
-                ):
-                    # A shallow update for a later cohort cannot borrow last summer's terms.
-                    carried = [k for k in carried if k not in ("eligibility", "paid", "compensation_details", "duration")]
+                if host_program_terms.checked_window(prior) and not host_program_terms.checked_window(opp):
+                    application_url = (opp.get("application") or {}).get("application_url")
+                    old_url = (prior.get("application") or {}).get("application_url")
+                    changed_host = application_url and application_url not in (opp.get("url"), old_url)
+                    if changed_host:
+                        # A new external destination is stronger than carried detail.
+                        carried = [k for k in carried if k not in ("application", "deadline", "deadline_is_estimate", "is_rolling")]
+                    if changed_host or opp.get("deadline"):
+                        carried = [k for k in carried if k not in ("eligibility", "paid", "compensation_details", "duration")]
                 for key in carried:
                     opp[key] = deepcopy(prior[key])
                 if "deadline" in carried:

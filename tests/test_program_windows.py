@@ -582,3 +582,14 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
                  normalize_award({**award, "title": "REU Site: Different program"}),
                  normalize_award({**award, "startDate": "12/01/2027"})):
         assert reviewed_window(item) is None and item["deadline_is_estimate"]
+
+    # A legacy partial input may contain the new external link but no deep
+    # capture receipt. Never restore the prior program behind its back.
+    moved = directory(SMU.directory_url, "2/15/27", crisp_host)
+    stored = tmp_path / "redirected.json"
+    stored.write_text(json.dumps([smu]))
+    merge_into_processed([moved], str(stored))
+    [merged] = json.loads(stored.read_text())
+    assert merged["application"]["application_url"] == crisp_host
+    assert merged["deadline"] == "2027-02-15" and merged["deadline_is_estimate"]
+    assert merged["compensation_details"] != "$5,600 stipend" and reviewed_window(merged) is None
