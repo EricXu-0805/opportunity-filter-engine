@@ -1,0 +1,65 @@
+{
+  "head": "0902b05c57fd8870fe1ab23a96754449530ecb6d",
+  "sequential": [
+    null,
+    {
+      "entry_id": "student-a-private",
+      "revision": 2,
+      "method": "GIS",
+      "target_source": "stated_requirement"
+    },
+    {
+      "entry_id": "student-b-private",
+      "revision": 7,
+      "method": "SQL",
+      "target_source": "stated_requirement"
+    },
+    null,
+    {
+      "entry_id": "student-a-private",
+      "revision": 4,
+      "method": "Python",
+      "target_source": "research_area"
+    },
+    null,
+    {
+      "entry_id": "student-b-private",
+      "revision": 7,
+      "method": "SQL",
+      "target_source": "stated_requirement"
+    }
+  ],
+  "shared_target_cache": [
+    [
+      "sql",
+      "stated_requirement"
+    ],
+    [
+      "gis",
+      "stated_requirement"
+    ],
+    [
+      "python",
+      "research_area"
+    ]
+  ],
+  "same_mutable_student_and_output_isolation": true,
+  "unregistered_mutation": true,
+  "failed_then_replaced_generation_same_original_id": true,
+  "generation_race_with_two_students": true,
+  "independent_http_explanations": {
+    "concurrent_responses": 15,
+    "profiles": 5,
+    "old_to_new_same_id": true
+  },
+  "deliberate_in_place_edit_without_new_publication": {
+    "candidate_after_first_unconfirmed_score": {
+      "entry_id": "student-b-private",
+      "revision": 7,
+      "method": "SQL",
+      "target_source": "stated_requirement"
+    },
+    "prior_after_first_unconfirmed_score": null,
+    "agreement_restored_by_new_list_with_same_member": true
+  }
+}
