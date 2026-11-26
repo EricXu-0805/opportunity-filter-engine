@@ -1,0 +1,44 @@
+{
+  "time": "2026-11-26T22:48:13.895605+00:00",
+  "original_b25": "66ef4b7370d66b36fa6524777a5903b3692cf90f",
+  "reviewed_b25_with_published_main": "cf3a7cf0a81d7c3857ce8f25c1027db386ca1a8b",
+  "b19": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "b25_b19_merge": "ed6fb9b9680d2b8f8b83b7f8c0e679f3c2370b2c",
+  "source_pr_heads": {
+    "1495": "7482cb1ba9766d61a8995aeb42884793e66689bd",
+    "1496": "80529cb9bb6201727ca3b1fb2e526a28d685a82f"
+  },
+  "candidate_head": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+  "candidate_tree": "0b3d831340d3180d94957ec29fa036673cd0a300",
+  "actual_business_paths_after_upstream_reconciliation": [
+    "data/processed/shards/osu.json",
+    "frontend/src/lib/school-stats.json",
+    "src/collectors/schools/osu_faculty.py",
+    "src/matcher/ranker.py",
+    "tests/test_match_generation_release.py",
+    "tests/test_osu_bme_appointment.py"
+  ],
+  "preserved_national_and_vanderbilt_against_reviewed_predecessor": true,
+  "campus_shards_checked": 117,
+  "changed_originals": [
+    "faculty-osu-bme-5874478d"
+  ],
+  "ohio_old_count": 2585,
+  "reading_same_record": {
+    "coverage_before": {
+      "listing_count": 6,
+      "faculty_contact_count": 2506,
+      "unreviewed_count": 0,
+      "total_count": 2512
+    },
+    "coverage_after": {
+      "listing_count": 6,
+      "faculty_contact_count": 2505,
+      "unreviewed_count": 0,
+      "total_count": 2511
+    }
+  },
+  "assembled": "assemble: 149954 records -> opportunities.json",
+  "stats": "school-stats: 115 schools, 130752 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+  "last_known_source_CI": "pending at local integration; consult current source and aggregate runs"
+}
