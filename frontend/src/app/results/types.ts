@@ -5,6 +5,7 @@
 // the saved-searches loader widens at the boundary.
 
 import { Filter, Zap, Target, TrendingUp, Star } from 'lucide-react';
+import type { SeekingType } from '../home/types';
 import type { ScopeValue } from '@/lib/discovery-scope';
 import { bySlug } from '@/lib/schools';
 import type { DeadlineFilterValue, ProfileData } from '@/lib/types';
@@ -14,6 +15,7 @@ export type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 export type SortKey = 'score' | 'deadline' | 'newest';
 
 export interface Filters {
+  opportunityType?: SeekingType;
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   // Any source key present in the corpus ('' = all). Options are derived from

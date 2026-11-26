@@ -837,6 +837,7 @@ describe('a saved search restores every condition it was saved with', () => {
         tab,
         sort_by,
         filters: {
+          opportunityType: (['research', 'internship', 'summer_program'] as const)[n % 3],
           paid: (['', 'yes', 'no'] as const)[n % 3],
           intl: (['', 'yes', 'no'] as const)[(n + 1) % 3],
           source: n % 4 ? 'uiuc_faculty' : '',
@@ -884,6 +885,7 @@ describe('a saved search restores every condition it was saved with', () => {
     const restored = readInitialFiltersFromUrl(
       new URLSearchParams(savedSearchToUrl(legacy).split('?')[1] ?? ''),
     );
+    expect(restored.filters.opportunityType).toBeUndefined();
     expect(restored.filters.scope).toBe('');
     expect(restored.filters.paid).toBe('yes');
   });
