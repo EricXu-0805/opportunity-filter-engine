@@ -112,6 +112,22 @@ def _profile_text(value: object, field: str, limit: int) -> None:
         _profile_error(field, actual=len(value), limit=limit)
 
 
+class MatchExperience(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str = Field(min_length=1, max_length=80)
+    revision: int = Field(gt=0, le=9007199254740991)
+    source: Literal["manual", "github"]
+    status: Literal["candidate", "confirmed", "rejected", "withdrawn"]
+    text: str = Field(min_length=1, max_length=6000)
+
+
+class MatchExperienceBasis(BaseModel):
+    target_source: Literal["stated_requirement", "research_area"]
+    entry_id: str
+    revision: int
+    method: str
+
+
 class ProfileRequest(BaseModel):
     name: str = ""
     school: str = ""
@@ -135,6 +151,7 @@ class ProfileRequest(BaseModel):
     experience_level: str = "beginner"
     resume_ready: bool = False
     can_cold_email: bool = True
+    match_experiences: list[MatchExperience] = Field(default_factory=list, max_length=100)
     research_interests_text: str = ""
     linkedin_url: str = ""
     github_url: str = ""
@@ -169,6 +186,23 @@ class ProfileRequest(BaseModel):
                 _profile_error(f"profile.{field}", actual=len(items), limit=count_limit, unit="items")
             for item in items:
                 _profile_text(item, f"profile.{field}", text_limit)
+        if "match_experiences" in value:
+            entries = value["match_experiences"]
+            if not isinstance(entries, list):
+                _profile_error("profile.match_experiences")
+            if len(entries) > 100:
+                _profile_error("profile.match_experiences", actual=len(entries), limit=100, unit="items")
+            total = 0
+            seen = set()
+            for entry in entries:
+                data = entry.model_dump() if isinstance(entry, MatchExperience) else entry
+                if not isinstance(data, dict) or not isinstance(data.get("id"), str) or data["id"] in seen:
+                    _profile_error("profile.match_experiences")
+                seen.add(data["id"])
+                _profile_text(data.get("text"), "profile.match_experiences", 6000)
+                total += len(data["text"])
+            if total > 60000:
+                _profile_error("profile.match_experiences", actual=total, limit=60000)
         if "hard_skills" in value:
             items = value["hard_skills"]
             if not isinstance(items, list):
@@ -233,7 +267,8 @@ class ProfileRequest(BaseModel):
 
     @model_validator(mode="after")
     def complete_profile_budget(self):
-        actual = len(json.dumps(self.model_dump(), ensure_ascii=False, separators=(",", ":")))
+        profile = self.model_dump(exclude={"match_experiences"} if not self.match_experiences else set())
+        actual = len(json.dumps(profile, ensure_ascii=False, separators=(",", ":")))
         if actual > PROFILE_MAX_CHARACTERS:
             _profile_error("profile", actual=actual, limit=PROFILE_MAX_CHARACTERS)
         return self
@@ -338,6 +373,7 @@ class MatchReasonKey(BaseModel):
 
 
 class MatchResultResponse(BaseModel):
+    experience_basis: MatchExperienceBasis | None = None
     opportunity_id: str
     eligibility_score: float
     readiness_score: float

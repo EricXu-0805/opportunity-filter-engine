@@ -4,6 +4,7 @@ import { Fragment, memo } from 'react';
 import MatchCard from '@/components/MatchCard';
 import { mixesOpportunityTypes } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { MatchExperienceReceipt } from './MatchExperienceReceipt';
 import { ConciergeCta } from './ConciergeCta';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
@@ -221,6 +222,8 @@ export function MatchList({
                   onFeedback={onFeedback}
                   position={positionOffset + idx + 1}
                 />
+                {ownerReady && profile && match.experience_basis && <MatchExperienceReceipt basis={match.experience_basis}
+                  entries={profile.experience_entries} />}
               </div>
               {RELEASE_SCOPE.conciergeRequests && page === 1 && idx === Math.min(3, matches.length - 1) && (
                 <div className="lg:col-span-2">

@@ -63,7 +63,7 @@ const fieldKeys: Record<string, string> = {
   international_student: 'international', search_weight: 'weight', profile: 'all', name: 'name', school: 'school', home_school: 'school', college: 'college',
   major: 'major', secondary_interests: 'majors', year: 'year', seeking_type: 'types',
   desired_fields: 'interests', research_interests_text: 'interests', hard_skills: 'skills',
-  coursework: 'courses', courses: 'courses', experience_level: 'experience', linkedin_url: 'linkedin',
+  coursework: 'courses', courses: 'courses', match_experiences: 'experience', experience_level: 'experience', linkedin_url: 'linkedin',
   github_url: 'github', scholar_url: 'scholar',
 };
 /** Only allowlisted labels and numeric counts reach UI; never echo server input/message. */

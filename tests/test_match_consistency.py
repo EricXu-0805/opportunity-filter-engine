@@ -2978,3 +2978,58 @@ def test_home_only_ranking_skips_evidence_reads_for_out_of_scope_records(monkeyp
     reads.clear()
     ranker.rank_visible_universe({**profile, "include_cross_school": True}, rows)
     assert reads == {row["id"] for row in rows}
+
+
+def test_confirmed_external_work_changes_both_match_routes_with_its_receipt_and_withdrawal(snapshot_env):
+    target = _opp("work-b", source="manual", eligibility={"skills_required": ["Python"]})
+    unrelated = _opp("work-a", source="manual", eligibility={"skills_required": ["JavaScript"]})
+    inferred = _opp("work-c", source="test-catalog", eligibility={"skills_required": ["Python"]})
+    snapshot_env["corpus"][:] = [target, unrelated, inferred]
+    snapshot_env["by_id"].clear()
+    snapshot_env["by_id"].update({o["id"]: o for o in snapshot_env["corpus"]})
+    profile = _profile(experience_level="beginner", hard_skills=[])
+    entry = {"id": "work-log", "status": "confirmed", "revision": 2, "source": "github",
+             "text": "I implemented Python data validation for a team project."}
+
+    def results(profile):
+        view = client.post("/api/matches/view", json={"profile": profile, "view": {"today": "2026-11-26"}, "page_size": 50})
+        original = client.post("/api/matches", json=profile)
+        assert view.status_code == original.status_code == 200, (view.text, original.text)
+        rows = {item["opportunity_id"]: item for item in view.json()["results"]}
+        old_rows = {item["opportunity_id"]: item for item in original.json()["results"]}
+        for key, item in rows.items():
+            assert (item["final_score"], item["experience_basis"]) == (old_rows[key]["final_score"], old_rows[key]["experience_basis"])
+        return rows
+
+    before = results(profile)
+    for status in ["candidate", "confirmed", "withdrawn", "rejected"]:
+        p = {**profile, "match_experiences": [{**entry, "status": status}]}
+        observed = results(p)
+        row = observed[target["id"]]
+        explain = client.post("/api/matches/work-b/explain", json=p)
+        assert explain.status_code == 200
+        assert explain.json()["experience_basis"] == row["experience_basis"]
+        assert explain.json()["final_score"] == row["final_score"]
+        assert row["eligibility_score"] == before[target["id"]]["eligibility_score"]
+        if status == "confirmed":
+            assert row["final_score"] > before[target["id"]]["final_score"]
+            assert row["experience_basis"] == {"entry_id": "work-log", "revision": 2, "method": "Python", "target_source": "stated_requirement"}
+            assert entry["text"] not in str(row)
+            assert any(key and key["key"] == "experience_method" for key in row["reasons_fit_keys"])
+        else:
+            assert row["experience_basis"] is None
+            assert row["final_score"] == before[target["id"]]["final_score"]
+        for unchanged in (unrelated, inferred):
+            assert observed[unchanged["id"]]["experience_basis"] is None
+            assert observed[unchanged["id"]]["final_score"] == before[unchanged["id"]]["final_score"]
+
+
+def test_confirmed_work_requires_a_performed_action_and_owned_target_source():
+    from src.matcher.experience_fit import confirmed_methods, experience_for_target, target_methods
+    data = {"id": "real", "revision": 3, "status": "confirmed", "source": "manual"}
+    target = target_methods([], ["Spatial planning and GIS"])
+    assert experience_for_target(confirmed_methods([{**data, "text": "Water Lab — Research assistant\nFrom May to August\nMapped habitat loss using GIS."}]), target) == {
+        "entry_id": "real", "revision": 3, "method": "GIS", "target_source": "research_area"}
+    for text in ["I did not use GIS.", "My colleague used GIS.", "I plan to build a GIS tool.", "GIS laboratory"]:
+        assert not experience_for_target(confirmed_methods([{**data, "text": text}]), target)
+    assert not experience_for_target(confirmed_methods([{**data, "text": "I used GIS."}]), target_methods([], []))

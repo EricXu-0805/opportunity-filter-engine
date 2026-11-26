@@ -517,6 +517,7 @@ export type ContactEmailStatus = 'revealed' | 'sign_in_required' | 'unavailable'
 export type MatchBucket = 'high_priority' | 'good_match' | 'reach' | 'low_fit';
 
 export interface MatchResult {
+  experience_basis?: { entry_id: string; revision: number; method: string; target_source: 'stated_requirement' | 'research_area' } | null;
   opportunity_id: string;
   eligibility_score: number;
   readiness_score: number;
