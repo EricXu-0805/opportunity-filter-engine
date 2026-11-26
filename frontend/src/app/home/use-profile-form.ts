@@ -245,7 +245,7 @@ export interface UseProfileFormResult {
    *  student never settled (skillsWithResume). Interests it contributed
    *  STAY: nothing marks them as the résumé's. */
   handleResumeRemoved: () => boolean;
-  handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }) => boolean;
+  handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string; githubUrl?: string }) => boolean;
   handleResumeMasterChange: (master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }) => boolean;
   handleGitHubImport: () => Promise<void>;
   /** Why restoring the guest profile a merge set aside cannot be sent for
@@ -3172,13 +3172,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     );
   }, [editProfile, editingOrigin, screenOrigin]);
 
-  const handleExperienceChange = useCallback((entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }): boolean => {
+  const handleExperienceChange = useCallback((entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string; githubUrl?: string }): boolean => {
     if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     const origin = editingOrigin();
     if (!origin) return false;
     const current = profileRef.current;
     // A delayed extraction or a superseded editor cannot replace newer work.
     if ((current.resume_text ?? '') !== expected.resumeText
+      || (expected.githubUrl !== undefined && (current.github_url ?? '') !== expected.githubUrl)
       || JSON.stringify(current.experience_entries ?? []) !== expected.entriesJson
       || !validateExperienceEntries(current.experience_entries).ok
       || !validateExperienceEntries(entries).ok) return false;
