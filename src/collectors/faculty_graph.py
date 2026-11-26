@@ -1473,6 +1473,11 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             if m:
                 head, rank = title[:m.start()].strip(), title[m.start():]
                 title = rank if head == name else f"{head} {rank}"
+        if resolve_rank := sel.get("resolve_clipped_rank"):
+            title = resolve_rank(name, href, title)
+            if title is None:
+                _cover("partial_render_rows")
+                continue
         if not _passes_ladder(title, ladder_filter):
             # An explicit non-faculty classification (emeritus, visiting,
             # staff): the row WAS read, it just is not ladder faculty.
