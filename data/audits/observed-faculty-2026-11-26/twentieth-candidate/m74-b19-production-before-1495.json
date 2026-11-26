@@ -1,0 +1,67 @@
+{
+  "sha": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "observed_at": "2026-11-26T22:32:34.440557+00:00",
+  "method": "One established HTTPS session, different published benchmark profiles than the six-request experiment. Serial first, repeat and next-page actions, two seconds between requests. No server cache reset; first denotes first request for this profile in this observation.",
+  "requests": [
+    {
+      "profile": "uiuc_cs",
+      "step": "first",
+      "elapsed_s": 1.044,
+      "ttfb_s": 1.042,
+      "status": 200,
+      "total_results": 3274,
+      "result_set": "cba94ae9c3102a1e5d393c71265aef34a12e567707491b4a48aa5034b6de3e90",
+      "page_correct": true
+    },
+    {
+      "profile": "uiuc_cs",
+      "step": "repeat",
+      "elapsed_s": 0.132,
+      "ttfb_s": 0.129,
+      "status": 200,
+      "total_results": 3274,
+      "result_set": "cba94ae9c3102a1e5d393c71265aef34a12e567707491b4a48aa5034b6de3e90",
+      "page_correct": true
+    },
+    {
+      "profile": "uiuc_cs",
+      "step": "next",
+      "elapsed_s": 0.147,
+      "ttfb_s": 0.146,
+      "status": 200,
+      "total_results": 3274,
+      "result_set": "cba94ae9c3102a1e5d393c71265aef34a12e567707491b4a48aa5034b6de3e90",
+      "page_correct": true
+    },
+    {
+      "profile": "ucb_eecs_cross",
+      "step": "first",
+      "elapsed_s": 22.897,
+      "ttfb_s": 22.896,
+      "status": 200,
+      "total_results": 84716,
+      "result_set": "78c11fb130f26f1979cd8bcb9e81784e2aa83d4485b112bd510d8d1452b5a93e",
+      "page_correct": true
+    },
+    {
+      "profile": "ucb_eecs_cross",
+      "step": "repeat",
+      "elapsed_s": 0.148,
+      "ttfb_s": 0.146,
+      "status": 200,
+      "total_results": 84716,
+      "result_set": "78c11fb130f26f1979cd8bcb9e81784e2aa83d4485b112bd510d8d1452b5a93e",
+      "page_correct": true
+    },
+    {
+      "profile": "ucb_eecs_cross",
+      "step": "next",
+      "elapsed_s": 0.145,
+      "ttfb_s": 0.141,
+      "status": 200,
+      "total_results": 84716,
+      "result_set": "78c11fb130f26f1979cd8bcb9e81784e2aa83d4485b112bd510d8d1452b5a93e",
+      "page_correct": true
+    }
+  ]
+}
