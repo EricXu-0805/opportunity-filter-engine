@@ -835,6 +835,17 @@ except (TypeError, ValueError):
 _MATCH_TIMEOUT_SECONDS = min(120.0, max(5.0, _match_timeout_config))
 
 
+@dataclass(frozen=True, slots=True)
+class _PageableMatchView:
+    view_id: str
+    results: list[MatchResult]
+    counts: dict[str, int]
+    sources: list[dict[str, str | int]]
+    scope_available: bool
+    deadlines: dict[str, int]
+    field_relevant_count: int
+
+
 @dataclass
 class _MatchSnapshot:
     created_at: float
@@ -859,6 +870,9 @@ class _MatchSnapshot:
     # Cards projected for rows this snapshot has served (_snapshot_cards),
     # so a card stays the same for the snapshot's life.
     cards: dict[str, dict] = field(default_factory=dict)
+    # One ordered list of references at most. A new snapshot drops its old
+    # view even when identical profile and filter values yield the same id.
+    last_view: _PageableMatchView | None = None
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
@@ -2013,6 +2027,26 @@ def _apply_match_view_rows(
     return filtered, view_counts, source_facets, scope_available, deadline_counts
 
 
+def _pageable_match_view(
+    snapshot: _MatchSnapshot, view: MatchViewState, view_id: str, home_school: str
+) -> _PageableMatchView:
+    # The cursor's existing view id covers filters, sort order, the local day
+    # and the sets of favorite and dismissed ids. Page size and offset only
+    # slice the result. The snapshot itself binds the profile and corpus.
+    cached = snapshot.last_view
+    if cached is not None and cached.view_id == view_id:
+        return cached
+    results, counts, sources, scope_available, deadlines = _apply_match_view_rows(
+        snapshot.visible, snapshot.view_rows, view, home_school,
+    )
+    computed = _PageableMatchView(
+        view_id, results, counts, sources, scope_available, deadlines,
+        sum(1 for result in results if result.field_relevant),
+    )
+    snapshot.last_view = computed
+    return computed
+
+
 def _ai_pass_allowed(request: Request, llm: bool) -> bool:
     """Whether this request may run the paid rerank.
 
@@ -2198,23 +2232,12 @@ async def get_match_view(
                 },
             )
 
-    (
-        filtered,
-        view_counts,
-        source_facets,
-        scope_available,
-        deadline_facets,
-    ) = _apply_match_view_rows(
-        snap.visible,
-        snap.view_rows,
-        body.view,
-        profile_dict.get("home_school") or "uiuc",
-    )
-    page = filtered[page_offset:page_offset + body.page_size]
+    pageable = _pageable_match_view(snap, body.view, view_id, profile_dict.get("home_school") or "uiuc")
+    page = pageable.results[page_offset:page_offset + body.page_size]
     cards = _snapshot_cards(snap, page)
     page_response = [_match_result_response(result, cards, snap.view_rows) for result in page]
     next_offset = page_offset + len(page_response)
-    has_more = next_offset < len(filtered)
+    has_more = next_offset < len(pageable.results)
 
     return MatchesResponse(
         total=len(snap.visible),
@@ -2230,7 +2253,7 @@ async def get_match_view(
         # number did not, and it sat directly over them. thin_inventory stays
         # on the snapshot: it says how much of the corpus is in the student's
         # field, and a deadline filter does not change that.
-        field_relevant_count=sum(1 for result in filtered if result.field_relevant),
+        field_relevant_count=pageable.field_relevant_count,
         thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
         matcher_version=MATCHER_VERSION,
         ai_refined=snap.refined,
@@ -2245,11 +2268,11 @@ async def get_match_view(
         contract_version=MATCH_VIEW_CONTRACT_VERSION,
         target_truth_contract=TARGET_TRUTH_CONTRACT,
         view_start=page_offset,
-        filtered_total=len(filtered),
-        view_counts=view_counts,
-        source_facets=source_facets,
-        scope_available=scope_available,
-        deadline_facets=deadline_facets,
+        filtered_total=len(pageable.results),
+        view_counts=pageable.counts,
+        source_facets=pageable.sources,
+        scope_available=pageable.scope_available,
+        deadline_facets=pageable.deadlines,
         view_id=view_id,
     )
 
