@@ -1,0 +1,152 @@
+{
+  "as_of": "2026-11-26T20:20:03.430282+00:00",
+  "stage": "Reviewed on stacked branch against batch 19. Native protection against the future actual main, a production release and scheduled verification remain.",
+  "pr": 1476,
+  "base": "integrate/verified-maintenance-20261126-b19",
+  "head": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "tree": "2bc2d61e3f81431fcbbbd265d7a2a70379748552",
+  "source_and_base_runs": [
+    {
+      "pr": 1459,
+      "head": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+      "ref": "integrate/verified-maintenance-20261126-b19",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875551275",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "pr": 1460,
+      "head": "f668e73546040abaa9bcd7ce84db924465ad8ca4",
+      "ref": "fix/tamu-read-official-catalog-for-broken-faculty-link",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45871804898",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Backend (lint + pytest)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "E2E (Playwright)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "pr": 1461,
+      "head": "9486781fca5b829bdfee87990c1a0e3733dd989d",
+      "ref": "fix/vanderbilt-math-source-appointments",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874213472",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "E2E (Playwright)": "success",
+        "Backend (lint + pytest)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "pr": 1462,
+      "head": "7c6b3e1f4b7c073fd8586a37546492d93dd6702c",
+      "ref": "fix/m17-current-resume-experience",
+      "event": "pull_request",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45877058381",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "pr": 1463,
+      "head": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c",
+      "ref": "fix/ucsd-nano-jahed-current-roster",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885206240",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "pr": 1465,
+      "head": "f5f45f35275b981aa8dd16ff7b7b8ba1634f1e88",
+      "ref": "fix/refresh-counts-from-published-shards",
+      "event": "pull_request",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875753140",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "E2E (Playwright)": "success",
+        "Backend (lint + pytest)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    {
+      "pr": 1466,
+      "head": "e456f3aedc09f9e356ac73ecc2e50dea504e4851",
+      "ref": "fix/ucf-cs-professor-college-biography",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45876885426",
+      "conclusion": "success",
+      "jobs": {
+        "Decide (run or skip the suite)": "success",
+        "Backend (lint + pytest)": "success",
+        "Frontend (typecheck + build)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    }
+  ],
+  "integration_ci": {
+    "event": "workflow_dispatch",
+    "jobs": {
+      "Decide (run or skip the suite)": "success",
+      "Backend (lint + pytest)": "success",
+      "Migrations (Flow B merge + CLI replay)": "success",
+      "Frontend (typecheck + build)": "success",
+      "E2E (Playwright)": "success",
+      "Deploy backend (Render hook)": "skipped"
+    },
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885523608"
+  },
+  "security": {
+    "conclusion": "success",
+    "headSha": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+    "status": "completed",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885522713"
+  },
+  "chromium": {
+    "actual_candidate": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+    "checks_passed": 23,
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885526058"
+  }
+}
