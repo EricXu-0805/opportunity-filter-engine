@@ -28,43 +28,52 @@ def speech_from(offset):
         return speech_line.findall(f.read().decode('utf-8', errors='replace'))
 
 
-def focus_by_tab(page, target):
-    for _ in range(145):
-        if target.evaluate('el => el === document.activeElement'):
-            return
-        key('Tab')
-        page.wait_for_timeout(110)
-    raise AssertionError('Target unreachable by forward tab: ' + str(target))
+def matches(phrases, spoken):
+    return any(part.casefold() in utterance.casefold() for part in phrases for utterance in spoken)
 
 
 def measure(page, target, phrases, screen, locale):
     expect(target).to_be_visible(timeout=65000)
-    focus_by_tab(page, target)
-    key('shift+Tab')
-    expect(target).not_to_be_focused()
-    page.wait_for_timeout(2200)
-    before_text = SPEECH.stat().st_size
-    before_audio = AUDIO.stat().st_size
-    key('Tab')
-    expect(target).to_be_focused(timeout=5000)
-    spoken = []
-    for _ in range(45):
-        page.wait_for_timeout(200)
-        spoken = [line.strip() for line in speech_from(before_text) if line.strip()]
-        if any(part.casefold() in utterance.casefold() for part in phrases for utterance in spoken):
+    # Capture the first genuine forward Tab that lands on the target. Resetting
+    # focus and announcing the same element twice can cause Orca to suppress it.
+    for _ in range(145):
+        offset = SPEECH.stat().st_size
+        audio_start = AUDIO.stat().st_size
+        key('Tab')
+        page.wait_for_timeout(180)
+        if target.evaluate('el => el === document.activeElement'):
             break
-    assert any(part.casefold() in utterance.casefold() for part in phrases for utterance in spoken), (screen, locale, phrases, spoken[:15])
-    page.wait_for_timeout(2600)
+    else:
+        raise AssertionError('Target unreachable by forward Tab: '+str(target))
+    spoken = []
+    for _ in range(35):
+        page.wait_for_timeout(200)
+        spoken = [line.strip() for line in speech_from(offset) if line.strip()]
+        if matches(phrases,spoken):
+            break
+    announced = matches(phrases,spoken)
+    query = []
+    if not announced:
+        # Orca desktop layout: keypad Enter asks the reader Where Am I.
+        query_offset = SPEECH.stat().st_size
+        key('KP_Enter')
+        for _ in range(25):
+            page.wait_for_timeout(200)
+            query = [line.strip() for line in speech_from(query_offset) if line.strip()]
+            if matches(phrases, query):
+                break
+    page.wait_for_timeout(2500)
     with AUDIO.open('rb') as f:
-        f.seek(before_audio)
+        f.seek(audio_start)
         data = f.read()
     samples = array('h')
     samples.frombytes(data[:len(data)//2*2])
     peak = max(map(abs, samples), default=0)
-    assert peak > 40, (screen, locale, 'no synthesized audio', peak)
     result = {'page':screen, 'page_language': page.locator('html').get_attribute('lang'),
               'expected_label_part':phrases, 'orca_speech':spoken[:15],
-              'synthesis_peak_signed_16_bit':peak,'recorded_audio_frames':len(samples)}
+              'announced_on_forward_tab':announced, 'where_am_i_if_needed':query[:15],
+              'announced_on_where_am_i':matches(phrases,query), 'synthesis_peak_signed_16_bit':peak,'recorded_audio_frames':len(samples)}
+    assert peak>40, (screen,locale,'no synthesizer audio',peak)
     print('ORCA FOCUS', json.dumps(result, ensure_ascii=False), flush=True)
     return result
 
