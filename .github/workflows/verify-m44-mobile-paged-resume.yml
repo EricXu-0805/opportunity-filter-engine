@@ -1,0 +1,57 @@
+name: Check mobile bilingual résumé pagination and a real Writer edit
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['scripts/verify_deployed_m44_document_roundtrip.py','scripts/verify_m44_writer_roundtrip.py','.github/workflows/verify-m44-mobile-paged-resume.yml']
+permissions:
+  contents: read
+jobs:
+  actual_export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      OFE_EXPECTED_SITE_SHA: 428516b07eb63bdc1bc31693a7d399f51bc6bd96
+      OFE_M44_DIR: /tmp/m44-exports
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0 pypdf==5.9.0
+      - run: python -u scripts/verify_deployed_m44_document_roundtrip.py
+      - run: |
+          if ! /usr/bin/python3 -c 'import uno' || ! command -v soffice; then
+            sudo apt-get update -qq
+            sudo apt-get install -qq --no-install-recommends libreoffice-writer python3-uno fonts-noto-cjk >/tmp/m44-office-install.log
+          fi
+          soffice -env:UserInstallation=file:///tmp/m44-qa-writer --headless --norestore --accept='socket,host=127.0.0.1,port=20147;urp;StarOffice.ServiceManager' >/tmp/m44-office.log 2>&1 &
+          office_pid=$!
+          trap 'kill "$office_pid" 2>/dev/null || true' EXIT
+          /usr/bin/python3 scripts/verify_m44_writer_roundtrip.py "$OFE_M44_DIR"
+          python - <<'PY'
+          import hashlib,json,os,re,sys
+          from pathlib import Path
+          sys.path.insert(0,'scripts')
+          from pypdf import PdfReader
+          from verify_deployed_m44_document_roundtrip import assert_lines,docx_text
+          root=Path(os.environ['OFE_M44_DIR'])
+          doc=docx_text(root/'writer-edited.docx')
+          assert_lines(doc)
+          assert 'Writer edit 089 已核对' in doc
+          pages=[p.extract_text() for p in PdfReader(str(root/'writer-edited.pdf')).pages]
+          assert len(pages)>1
+          assert_lines(' '.join(pages))
+          assert 'Writeredit089已核对' in re.sub(r'\s+','',' '.join(pages))
+          receipt=json.loads((root/'receipt.json').read_text())
+          receipt['writer_edit_reopened']=True
+          receipt['writer_pdf_pages']=len(pages)
+          receipt['writer_files']={f:hashlib.sha256((root/f).read_bytes()).hexdigest() for f in ['writer-edited.pdf','writer-edited.docx']}
+          (root/'receipt.json').write_text(json.dumps(receipt,indent=2,ensure_ascii=False)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m44-public-export-receipt
+          path: /tmp/m44-exports/receipt.json
