@@ -1,0 +1,67 @@
+{
+  "checked": "2026-11-26T15:23:00.701502+00:00",
+  "parent": "9a2b2560e81f708cfeaecdecfb8ece9d74a8d06e",
+  "original_id": "faculty-princeton-math-508a2fbf",
+  "original_count_school": 658,
+  "candidate_count_school": 658,
+  "changed_school_originals": [
+    "faculty-princeton-math-508a2fbf"
+  ],
+  "changed_fields": [
+    "publication_attribution_status",
+    "publication_author_id",
+    "recent_works",
+    "works_gate"
+  ],
+  "school_and_order_preserved": true,
+  "official_faculty": "https://www.math.princeton.edu/people/mihalis-dafermos",
+  "faculty_own_bibliography": "https://web.math.princeton.edu/~dafermos/publications.html",
+  "school_other_work": "https://collaborate.princeton.edu/en/publications/the-stability-problem-for-extremal-black-holes/",
+  "openalex_author": "https://openalex.org/A5088258705",
+  "normal_harvest": true,
+  "verified_papers": [
+    {
+      "selected_work": {
+        "title": "Quasilinear wave equations on asymptotically flat spacetimes with applications to Kerr black holes",
+        "year": 2026
+      },
+      "publisher": "https://msp.org/apde/2026/19-5/p02.xhtml",
+      "doi": "10.2140/apde.2026.19.909",
+      "publisher_byline": "Dafermos, Mihalis"
+    },
+    {
+      "selected_work": {
+        "title": "The interior of dynamical vacuum black holes I: The $C^0$-stability of the Kerr Cauchy horizon",
+        "year": 2025
+      },
+      "publisher": "https://annals.math.princeton.edu/2025/202-2/p01",
+      "doi": "10.4007/annals.2025.202.2.1",
+      "publisher_byline": "Mihalis Dafermos"
+    },
+    {
+      "selected_work": {
+        "title": "The stability problem for extremal black holes",
+        "year": 2025
+      },
+      "publisher": "https://link.springer.com/article/10.1007/s10714-025-03394-1",
+      "doi": "10.1007/s10714-025-03394-1",
+      "publisher_byline": "Dafermos, Mihalis"
+    }
+  ],
+  "existing_unverified_third_work": {
+    "url": "https://www.nature.com/articles/d41586-025-01763-z",
+    "doi": "10.1038/d41586-025-01763-z",
+    "type": "Obituary",
+    "authorship": "Confirmed by publisher, outside the three scholarly works returned by the normal pipeline."
+  },
+  "pre_release_public_papers": 0,
+  "candidate_normal_api_papers": 3,
+  "public_detail": "https://joinalab.com/opportunities/faculty-princeton-math-508a2fbf",
+  "observation_date_changed": false,
+  "production_after_merge": false,
+  "next_princeton_weekly_nominal_utc": "2026-11-27 06:07; does not by itself prove the publication enrichment ran.",
+  "source_pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1437",
+  "head": "6c039e0b523cea810723fd70093daa412426f22f",
+  "tests": 250,
+  "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45848781500"
+}
