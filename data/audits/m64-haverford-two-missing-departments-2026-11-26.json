@@ -1,0 +1,409 @@
+{
+  "captured_at": "2026-11-26T12:19:13.135000+00:00",
+  "method": "Opened both canonical institutional departments with ordinary Chrome, read the same faculty-staff-row card, profile_link-full-name a, and div.italic nodes that the collector uses, then opened all ten admitted individual pages and checked their headings. Parsed only those observed name, href and role nodes through the two units in the normal engine. Ordinary HTTP from the runner returned 403; the 2026–27 academic catalogs independently returned 200. No fields or observation dates for the other 137 campus records were altered.",
+  "primary_departments": {
+    "POLS": "https://www.haverford.edu/political-science/faculty",
+    "FREN": "https://www.haverford.edu/french-francophone-studies/faculty-staff"
+  },
+  "current_annual_catalogs": {
+    "POLS": "https://catalog.haverford.edu/programs/political-science/",
+    "FREN": "https://catalog.haverford.edu/programs/french-francophone-studies-bi-co/"
+  },
+  "site_role_and_person_link_by_card": {
+    "POLS": [
+      {
+        "name": "Craig Borowiak",
+        "profile": "https://www.haverford.edu/users/cborowia",
+        "rank": "Associate Provost for Faculty Development; Professor of Political Science",
+        "selected_id": "faculty-haverford-pols-2973bc22",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Craig Borowiak",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-2973bc22"
+      },
+      {
+        "name": "Anita Isaacs",
+        "profile": "https://www.haverford.edu/users/aisaacs",
+        "rank": "The Benjamin Collins 1920 Professor of Social Science; Professor of Political Science",
+        "selected_id": "faculty-haverford-pols-5363449f",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Anita Isaacs",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-5363449f"
+      },
+      {
+        "name": "Jeffrey Lamken",
+        "profile": "https://www.haverford.edu/users/jlamken",
+        "rank": "Visiting Professor of Political Science",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      },
+      {
+        "name": "Steve McGovern",
+        "profile": "https://www.haverford.edu/users/smcgover",
+        "rank": "Professor of Political Science",
+        "selected_id": "faculty-haverford-pols-d539e435",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Steve McGovern",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-d539e435"
+      },
+      {
+        "name": "Barak Mendelsohn",
+        "profile": "https://www.haverford.edu/users/bmendels",
+        "rank": "Professor of Political Science",
+        "selected_id": "faculty-haverford-pols-bcbccb7d",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Barak Mendelsohn",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-bcbccb7d"
+      },
+      {
+        "name": "Vatsal Naresh",
+        "profile": "https://www.haverford.edu/users/vnaresh",
+        "rank": "Assistant Professor of Political Science",
+        "selected_id": "faculty-haverford-pols-82b8ef8c",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Vatsal Naresh",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-82b8ef8c"
+      },
+      {
+        "name": "Zachary Oberfield",
+        "profile": "https://www.haverford.edu/users/zoberfie",
+        "rank": "Professor and Chair of Political Science",
+        "selected_id": "faculty-haverford-pols-ea121a2f",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Zachary Oberfield",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-ea121a2f"
+      },
+      {
+        "name": "Kathrin Reed",
+        "profile": "https://www.haverford.edu/users/kreed1",
+        "rank": "Visiting Assistant Professor of Political Science",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      },
+      {
+        "name": "Carlos Rueda-Cañón",
+        "profile": "https://www.haverford.edu/users/cruedacano",
+        "rank": "Visiting Assistant Professor of Political Science",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": false,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      },
+      {
+        "name": "Susanna Wing",
+        "profile": "https://www.haverford.edu/users/swing",
+        "rank": "The William Penn Foundation Professor in Political Science; Professor of Political Science",
+        "selected_id": "faculty-haverford-pols-6fc963c1",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Susanna Wing",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-pols-6fc963c1"
+      },
+      {
+        "name": "Robert Mortimer",
+        "profile": "https://www.haverford.edu/users/rmortime",
+        "rank": "Professor Emeritus of Political Science",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": false,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      },
+      {
+        "name": "Sara Shumer",
+        "profile": "https://www.haverford.edu/users/sshumer",
+        "rank": "Professor Emeritus of Political Science",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": false,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      }
+    ],
+    "FREN": [
+      {
+        "name": "Koffi Anyinefa",
+        "profile": "https://www.haverford.edu/users/kanyinef",
+        "rank": "Professor of French and Francophone Studies",
+        "selected_id": "faculty-haverford-fren-9869b546",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Koffi Anyinefa",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-fren-9869b546"
+      },
+      {
+        "name": "Christophe Corbin",
+        "profile": "https://www.haverford.edu/users/ccorbin1",
+        "rank": "Visiting Assistant Professor of French and Francophone Studies",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      },
+      {
+        "name": "Kathryne Corbin",
+        "profile": "https://www.haverford.edu/users/kacorbin",
+        "rank": "Associate Professor and Chair of French and Francophone Studies",
+        "selected_id": "faculty-haverford-fren-28da6fed",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty Kathryne Corbin",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-fren-28da6fed"
+      },
+      {
+        "name": "David Sedley",
+        "profile": "https://www.haverford.edu/users/dsedley",
+        "rank": "The Laurie Ann Levin Professor of Comparative Literature; Professor of French and Francophone Studies",
+        "selected_id": "faculty-haverford-fren-d3091a6d",
+        "first_seen_at": "2026-11-26T12:19:13.135000",
+        "explicit_profile_name_observed": "Faculty David Sedley",
+        "listed_in_annual_catalog_by_exact_name": true,
+        "contact_email_status": "not published on directory card",
+        "public_after": "https://joinalab.com/opportunities/faculty-haverford-fren-d3091a6d"
+      },
+      {
+        "name": "Marcel Gutwirth",
+        "profile": "https://www.haverford.edu/users/mgutwirth",
+        "rank": "Professor Emeritus of French",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": false,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      },
+      {
+        "name": "Karla Alfaro-Urias",
+        "profile": "https://www.haverford.edu/users/kalfarou",
+        "rank": "Faculty Administrative Assistant",
+        "selected_id": null,
+        "first_seen_at": null,
+        "explicit_profile_name_observed": null,
+        "listed_in_annual_catalog_by_exact_name": false,
+        "contact_email_status": "not published on directory card",
+        "public_after": null
+      }
+    ]
+  },
+  "normalized_refresh_and_recovery_replays": [
+    {
+      "source_state": "available",
+      "emitted_rows": 10,
+      "all_original_rows_identical": true,
+      "school_after": 147,
+      "faculty_active": 130,
+      "ledger": {
+        "pols": {
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "observed_count": 7,
+          "retirement_authorized": false,
+          "retained_only_count": 0,
+          "matched_identity_count": null,
+          "failure_reason": null
+        },
+        "fren": {
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "observed_count": 3,
+          "retirement_authorized": false,
+          "retained_only_count": 0,
+          "matched_identity_count": null,
+          "failure_reason": null
+        }
+      },
+      "10_new_ids": [
+        "faculty-haverford-pols-2973bc22",
+        "faculty-haverford-pols-5363449f",
+        "faculty-haverford-pols-d539e435",
+        "faculty-haverford-pols-bcbccb7d",
+        "faculty-haverford-pols-82b8ef8c",
+        "faculty-haverford-pols-ea121a2f",
+        "faculty-haverford-pols-6fc963c1",
+        "faculty-haverford-fren-9869b546",
+        "faculty-haverford-fren-28da6fed",
+        "faculty-haverford-fren-d3091a6d"
+      ],
+      "after_10_last_seen_values": [
+        "2026-11-26T12:19:13.135000"
+      ]
+    },
+    {
+      "source_state": "refused",
+      "emitted_rows": 0,
+      "all_original_rows_identical": true,
+      "school_after": 147,
+      "faculty_active": 130,
+      "ledger": {
+        "pols": {
+          "fetch_status": "ok",
+          "parse_status": "zero_rows",
+          "observed_count": 0,
+          "retirement_authorized": false,
+          "retained_only_count": 0,
+          "matched_identity_count": null,
+          "failure_reason": null
+        },
+        "fren": {
+          "fetch_status": "ok",
+          "parse_status": "zero_rows",
+          "observed_count": 0,
+          "retirement_authorized": false,
+          "retained_only_count": 0,
+          "matched_identity_count": null,
+          "failure_reason": null
+        }
+      },
+      "10_new_ids": [
+        "faculty-haverford-pols-2973bc22",
+        "faculty-haverford-pols-5363449f",
+        "faculty-haverford-pols-d539e435",
+        "faculty-haverford-pols-bcbccb7d",
+        "faculty-haverford-pols-82b8ef8c",
+        "faculty-haverford-pols-ea121a2f",
+        "faculty-haverford-pols-6fc963c1",
+        "faculty-haverford-fren-9869b546",
+        "faculty-haverford-fren-28da6fed",
+        "faculty-haverford-fren-d3091a6d"
+      ],
+      "after_10_last_seen_values": [
+        "2026-11-26T12:19:13.135000"
+      ]
+    },
+    {
+      "source_state": "recovered",
+      "emitted_rows": 10,
+      "all_original_rows_identical": true,
+      "school_after": 147,
+      "faculty_active": 130,
+      "ledger": {
+        "pols": {
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "observed_count": 7,
+          "retirement_authorized": false,
+          "retained_only_count": 0,
+          "matched_identity_count": null,
+          "failure_reason": null
+        },
+        "fren": {
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "observed_count": 3,
+          "retirement_authorized": false,
+          "retained_only_count": 0,
+          "matched_identity_count": null,
+          "failure_reason": null
+        }
+      },
+      "10_new_ids": [
+        "faculty-haverford-pols-2973bc22",
+        "faculty-haverford-pols-5363449f",
+        "faculty-haverford-pols-d539e435",
+        "faculty-haverford-pols-bcbccb7d",
+        "faculty-haverford-pols-82b8ef8c",
+        "faculty-haverford-pols-ea121a2f",
+        "faculty-haverford-pols-6fc963c1",
+        "faculty-haverford-fren-9869b546",
+        "faculty-haverford-fren-28da6fed",
+        "faculty-haverford-fren-d3091a6d"
+      ],
+      "after_10_last_seen_values": [
+        "2026-11-26T12:19:13.135000"
+      ]
+    }
+  ],
+  "initial_all_existing_ids_unchanged": 137,
+  "initial_active_faculty": 120,
+  "published_closure_condition": "After merge and deployment, check ten actual public details. The next scheduled Wednesday school run must separately report both unit outcomes, emit the 10 IDs when the directory renders, preserve all prior contacts on 403, and keep entire-campus freshness independent.",
+  "predeployment_public_api": [
+    {
+      "id": "faculty-haverford-pols-2973bc22",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-2973bc22",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:28:46.918499+00:00"
+    },
+    {
+      "id": "faculty-haverford-pols-5363449f",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-5363449f",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:28:46.918983+00:00"
+    },
+    {
+      "id": "faculty-haverford-pols-d539e435",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-d539e435",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:28:54.681773+00:00"
+    },
+    {
+      "id": "faculty-haverford-pols-bcbccb7d",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-bcbccb7d",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:28:54.637435+00:00"
+    },
+    {
+      "id": "faculty-haverford-pols-82b8ef8c",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-82b8ef8c",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:28:58.274153+00:00"
+    },
+    {
+      "id": "faculty-haverford-pols-ea121a2f",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-ea121a2f",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:28:58.272845+00:00"
+    },
+    {
+      "id": "faculty-haverford-pols-6fc963c1",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-pols-6fc963c1",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:29:03.231572+00:00"
+    },
+    {
+      "id": "faculty-haverford-fren-9869b546",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-fren-9869b546",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:29:03.253338+00:00"
+    },
+    {
+      "id": "faculty-haverford-fren-28da6fed",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-fren-28da6fed",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:29:09.986973+00:00"
+    },
+    {
+      "id": "faculty-haverford-fren-d3091a6d",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-haverford-fren-d3091a6d",
+      "http": 404,
+      "checked_utc": "2026-11-26T12:29:09.986465+00:00"
+    }
+  ]
+}
