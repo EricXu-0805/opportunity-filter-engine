@@ -1,7 +1,7 @@
 {
   "pull_request": 1354,
-  "scenario": "pre-release synthetic profile across the work-history rollout",
-  "predecessor_run": 45812430167,
-  "window_start_utc": "2026-11-26T12:39Z",
-  "reason": "The prior production observation ended before the work-history release."
+  "mode": "across_next_release",
+  "scenario": "Keep an existing real owner with a r\u00e9sum\u00e9 and no experience entries through the next production release and confirm its recovered cloud revision",
+  "prior_observer": 45821665261,
+  "independent_cloud_confirmation": 45829089664
 }

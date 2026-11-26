@@ -97,7 +97,11 @@ with sync_playwright() as pw:
              'before_revision':old['revision'],'only_link_saved_experiences':0,'mode':'fixed' if fixed else 'baseline'}
     gate=prior.get_by_text('Import LinkedIn experience',exact=True)
     if across_release:
-        expect(gate).to_have_count(0)
+        followup = json.loads(Path(__file__).with_name('upgrade.json').read_text()).get('mode') == 'across_next_release'
+        if followup:
+            expect(gate).to_be_visible()
+        else:
+            expect(gate).to_have_count(0)
         old_front = receipt['frontend_sha']
         old_back = receipt['backend_sha']
         receipt['profile_created_before_frontend_sha'] = old_front
@@ -108,7 +112,7 @@ with sync_playwright() as pw:
         checkpoint = {
             'observed_at': datetime.now(timezone.utc).isoformat(), 'frontend_release': old_front,
             'backend_release': old_back, 'stored_revision': old['revision'],
-            'resume_and_owner_supplied_link_restored': True, 'import_present': False,
+            'resume_and_owner_supplied_link_restored': True, 'import_present': followup,
         }
         (out/'pre-release.json').write_text(json.dumps(checkpoint, indent=2))
         observed = {old_front}
@@ -118,7 +122,7 @@ with sync_playwright() as pw:
             response = prior.request.get(SITE)
             match = re.search(r'data-release-sha="([a-f0-9]{40})"', response.text())
             back = prior.request.get(SITE+'/api/health').json().get('release_sha')
-            if not match or match[1] in observed or back==old_back:
+            if not match or match[1] in observed or back==old_back or match[1]!=back:
                 continue
             digest = match[1]
             opt = prior.evaluate("() => JSON.parse(localStorage.getItem('ofe_auth'))")
