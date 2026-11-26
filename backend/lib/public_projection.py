@@ -699,7 +699,6 @@ def public_target_truth(canonical_record: dict) -> dict:
 # envelope the moment a record is closed-but-active — which is the exact shape
 # of the 861 rows this contract exists for.
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
-    "faculty_profile_review",
     "skill_mentions",
     "contact_instruction_sources",
     "contact_instruction_capture",
@@ -944,6 +943,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
             projected.pop("url", None)
             projected.pop("source_url", None)
             if isinstance(projected.get("metadata"), dict):
+                projected["metadata"].pop("faculty_profile_review", None)
                 projected["metadata"].pop("faculty_title_observation", None)
             if directory := reviewed_archive_directory(canonical_record):
                 projected["archived_faculty_directory_url"] = directory

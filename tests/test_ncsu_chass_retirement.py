@@ -296,8 +296,10 @@ def test_one_reviewed_profile_cannot_keep_two_contact_buttons_after_a_name_chang
 
     other_archive = deepcopy(rows[second])
     other_archive["metadata"]["deactivation_reason"] = "retired_title"
-    del other_archive["metadata"]["faculty_profile_review"]
-    assert project_public_detail(other_archive)["url"] == shared
+    retirement_review = {"source_url": shared, "previous_title": "Professor", "reviewed_on": "2026-05-01"}
+    other_archive["metadata"]["faculty_profile_review"] = retirement_review
+    retired = project_public_detail(other_archive)
+    assert retired["url"] == shared and retired["metadata"]["faculty_profile_review"] == retirement_review
 
     unproven = deepcopy(rows[second])
     unproven["metadata"]["faculty_profile_review"]["roster_url"] = shared
