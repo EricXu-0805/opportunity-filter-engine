@@ -1,0 +1,21 @@
+name: Check official opportunity details and record tabs with native keyboard zoom
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-official-detail-keyboard.yml', 'scripts/verify_public_detail_keyboard.py']
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -m playwright install chromium --with-deps >"$RUNNER_TEMP/install.log"
+      - run: xvfb-run -a -s '-screen 0 1600x1100x24' python -u scripts/verify_public_detail_keyboard.py
