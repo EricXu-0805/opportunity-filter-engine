@@ -651,7 +651,7 @@ class TestReleaseRecord:
         _repo_state(monkeypatch)
         for version in (None, {}, {**_DATA_A, "shard_commit": None},
                         {**_DATA_A, "shards_tree": None}):
-            monkeypatch.setattr(gate, "data_version_at", lambda rev: version)
+            monkeypatch.setattr(gate, "data_version_at", lambda rev, version=version: version)
             got = gate.check_release_record(SHA_A, _deployment())
             assert got["status"] == gate.UNVERIFIED
             assert got["reason"] == "evidence_incomplete"
