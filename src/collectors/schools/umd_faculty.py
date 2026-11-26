@@ -26,10 +26,10 @@ All wired directories are server-rendered plain HTML (no WAF challenges at a
   cell (``title_re`` extracts; a titleless staff row keeps the raw name cell
   and fails the require-gate), plain-text email in a sibling cell. Cell
   classes vary per site — per-dept title/email selectors.
-* Physics' Joomla K2 cards use "Last, First", a /people/faculty/current/
-  profile and a "Title … E-mail" extra-field. Mathematics now renders names
-  in individual cards followed by the rank, an optional mailto and a Website
-  link. The older K2 mathematics layout is also supported.
+* Physics and mathematics render individual cards with a "Last, First" name,
+  a rank line and an optional mailto. Physics links to personal profiles in
+  explicit appointment groups. Math labels individual links "Website".
+  The older K2 layouts are also supported.
 * "profile-card" theme (merrill journalism / SPH): whole roster on one page,
   faculty + staff + adjunct mixed — strict require-professor gate (staff carry
   non-academic titles). Merrill's /directory meta-refreshes to
@@ -340,15 +340,19 @@ SCHOOL: dict = {
             "directory_url": "https://umdphysics.umd.edu/people/faculty.html",
             "scrape": {
                 "url": "https://umdphysics.umd.edu/people/faculty.html",
-                # Rank lives in a labeled K2 extra-field run ("Title … E-mail");
-                # /adjunct-faculty/ items share the page — the href gates them.
-                "selectors": {"card": "div.itemContainer",
-                              "name": "h4.catItemTitle a", "link": "h4.catItemTitle a",
-                              "title_re": r"\bTitle\s+(.+?)\s+(?:E-mail|Address|Phone)\b",
-                              "email": ".catItemExtraFields a[href^='mailto:']"},
+                # Current and non-current appointments share this page. The
+                # name link identifies both the person and their roster group.
+                "selectors": {
+                    "card": "div:is(.jl-width-expand,.el-item.jl-panel):has(> h3.tm-title), div.itemContainer",
+                    "name": "h3.tm-title a, h4.catItemTitle a",
+                    "link": "h3.tm-title a, h4.catItemTitle a",
+                    "title_re": r"\bTitle\s+(.+?)\s+(?:E-mail|Address|Phone)\b",
+                    "title_html_re": r"</h3>\s*([^<]+?)\s*<br\b",
+                    "email": "a[href^='mailto:']",
+                },
                 "name_flip": True,
-                "link_filter": r"/people/faculty/current/",
-                "ladder_filter": _LADDER,
+                "link_filter": r"/(?:people|directory)/faculty/current/",
+                "ladder_filter": {**_LADDER, "require": r"\b(?:professor|prof|lecturer)\b"},
             },
         },
         {
