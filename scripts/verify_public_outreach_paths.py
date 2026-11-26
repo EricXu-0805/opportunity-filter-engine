@@ -70,7 +70,7 @@ def install_account(context, oid, extra_favorites=()):
     context.route("https://*.supabase.co/**", route_account)
 
 
-def verify(mode, score_phase=None, locale="en", export_phase=None):
+def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_phase=None):
     oid, home, school, major, interests, query, badge = CASES[mode]
     college = {"caltech": "Division of Physics, Mathematics and Astronomy",
                "ucb": "College of Computing, Data Science, and Society", "uiuc": "Grainger College of Engineering"}[home]
@@ -78,6 +78,8 @@ def verify(mode, score_phase=None, locale="en", export_phase=None):
                "grade": "Junior", "major": major, "research_interests": interests,
                "skills": ["Python", "SQL", "statistics"], "seeking_types": ["internship" if mode == "listing" else "research"],
                "coursework": [], "is_international": False, "can_cold_email": True}
+    if eligibility_phase:
+        profile.update(grade='Freshman', major='History', skills=['writing'], research_interests='data engineering')
     with account_fixture(profile) as session, sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=os.environ.get("CHROME_BIN", "/usr/bin/google-chrome"),
                                      args=["--disable-dev-shm-usage", "--no-sandbox"])
@@ -146,6 +148,29 @@ def verify(mode, score_phase=None, locale="en", export_phase=None):
             return
         card.get_by_role("button", name="展开详情" if locale == "zh" else "Show details").click()
         row = evidence[-1]
+        if eligibility_phase:
+            assert row['opportunity']['title'] == 'Data Engineer Intern'
+            wrong_major = 'Prefers Computer Science, Statistics, Data Science'
+            wrong_resume = 'Resume required — prepare one before applying'
+            for line in row['reasons_fit'] + row['reasons_gap'] + row['next_steps']:
+                expect(card.get_by_text(line, exact=True).first).to_be_visible()
+            verify = card.locator('summary').filter(has_text='What to verify')
+            verify.click()
+            labels = verify.locator('..').locator('li').all_text_contents()
+            if eligibility_phase == 'before':
+                assert wrong_major in row['reasons_gap'] and wrong_resume in row['reasons_gap'], row['reasons_gap']
+                assert 'Eligible majors' not in labels and 'Eligible class years' not in labels, labels
+            else:
+                assert wrong_major not in row['reasons_gap'] and wrong_resume not in row['reasons_gap'], row['reasons_gap']
+                assert {'Eligible majors','Eligible class years','Whether a resume is required'} <= set(labels), labels
+            page.goto(SITE + '/opportunities/' + oid, wait_until='domcontentloaded')
+            expect(page.get_by_role('heading',level=1)).to_contain_text('Data Engineer Intern')
+            text = ' '.join(page.locator('main').inner_text().split())
+            assert 'Class year Not provided' in text and 'Majors System inference' in text, text
+            print('PASS listing evidence', eligibility_phase, oid, page.locator('html').get_attribute('data-release-sha'),
+                  'gaps', row['reasons_gap'], 'verify',labels,'next steps',row['next_steps'],flush=True)
+            browser.close()
+            return
         if score_phase:
             heading = "需要核实的条件" if locale == "zh" else "What to verify"
             meaning = ("匹配分用于按你的资料排列推荐顺序。系统不估算录取或收到回复的概率。" if locale == "zh" else
@@ -224,7 +249,9 @@ def verify(mode, score_phase=None, locale="en", export_phase=None):
 
 
 if __name__ == "__main__":
-    if sys.argv[1].startswith("export-"):
+    if sys.argv[1].startswith("eligibility-"):
+        verify("listing", eligibility_phase=sys.argv[1].split("-")[1])
+    elif sys.argv[1].startswith("export-"):
         verify("inquiry", export_phase=sys.argv[1].split("-")[1])
     elif sys.argv[1].startswith("score-"):
         _, phase, locale = sys.argv[1].split("-")

@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   outreach:
-    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription') && !startsWith(github.event.head_commit.message, 'Verify M25 released export')"
+    if: "!startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription') && !startsWith(github.event.head_commit.message, 'Verify M25 released export') && !startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility')"
     name: Public match, actions and unsent template (${{ matrix.target }})
     runs-on: ubuntu-24.04
     timeout-minutes: 6
@@ -133,3 +133,17 @@ jobs:
       - run: python -u scripts/verify_public_outreach_paths.py "export-$PHASE"
         env:
           PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M25 released export after') && 'after' || 'before' }}
+
+  listing-eligibility:
+    name: Released listing card and detail for a first-year History student
+    if: startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.55.0
+      - run: python -u scripts/verify_public_outreach_paths.py "eligibility-$PHASE"
+        env:
+          PHASE: ${{ startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility after') && 'after' || 'before' }}
