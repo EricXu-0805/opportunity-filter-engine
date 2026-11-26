@@ -1,0 +1,90 @@
+{
+  "prior_production_chrome_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/17788bde55251d9b2235c17bf6a5b94793678bb3/data/audits/observed-faculty-2026-11-26/m180-fourth-release-137-live-faculty-details.json",
+  "scope": "Read-only, three fourth-release regression controls including the M65 sample. Their school CMS names omit a generation suffix, but each stable CMS post links to one official personal profile whose heading, college card and retirement card agree on the exact spelling and solely retired role. Only the three identified CMS posts and original URLs were reviewed.",
+  "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "observed_from": "2026-11-26T12:39:04.334317+00:00",
+  "observed_until": "2026-11-26T12:39:53.818808+00:00",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-d8c4ba8d",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-d8c4ba8d",
+      "production_name": "Samuel Pond",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91424?_fields=id,title,link,group",
+      "wp_name": "Samuel Pond",
+      "source_groups": [
+        11847,
+        11927
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/pond/",
+      "profile_heading": "Samuel Pond III",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Samuel Pond III",
+        "rank": "Emeritus Associate Professor",
+        "href": "https://chass.ncsu.edu/people/pond/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/psychology/retired-pscyhology-faculty/",
+      "retired_card": {
+        "label": "Samuel Pond III",
+        "rank": "Emeritus Associate Professor",
+        "href": "https://chass.ncsu.edu/people/pond/"
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-165fe06b",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-165fe06b",
+      "production_name": "David Greene",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91286?_fields=id,title,link,group",
+      "wp_name": "David Greene",
+      "source_groups": [
+        11847,
+        11967
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/dbgreene/",
+      "profile_heading": "David Greene Jr",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "David Greene Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/dbgreene/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/ihss/ids-retired-faculty/",
+      "retired_card": {
+        "label": "David Greene Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/dbgreene/"
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-1894dc04",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-1894dc04",
+      "production_name": "Philip Blank",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90936?_fields=id,title,link,group",
+      "wp_name": "Philip Blank",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/peblank/",
+      "profile_heading": "Philip Blank Jr",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Philip Blank Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/peblank/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Philip Blank Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/peblank/"
+      }
+    }
+  ]
+}
