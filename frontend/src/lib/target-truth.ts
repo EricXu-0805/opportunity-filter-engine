@@ -363,6 +363,9 @@ export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>
   const tamuFacultyCatalog = opp.source === 'tamu_faculty'
     && citation.startsWith('https://catalog.tamu.edu/')
     && citation.includes('/#faculty:~:text=');
+  if (opp.source === 'miami_faculty' && citation === 'https://biology.as.miami.edu/people/index.html#:~:text=DeAngelis') {
+    return undefined; // The named roster entry is a citation; its person link contains a private address.
+  }
   if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster || tamuFacultyCatalog) {
     // These collectors store the person's link in url and the roster in source_url.
     // A roster-only card has no separate profile.

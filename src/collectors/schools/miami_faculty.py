@@ -74,6 +74,8 @@ ship email-less; recover in a profile-enrich pass that resolves each
 
 from __future__ import annotations
 
+from src.normalizers.deactivate_stale_faculty import canonical_profile_url
+
 from .. import faculty_graph
 
 # ---- Shared Cascade CMS "people-profile" component -------------------------
@@ -102,6 +104,27 @@ def _cascade(short: str, name: str, majors: list[str], url: str) -> dict:
         "scrape": {"url": url, "selectors": _CASCADE_SEL,
                    "ladder_filter": _CASCADE_LADDER},
     }
+
+
+_BIOLOGY_DIRECTORY = "https://biology.as.miami.edu/people/index.html"
+_DEANGELIS_CITATION = _BIOLOGY_DIRECTORY + "#:~:text=DeAngelis"
+_DEANGELIS_OLD_NAME = "\u200cDon DeAngelis"
+_DEANGELIS_ID = "faculty-miami-bio-4dfe1b88"
+_DEANGELIS_EMAIL = "ddeangelis@miami.edu"
+_DEANGELIS_PROFILE = "people.miami.edu/profile/" + _DEANGELIS_EMAIL
+
+
+def _biology() -> dict:
+    dept = _cascade("BIO", "Department of Biology",
+                    ["Biology", "Marine Science and Biology", "Microbiology and Immunology", "Neuroscience"],
+                    _BIOLOGY_DIRECTORY)
+    # The name's invisible leading character was part of its original published ID.
+    dept["scrape"]["selectors"] = {**_CASCADE_SEL, "name_strip": r"^\u200c(?=Don DeAngelis$)"}
+    dept["reserved_profile_identity"] = {
+        "name": _DEANGELIS_OLD_NAME, "names": ("Don DeAngelis", _DEANGELIS_OLD_NAME),
+        "profile": _DEANGELIS_PROFILE, "email": _DEANGELIS_EMAIL,
+    }
+    return dept
 
 
 # ---- Mathematics: legacy <p>-list template ---------------------------------
@@ -136,10 +159,7 @@ SCHOOL: dict = {
         _cascade("CHEM", "Department of Chemistry",
                  ["Chemistry", "Biochemistry and Molecular Biology"],
                  "https://chemistry.as.miami.edu/people/faculty/index.html"),
-        _cascade("BIO", "Department of Biology",
-                 ["Biology", "Marine Science and Biology",
-                  "Microbiology and Immunology", "Neuroscience"],
-                 "https://biology.as.miami.edu/people/index.html"),
+        _biology(),
         _cascade("ENG", "Department of English", ["English"],
                  "https://english.as.miami.edu/people/index.html"),
         _cascade("HIST", "Department of History", ["History"],
@@ -226,8 +246,15 @@ SCHOOL: dict = {
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
-                                            unit_ledger=unit_ledger)
+    rows = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
+    for row in rows:
+        if row["id"] == _DEANGELIS_ID and canonical_profile_url(row.get("url")) in (
+            _DEANGELIS_PROFILE, canonical_profile_url(_BIOLOGY_DIRECTORY),
+        ):
+            # His named card links to an address-bearing profile. Keep that
+            # identity in the corpus and cite the public roster on the product.
+            row["source_url"] = _DEANGELIS_CITATION
+    return rows
 
 
 def merge_into_processed(opps: list[dict]):
