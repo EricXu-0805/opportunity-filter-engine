@@ -48,6 +48,12 @@ _WISCONSIN_WINDOW = ProgramWindow(
     "Apply by February 10, 2027.", date(2026, 11, 1),
     "Open November 1, 2026–February 10, 2027.", "America/Chicago", "November 1, 2026",
 )
+STARS_HOST = "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/"
+STARS_OLD_HOST = "https://www.bumc.bu.edu/gms/students/dei/undergraduate-summer-and-youth-programs/stars/"
+STARS_WINDOW = ProgramWindow(
+    STARS_HOST, STARS_HOST, date(2026, 11, 26), date(2027, 1, 15),
+    "application due date January 15th, 2027 at 11:59pm",
+)
 _DART = "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web"
 _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 
@@ -55,6 +61,7 @@ _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 # deadline.") names the cycle elsewhere on the same page ("View the 2027
 # program flyer!", "SURF 2027 application portal"); that is the year here.
 WINDOWS: dict[tuple[str, str], ProgramWindow] = {
+    ("bu", "stars"): STARS_WINDOW,
     ("duke", "focus_program"): ProgramWindow(
         "https://focus.duke.edu/", "https://focus.duke.edu/for-students/prospective-students/entryprocess",
         date(2026, 11, 26), date(2026, 5, 13), _DUKE_FOCUS_DATES,
@@ -149,7 +156,13 @@ SMU_WINDOW = ProgramWindow(
     date(2026, 11, 26), date(2027, 2, 22), _SMU_DATES,
     date(2026, 11, 19), _SMU_DATES, "America/New_York", "11/19/2026",
 )
+STARS_SRO_IDS = ("sro-60f60fbd", "sro-bc33bc08")
+_STARS_SRO = "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars"
+_STARS_SRO_CURRENT = _STARS_SRO + "-stars-program"
+_STARS_SRO_ALIAS = _STARS_SRO + "-program-stars"
 _AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-60f60fbd"): ("2027-02-01", replace(STARS_WINDOW, url=_STARS_SRO_CURRENT)),
+    ("uiuc_sro", "sro-bc33bc08"): ("2027-02-01", replace(STARS_WINDOW, url=_STARS_SRO_ALIAS)),
     ("uiuc_sro", "sro-3ec4ea4e"): ("2027-02-01", ProgramWindow(
         _CRISP_DIRECTORY, _CRISP_HOST, date(2026, 11, 26), date(2027, 1, 31), _CRISP_DATES,
         date(2026, 11, 15), _CRISP_DATES, "America/Indiana/Indianapolis", "Nov. 15, 2026",
@@ -173,6 +186,8 @@ _AGGREGATOR_WINDOWS = {
 
 
 _SRO_APPLICATION_LINKS = {
+    _STARS_SRO_CURRENT: {STARS_HOST},
+    _STARS_SRO_ALIAS: {STARS_OLD_HOST, STARS_HOST},
     _CRISP_DIRECTORY: {_CRISP_DIRECTORY, _CRISP_HOST},
     SMU_DIRECTORY: {SMU_DIRECTORY, _SMU_PROGRAM, _SMU_PROGRAM.lower()},
     WISCONSIN_DIRECTORY: {WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
@@ -186,7 +201,10 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         return None
     deadline = record.get("deadline")
     if deadline != window.closes_on.isoformat() and not (
-        deadline == original_estimate and record.get("deadline_is_estimate") is True
+        deadline == original_estimate and (
+            record.get("deadline_is_estimate") is True
+            or (window.url == _STARS_SRO_CURRENT and record.get("deadline_is_estimate") is False)
+        )
     ):
         return None
     source_url = record.get("source_url")
@@ -203,6 +221,8 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         # SRO records the pagination URL as source_url. The stable detail URL
         # identifies the entry; the deep page supplies its external host link.
         if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
+            return None
+        if window.page == STARS_HOST and record.get("organization") != "Boston University":
             return None
         application = record.get("application")
         if not isinstance(application, dict) or application.get("application_url") not in _SRO_APPLICATION_LINKS[window.url]:
@@ -244,6 +264,11 @@ def reviewed_window(record: object) -> ProgramWindow | None:
         return None
     # The legacy Wisconsin host redirects to a multi-year program. A later
     # campus harvest with a different explicit date describes another cycle.
+    if window is STARS_WINDOW and (
+        record.get("id") != "bu-bbc659c6ac92" or record.get("source") != "bu_research_programs"
+        or record.get("deadline") not in (None, window.closes_on.isoformat())
+    ):
+        return None
     if window is _WISCONSIN_WINDOW and (
         record.get("id") != "wisc-86cba49b83d7" or record.get("source") != "wisc_external_research"
         or record.get("deadline") not in (None, window.closes_on.isoformat())
@@ -261,6 +286,8 @@ def apply_program_window(record: dict) -> None:
     """
     window = reviewed_window(record)
     if window is not None:
+        incoming_date = record.get("deadline")
+        incoming_estimate = record.get("deadline_is_estimate")
         record["deadline"] = window.closes_on.isoformat()
         record["deadline_is_estimate"] = False
         record["is_rolling"] = False
@@ -279,11 +306,16 @@ def apply_program_window(record: dict) -> None:
                 if isinstance(application, dict) and application.get("application_url") == window.url:
                     application["application_url"] = window.page
             if record["source"] == "uiuc_sro":
-                # Keep the directory's original, anticipated date alongside the reviewed host date.
+                # The directory may publish an explicit date that differs from the host's.
+                if window.page == STARS_HOST:
+                    record["application"]["application_url"] = STARS_HOST
                 original_estimate, _ = _AGGREGATOR_WINDOWS[(record["source"], record["id"])]
-                metadata["superseded_directory_deadline"] = {
-                    "date": original_estimate, "anticipated": True, "source_url": window.url,
-                }
+                if incoming_date == original_estimate:
+                    metadata["superseded_directory_deadline"] = {
+                        "date": original_estimate,
+                        "anticipated": incoming_estimate is True,
+                        "source_url": window.url,
+                    }
             metadata.pop("deadline_note", None)
             stamps = metadata.get("inferred_fields")
             if isinstance(stamps, dict):
