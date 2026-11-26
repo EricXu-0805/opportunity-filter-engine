@@ -1,6 +1,6 @@
 """
 Streamlit MVP — Opportunity Filter Engine
-Run with: streamlit run src/app/streamlit_app.py
+Run with: streamlit run archive/streamlit/streamlit_app.py
 """
 
 import streamlit as st
