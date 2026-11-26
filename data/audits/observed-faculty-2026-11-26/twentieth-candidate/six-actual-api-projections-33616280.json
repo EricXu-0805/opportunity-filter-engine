@@ -1,0 +1,79 @@
+{
+  "candidate": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "routes": [
+    {
+      "id": "faculty-tamu-ece-d96cfd82",
+      "name": "Serap Savari",
+      "profile": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+      "general_source": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+      "faculty_title": "Associate Professor, Electrical & Computer Engineering",
+      "expected_title": "Associate Professor, Electrical & Computer Engineering",
+      "source": "tamu_faculty",
+      "active": true,
+      "quote": null
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "name": "Krzysztof Kapulkin",
+      "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "general_source": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "faculty_title": "Professor of Mathematics · Dual Appointment: Computer Science",
+      "expected_title": "Professor of Mathematics · Dual Appointment: Computer Science",
+      "source": "vanderbilt_faculty",
+      "active": true,
+      "quote": {
+        "text": "Professor of Mathematics · Dual Appointment: Computer Science",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-vanderbilt-math-727dd848",
+      "name": "Philip Crooke",
+      "profile": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+      "general_source": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+      "faculty_title": "",
+      "expected_title": "",
+      "source": "vanderbilt_faculty",
+      "active": true,
+      "quote": null
+    },
+    {
+      "id": "faculty-vanderbilt-math-f7a0a768",
+      "name": "Edward Saff",
+      "profile": "https://as.vanderbilt.edu/math/bio/edward-saff",
+      "general_source": "https://as.vanderbilt.edu/math/bio/edward-saff",
+      "faculty_title": "",
+      "expected_title": "",
+      "source": "vanderbilt_faculty",
+      "active": true,
+      "quote": null
+    },
+    {
+      "id": "faculty-ucsd-nano-8a42e65d",
+      "name": "Zeinab Jahed",
+      "profile": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "general_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "faculty_title": "Associate Professor",
+      "expected_title": "Associate Professor",
+      "source": "ucsd_faculty",
+      "active": true,
+      "quote": {
+        "text": "Associate Professor",
+        "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-ucf-cs-edfc1c62",
+      "name": "Ali Al Kinoon",
+      "profile": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "general_source": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "faculty_title": "Lecturer",
+      "expected_title": "Lecturer",
+      "source": "ucf_faculty",
+      "active": true,
+      "quote": null
+    }
+  ]
+}
