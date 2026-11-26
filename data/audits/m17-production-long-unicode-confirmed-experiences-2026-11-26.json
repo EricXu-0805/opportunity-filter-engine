@@ -1,0 +1,78 @@
+{
+  "base": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+  "environment": "official site using one dedicated real anonymous guest",
+  "published_at": "2026-11-26T23:06:47.306860+00:00",
+  "before": {
+    "frontend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "backend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a"
+  },
+  "site": "https://joinalab.com/",
+  "inputs_entered_through_normal_form": 10,
+  "length_per_entry_unicode_codepoints": [
+    6000,
+    6000,
+    6000,
+    6000,
+    6000,
+    6000,
+    6000,
+    6000,
+    6000,
+    6000
+  ],
+  "length_per_entry_utf16_units": [
+    6096,
+    6096,
+    6096,
+    6096,
+    6096,
+    6096,
+    6096,
+    6096,
+    6096,
+    6096
+  ],
+  "final_codepoints": 60000,
+  "all_ten_confirmed": true,
+  "cloud_revision_nine": 1,
+  "unchanged_while_offline": 1,
+  "cloud_revision_tenth_candidate": 2,
+  "cloud_revision_all_confirmed": 3,
+  "older_nine_rows_ids_revisions_and_entire_text_unchanged": true,
+  "single_6001_and_total_60001_refused_with_input_and_cloud_preserved": true,
+  "all_ten_exact_texts_read_in_normal_controls_after_clean_browser": true,
+  "client_simulated_disconnect": {
+    "mode": "blocked only owned CAS in browser before sending",
+    "attempts_blocked": 1,
+    "production_server_failure_observed": false,
+    "real_post_reconnect_CAS_and_clean_browser_read_passed": true
+  },
+  "observed_own_write_http_statuses": [
+    200
+  ],
+  "final_synthetic_text_sha256": [
+    "75cdd4981e054e5f235e23ce95bd8a62f5b9ed20182f2f0f6cfdf86fe2b3db1a",
+    "87715dfe827cdde8a07e385162acd0bbddcd24eb0bb8e40cf3563d1d927fd5b0",
+    "49de563b5cf74eaa040ad40c1e5b2ba96723bf4255f157582304ecc799d1b789",
+    "5b7ad027f05dee5ea5e028d8722e724f7e613d1baf52f5ad5995cf71961d1226",
+    "6e22ba60cf03abab063989946dba7928b6757aeb1da2ab3f8030bb4c1c69ebc3",
+    "27f77d4a6f6c5a5caa60b8112b24ba0940ceb116bf2e98940b2fc43e82c943ae",
+    "b6330fd40c60f81cb27e51119e09094f0921f06809c3d47597c8cf8f0f208e90",
+    "151cb45b3d52c42536eba77be83349717cf628114231330b5c83602ab2fc2932",
+    "607502d5663bc9257af122359d1d78f686dd2b4bcad45e48eac72350b7b685ea",
+    "6720c5448b1686a3c735e1984948021c0121f8e2c69dfabd2ecd17bfcef6a3b5"
+  ],
+  "normal_deterministic_matching_request": {
+    "http": 200,
+    "confirmed_entries": 10,
+    "full_codepoints": 60000,
+    "same_ID_revision_and_full_text_all_ten": true
+  },
+  "after": {
+    "frontend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "backend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a"
+  },
+  "source_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45908840916/job/140212015696",
+  "probe_commit": "0a6da021460b13f281088912af77c0642f3341fe",
+  "acceptance_scope": "Production profile and deterministic matching with self-authored synthetic entries. An actual server outage was not observed."
+}
