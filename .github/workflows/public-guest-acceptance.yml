@@ -25,3 +25,11 @@ jobs:
       - run: python -u data/audits/verify_public_guest_20261126.py
         env:
           CHECK_CASE: ${{ matrix.case }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-guest-${{ matrix.case }}
+          path: evidence/*.png
+          if-no-files-found: ignore
+          retention-days: 30

@@ -5,6 +5,7 @@ import json
 import os
 import re
 import zlib
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from playwright.sync_api import expect, sync_playwright
@@ -100,6 +101,10 @@ def locate_results(page):
         generate.click()
     page.wait_for_url(re.compile(r"/results"),timeout=45000)
     page.locator('[id^=match-card-]').first.wait_for(timeout=85000)
+    if page.get_by_test_id("switcher-confirm").is_visible():
+        record("dismiss optional school confirmation")
+        page.keyboard.press("Escape")
+        expect(page.get_by_test_id("switcher-confirm")).not_to_be_visible(timeout=5000)
 
 def test(page):
     target=SITE+"/"
@@ -133,11 +138,13 @@ def test(page):
         record("generate from form")
         locate_results(page)
         record("search for public Amherst record")
+        page.get_by_role("tab",name=re.compile(r"^All\b")).click()
         page.locator("#results-search-input").fill("Gregory")
         card=page.locator("#match-card-"+AMHERST_ID)
         card.wait_for(timeout=60000)
         card.get_by_role("button",name="Show details",exact=True).click()
         expect(card.get_by_text(PHRASE,exact=True)).to_be_visible(timeout=20000)
+        card.screenshot(path="evidence/amherst-card.png",animations="disabled")
         record("Amherst card verified",id=AMHERST_ID,displayed_reason=PHRASE)
     else:
         campus=page.get_by_test_id("university-card-uiuc")
@@ -153,10 +160,17 @@ def test(page):
         oid=first.get_attribute('id').removeprefix("match-card-")
         button=first.get_by_role("button",name="Draft email",exact=True)
         expect(button).to_be_enabled(timeout=40000)
+        button.scroll_into_view_if_needed()
+        page.wait_for_timeout(600)
+        if page.get_by_test_id("switcher-confirm").is_visible():
+            page.keyboard.press("Escape")
+        if button.evaluate("e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !e.contains(hit)}"):
+            record("visible button occluded",dialogs=page.get_by_role("dialog").get_by_role("heading").all_text_contents(),overlay=button.evaluate("e=>{const r=e.getBoundingClientRect(),h=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return [h.tagName,h.className.toString().slice(0,180)]}"))
         button.click()
         editor=page.locator("#cold-email-body")
         expect(editor).to_be_visible(timeout=60000)
         assert editor.input_value().strip() and evidence.get('free_variants',0)>0 and evidence.get('inherited_names_in_templates')==0
+        editor.screenshot(path="evidence/unconfirmed-template.png",animations="disabled")
         record("unconfirmed template editor verified",opportunity_id=oid,visible_editor=True)
         page.goto(SITE+"/",wait_until="domcontentloaded")
         confirm=page.get_by_role("button",name=re.compile(r"Keep this level for Skill 1 \("))
@@ -170,8 +184,10 @@ def test(page):
         expect(page.locator("#cold-email-body")).to_be_visible(timeout=60000)
         assert evidence.get("free_variants",0)>0
         record("confirmed profile reached template editor",confirmed_count=1)
+        page.locator("#cold-email-body").screenshot(path="evidence/confirmed-template.png",animations="disabled")
     assert evidence['signed_up'] and evidence.get('match_status')==200 and evidence.get('ai_refined') is False
 
+Path("evidence").mkdir(exist_ok=True)
 with sync_playwright() as pw:
     browser=pw.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox","--disable-dev-shm-usage"])
     context=browser.new_context(locale="en-US",service_workers="block")
@@ -180,7 +196,7 @@ with sync_playwright() as pw:
     page=context.new_page();page.on("response",responses);page.set_default_timeout(25000)
     try: test(page)
     except Exception as ex:
-        print(json.dumps({"failed_stage":stage,"error_class":type(ex).__name__,"error":re.sub(r'https?://\S+','[URL]',str(ex))[:400],"flow_status":page.get_by_role("status").all_inner_texts()[:6],"validation":page.locator("#match-validation").all_inner_texts(),"page_path":urlsplit(page.url).path,"headings":page.get_by_role("heading").all_text_contents()[:9],"statuses":page.get_by_role("alert").all_text_contents()[:2],"buttons":page.get_by_role("button").all_text_contents()[:18]}),flush=True)
+        print(json.dumps({"failed_stage":stage,"error_class":type(ex).__name__,"error":re.sub(r'https?://\S+','[URL]',str(ex))[-1100:],"dialogs":page.get_by_role("dialog").get_by_role("heading").all_text_contents()[:5],"flow_status":page.get_by_role("status").all_inner_texts()[:6],"validation":page.locator("#match-validation").all_inner_texts(),"page_path":urlsplit(page.url).path,"headings":page.get_by_role("heading").all_text_contents()[:9],"statuses":page.get_by_role("alert").all_text_contents()[:2],"buttons":page.get_by_role("button").all_text_contents()[:18]}),flush=True)
         raise SystemExit(1) from None
     finally:
         print("PUBLIC RECEIPT",json.dumps(evidence),flush=True);browser.close()
