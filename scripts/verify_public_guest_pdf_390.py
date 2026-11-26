@@ -12,7 +12,10 @@ repo_evidence = []
 email_case = '--historical-email' in sys.argv
 template_reads = 0
 listing_id = 'simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95'
+match_case = '--verify-match-input' in sys.argv
 if skill_case: marker += ' PyTorch'
+if match_case: marker += ' MATLAB'
+match_reads = []
 receipt = {'site':site,'only_synthetic_guest':True,'viewports':[],'started':datetime.now(timezone.utc).isoformat()}
 records = []
 auth_sessions = []
@@ -29,6 +32,11 @@ blocked = 0
 
 def capture(r):
     u=urlsplit(r.url)
+    if match_case and u.hostname=='joinalab.com' and r.ok and u.path=='/api/matches/view' and r.request.method=='POST':
+        body=r.request.post_data_json
+        payload=r.json()
+        if payload['results']:
+            match_reads.append({'skills':body['profile']['hard_skills'],'results':len(payload['results'])})
     if u.hostname=='joinalab.com' and r.status==200 and u.path=='/api/resume/github/pytorch':
         repo_evidence.extend(e for e in r.json().get('skill_evidence',[]) if e['skill']=='PyTorch')
     if u.hostname != db_host or r.status!=200: return
@@ -65,6 +73,9 @@ def guard(route):
         return route.continue_()
     if u.hostname=='joinalab.com' and r.method=='POST':
         if u.path=='/api/events':return route.continue_()
+        if match_case and u.path=='/api/matches/view' and u.query=='llm=false':
+            assert r.post_data_json['profile']['name']=='Synthetic PDF check'
+            return route.continue_()
         if email_case and u.path=='/api/cold-email/variants':
             body=r.post_data_json
             assert body['opportunity_id']==listing_id and body['profile']['name']=='Synthetic PDF check'
@@ -166,6 +177,7 @@ with sync_playwright() as pw:
                         mid=read_owned()
                         if repo_evidence and by_name(mid['profile_data'],'Python'):break
                     assert repo_evidence and by_name(mid['profile_data'],'Python')['source']=='github'
+                    if match_case: assert by_name(mid['profile_data'],'MATLAB')['source']=='resume'
                     assert not by_name(mid['profile_data'],'PyTorch').get('confirmed')
                     historical='--historical-tailor' in sys.argv
                     if historical:
@@ -216,14 +228,35 @@ with sync_playwright() as pw:
                         final=read_owned()
                         if not final['profile_data'].get('resume_text'):break
                     assert not final['profile_data'].get('resume_text') and by_name(final['profile_data'],'Python')
-                    pg.reload(wait_until='domcontentloaded')
-                    expect(pg.locator('#student_name')).to_have_value('Synthetic PDF check')
+                    fresh=cold.new_page()
+                    go(fresh)
+                    expect(fresh.locator('#student_name')).to_have_value('Synthetic PDF check')
+                    expect(fresh.get_by_role('button',name='移除文件',exact=True)).to_have_count(0)
                     raw=read_owned()
                     assert raw==final
                     surviving=by_name(raw['profile_data'],'PyTorch')
                     if '--expect-retained' in sys.argv:
                         assert surviving and surviving['source']=='github' and repo_evidence[0]['repo'] in surviving['evidence'] and not surviving.get('confirmed'),surviving
                     else: assert surviving is None,surviving
+                    if match_case:
+                        eligible=pg.get_by_role('button',name='生成匹配',exact=True)
+                        if not eligible.is_enabled():
+                            chip=pg.locator('fieldset button[aria-pressed]').first
+                            if chip.get_attribute('aria-pressed')=='false': chip.click()
+                        expect(eligible).to_be_enabled()
+                        pg.bring_to_front()
+                        prior_imports=len(repo_evidence)
+                        eligible.click()
+                        for _ in range(200):
+                            pg.wait_for_timeout(250)
+                            if match_reads:break
+                        assert match_reads and len(repo_evidence)==prior_imports,'fresh matches must use the already saved skills'
+                        skills={s['name']:s for s in match_reads[-1]['skills']}
+                        assert 'MATLAB' not in skills and 'Python' in skills
+                        if '--expect-retained' in sys.argv:
+                            assert skills['PyTorch']['source']=='github' and skills['PyTorch']['evidenced'] is True and not skills['PyTorch'].get('confirmed')
+                        else: assert 'PyTorch' not in skills
+                        receipt['fresh_match']={'returned_results':match_reads[-1]['results'],'resume_only_matlab_removed':True,'corroborated_pytorch':skills.get('PyTorch'),'another_github_skill':'Python','new_imports':len(repo_evidence)-prior_imports}
                     if historical:
                         target,editor=draft()
                         expect(editor).to_have_value(sample)
