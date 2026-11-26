@@ -4,8 +4,7 @@ from playwright.sync_api import sync_playwright, expect
 from verify_m25_results_20261126 import capture, enter_results, is_view, out, receipt, site
 
 cases = [
-    ("uiuc-sro-database", "Summer Research Opportunities Database", "https://researchops.web.illinois.edu/", "how to use"),
-    ("uiuc-siebel-ugresearch", "Undergraduate Research with CS Faculty", "https://siebelschool.illinois.edu/research/undergraduate-research", "year long research"),
+    ("ext-uhouston-reu", "Frontiers of Data-Driven Computing", "https://sites.google.com/cougarnet.uh.edu/reu/apply", "april 2nd"),
 ]
 
 with sync_playwright() as pw:
@@ -16,7 +15,7 @@ with sync_playwright() as pw:
     page.on("response", capture)
     page.set_default_timeout(40000)
     try:
-        enter_results(page, "uiuc")
+        enter_results(page, "ucb")
         for oid, query, source, qualifier in cases:
             entry = receipt[oid] = {"source": source}
             official = page.request.get(source)
@@ -25,7 +24,7 @@ with sync_playwright() as pw:
             api = page.request.get(site + "/api/opportunities/" + oid, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
             entry["detail_http"] = api.status
             if not api.ok:
-                assert oid == "ext-utexas-tacc" and api.status in (404, 410)
+                assert oid in {"ext-utexas-tacc", "ext-uhouston-reu"} and api.status in (404, 410)
                 entry["public_page_http"] = page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded").status
                 from urllib.parse import quote
                 with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as missing:
