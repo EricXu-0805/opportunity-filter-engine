@@ -1,0 +1,70 @@
+{
+  "product_commit": "02626ceb9ae0c6c2d9a559f8aef4cae0c3aa0507",
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1462",
+  "isolated_browser_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875133552/job/140100177771",
+  "evidence_scope": "Isolated real Chromium, local Auth/Postgres/PostgREST, application APIs and a synthetic fixture pair. No production acceptance claimed.",
+  "generated_pdf_and_account_isolation": {
+    "actual_chromium_gotrue_postgrest_fastapi": true,
+    "generated_pdf": true,
+    "current_quote_digest_and_no_other_pdf_text_sent": true,
+    "visible_current_resume_source_receipt": true,
+    "controlled_opportunities": [
+      "e2e-actionable-research",
+      "e2e-related-research"
+    ],
+    "scores_target_readiness_eligibility_control": [
+      [
+        76.3,
+        72.0,
+        59.0,
+        68.8
+      ],
+      [
+        77.8,
+        76.0,
+        59.0,
+        68.8
+      ],
+      [
+        76.3,
+        72.0,
+        59.0,
+        68.8
+      ],
+      [
+        76.3,
+        72.0,
+        59.0,
+        68.8
+      ]
+    ],
+    "withdrawal_reconfirmation_replacement_removal_and_other_owner": true,
+    "own_database_revisions": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "network": "loopback only"
+  },
+  "long_material_and_write_recovery": {
+    "boundary": "actual form and loopback real registered Auth / PostgREST",
+    "nine_historical_entries_preserved": true,
+    "total_confirmed_codepoints": 60000,
+    "6001_rejected_original_input_retained": true,
+    "60001_rejected_original_input_retained": true,
+    "6000_astral_unicode_recovered_after_write_503": true,
+    "clean_browser_readback_and_explicit_confirmation": true,
+    "revisions": [
+      2,
+      3,
+      4
+    ]
+  },
+  "before_fix_official_guest": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45873733981/job/140095430964",
+  "first_candidate_fingerprint_error": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874412653/job/140097751578",
+  "ready_for_post_release": "scripts/verify_m17_resume_confirmed.py with M17_RESUME_EXPECT_FIXED=1 and the actual production SHA",
+  "production_fix_verified": false
+}
