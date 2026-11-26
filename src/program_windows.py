@@ -40,6 +40,7 @@ _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
 _HAAS = "https://research.berkeley.edu/haas-scholars/"
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
 _SFP = "https://sfp.caltech.edu/undergraduate-research/programs/"
+_DART = "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web"
 _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 
 # A page that writes its dates without a year ("March 1: Application
@@ -101,6 +102,10 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
     ("caltech", "wave_fellows"): ProgramWindow(
         _SFP + "wavefellows", _SFP + "wavefellows/application_information", _REVIEWED, date(2027, 1, 8),
         "Applications are due on or before January 8.",
+    ),
+    ("wlu", "wlu_dart"): ProgramWindow(
+        _DART, _DART, date(2026, 11, 26), date(2026, 2, 8),
+        "via email by February 8th",
     ),
 }
 

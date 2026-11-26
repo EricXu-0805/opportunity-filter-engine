@@ -378,3 +378,17 @@ def test_chen_institute_remains_a_reference_while_the_two_fellowships_have_separ
     assert not timing["explicit"].get("application_window")
     assert _row("caltech", "wave_fellows")["deadline"] == "2027-01-08"
     assert _row("caltech", "surf")["deadline"] == "2027-02-22"
+
+
+def test_wlu_dart_keeps_its_identity_and_closes_the_2026_neuroscience_fellowship(monkeypatch):
+    row = _row("wlu", "wlu_dart")
+    assert row["id"] == "wlu-88e9e20591ba"
+    assert row["department"] == "Neuroscience Program"
+    assert row["eligibility"]["preferred_year"] == []
+    assert row["paid"] == "stipend"
+    assert (row["deadline"], row["is_rolling"]) == ("2026-02-08", False)
+    assert "business research" not in row["keywords"]
+    assert "University of Florida" in row["description"]
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
+    truth = evidence.target_truth(data_loader._sanitize_opportunity(row))
+    assert (truth.actionable, truth.reason_code) == (False, "listing_closed")
