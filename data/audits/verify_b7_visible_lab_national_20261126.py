@@ -55,8 +55,17 @@ def onboarding(page):
 
 def sources_panel(context, case):
     page = context.new_page()
-    assert page.goto(SITE + '/', wait_until='domcontentloaded').ok
+    # Carry the visitor from the actual detail into their own profile after signup settles.
+    signup = []
+    context.on('response', lambda r: signup.append(r.status) if '/auth/v1/signup' in r.url and r.request.method == 'POST' else None)
+    assert page.goto(SITE + '/opportunities/' + FACULTY_ID, wait_until='domcontentloaded').ok
+    for _ in range(160):
+        if signup: break
+        page.wait_for_timeout(250)
+    assert signup and signup[-1]==200, 'Fresh guest signup did not finish'
+    case['guest_signup_http']=signup[-1]
     onboarding(page)
+    assert page.goto(SITE + '/', wait_until='domcontentloaded').ok
     page.get_by_test_id('hydration-note').wait_for(state='hidden', timeout=45000)
     page.get_by_test_id('profile-refresh-status').wait_for(state='hidden', timeout=45000)
     name = page.locator('#student_name')
@@ -105,7 +114,7 @@ def sources_panel(context, case):
     counts = {}
     for prefix, expected_count in [('Faculty profile: ',3),('Full lab research: ',10)]:
         import re
-        row = sources.locator('details').filter(has=sources.locator('summary').filter(has_text=re.compile('^'+prefix)))
+        row = sources.locator('summary').filter(has_text=re.compile('^'+prefix)).locator('..')
         assert row.count()==1
         row.locator('summary').click()
         link = row.get_by_role('link',name='Open source page',exact=True)
