@@ -202,6 +202,23 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
   });
 
+  it.each([
+    [undefined, 'https://chass.ncsu.edu/people/jrclayt2/'],
+    ['https://chass.ncsu.edu/group/faculty/', undefined],
+  ])('offers only the reviewed directory for an inactive contact whose profile belongs to someone else', (directory, oldUrl) => {
+    renderHeader({ opp: facultyOpp({
+      source: 'ncsu_faculty', url: oldUrl, source_url: oldUrl, archived_faculty_directory_url: directory,
+      metadata: { deactivation_reason: 'profile_identity_mismatch' },
+      target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+    }) });
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+    if (directory) {
+      expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    } else {
+      expect(screen.queryByRole('link', { name: 'detail.viewSource' })).toBeNull();
+    }
+  });
+
   it('opens the personal link on a Berkeley CDSS roster card', () => {
     const directory = 'https://ccb.berkeley.edu/people/core-faculty';
     const personal = 'https://ccb.berkeley.edu/people/michael-boots';

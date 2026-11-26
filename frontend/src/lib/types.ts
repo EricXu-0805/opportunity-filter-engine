@@ -333,6 +333,7 @@ export interface OpportunityApplication {
 export type PublicationAttributionStatus = 'verified_author_id' | 'name_match';
 
 export interface OpportunityMetadata {
+  deactivation_reason?: string | null;
   is_active: boolean;
   confidence_score: number;
   // OpenAlex-harvested recent papers on faculty records (title + year only —
@@ -419,6 +420,7 @@ export interface Opportunity {
   url?: string;
   source?: string;
   source_url?: string;
+  archived_faculty_directory_url?: string;
   source_type?: string;
   // Source-backed status for faculty contact profiles. It is distinct from a
   // current-opening claim and lets stale/favorite/detail surfaces suppress an

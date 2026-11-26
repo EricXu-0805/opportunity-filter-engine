@@ -699,6 +699,7 @@ def public_target_truth(canonical_record: dict) -> dict:
 # envelope the moment a record is closed-but-active — which is the exact shape
 # of the 861 rows this contract exists for.
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
+    "faculty_profile_review",
     "skill_mentions",
     "contact_instruction_sources",
     "contact_instruction_capture",
@@ -926,6 +927,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # Lists and caches get only the anonymous status. A detail request can
     # reveal the address later through its existing authenticated path.
     projected.pop("contact_email_status", None)
+    projected.pop("archived_faculty_directory_url", None)
     if kind == "faculty_contact":
         from backend.lib.contact_visibility import STATUS_UNAVAILABLE, contact_email_status
 
@@ -933,6 +935,18 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
             contact_email_status(canonical_record, authenticated=False)[0]
             if truth["actionable"] else STATUS_UNAVAILABLE
         )
+        if (isinstance(raw_metadata, dict) and raw_metadata.get("is_active") is False
+                and raw_metadata.get("deactivation_reason") == "profile_identity_mismatch"):
+            from src.collectors.ncsu_chass import reviewed_archive_directory
+
+            # The old URL is evidence of the reassignment. Its current page
+            # cannot support a personal link or any fact about this record.
+            projected.pop("url", None)
+            projected.pop("source_url", None)
+            if isinstance(projected.get("metadata"), dict):
+                projected["metadata"].pop("faculty_title_observation", None)
+            if directory := reviewed_archive_directory(canonical_record):
+                projected["archived_faculty_directory_url"] = directory
     # Where the keywords came from, on the wire, for the same reason
     # `publication_attribution_status` is: a client cannot re-derive it, and
     # without it a topic this pipeline INFERRED renders identically to one

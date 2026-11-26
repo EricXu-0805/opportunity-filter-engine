@@ -258,12 +258,15 @@ def test_one_reviewed_profile_cannot_keep_two_contact_buttons_after_a_name_chang
     import json
     from copy import deepcopy
 
+    from backend.lib.opportunity_detail import build_detail_fields
+    from backend.lib.public_opportunity_detail import project_public_detail
     from src.collectors import ucb_common
 
     first, second = sorted(ncsu_chass.REVIEWED_CONTACT_IDS)
     shared = ncsu_chass.REVIEWED_CONTACT_URL
     def confirmed(contact_id, name, url):
-        return {"id": contact_id, "pi_name": name, "url": url, "metadata": {
+        return {"id": contact_id, "pi_name": name, "url": url, "source_url": url, "source": "ncsu_faculty",
+                "source_type": "faculty_research", "application": {"application_url": url}, "metadata": {
             "is_active": True, "first_seen_at": "2026-01-01", "faculty_title": "Lecturer",
             "faculty_title_observation": {"source": ncsu_chass.FACULTY_URL, "profile": url,
                                           "name": name, "title": "Lecturer"},
@@ -282,6 +285,25 @@ def test_one_reviewed_profile_cannot_keep_two_contact_buttons_after_a_name_chang
     rows = merge(current)
     assert rows[first]["metadata"]["is_active"] and not rows[second]["metadata"]["is_active"]
     assert rows[second]["metadata"]["deactivation_reason"] == "profile_identity_mismatch"
+    archived = project_public_detail(rows[second])
+    assert archived["id"] == second and archived["target_truth"]["reason_code"] == "inactive"
+    assert archived["archived_faculty_directory_url"] == ncsu_chass.FACULTY_URL
+    assert shared not in json.dumps(archived)
+    assert rows[second]["metadata"]["faculty_profile_review"]["source_url"] == shared
+    assert project_public_detail(rows[first])["url"] == shared
+    facts = build_detail_fields(archived, rows[second])["fields"]
+    assert all(fact["provenance"]["source_url"] is None for fact in facts.values())
+
+    other_archive = deepcopy(rows[second])
+    other_archive["metadata"]["deactivation_reason"] = "retired_title"
+    del other_archive["metadata"]["faculty_profile_review"]
+    assert project_public_detail(other_archive)["url"] == shared
+
+    unproven = deepcopy(rows[second])
+    unproven["metadata"]["faculty_profile_review"]["roster_url"] = shared
+    assert "archived_faculty_directory_url" not in project_public_detail(unproven)
+    del unproven["metadata"]["faculty_profile_review"]
+    assert shared not in json.dumps(project_public_detail(unproven))
     old_stamp = rows[second]["metadata"]["deactivated_at"]
     unverified = deepcopy(earlier)
     unverified["metadata"].pop("faculty_title_observation")
@@ -289,5 +311,8 @@ def test_one_reviewed_profile_cannot_keep_two_contact_buttons_after_a_name_chang
 
     rows = merge(earlier)
     assert rows[second]["metadata"]["is_active"] and not rows[first]["metadata"]["is_active"]
+    restored = project_public_detail(rows[second])
+    assert restored["target_truth"]["actionable"] and restored["url"] == shared
+    assert "archived_faculty_directory_url" not in restored
     separate = confirmed(first, "First Teacher", "https://chass.ncsu.edu/people/independent/")
     assert all(r["metadata"]["is_active"] for r in merge(earlier, separate).values())
