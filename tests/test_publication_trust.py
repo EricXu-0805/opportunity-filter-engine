@@ -463,3 +463,27 @@ class TestRecentListsOnly:
         kept = _verified(_aged(10), school=school)
         assert verified_recent_works(kept) == kept["metadata"]["recent_works"]
         assert project_public_detail(kept)["metadata"]["recent_works"] == kept["metadata"]["recent_works"]
+
+
+def test_reviewed_namesakes_removed_from_detail_cards_writing_and_legacy_replay():
+    from backend.lib.public_opportunity_detail import project_public_detail
+    from backend.routes.matches import _match_card
+    from src.collectors.openalex_enrich import apply_works
+
+    bad = {"title": "Simulation and experimental study on laser cutting of C/C composite finger seal", "year": 2025}
+    other_bad = {"title": "MHD Simulation of Vacuum Arcs Distribution Characteristics under Critical Short Circuit Interrupting Current", "year": 2025}
+    old = _verified([bad, other_bad], id="faculty-asu-ece-36055db6")
+    assert verified_recent_works(old) == []
+    assert "recent_works" not in project_public_detail(old)["metadata"]
+    assert "recent_works" not in _match_card(old)
+    assert old["metadata"]["recent_works"] == [bad, other_bad]
+    assert verified_recent_works({**old, "id": "other-person"}) == [bad, other_bad]
+    retained = {"title": "New Insights on Workplace Mistreatment", "year": 2025}
+    wrong = {"title": "Day-Ahead Load Forecasting Using MSTL-VMD-Based Multi-Seasonal Decomposition and LSTM-Based Component-Wise Prediction", "year": 2026}
+    mixed = _verified([wrong, retained], id="faculty-tamu-mays-2157ba4d", url="https://mays.tamu.edu/directory/sijun-kim/")
+    assert verified_recent_works(mixed) == [retained]
+    assert project_public_detail(mixed)["metadata"]["recent_works"] == [retained]
+    assert _match_card(mixed)["recent_works"] == [retained]
+    assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 1
+    assert mixed["metadata"]["recent_works"] == [retained]
+    assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 0

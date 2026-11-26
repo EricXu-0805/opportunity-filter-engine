@@ -19,6 +19,7 @@ import {
   OwnerNotReadyError,
   OwnerScopedLoadError,
   OwnerMismatchError,
+  readUserScopedEntry,
   readUserScopedRaw,
   syncLocalIdentityOwner,
   writeUserScopedRaw,
@@ -118,15 +119,21 @@ export function onStorageStatusChange(cb: () => void): () => void {
 // fallback show", e.g. after its own token went stale) before reaching
 // this — it reflects whichever identity is genuinely ready right now, not
 // a specific captured token.
-function readFavFallback(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  const raw = readUserScopedRaw(FAV_FALLBACK_KEY);
-  if (!raw) return new Set();
+interface FavoriteSnapshot { ids: Set<string>; complete: boolean }
+
+function readFavoriteQueue(): FavoriteSnapshot {
+  const entry = readUserScopedEntry(FAV_FALLBACK_KEY);
+  if (entry.status !== 'present') return { ids: new Set(), complete: entry.status === 'absent' };
   try {
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? new Set(arr as string[]) : new Set();
-  } catch { return new Set(); }
+    const ids: unknown = JSON.parse(entry.value);
+    if (Array.isArray(ids) && ids.every(id => typeof id === 'string' && id.length > 0)) {
+      return { ids: new Set(ids), complete: true };
+    }
+  } catch { /* An unreadable queue cannot establish a count. */ }
+  return { ids: new Set(), complete: false };
 }
+
+function readFavFallback(): Set<string> { return readFavoriteQueue().ids; }
 
 // `token` MUST be the SAME already-validated token the caller just checked
 // via isOwnerTokenValid immediately before calling this — defense in depth
@@ -1648,23 +1655,20 @@ export async function loadArchivedGuestProfile(
 // in-flight read for the current identity" — immediately before every
 // side-effecting step, exactly like a write helper.
 export async function getFavorites(): Promise<Set<string>> {
+  return (await getFavoritesSnapshot()).ids;
+}
+
+/** A readable queue can supply individual favorites when the cloud read fails.
+ * Only this request's confirmed union can establish a total or an empty state. */
+export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
   let token = captureOwnerToken();
-  let local = readFavFallback();
+
   const deviceId = await ensureAnonSession();
   if (!isOwnerTokenValid(token, deviceId)) {
     if (token.uid !== null) {
-      // A previously-KNOWN identity changed mid-flight — a genuine
-      // abandonment. Never retried here; stays local-only.
-      //
-      // And it must SAY local-only. The cloud was never queried, so the empty
-      // set this returns means "could not check", not "you have none" — but
-      // use-favorites-data stamps a zero-id load as "a true empty state" and
-      // renders "Star any opportunity from the matches page to save it here"
-      // to someone with three saved labs. The status is the only channel that
-      // separates the two, and StorageStatusBanner shows nothing for
-      // 'unknown'.
+      // Do not return another owner's fallback to an abandoned account read.
       setStorageStatus('local-only', 'this browser could not confirm which account it belongs to');
-      return readFavFallback();
+      return { ids: new Set(), complete: false };
     }
     // token.uid === null: nothing had been resolved yet at capture time,
     // so this isn't abandoning a known identity — it's the browser's
@@ -1679,37 +1683,53 @@ export async function getFavorites(): Promise<Set<string>> {
     const freshToken = captureOwnerToken();
     if (!isOwnerTokenValid(freshToken, deviceId)) {
       setStorageStatus('local-only', 'this browser could not confirm which account it belongs to');
-      return readFavFallback();
+      return { ids: new Set(), complete: false };
     }
     token = freshToken;
-    local = readFavFallback(); // re-read: identity-owner's sync may have run since the read above
   }
+  const queue = readFavoriteQueue();
+  const local = queue.ids;
   if (!deviceId) {
     // No session, so no cloud read happened. Same reason as above: the caller
     // must not read this as a confirmed empty shortlist.
     setStorageStatus('local-only', 'signed out of sync — showing what is saved on this device');
-    return local;
+    return { ids: local, complete: !SUPABASE_CONFIGURED && queue.complete };
   }
 
-  const { data, error } = await supabase
-    .from('favorites')
-    .select('opportunity_id')
+  const query = () => supabase.from('favorites')
+    .select('opportunity_id', { count: 'exact' })
+    .order('opportunity_id', { ascending: true })
     .eq('device_id', deviceId);
-  if (!isOwnerTokenValid(token, deviceId)) return readFavFallback();
+  const remote = new Set<string>();
+  const incomplete = (reason: string): FavoriteSnapshot => {
+    setStorageStatus('local-only', reason);
+    return { ids: new Set([...remote, ...local]), complete: false };
+  };
+  let page = await query();
+  const total = page.count;
+  for (;;) {
+    if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
+    const { data, error, count } = page;
+    if (error || !Array.isArray(data) || data.some(row => !row?.opportunity_id || typeof row.opportunity_id !== 'string')
+      || (typeof total === 'number' && count !== total - remote.size)) {
+      return incomplete(error?.message ?? 'The full saved list could not be checked.');
+    }
 
-  if (error || !data) {
-    console.warn('[ofe] getFavorites failed, using local fallback:', error?.message);
-    setStorageStatus('local-only', error?.message ?? null);
-    return local;
+    const previousSize = remote.size;
+    for (const row of data) remote.add(row.opportunity_id);
+    if (remote.size - previousSize !== data.length || (typeof total === 'number' && remote.size > total)) {
+      return incomplete('The full saved list could not be checked.');
+    }
+    if (total == null || remote.size === total) break;
+    if (!data.length) return incomplete('The full saved list could not be checked.');
+    page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
   }
-
-  const remote = new Set(data.map((r: { opportunity_id: string }) => r.opportunity_id));
 
   const toPush = Array.from(local).filter(id => !remote.has(id));
   if (toPush.length > 0) {
     const rows = toPush.map(opportunity_id => ({ device_id: deviceId, opportunity_id }));
     const { error: insErr } = await supabase.from('favorites').insert(rows);
-    if (!isOwnerTokenValid(token, deviceId)) return readFavFallback();
+    if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
     if (!insErr) {
       toPush.forEach(id => remote.add(id));
       writeFavFallback(new Set(), token);
@@ -1722,7 +1742,7 @@ export async function getFavorites(): Promise<Set<string>> {
       toPush.forEach(id => remote.add(id));
       writeFavFallback(new Set(toPush), token);
       setStorageStatus('local-only', insErr.message);
-      return remote;
+      return { ids: remote, complete: queue.complete };
     }
   } else if (local.size > 0) {
     writeFavFallback(new Set(), token);
@@ -1734,7 +1754,7 @@ export async function getFavorites(): Promise<Set<string>> {
   // so the next load pushed deleted favorites back: un-star a lab, navigate,
   // and it was re-INSERTed and starred again on every device.
   setStorageStatus('synced');
-  return remote;
+  return { ids: remote, complete: queue.complete };
 }
 
 export async function toggleFavorite(
@@ -2159,6 +2179,9 @@ export async function updateInteractionDetails(
   });
 }
 
+const INTERACTION_STATUS_FIELDS = 'opportunity_id, interaction_type';
+const INTERACTION_DETAIL_FIELDS = 'opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at';
+
 // !deviceId (Supabase unconfigured / anon sign-in permanently failed) is a
 // confirmed local-only degrade: there is no device_id a server row could be
 // scoped to, so "no interactions" is true, not a guess. A query error is
@@ -2171,18 +2194,7 @@ export async function getInteractions(): Promise<Map<string, InteractionType>> {
   const deviceId = await ensureAnonSession();
   if (!deviceId) return new Map();
 
-  const { data, error } = await supabase
-    .from('interactions')
-    .select('opportunity_id, interaction_type')
-    .eq('device_id', deviceId);
-
-  if (error) throw new Error(error.message);
-  return new Map(
-    (data ?? []).map((r: { opportunity_id: string; interaction_type: InteractionType }) => [
-      r.opportunity_id,
-      r.interaction_type,
-    ]),
-  );
+  return readInteractionMap(deviceId, INTERACTION_STATUS_FIELDS, row => row.interaction_type);
 }
 
 /**
@@ -2208,31 +2220,52 @@ export async function getInteractionsFull(): Promise<Map<string, InteractionReco
     throw new Error('session-unavailable');
   }
 
-  const { data, error } = await supabase
-    .from('interactions')
-    .select('opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at')
-    .eq('device_id', deviceId);
+  return readInteractionMap(deviceId, INTERACTION_DETAIL_FIELDS, row => ({
+    type: row.interaction_type,
+    notes: row.notes ?? undefined,
+    remind_at: row.remind_at ?? undefined,
+    last_contacted_at: row.last_contacted_at ?? undefined,
+    updated_at: row.updated_at ?? undefined,
+  }));
+}
 
-  if (error) throw new Error(error.message);
-  return new Map(
-    (data ?? []).map((r: {
-      opportunity_id: string;
-      interaction_type: InteractionType;
-      notes?: string;
-      remind_at?: string;
-      last_contacted_at?: string;
-      updated_at?: string;
-    }) => [
-      r.opportunity_id,
-      {
-        type: r.interaction_type,
-        notes: r.notes ?? undefined,
-        remind_at: r.remind_at ?? undefined,
-        last_contacted_at: r.last_contacted_at ?? undefined,
-        updated_at: r.updated_at ?? undefined,
-      } as InteractionRecord,
-    ]),
-  );
+async function readInteractionMap<T>(
+  deviceId: string,
+  columns: typeof INTERACTION_STATUS_FIELDS | typeof INTERACTION_DETAIL_FIELDS,
+  project: (row: {
+    interaction_type: InteractionType; notes?: string | null; remind_at?: string | null;
+    last_contacted_at?: string | null; updated_at?: string | null;
+  }) => T,
+): Promise<Map<string, T>> {
+  const owner = captureOwnerToken();
+  const query = () => {
+    const table = supabase.from('interactions');
+    const selected = columns === INTERACTION_STATUS_FIELDS
+      ? table.select(INTERACTION_STATUS_FIELDS, { count: 'exact' })
+      : table.select(INTERACTION_DETAIL_FIELDS, { count: 'exact' });
+    return selected.eq('device_id', deviceId).order('opportunity_id', { ascending: true });
+  };
+
+  let page = await query();
+  const total = page.count;
+  const result = new Map<string, T>();
+  for (;;) {
+    if (!isOwnerTokenValid(owner, deviceId)) throw new Error('session-unavailable');
+    if (page.error) throw new Error(page.error.message);
+    const data = page.data;
+    // On a continuation PostgREST counts only IDs beyond the cursor.
+    if (!Array.isArray(data) || (typeof total === 'number' && page.count !== total - result.size)) {
+      throw new Error('The full tracker could not be read.');
+    }
+    for (const row of data) {
+      if (!row || typeof row.opportunity_id !== 'string' || !row.opportunity_id || !row.interaction_type
+        || result.has(row.opportunity_id)) throw new Error('The full tracker could not be read.');
+      result.set(row.opportunity_id, project(row));
+    }
+    if (total == null || result.size === total) return result;
+    if (!data.length || result.size > total) throw new Error('The full tracker could not be read.');
+    page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
+  }
 }
 
 export async function getInteractionDetail(
@@ -2718,6 +2751,8 @@ export const ATTACHMENTS_ALLOWED_MIME = new Set([
 ]);
 
 export interface Attachment {
+  /** Set only by a reader that verified a usable replacement revision. */
+  canReplace?: boolean;
   name: string;
   sizeBytes: number;
   mimeType: string;
@@ -2924,6 +2959,7 @@ export async function listAttachments(opportunityId: string, token = captureOwne
         if (!view) continue;
         if (view.anchorId !== item.id) throw new AttachmentRequestError('unavailable');
         files.push({ name: item.name, sizeBytes: view.sizeBytes, mimeType: view.mimeType, revision: view.revision,
+          canReplace: attachmentFileType(item.name) === view.mimeType,
           createdAt: item.created_at ?? item.updated_at ?? '' });
       }
       if (data.length < ATTACHMENT_LIST_PAGE_SIZE) break;

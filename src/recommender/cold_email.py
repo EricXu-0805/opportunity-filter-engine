@@ -4,8 +4,11 @@ from backend.lib.opportunity_detail import stated_pi_name
 from src.evidence import (
     faculty_contact_claims_unverified,
     inferred_method,
+    is_directory_discipline,
     is_professor_rank,
+    is_research_clause_fragment,
     keywords_are_source_topics,
+    record_kind,
 )
 from src.lab_context import lab_context_for, validate_public_lab_context
 from src.matcher.ranker import _BROAD_FIELDS
@@ -891,6 +894,20 @@ def _posting_name(opportunity: dict) -> str:
 def _common_parts(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None
 ) -> dict:
+    # The offline app can pass a raw shard record without the API's load-time
+    # cleanup. Keep these fields out of the draft inputs without changing that record.
+    if faculty_contact_claims_unverified(opportunity):
+        metadata = opportunity.get("metadata") or {}
+        source, dept = opportunity.get("source"), opportunity.get("department")
+        raw = metadata.get("research_areas_raw")
+        affiliation = is_directory_discipline(source, dept, raw)
+        keywords = opportunity.get("keywords") or []
+        topics = [k for k in keywords if isinstance(k, str) and not is_research_clause_fragment(k)
+                  and not ((affiliation or not raw) and is_directory_discipline(source, dept, k))]
+        if affiliation or topics != keywords:
+            opportunity = {**opportunity, "keywords": topics}
+            if affiliation:
+                opportunity["metadata"] = {**metadata, "research_areas_raw": ""}
     name = profile.get("name") or "Student"
     year = profile.get("year", "undergraduate")
     major = profile.get("major", "")
@@ -990,6 +1007,9 @@ def _common_parts(
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
+        is_posted_internship=record_kind(opportunity) == "listing" and (
+            opp_type == "internship" or opportunity.get("source_type") == "internship"
+        ),
         faculty_is_professor=faculty_is_professor,
         # A listing whose source states no topics: the template opener names
         # it by its title (_p1_research_hook). research_topic is unchanged.
@@ -1086,6 +1106,10 @@ def _contact_template(email: str, p: dict) -> str:
 
 
 def _subject(p: dict, style: str = "") -> str:
+    if p.get("is_posted_internship"):
+        title = p.get("posting_name")
+        return _cap_subject(f"Subject: Internship inquiry — {title}") if title else "Subject: Internship inquiry"
+
     lab = p["lab"]
     area = p["research_area"]
     lab_type = p.get("lab_type", "dry")

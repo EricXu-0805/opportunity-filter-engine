@@ -407,9 +407,15 @@ SCHOOL: dict = {
         _media("THEO", "Department of Theology and Religious Studies",
                ["Theology", "Religious Studies"],
                "https://theology.georgetown.edu/people/ft-faculty/"),
-        _media("ENGL", "Department of English", ["English"],
+        {**_media("ENGL", "Department of English", ["English"],
                "https://english.georgetown.edu/people/full-time-faculty-2/",
-               enrich=_ENRICH),
+               enrich=_ENRICH,
+               link="a.gu-block-image-text-cta-text-content-link[href], a.gu-block-link-cta[href]"),
+         # Both department rosters name Holmes and link to Koulen's same GU360 record.
+         "profile_id_names": {
+             "gufaculty360.georgetown.edu/s/contact/003uh00000vihw6yal/marisa-koulen":
+                 ("Marisa Koulen", "Marisa Holmes"),
+         }},
         # ---- Georgetown College — gu_cards Profile-Card ---------------------
         _cards("GOVT", "Department of Government",
                ["Government", "Political Science", "International Politics"],

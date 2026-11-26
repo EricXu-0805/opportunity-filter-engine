@@ -2433,3 +2433,86 @@ def test_a_rendered_page_past_the_limits_fails_that_page_alone(monkeypatch):
     assert evidence["crawl_errors"] == [f"example_programs: seed fetch failed: {_PAGE_A}"]
     assert len(rendered["calls"]) == 2, "a page past the limits is not rendered again"
 
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_gone_program_page_archives_the_id_until_a_successful_read(processed, monkeypatch, status):
+    import requests
+
+    school = _listing_school("award")
+    source = school["sources"][0]
+    url = source["programs"][0]["url"]
+    source["seeds"].append(url)
+    final_url, code, challenge = url, 200, False
+
+    def get(requested, **kwargs):
+        response = requests.Response()
+        response.url = final_url if requested == url else requested
+        response.status_code = code if requested == url else 200
+        if challenge:
+            response.headers["cf-mitigated"] = "challenge"
+        response._content = b"<main><p>Applications are now open. Students may submit a proposal.</p></main>"
+        return response
+
+    monkeypatch.setattr(requests, "get", get)
+    oid = _program_id(school, "campus", "award")
+
+    def refresh(deep=True):
+        _refresh_school(school, deep=deep, national=False)
+        return _stored(processed)[oid]
+
+    active = refresh()
+    stamp = active["metadata"]["last_verified"]
+    assert stamp and active["metadata"]["is_active"]
+    code = status
+    final_url = url + "unrelated/"
+    assert refresh()["metadata"]["is_active"]
+    final_url = url
+    challenge = True
+    assert refresh()["metadata"]["is_active"]
+    challenge = False
+    unavailable = refresh()
+    assert unavailable["metadata"]["is_active"] is False
+    assert unavailable["metadata"]["deactivation_reason"] == "program_page_gone"
+    assert unavailable["metadata"]["last_verified"] == stamp
+    assert unavailable["application"]["application_url"] is None
+    from src.evidence import target_truth
+    assert not target_truth(unavailable).actionable
+    for code in (403, 429, 500):
+        retried = refresh()
+        assert retried["metadata"]["contact_instruction_capture"]["reason"] == f"http_{code}"
+        assert retried["metadata"]["deactivation_reason"] == "program_page_gone"
+        assert retried["application"]["application_url"] is None
+        assert retried["metadata"]["deactivated_at"] == unavailable["metadata"]["deactivated_at"]
+    assert refresh(False)["metadata"]["is_active"] is False
+    code = 200
+    restored = refresh()
+    assert restored["metadata"]["is_active"]
+    assert "deactivation_reason" not in restored["metadata"]
+    assert restored["application"]["application_url"] == url
+    assert restored["metadata"]["first_seen_at"] == active["metadata"]["first_seen_at"]
+    assert target_truth(restored).actionable
+    restored["metadata"].update(is_active=False, deactivation_reason="school_unsupported")
+    processed.write_text(json.dumps([restored]))
+    code = status
+    guarded = refresh()
+    assert not guarded["metadata"]["is_active"]
+    assert guarded["metadata"]["deactivation_reason"] == "school_unsupported"
+
+
+def test_shared_program_page_404_does_not_archive_its_projects(monkeypatch):
+    import requests
+
+    url = "https://example.edu/program-index/"
+    school = _listing_school("one", "two", urls={"one": url, "two": url})
+    school["sources"][0]["seeds"] = [url]
+
+    def missing(requested, **kwargs):
+        response = requests.Response()
+        response.status_code, response.url = 404, requested
+        return response
+
+    monkeypatch.setattr(requests, "get", missing)
+    rows, evidence = cg.fetch_and_normalize_with_evidence(school, deep=True, national=False)
+    assert len(rows) == 2 and evidence["seed_pages_failed"] == 1
+    assert all(row["metadata"]["is_active"] for row in rows)

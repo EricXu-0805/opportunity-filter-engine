@@ -258,6 +258,39 @@ class TestScrapeLayer:
         assert people["Ada Roe"]["email"] == "aroe@example.edu"
         assert "Population ecology" in people["Kim Poe"]["research_areas"]
 
+    def test_sbu_geosciences_reads_department_faculty_and_keeps_original_ids(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "GEO")
+        base = "https://www.stonybrook.edu/geosciences/people/faculty_profiles/"
+        groups = {
+            "Department Faculty": ["Troy Rasbury", "Deanne Rogers"],
+            "Emeritus Faculty": ["Scott McLennan"],
+            "In Memoriam": ["Gilbert Hanson"],
+            "Affiliated Faculty": ["Other Professor"],
+        }
+        sections = []
+        for heading, names in groups.items():
+            cards = []
+            for name in names:
+                url = base + name.lower().replace(" ", "-") + ".html"
+                cards.append(f'<article class="dept-faculty-directory__card">'
+                             f'<a class="dept-faculty-directory__profile-link" href="{url}">'
+                             f'<span class="dept-faculty-directory__name">{name}</span></a>'
+                             '<p class="dept-faculty-directory__title">Professor</p></article>')
+            sections.append(f'<h3>{heading}</h3><div>{"".join(cards)}</div>')
+        soup = BeautifulSoup("".join(sections), "html.parser")
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url, **kwargs: soup)
+        people = fg._scrape_directory(dept)
+        assert {p["name"]: fg._normalize(SCHOOL, dept, p)["id"] for p in people} == {
+            "Troy Rasbury": "faculty-sbu-geo-77fdf238",
+            "Deanne Rogers": "faculty-sbu-geo-2392f6f1",
+        }
+        other = {"name": "Troy Rasbury", "url": base + "different-professor.html"}
+        assert fg._normalize(SCHOOL, dept, other)["id"] != "faculty-sbu-geo-77fdf238"
+
     def test_sbu_ecology_keeps_the_stored_ids_of_renamed_cards(self):
         """A card whose page now writes the name differently keeps the id its
         row was stored under (id_names), so the row updates in place."""
@@ -268,6 +301,22 @@ class TestScrapeLayer:
                for page_name in dept["id_names"]}
         # The row stored on 2026-07-18 under the spelling without the accent.
         assert ids == {"faculty-sbu-eeb-aebbec37"}
+
+    @pytest.mark.parametrize(("unit", "uid", "name", "saved_id"), [
+        ("LALS", "mdohara", "Matt O'Hara", "faculty-ucsc-lals-c5e0a095"),
+        ("HIST", "gomalley", "Gregory O'Malley", "faculty-ucsc-hist-7835742d"),
+        ("FMST", "reardon1", "Jenny Reardon", "faculty-ucsc-fmst-929c275c"),
+        ("CRES", "svaccari", "Sylvane Vaccarino", "faculty-ucsc-cres-c73c11c6"),
+    ])
+    def test_ucsc_directory_name_changes_keep_ids_only_at_the_reviewed_uid(self, unit, uid, name, saved_id):
+        from src.collectors.schools.ucsc_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == unit)
+        url = "https://campusdirectory.ucsc.edu/cd_detail?uid="
+        current = fg._normalize(SCHOOL, dept, {"name": name, "url": url + uid})
+        assert (current["pi_name"], current["id"]) == (name, saved_id)
+        assert fg._normalize(SCHOOL, dept, {"name": name, "url": url + "another-person"})["id"] != saved_id
+        assert fg._normalize(SCHOOL, dept, {"name": "Another Person", "url": url + uid})["id"] != saved_id
 
     def test_sbu_ecology_is_read_after_the_units_its_program_faculty_belong_to(self):
         """EEB's Program Faculty are cross-listed professors whose home units
@@ -3851,6 +3900,41 @@ class TestIdentityProvenance:
         [mismatch] = fg.fetch_and_normalize(school, deep=True)
         assert mismatch["metadata"]["last_seen_at"] is None
 
+    def test_committed_file_is_a_seed_until_a_live_source_names_the_person(self, monkeypatch, tmp_path):
+        import json
+
+        from src.collectors import ucb_common
+
+        person = {"name": "Grace Hopper", "url": "https://example.edu/hopper", "title": "Professor"}
+        snapshot = tmp_path / "snapshot.json"
+        snapshot.write_text(json.dumps([person]))
+        dept = {"name": "School of Medicine", "short": "SOM", "directory_url": "https://example.edu/faculty",
+                "json_dir": {"file": str(snapshot), "name_fields": ["name"], "link_field": "url"}}
+        school = {**SCHOOL, "source": "jhu_faculty", "id_prefix": "jhu", "departments": [dept]}
+        [row] = fg.fetch_and_normalize(school, deep=True)
+        assert row["metadata"]["verification_scope"] == "curated"
+        assert row["metadata"]["last_seen_at"] is None and row["metadata"]["last_verified"] is None
+
+        old = {**row, "metadata": {**row["metadata"], "verification_scope": "directory",
+                                  "last_seen_at": "2026-11-15", "last_verified": "2026-11-15"}}
+        corpus = tmp_path / "opportunities.json"
+        corpus.write_text(json.dumps([old]))
+        monkeypatch.setattr(ucb_common, "PROCESSED_FILE", corpus)
+        fg.merge_into_processed([row])
+        [saved] = json.loads(corpus.read_text())
+        assert saved["metadata"]["last_seen_at"] is None
+
+        # The same person in the config seed and in the file is still one offline source.
+        [duplicate] = fg.fetch_and_normalize({**school, "departments": [{**dept, "faculty": [person]}]}, deep=True)
+        assert duplicate["metadata"]["last_seen_at"] is None
+
+        # A live directory that replaces the archived feed establishes a new, genuine sighting.
+        monkeypatch.setattr(fg, "_fetch_json_dir", lambda *args: [person.copy()])
+        [live] = fg.fetch_and_normalize(school, deep=True)
+        assert live["metadata"]["verification_scope"] == "directory"
+        assert live["metadata"]["listing_seen_on_source"] is True
+        assert live["metadata"]["last_seen_at"] == live["metadata"]["last_verified"]
+
     def test_seed_configs_not_mutated_by_harvest(self):
         dept = SCHOOL["departments"][0]
         before = [dict(p) for p in dept["faculty"]]
@@ -5042,3 +5126,69 @@ def test_profile_text_without_chrome_is_read_in_linear_time():
     assert _profile_page_text(large) == _page_text_by_copy(large)
     growth = _growth(_profile_page_text, small, large)
     assert growth < 32, f"eight times the page took {growth:.1f} times as long"
+
+
+@pytest.mark.parametrize(("unit", "role", "rank", "uid"), [
+    ("CS", "Chair", "Professor", "sbrandt"),
+    ("ANTH", "Director of Undergraduate Studies", "Associate Professor", "sshangeb"),
+])
+def test_ucsc_leadership_title_needs_a_current_person_profile(monkeypatch, unit, role, rank, uid):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.ucsc_faculty import SCHOOL as ucsc
+
+    department = next(d for d in ucsc["departments"] if d["short"] == unit)
+    settings = department["profile_enrich"]
+    url = f"https://campusdirectory.ucsc.edu/cd_detail?uid={uid}"
+    candidate = {"name": "Example Person", "title": role, "url": url}
+    regular = {"name": "Separate Person", "title": "Lecturer", "url": url + "2"}
+    calls = []
+
+    def fetch(target, **kwargs):
+        calls.append(target)
+        return BeautifulSoup(f"<div class='col2'><h2>Example Person</h2></div><p><label>Title</label> {role}<br>{rank}</p>",
+                             "html.parser")
+
+    monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
+    resolved = fg._apply_profile_enrich([dict(candidate), regular], settings)
+    assert [p["title"] for p in resolved] == [f"{role} {rank}", "Lecturer"]
+    assert calls == [url]
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda *args, **kwargs: None)
+    assert fg._apply_profile_enrich([dict(candidate), regular], settings) == [regular]
+
+
+def test_ucsc_cs_supplement_scopes_people_and_withholds_unread_roster(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.ucsc_faculty import SCHOOL as ucsc
+
+    dept = next(d for d in ucsc["departments"] if d["short"] == "CS")
+    extra = dept["scrape"]["extra_urls"][0]["url"]
+    assert extra in fg._listing_urls(ucsc)
+
+    def card(name, uid, unit, rank="Associate Professor"):
+        return (f'<div class="section-item h-card wrap"><h3 class="item-name">'
+                f'<a class="u-url" href="https://campusdirectory.ucsc.edu/cd_detail?uid={uid}">'
+                f'<span class="p-name">{name}</span></a></h3><ul class="item-info">'
+                f'<li><strong>Title</strong><ul class="inline-list"><li>{rank}</li></ul></li>'
+                f'<li><strong>Department</strong><ul><li>{unit}</li></ul></li></ul></div>')
+
+    unit = "Computer Science and Engineering"
+    primary = card("Common Professor", "common", unit)
+    mixed = (primary + card("Ian Lane", "ialane", unit) + card("Other Person", "other", "Linguistics")
+             + card("Local Student", "student", unit, "Graduate Student"))
+    pages = {dept["directory_url"]: primary, extra: mixed}
+    monkeypatch.setattr(ucb_common, "fetch_soup",
+                        lambda url, **kwargs: BeautifulSoup(pages[url], "html.parser") if pages[url] else None)
+    monkeypatch.setattr(fg, "_apply_profile_enrich", lambda people, cfg: people)
+    for html, blocked in ((mixed, False), (mixed + card("Unknown Person", "unknown", ""), True),
+                          ("<h1>Directory</h1>", True), ("", True)):
+        pages[extra] = html
+        cov = fg._new_coverage()
+        monkeypatch.setattr(fg, "_ACTIVE_COVERAGE", cov)
+        people = fg._scrape_directory(dept)
+        expected = ["Common Professor", "Ian Lane"] if html.startswith(primary) else ["Common Professor"]
+        assert [person["name"] for person in people] == expected
+        assert bool(cov["partial_render_rows"] or cov["unparsed_rows"]) == blocked

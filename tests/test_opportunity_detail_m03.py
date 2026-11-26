@@ -790,6 +790,30 @@ class TestLastSeenListed:
         assert all(f["provenance"]["observed_at"] is None for f in body["detail_fields"]["fields"].values())
         assert "listing_seen_on_source" not in body["metadata"]
 
+    @pytest.mark.parametrize("source,unit", [
+        ("jhu", "som"), ("jhu", "bsph"), ("northwestern", "kellogg"), ("northwestern", "feinberg"),
+    ])
+    def test_old_file_rosters_labeled_directory_do_not_date_a_faculty_page(self, monkeypatch, source, unit):
+        record = self._faculty(verification_scope="directory")
+        record.update(source=f"{source}_faculty", id=f"faculty-{source}-{unit}-abcde012")
+        body = self._get(monkeypatch, record)
+        assert body["metadata"]["verification_scope"] == "curated"
+        assert body["last_seen_listed_at"] is None
+        assert body["target_truth"]["verified_at"] is None
+
+        # A subsequent real directory fetch under this stable id stays dated.
+        record["metadata"]["listing_seen_on_source"] = True
+        body = self._get(monkeypatch, record)
+        assert body["metadata"]["verification_scope"] == "directory"
+        assert body["last_seen_listed_at"] == "2026-11-04"
+        assert body["target_truth"]["verified_at"] == self._VERIFIED
+
+        # An individually verified profile was never simply a file-backed row.
+        record["metadata"].update(verification_scope="profile", listing_seen_on_source=False)
+        body = self._get(monkeypatch, record)
+        assert body["last_seen_listed_at"] == "2026-11-04"
+        assert body["target_truth"]["verified_at"] == self._VERIFIED
+
     def test_a_deactivated_faculty_row_still_says_when_it_was_last_listed(self, monkeypatch):
         body = self._get(monkeypatch, self._faculty(is_active=False))
         assert body["target_truth"]["reason_code"] == "inactive"

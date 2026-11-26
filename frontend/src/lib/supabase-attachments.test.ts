@@ -56,7 +56,7 @@ const operations = {
 
 describe('legacy attachment protocol and failures', () => {
   it('uses the old bucket/prefix and preserves actual metadata', async () => {
-    expect(await operations.list()).toEqual([{ name: 'resume.pdf', sizeBytes: 14, mimeType: 'application/pdf', createdAt: row.created_at, revision: target.revision }]);
+    expect(await operations.list()).toEqual([{ name: 'resume.pdf', sizeBytes: 14, mimeType: 'application/pdf', createdAt: row.created_at, revision: target.revision, canReplace: true }]);
     expect(mocks.from).toHaveBeenCalledWith(ATTACHMENTS_BUCKET);
     expect(ATTACHMENTS_BUCKET).toBe('tracker-attachments');
     expect(mocks.list).toHaveBeenCalledWith(`${U1}/${OPP}`, { limit: 100, offset: 0, sortBy: { column: 'name', order: 'asc' } }, { signal: expect.any(AbortSignal) });
@@ -98,7 +98,7 @@ describe('legacy attachment protocol and failures', () => {
   });
   it('ignores storage virtual directories/placeholders but keeps old metadata-light files without inventing dates', async () => {
     mocks.list.mockResolvedValue({ data: [{ name: 'folder', id: null, metadata: null }, { name: '.emptyFolderPlaceholder' }, { name: 'trailing/' }, { name: 'old.txt', id: OBJECT, metadata: null }], error: null });
-    expect(await operations.list()).toEqual([{ name: 'old.txt', sizeBytes: 0, mimeType: 'application/octet-stream', createdAt: '', revision: target.revision }]);
+    expect(await operations.list()).toEqual([{ name: 'old.txt', sizeBytes: 0, mimeType: 'application/octet-stream', createdAt: '', revision: target.revision, canReplace: false }]);
   });
   it.each([null, { name: 12 }, { name: 'wrong/target.pdf' }, { name: 'size.pdf', metadata: { size: -1 } }])('malformed row cannot become successful empty or a usable file (%j)', async bad => {
     mocks.list.mockResolvedValue({ data: [bad], error: null });

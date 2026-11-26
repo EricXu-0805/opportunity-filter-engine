@@ -1,5 +1,14 @@
 import type { SkillWithLevel } from './types';
 
+/** Attach only the missing repository evidence for a matching GitHub skill. */
+export function withGitHubImportEvidence(existing: SkillWithLevel, imported?: SkillWithLevel): SkillWithLevel {
+  if (existing.source === 'github' && !existing.evidence?.trim() && imported?.source === 'github'
+      && imported.name === existing.name && imported.evidence?.trim()) {
+    return { ...existing, evidence: imported.evidence };
+  }
+  return existing;
+}
+
 /**
  * Whether the student stands behind a skill's LEVEL, not just its name.
  *

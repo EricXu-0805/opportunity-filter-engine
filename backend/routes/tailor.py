@@ -139,7 +139,8 @@ _MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARAC
 # "- Organization:" line and labels the description "- Description:" (was
 # "- Description excerpt:"); a plan over TAILOR_PROMPT_MAX_CHARACTERS is
 # refused with 413 before model usage (M40).
-TAILOR_PIPELINE_VERSION = "w14.4"
+# w14.5 withholds inherited skills from the student context until confirmed.
+TAILOR_PIPELINE_VERSION = "w14.5"
 
 TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 # The renovation plan is ID-only and must leave the rewrite and its review

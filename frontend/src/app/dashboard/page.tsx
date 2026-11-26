@@ -33,7 +33,7 @@ import {
   isReplyRecorded,
   type ReminderInfo,
 } from '@/lib/reminders';
-import { getFavorites, getInteractionsFull, onAuthChange } from '@/lib/supabase';
+import { getFavoritesSnapshot, getInteractionsFull, onAuthChange } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 
 import { ProfessorUpdatesSection } from './ProfessorUpdatesSection';
@@ -188,9 +188,9 @@ export default function DashboardPage() {
 
     async function loadFavorites(generation: number) {
       const fresh = () => !cancelled && generation === generationRef.current;
-      let favoriteIds: Set<string>;
+      let snapshot: Awaited<ReturnType<typeof getFavoritesSnapshot>>;
       try {
-        favoriteIds = await getFavorites();
+        snapshot = await getFavoritesSnapshot();
       } catch {
         if (fresh()) {
           setSaved({ status: 'error', count: 0 });
@@ -199,9 +199,11 @@ export default function DashboardPage() {
         return;
       }
       if (!fresh()) return;
-      setSaved({ status: 'ready', count: favoriteIds.size });
+      const { ids: favoriteIds, complete } = snapshot;
+      const status = complete ? 'ready' : 'error';
+      setSaved({ status, count: favoriteIds.size });
       if (favoriteIds.size === 0) {
-        setDeadlines({ status: 'ready', items: [], unavailableCount: 0 });
+        setDeadlines({ status, items: [], unavailableCount: 0 });
         return;
       }
       try {
@@ -244,7 +246,7 @@ export default function DashboardPage() {
             };
           })
           .filter((item): item is FavoriteDeadline => item !== null);
-        setDeadlines({ status: 'ready', items, unavailableCount: unavailableIds.length });
+        setDeadlines({ status, items, unavailableCount: unavailableIds.length });
       } catch {
         if (fresh()) setDeadlines({ status: 'error', items: [], unavailableCount: 0 });
       }
@@ -867,17 +869,16 @@ function DeadlineContent({
   t: Replier;
 }) {
   if (state.status === 'loading') return <LoadingRow label={t('dashboard.loading')} />;
-  if (state.status === 'error') {
-    return (
-      <ErrorRow
-        title={t('dashboard.deadlines.errorTitle')}
-        body={t('dashboard.deadlines.errorBody')}
-        onRetry={onRetry}
-        t={t}
-      />
-    );
-  }
+  const readWarning = state.status === 'error' ? (
+    <ErrorRow title={t('dashboard.deadlines.errorTitle')} body={t('dashboard.deadlines.errorBody')} onRetry={onRetry} t={t} />
+  ) : browserSaved === null ? (
+    <p role="status" className="px-6 py-3 text-xs text-amber-700">
+      {t('dashboard.deadlines.browserUnavailable')}{' '}
+      <Link href="/favorites" className="font-semibold underline">{t('favorites.title')}</Link>
+    </p>
+  ) : null;
   const items = [...state.items, ...browserItems].sort(sortDeadlines).slice(0, 8);
+  if (items.length === 0 && readWarning) return readWarning;
   if (items.length === 0 && state.unavailableCount > 0) {
     // Every saved item that could have shown a deadline is unresolvable.
     // Claiming "none of your saves list a deadline" here would be a
@@ -923,6 +924,7 @@ function DeadlineContent({
   }
   return (
     <>
+      {readWarning}
       {state.unavailableCount > 0 && (
         <UnavailableNote
           count={state.unavailableCount}

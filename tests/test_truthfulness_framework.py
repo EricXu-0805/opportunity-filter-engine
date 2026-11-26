@@ -502,7 +502,15 @@ def test_the_emeritus_or_visiting_stratum_reads_titles_in_any_case_and_form():
     picked = [
         "Professor Emerita", "Professor Emeritus", "Professors Emeriti",
         "Associate Professor (retired)", "Retired", "visiting assistant professor",
+        "Professor Emerit", "Professor Emertius", "Professor Emeritas", "Visitor",
+        "Research Professor and Distinguished Professor of History Emer.",
+        "Visiting Lecturer, Vietnamese Language Program Coordinator",
+        "Professor Emeritus, Director of Visiting International Scholars (VIS) Program",
     ]
-    passed_over = ["Assistant Professor", "Meritorious Teaching Professor", "Retirement Research Fellow", ""]
+    passed_over = [
+        "Assistant Professor", "Meritorious Teaching Professor", "Retirement Research Fellow", "",
+        "Professor Director of Visiting International Scholars (VIS) Program",
+        "Professor of Emergency Medicine", "Visitor Services Coordinator",
+    ]
     assert [t for t in picked if not selects(_rec("t", metadata={"faculty_title": t}), {})] == []
     assert [t for t in passed_over if selects(_rec("t", metadata={"faculty_title": t}), {})] == []

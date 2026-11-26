@@ -567,6 +567,7 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "is_active",
     "listing_status",
     "urap_status",
+    "urap_window",
     "reference_only",
     "last_verified",
     "expires_at",

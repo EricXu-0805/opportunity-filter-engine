@@ -133,7 +133,7 @@ function namespaceFor(generation: number): string {
     : `${NAMESPACE_PREFIX}${generation}${NAMESPACE_SEPARATOR}`;
 }
 
-function physicalKey(logicalKey: string, generation: number): string {
+export function physicalKey(logicalKey: string, generation: number): string {
   return `${namespaceFor(generation)}${logicalKey}`;
 }
 

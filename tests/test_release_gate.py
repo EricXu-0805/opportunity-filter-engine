@@ -7,6 +7,7 @@ flip to PASS by presenting evidence bound to the frozen release SHA.
 from __future__ import annotations
 
 import ast
+import hashlib
 import importlib.util
 import io
 import json
@@ -71,20 +72,29 @@ def _all_external_pass(sha: str) -> dict:
 
 def _passing_drill(migrations: dict | None = None) -> dict:
     """A drill record that satisfies every clause of check_restore_drill."""
+    from scripts.restore_schema_evidence import METHOD, manifest_bytes
+    now = _now_iso()
+    target = migrations or gate.migration_set_identity()
+    source = {"method": METHOD, "project_ref": "prod", "source_backup_id": "backup-1",
+              "observed_at": now, "columns_sha256": "a" * 64, "ddl_sha256": "d" * 64, "ddl_count": 2,
+              "history_sha256": "b" * 64,
+              "column_count": 23, "migration_count": target["count"], "migration_parity": True,
+              "matched_filenames_digest": target["digest"]}
+    counts = dict(expected=1, expected_bytes=3, listed=1, missing=0, unexpected=0,
+                  verified=1, verified_bytes=3, mismatched=0, unreadable=0, inventory_complete=True)
+    attachments = {"method": "supabase-storage-list-download-sha256-v2", "source_backup_id": "backup-1",
+                   "source_environment": "prod", "scratch_environment": "scratch",
+                   "manifest_sha256": "c" * 64, "result": "PASS", "observed_at": now,
+                   "buckets": {key: counts.copy() for key in ("tracker-attachments", "application-materials", "tracker-attachment-versions")}}
     return {
-        "drill_id": "drill-2026-09-04-a",
-        "performed_at": _now_iso(),
-        "source_backup_id": "backup-1",
-        "source_environment": "prod",
-        "scratch_environment": "scratch",
-        "source_schema_version": migrations or gate.migration_set_identity(),
-        "restored_schema_version": migrations or gate.migration_set_identity(),
-        "schema_validation": "PASS",
-        "data_validation": "PASS",
-        "rls_validation": "PASS",
-        "application_smoke": "PASS",
-        "issues_found": [],
-        "final_result": "PASS",
+        "drill_id": "drill-2026-09-04-a", "performed_at": now, "restore_started_at": now,
+        "source_backup_id": "backup-1", "source_environment": "prod", "scratch_environment": "scratch",
+        "source_schema_version": source, "restored_schema_version": source | {"project_ref": "scratch"},
+        "source_schema_manifest_sha256": hashlib.sha256(manifest_bytes(source)).hexdigest(),
+        "attachment_manifest_sha256": "c" * 64,
+        "schema_validation": "PASS", "data_validation": "PASS", "rls_validation": "PASS",
+        "application_smoke": "PASS", "attachment_validation": "PASS", "evidence": {"attachments": attachments},
+        "issues_found": [], "final_result": "PASS",
     }
 
 
@@ -1100,14 +1110,32 @@ class TestRestoreDrillGate:
 
     def test_a_drill_for_an_older_schema_state_is_stale_evidence(self, monkeypatch):
         """Migrations are forward-only, so an older drill is not this target."""
-        record = _passing_drill() | {
-            "restored_schema_version": {"count": 30, "head": "030_x.sql",
-                                        "digest": "0" * 16}}
+        record = _passing_drill({"count": 30, "head": "030_x.sql", "digest": "0" * 16})
         monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
         got = gate.check_restore_drill(
             {"count": 34, "head": "034_y.sql", "digest": "f" * 16})
         assert got["status"] == gate.UNVERIFIED
         assert got["reason"] == "schema_state_advanced"
+
+    @pytest.mark.parametrize("legacy", [None, "latest", {"digest": "0" * 16}])
+    def test_legacy_checkout_identity_does_not_prove_database_schema(self, monkeypatch, legacy):
+        record = _passing_drill() | {"source_schema_version": legacy, "restored_schema_version": legacy}
+        monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
+        got = gate.check_restore_drill()
+        assert (got["status"], got["reason"]) == (gate.UNVERIFIED, "schema_observation_missing")
+
+    def test_database_schema_drift_fails_even_with_a_passing_summary(self, monkeypatch):
+        record = _passing_drill()
+        record["restored_schema_version"]["columns_sha256"] = "e" * 64
+        monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
+        got = gate.check_restore_drill()
+        assert (got["status"], got["reason"]) == (gate.FAIL, "source_restored_schema_mismatch")
+
+    def test_database_only_pass_leaves_attachment_bytes_unverified(self, monkeypatch):
+        record = _passing_drill() | {"evidence": {}}
+        monkeypatch.setattr(gate, "load_latest_drill", lambda: (record, None))
+        got = gate.check_restore_drill()
+        assert (got["status"], got["reason"]) == (gate.UNVERIFIED, "attachment_integrity_unproven")
 
     def test_a_drill_past_its_maximum_age_is_refused(self, monkeypatch):
         old = (datetime.now(UTC)

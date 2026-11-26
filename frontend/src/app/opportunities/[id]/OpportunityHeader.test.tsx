@@ -191,6 +191,17 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByText('unaccepted-professor-signal')).not.toBeInTheDocument();
   });
 
+  it.each([
+    [undefined, 'Faculty profile · openings not confirmed'],
+    ['unavailable', 'Faculty profile · openings not confirmed'],
+    ['sign_in_required', 'Faculty contact for inquiries · openings not confirmed'],
+    ['revealed', 'Faculty contact for inquiries · openings not confirmed'],
+  ] as const)('separates a readable faculty profile from an inquiry channel (%s)', (status, label) => {
+    renderHeader({ opp: facultyOpp({ contact_email_status: status }), t: key => translate('en', key) });
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
+  });
+
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
     renderHeader({
       opp: facultyOpp({
@@ -626,4 +637,17 @@ describe('OpportunityHeader — M03 location and pay provenance', () => {
     expect(screen.getByText('badges.internationalFriendly')).toBeInTheDocument();
     expect(screen.queryByText('badges.internationalFriendlyInferred')).toBeNull();
   });
+});
+
+it('links the archived detail to the current faculty record without changing its status', () => {
+  const opp = facultyOpp({
+    current_faculty_id: 'faculty-purdue-cs-bb6831d2',
+    target_truth: { ...FACULTY_TRUTH, actionable: false, reason_code: 'inactive' },
+  });
+  renderHeader({ opp });
+  expect(screen.getByText('detail.inactiveBanner')).toBeInTheDocument();
+  expect(screen.queryByText('card.facultyContactUnconfirmed')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'detail.currentFacultyRecord' }))
+    .toHaveAttribute('href', '/opportunities/faculty-purdue-cs-bb6831d2');
+  expect(screen.queryByRole('link', { name: 'detail.applyNow' })).not.toBeInTheDocument();
 });

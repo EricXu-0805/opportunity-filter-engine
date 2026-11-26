@@ -3,6 +3,7 @@ production behaviour under an unchanged, green file."""
 from __future__ import annotations
 
 import re
+from importlib.metadata import version
 from pathlib import Path
 
 import soupsieve
@@ -36,3 +37,8 @@ def test_soupsieve_is_pinned_on_both_sides_of_python_3_11_5():
     assert chosen("3.11.5") == chosen("3.11.15") == chosen("3.12.0")
     assert len(chosen("3.11.5")) == 1 and chosen("3.11.5")[0].startswith("==4.")
     assert [f"=={soupsieve.__version__}"] == [str(pin.specifier) for pin in pins if pin.marker.evaluate()]
+
+
+def test_web_push_is_pinned_to_the_version_used_by_the_dispatcher_tests():
+    dependency = next(Requirement(line) for line in _REQUIREMENTS.splitlines() if line.startswith("pywebpush"))
+    assert str(dependency.specifier) == f"=={version('pywebpush')}"

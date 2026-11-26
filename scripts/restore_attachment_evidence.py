@@ -16,7 +16,9 @@ from urllib.parse import quote
 import httpx
 
 BUCKETS = ("tracker-attachments", "application-materials")
-METHOD = "supabase-storage-list-download-sha256-v1"
+VERSION_BUCKET = "tracker-attachment-versions"
+ALL_BUCKETS = (*BUCKETS, VERSION_BUCKET)
+METHOD = "supabase-storage-list-download-sha256-v2"
 _PAGE_SIZE = 100
 _COUNTS = ("expected", "expected_bytes", "listed", "missing", "unexpected",
            "verified", "verified_bytes", "mismatched", "unreadable")
@@ -42,12 +44,15 @@ def _manifest(path: Path, pin: str, source: str, backup: str) -> dict:
     if hashlib.sha256(raw).hexdigest() != pin:
         raise ValueError
     doc = json.loads(raw, object_pairs_hook=_unique_keys)
-    if (not isinstance(doc, dict) or type(doc.get("version")) is not int or doc["version"] != 1
+    if (not isinstance(doc, dict) or type(doc.get("version")) is not int or doc["version"] != 2
             or doc.get("source_environment") != source or doc.get("source_backup_id") != backup
-            or not isinstance(doc.get("buckets"), dict) or set(doc["buckets"]) != set(BUCKETS)):
+            or not isinstance(doc.get("buckets"), dict) or set(doc["buckets"]) != set(ALL_BUCKETS)):
         raise ValueError
     expected = {}
     for bucket, rows in doc["buckets"].items():
+        if bucket == VERSION_BUCKET and rows is None:
+            expected[bucket] = None
+            continue
         if not isinstance(rows, list):
             raise ValueError
         objects = {}
@@ -63,6 +68,29 @@ def _manifest(path: Path, pin: str, source: str, backup: str) -> dict:
             objects[key] = (size, digest)
         expected[bucket] = objects
     return expected
+
+
+def _version_bucket_absence(client, storage, headers):
+    """Prove nonexistence from a complete bucket listing on the isolated restore."""
+    seen = set()
+    while True:
+        response = client.get(f"{storage}/bucket", headers=headers, follow_redirects=False,
+                              params={"limit": _PAGE_SIZE, "offset": len(seen), "sortColumn": "id",
+                                      "sortOrder": "asc"})
+        if response.status_code != 200:
+            raise ValueError
+        page = response.json()
+        if not isinstance(page, list):
+            raise ValueError
+        if not page:
+            return "verified" if set(BUCKETS) <= seen else "unverified"
+        for item in page:
+            bucket = item.get("id") if isinstance(item, dict) else None
+            if not isinstance(bucket, str) or not bucket or bucket in seen:
+                raise ValueError
+            if bucket == VERSION_BUCKET:
+                return "mismatch"
+            seen.add(bucket)
 
 
 def _inventory(client, storage, headers, bucket):
@@ -142,7 +170,16 @@ def attachment_verdict(evidence: object, record: dict) -> str:
     buckets = evidence.get("buckets")
     if (not isinstance(pin, str) or not _SHA256.fullmatch(pin) or pin != record.get("attachment_manifest_sha256")
             or not isinstance(buckets, dict)
-            or set(buckets) != set(BUCKETS)):
+            or set(buckets) not in (set(BUCKETS), set(ALL_BUCKETS))):
+        return "UNVERIFIED"
+
+    if VERSION_BUCKET not in buckets:
+        absence = evidence.get("version_bucket_absence")
+        if absence == "mismatch":
+            return "FAIL"
+        if absence != "verified":
+            return "UNVERIFIED"
+    elif "version_bucket_absence" in evidence:
         return "UNVERIFIED"
 
     try:
@@ -202,6 +239,12 @@ def validate_attachments(client: httpx.Client, base: str, service_key: str, *,
     headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}", "Accept-Encoding": "identity"}
     evidence.update(manifest_sha256=manifest_sha256, buckets={})
     for bucket, objects in expected.items():
+        if bucket == VERSION_BUCKET and objects is None:
+            try:
+                evidence["version_bucket_absence"] = _version_bucket_absence(client, storage, headers)
+            except (ValueError, httpx.HTTPError, RecursionError):
+                evidence["version_bucket_absence"] = "unverified"
+            continue
         row = dict.fromkeys(_COUNTS, 0)
         row.update(inventory_complete=False, expected=len(objects), expected_bytes=sum(s for s, _ in objects.values()))
         try:

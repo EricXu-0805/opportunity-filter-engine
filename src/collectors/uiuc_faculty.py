@@ -41,7 +41,10 @@ from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
     UNIT_MAILBOX_LOCALPARTS,
     dept_name_stems,
+    faculty_verification_scope,
     inferred_method,
+    is_directory_discipline,
+    is_research_clause_fragment,
     record_kind,
     source_last_seen_at,
     source_verified_at,
@@ -1727,7 +1730,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         # Stamped with when the statement was actually observed, never with this
         # refresh's time: an availability claim derived from carried prose must
         # not be presentable as verified today.
-        observed = prior_metadata.get("research_areas_verified_at") or source_verified_at(prior_metadata)
+        observed = prior_metadata.get("research_areas_verified_at") or source_verified_at(existing)
         if isinstance(observed, str) and observed.strip():
             md["research_areas_verified_at"] = observed
 
@@ -1813,7 +1816,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
 
 
 def _observed_at(record: dict) -> datetime | None:
-    raw = source_last_seen_at(record.get("metadata") or {})
+    raw = source_last_seen_at(record)
     if not isinstance(raw, str):
         return None
     try:
@@ -1899,7 +1902,8 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
         return
     meta = survivor.setdefault("metadata", {})
     meta["last_seen_at"] = dropped["metadata"]["last_seen_at"]
-    if meta.get("verification_scope") == "curated":
+    if faculty_verification_scope(survivor) == "curated":
+        meta["verification_scope"] = "curated"
         meta["listing_seen_on_source"] = True
     if ("directory_section" in dropped["metadata"]
             and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")):
@@ -2134,12 +2138,22 @@ def stamp_department_field_keywords(record: dict) -> dict:
     field word (`department_field_words`) or one of our tags, in place; return
     record.
 
-    The page never said them: a collector gives a profile that states no
-    research its department's field so the row keeps a topic. Run at load, like
+    Also remove known affiliation labels stored as research statements by
+    directory templates, including their observation date. Preserve existing
+    keyword attribution if an enrichment supplied topics independently.
+    Run at load, like
     `stamp_collector_templates`, from the row as it stands, so no merge or carry
     has to keep a stored stamp in step with the keywords. Idempotent, and never
     overrides an existing stamp."""
-    if record_kind(record) != "faculty_contact" or inferred_method(record, "keywords") is not None:
+    if record_kind(record) != "faculty_contact":
+        return record
+    metadata = record.get("metadata")
+    if isinstance(metadata, dict) and is_directory_discipline(
+        record.get("source"), record.get("department"), metadata.get("research_areas_raw")
+    ):
+        metadata["research_areas_raw"] = ""
+        metadata.pop("research_areas_verified_at", None)
+    if inferred_method(record, "keywords") is not None:
         return record
     if _keywords_are_department_field(record):
         metadata = record.setdefault("metadata", {})
@@ -2152,6 +2166,10 @@ def _keywords_are_department_field(record: dict) -> bool:
     keywords = record.get("keywords")
     if not isinstance(keywords, list) or not keywords or not all(isinstance(k, str) for k in keywords):
         return False
+    if not (record.get("metadata") or {}).get("research_areas_raw") and all(
+        is_directory_discipline(record.get("source"), record.get("department"), k) for k in keywords
+    ):
+        return True
     words = department_field_words(record)
     if all(k in words for k in keywords):
         return True
@@ -2173,6 +2191,8 @@ def _is_department_field_text(text: str, record: dict) -> bool:
 
 def _is_fallback_research_text(text: str, record: dict) -> bool:
     """Department field text beside keywords that are ours too."""
+    if is_directory_discipline(record.get("source"), record.get("department"), text):
+        return True
     return _is_department_field_text(text, record) and (
         _keywords_are_department_field(record) or inferred_method(record, "keywords") is not None)
 
@@ -2380,6 +2400,8 @@ def _is_junk_keyword(k: str) -> bool:
     dangling/truncated fragment, or a sentence fragment — none of which are
     research areas."""
     kl = k.lower().strip()
+    if is_research_clause_fragment(kl):
+        return True
     if _PAGE_FURNITURE_RE.search(kl):
         return True
     if _SERVICE_ROLE_RE.search(kl):

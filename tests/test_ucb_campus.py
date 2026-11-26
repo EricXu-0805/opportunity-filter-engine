@@ -113,13 +113,13 @@ class TestSeedNormalization:
             assert o.get("pi_name") is None
             assert o.get("contact_email") is None
 
-    def test_rolling_with_no_deadline(self, seed_records):
-        """No structured deadlines (cycles live in the description), so every
-        record must be rolling — otherwise deactivate_past can't reason about it
-        and the UI shows a blank timing block."""
-        for o in seed_records:
-            assert o.get("deadline") is None
-            assert o.get("is_rolling") is True
+    def test_rolling_unless_a_program_has_a_reviewed_close(self, seed_records):
+        from src.program_windows import reviewed_window
+
+        for row in seed_records:
+            window = reviewed_window(row)
+            assert row.get("deadline") == (window.closes_on.isoformat() if window else None)
+            assert row["is_rolling"] is (window is None)
 
     def test_clear_separation_of_levels(self, seed_records):
         """Program / lab / department / career / announcement must each be
@@ -1247,3 +1247,25 @@ def test_ucb_crawl_domain_boundary_rejects_suffix_spoofing():
         "https://research.berkeley.edu/program",
         "https://evilberkeley.edu/program",
     )
+
+
+@pytest.mark.parametrize("key", ["math_reu", "physics_reu", "lbl_experiences"])
+def test_resource_board_keeps_old_id_without_applications(processed, key):
+    from src.evidence import target_truth
+
+    source = next(src for src in reg.UCB_SOURCES if src["source_name"] == "ucb_external_reu")
+    spec = next(p for p in source["programs"] if p["key"] == key)
+    assert spec["url"] in source["seeds"]
+    previous = {**spec, "url": "https://example.edu/old-program", "reference_only": False}
+    old = ucb_campus._normalize_program(source, previous, status="open", seed_page_verified=True)
+    processed.write_text(json.dumps([old]))
+    for verified in (False, True):
+        row = ucb_campus._normalize_program(source, spec, status="open" if verified else "unknown",
+                                             seed_page_verified=verified)
+        ucb_campus.merge_into_processed([row], national=True)
+        saved = _stored(processed)[old["id"]]
+        assert saved["title"] == spec["title"]
+        assert saved["metadata"]["status"] == "unknown"
+        assert bool(saved["metadata"]["last_verified"]) == verified
+        assert saved["application"]["application_url"] is None
+        assert not target_truth(saved).actionable

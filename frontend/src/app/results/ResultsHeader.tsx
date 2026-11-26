@@ -96,6 +96,9 @@ export function ResultsHeader({
               )
               : null}
         </p>
+        {!loading && data && counts.all > 0 && (
+          <p className="mt-1 text-[13px] text-gray-600">{t('results.scoreMeaning')}</p>
+        )}
         {!loading && data && typeof data.field_relevant_count === 'number' && data.field_relevant_count > 0 && (
           <p className="mt-1 text-[12px] sm:text-[13px] font-medium text-indigo-700">
             {data.field_relevant_count === 1
@@ -145,10 +148,7 @@ export function ResultsHeader({
           </button>
         )}
         {!loading && data && filteredTotal > 0 && (
-          // R69-D: the sendMatchesEmail path silently caps at the top 50
-          // by match score. When the filtered list exceeds that cap the
-          // label and tooltip now say so explicitly, so users aren't
-          // surprised by a clipped email.
+          // The digest takes the first page in the active view’s sort order.
           <EmailMeButton
             label={
               filteredTotal > 50
@@ -189,17 +189,17 @@ export function ResultsHeader({
             }}
           />
         )}
-        {!loading && data && favs.size > 0 && (
+        {!loading && data && filteredTotal > 0 && favs.size > 0 && (
           <button
             type="button"
             onClick={onExport}
             className="inline-flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-            title={activeTab === 'starred' ? t('results.exportFilteredTitle') : t('results.exportStarredTitle')}
+            title={t('results.exportStarredTitle')}
           >
             <Download className="w-3.5 h-3.5" />
             {activeTab === 'starred'
-              ? t('results.exportLabelFiltered')
-              : t('results.exportLabelStarred', { count: favs.size })}
+              ? t('results.exportLabelFiltered', { count: filteredTotal })
+              : t('results.exportLabelStarred')}
           </button>
         )}
       </div>

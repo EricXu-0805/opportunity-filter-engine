@@ -26,6 +26,7 @@ from src.normalizers.deactivate_stale_faculty import (
     deactivate_stale_faculty,
     deactivate_trainee_faculty,
     finalize_unit_ledger,
+    identity_key,
     unit_retirement_authority,
 )
 
@@ -110,6 +111,45 @@ def observation(unit_id="bio", *, observed_ids=(), baseline=None,
         obs["completeness_status"] = "complete"
         obs["retirement_authorized"] = True
     return obs
+
+
+def test_ucsc_directory_preserves_the_person_in_the_uid_query():
+    endpoint = "https://campusdirectory.ucsc.edu/cd_detail"
+    record = {"url": endpoint + "?ref=dept&uid=gomalley#bio"}
+    assert identity_key(record) == ("url", "campusdirectory.ucsc.edu/cd_detail?uid=gomalley")
+    assert identity_key(record) != identity_key({"url": endpoint + "?uid=gbhers"})
+    assert identity_key({"url": endpoint + "?uid=abel.rod"}) == ("url", "campusdirectory.ucsc.edu/cd_detail?uid=abel.rod")
+    for query in ("", "?uid=", "?uid=gomalley&uid=gbhers"):
+        assert identity_key({"url": endpoint + query, "contact_email": "person@ucsc.edu"}) == (
+            "email", "person@ucsc.edu")
+
+
+def test_collapsed_ucsc_ledger_cannot_establish_absence():
+    prior = observation(identities=[["url", "campusdirectory.ucsc.edu/cd_detail"]],
+                        observed_ids=["faculty-ucsc-hist-7835742d"])
+    assert unit_retirement_authority(prior, 29) == (False, "ambiguous_ucsc_directory_identity")
+
+
+def test_known_partial_department_never_authorizes_departure():
+    from src.collectors.faculty_graph import _unit_observation
+    from src.collectors.schools.ucsc_faculty import SCHOOL
+
+    for short in ("CS", "ANTH"):
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == short)
+        present = rec(f"faculty-ucsc-{short.lower()}-00000001", seen=RECENT)
+        missing = rec(f"faculty-ucsc-{short.lower()}-00000002", seen=LONG_AGO)
+        for row in (present, missing):
+            row["source"] = "ucsc_faculty"
+        unit = _unit_observation(SCHOOL, dept, [present], "2026-11-25", coverage=coverage(1))
+        ledger = {short.lower(): unit}
+        finalize_unit_ledger(ledger, [present, missing], "ucsc_faculty")
+        assert unit["observed_entity_ids"] == [present["id"]]
+        assert unit["retirement_authorized"] is False
+        assert unit["failure_reason"] == "known_partial_roster"
+        assert unit_retirement_authority(unit, 2) == (False, "known_partial_roster")
+        result = deactivate_stale_faculty([present, missing], {"ucsc_faculty": ledger}, today=TODAY)
+        assert not result["newly_deactivated"]
+        assert missing["metadata"]["is_active"]
 
 
 # 1. complete department scrape may authorize retirement

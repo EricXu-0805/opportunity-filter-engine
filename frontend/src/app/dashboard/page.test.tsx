@@ -13,7 +13,10 @@ const mockGetShortlistOpportunities = vi.fn();
 const mockGetStats = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
-  getFavorites: () => mockGetFavorites(),
+  getFavoritesSnapshot: async () => {
+    const value = await mockGetFavorites();
+    return value instanceof Set ? { ids: value, complete: true } : value;
+  },
   getInteractionsFull: () => mockGetInteractionsFull(),
   // The page resets its four lists synchronously inside this callback on a
   // real uid change. Tests that never emit load exactly once.
@@ -411,6 +414,18 @@ describe('DashboardPage — one saved count with /favorites', () => {
     render(<DashboardPage />);
     await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'unknown'));
     expect(screen.queryByText('Imported a')).toBeNull();
+    expect(screen.queryByText('dashboard.deadlines.emptyTitle')).toBeNull();
+    expect(screen.getByText('dashboard.deadlines.browserUnavailable')).toBeVisible();
+  });
+
+  it('keeps verified browser deadlines while the account read remains incomplete', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a', { deadline: isoDateIn(6) })] };
+    mockGetFavorites.mockResolvedValue({ ids: new Set(), complete: false });
+    render(<DashboardPage />);
+    expect(await screen.findByText('Imported a')).toBeVisible();
+    expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'error');
+    expect(screen.getByText('dashboard.deadlines.errorTitle')).toBeVisible();
+    expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).toBeNull();
   });
 
   it('does not state a count it cannot read', async () => {
@@ -460,7 +475,7 @@ describe('DashboardPage — honest empty and error states', () => {
 
   it('surfaces load failures as errors instead of pretending the lists are empty', async () => {
     // W14: these rejections now drive the REAL lib contract —
-    // getInteractionsFull/getFavorites throw on session/query failure
+    // Explicitly rejected account reads surface as errors
     // instead of collapsing into empty collections.
     mockGetFavorites.mockRejectedValue(new Error('offline'));
     mockGetInteractionsFull.mockRejectedValue(new Error('interactions-load-failed: offline'));

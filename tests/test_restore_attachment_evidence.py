@@ -22,8 +22,8 @@ def sha(data):
 
 
 def manifest(files):
-    return {"version": 1, "source_environment": "source", "source_backup_id": "point-1",
-            "buckets": {b: [{"key": k, "size": len(v), "sha256": sha(v)} for k, v in rows.items()]
+    return {"version": 2, "source_environment": "source", "source_backup_id": "point-1",
+            "buckets": {attachments.VERSION_BUCKET: None} | {b: [{"key": k, "size": len(v), "sha256": sha(v)} for k, v in rows.items()]
                         for b, rows in files.items()}}
 
 
@@ -50,6 +50,11 @@ class Storage:
         path = req.url.path.removeprefix("/storage/v1/").split("/", 2)
         if path[0] == "bucket":
             assert req.method == "GET"
+            if len(path) == 1:
+                start = int(req.url.params["offset"])
+                return httpx.Response(200, json=[{"id": b} for b in sorted(self.files)[start:start + 1]])
+            if path[1] not in self.files:
+                return httpx.Response(404)
             return httpx.Response(200, json={"id": path[1], "public": False})
         if req.method == "POST":  # Storage's read-only list endpoint
             assert path[:2] == ["object", "list"]
@@ -75,7 +80,7 @@ class Storage:
         self.downloads.append((bucket, key))
         if key == PRIVATE and self.download_response is not None:
             return self.download_response()
-        if key not in self.files[bucket]:
+        if key not in self.files.get(bucket, {}):
             return httpx.Response(404, text=PRIVATE)
         return httpx.Response(200, content=self.files[bucket][key])
 
@@ -212,7 +217,7 @@ def test_duplicate_json_property_wrong_pin_and_wrong_hosts(tmp_path):
                  BASE + "/some-path"):
         assert run(store, path, pin, base=base)["result"] == "UNVERIFIED"
     assert run(store, path, pin, record={**RECORD, "source_environment": "scratch"})["result"] == "UNVERIFIED"
-    raw = path.read_bytes().replace(b'"version": 1', b'"version": 1, "version": 1')
+    raw = path.read_bytes().replace(b'"version": 2', b'"version": 2, "version": 2')
     path.write_bytes(raw)
     assert run(store, path, sha(raw))["result"] == "UNVERIFIED"
     assert not store.calls
@@ -232,3 +237,25 @@ def test_gate_recomputes_result_and_rejects_missing_or_inconsistent_counts(tmp_p
         assert attachments.attachment_verdict(suspect, record) == "UNVERIFIED"
     del proof["buckets"][MATERIALS]
     assert attachments.attachment_verdict(proof, record) == "UNVERIFIED"
+
+
+def test_versioned_restore_verifies_replacement_bytes_not_only_the_anchor(tmp_path):
+    version = attachments.VERSION_BUCKET
+    updated = {**FILES, version: {"owner/revision": b"updated"}}
+    args = write_manifest(tmp_path, manifest(updated))
+    result = run(Storage(updated), *args)
+    assert result["result"] == "PASS" and result["buckets"][version]["verified"] == 1
+    bad = Storage(updated)
+    bad.files[version]["owner/revision"] = b"damaged"
+    assert run(bad, *args)["result"] == "FAIL"
+    assert run(Storage(FILES), *args)["result"] != "PASS"
+
+
+def test_legacy_scope_needs_independent_absence_on_both_sides(tmp_path):
+    doc = manifest(FILES)
+    args = write_manifest(tmp_path, doc)
+    assert run(Storage(FILES | {attachments.VERSION_BUCKET: {}}), *args)["result"] == "FAIL"
+    doc["buckets"].pop(attachments.VERSION_BUCKET)
+    for version in (1, 2):
+        doc["version"] = version
+        assert run(Storage(FILES), *write_manifest(tmp_path, doc))["result"] == "UNVERIFIED"

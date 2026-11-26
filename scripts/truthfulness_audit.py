@@ -225,9 +225,12 @@ _ORG_TOKEN_STOPWORDS = frozenset({
 })
 _UNIT_TYPE_RE = re.compile(r"\b(?:Institute|Center|Laboratory|School of)\b")
 _NON_PROFESSOR_RANK_RE = re.compile(r"\b(?:Lecturer|Instructor|Director|Scientist|Fellow)\b")
-# Any case and form: titles state "Professor Emerita", "Emeriti",
-# "Associate Professor (retired)" and "visiting" as often as "Emeritus".
-_EMERITUS_VISITING_RE = re.compile(r"\b(?:Emerit(?:us|a|i|ae)|Retired|Visiting)\b", re.IGNORECASE)
+# The manual audit also samples abbreviated ranks used by department rosters.
+_EMERITUS_VISITING_RE = re.compile(
+    r"\b(?:emerit(?:us|a|i|ae|as)?|emertius|retired|visiting)\b"
+    r"|^\s*visitor\s*$|\bprofessor\b[^;]*\bemer\.\s*$", re.IGNORECASE)
+_VISITING_PROGRAM_ROLE_RE = re.compile(
+    r"\b(?:director|coordinator|manager)\s+of\s+(?:the\s+)?visiting\b", re.IGNORECASE)
 _TITLE_YEAR_RE = re.compile(r"\b(20\d{2})\b")
 _INITIALS_ONLY_RE = re.compile(r"[A-Z]\.?(?:[A-Z]\.?)?")
 _GENERIC_LOCALPART_PREFIXES = ("info", "admin", "contact", "office", "dept")
@@ -317,7 +320,8 @@ RISK_SELECTORS = {
     "professor": (
         ("same_name_multi_school", lambda r, c: r.get("pi_name") in c["multi_school_pis"]),
         ("emeritus_or_visiting", lambda r, c: bool(
-            _EMERITUS_VISITING_RE.search(_md(r).get("faculty_title") or ""))),
+            _EMERITUS_VISITING_RE.search(
+                _VISITING_PROGRAM_ROLE_RE.sub("", _md(r).get("faculty_title") or "")))),
     ),
     "position": (
         ("non_professor_rank", lambda r, c: bool(

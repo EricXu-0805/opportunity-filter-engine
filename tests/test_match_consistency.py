@@ -2916,3 +2916,29 @@ class TestTheReportedPersonaOnTheCommittedCorpus:
             assert universe.buckets["low_fit"] == sum(
                 universes[(kind,)].buckets["low_fit"] for kind in selection
             )
+
+
+def test_home_only_ranking_skips_evidence_reads_for_out_of_scope_records(monkeypatch):
+    profile = _profile(include_cross_school=False, seeking_type=[])
+    rows = [
+        _opp("home"),
+        _opp("national", school=None),
+        _opp("summer", school="ucb", opportunity_type="summer_program", audience="open"),
+        _opp("away", school="ucb", audience="open"),
+        _opp("archived", school="ucb", metadata={"is_active": False}),
+    ]
+    truth = ranker.target_truth
+    ctx = ranker._filter_context(profile)
+    assert ranker.hard_exclusion(rows[-1], ctx) == truth(rows[-1]).reason_code
+    reads = set()
+
+    def track(record):
+        reads.add(record["id"])
+        return truth(record)
+
+    monkeypatch.setattr(ranker, "target_truth", track)
+    ranker.rank_visible_universe(profile, rows)
+    assert reads == {"home", "national", "summer"}
+    reads.clear()
+    ranker.rank_visible_universe({**profile, "include_cross_school": True}, rows)
+    assert reads == {row["id"] for row in rows}

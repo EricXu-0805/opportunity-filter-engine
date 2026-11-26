@@ -46,7 +46,6 @@ from src.collectors.refresh_contract import (  # noqa: E402
     record_source_aliases,
     shard_of_source,
 )
-
 from src.evidence import source_last_seen_at  # noqa: E402
 
 SHARDS_DIR = PROJECT_ROOT / "data" / "processed" / "shards"
@@ -107,7 +106,7 @@ def observed_sources(shards: dict[str, list[dict]]) -> dict[str, dict]:
                  "school": shard_of_source(source) or slug},
             )
             row["active"] += 1
-            seen = _parse(source_last_seen_at(record.get("metadata") or {}))
+            seen = _parse(source_last_seen_at(record))
             if seen is not None and (
                 row["newest_seen"] is None or seen > row["newest_seen"]
             ):

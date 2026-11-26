@@ -949,6 +949,50 @@ def _carry_inference_stamps(prior: dict, opp: dict, carried: list[str]) -> None:
         opp["metadata"].pop(INFERRED_FIELDS_KEY, None)
 
 
+# Distinct entries in the SRO directory for the same host program. Both UW
+# application links resolve to the same WISCIENCE program; keep the older ID.
+# BU's two entries name the same STaRS program and contact, but only the first
+# links to the current program page. Its predecessor's old, redirected SRO
+# entry is handled separately by deactivate_unlisted.
+_DUPLICATE_PROGRAMS = (
+    ("University of Wisconsin-Madison", ("sro-595e912d", "sro-3c378261")),
+    ("Boston University", ("sro-60f60fbd", "sro-bc33bc08")),
+)
+
+
+def _settle_program_duplicates(index: dict, seen_ids: set[str], prior: dict, today: str) -> None:
+    """Keep the preferred live listing; a freshly seen alias can replace a retired one."""
+    from src.normalizers.deactivate_stale_faculty import DUPLICATE_REASON
+
+    for organization, ids in _DUPLICATE_PROGRAMS:
+        if seen_ids.isdisjoint(ids):
+            continue
+        candidates = []
+        for record_id in ids:
+            row = index.get(record_id)
+            if not row or row.get("source") != "uiuc_sro" or row.get("organization") != organization:
+                continue
+            meta = row["metadata"]
+            if meta.get("is_active") is not False or (
+                record_id in seen_ids and meta.get("deactivation_reason") == DUPLICATE_REASON
+            ):
+                candidates.append(row)
+        if not candidates:
+            continue
+        winner, *aliases = candidates
+        winner_meta = winner["metadata"]
+        if winner_meta.get("deactivation_reason") == DUPLICATE_REASON:
+            winner_meta["is_active"] = True
+            for key in ("duplicate_of", "deactivation_reason", "deactivated_at"):
+                winner_meta.pop(key, None)
+        for row in aliases:
+            meta = row["metadata"]
+            previous = prior.get(row["id"], meta)
+            stamp = previous.get("deactivated_at") if previous.get("duplicate_of") == winner["id"] else None
+            meta.update(is_active=False, duplicate_of=winner["id"],
+                        deactivation_reason=DUPLICATE_REASON, deactivated_at=stamp or today)
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -959,6 +1003,8 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             existing = json.load(f)
 
     index = {opp["id"]: opp for opp in existing}
+    prior_duplicate_meta = {key: index[key]["metadata"] for _, ids in _DUPLICATE_PROGRAMS
+                            for key in ids if key in index}
     added, updated = 0, 0
 
     for opp in new_opps:
@@ -1000,6 +1046,8 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             index[opp["id"]] = opp
             added += 1
 
+    _settle_program_duplicates(index, {opp["id"] for opp in new_opps},
+                               prior_duplicate_meta, datetime.now(UTC).date().isoformat())
     all_opps = list(index.values())
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
@@ -1066,6 +1114,10 @@ def deactivate_unlisted(all_opps: list[dict], listed_ids: set[str], control_url:
         meta["deactivated_at"] = stamp
         meta["deactivation_reason"] = "no_longer_listed"
         result["deactivated"] += 1
+    if result["deactivated"]:
+        duplicate_ids = {key for _, ids in _DUPLICATE_PROGRAMS for key in ids}
+        grouped = {row["id"]: row for row in all_opps if row.get("id") in duplicate_ids}
+        _settle_program_duplicates(grouped, listed_ids, {}, stamp)
     return result
 
 

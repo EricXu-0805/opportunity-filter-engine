@@ -45,6 +45,8 @@ from functools import lru_cache
 from src.contact_instructions import SOURCE_KEY as CONTACT_SOURCE_KEY
 from src.contact_instructions import _source_time as contact_source_time
 from src.contact_instructions import _url as contact_url
+from src.urap_windows import SOURCE as URAP_PROJECT_SOURCE
+from src.urap_windows import window_phase
 
 # ---------------------------------------------------------------------------
 # 1. Observed vs synthesized (email provenance)
@@ -226,7 +228,7 @@ def is_deceased_listing(name: object, title: object) -> bool:
 # "Emergency", "Emerging" or "Emerson"; a bare "Emer." also abbreviates
 # "Emergency" and is not read.
 _EMERITUS_OR_RETIRED_RE = re.compile(
-    r"\b(?:emerit(?:us|a|i|as)?|emertius|retired)\b", re.IGNORECASE)
+    r"\b(?:emerit(?:us|a|i|as|x)?|emertius|retired)\b", re.IGNORECASE)
 
 RETIRED_TITLE_REASON = "retired_title"
 
@@ -1066,6 +1068,38 @@ _FACULTY_AVAILABILITY_SCAN_VERSION = 1
 # Internal corpus field shared by collectors, the serve-time neutralizer and
 # the ranker. Public projections remove it before serialization.
 FACULTY_MAJOR_LABELS_MARKER = "_faculty_major_labels"
+
+# These specific directory components put affiliation or position labels in the
+# field used for research. A matching word in a personal "Research Areas" block
+# is still source evidence (e.g. Mathematics at UT Austin).
+_LSU_DESIGN_UNITS = {
+    "School of Architecture", "School of Art", "School of Interior Design",
+    "Robert Reich School of Landscape Architecture",
+}
+_LSU_DESIGN_DISCIPLINES = {"architecture", "art", "interior design", "landscape architecture"}
+
+
+def is_directory_discipline(source: str | None, department: str | None, value: object) -> bool:
+    if not isinstance(value, str) or source not in {"lsu_faculty", "macalester_faculty"}:
+        return False
+    label = " ".join(value.casefold().split())
+    if source == "lsu_faculty":
+        if department == "School of Animal Sciences":
+            return label in {"school of animal science", "school of animal sciences"}
+        if department in _LSU_DESIGN_UNITS:
+            labels = label.removeprefix("college of art & design ").split("/")
+            return all(part.strip() in _LSU_DESIGN_DISCIPLINES for part in labels)
+    return (source == "macalester_faculty"
+            and department == "Department of Mathematics, Statistics, and Computer Science"
+            and label in {"mathematics", "statistics", "computer science"})
+
+
+def is_research_clause_fragment(keyword: str) -> bool:
+    """A relative clause or predicate left by splitting research prose into tags."""
+    return bool(re.match(
+        r"^(?:which(?:$|\s+(?!(?:path|way)\b))|takes? place (?:in|on|at)\b)",
+        keyword.strip(), re.I,
+    ))
 # The verb set is corpus-derived, not speculative.  Keep the object bounded so
 # an unrelated later mention of students cannot turn a general negation into
 # an outreach block. Object semantics are checked separately below: explicit
@@ -1857,19 +1891,49 @@ def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
     return first_open if first_open is not None else (None, None)
 
 
-def source_last_seen_at(metadata: dict) -> str | None:
+# These four units formerly labeled rows read from committed JSON exports
+# as "directory". Profile fetches and genuine sightings keep their own proof.
+_FILE_ROSTER_UNITS = {
+    "jhu_faculty": {"faculty-jhu-bsph", "faculty-jhu-som"},
+    "northwestern_faculty": {"faculty-northwestern-kellogg", "faculty-northwestern-feinberg"},
+}
+
+
+def legacy_file_roster(source: str, record_id: str) -> bool:
+    if not isinstance(source, str) or source not in _FILE_ROSTER_UNITS or not isinstance(record_id, str):
+        return False
+    unit, _, digest = record_id.rpartition("-")
+    return unit in _FILE_ROSTER_UNITS[source] and re.fullmatch(r"[0-9a-f]{8}", digest) is not None
+
+
+def _record_metadata(record: dict) -> dict:
+    metadata = record.get("metadata") if isinstance(record, dict) else None
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def faculty_verification_scope(record: dict) -> str | None:
+    metadata = _record_metadata(record)
+    scope = metadata.get("verification_scope")
+    if (scope == "directory" and metadata.get("listing_seen_on_source") is not True
+            and legacy_file_roster(record.get("source"), record.get("id"))):
+        return "curated"
+    return scope
+
+
+def source_last_seen_at(record: dict) -> str | None:
     """A source sighting, excluding the run clock on historical offline faculty seeds."""
-    if metadata.get("verification_scope") == "curated" and metadata.get("listing_seen_on_source") is not True:
+    metadata = _record_metadata(record)
+    if faculty_verification_scope(record) == "curated" and metadata.get("listing_seen_on_source") is not True:
         return None
     seen = metadata.get("last_seen_at")
     return seen if isinstance(seen, str) else None
 
 
-def source_verified_at(metadata: dict) -> str | None:
+def source_verified_at(record: dict) -> str | None:
     """A page-read timestamp. Re-emitting configured faculty fields reads no page."""
-    if metadata.get("verification_scope") == "curated":
+    if faculty_verification_scope(record) == "curated":
         return None
-    verified = metadata.get("last_verified")
+    verified = _record_metadata(record).get("last_verified")
     return verified if isinstance(verified, str) else None
 
 
@@ -1886,15 +1950,21 @@ def target_truth(record: dict) -> TargetTruth:
     overnight, so a cached answer is only as current as the day it was
     computed on.
     """
-    metadata = record.get("metadata") if isinstance(record, dict) else None
-    if not isinstance(metadata, dict):
-        metadata = {}
-
-    verified_at = source_verified_at(metadata)
+    metadata = _record_metadata(record)
+    verified_at = source_verified_at(record)
     expires_at = metadata.get("expires_at")
     expires_at = expires_at if isinstance(expires_at, str) else None
 
     status, status_key = _listing_status(metadata)
+    # A project read while recruiting can stay in memory past the exact local
+    # cutoff. The date-only grace period is for sources that did not state a time.
+    source = record.get("source") if isinstance(record, dict) else None
+    window = metadata.get("urap_window")
+    if source == URAP_PROJECT_SOURCE and isinstance(window, dict):
+        verified_at = window.get("observed_at") or verified_at
+        expires_at = window.get("deadline_at") or expires_at
+        if status in _OPEN_LISTING_STATUSES and window_phase(window) == "closed":
+            status, status_key = "closed", "urap_window"
     if status in _CLOSED_LISTING_STATUSES:
         listing_state = "closed"
     elif status in _OPEN_LISTING_STATUSES:
@@ -1902,7 +1972,6 @@ def target_truth(record: dict) -> TargetTruth:
     else:
         listing_state = "unknown"
 
-    source = record.get("source") if isinstance(record, dict) else None
     source_publishes_reference = (
         isinstance(source, str)
         and source.strip().lower() in _REFERENCE_CONTRACT_SOURCES

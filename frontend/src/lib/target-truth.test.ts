@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Opportunity, PublicTargetTruth } from './types';
 import {
   opportunityApplicationUrl,
@@ -481,4 +481,19 @@ describe('a live truth must agree with its own fields too', () => {
     // The consequence that matters: no Apply URL is handed out for it.
     expect(opportunityApplicationUrl(target)).toBeUndefined();
   });
+});
+
+it('expires a cached URAP application at its project deadline', () => {
+  const cutoff = '2026-08-31T16:00:00-07:00';
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(cutoff) - 1);
+  try {
+    const project = opp({ ...OPEN, expires_at: cutoff }, { source: 'ucb_urap_projects' });
+    expect(targetPosture(project)).toBe('actionable');
+    clock.mockReturnValue(Date.parse(cutoff));
+    expect(targetStatusReason(project)).toBe('listing_closed');
+    expect(opportunityApplicationUrl(project)).toBeUndefined();
+    expect(targetPosture({ ...project, source: 'another_source' })).toBe('actionable');
+  } finally {
+    clock.mockRestore();
+  }
 });

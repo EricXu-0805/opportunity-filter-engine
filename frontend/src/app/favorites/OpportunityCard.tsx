@@ -20,6 +20,7 @@ import { importSourceInfo } from '@/lib/import-source';
 import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
+import { facultyOutreachLabel } from '@/lib/record-kind';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
   inactiveAsDuplicate,
@@ -231,8 +232,8 @@ export function OpportunityCard({
                 {t('favorites.customBadge')}
               </Badge>
             )}
-            {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
-              <Badge variant="orange">{t('card.facultyContactUnconfirmed')}</Badge>
+            {isFaculty && statusReason !== 'inactive' && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+              <Badge variant="orange">{t(facultyOutreachLabel(opp))}</Badge>
             )}
             {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
               <Badge variant="red">{t('card.facultyNotAcceptingUndergraduates')}</Badge>

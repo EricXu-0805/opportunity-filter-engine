@@ -1,5 +1,6 @@
 'use client';
 
+import MatchUnknowns from '@/components/MatchUnknowns';
 import { profileInputMessage } from '@/lib/profile-input';
 
 import { useCallback, useRef, useState } from 'react';
@@ -53,6 +54,7 @@ import {
   targetStatusReason,
   type TargetStatusReason,
 } from '@/lib/target-truth';
+import { facultyOutreachLabel } from '@/lib/record-kind';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useResultModalHistory, type ModalCloseRequest } from '@/app/results/use-result-modal-history';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
@@ -375,8 +377,8 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
           {showStatusReason && statusReason && (
             <Badge variant="red">{t(CARD_STATUS_KEY[statusReason])}</Badge>
           )}
-          {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
-            <Badge variant="orange">{t('card.facultyContactUnconfirmed')}</Badge>
+          {isFaculty && statusReason !== 'inactive' && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+            <Badge variant="orange">{t(facultyOutreachLabel(opp))}</Badge>
           )}
           {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
             <Badge variant="red">{t('card.facultyNotAcceptingUndergraduates')}</Badge>
@@ -681,13 +683,15 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               </div>
             )}
 
+            <MatchUnknowns fields={match.unknowns} />
+
             {match.next_steps.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2.5">
                   {t('card.nextSteps')}
                 </h4>
                 <ul className="space-y-2">
-                  {match.next_steps.map((n, i) => (
+                  {localizeMatchReasons(locale, match.next_steps, match.next_step_keys).map((n, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[13px] text-gray-600 leading-relaxed">
                       <ArrowRight className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
                       <span>{n}</span>

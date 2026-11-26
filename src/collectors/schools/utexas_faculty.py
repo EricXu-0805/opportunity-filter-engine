@@ -176,7 +176,9 @@ SCHOOL: dict = {
         _cola("ENGLISH", "Department of English", ['English', 'Creative Writing', 'Rhetoric and Writing'], "english"),
         _cola("HISTORY", "Department of History", ['History'], "history"),
         _cola("PHILOSOPHY", "Department of Philosophy", ['Philosophy'], "philosophy"),
-        _cola("LINGUISTICS", "Department of Linguistics", ['Linguistics'], "linguistics"),
+        _cola("LINGUISTICS", "Department of Linguistics", ['Linguistics'], "linguistics") | {
+            "profile_id_names": {"liberalarts.utexas.edu/linguistics/faculty/aa225967": ("Akshay Aitha", "Akshayraj Aitha")},
+        },
         _cola("CLASSICS", "Department of Classics", ['Classics', 'Classical Languages', 'Classical Civilization'], "classics"),
         _cola("RS", "Department of Religious Studies", ['Religious Studies'], "rs"),
         _cola("FRIT", "Department of French & Italian", ['French', 'Italian', 'French Studies', 'Italian Studies'], "frenchitalian"),

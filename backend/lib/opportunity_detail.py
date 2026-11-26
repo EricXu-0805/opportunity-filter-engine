@@ -729,6 +729,13 @@ def _timing(payload: dict, canonical: dict, source: str) -> _Field:
         if window is not None and deadline == window.closes_on.isoformat():
             quote = {"text": window.closes_quote, "source_url": public_projection.safe_public_http_url(window.page),
                      "observed_at": window.reviewed_on.isoformat()}
+        if source == "ucb_urap_projects":
+            notice = _dict(_dict(canonical.get("metadata")).get("urap_window"))
+            excerpt = _text(notice.get("deadline_quote"))
+            if (excerpt and (_date(notice.get("deadline_at")) or "")[:10] == deadline
+                    and notice.get("source_url") == canonical.get("source_url")):
+                quote = {"text": excerpt, "source_url": public_projection.safe_public_http_url(notice["source_url"]),
+                         "observed_at": _text(notice.get("observed_at"))}
         field.put("deadline", deadline, basis, quote)
     note = _text(_dict(payload.get("metadata")).get("deadline_note"))
     if note:
@@ -764,6 +771,14 @@ def _funding(payload: dict, canonical: dict, source: str) -> _Field:
             basis, quote = _configured(canonical, "compensation")
         field.put("compensation", compensation, basis, quote)
     return field
+
+
+def pay_is_inferred(canonical: dict, paid: object) -> bool:
+    """Whether a pay value can only be displayed as an inference."""
+    return paid in ("yes", "stipend", "no") and (
+        is_read_off_the_page(canonical, "paid")
+        or paid_basis(canonical, paid) not in (None, BASIS_PROGRAM_POLICY)
+    )
 
 
 def paid_basis(canonical: dict, paid: object) -> str | None:
@@ -874,7 +889,7 @@ def last_seen_listed(canonical: dict) -> str | None:
     """
     if record_kind(canonical) != "faculty_contact":
         return None
-    seen = _date(source_last_seen_at(_dict(canonical.get("metadata"))))
+    seen = _date(source_last_seen_at(canonical))
     return seen[:10] if seen else None
 
 

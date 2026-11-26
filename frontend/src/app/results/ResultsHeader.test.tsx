@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResultsHeader } from './ResultsHeader';
+import { translate } from '@/i18n/translate';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
 
 const { sendMatchesEmailMock } = vi.hoisted(() => ({
@@ -28,9 +29,9 @@ const captured = vi.hoisted(() => ({
   onSend: null as null | ((email: string) => Promise<unknown>),
 }));
 vi.mock('@/components/EmailMeButton', () => ({
-  default: ({ onSend }: { onSend: (email: string) => Promise<unknown> }) => {
+  default: ({ onSend, label, title }: { onSend: (email: string) => Promise<unknown>; label: string; title: string }) => {
     captured.onSend = onSend;
-    return <button type="button" onClick={() => void onSend('student@example.com')}>
+    return <button type="button" data-label={label} title={title} onClick={() => void onSend('student@example.com')}>
       mock-email
     </button>;
   },
@@ -100,9 +101,46 @@ describe('ResultsHeader strong-match header', () => {
     expect(screen.getByText(/results\.fieldMatches\{count=3\}/)).toBeInTheDocument();
   });
 
+  it('describes a sparse field result as matches when the only result is a professor profile', () => {
+    const data = {
+      total: 1, field_relevant_count: 1, thin_inventory: true,
+      results: [{ opportunity: { id: 'faculty-caltech-phys-b6dd07e7', source_type: 'faculty_research' } }],
+    } as MatchesResponse;
+    renderHeader(1, { data, t: (key, vars) => translate('en', key, vars) });
+    expect(screen.getByText(/few records matched your field/i)).toBeInTheDocument();
+    expect(screen.queryByText(/openings/i)).not.toBeInTheDocument();
+  });
+
   it('hides the line entirely at zero', () => {
     renderHeader(0);
     expect(screen.queryByText(/results\.fieldMatches/)).not.toBeInTheDocument();
+  });
+});
+
+describe('filtered export scope', () => {
+  const favs = new Set(['in-view', 'off-campus', 'wrong-bucket']);
+  const english = (key: string, vars?: Record<string, string | number>) => translate('en', key, vars);
+
+  it('labels the intersection without promising the total saved across all filters', () => {
+    renderHeader(0, { activeTab: 'good_match', filteredTotal: 8, favs, t: english });
+    expect(screen.getByRole('button', { name: 'Export favorites in this view (CSV)' })).toBeVisible();
+  });
+
+  it('shows the exact filtered count on the favorites tab', () => {
+    renderHeader(0, { activeTab: 'starred', filteredTotal: 1, favs, t: english });
+    expect(screen.getByRole('button', { name: 'Export filtered favorites (1) as CSV' })).toBeVisible();
+  });
+
+  it('describes a capped email as the first page of the active sort order', () => {
+    renderHeader(0, { filteredTotal: 82, t: english });
+    const email = screen.getByRole('button', { name: 'mock-email' });
+    expect(email).toHaveAttribute('data-label', 'Email first 50 results in this view');
+    expect(email.getAttribute('title')).toContain('first 50 results in the current sort order');
+  });
+
+  it('omits the export when the active view is already known to be empty', () => {
+    renderHeader(0, { activeTab: 'starred', filteredTotal: 0, favs, t: english });
+    expect(screen.queryByRole('button', { name: /CSV/i })).not.toBeInTheDocument();
   });
 });
 

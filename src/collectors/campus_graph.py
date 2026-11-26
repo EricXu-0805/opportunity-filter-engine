@@ -441,6 +441,11 @@ def _fetch(url: str, *, render: bool = False):
         raise
     except requests.HTTPError as exc:
         if exc.response is not None:
+            if exc.response.status_code in {404, 410}:
+                if exc.response.headers.get("cf-mitigated", "").lower() == "challenge":
+                    raise _CampusFetchError("access_page") from exc
+                if not same_source_page(url, exc.response.url):
+                    raise _CampusFetchError("redirect_mismatch") from exc
             raise _CampusFetchError(f"http_{exc.response.status_code}") from exc
         raise _CampusFetchError("fetch_failed") from exc
     except requests.Timeout as exc:
@@ -828,7 +833,17 @@ def fetch_and_normalize_with_evidence(
                     seed_page_verified=spec["url"] in status_by_url,
                 )
                 if spec["url"] in captures:
-                    record["metadata"].update(capture_metadata(captures[spec["url"]]))
+                    capture = captures[spec["url"]]
+                    meta = record["metadata"]
+                    meta.update(capture_metadata(capture))
+                    # Only the individual configured project page can withdraw its
+                    # application. A directory, shared page or failed redirect cannot.
+                    if (capture.get("reason") in {"http_404", "http_410"}
+                            and not (meta.get("reference_only") or meta["shared_program_page"])
+                            and urlsplit(spec["url"]).path.strip("/")):
+                        meta.update(status="unavailable", is_active=False, deactivation_reason=PROGRAM_PAGE_GONE,
+                                    deactivated_at=capture["attempted_at"])
+                        record["application"]["application_url"] = None
                 records.append(record)
                 evidence["seed_records"] += 1
             except Exception:  # noqa: BLE001
@@ -867,6 +882,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
 
 
 NO_LONGER_LISTED = "no_longer_listed"
+PROGRAM_PAGE_GONE = "program_page_gone"
 
 
 def _configured_program_row(opp: dict, school_slug: str) -> bool:
@@ -914,8 +930,9 @@ def _listing_applies(opp: dict) -> bool:
     is.
     """
     metadata = opp["metadata"]
-    return metadata.get("is_active") is not False or (
-        metadata.get("status") == "closed" and metadata.get("deactivation_reason") is None)
+    return (metadata.get("is_active") is not False
+            or metadata.get("deactivation_reason") == PROGRAM_PAGE_GONE
+            or (metadata.get("status") == "closed" and metadata.get("deactivation_reason") is None))
 
 
 def _waiting_for_a_read(new_opps: list[dict], existing: list[dict], owned, published: set, other_file_keys) -> set:
@@ -943,7 +960,8 @@ def _waiting_for_a_read(new_opps: list[dict], existing: list[dict], owned, publi
     """
     incoming_ids = {opp.get("id") for opp in new_opps}
     closed = [row for row in existing if isinstance(row.get("metadata"), dict)
-              and row["metadata"].get("status") == "closed" and row.get("id") not in incoming_ids and owned(row)]
+              and row["metadata"].get("status") in {"closed", "unavailable"}
+              and row.get("id") not in incoming_ids and owned(row)]
     if not closed:
         return set()
     stored = {row.get("id"): row for row in existing}
@@ -1144,7 +1162,9 @@ def merge_into_processed(
                 # Carry forward the state it was retired from: active, unless
                 # its page had closed it. The retirement stamps leave with the
                 # old metadata.
-                existing_metadata = {**existing_metadata, "is_active": existing_metadata.get("status") != "closed"}
+                existing_metadata = {
+                    **existing_metadata, "is_active": existing_metadata.get("status") not in {"closed", "unavailable"}
+                }
             unverified_seed = (
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
@@ -1165,11 +1185,23 @@ def merge_into_processed(
                     # The stored word and title read the page as a listing,
                     # which reference material is not.
                     carried = ()
+                elif opp["metadata"].get("status") == "unavailable":
+                    # A missing page supersedes a former "open", but does not
+                    # replace an independent retirement with a recoverable one.
+                    carried = ()
+                    if (existing_metadata.get("is_active") is False
+                            and existing_metadata.get("deactivation_reason") not in {None, PROGRAM_PAGE_GONE, NO_LONGER_LISTED}):
+                        opp["metadata"].update({key: existing_metadata[key] for key in
+                                                ("status", "deactivation_reason", "deactivated_at") if key in existing_metadata})
+                elif unverified_seed and stored_status == "unavailable":
+                    carried = ("status", "is_active")
+                    opp["metadata"]["deactivation_reason"] = PROGRAM_PAGE_GONE
+                    opp["application"]["application_url"] = None
                 elif unverified_seed and not same_page and stored_status == "open":
                     # The old page's "open" says nothing about the page the
                     # program moved to; only a stored retirement survives.
                     carried = ("is_active",) if existing_metadata.get("is_active") is False else ()
-                elif not unverified_seed and stored_status in {"open", "closed"}:
+                elif not unverified_seed and stored_status in {"open", "closed", "unavailable"}:
                     # A page that loaded and no longer says applications are
                     # open, or closed, ends the stored word: it was the page's,
                     # and the page has stopped saying it. A closure's
@@ -1190,6 +1222,10 @@ def merge_into_processed(
                     or existing_metadata.get("is_active") is False
                 ):
                     opp["title"] = existing_opp.get("title", opp["title"])
+            if (opp["metadata"].get("deactivation_reason") == PROGRAM_PAGE_GONE
+                    and existing_metadata.get("deactivation_reason") == PROGRAM_PAGE_GONE
+                    and existing_metadata.get("deactivated_at")):
+                opp["metadata"]["deactivated_at"] = existing_metadata["deactivated_at"]
             from .uiuc_faculty import carry_forward_contact_instruction_sources
 
             carry_forward_contact_instruction_sources(existing_opp, opp)
