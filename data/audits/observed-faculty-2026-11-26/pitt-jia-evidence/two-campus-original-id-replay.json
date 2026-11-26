@@ -1,0 +1,88 @@
+{
+  "checked_at": "2026-11-26T20:21:08.170383+00:00",
+  "stage": "Isolated candidate, not production",
+  "parent": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "saved_pitt_ids": 1147,
+  "saved_rutgers_ids": 2088,
+  "candidate_corpus_original_ids": 149944,
+  "changes_on_one_pitt_id": [
+    "metadata.is_active",
+    "metadata.deactivated_at",
+    "metadata.deactivation_reason"
+  ],
+  "coverage_changes": [
+    "pitt.faculty_contact_count -1",
+    "pitt.total_count -1"
+  ],
+  "public_routes": [
+    {
+      "id": "faculty-pitt-cs-bb6c586d",
+      "name": "Xiaowei Jia",
+      "position": "Associate Professor",
+      "school": "pitt",
+      "target_actionable": false,
+      "saved_detail_status": 200,
+      "contact_status": "unavailable",
+      "affiliation_url": "https://www.cs.pitt.edu/people/full-time-faculty/xiaowei-jia",
+      "last_seen": "2026-08-27"
+    },
+    {
+      "id": "faculty-rutgers-cs-bb6c586d",
+      "name": "Xiaowei Jia",
+      "position": "Associate Professor",
+      "school": "rutgers",
+      "target_actionable": true,
+      "saved_detail_status": 200,
+      "contact_status": "unavailable",
+      "affiliation_url": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia",
+      "last_seen": "2026-11-23"
+    }
+  ],
+  "school_merge_replay": [
+    {
+      "stage": "temporary unreadable directory",
+      "added": 0,
+      "updated": 0,
+      "old_active": false,
+      "rutgers_active": true,
+      "retained_original_ids": 3235,
+      "old_first_seen_preserved": true
+    },
+    {
+      "stage": "other Pitt member observed",
+      "added": 0,
+      "updated": 1,
+      "old_active": false,
+      "rutgers_active": true,
+      "retained_original_ids": 3235,
+      "old_first_seen_preserved": true
+    },
+    {
+      "stage": "Rutgers current person observed",
+      "added": 0,
+      "updated": 1,
+      "old_active": false,
+      "rutgers_active": true,
+      "retained_original_ids": 3235,
+      "old_first_seen_preserved": true
+    },
+    {
+      "stage": "hypothetical later Pitt positive listing",
+      "added": 0,
+      "updated": 1,
+      "old_active": true,
+      "rutgers_active": true,
+      "retained_original_ids": 3235,
+      "old_first_seen_preserved": true
+    },
+    {
+      "stage": "repeat same positive listing",
+      "added": 0,
+      "updated": 1,
+      "old_active": true,
+      "rutgers_active": true,
+      "retained_original_ids": 3235,
+      "old_first_seen_preserved": true
+    }
+  ]
+}
