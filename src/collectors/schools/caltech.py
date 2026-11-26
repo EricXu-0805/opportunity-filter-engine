@@ -691,21 +691,15 @@ SCHOOL: dict = {
                     "chen_institute",
                     "Tianqiao and Chrissy Chen Institute for Neuroscience — Caltech",
                     "https://neuroscience.caltech.edu/",
-                    "Caltech's neuroscience institute, spanning molecular through "
-                    "social and decision neuroscience. Runs the BrainWAVE summer "
-                    "fellowship for visiting undergraduates, graduate and postdoc "
-                    "fellowships, Innovator Grants, and the DataSAI neuroscience "
-                    "summer schools. Undergraduates enter Chen-affiliated labs via "
-                    "SURF, WAVE/BrainWAVE, or direct faculty contact; the institute's "
-                    "faculty roster is the natural cold-email list for neuroscience "
-                    "research at Caltech.",
+                    "The Chen Institute brings together neuroscience research at Caltech. "
+                    "Its site describes affiliated faculty, events and programs. WAVE and "
+                    "SURF publish their own application windows.",
                     organization="California Institute of Technology",
                     department="Chen Institute for Neuroscience",
                     lab_or_program="Chen Institute",
-                    compensation="Via SURF/WAVE/BrainWAVE placements or lab arrangement",
-                    eligibility_majors=["neuroscience", "biology", "psychology", "computer science"],
-                    preferred_year=["sophomore", "junior", "senior"],
-                    deadline_note="Rolling; WAVE (Jan 9) / SURF (Mar 1) for summer",
+                    preferred_year=[],
+                    reference_only=True,
+                    is_rolling=False,
                     keywords=["neuroscience", "systems neuroscience", "decision science", "Chen Institute"],
                 ),
                 program(

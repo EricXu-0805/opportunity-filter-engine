@@ -74,10 +74,10 @@
       "total_count": 844
     },
     "caltech": {
-      "listing_count": 14,
+      "listing_count": 13,
       "faculty_contact_count": 432,
       "unreviewed_count": 0,
-      "total_count": 446
+      "total_count": 445
     },
     "carleton": {
       "listing_count": 5,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5598
+  "national_count": 5597
 }

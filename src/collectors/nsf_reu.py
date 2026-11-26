@@ -7,6 +7,8 @@ from pathlib import Path
 
 import requests
 
+from src.program_windows import apply_program_window
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -286,7 +288,7 @@ def normalize_award(award: dict) -> dict:
     # from start_date (start_month - 3 months, capped at Feb/Mar window).
     estimated_deadline = _estimate_reu_deadline(start)
 
-    return {
+    record = {
         "id": opp_id,
         "source": "nsf_reu",
         "source_url": url,
@@ -365,6 +367,8 @@ def normalize_award(award: dict) -> dict:
             },
         },
     }
+    apply_program_window(record)
+    return record
 
 
 def _dedup_collaborative(opps: list[dict]) -> list[dict]:
