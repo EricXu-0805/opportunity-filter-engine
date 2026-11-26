@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: 10a24e48430f934e6c9f4820c17510e51331d03b
+          ref: 6904fb607aa519704a18c0fd3418e550006062ef
           path: product
           persist-credentials: false
       - uses: actions/setup-node@v6

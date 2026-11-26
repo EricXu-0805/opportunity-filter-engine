@@ -20,7 +20,7 @@ async def main():
     first = slot('A911', 'Alex Example', 'Former campus', ORCID)
     transfer = slot('A911', 'A. Example', 'New campus', 'https://orcid.org/' + ORCID)
     other = slot('A922', 'Alex Example', 'Former campus')
-    data = {'results': [work('W901', 'Prior-campus example', first), work('W902', 'Transfer example', other, transfer),
+    data = {'results': [{**work('W901', 'Prior-campus example', first), 'doi':'https://doi.org/10.1234/Old-Example'}, work('W902', 'Transfer example', other, transfer),
                         work('W903', 'Namesake example', other), work('W904', 'Inconsistent signatures', first, transfer),
                         work('W905', 'Contradictory deposited ORCID', {**first, 'raw_orcid': '9999-9999-9999-9994'})]}
     async with async_playwright() as pw:
@@ -78,7 +78,40 @@ async def main():
         await upload(fresh)
         await expect(fresh.get_by_role('button',name='Already in résumé')).to_be_disabled()
         assert row(session)['revision'] == saved['revision']
-        print(json.dumps({'synthetic_public_format_export':True,'disposable_named_account':True,'real_chromium':True,
+        await fresh.get_by_role('button', name='Add publication',exact=True).click()
+        for label,value in [('Publication title','My preserved prior-campus wording'),('Authors in exact order','Other, A.; Student, B.'),
+                            ('Publication URL','https://publisher.example/prior-work'),('DOI','10.1234/OLD-EXAMPLE')]:
+            await fresh.get_by_role('textbox',name=label,exact=True).last.fill(value)
+            await fresh.get_by_role('button',name='Confirm '+label, exact=True).last.click()
+        await fresh.get_by_role('button',name='Apply changes').click()
+        for _ in range(150):
+            if len(row(session)['profile_data']['resume_master']['publications'])==2:break
+            await asyncio.sleep(.2)
+        manual = row(session)
+        previous = manual['profile_data']['resume_master']['publications'][1]
+        assert 'student_authorship' not in previous and previous['doi']['status']=='confirmed'
+        assert previous['title']['value']=='My preserved prior-campus wording'
+        await fresh.get_by_role('button',name='Confirm authorship for this existing citation').click()
+        assert row(session)['revision']==manual['revision']
+        await fresh.get_by_role('button',name='Apply changes').click()
+        for _ in range(150):
+            if row(session)['revision']>manual['revision']:break
+            await asyncio.sleep(.2)
+        linked = row(session)
+        pubs = linked['profile_data']['resume_master']['publications']
+        assert len(pubs)==2 and pubs[0]==paper
+        attached = dict(pubs[1])
+        link_receipt = attached.pop('student_authorship')
+        assert attached==previous and link_receipt=={'scholar_id':'QADemoM16','author_id':'A911','orcid':ORCID,
+                                                   'work_id':'W901','linked_by':'10.1234/old-example'}
+        await fresh.context.close()
+        reopened=await clean_tab();await panel(reopened);await upload(reopened)
+        await expect(reopened.get_by_role('button',name='Already in résumé')).to_have_count(2)
+        assert row(session)==linked
+        print(json.dumps({'legacy_manual_deep_equal':True,'legacy_publisher_url_and_author_order_retained':True,
+                          'legacy_match':link_receipt,'legacy_revisions':[saved['revision'],manual['revision'],linked['revision']],
+                          'two_confirmed_after_restart':True,
+                          'synthetic_public_format_export':True,'disposable_named_account':True,'real_chromium':True,
                           'rows':5,'matched':2,'ambiguous_or_namesake_skipped':3,'saved_explicitly':1,
                           'private_receipt':paper['student_authorship'],'no_write_during_preview':True,
                           'direct_scholar_entry':True,'fresh_context_deduplicated':True,'revisions':[initial['revision'],confirmed_link['revision'],saved['revision']]}))
