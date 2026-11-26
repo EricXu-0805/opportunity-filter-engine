@@ -1,4 +1,7 @@
 """Michigan State publishes a per-person ID separately from the roster citation."""
+import json
+from pathlib import Path
+
 import pytest
 
 from src.collectors import faculty_graph
@@ -54,3 +57,11 @@ def test_msu_named_professorship_is_a_substantive_appointment(title, accepted):
     assert bool(people) is accepted
     if accepted:
         assert people[0]["title"] == title
+
+
+def test_stored_msu_faculty_destinations_never_use_a_bare_person_id():
+    shard = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "msu.json"
+    records = json.loads(shard.read_text(encoding="utf-8"))
+    bare = [(row["id"], key) for row in records if row.get("source") == "msu_faculty"
+            for key in ("url", "source_url") if str(row.get(key) or "").strip().isdigit()]
+    assert not bare, bare
