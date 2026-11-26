@@ -1,0 +1,40 @@
+name: Check corrected keyboard routes with the native zoom engine
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-candidate-keyboard-zoom.yml', 'scripts/verify_public_keyboard_zoom.py']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      OFE_KEYBOARD_SITE: http://127.0.0.1:3100
+      OFE_LOCAL_RELEASE_SHA: 907e84282b22c41cf9f8d2c44d908bd4610427b8
+      NEXT_PUBLIC_RELEASE_SHA: 907e84282b22c41cf9f8d2c44d908bd4610427b8
+      VERCEL_GIT_COMMIT_SHA: 907e84282b22c41cf9f8d2c44d908bd4610427b8
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 907e84282b22c41cf9f8d2c44d908bd4610427b8
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -m playwright install chromium --with-deps >"$RUNNER_TEMP/install.log"
+      - working-directory: product/frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund && npm run predev --if-present
+      - run: |
+          (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/frontend.log" 2>&1 &
+          for attempt in {1..80}; do if curl -fsS --max-time 15 http://127.0.0.1:3100/about >/dev/null 2>&1; then break; fi; sleep 1; done
+          xvfb-run -a -s '-screen 0 1600x1100x24' python -u scripts/verify_public_keyboard_zoom.py

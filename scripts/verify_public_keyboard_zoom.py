@@ -1,11 +1,15 @@
 """Native Chromium tab zoom and keyboard-only navigation on the deployed UI."""
 import json
+import os
 import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
 
-SITE='https://joinalab.com'
+SITE=os.environ.get('OFE_KEYBOARD_SITE','https://joinalab.com')
+HOST=urlsplit(SITE).hostname
+LOCAL=HOST=='127.0.0.1'
+assert LOCAL or SITE=='https://joinalab.com'
 DATABASE='mjpirkyduibkakvlbdko.supabase.co'
 
 def focus(page, locator, reverse=False):
@@ -32,10 +36,10 @@ def active(p):
 def metric(p):return p.evaluate('()=>({width:innerWidth,client:document.documentElement.clientWidth,document:document.documentElement.scrollWidth,ratio:devicePixelRatio,visualScale:visualViewport.scale})')
 
 def native_zoom(worker,page,factor):
-    result=worker.evaluate("""async factor=>{
-      const [tab]=await chrome.tabs.query({url:'https://joinalab.com/*'});await chrome.tabs.setZoom(tab.id,factor);
+    result=worker.evaluate("""async ([factor, origin])=>{
+      const [tab]=await chrome.tabs.query({url:origin+'/*'});await chrome.tabs.setZoom(tab.id,factor);
       return await chrome.tabs.getZoom(tab.id);
-    }""",factor)
+    }""",[factor,SITE])
     assert result==factor
     page.wait_for_timeout(320)
     return result
@@ -44,7 +48,7 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
     root=Path(tmp); ext=root/'zoom';ext.mkdir()
     (ext/'manifest.json').write_text(json.dumps({'manifest_version':3,'name':'Native browser zoom check','version':'1.0','permissions':['tabs'],'host_permissions':[SITE+'/*'],'background':{'service_worker':'zoom.js'}}))
     (ext/'zoom.js').write_text('chrome.runtime.onInstalled.addListener(() => {});')
-    api=pw.request.new_context();health=api.get(SITE+'/api/health').json()['release_sha'];assert 'data-release-sha="'+health+'"' in api.get(SITE+'/about').text();api.dispose()
+    api=pw.request.new_context();health=os.environ['OFE_LOCAL_RELEASE_SHA'] if LOCAL else api.get(SITE+'/api/health').json()['release_sha'];assert 'data-release-sha="'+health+'"' in api.get(SITE+'/about').text();api.dispose()
     cases=[]
     for locale,width in [('en',1400),('zh',780)]:
         ctx=pw.chromium.launch_persistent_context(str(root/locale),channel='chromium',headless=False,no_viewport=True,locale='en-US' if locale=='en' else 'zh-CN',
@@ -52,11 +56,11 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         worker=ctx.service_workers[0] if ctx.service_workers else ctx.wait_for_event('serviceworker',timeout=40000)
         ctx.add_cookies([{'name':'ofe_lang','value':locale,'url':SITE}])
         data={'ofe_lang':locale,'ofe_onboarding_seen':'1','ofe_school_confirmed':json.dumps({'slug':'uiuc','ts':'2026-11-26T00:00:00Z'})}
-        ctx.add_init_script("if(location.origin==='https://joinalab.com'&&!localStorage.getItem('keyboard-qa')){for(const[k,v]of Object.entries("+json.dumps(data)+"))localStorage.setItem(k,v);localStorage.setItem('keyboard-qa','1')}")
+        ctx.add_init_script("if(location.origin==="+json.dumps(SITE)+"&&!localStorage.getItem('keyboard-qa')){for(const[k,v]of Object.entries("+json.dumps(data)+"))localStorage.setItem(k,v);localStorage.setItem('keyboard-qa','1')}")
         writes=[]
         def guard(r):
             addr=urlsplit(r.request.url)
-            if addr.hostname not in ('joinalab.com',DATABASE):return r.abort()
+            if addr.hostname not in (HOST,DATABASE) or (LOCAL and addr.hostname!=HOST):return r.abort()
             if r.request.method in ('GET','HEAD','OPTIONS'):return r.continue_()
             if addr.hostname==DATABASE and addr.path=='/auth/v1/signup' and not writes and not (r.request.post_data_json or {}).get('email'):
                 writes.append('own anonymous sign-up');return r.continue_()
@@ -64,12 +68,22 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         ctx.route('**/*',guard)
         p=ctx.pages[0];p.goto(SITE+'/resources',wait_until='domcontentloaded')
         outer=p.locator('#resources-tab-guides');expect(outer).to_be_visible(timeout=45000)
-        native_zoom(worker,p,1); before=metric(p);native_zoom(worker,p,2)
+        native_zoom(worker,p,1); before=metric(p)
+        desktop_route=None
+        if locale=='en':
+            about=p.locator('header a[href="/about"]:visible').first
+            focus(p,about);enter_about=active(p);p.keyboard.press('Enter')
+            p.wait_for_url('**/about',timeout=45000)
+            resources=p.locator('header a[href="/resources"]:visible').first
+            focus(p,resources);p.keyboard.press('Enter')
+            p.wait_for_url('**/resources',timeout=45000)
+            desktop_route={'visited':['/resources','/about','/resources'],'about_link_focus':enter_about}
+        native_zoom(worker,p,2)
         after=metric(p)
         assert abs(after['ratio']/before['ratio']-2)<.02 and abs(after['width']*2-before['width'])<6,(before,after)
         assert after['visualScale']==1,(before,after)
         if locale=='zh':assert 360<=after['width']<=405,after
-        case={'locale':locale,'native_browser_zoom':2,'dimensions_100':before,'dimensions_200':after}
+        case={'locale':locale,'native_browser_zoom':2,'dimensions_100':before,'dimensions_200':after,'desktop_route_100':desktop_route}
         focus(p,outer);case['outer_tab_focus']=active(p)
         p.keyboard.press('ArrowRight')
         expect(p.locator('#resources-tab-import')).to_have_attribute('aria-selected','true')
@@ -111,6 +125,10 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         expect(p.locator('main h1')).to_be_visible(timeout=50000)
         case['route_visited']=urlsplit(p.url).path;case['favorites_geometry']=metric(p);case['after_route_focus']=active(p)
         case['local_input_submissions']=0;case['allowed_writes']=writes
+        if LOCAL:
+            assert case['inner_arrow_to_text'] and case['inner_tab_to_panel'] and case['separate_tabstops']==['-1','0'],case
+            assert case.get('escape_restores_menu_toggle',True) and case['route_visited']=='/favorites',case
+            assert all(case[k]['document']<=case[k]['client']+1 for k in ('import_geometry','favorites_geometry'))
         cases.append(case);print('PUBLIC KEYBOARD CASE',json.dumps(case,ensure_ascii=False),flush=True)
         ctx.close()
-    print('PUBLIC KEYBOARD RECEIPT',json.dumps({'environment':'official site, Xvfb real Chromium native zoom via chrome.tabs.setZoom; keyboard Tab/Shift+Tab/arrows/Enter/Escape','sha':health,'human_screen_reader':False,'physical_phone':False,'cases':cases},ensure_ascii=False),flush=True)
+    print('PUBLIC KEYBOARD RECEIPT',json.dumps({'site':SITE,'environment':'Xvfb real Chromium native zoom via chrome.tabs.setZoom; keyboard Tab/Shift+Tab/arrows/Enter/Escape','sha':health,'human_screen_reader':False,'physical_phone':False,'cases':cases},ensure_ascii=False),flush=True)
