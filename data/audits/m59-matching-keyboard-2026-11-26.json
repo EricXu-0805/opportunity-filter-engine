@@ -302,5 +302,339 @@
       "physical_device": false
     }
   },
-  "measurement_note": "The initial production run sampled the middle of a potentially clipped element. Visible samples after clipping and the settled scroll position are recorded in the corrected probe. Its production desktop run also confirmed nine of nine textarea points were uncovered."
+  "measurement_note": "The first B8 observation sampled the center of controls, even when a parent clipped it. The subsequent B9 run sampled nine points in the actual visible rectangles after native scrolling settled. All nine textarea and Generate-button samples were uncovered in both layouts.",
+  "production_before_with_clipped_focus_sampling": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45843786518/job/139992040394",
+    "receipt": {
+      "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "site": "https://joinalab.com",
+      "cases": [
+        {
+          "locale": "en",
+          "native_200_width": 700,
+          "real_guest": true,
+          "generate_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 223,
+            "visible_height": 51,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "category_right_changes_focus": false,
+          "category_right_changes_selection": false,
+          "wrap_home_end_and_panel": false,
+          "target_card_draft_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 130,
+            "visible_height": 40,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_focus": {
+            "tag": "SUMMARY",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 595,
+            "visible_height": 16,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_expanded": true,
+          "editor_body_focus": {
+            "tag": "TEXTAREA",
+            "id": "cold-email-body",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 621,
+            "visible_height": 118,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "editor_close_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 36,
+            "visible_height": 36,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "focus_returns_to_card": true,
+          "results_geometry_after_close": {
+            "width": 700,
+            "ratio": 2,
+            "client": 692,
+            "full": 692
+          },
+          "templates": 3,
+          "external_messages_sent": 0
+        },
+        {
+          "locale": "zh",
+          "native_200_width": 390,
+          "real_guest": true,
+          "generate_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 351,
+            "visible_height": 51,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "category_right_changes_focus": false,
+          "category_right_changes_selection": false,
+          "wrap_home_end_and_panel": false,
+          "target_card_draft_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 114,
+            "visible_height": 40,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_focus": {
+            "tag": "SUMMARY",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 317,
+            "visible_height": 16,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_expanded": true,
+          "editor_body_focus": {
+            "tag": "TEXTAREA",
+            "id": "cold-email-body",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 343,
+            "visible_height": 122,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "editor_close_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 36,
+            "visible_height": 36,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "focus_returns_to_card": true,
+          "results_geometry_after_close": {
+            "width": 390,
+            "ratio": 2,
+            "client": 382,
+            "full": 382
+          },
+          "templates": 3,
+          "external_messages_sent": 0
+        }
+      ],
+      "human_screen_reader": false,
+      "physical_device": false
+    }
+  },
+  "isolated_exact_final_head": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45843786482/job/139992036877",
+    "receipt": {
+      "release": "2a20ca6fb537c4e8c5dbbb311990077ca1811fb2",
+      "site": "http://127.0.0.1:3100",
+      "cases": [
+        {
+          "locale": "en",
+          "native_200_width": 700,
+          "real_guest": true,
+          "generate_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 223,
+            "visible_height": 51,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "category_right_changes_focus": true,
+          "category_right_changes_selection": true,
+          "wrap_home_end_and_panel": true,
+          "target_card_draft_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 130,
+            "visible_height": 40,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_focus": {
+            "tag": "SUMMARY",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 595,
+            "visible_height": 16,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_expanded": true,
+          "editor_body_focus": {
+            "tag": "TEXTAREA",
+            "id": "cold-email-body",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 621,
+            "visible_height": 118,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "editor_close_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 36,
+            "visible_height": 36,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "focus_returns_to_card": true,
+          "results_geometry_after_close": {
+            "width": 700,
+            "ratio": 2,
+            "client": 692,
+            "full": 692
+          },
+          "templates": 3,
+          "external_messages_sent": 0
+        },
+        {
+          "locale": "zh",
+          "native_200_width": 390,
+          "real_guest": true,
+          "generate_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 351,
+            "visible_height": 51,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "category_right_changes_focus": true,
+          "category_right_changes_selection": true,
+          "wrap_home_end_and_panel": true,
+          "target_card_draft_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 114,
+            "visible_height": 40,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_focus": {
+            "tag": "SUMMARY",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 317,
+            "visible_height": 16,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "conditions_expanded": true,
+          "editor_body_focus": {
+            "tag": "TEXTAREA",
+            "id": "cold-email-body",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 343,
+            "visible_height": 122,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "editor_close_focus": {
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "focusVisible": true,
+            "visible": true,
+            "visible_width": 36,
+            "visible_height": 36,
+            "uncovered": true,
+            "uncovered_samples": 9,
+            "ring": true
+          },
+          "focus_returns_to_card": true,
+          "results_geometry_after_close": {
+            "width": 390,
+            "ratio": 2,
+            "client": 382,
+            "full": 382
+          },
+          "templates": 3,
+          "external_messages_sent": 0
+        }
+      ],
+      "human_screen_reader": false,
+      "physical_device": false
+    }
+  }
 }
