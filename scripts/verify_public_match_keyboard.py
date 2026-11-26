@@ -125,10 +125,17 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
             case['wrap_home_end_and_panel']=False
             focus(p,first);p.keyboard.press('Enter')
         if LOCAL: assert all(case[k] for k in ('category_right_changes_focus','category_right_changes_selection','wrap_home_end_and_panel')), case
-        search=p.locator('#results-search-input');focus(p,search);p.keyboard.type(SEARCH,delay=30)
+        search=p.locator('#results-search-input');focus(p,search)
+        def requested_search(r):
+            u=urlsplit(r.url)
+            return u.path=='/api/matches/view' and r.ok and r.request.post_data_json.get('view',{}).get('search_query')==SEARCH
+        with p.expect_response(requested_search,timeout=90000) as found:
+            p.keyboard.type(SEARCH,delay=30)
+        assert TARGET in [row['opportunity_id'] for row in found.value.json()['results']]
         card=p.locator('#match-card-'+TARGET);expect(card).to_be_visible(timeout=95000)
         draft=card.get_by_role('button',name='Draft email' if locale=='en' else '起草邮件',exact=True)
-        focus(p,draft);case['target_card_draft_focus']=state(p);p.keyboard.press('Enter')
+        expect(draft).to_be_enabled(timeout=30000)
+        focus(p,draft);case['target_card_draft_focus']=state(p);expect(draft).to_be_focused();p.keyboard.press('Enter')
         body=p.locator('#cold-email-body');expect(body).not_to_have_value('',timeout=70000)
         assert len(drafts)==1 and len(drafts[0].get('variants',[]))==3
         cond=p.get_by_test_id('email-target-conditions')
