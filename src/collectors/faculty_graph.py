@@ -1436,6 +1436,9 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if re.match(r"(?i)\s*(tel|mailto|javascript|fax|sms):", href or ""):
             href = ""
         href = urljoin(base_url, href) if href else base_url
+        replacement = (sel.get("reviewed_profile_links") or {}).get(href)
+        if replacement and name == replacement[0]:
+            href = replacement[1]
         if sel.get("link_strip_query") and "?" in href:
             # Listing hrefs that append navigation state (Caltech's ?back_url=…)
             # would make the same profile a distinct URL per listing page —

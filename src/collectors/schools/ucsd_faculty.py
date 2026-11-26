@@ -218,6 +218,13 @@ SCHOOL: dict = {
                         "card": "table tbody tr",
                         "name": "td:nth-of-type(1) a",
                         "link": "td:nth-of-type(1) a",
+                        # The roster's retired findprofile route lands on the faculty index.
+                        # The department's Ping Liu profile (/node/917) links to this biography.
+                        "reviewed_profile_links": {
+                            ("http://jacobsschool.ucsd.edu/faculty/faculty_bios/"
+                             "findprofile.sfe?department=NANO&fmp_recid=396"):
+                                ("Ping Liu", "https://jacobsschool.ucsd.edu/faculty/profile?id=396"),
+                        },
                         "email": "td a[href^='mailto:']",
                     },
                     "name_flip": True,
