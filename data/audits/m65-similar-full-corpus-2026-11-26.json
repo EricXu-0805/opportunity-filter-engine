@@ -1,0 +1,152 @@
+{
+  "observed_at": "2026-11-26T12:11:23.125054+00:00",
+  "base_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "actual_corpus_count": 149774,
+  "release_cutoffs_considered": 0,
+  "samples": [
+    {
+      "original_id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "limit": 1,
+      "total": 7241,
+      "ranked_ids": [
+        "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf"
+      ],
+      "full_response_sha256": "6732ecd3b53c7aa0dbd5fdeec254423f947f2cf65cda2ce71202fef2bb70aa94",
+      "exact_parity": true,
+      "wall_seconds": {
+        "before": 0.5025686668232083,
+        "candidate": 0.4898920408450067
+      },
+      "candidate_already_warm": false
+    },
+    {
+      "original_id": "faculty-cs-321c7f13",
+      "limit": 5,
+      "total": 132766,
+      "ranked_ids": [
+        "faculty-ae-9849ad83",
+        "faculty-cs-a4162fc8",
+        "faculty-ece-16f72985",
+        "faculty-ece-478d2587",
+        "faculty-ece-c966bf23"
+      ],
+      "full_response_sha256": "2a0e5677aa5469a970a9507184b51f79f6f3df01ee8e741ae91de5ebbb371dc1",
+      "exact_parity": true,
+      "wall_seconds": {
+        "candidate": 0.2042932091280818,
+        "before": 0.5781287923455238
+      },
+      "candidate_already_warm": true
+    },
+    {
+      "original_id": "faculty-cincinnati-cs-00772f54",
+      "limit": 20,
+      "total": 130731,
+      "ranked_ids": [
+        "faculty-cincinnati-acct-0d0bd997",
+        "faculty-cincinnati-acct-16414d70",
+        "faculty-cincinnati-acct-36801f1b",
+        "faculty-cincinnati-acct-793e5402",
+        "faculty-cincinnati-acct-8924782f",
+        "faculty-cincinnati-acct-8990fb05",
+        "faculty-cincinnati-acct-b14457ed",
+        "faculty-cincinnati-acct-b829b106",
+        "faculty-cincinnati-acct-d307c391",
+        "faculty-cincinnati-acct-d73d0aae",
+        "faculty-cincinnati-acct-e38e2f59",
+        "faculty-cincinnati-acct-e5dd814c",
+        "faculty-cincinnati-acct-f0431fad",
+        "faculty-cincinnati-acct-faa40461",
+        "faculty-cincinnati-aero-378c9705",
+        "faculty-cincinnati-aero-4b703da7",
+        "faculty-cincinnati-aero-4f4c43a7",
+        "faculty-cincinnati-aero-5b3db442",
+        "faculty-cincinnati-aero-5d982234",
+        "faculty-cincinnati-aero-62b25daf"
+      ],
+      "full_response_sha256": "9aa871dd86aa1745ce307e5c6c2f30916f70117e18d5bcb38ac1327b2faa79fc",
+      "exact_parity": true,
+      "wall_seconds": {
+        "before": 1.297698208130896,
+        "candidate": 0.20560016622766852
+      },
+      "candidate_already_warm": true
+    },
+    {
+      "original_id": "faculty-emory-rsph-6e024408",
+      "limit": 5,
+      "total": 130732,
+      "ranked_ids": [
+        "faculty-arizona-cs-d16638c6",
+        "faculty-english-f2d0ba9d",
+        "faculty-gatech-spp-696d4bed",
+        "faculty-purdue-acc-440fb988",
+        "faculty-rice-anth-ff0e2f79"
+      ],
+      "full_response_sha256": "61d0fc7472a7dfd7731fcb881d96fc39efa5cfd6de805d57c04a03d410ae482d",
+      "exact_parity": true,
+      "wall_seconds": {
+        "candidate": 0.2064904998987913,
+        "before": 0.5663364171050489
+      },
+      "candidate_already_warm": true
+    },
+    {
+      "original_id": "faculty-uconn-pols-739644c6",
+      "limit": 3,
+      "total": 130731,
+      "ranked_ids": [
+        "faculty-ucsd-poli-9a6a5379",
+        "faculty-uw-pols-510091b7",
+        "faculty-uw-pols-5f8db0cf"
+      ],
+      "full_response_sha256": "07de47cca005d803a59fef532bf41cecd2d9065712dcbee2308ee9654639692e",
+      "exact_parity": true,
+      "wall_seconds": {
+        "before": 1.2365680420771241,
+        "candidate": 0.19675212539732456
+      },
+      "candidate_already_warm": true
+    },
+    {
+      "original_id": "faculty-uconn-pols-840e7c22",
+      "limit": 20,
+      "total": 130731,
+      "ranked_ids": [
+        "faculty-arizona-sgpp-613f2cbe",
+        "faculty-buffalo-polsci-ace41353",
+        "faculty-wisc-pubaff-ddaea2fe",
+        "faculty-wisc-pubaff-ec738f0e",
+        "faculty-uconn-pols-575aaad4",
+        "faculty-uconn-pols-6dc33c27",
+        "faculty-arizona-sgpp-16205c54",
+        "faculty-arizona-sgpp-3ecb735e",
+        "faculty-arizona-sgpp-6384314d",
+        "faculty-arizona-sgpp-8ede0932",
+        "faculty-arizona-sgpp-ba77b8f1",
+        "faculty-arizona-sgpp-cf97b2fd",
+        "faculty-asu-sfis-23e38b12",
+        "faculty-asu-shprs-7011fb5c",
+        "faculty-asu-spa-07656277",
+        "faculty-asu-spgs-045377ee",
+        "faculty-asu-spgs-0f87124a",
+        "faculty-asu-spgs-29d06971",
+        "faculty-asu-spgs-2f0aca57",
+        "faculty-asu-spgs-3a46f7c4"
+      ],
+      "full_response_sha256": "0d499db1f8ae36576664c6266556a7510000556b13c043fd08d543b986c11aca",
+      "exact_parity": true,
+      "wall_seconds": {
+        "candidate": 0.20546083291992545,
+        "before": 1.2439228328876197
+      },
+      "candidate_already_warm": true
+    }
+  ],
+  "warm_median_before_s": 1.2365680420771241,
+  "warm_median_candidate_s": 0.20546083291992545,
+  "cold_and_5_warm_measured_sequentially_in_one_process": "Paired one baseline and candidate for six ordinary detail IDs and four page sizes. Alternating order. Compared the complete projected response against the checked-in baseline function. First candidate starts before the actionable cache is populated; other candidates reuse it. Local timings do not establish the cause of production timeouts.",
+  "candidate_commit": "e0f0eb17d362833f0162d47ed35d66161335f26e",
+  "test_count": 699,
+  "production_observed_before_candidate": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/957f2bcdae1b4339280a04c5aa238aa86c7c7215/data/audits/m65-m176-13-faculty-production-2026-11-26.json"
+}
