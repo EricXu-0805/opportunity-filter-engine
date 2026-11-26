@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as KNOWN_ID } from './actionable-listing.cjs';
 import { test, expect, type Page } from '@playwright/test';
 import { RELEASE_SCOPE } from '../src/lib/release-scope';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -15,7 +16,6 @@ import { STORAGE_KEYS } from '../src/lib/storage-keys';
  * Nothing is stubbed. The write goes through the real supabase-js client to
  * the loopback stand-in, so the round trip under test is the shipped one.
  */
-const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 const PROFILE = {
   name: 'Alex Chen',

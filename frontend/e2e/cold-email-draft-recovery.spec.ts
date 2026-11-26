@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as ID } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request, type Route, type TestInfo } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
@@ -6,7 +7,6 @@ import { contactReceiptForRequest } from './email-contact-receipt';
 // Production UI with loopback auth/profile state. Generation/source responses
 // are controlled; window.open is inert and no email or model call is made.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const ID = 'uiuc-siebel-ugresearch';
 const V1 = `wt1:${'d'.repeat(64)}`, V2 = `wt1:${'e'.repeat(64)}`;
 const BODY = 'Original fixture email 王';
 const EDIT = { subject: 'My own subject 王', body: 'My full manual draft.\n本人负责采样，团队设计实验。', to: 'chosen@example.edu', request: '保留我的贡献，不要改成团队负责人。' };

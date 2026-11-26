@@ -1,7 +1,8 @@
+import { ACTIONABLE_LISTING_ID } from './actionable-listing.cjs';
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 
-const TARGET = '/opportunities/uiuc-siebel-ugresearch';
+const TARGET = `/opportunities/${ACTIONABLE_LISTING_ID}`;
 type Locale = 'en' | 'zh';
 const footer = (locale: Locale) => locale === 'zh' ? '隐私政策' : 'Privacy Policy';
 

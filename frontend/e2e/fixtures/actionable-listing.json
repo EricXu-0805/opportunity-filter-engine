@@ -1,0 +1,38 @@
+[
+  {
+    "id": "e2e-actionable-research",
+    "source": "manual",
+    "source_type": "uiuc_research",
+    "source_url": "https://research.example.test/program",
+    "url": "https://research.example.test/program",
+    "title": "Campus computing research assistantship",
+    "organization": "Example research program",
+    "department": "Computer Science",
+    "school": "uiuc",
+    "audience": "campus",
+    "location": "Champaign, IL",
+    "on_campus": true,
+    "opportunity_type": "research",
+    "paid": "unknown",
+    "is_rolling": true,
+    "keywords": ["computer science", "machine learning", "research"],
+    "description_clean": "A campus computing research program for undergraduate students interested in machine learning and data science.",
+    "eligibility": {
+      "preferred_year": [],
+      "majors": [],
+      "skills_required": [],
+      "skills_preferred": [],
+      "international_friendly": "unknown"
+    },
+    "contact_email": "program@research.example.test",
+    "application": {
+      "contact_method": "email",
+      "requires_resume": "yes",
+      "application_effort": "low"
+    },
+    "metadata": {
+      "is_active": true,
+      "manually_reviewed": true
+    }
+  }
+]

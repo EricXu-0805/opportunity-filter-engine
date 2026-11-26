@@ -1132,36 +1132,20 @@ class TestSchoolAudience:
             f"First 3: {offenders[:3]}"
         )
 
-    def test_e2e_detail_fixture_present(self):
-        """Four Playwright specs (opportunity-detail / similar-and-og /
-        tracker-notes + the MatchCard-link test) hard-code
-        KNOWN_ID='uiuc-siebel-ugresearch' and GET /opportunities/<id>. If a data
-        PR (purge / dedup / collapse / re-key) drops or renames that one record
-        the by-id route 404s and ~15 E2E tests cascade-fail four minutes into
-        CI with a bare 404 — it happened twice in 2026-07. Pin the fixture so a
-        break surfaces instantly in the backend job with an actionable message
-        instead of deep in E2E. Keep this ID in sync with KNOWN_ID in
-        frontend/e2e/*.spec.ts."""
-        e2e_fixture_id = "uiuc-siebel-ugresearch"
-        by_id = {o.get("id"): o for o in _load_data()}
-        fx = by_id.get(e2e_fixture_id)
-        assert fx is not None, (
-            f"E2E detail fixture {e2e_fixture_id!r} is gone from the corpus — "
-            f"the opportunity-detail / similar-and-og / tracker-notes Playwright "
-            f"specs GET /opportunities/{e2e_fixture_id} and will 404-cascade. "
-            f"Restore the seed or update KNOWN_ID in frontend/e2e/*.spec.ts."
-        )
-        assert (fx.get("title") or "").strip(), (
-            f"E2E detail fixture {e2e_fixture_id!r} has an empty title; the "
-            f"detail SSR / page-title / metadata E2E specs need a non-empty "
-            f"title to assert against."
-        )
+    def test_siebel_undergraduate_directory_remains_reference_only(self):
+        from src.evidence import target_truth
+
+        record = next(row for row in _load_data() if row.get("id") == "uiuc-siebel-ugresearch")
+        assert record["source_url"] == "https://siebelschool.illinois.edu/research/undergraduate-research"
+        assert target_truth(record).reference_only
+        assert not record["eligibility"]["skills_required"]
+        assert not record.get("contact_email")
 
     def test_e2e_second_detail_fixture_present(self):
         """concierge-request.spec.ts needs TWO distinct detail pages: the whole
         point of the request being opportunity-bound is that asking about one
         professor does not answer for another, and a single page cannot show
-        that. Pinned here for the same reason as the fixture above — a data PR
+        that. Pinned here because a data PR
         that drops it would otherwise surface as an unexplained E2E failure."""
         e2e_fixture_id = "faculty-cs-dce9b068"
         by_id = {o.get("id"): o for o in _load_data()}

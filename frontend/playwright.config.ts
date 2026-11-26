@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { ACTIONABLE_LISTING_ID } from './e2e/actionable-listing.cjs';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8100);
@@ -70,9 +71,10 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      command: `python3 -m uvicorn backend.main:app --port ${BACKEND_PORT} --host 127.0.0.1`,
+      command: `python3 -m uvicorn --app-dir frontend/e2e playwright_backend:app --port ${BACKEND_PORT} --host 127.0.0.1`,
       cwd: '..',
-      url: `http://127.0.0.1:${BACKEND_PORT}/api/health`,
+      // Reuse a local server only when it also serves the action fixture.
+      url: `http://127.0.0.1:${BACKEND_PORT}/api/opportunities/${ACTIONABLE_LISTING_ID}`,
       reuseExistingServer: !process.env.CI,
       // Startup loads the whole corpus. On CI it took 46-56 s in the passing
       // runs of 2026-10-13 to 10-15 and missed 60 s on main on 10-15, so the

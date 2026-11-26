@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type BrowserContext, type Page, type Response } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -311,7 +312,7 @@ test.describe('M19 cloud save scenarios', () => {
   test('a guest signing in to an existing account brings its favorite over and keeps the account profile', async ({ page }, info) => {
     const http = await apiRequest.newContext();
     const email = mailbox('merge');
-    const accountFavorite = 'uiuc-grainger-surf', guestFavorite = 'uiuc-siebel-ugresearch';
+    const accountFavorite = 'uiuc-grainger-surf', guestFavorite = ACTIONABLE_LISTING_ID;
     const guest = {
       name: 'Guest on a shared laptop 王', college: 'Grainger College of Engineering', major: 'Computer Science',
       grade: 'Freshman', research_interests: 'Guest draft about swarm robotics 王',

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -7,7 +8,6 @@ import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 // Actual production UI + SDK + loopback profile reads/deletion. The standalone
 // HTTP client represents another device. The stub is not hosted RLS evidence.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const NAME = 'Deleted profile student 王';
 const LOCAL_NAME = 'My retained unsaved target résumé 王';
 const SUBJECT = 'My retained manually written subject 王';

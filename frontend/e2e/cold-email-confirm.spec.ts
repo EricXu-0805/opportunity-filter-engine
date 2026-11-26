@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as KNOWN_ID } from './actionable-listing.cjs';
 import { contactEventReceiptForRequest } from './contact-ledger-receipt';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, type Locator, type Page, type Route } from '@playwright/test';
@@ -22,7 +23,6 @@ import { en, zh } from '../src/i18n/dictionaries';
  *     success / failure / still-in-flight cases are all reachable.
  * Everything between the click and that edge is the shipped code.
  */
-const KNOWN_ID = 'uiuc-siebel-ugresearch';
 const DEVICE_ID = '11111111-1111-4111-8111-111111111111';
 
 const PROFILE = {

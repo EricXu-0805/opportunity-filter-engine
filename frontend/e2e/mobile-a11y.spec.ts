@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as KNOWN_ID } from './actionable-listing.cjs';
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { contactReceiptForRequest } from './email-contact-receipt';
@@ -28,7 +29,6 @@ import { en, zh } from '../src/i18n/dictionaries';
  */
 
 const ORIGIN = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
-const KNOWN_ID = 'uiuc-siebel-ugresearch';
 const STEPS = ['home', 'results', 'detail', 'cold-email-editor', 'tracker'] as const;
 type Step = typeof STEPS[number];
 type Impact = 'critical' | 'serious' | 'moderate' | 'minor';

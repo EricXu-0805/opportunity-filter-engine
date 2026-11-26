@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -9,7 +10,6 @@ import { contactReceiptForRequest } from './email-contact-receipt';
 // responses and private PDF HTTP are local fixtures; nothing is sent externally.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
 const ORIGIN = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
-const TARGET = 'uiuc-siebel-ugresearch';
 const EVENT = '33333333-3333-4333-8333-333333333333';
 const RECORD = '33333333-3333-4333-8333-333333333334';
 const MATERIAL = '33333333-3333-4333-8333-333333333335';

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as ID } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -5,7 +6,7 @@ import { STORAGE_KEYS } from '../src/lib/storage-keys';
 // Local production UI + real loopback auth/profile/CAS and public detail GET.
 // Only writing results and controlled changes to that public response are faked.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const ID = 'uiuc-siebel-ugresearch', NEXT = `wt1:${'b'.repeat(64)}`;
+const NEXT = `wt1:${'b'.repeat(64)}`;
 const UNAVAILABLE = 'The opportunity could not be verified. Your draft is kept. Check it again before continuing.';
 const CHANGED = 'The opportunity changed. Your draft is kept. Check it again before continuing.';
 interface Owner { http: APIRequestContext; session: { access_token: string; user: { id: string } } }

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as ID } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request, type TestInfo } from '@playwright/test';
 import { researchFixture, RESEARCH_TITLE, RESEARCH_ABSTRACT } from './research-fixture';
 import type { ResearchContext } from '../src/lib/research-context';
@@ -11,7 +12,6 @@ import type { EmailContactContext } from '../src/lib/types';
 // Loopback production UI + real local auth/profile CAS. Source snapshots and
 // writing results are controlled. All composer windows are inert JS objects.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const ID = 'uiuc-siebel-ugresearch';
 const V1 = `wt1:${'d'.repeat(64)}`, V2 = `wt1:${'e'.repeat(64)}`;
 const BODY = 'Controlled draft: I measured samples; the team designed the study. 王';
 const PAPER = 'Verified sensor study';
