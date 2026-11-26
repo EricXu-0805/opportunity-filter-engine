@@ -1,0 +1,77 @@
+{
+  "observed_utc": "2026-11-26T13:51:10.206057+00:00",
+  "action_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45833142580",
+  "release": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "cases": {
+    "berkeley_faculty": {
+      "site_backend_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "render_origin_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "original_id": "faculty-ucb-stat-5558a1b1",
+      "url": "https://joinalab.com/opportunities/faculty-ucb-stat-5558a1b1",
+      "detail_http": 200,
+      "api_http": 200,
+      "title": "Rasmus Nielsen",
+      "source": "ucb_stat_faculty",
+      "source_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+      "visible_heading": "Rasmus Nielsen",
+      "public_lab_status": "available",
+      "section_counts": {
+        "https://statistics.berkeley.edu/people/rasmus-nielsen": 3,
+        "https://nielsen-lab.github.io/research/": 10
+      },
+      "attributed_sources": {
+        "profile": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+        "home": "https://nielsen-lab.github.io/",
+        "team": "https://nielsen-lab.github.io/team/",
+        "research": "https://nielsen-lab.github.io/research/"
+      },
+      "identity_name": "Rasmus Nielsen",
+      "checked_at": "2026-11-26T11:12:15.707410Z",
+      "snapshot_version": "ls2:3c96394e06eb69dbb1fd537fcfc8e505e1d3c9d5db777e625474202e1b978bba",
+      "visible_draft_buttons": 1,
+      "browser_navigation": [
+        {
+          "url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+          "http": 200
+        },
+        {
+          "url": "https://nielsen-lab.github.io/",
+          "http": 200
+        },
+        {
+          "url": "https://nielsen-lab.github.io/team/",
+          "http": 200
+        },
+        {
+          "url": "https://nielsen-lab.github.io/research/",
+          "http": 200
+        }
+      ],
+      "team_member_visible": true,
+      "public_research_page_title": "Nielsen Lab / research",
+      "snapshot_display_location": "Formal site opportunity detail API",
+      "passed": true
+    },
+    "manual_national_program": {
+      "site_backend_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "render_origin_sha": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+      "original_id": "ext-usc-ict",
+      "url": "https://joinalab.com/opportunities/ext-usc-ict",
+      "detail_http": 200,
+      "api_http": 200,
+      "title": "USC Institute for Creative Technologies REU",
+      "source": "manual",
+      "source_url": "https://ict.usc.edu/reu/",
+      "en": {
+        "visible": "Source: Manually curated",
+        "lang": "en"
+      },
+      "zh": {
+        "visible": "来源：人工整理",
+        "lang": "zh"
+      },
+      "official_usc_link": 7,
+      "passed": true
+    }
+  }
+}
