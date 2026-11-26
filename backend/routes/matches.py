@@ -1710,6 +1710,7 @@ def _match_result_response(
         "reasons_gap": reasons_gap,
         **_served_reason_keys(result, reasons_fit, reasons_gap, row.record if row else None),
         "next_steps": result.next_steps,
+        "next_step_keys": reason_keys(result.next_steps, "step"),
         "ai_reason": result.ai_reason,
         "unknowns": result.unknowns,
         "opportunity": opportunities_by_id.get(result.opportunity_id, {}),

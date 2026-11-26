@@ -350,6 +350,7 @@ class MatchResultResponse(BaseModel):
     reasons_fit_keys: list[MatchReasonKey | None] | None = None
     reasons_gap_keys: list[MatchReasonKey | None] | None = None
     next_steps: list[str]
+    next_step_keys: list[MatchReasonKey | None] | None = None
     # One concrete, student-specific sentence from the LLM rerank pass — the
     # card's lead line for top-K results; None outside the reranked window.
     ai_reason: str | None = None

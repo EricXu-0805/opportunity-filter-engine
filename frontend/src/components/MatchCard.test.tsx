@@ -653,6 +653,17 @@ describe('MatchCard', () => {
   });
 
   describe('the explanation panel speaks the reader language', () => {
+    it('localizes a keyed next step and preserves a free-text instruction in the same card', () => {
+      i18n.locale = 'zh';
+      const match = makeMatch();
+      match.next_steps = ['Open the faculty profile and verify a contact channel', 'Check room 24 in the source'];
+      match.next_step_keys = [{ key: 'step_verify_contact' }, null];
+      render(<MatchCard match={match} profile={PROFILE} onDraftEmail={() => {}} />);
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('打开教师个人主页，核实联系方式')).toBeVisible();
+      expect(screen.getByText('Check room 24 in the source')).toBeVisible();
+    });
+
     it('names every heading through the dictionary, not in hardcoded English', () => {
       // The expanded panel is the card's primary explanation surface. Its six
       // headings were literal English in the JSX, so a Chinese session read

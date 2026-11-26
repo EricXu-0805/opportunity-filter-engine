@@ -691,7 +691,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
                   {t('card.nextSteps')}
                 </h4>
                 <ul className="space-y-2">
-                  {match.next_steps.map((n, i) => (
+                  {localizeMatchReasons(locale, match.next_steps, match.next_step_keys).map((n, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[13px] text-gray-600 leading-relaxed">
                       <ArrowRight className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
                       <span>{n}</span>

@@ -520,6 +520,7 @@ export interface MatchResult {
   reasons_fit_keys?: (MatchReasonKey | null)[] | null;
   reasons_gap_keys?: (MatchReasonKey | null)[] | null;
   next_steps: string[];
+  next_step_keys?: (MatchReasonKey | null)[] | null;
   // One concrete, student-specific sentence from the LLM rerank — the card's
   // lead line for top-K results; absent outside the reranked window.
   ai_reason?: string | null;
