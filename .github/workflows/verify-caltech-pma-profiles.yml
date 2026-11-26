@@ -1,0 +1,71 @@
+name: Read Caltech Physics official research fields
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths: [.github/workflows/verify-caltech-pma-profiles.yml]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: 6677fec566c78f08ced62d2dbf1fc0158e27f160
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Read the five official pages and project the original IDs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, time, requests
+          from scripts import lab_refresh
+          from src.collectors.lab_website import fetch_lab_page
+          from backend.lib.public_opportunity_detail import project_public_detail
+          from backend.lib.opportunity_detail import build_detail_fields
+
+          previous = None
+          def fetch(url):
+              global previous
+              if previous is not None:
+                  time.sleep(max(0,10 - (time.monotonic() - previous)))
+              previous = time.monotonic()
+              result, error = fetch_lab_page(url)
+              print(url,error or "read", flush=True)
+              return result, error
+
+          shard = "data/processed/shards/caltech.json"
+          records = json.loads(Path(shard).read_text())
+          targets = [r for r in records if r.get("department")=="Physics" and r.get("metadata",{}).get("is_active")
+                     and not (r.get("keywords") or r["metadata"].get("research_areas_raw"))]
+          assert len(targets)==5, [r["id"] for r in targets]
+          output = Path("caltech-observation"); output.mkdir()
+          args=["--input",shard,"--out",str(output/"candidate.json")]
+          for r in targets: args+=["--record-id",r["id"]]
+          assert lab_refresh.main(args,fetch=fetch)==0
+          results=json.loads((output/"candidate.json").read_text())["results"]
+          report=[]
+          for row, result in zip(targets,results,strict=True):
+              assert result["record_id"]==row["id"]
+              row["metadata"].update(result["patch"])
+              print(row["id"],result["patch"]["lab_refresh"],flush=True)
+              assert "lab_snapshot" in result["patch"]
+              detail=project_public_detail(row)
+              field=build_detail_fields(detail,row)["fields"]["research_content"]
+              response=requests.get("https://joinalab.com/api/opportunities/"+row["id"], timeout=20)
+              response.raise_for_status()
+              live=response.json()["detail_fields"]["fields"]["research_content"]
+              report.append({"id":row["id"],"source":row["url"],"previous_production":live,
+                             "replayed":field,"sections":len(detail["lab_context"]["snapshot"]["pages"][0]["sections"])})
+          (output/"comparison.json").write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print([(entry["id"],entry["previous_production"]["state"],entry["replayed"]["state"],entry["sections"]) for entry in report])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: caltech-physics-source-candidate
+          path: caltech-observation/
