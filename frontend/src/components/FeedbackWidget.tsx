@@ -11,7 +11,13 @@ import { readLocalStorageJSON, writeLocalStorageJSON } from '@/lib/use-local-sto
 import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
-type ErrorKind = 'generic' | 'no-session' | 'timeout';
+const ERROR_KEYS = {
+  generic: 'feedback.error',
+  'no-session': 'feedback.errorOffline',
+  timeout: 'feedback.errorTimeout',
+  'earlier-version': 'feedback.earlierVersion',
+} as const;
+type ErrorKind = keyof typeof ERROR_KEYS;
 
 // Categories offered in the select. '' is NOT a sixth category — it means the
 // user didn't classify their report, and it is sent as NULL (026 allows it).
@@ -256,13 +262,10 @@ export default function FeedbackWidget() {
     if (!isCurrentSend()) return;
 
     if (!result.ok) {
-      setErrorKind(
-        result.reason === 'timeout'
-          ? 'timeout'
-          : result.reason === 'no-session' ? 'no-session' : 'generic',
-      );
-      // The draft is deliberately left untouched — every failure path keeps
-      // what the user wrote (and its token) so the retry is a single tap.
+      setErrorKind(result.reason === 'error' ? 'generic' : result.reason);
+      // This token belongs to an older ticket. Keep the current edits, including
+      // any typed during the re-read, for a separate submission.
+      if (result.reason === 'earlier-version') patch({ clientToken: mintClientToken() });
       setStatus('error');
       return;
     }
@@ -296,11 +299,7 @@ export default function FeedbackWidget() {
     }
   }, [ticket, owner]);
 
-  const errorKey = errorKind === 'no-session'
-    ? 'feedback.errorOffline'
-    : errorKind === 'timeout'
-      ? 'feedback.errorTimeout'
-      : 'feedback.error';
+  const errorKey = ERROR_KEYS[errorKind];
 
   return (
     <div id="site-feedback" className="mt-3 flex w-full min-w-0 scroll-mt-20 flex-col items-center"
