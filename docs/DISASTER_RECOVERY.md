@@ -97,8 +97,14 @@ are included), retention window, and owner (who can perform a restore). Include
 
 At the recovery point, the backup owner captures the source schema while the
 public and private application schemas and migration history are frozen across the backup and capture.
-Run from the candidate checkout with a verified direct database connection.
-Use a project-specific password file and the project's database CA certificate.
+Run from the candidate checkout. Use a project-specific password file (mode
+0600) and a trusted CA certificate for the endpoint. The default connection is
+`db.<project-ref>.supabase.co:5432`, user `postgres`. On an IPv4-only network,
+copy the **Session pooler** host from the project's Supabase **Connect** dialog
+and pass `--session-pooler-host "$SOURCE_POOLER_HOST"` to the capture. The
+pooler password-file entry uses that host, port 5432, database `postgres`, and
+user `postgres.<project-ref>`. Use the scratch project's corresponding host
+and password-file entry for step 3. See [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 ```bash
 PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$SOURCE_PGSSLROOTCERT" \
@@ -126,7 +132,7 @@ the complete scratch bucket catalogue. Two-bucket historical receipts remain
 readable and need this additional evidence to clear the current gate.
 
 ```json
-{"version":1,"source_backup_id":"example-point","source_environment":"source-ref","buckets":{
+{"version":2,"source_backup_id":"example-point","source_environment":"source-ref","buckets":{
   "tracker-attachments":[{"key":"example.pdf","size":3,"sha256":"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}],
   "application-materials":[], "tracker-attachment-versions":null}}
 ```
@@ -141,29 +147,35 @@ restores into a **separate**, newly provisioned project — never over
 production, which is what makes it safe to drill — and that new project is
 billed, so run it deliberately and delete it when the drill is done.
 
-Note the restore start time; the drill record carries it.
+Record the actual restore start as an ISO 8601 timestamp including its timezone (for example, `2026-11-25T18:00:00Z`). Set `RESTORE_STARTED_AT` to this timestamp.
 
 ### Step 3 — Prove recovery, do not assume it
 
-Run the drill against the **scratch** project:
+Set `SCRATCH_REF` and `SCRATCH_BACKEND_URL` for the restored project. Run the
+following block in Bash and enter the scratch keys at the hidden prompts:
 
 ```bash
-export DRILL_SUPABASE_URL=https://<scratch-ref>.supabase.co
-export DRILL_SERVICE_ROLE_KEY=<scratch service role key>
-export DRILL_ANON_KEY=<scratch anon key>
+export DRILL_SUPABASE_URL="https://${SCRATCH_REF}.supabase.co"
+read -rs -p "Scratch service-role key: " DRILL_SERVICE_ROLE_KEY && echo
+read -rs -p "Scratch anon key: " DRILL_ANON_KEY && echo
+export DRILL_SERVICE_ROLE_KEY DRILL_ANON_KEY
 export PGPASSFILE="$SCRATCH_PGPASSFILE" PGSSLROOTCERT="$SCRATCH_PGSSLROOTCERT"
 
 python scripts/restore_drill.py \
-    --source-backup-id "<recovery point as the dashboard names it>" \
+    --source-backup-id "$RECOVERY_POINT" \
     --source-environment mjpirkyduibkakvlbdko \
-    --scratch-environment <scratch-ref> \
-    --restore-started-at "<when step 2 began>" \
+    --scratch-environment "$SCRATCH_REF" \
+    --restore-started-at "$RESTORE_STARTED_AT" \
     --source-schema-manifest "$PRIVATE_DIR/source-schema.json" \
     --source-schema-manifest-sha256 "$TRUSTED_SCHEMA_SHA256" \
     --attachment-manifest "$PRIVATE_DIR/storage-inventory.json" \
     --attachment-manifest-sha256 "$TRUSTED_STORAGE_SHA256" \
-    --api-base https://<backend pointed at the scratch project>
+    --api-base "$SCRATCH_BACKEND_URL"
 ```
+
+For an IPv4-only connection, append
+`--session-pooler-host "$SCRATCH_POOLER_HOST"` to the drill command. Unset
+`DRILL_SERVICE_ROLE_KEY` and `DRILL_ANON_KEY` after recording the result.
 
 The command writes
 `data/releases/drills/<drill_id>.json` — which `release_gate.py` reads clause

@@ -1,8 +1,10 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -44,6 +46,43 @@ def test_digests_come_from_observed_columns_and_applied_migrations(monkeypatch):
     assert changed["columns_sha256"] != restored["columns_sha256"]
     assert changed["migration_parity"] is False
     assert "table_name" not in json.dumps(changed)
+
+
+def test_session_pooler_uses_the_project_role_and_safe_diagnostics(monkeypatch):
+    host = "aws-1-us-east-1.pooler.supabase.com"
+    calls = []
+
+    def deny(command, **kwargs):
+        calls.append(command)
+        raise subprocess.CalledProcessError(2, command, stderr="password authentication failed: private-message")
+
+    monkeypatch.setattr(subprocess, "run", deny)
+    with pytest.raises(schema.CatalogueConnectionError, match="password-file entry") as failed:
+        schema.observe("scratch", "point", host)
+    command, = calls
+    assert command[command.index("-h") + 1] == host
+    assert command[command.index("-U") + 1] == "postgres.scratch"
+    assert command[command.index("-p") + 1] == "5432"
+    assert command.index("BEGIN READ ONLY") < command.index(schema.QUERY)
+    assert "private-message" not in str(failed.value)
+
+    with pytest.raises(schema.CatalogueConnectionError, match="pooler hostname"):
+        schema.observe("scratch", "point", "not-a-pooler.invalid")
+    assert len(calls) == 1
+
+
+def test_runbook_attachment_manifest_matches_reader(tmp_path):
+    from scripts import restore_attachment_evidence as attachments
+
+    runbook = Path(__file__).resolve().parents[1] / "docs" / "DISASTER_RECOVERY.md"
+    manifest = re.search(r"```json\n(.*?)\n```", runbook.read_text(), re.DOTALL).group(1)
+    path = tmp_path / "inventory.json"
+    path.write_text(manifest)
+    fields = json.loads(manifest)
+    inventory = attachments._manifest(path, hashlib.sha256(path.read_bytes()).hexdigest(),
+                                      fields["source_environment"], fields["source_backup_id"])
+    assert inventory["tracker-attachment-versions"] is None
+    assert inventory["tracker-attachments"]["example.pdf"] == (3, hashlib.sha256(b"abc").hexdigest())
 
 
 def test_schema_capture_needs_separately_retained_digest_and_project_binding(tmp_path):
@@ -144,7 +183,7 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
 
     real_client = httpx.Client
     monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(reply), **kw))
-    monkeypatch.setattr(schema, "observe", lambda project, point: part | {"project_ref": project,
+    monkeypatch.setattr(schema, "observe", lambda project, point, pooler: part | {"project_ref": project,
                             "source_backup_id": point, "observed_at": datetime.now(UTC).isoformat()})
     monkeypatch.setenv("DRILL_SUPABASE_URL", base)
     monkeypatch.setenv("DRILL_SERVICE_ROLE_KEY", "service")
@@ -166,7 +205,14 @@ def test_cli_produces_gate_accepted_record_only_with_independent_evidence(tmp_pa
     assert release_gate.check_restore_drill()["status"] == "FAIL"
 
 
-def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp_path):
+@pytest.fixture
+def pg_socket_dir():
+    # pytest's nested temporary path can exceed sockaddr_un.sun_path on macOS.
+    with tempfile.TemporaryDirectory(prefix="ofe-pg-", dir="/tmp") as directory:
+        yield directory
+
+
+def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp_path, pg_socket_dir):
     config = shutil.which("pg_config")
     if not config or getattr(os, "geteuid", lambda: 0)() == 0:
         pytest.skip("isolated PostgreSQL cluster needs local binaries and an unprivileged user")
@@ -177,12 +223,12 @@ def test_postgres_ddl_changes_are_observed_with_identical_columns_and_ledger(tmp
     subprocess.run([bindir / "initdb", "-D", data, "-U", "drill", "-A", "trust", "--no-locale"],
                    check=True, capture_output=True, timeout=30)
     ctl = [bindir / "pg_ctl", "-D", data, "-w"]
-    subprocess.run([*ctl, "-o", f"-k {tmp_path} -c listen_addresses=''", "-l", tmp_path / "log", "start"],
+    subprocess.run([*ctl, "-o", f"-k {pg_socket_dir} -c listen_addresses=''", "-l", tmp_path / "log", "start"],
                    check=True, capture_output=True, timeout=30)
     try:
         def sql(statement):
             return subprocess.check_output(
-                [bindir / "psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", tmp_path, "-U", "drill",
+                [bindir / "psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", pg_socket_dir, "-U", "drill",
                  "-d", "postgres", "-c", statement], text=True, timeout=15,
             )
 
