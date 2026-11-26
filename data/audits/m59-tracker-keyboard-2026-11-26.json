@@ -1,0 +1,195 @@
+{
+  "production_empty_guest": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45855140250/job/140031415706",
+    "result": {
+      "site": "https://joinalab.com",
+      "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "cases": [
+        {
+          "locale": "en",
+          "native_200": {
+            "width": 700,
+            "client": 692,
+            "document": 692,
+            "ratio": 2,
+            "visualScale": 1
+          },
+          "empty_tracker_destination": "profile form",
+          "empty_link_focus": {
+            "scroll_y": 27,
+            "top": 365,
+            "bottom": 401,
+            "viewport_h": 400,
+            "doc_h": 790,
+            "cover_tag": "A",
+            "cover_id": "",
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "Go to results",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          },
+          "external_messages": 0,
+          "production_interaction_writes": 0
+        },
+        {
+          "locale": "zh",
+          "native_200": {
+            "width": 390,
+            "client": 382,
+            "document": 382,
+            "ratio": 2,
+            "visualScale": 1
+          },
+          "empty_tracker_destination": "profile form",
+          "empty_link_focus": {
+            "scroll_y": 27,
+            "top": 365,
+            "bottom": 401,
+            "viewport_h": 400,
+            "doc_h": 830,
+            "cover_tag": "A",
+            "cover_id": "",
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "去结果页",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          },
+          "external_messages": 0,
+          "production_interaction_writes": 0
+        }
+      ]
+    }
+  },
+  "isolated_existing_board": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45855140379/job/140031416066",
+    "result": {
+      "site": "http://127.0.0.1:3100",
+      "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "cases": [
+        {
+          "locale": "en",
+          "native_200": {
+            "width": 700,
+            "client": 692,
+            "document": 692,
+            "ratio": 2,
+            "visualScale": 1
+          },
+          "empty_tracker_destination": "profile form",
+          "empty_link_focus": {
+            "scroll_y": 27,
+            "top": 365,
+            "bottom": 401,
+            "viewport_h": 400,
+            "doc_h": 790,
+            "cover_tag": "A",
+            "cover_id": "",
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "Go to results",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          },
+          "focus_after_column_move": {
+            "scroll_y": 632,
+            "top": 184,
+            "bottom": 216,
+            "viewport_h": 400,
+            "doc_h": 1544,
+            "cover_tag": "SPAN",
+            "cover_id": "",
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "name": "Set application status for Campus computing research assistantshi",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          "escape_returns_to_same_card": true,
+          "reloaded_note_and_stage": "Set application status for Campus computing research assistantship: Interviewing",
+          "confirmed_local_writes": [
+            "POST",
+            "PATCH",
+            "POST"
+          ],
+          "external_messages": 0,
+          "production_interaction_writes": 0
+        },
+        {
+          "locale": "zh",
+          "native_200": {
+            "width": 390,
+            "client": 382,
+            "document": 382,
+            "ratio": 2,
+            "visualScale": 1
+          },
+          "empty_tracker_destination": "profile form",
+          "empty_link_focus": {
+            "scroll_y": 27,
+            "top": 365,
+            "bottom": 401,
+            "viewport_h": 400,
+            "doc_h": 830,
+            "cover_tag": "A",
+            "cover_id": "",
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "去结果页",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          },
+          "focus_after_column_move": {
+            "scroll_y": 651,
+            "top": 184,
+            "bottom": 216,
+            "viewport_h": 400,
+            "doc_h": 1620,
+            "cover_tag": "SPAN",
+            "cover_id": "",
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "name": "为 Campus computing research assistantship 设置申请状态: 面试中",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          "escape_returns_to_same_card": true,
+          "reloaded_note_and_stage": "为 Campus computing research assistantship 设置申请状态: 面试中",
+          "confirmed_local_writes": [
+            "POST",
+            "PATCH",
+            "POST"
+          ],
+          "external_messages": 0,
+          "production_interaction_writes": 0
+        }
+      ]
+    }
+  },
+  "scope": "The public tracker was read-only. Both stored interaction sequences only exist in the GitHub runner disposable database, against a fictional opportunity. No reminders, physical device, human screen reader, external calls or messages."
+}
