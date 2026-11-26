@@ -33,6 +33,20 @@ function expectChinese(zh: string | null, c: Case) {
 // in Bioengineering at ... Contact this faculty member to ask whether ..."
 // under a Chinese 描述 heading. Only the research areas are source text.
 describe('localizedFacultyDescription from the structured fields', () => {
+  it.each(['en', 'zh'] as const)('retains archived research facts and source restrictions in %s', (locale) => {
+    const t = tIn(locale);
+    for (const c of fixture.cases) {
+      const archived = { ...opp(c.record), faculty_profile_summary: { ...c.fields, archived: true } };
+      const copy = localizedFacultyDescription(archived, REWORDED, t);
+      const current = localizedFacultyDescription(withFields(c), REWORDED, t);
+      // Source areas can quote the same English sentence. Only the separate
+      // product closing may disappear.
+      expect(copy).toBe(c.fields.availability === 'unknown'
+        ? current?.slice(0, -(' ' + t('detail.facultyProfile.askAvailability')).length)
+        : current);
+    }
+  });
+
   it.each(fixture.cases)('says the fields in English exactly as the server wrote them: $name', (c) => {
     expect(localizedFacultyDescription(withFields(c), c.server_text, tIn('en'))).toBe(c.server_text);
   });

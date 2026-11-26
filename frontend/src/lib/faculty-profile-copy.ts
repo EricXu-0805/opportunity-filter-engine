@@ -9,6 +9,7 @@ interface FacultyProfileSummary {
   organization: string | null;
   research_areas: string | null;
   availability: Availability;
+  archived?: boolean;
 }
 
 interface FacultyProfileFields {
@@ -42,6 +43,7 @@ function readSummary(value: unknown): FacultyProfileSummary | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
   const fields = value as Record<string, unknown>;
   if (fields.version !== 1) return null;
+  if (fields.archived !== undefined && typeof fields.archived !== 'boolean') return null;
   if (typeof fields.availability !== 'string'
     || !Object.prototype.hasOwnProperty.call(CLOSING_KEYS, fields.availability)) return null;
   // Absent is null; "" would pick a different head sentence than the server's.
@@ -96,6 +98,6 @@ export function localizedFacultyDescription(
       name: name ?? t('detail.facultyProfile.unnamed'), department: department ?? '', organization: organization ?? '',
     }),
     ...(areas ? [t('detail.facultyProfile.researchAreas', { areas })] : []),
-    t(CLOSING_KEYS[summary.availability]),
+    ...(summary.archived && summary.availability === 'unknown' ? [] : [t(CLOSING_KEYS[summary.availability])]),
   ].join(' ');
 }
