@@ -1,0 +1,108 @@
+{
+  "at": "2026-11-26T13:26:21.998814+00:00",
+  "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "phase": "before the regular November 29 national refresh",
+  "checklist_item": "M182",
+  "observed": [
+    {
+      "id": "sro-595e912d",
+      "school": "University of Wisconsin-Madison",
+      "detail": "https://joinalab.com/opportunities/sro-595e912d",
+      "releasable_data_active": true,
+      "deactivation_reason": null,
+      "detail_status": 200,
+      "api_status": 200,
+      "source": "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program-0",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "public_reason": null,
+      "actionable": true,
+      "controls": [
+        [
+          "Apply now",
+          "https://wiscience.wisc.edu/IBS-SRP"
+        ]
+      ]
+    },
+    {
+      "id": "sro-3c378261",
+      "school": "University of Wisconsin-Madison",
+      "detail": "https://joinalab.com/opportunities/sro-3c378261",
+      "releasable_data_active": true,
+      "deactivation_reason": null,
+      "detail_status": 200,
+      "api_status": 200,
+      "source": "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "public_reason": null,
+      "actionable": true,
+      "controls": [
+        [
+          "Apply now",
+          "https://wiscience.wisc.edu/research/srp/"
+        ]
+      ]
+    },
+    {
+      "id": "sro-51c40e5b",
+      "school": "Boston University",
+      "detail": "https://joinalab.com/opportunities/sro-51c40e5b",
+      "releasable_data_active": false,
+      "deactivation_reason": "no_longer_listed",
+      "detail_status": 200,
+      "api_status": 200,
+      "source": "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars-program",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "heading": "Summer Training as Research Scholars Program",
+      "public_reason": "inactive",
+      "actionable": false,
+      "controls": [
+        [
+          "View source",
+          "https://researchops.web.illinois.edu/?page=4"
+        ]
+      ]
+    },
+    {
+      "id": "sro-60f60fbd",
+      "school": "Boston University",
+      "detail": "https://joinalab.com/opportunities/sro-60f60fbd",
+      "releasable_data_active": true,
+      "deactivation_reason": null,
+      "detail_status": 200,
+      "api_status": 200,
+      "source": "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars-stars-program",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "heading": "Summer Training as Research Scholars (STaRS) Program",
+      "public_reason": null,
+      "actionable": true,
+      "controls": [
+        [
+          "Apply now",
+          "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/"
+        ]
+      ]
+    },
+    {
+      "id": "sro-bc33bc08",
+      "school": "Boston University",
+      "detail": "https://joinalab.com/opportunities/sro-bc33bc08",
+      "releasable_data_active": true,
+      "deactivation_reason": null,
+      "detail_status": 200,
+      "api_status": 200,
+      "source": "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars-program-stars",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "heading": "Summer Training as Research Scholars Program (STaRS)",
+      "public_reason": null,
+      "actionable": true,
+      "controls": [
+        [
+          "Apply now",
+          "https://www.bumc.bu.edu/gms/students/dei/undergraduate-summer-and-youth-programs/stars/"
+        ]
+      ]
+    }
+  ]
+}
