@@ -8,9 +8,9 @@ permissions:
 jobs:
   reader:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 28
     env:
-      OFE_EXPECTED_SITE_SHA: 091c3800c9b5310fba6c591d3eaa1f588390055f
+      OFE_EXPECTED_SITE_SHA: 85f20cfad2dbb0f0600cdecdc14c976cf100f913
     steps:
       - uses: actions/checkout@v6
         with:

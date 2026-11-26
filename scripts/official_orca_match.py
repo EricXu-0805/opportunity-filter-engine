@@ -39,7 +39,10 @@ def tokens(utterance):
             tail = clean[len(needle):]
             if not needle.isascii() or not tail or not tail[0].isalnum() or tail[0].isdigit():
                 result.append(label)
-    result.extend(role for role in sorted(SAFE_ROLES) if clean == role)
+    if result:
+        result.extend(role for role in sorted(SAFE_ROLES) if re.search(r'(?<![a-z])'+re.escape(role)+r'(?![a-z])', clean))
+    elif clean.rstrip('.') in SAFE_ROLES:
+        result.append(clean.rstrip('.'))
     return result
 
 
@@ -129,7 +132,7 @@ def deployed(probe):
     return release
 
 
-def exercise(pw, root, locale, width):
+def exercise(pw, root, locale, width, owned_session=None):
     from playwright.sync_api import expect
     chrome=pw.chromium.launch_persistent_context(str(root/locale),channel='chromium',headless=False,no_viewport=True,
         locale='en-US',args=['--no-sandbox','--force-renderer-accessibility','--disable-dev-shm-usage',
@@ -137,6 +140,8 @@ def exercise(pw, root, locale, width):
     page=chrome.pages[0]
     worker=chrome.service_workers[0] if chrome.service_workers else chrome.wait_for_event('serviceworker',timeout=40000)
     owner=[];signups=[];revisions=[];draft_counts=[]
+    if owned_session is not None:
+        owner.append(json.loads(owned_session)['user']['id'])
     def received(r):
         u=urlsplit(r.url)
         if not r.ok:
@@ -159,7 +164,7 @@ def exercise(pw, root, locale, width):
         if r.method=='POST':
             data=r.post_data_json or {}
             if u.hostname==DB:
-                if u.path=='/auth/v1/signup' and not signups and not data.get('email'):
+                if u.path=='/auth/v1/signup' and not owner and not signups and not data.get('email'):
                     signups.append(True)
                     return route.continue_()
                 if u.path=='/auth/v1/token' and owner:
@@ -176,6 +181,8 @@ def exercise(pw, root, locale, width):
     chrome.route('**/*',restrict)
     chrome.add_cookies([{'name':'ofe_lang','value':'en','url':SITE}])
     prefs={'ofe_lang':'en','ofe_onboarding_seen':'1','ofe_school_confirmed':json.dumps({'slug':'uiuc','ts':'2026-11-26T00:00:00Z'})}
+    if owned_session is not None:
+        prefs['ofe_auth']=owned_session
     chrome.add_init_script("if(location.origin==="+json.dumps(SITE)+"&&!localStorage.getItem('reader-match-qa')){for(const[k,v]of Object.entries("+json.dumps(prefs)+"))localStorage.setItem(k,v);localStorage.setItem('reader-match-qa','1')}")
     page.goto(SITE,wait_until='domcontentloaded')
     page.bring_to_front()
@@ -185,20 +192,24 @@ def exercise(pw, root, locale, width):
             break
         page.wait_for_timeout(200)
     assert owner
-    school=page.get_by_test_id('university-card-uiuc')
-    if school.is_visible():
-        school.click()
-        page.get_by_test_id('switcher-confirm').click()
-    page.locator('#student_name').fill(NAME)
-    page.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)')
-    page.locator('#major').select_option(label='Integrative Biology')
-    page.locator('#grade').select_option(label='Junior')
-    page.locator('#research_interests').fill('Wetlands, ecology and GIS')
-    for _ in range(180):
-        if revisions:
-            break
-        page.wait_for_timeout(200)
-    assert revisions
+    if owned_session is not None:
+        expect(page.locator('#student_name')).to_have_value(NAME,timeout=60000)
+        assert not signups
+    else:
+        school=page.get_by_test_id('university-card-uiuc')
+        if school.is_visible():
+            school.click()
+            page.get_by_test_id('switcher-confirm').click()
+        page.locator('#student_name').fill(NAME)
+        page.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)')
+        page.locator('#major').select_option(label='Integrative Biology')
+        page.locator('#grade').select_option(label='Junior')
+        page.locator('#research_interests').fill('Wetlands, ecology and GIS')
+        for _ in range(180):
+            if revisions:
+                break
+            page.wait_for_timeout(200)
+        assert revisions
     if locale=='zh':
         chrome.add_cookies([{'name':'ofe_lang','value':'zh','url':SITE}])
         page.evaluate("localStorage.setItem('ofe_lang','zh')")
@@ -206,12 +217,18 @@ def exercise(pw, root, locale, width):
         expect(page.locator('#student_name')).to_have_value(NAME,timeout=60000)
     def size():
         return page.evaluate('()=>({width:innerWidth,ratio:devicePixelRatio,visualScale:visualViewport.scale})')
+    # Window managers can consume frame pixels. Calibrate the content viewport
+    # at 100% so the resulting official layouts are exactly 700 and 390 CSS pixels.
+    difference=width-size()['width']
+    if difference:
+        worker.evaluate("async ([url,delta])=>{const [t]=await chrome.tabs.query({url});const w=await chrome.windows.get(t.windowId);await chrome.windows.update(w.id,{width:w.width+delta})}",[SITE+'/*',difference])
+        page.wait_for_function('expected => innerWidth === expected',arg=width,timeout=7000)
     before=size()
     zoom=worker.evaluate("async url=>{const [t]=await chrome.tabs.query({url});await chrome.tabs.setZoom(t.id,2);return await chrome.tabs.getZoom(t.id)}",SITE+'/*')
     page.wait_for_timeout(450)
     after=size()
     assert zoom==2 and abs(after['ratio']/before['ratio']-2)<.01 and abs(2*after['width']-before['width'])<6
-    assert after['visualScale']==1 and abs(after['width']-width/2)<6
+    assert after['visualScale']==1 and after['width']==width//2
     landing(page,page.get_by_test_id('generate-matches'))
     xkey('Return')
     page.wait_for_url('**/results**',timeout=90000)
@@ -268,8 +285,12 @@ def exercise(pw, root, locale, width):
     result={'locale':locale,'actual_page_lang':page.locator('html').get_attribute('lang'),'zoom':zoom,
             'before':before,'after':after,'tested_opportunity_id':TARGET,'free_variant_count':3,
             'returned_to_original_card':True,'controls':controls,'external_messages':0}
+    # Reuse this audit visitor's own live session for its other language in a
+    # clean browser. Only the opaque auth session crosses contexts, in memory.
+    next_session=page.evaluate("localStorage.getItem('ofe_auth')")
+    assert json.loads(next_session)['user']['id']==owner[0]
     chrome.close()
-    return result
+    return result,next_session
 
 
 def main():
@@ -282,15 +303,26 @@ def main():
             'permissions':['tabs'],'host_permissions':[SITE+'/*'],'background':{'service_worker':'zoom.js'}}))
         (ext/'zoom.js').write_text('chrome.runtime.onInstalled.addListener(()=>{});')
         http=pw.request.new_context()
-        release=deployed(http)
-        assert release==os.environ['OFE_EXPECTED_SITE_SHA'],('Release moved before first guest', release)
+        release=os.environ['OFE_EXPECTED_SITE_SHA']
+        for attempt in range(50):
+            try:
+                if deployed(http)==release:
+                    break
+            except AssertionError:
+                pass
+            time.sleep(12)
+        else:
+            raise AssertionError('The specified release did not settle before the audit window')
         results=[]
+        owned_session=None
         for language,width in [('en',1400),('zh',780)]:
-            results.append(exercise(pw,root,language,width))
+            result,owned_session=exercise(pw,root,language,width,owned_session)
+            results.append(result)
+        del owned_session
         assert deployed(http)==release, 'Release changed during the run'
         http.dispose()
         receipt={'site':SITE,'release':release,'reader':subprocess.check_output(['orca','--version'],text=True).strip(),
-                 'reader_interface_language':'en','human_listener':False,'physical_device':False, 'cases':results}
+                 'reader_interface_language':'en','registered_named_accounts':0,'own_guest_count':1,'human_listener':False,'physical_device':False, 'cases':results}
         print('OFFICIAL MATCH READER RECEIPT',json.dumps(receipt,ensure_ascii=False),flush=True)
 
 
