@@ -1,0 +1,87 @@
+name: Validate the B22 draft-only clipboard on isolated registered services
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-b22-isolated-draft-recopy.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check out the reviewed application commit
+        uses: actions/checkout@v6
+        with:
+          ref: f81bbd400ff0c9696787bed97a6a1aa88eded309
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Start disposable profile database, Auth and PostgREST
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/m212"
+          mkdir -p "$fixture"; cd "$fixture"; supabase init
+          mkdir -p supabase/migrations
+          src="$GITHUB_WORKSPACE/product/supabase/migrations"
+          cp "$src"/*.sql supabase/migrations/
+          rm -f supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql
+          sed -i 's/^enable_anonymous_sign_ins = false/enable_anonymous_sign_ins = true/' supabase/config.toml
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -Ei 'error|failed|fatal|denied' "$fixture/start.log" | tail -8 | cut -c1-220 || true
+            exit 1
+          fi
+          # Storage finishes creating its schema at startup. Apply its trigger now in this disposable container.
+          docker exec -i supabase_db_m212 sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -h 127.0.0.1 -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres' < "$src/20261125130000_guard_tracker_attachment_replacement.sql"
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'
+      - name: Install locked frontend and Chromium
+        working-directory: product/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run predev --if-present
+      - name: Exercise normal application controls against real GoTrue and PostgREST
+        run: |
+          set -euo pipefail
+          cfg="$RUNNER_TEMP/m212/status.json"
+          export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="$(jq -r .ANON_KEY "$cfg")"
+          export SUPABASE_URL=http://127.0.0.1:54321
+          export SUPABASE_SERVICE_ROLE_KEY="$(jq -r .SERVICE_ROLE_KEY "$cfg")"
+          export NEXT_TELEMETRY_DISABLED=1
+          export OFE_RELEASE_SHA=$(git -C product rev-parse HEAD)
+          export VERCEL_GIT_COMMIT_SHA="$OFE_RELEASE_SHA"
+          export NEXT_PUBLIC_RELEASE_SHA="$OFE_RELEASE_SHA"
+          export OFE_CHECK_DRAFT_RECOPY=1
+          export OFE_KEYBOARD_SITE=http://127.0.0.1:3100
+          export BACKEND_URL=http://127.0.0.1:8100
+          python -m pip install --quiet -r product/requirements.txt playwright==1.55.0
+          export PYTHONPATH="$GITHUB_WORKSPACE/product"
+          python -u scripts/verify_m17_matching_experience.py --serve >"$RUNNER_TEMP/match-api.log" 2>&1 &
+          api_pid=$!
+          for attempt in {1..40}; do
+            if curl -fsS --max-time 5 http://127.0.0.1:8100/api/health >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if ! curl -fsS --max-time 5 http://127.0.0.1:8100/api/health >/dev/null; then
+            grep -E 'Error:|Exception:|Traceback|^  File' "$RUNNER_TEMP/match-api.log" | tail -14
+            exit 1
+          fi
+          (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/frontend.log" 2>&1 &
+          for attempt in {1..80}; do if curl -fsS --max-time 15 http://127.0.0.1:3100/ >/dev/null 2>&1; then break; fi; sleep 1; done
+          python -m playwright install chromium --with-deps >"$RUNNER_TEMP/install.log"
+          xvfb-run -a -s '-screen 0 1600x1100x24' python -u scripts/verify_public_match_keyboard.py
