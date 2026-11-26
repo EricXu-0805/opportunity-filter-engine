@@ -593,6 +593,14 @@ def test_a_berkeley_name_variant_its_richer_department_dropped_gives_way():
 
 @pytest.mark.parametrize("school,unit,display,full,profile,original_id", [
     ("georgetown", "ENGL", "Marisa Koulen", "Marisa Holmes", "gufaculty360.georgetown.edu/s/contact/003uh00000vihw6yal/marisa-koulen", "faculty-georgetown-engl-be9bd333"),
+    ("uky", "ACC", "Darci Fischer", "Darcia Fischer", "gatton.uky.edu/people/darcia-fischer", "faculty-uky-acc-2d66e7fe"),
+    ("usf", "INFO", "Tameca Jewell", "Tameca Beckett", "www.usf.edu/arts-sciences/departments/information/people/tameca-beckett.aspx", "faculty-usf-info-e14bee11"),
+    ("osu", "BME", "Ben Walter", "Benjamin Walter", "bme.osu.edu/people/walter.367", "faculty-osu-bme-16e6344f"),
+    ("ucf", "CS", "Ali Alkinoon", "Ali Al Kinoon", "www.cs.ucf.edu/person/alialkinoon", "faculty-ucf-cs-edfc1c62"),
+    ("ucsd", "PHIL", "J. Carr", "Jennifer Rose Carr", "philosophyfaculty.ucsd.edu/~j2carr", "faculty-ucsd-phil-a14e93b6"),
+    ("wisc", "MHR", "Chia-Jung Tsay", "Chia-Jung  Tsay", "business.wisc.edu/directory/profile/chia-jung-tsay", "faculty-wisc-mhr-608e6b9e"),
+    ("miami", "SONHS", "Tony Umadhay", "Lonar Anthony Umadhay", "people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7", "faculty-miami-sonhs-3042ed43"),
+    ("unl", "AGRO", "Nic McMillan", "Nicholas McMillan", "agronomy.unl.edu/mcmillan", "faculty-unl-agro-f6340208"),
     ("colostate", "BUS", "Steve Kofford", "Steven Kofford", "biz.colostate.edu/about/directory/c838568788", "faculty-colostate-bus-9d210abe"),
     ("osu", "DESIGN", "Matt Lewis", "Matthew Lewis", "design.osu.edu/people/lewis.239", "faculty-osu-design-73e460f2"),
     ("purdue", "BSC", "Kyu Kang", "Kyubyung Kang", "polytechnic.purdue.edu/profile/kyukang", "faculty-purdue-bsc-e4bf6c5d"),

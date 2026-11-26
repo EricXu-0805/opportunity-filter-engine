@@ -206,7 +206,9 @@ SCHOOL: dict = {
         # ==== School of Nursing and Health Studies =========================
         _cascade("SONHS", "School of Nursing and Health Studies",
                  ["Nursing (BSN)", "Health Science", "Public Health"],
-                 "https://www.sonhs.miami.edu/about-sonhs/faculty-and-staff/faculty-directory/index.html"),
+                 "https://www.sonhs.miami.edu/about-sonhs/faculty-and-staff/faculty-directory/index.html") | {
+            "profile_id_names": {"people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7": ("Tony Umadhay", "Lonar Anthony Umadhay")},
+        },
     ],
 }
 

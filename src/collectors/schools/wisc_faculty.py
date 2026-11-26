@@ -506,6 +506,8 @@ SCHOOL: dict = {
                                   'link': 'a',
                                   'title': 'p.card-text'}}},
         {'short': 'MHR',
+         # The original MHR ID was minted from a card with two spaces before the surname.
+         'profile_id_names': {'business.wisc.edu/directory/profile/chia-jung-tsay': ('Chia-Jung Tsay', 'Chia-Jung  Tsay')},
          'name': 'Department of Management & Human Resources',
          'majors': ['Management', 'Human Resources'],
          'directory_url': 'https://business.wisc.edu/faculty-research/management-human-resources/faculty/',
