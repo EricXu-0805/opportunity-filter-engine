@@ -1,0 +1,25 @@
+{
+  "observed_utc": "2026-11-26T13:52:34.368062+00:00",
+  "release": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "original_id": "faculty-ucsd-math-5a86bec6",
+  "detail": "https://joinalab.com/opportunities/faculty-ucsd-math-5a86bec6",
+  "heading": "Justin Roberts",
+  "actionable": false,
+  "reason": "inactive",
+  "campus_profile": "https://math.ucsd.edu/people/profiles/justin-roberts",
+  "controls": [
+    {
+      "label": "View faculty profile",
+      "href": "https://math.ucsd.edu/people/profiles/justin-roberts"
+    }
+  ],
+  "public_counts": {
+    "listing_count": 32,
+    "faculty_contact_count": 1454,
+    "unreviewed_count": 0,
+    "total_count": 1486
+  },
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1361",
+  "official_emeriti_directory": "https://math.ucsd.edu/people/emeriti-faculty",
+  "school_scheduled_collection": "pending November 27"
+}
