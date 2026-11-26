@@ -124,8 +124,11 @@ describe('Header', () => {
     const toggle = screen.getByTestId('mobile-nav-toggle');
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.keyDown(window, { key: 'Escape' });
+    const inside = document.getElementById('mobile-nav-panel')!.querySelector<HTMLAnchorElement>('a')!;
+    inside.focus();
+    fireEvent.keyDown(inside, { key: 'Escape' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveFocus();
   });
 
   it('does not close on unrelated keys', () => {

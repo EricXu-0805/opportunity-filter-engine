@@ -5335,6 +5335,7 @@ export const en = {
   import: {
     title: 'Import opportunity',
     intro: 'Paste a link or the full job description. We\'ll extract the structured fields with AI.',
+    modeLabel: 'Import method',
     modeUrl: 'By URL',
     modeText: 'By text',
     urlLabel: 'URL',
@@ -10761,6 +10762,7 @@ export const zh = {
   import: {
     title: '导入机会',
     intro: '粘贴链接或职位描述全文,我们会用 AI 提取结构化字段。',
+    modeLabel: '导入方式',
     modeUrl: '按链接',
     modeText: '按文本',
     urlLabel: '链接',
