@@ -1,0 +1,68 @@
+{
+  "observed_at": "2026-11-26T13:27:58.501150+00:00",
+  "original_id": "faculty-ucr-bmsc-e3769358",
+  "name": "Adam Godzik",
+  "official_profile": "https://profiles.ucr.edu/app/home/profile/adamg",
+  "school_catalog": "https://www.cs.ucr.edu/~cshelton/catalog/2026-27/sections/biomedical-sciences.html",
+  "production_original_api": "https://joinalab.com/api/opportunities/faculty-ucr-bmsc-e3769358",
+  "production_visible_before": 0,
+  "normal_harvest_method": "src.collectors.openalex_enrich.harvest_works with the original record. Existing author resolution and work-level gates were left in place.",
+  "resolved_author": "https://openalex.org/A5010671148",
+  "resolved_orcid": "https://orcid.org/0000-0002-2425-852X",
+  "stored_school_rows_and_order_preserved": 1178,
+  "changed_original_ids": [
+    "faculty-ucr-bmsc-e3769358"
+  ],
+  "only_changed_metadata_fields": [
+    "publication_attribution_status",
+    "publication_author_id",
+    "recent_works",
+    "works_gate"
+  ],
+  "already_assigned_author_before_in_all_shards": 0,
+  "verified_works": [
+    {
+      "title": "Charting the Expansive Outer Membrane β-Barrel Landscape in Pseudomonas aeruginosa",
+      "year": 2026,
+      "doi": "https://doi.org/10.64898/2026.11.17.767137",
+      "byline": "Adam Godzik",
+      "same_author_openalex": "https://openalex.org/W7236176971",
+      "author_orcid": "https://orcid.org/0000-0002-2425-852X",
+      "author_institution": [
+        "University of California, Riverside"
+      ],
+      "primary_source": "https://www.biorxiv.org/content/10.64898/2026.11.17.767137v1",
+      "source_format": "bioRxiv preprint"
+    },
+    {
+      "title": "Single-cell heterogeneity of adipose eosinophils is shaped by sex and RELMα and linked to macrophage communication networks in obesity",
+      "year": 2026,
+      "doi": "https://doi.org/10.1093/pnasnexus/pgag365",
+      "byline": "Adam Godzik",
+      "same_author_openalex": "https://openalex.org/W7223457827",
+      "author_orcid": "https://orcid.org/0000-0002-2425-852X",
+      "author_institution": [
+        "University of California, Riverside"
+      ],
+      "primary_source": "https://academic.oup.com/pnasnexus/article/doi/10.1093/pnasnexus/pgag365/8995448",
+      "source_format": "PNAS Nexus journal article"
+    },
+    {
+      "title": "Eosinophil—macrophage crosstalk controls obesity-associated adipose inflammation and is stabilized by RELMα in a sex-dependent manner 2309540",
+      "year": 2026,
+      "doi": "https://doi.org/10.1093/jimmun/vkag141.1564",
+      "byline": "Adam Godzik",
+      "same_author_openalex": "https://openalex.org/W7171539174",
+      "author_orcid": "https://orcid.org/0000-0002-2425-852X",
+      "author_institution": [
+        "University of California, Riverside"
+      ],
+      "primary_source": "https://academic.oup.com/jimmunol/article/doi/10.1093/jimmun/vkag141.1564/8745592",
+      "source_format": "Journal of Immunology Supplement 1 (meeting abstract)"
+    }
+  ],
+  "stored_application_idempotent": true,
+  "normal_local_public_api_status": 200,
+  "normal_local_public_api_titles": 3,
+  "remaining": "Check the three titles on the deployed public detail at the original ID. The separate scheduled publication run has not been observed for these three titles."
+}
