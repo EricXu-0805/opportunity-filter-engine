@@ -1,0 +1,69 @@
+name: Verify B19 candidate original detail routes in Chromium
+on:
+  push:
+    branches: [audit/m180-archived-faculty-summary-1126]
+    paths:
+      - '.github/workflows/verify-b19-candidate-details.yml'
+      - 'data/audits/maintenance-2026-11-26/check_b19_original_details.py'
+permissions:
+  contents: read
+jobs:
+  details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CANDIDATE: 6726a16dc7dcd46e723f858c3d31378c422ad287
+      BACKEND_URL: http://127.0.0.1:8100
+      OFE_RELEASE_SHA: 6726a16dc7dcd46e723f858c3d31378c422ad287
+      OFE_ENVIRONMENT: isolated-candidate
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-candidate-no-account-service
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 6726a16dc7dcd46e723f858c3d31378c422ad287
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: candidate/requirements.txt
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: candidate/frontend/package-lock.json
+      - name: Install normal runtime and Chromium
+        run: |
+          python -m pip install -q -r candidate/requirements.txt playwright==1.55.0
+          python -m playwright install --with-deps chromium >"$RUNNER_TEMP/chromium.log"
+          npm ci --prefix candidate/frontend --no-audit --no-fund
+      - name: Build the exact candidate and assemble its full corpus
+        working-directory: candidate
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          python scripts/shard_corpus.py assemble --force
+          npm --prefix frontend run build
+      - name: Check the original detail routes against the normal services
+        working-directory: candidate
+        run: |
+          python -m uvicorn backend.main:app --host 127.0.0.1 --port 8100 >"$RUNNER_TEMP/ofe-api.log" 2>&1 &
+          npm --prefix frontend run start -- --hostname 127.0.0.1 --port 3000 >"$RUNNER_TEMP/ofe-next.log" 2>&1 &
+          for attempt in $(seq 1 100); do
+            if curl --silent --fail http://127.0.0.1:3000/api/health >"$RUNNER_TEMP/ofe-health.json"; then break; fi
+            sleep 2
+          done
+          SCOPE="$(python -c 'from backend.routes.opportunities import CURRENT_TRUTH_AWARE_SCOPE; print(CURRENT_TRUTH_AWARE_SCOPE)')"
+          python ../audit/data/audits/maintenance-2026-11-26/check_b19_original_details.py --site http://127.0.0.1:3000 --sha "$CANDIDATE" --scope "$SCOPE" --out "$GITHUB_WORKSPACE/b19-original-details.json"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: b19-candidate-original-details
+          path: b19-original-details.json
+          if-no-files-found: warn
