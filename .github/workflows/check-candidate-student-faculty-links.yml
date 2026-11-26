@@ -12,10 +12,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      LINK_PATH_CAMPUS: ucb
-      CANDIDATE: 08a8ea170ac2c7792778c76a9473616ad1ec824e
+      CANDIDATE: 2c2a6cc58ad105582d89f3a5b71dacc380ad8212
       BACKEND_URL: http://127.0.0.1:8100
-      OFE_RELEASE_SHA: 08a8ea170ac2c7792778c76a9473616ad1ec824e
+      OFE_RELEASE_SHA: 2c2a6cc58ad105582d89f3a5b71dacc380ad8212
       OFE_ENVIRONMENT: isolated-candidate
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
@@ -26,7 +25,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v6
         with:
-          ref: 08a8ea170ac2c7792778c76a9473616ad1ec824e
+          ref: 2c2a6cc58ad105582d89f3a5b71dacc380ad8212
           path: candidate
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -82,7 +81,10 @@ jobs:
             if curl --silent --fail http://127.0.0.1:3000/api/health >"$RUNNER_TEMP/ofe-health.json"; then break; fi
             sleep 2
           done
-          python ../audit/data/audits/observed-faculty-2026-11-26/candidate-student-faculty-links/check_candidate.py "$GITHUB_WORKSPACE/candidate-faculty-links"
+          for campus in msu ucb; do
+            LINK_PATH_CAMPUS="$campus" python ../audit/data/audits/observed-faculty-2026-11-26/candidate-student-faculty-links/check_candidate.py "$GITHUB_WORKSPACE/candidate-faculty-links/$campus" || failed=1
+          done
+          exit "${failed:-0}"
       - uses: actions/upload-artifact@v6
         if: always()
         with:
