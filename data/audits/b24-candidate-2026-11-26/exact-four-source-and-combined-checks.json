@@ -1,0 +1,162 @@
+{
+  "checked_at": "2026-11-26T22:39:02.527762+00:00",
+  "full_checks_successful": true,
+  "stage": "Sources and combined candidate. The real-main check and official release follow B23.",
+  "pull_requests": {
+    "1487": {
+      "source_head": "5daa04961d64de2b1cf18c00e96b462ffbe15642",
+      "base_branch": "main",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45902127383",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45902127390",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1488": {
+      "source_head": "47ad3568fadbb395588e10f917f0d20e278aa603",
+      "base_branch": "main",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45898935490",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "E2E (Playwright)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Backend (lint + pytest)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45898935374",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1489": {
+      "source_head": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212",
+      "base_branch": "integrate/verified-maintenance-20261126-b23",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900124689",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "E2E (Playwright)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Backend (lint + pytest)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900152935",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1491": {
+      "source_head": "c4d2e60b0ff5611d8ce4dc9df405a0443c9e02bc",
+      "base_branch": "integrate/verified-maintenance-20261126-b23",
+      "pull_request_state": "OPEN",
+      "draft": false,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900215103",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45904360874",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    },
+    "1490": {
+      "source_head": "49fe4a98cf2a61d3467772944188ef963f8d5944",
+      "base_branch": "integrate/verified-maintenance-20261126-b23",
+      "pull_request_state": "OPEN",
+      "draft": true,
+      "checks": {
+        "CI": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45902412760",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45902421359",
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      }
+    }
+  }
+}
