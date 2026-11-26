@@ -1,5 +1,7 @@
 {
   "deployment": {
+    "backend_dispatch_conclusion": "success",
+    "backend_dispatch_job": 140114531682,
     "completed_at": "2026-11-26T18:54:41Z",
     "conclusion": "success",
     "data_refresh_and_quality_gate": "success",
@@ -12,12 +14,18 @@
   },
   "inputs": {
     "2026-11-19": {
+      "actions_refresh_job": 135675821836,
       "actions_run": 44557047479,
+      "installed_soupsieve": "2.9.2",
+      "python": "3.11.18",
       "release_sha": "983d208c2e5d60b150ff968ff41a5a0155e7df85",
       "runner_sha": "777bf39020d1136c4cd5e51ac8311ec5d23e48fe"
     },
     "2026-11-26": {
+      "actions_refresh_job": 140053691464,
       "actions_run": 45861578824,
+      "installed_soupsieve": "4.1.3",
+      "python": "3.11.18",
       "release_sha": "31984a4cf65992e448a0d8838c15f8cf2c184915",
       "runner_sha": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
     }
