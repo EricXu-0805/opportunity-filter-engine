@@ -1,0 +1,248 @@
+{
+  "site": "https://joinalab.com",
+  "release": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "reader": "46.1",
+  "reader_interface_language": "en",
+  "registered_named_accounts": 0,
+  "own_guest_count": 1,
+  "human_listener": false,
+  "physical_device": false,
+  "cases": [
+    {
+      "locale": "en",
+      "actual_page_lang": "en",
+      "zoom": 2,
+      "before": {
+        "width": 1400,
+        "ratio": 1,
+        "visualScale": 1
+      },
+      "after": {
+        "width": 700,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "tested_opportunity_id": "faculty-ib-78788e71",
+      "free_variant_count": 3,
+      "returned_to_original_card": true,
+      "controls": [
+        {
+          "control": "category",
+          "key": "Home",
+          "spoken_label_after_key": [
+            "All"
+          ],
+          "spoken_roles": [
+            "page tab"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 27200,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        },
+        {
+          "control": "draft",
+          "key": "Tab",
+          "spoken_label_after_key": [
+            "Draft email"
+          ],
+          "spoken_roles": [
+            "button",
+            "push button"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 28800,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        },
+        {
+          "control": "conditions",
+          "key": "Tab",
+          "spoken_label_after_key": [
+            "Target conditions for this draft"
+          ],
+          "spoken_roles": [
+            "button",
+            "collapsed",
+            "toggle button"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 28800,
+          "visible_focus": true,
+          "tag": "SUMMARY",
+          "visible_disclosure_title_and_status": "Target conditions for this draft Application conditions need review",
+          "screen_reader_spoke_exact_title_and_status_on_tab": true
+        },
+        {
+          "control": "body",
+          "key": "Tab",
+          "spoken_label_after_key": [
+            "Body"
+          ],
+          "spoken_roles": [
+            "entry"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 30400,
+          "visible_focus": true,
+          "tag": "TEXTAREA"
+        },
+        {
+          "control": "close",
+          "key": "Shift+Tab",
+          "spoken_label_after_key": [
+            "Close email editor"
+          ],
+          "spoken_roles": [
+            "button",
+            "push button"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 30400,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        },
+        {
+          "control": "returned to original draft button",
+          "key": "Return on Close",
+          "spoken_label_after_key": [],
+          "spoken_roles": [],
+          "heard_on_key": false,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 102400,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        }
+      ],
+      "external_messages": 0
+    },
+    {
+      "locale": "zh",
+      "actual_page_lang": "zh",
+      "zoom": 2,
+      "before": {
+        "width": 780,
+        "ratio": 1,
+        "visualScale": 1
+      },
+      "after": {
+        "width": 390,
+        "ratio": 2,
+        "visualScale": 1
+      },
+      "tested_opportunity_id": "faculty-ib-78788e71",
+      "free_variant_count": 3,
+      "returned_to_original_card": true,
+      "controls": [
+        {
+          "control": "category",
+          "key": "Home",
+          "spoken_label_after_key": [
+            "全部"
+          ],
+          "spoken_roles": [
+            "page tab"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 27200,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        },
+        {
+          "control": "draft",
+          "key": "Tab",
+          "spoken_label_after_key": [],
+          "spoken_roles": [],
+          "heard_on_key": false,
+          "query_labels": [
+            "起草邮件",
+            "起草邮件"
+          ],
+          "peak_after_key": 32768,
+          "frames_after_key": 105600,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        },
+        {
+          "control": "conditions",
+          "key": "Tab",
+          "spoken_label_after_key": [
+            "本次参考的目标条件"
+          ],
+          "spoken_roles": [
+            "button",
+            "collapsed",
+            "toggle button"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 38400,
+          "visible_focus": true,
+          "tag": "SUMMARY",
+          "visible_disclosure_title_and_status": "本次参考的目标条件 申请条件尚未核对",
+          "screen_reader_spoke_exact_title_and_status_on_tab": true
+        },
+        {
+          "control": "body",
+          "key": "Tab",
+          "spoken_label_after_key": [
+            "正文"
+          ],
+          "spoken_roles": [
+            "entry"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 30400,
+          "visible_focus": true,
+          "tag": "TEXTAREA"
+        },
+        {
+          "control": "close",
+          "key": "Shift+Tab",
+          "spoken_label_after_key": [
+            "关闭邮件编辑器"
+          ],
+          "spoken_roles": [
+            "button",
+            "push button"
+          ],
+          "heard_on_key": true,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 28800,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        },
+        {
+          "control": "returned to original draft button",
+          "key": "Return on Close",
+          "spoken_label_after_key": [],
+          "spoken_roles": [],
+          "heard_on_key": false,
+          "query_labels": [],
+          "peak_after_key": 32768,
+          "frames_after_key": 102400,
+          "visible_focus": true,
+          "tag": "BUTTON"
+        }
+      ],
+      "external_messages": 0
+    }
+  ]
+}
