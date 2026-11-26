@@ -37,6 +37,7 @@ def test_capture_is_one_statement_and_saved_counts_are_in_the_pinned_manifest(tm
     source = dict.fromkeys(rows.TABLES, 0) | {"profiles": 5}
     fake_catalogue = {"columns": [{"table": "example"}], "migrations": [{"version": "1", "name": "test"}],
                       "ddl_sha256": "d" * 64, "ddl_count": 1, "row_counts": source}
+    fake_catalogue["bucket_catalog_unfiltered"] = True
     fake_catalogue["storage_catalogue"] = {name: {"public": False, "objects": {}} for name in
                                          ("tracker-attachments", "application-materials")}
     import subprocess

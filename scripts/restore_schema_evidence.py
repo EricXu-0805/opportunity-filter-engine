@@ -98,18 +98,27 @@ def _digest(value: list) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
-def observe(project: str, backup: str, *, include_row_counts: bool = False,
-            storage_catalogue_out: Path | None = None) -> dict:
-    """Use the named project's direct DB endpoint. Read only catalogue and ledger metadata."""
+class CatalogueConnectionError(ValueError):
+    """Operator-visible database connection detail, safe for the drill log."""
+
+
+def observe(project: str, backup: str, session_pooler_host: str | None = None, *,
+            include_row_counts: bool = False, storage_catalogue_out: Path | None = None) -> dict:
+    """Read the named project's catalogue directly or through its shared session pooler."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", project) or not backup.strip():
         raise ValueError("a project ref and recovery point are required")
+
+    host, user = f"db.{project}.supabase.co", "postgres"
+    if session_pooler_host:
+        if not re.fullmatch(r"[a-z0-9-]+\.pooler\.supabase\.com", session_pooler_host):
+            raise CatalogueConnectionError("use the shared session pooler hostname from the project Connect dialog")
+        host, user = session_pooler_host, f"postgres.{project}"
 
     # Credentials may come from .pgpass or PGPASSWORD. Never include them on argv
     # or pass ambient libpq service/host overrides into a project-bound observation.
     env = {k: v for k, v in os.environ.items() if not k.startswith("PG")
            or k in {"PGPASSWORD", "PGPASSFILE", "PGSSLROOTCERT"}}
-    env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10",
-               PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=20000 -c search_path=pg_catalog")
+    env.update(PGSSLMODE="verify-full", PGCONNECT_TIMEOUT="10", LC_ALL="C")
     query = QUERY
     if include_row_counts:
         row_query = restore_row_evidence.capture_query(QUERY)
@@ -118,12 +127,29 @@ def observe(project: str, backup: str, *, include_row_counts: bool = False,
                  f"FROM ({row_query}) AS backup(snapshot)")
     try:
         result = subprocess.run(
-            ["psql", "-XAtw", "-v", "ON_ERROR_STOP=1", "-h", f"db.{project}.supabase.co",
-             "-p", "5432", "-U", "postgres", "-d", "postgres", "-c", query],
+            ["psql", "-XqAtw", "-v", "ON_ERROR_STOP=1", "-h", host, "-p", "5432", "-U", user,
+             "-d", "postgres", "-c", "BEGIN READ ONLY", "-c", "SET LOCAL statement_timeout = 20000",
+             "-c", "SET LOCAL search_path = pg_catalog", "-c", query, "-c", "COMMIT"],
             capture_output=True, text=True, timeout=35, check=True, env=env,
         )
-    except (OSError, subprocess.SubprocessError):
-        raise ValueError("catalogue read failed; check psql, direct database access and TLS") from None
+    except FileNotFoundError:
+        raise CatalogueConnectionError("psql executable not found; install the PostgreSQL client") from None
+    except subprocess.TimeoutExpired:
+        raise CatalogueConnectionError("catalogue read timed out; check the database route and server load") from None
+    except subprocess.CalledProcessError as exc:
+        # Report an actionable category without copying server-controlled text to a public run log.
+        message = (exc.stderr or "").lower()
+        if "certificate" in message or "ssl" in message:
+            hint = "verify PGSSLROOTCERT and the endpoint hostname"
+        elif "password" in message or "authentication" in message or "tenant or user not found" in message:
+            hint = "verify the project and password-file entry for this host and user"
+        elif "permission denied" in message or "does not exist" in message:
+            hint = "verify catalogue and migration ledger access"
+        else:
+            hint = "verify the database route; use the session pooler on an IPv4-only network"
+        raise CatalogueConnectionError(f"psql exited {exc.returncode} for {user}@{host}:5432; {hint}") from None
+    except OSError:
+        raise CatalogueConnectionError("could not execute psql; check the PostgreSQL client installation") from None
     catalogue = json.loads(result.stdout)
     if catalogue.get("bucket_catalog_unfiltered") is not True:
         raise ValueError("an unfiltered Storage bucket catalogue is required to verify bucket visibility")
@@ -205,7 +231,7 @@ def read_source_manifest(path: Path | None, expected_sha256: str | None) -> dict
 def _valid_shape(part: dict) -> bool:
     return (
         part.get("method") == METHOD and isinstance(part.get("project_ref"), str)
-        and isinstance(part.get("source_backup_id"), str) and _timestamp(part.get("observed_at")) is not None
+        and isinstance(part.get("source_backup_id"), str) and aware_timestamp(part.get("observed_at")) is not None
         and all(isinstance(part.get(k), str) and re.fullmatch(r"[a-f0-9]{64}", part[k])
                 for k in ("columns_sha256", "ddl_sha256", "history_sha256"))
         and type(part.get("ddl_count")) is int and part["ddl_count"] >= 0
@@ -216,7 +242,7 @@ def _valid_shape(part: dict) -> bool:
     )
 
 
-def _timestamp(value: object) -> datetime | None:
+def aware_timestamp(value: object) -> datetime | None:
     try:
         dt = datetime.fromisoformat(value) if isinstance(value, str) else None
         return dt if dt is not None and dt.utcoffset() is not None else None
@@ -244,7 +270,7 @@ def schema_verdict(record: dict, expected: dict) -> tuple[str, str]:
     if hashlib.sha256(manifest_bytes(source)).hexdigest() != record.get("source_schema_manifest_sha256"):
         return "UNVERIFIED", "schema_observation_unbound"
 
-    times = [_timestamp(v) for v in (source.get("observed_at"), record.get("restore_started_at"),
+    times = [aware_timestamp(v) for v in (source.get("observed_at"), record.get("restore_started_at"),
                                      restored.get("observed_at"), record.get("performed_at"))]
     if any(t is None for t in times) or times != sorted(times) or times[-1] > datetime.now(UTC):
         return "UNVERIFIED", "schema_observation_time_unbound"
@@ -260,12 +286,13 @@ def schema_verdict(record: dict, expected: dict) -> tuple[str, str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--project-ref", required=True)
+    ap.add_argument("--session-pooler-host", help="shared session pooler hostname from Supabase Connect")
     ap.add_argument("--source-backup-id", required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--storage-catalogue-out", type=Path, help="new private file with source object keys and sizes")
     args = ap.parse_args()
     try:
-        observation = observe(args.project_ref, args.source_backup_id, include_row_counts=True,
+        observation = observe(args.project_ref, args.source_backup_id, args.session_pooler_host, include_row_counts=True,
                               storage_catalogue_out=args.storage_catalogue_out)
         with args.out.open("xb") as dest:
             dest.write(manifest_bytes(observation))
