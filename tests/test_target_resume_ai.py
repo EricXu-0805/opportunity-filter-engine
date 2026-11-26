@@ -142,6 +142,15 @@ def test_confirmed_student_work_preserves_its_private_identity_receipt_outside_r
     receipt["orcid"] = "0000-0002-1825-0098"
     with pytest.raises(InvalidTargetResume):
         validate_master(master)
+    del receipt["orcid"]
+    paper = master["publications"][0]
+    paper["url"] = fact("work-url", "https://publisher.example/article")
+    paper["doi"] = fact("doi", "10.1234/OriginalSpelling")
+    receipt["linked_by"] = "10.1234/originalspelling"
+    validate_master(master)
+    receipt["linked_by"] = "10.1234/other"
+    with pytest.raises(InvalidTargetResume):
+        validate_master(master)
 
 
 def test_golden_cross_language_document_and_manifest():

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Card from '@/components/Card';
 import { StudentPublicationImport } from './StudentPublicationImport';
-import { alreadyImported, confirmedStudentWork, scholarUser } from '@/lib/student-publications';
+import { addStudentWork, scholarUser } from '@/lib/student-publications';
 import { useLocale } from '@/i18n/client';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import {
@@ -180,7 +180,7 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     if (!draft || blocked || conflict || !draft.dirty) return;
     // A previously saved receipt keeps its historic identity. A newly staged
     // work cannot be saved after the student switches the Scholar profile.
-    const persistedWorks = new Set((checked.ok ? checked.value?.publications : [])?.map((item) => item.id));
+    const persistedWorks = new Set((checked.ok ? checked.value?.publications : [])?.filter((item) => item.student_authorship).map((item) => item.id));
     const newReceipts = draft.master.publications.flatMap((item) => !persistedWorks.has(item.id) && item.student_authorship ? [item.student_authorship] : []);
     if (newReceipts.some((source) => source.scholar_id !== scholar)) { setError('stale'); return; }
     const next = { ...draft.master, revision: draft.master.revision + 1 };
@@ -302,16 +302,16 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
                 <div className="grid gap-2 sm:grid-cols-2">{([
                   ['title', copy('Publication title', '论文标题')], ['authors', copy('Authors in exact order', '作者及准确顺序')], ['venue', copy('Journal / conference', '期刊／会议')], ['date', copy('Publication date', '发表日期')], ['publication_status', copy('Publication status', '发表状态')], ['url', copy('Publication URL', '论文链接')], ['doi', 'DOI'],
                 ] as const).map(([key, label]) => field(label, item[key], (next, value) => { const publication = next.publications[index];
-                  if ((key === 'title' || key === 'url' || key === 'doi') && publication[key]?.value !== value?.value) delete publication.student_authorship;
+                  if ((key === 'title' || key === 'url' || key === 'doi') && (publication[key]?.value !== value?.value || value?.status !== 'confirmed')) delete publication.student_authorship;
                   publication[key] = value;
-                }, item.student_authorship && (key === 'title' || key === 'url' || key === 'doi') ? copy('Your OpenAlex export', '本人提供的 OpenAlex 导出') : undefined))}</div>
+                }, item.student_authorship && !item.student_authorship.linked_by && (key === 'title' || key === 'url' || key === 'doi') ? copy('Your OpenAlex export', '本人提供的 OpenAlex 导出') : undefined))}</div>
                 {item.student_authorship && <p className="mt-2 text-xs text-gray-600">{copy('Authorship confirmed by you', '本人已确认署名')} · <a className="underline" target="_blank" rel="noreferrer" href={'https://scholar.google.com/citations?user=' + item.student_authorship.scholar_id}>Scholar {item.student_authorship.scholar_id}</a> · <a className="underline" target="_blank" rel="noreferrer" href={'https://openalex.org/' + item.student_authorship.author_id}>{item.student_authorship.author_id}</a> · <a className="underline" target="_blank" rel="noreferrer" href={'https://openalex.org/' + item.student_authorship.work_id}>{item.student_authorship.work_id}</a>{item.student_authorship.orcid && <> · <a className="underline" target="_blank" rel="noreferrer" href={'https://orcid.org/' + item.student_authorship.orcid}>{item.student_authorship.orcid}</a></>}</p>}
                 {references(item.details, (next, value) => { next.publications[index].details = value; })}
                 <button type="button" className={`${button} mt-2`} onClick={() => edit((next) => { next.publications.splice(index, 1); })}>{copy('Remove publication', '删除论文项')}</button>
               </fieldset>)}
               <StudentPublicationImport key={scholar ?? ''} scholar={scholar} items={master.publications} disabled={blocked || conflict} copy={copy}
                 onConfirm={(work) => edit((next) => {
-                  if (work.source.scholar_id === scholar && !alreadyImported(next.publications, work)) next.publications.push(confirmedStudentWork(work));
+                  if (work.source.scholar_id === scholar) addStudentWork(next.publications, work);
                 })} />
               <button type="button" className={button} onClick={() => edit((next) => { next.publications.push({ id: crypto.randomUUID(), details: [] }); })}>{copy('Add publication', '添加论文')}</button>
             </>}

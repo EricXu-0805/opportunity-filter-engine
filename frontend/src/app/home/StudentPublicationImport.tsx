@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { alreadyImported, authorIdentifier, studentWorks } from '@/lib/student-publications';
+import { existingStudentWork, authorIdentifier, studentWorks } from '@/lib/student-publications';
 import type { StudentWork } from '@/lib/student-publications';
 import type { ResumePublicationItem } from '@/lib/types';
 
@@ -47,13 +47,18 @@ export function StudentPublicationImport({ scholar, items, disabled, copy, onCon
         {error && <p role="alert">{copy('Use a public OpenAlex Works JSON export containing IDs and authorships, up to 200 works and 2 million characters.', '请使用包含作品 ID 与署名的公开 OpenAlex 作品 JSON，最多 200 篇、200 万字符。')}</p>}
         {result && <div aria-live="polite"><p>{copy('Matching works', '匹配作品')} · {result.works.length} / {copy('Skipped', '已略过')} · {result.skipped}</p>
           {result.works.length > 0 && <p>{copy('Open each work and check your byline before confirming.', '请打开作品来源，核对自己的署名后再确认。')}</p>}
-          <ul>{result.works.map((work) => <li className="mt-3" key={work.source.work_id}>
+          <ul>{result.works.map((work) => {
+            const match = existingStudentWork(items, work);
+            return <li className="mt-3" key={work.source.work_id}>
             <a className="font-medium underline" href={'https://openalex.org/' + work.source.work_id} target="_blank" rel="noreferrer">{work.title}</a>
             <p>{copy('Listed author', '作品署名')} · {work.authorName} · {work.source.author_id}{work.doi && <> · DOI {work.doi}</>}</p>
-            <button type="button" className={button} disabled={alreadyImported(items, work)}
-              onClick={() => onConfirm(work)}>{alreadyImported(items, work)
-                ? copy('Already in résumé', '已在简历中') : copy('Confirm this is my publication', '确认这是我的论文')}</button>
-          </li>)}</ul>
+            {match.kind === 'link' && <p>{copy('Existing confirmed citation', '已确认的原记录')} · {match.item.title?.value} · {match.locator}</p>}
+            <button type="button" className={button} disabled={match.kind === 'present' || match.kind === 'conflict'}
+              onClick={() => onConfirm(work)}>{match.kind === 'present' ? copy('Already in résumé', '已在简历中')
+                : match.kind === 'conflict' ? copy('Review conflicting résumé citations', '请复核简历中的论文记录')
+                : match.kind === 'link' ? copy('Confirm authorship for this existing citation', '为这条原记录确认署名')
+                : copy('Confirm this is my publication', '确认这是我的论文')}</button>
+          </li>; })}</ul>
         </div>}
       </fieldset>}
   </details>;
