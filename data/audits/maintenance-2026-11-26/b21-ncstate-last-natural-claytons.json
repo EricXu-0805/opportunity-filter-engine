@@ -1,0 +1,64 @@
+{
+  "scheduled_run": 45232854848,
+  "data_pr": 1217,
+  "merged": "b598e776b9d3024f7e4aaf96247cd6cf7e35f90f",
+  "shard_blob": "745756b653049934e5d386b602f3c99a68567d49",
+  "ledger_blob": "a255eac9fd3e7d0010b8637ff77db2ae99870637",
+  "ncsu_count": 2334,
+  "faculty": {
+    "faculty-ncsu-chass-e417d225": {
+      "name": "Jacob Clayton",
+      "profile": "https://chass.ncsu.edu/people/jrclayt2/",
+      "first_seen": "2026-07-18T20:18:29.271320",
+      "last_seen": "2026-07-27T09:26:33.120084",
+      "active": true,
+      "observed": false,
+      "title": "Professor",
+      "source": "https://chass.ncsu.edu/people/jrclayt2/",
+      "review": null
+    },
+    "faculty-ncsu-chass-8026d528": {
+      "name": "Robin Clayton",
+      "profile": "https://chass.ncsu.edu/people/jrclayt2/",
+      "first_seen": "2026-08-17T08:20:12.736013",
+      "last_seen": "2026-11-23T20:06:04.398758",
+      "active": true,
+      "observed": true,
+      "title": "",
+      "source": "https://chass.ncsu.edu/people/jrclayt2/",
+      "review": null
+    }
+  },
+  "chass_unit": {
+    "unit_name": "College of Humanities and Social Sciences",
+    "source": "ncsu_faculty",
+    "started_at": "2026-11-23T20:05:45.630584+00:00",
+    "completed_at": "2026-11-23T20:06:04.420534+00:00",
+    "completeness_status": "partial",
+    "parse_status": "ok",
+    "fetch_status": "ok",
+    "observed_count": 429,
+    "coverage": {
+      "ambiguous_rows": 0,
+      "classified_nonfaculty_rows": 0,
+      "duplicate_rows": 0,
+      "identity_match_failures": 0,
+      "parsed_faculty_rows": 0,
+      "parser_errors": 0,
+      "partial_render_rows": 0,
+      "raw_roster_rows": 0,
+      "unparsed_rows": 0
+    }
+  },
+  "scheduled_run_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45232854848",
+  "data_pr_url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1217",
+  "data_shard_url": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/b598e776b9d3024f7e4aaf96247cd6cf7e35f90f/data/processed/shards/ncsu.json",
+  "unit_ledger_url": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/b598e776b9d3024f7e4aaf96247cd6cf7e35f90f/data/processed/collector_status.json",
+  "entry_screen_reproduction_after_the_earlier_fix": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/0363db4c9f7a6b4c356cf8cbb466ecd06a3d2240/data/audits/pending-public-20261126/ncsu-archived-contact-links-bdb523be.json",
+  "scope": "November 23 published data, before B21. A complete check of the two names on the following scheduled rotation also requires campus identity evidence, original IDs and the real detail route. The stored provenance of the archived record can retain a contested URL.",
+  "future_checks": [
+    "Find the scheduled main run for November 30 and its merged publication. Read the CHASS ledger and these two original IDs, including per-ID observations and timestamps. A successful school-level run alone is insufficient.",
+    "Compare the published items to the current campus roster, named individual page and the correct two public detail URLs. Robin should use the campus address explicitly assigned to her. An archived Jacob should retain his original record and offer the department directory.",
+    "If a current independently identity-bound campus record for Jacob appears, verify the identity and that the same original ID was restored. Preserve the two original first-seen values."
+  ]
+}
