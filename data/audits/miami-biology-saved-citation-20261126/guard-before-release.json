@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-26T23:37:36.910613+00:00",
+  "correction_sha": "f3e470077b6e198300248bf3f83f16b54f09a580",
+  "outcome": "blocked",
+  "detail_requests": 0,
+  "requests": [
+    {
+      "url": "https://joinalab.com/about",
+      "at": "2026-11-26T23:37:36.911081+00:00",
+      "http": 200
+    },
+    {
+      "url": "https://joinalab.com/api/health",
+      "at": "2026-11-26T23:37:43.793928+00:00",
+      "http": 200
+    }
+  ],
+  "originals": [],
+  "observed_at": "2026-11-26T23:37:36.911073+00:00",
+  "deployment_before": {
+    "frontend": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+    "backend": "428516b07eb63bdc1bc31693a7d399f51bc6bd96"
+  },
+  "main": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "blocker": "Waiting for merged source and matching public releases containing that source."
+}
