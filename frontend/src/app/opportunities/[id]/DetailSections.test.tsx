@@ -295,15 +295,44 @@ describe('RecentWorksSection', () => {
 
 describe('KeywordsSection provenance', () => {
   const kw = ['hydrocarbon exploration and reservoir analysis'];
+  const currentFaculty: Partial<Opportunity> = {
+    source_type: 'faculty_research',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true, accepting_state: 'unknown',
+      reason_code: null, verified_at: null, expires_at: null,
+    },
+  };
+
 
   it('tells the student when the topics were inferred rather than stated', () => {
     render(
       <KeywordsSection
-        opp={opp({}, { source_type: 'faculty_research', keywords: kw, keywords_attribution: 'inferred' })}
+        opp={opp({}, { ...currentFaculty, keywords: kw, keywords_attribution: 'inferred' })}
         t={tFn}
       />,
     );
     expect(screen.getByTestId('keywords-inferred-note')).toHaveTextContent('detail.keywordsInferred');
+  });
+
+  it.each(['en', 'zh'] as const)('retains the topics without encouraging outreach on an archived faculty record in %s', locale => {
+    const archived = opp({ is_active: false }, {
+      source_type: 'faculty_research',
+      keywords: kw, keywords_attribution: 'inferred',
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: false, accepting_state: 'unknown',
+        reason_code: 'inactive', verified_at: null, expires_at: null,
+      },
+    });
+    render(<KeywordsSection opp={archived} t={key => translate(locale, key)} />);
+    expect(screen.getByText(kw[0])).toBeInTheDocument();
+    expect(screen.getByTestId('keywords-inferred-note').textContent).toBe(translate(locale, 'favorites.keywordsInferred'));
+  });
+
+  it('uses the topic attribution alone while a cached faculty record has no action status', () => {
+    render(<KeywordsSection opp={opp({}, {
+      source_type: 'faculty_research', keywords: kw, keywords_attribution: 'inferred',
+    })} t={tFn} />);
+    expect(screen.getByTestId('keywords-inferred-note').textContent).toBe('favorites.keywordsInferred');
   });
 
   it("says a listing's inferred topics are our tags, not a publication record's", () => {
