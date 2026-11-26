@@ -213,7 +213,11 @@ def _media(short: str, name: str, majors: list[str], college: str,
     url = f"https://www.udel.edu{path}"
     # The name is a heading. The personal page is a separate link on the
     # same card. Some cards have only mail, a CV, or a directory link.
-    selectors = {**_MEDIA_SEL, "link": f'div.media-content a[href^="{path}"][href$="/"]:not([href="{path}"])'}
+    # The campus CMS also publishes /content/udel/en links which redirect
+    # to the same department path on the public site.
+    local_paths = f':is([href^="{path}"], [href^="/content/udel/en{path}"])'
+    profile_link = f'div.media-content a{local_paths}[href$="/"]:not([href$="{path}"])'
+    selectors = {**_MEDIA_SEL, "link": profile_link}
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": selectors,

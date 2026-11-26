@@ -19,7 +19,9 @@ def test_health_directory_keeps_people_and_uses_their_own_profile():
     links = (f'<a href="{path}">Directory</a><a href="{path}aaron-cv.pdf">CV</a>'
              f'<a href="{path}aaron-boulton/">Full Profile &gt;</a>')
     other_unit = '<a href="/academics/colleges/chs/departments/pt/faculty/">Physical Therapy</a>'
+    cms_link = f'<a href="/content/udel/en{path}donna-paulhamus/">Full Profile &gt;</a>'
     soup = BeautifulSoup(card("Aaron Boulton", "Assistant Professor", links)
+                         + card("Donna Paulhamus", "Instructor", cms_link)
                          + card("Morgan Jones", "Lecturer", other_unit)
                          + card("Alex Jones", "Program Coordinator", links), "html.parser")
     cfg = dept["scrape"]
@@ -27,6 +29,7 @@ def test_health_directory_keeps_people_and_uses_their_own_profile():
     rows = [faculty_graph._normalize(SCHOOL, dept, person) for person in people]
     assert [(r["pi_name"], r["url"]) for r in rows] == [
         ("Aaron Boulton", url + "aaron-boulton/"),
+        ("Donna Paulhamus", f"https://www.udel.edu/content/udel/en{path}donna-paulhamus/"),
         ("Morgan Jones", url),
     ]
     assert rows[0]["id"] == "faculty-udel-hbns-38f2fcab"
