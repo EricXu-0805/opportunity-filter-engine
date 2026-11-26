@@ -1,0 +1,88 @@
+{
+  "base": "a0a2a685305117e73e8f54ae417f766aa35f714d",
+  "candidate": "4cef862bf514169f8dc3f28a3e870279a623152f",
+  "shards": {
+    "data/manual_entries/seed_v1.json": {
+      "before_rows": 13,
+      "after_rows": 13,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "reufinder-freshmen"
+      ]
+    },
+    "data/processed/shards/national.json": {
+      "before_rows": 14139,
+      "after_rows": 14139,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "reufinder-freshmen"
+      ]
+    },
+    "data/processed/shards/umd.json": {
+      "before_rows": 1437,
+      "after_rows": 1455,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "faculty-umd-cs-ec45fae9",
+        "faculty-umd-ece-f49e3f74",
+        "faculty-umd-ece-52eda433",
+        "faculty-umd-bioe-7d3a7d0a",
+        "faculty-umd-bioe-7f9ec70b",
+        "faculty-umd-ae-db9936f9",
+        "faculty-umd-ece-e6ccf284",
+        "faculty-umd-ece-ddfd861f",
+        "faculty-umd-ece-bdf563fd",
+        "faculty-umd-ece-a4499b8f",
+        "faculty-umd-me-3814f66d",
+        "faculty-umd-me-a2f74a77",
+        "faculty-umd-me-fbacae93",
+        "faculty-umd-bioe-8a3e5f2a",
+        "faculty-umd-ae-5041d999",
+        "faculty-umd-ae-7a7fab6a",
+        "faculty-umd-ae-5d6fa086",
+        "faculty-umd-cee-09c3398d",
+        "faculty-umd-cee-7bfc6dd8",
+        "faculty-umd-cee-e78daa70",
+        "faculty-umd-cee-7272ff63",
+        "faculty-umd-cee-53d4c71d",
+        "faculty-umd-mse-fdd307eb",
+        "faculty-umd-mse-2121a633"
+      ]
+    },
+    "data/processed/shards/uva.json": {
+      "before_rows": 1668,
+      "after_rows": 1668,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "faculty-uva-biol-a48e21fc",
+        "faculty-uva-biol-5fc15cf5",
+        "faculty-uva-biol-89dc118e",
+        "faculty-uva-biol-1f0a4c91",
+        "faculty-uva-biol-526db3a0",
+        "faculty-uva-biol-b454b1df",
+        "faculty-uva-biol-ab090983",
+        "faculty-uva-biol-9024f795",
+        "faculty-uva-biol-7c3476ce",
+        "faculty-uva-biol-3fd2c621",
+        "faculty-uva-biol-38e7c217",
+        "faculty-uva-biol-c23ca139",
+        "faculty-uva-biol-72b09948",
+        "faculty-uva-biol-f63980a7",
+        "faculty-uva-biol-f26345b2"
+      ]
+    },
+    "data/processed/shards/ncsu.json": {
+      "before_rows": 2334,
+      "after_rows": 2334,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "faculty-ncsu-chass-dcb028fb",
+        "faculty-ncsu-chass-ff4905cc",
+        "faculty-ncsu-chass-38b191e6",
+        "faculty-ncsu-chass-98436171",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-acb2eb75"
+      ]
+    }
+  }
+}
