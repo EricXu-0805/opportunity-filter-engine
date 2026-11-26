@@ -1,0 +1,119 @@
+{
+  "observed_at": "2026-11-26T10:47:32.158019+00:00",
+  "records": [
+    {
+      "id": "ucr-e08f03f0945b",
+      "source_url": "https://cnas.ucr.edu/student-research-and-internship-opportunities",
+      "seed_expected": 1,
+      "seed_loaded": 1,
+      "seed_failed": 0,
+      "reference_checks": {
+        "captured": 1
+      },
+      "program_checks": {},
+      "reason": "reference_only",
+      "is_rolling": false,
+      "deadline": null,
+      "school_shard_ids_preserved": 1178,
+      "historical_source_url_preserved": true,
+      "unchanged_control_id": "ucr-9facb4daf09d",
+      "unchanged_control_title": "RISE \u2014 Research in Science & Engineering (UC Riverside)",
+      "history_detail_http": 200,
+      "old_client_http": 409,
+      "unchanged_control_http": 200
+    },
+    {
+      "id": "umd-54542deb3560",
+      "source_url": "https://honors.umd.edu/",
+      "seed_expected": 1,
+      "seed_loaded": 1,
+      "seed_failed": 0,
+      "reference_checks": {
+        "empty": 1
+      },
+      "program_checks": {},
+      "reason": "reference_only",
+      "is_rolling": false,
+      "deadline": null,
+      "school_shard_ids_preserved": 1436,
+      "historical_source_url_preserved": true,
+      "unchanged_control_id": "umd-3baa51138d13",
+      "unchanged_control_title": "REU-CAAR: Combinatorics, Algorithms, and AI for Real Problems (UMD)",
+      "history_detail_http": 200,
+      "old_client_http": 409,
+      "unchanged_control_http": 200
+    },
+    {
+      "id": "udel-f6a5e4ea0f51",
+      "source_url": "https://www.urp.udel.edu/",
+      "seed_expected": 1,
+      "seed_loaded": 1,
+      "seed_failed": 0,
+      "reference_checks": {
+        "empty": 1
+      },
+      "program_checks": {},
+      "reason": "reference_only",
+      "is_rolling": false,
+      "deadline": null,
+      "school_shard_ids_preserved": 1047,
+      "historical_source_url_preserved": true,
+      "unchanged_control_id": "udel-106e49ea022d",
+      "unchanged_control_title": "UD Research Apprenticeship (UDRAW)",
+      "history_detail_http": 200,
+      "old_client_http": 409,
+      "unchanged_control_http": 200
+    },
+    {
+      "id": "duke-0ad241611979",
+      "source_url": "https://focus.duke.edu/",
+      "seed_expected": 1,
+      "seed_loaded": 1,
+      "seed_failed": 0,
+      "reference_checks": {},
+      "program_checks": {
+        "unsupported": 1
+      },
+      "reason": "listing_closed",
+      "is_rolling": false,
+      "deadline": "2026-05-13",
+      "school_shard_ids_preserved": 1316,
+      "historical_source_url_preserved": true,
+      "unchanged_control_id": "duke-ee31209c5dd0",
+      "unchanged_control_title": "Duke URS Conference Award",
+      "history_detail_http": 200,
+      "old_client_http": 409,
+      "unchanged_control_http": 200
+    },
+    {
+      "id": "bc-ec4ea5f74178",
+      "source_url": "https://www.bc.edu/content/bc-web/research/undergrad-research-opps.html",
+      "seed_expected": 1,
+      "seed_loaded": 1,
+      "seed_failed": 0,
+      "reference_checks": {
+        "empty": 1
+      },
+      "program_checks": {},
+      "reason": "reference_only",
+      "is_rolling": false,
+      "deadline": null,
+      "school_shard_ids_preserved": 854,
+      "historical_source_url_preserved": true,
+      "unchanged_control_id": "bc-6e0189f10be2",
+      "unchanged_control_title": "Advanced Study Grants (Boston College)",
+      "history_detail_http": 200,
+      "old_client_http": 409,
+      "unchanged_control_http": 200
+    }
+  ],
+  "product_commit": "99559f02ae4584a69536a25cfc88be56abb49a77",
+  "scope": "Candidate normal collector and enricher using five actual official homepages. Public detail handler and compatibility HTTP codes tested locally against the assembled candidate corpus. No production mutation.",
+  "umd_admissions_evidence": [
+    "https://honors.umd.edu/prospective-students/admissions-process/first-year/",
+    "https://honors.umd.edu/prospective-students/admissions-process/current-and-transfer/"
+  ],
+  "duke_dates_evidence": "https://focus.duke.edu/for-students/prospective-students/entryprocess",
+  "different_shard_rows": 5,
+  "original_ids_compared": 5831
+}
