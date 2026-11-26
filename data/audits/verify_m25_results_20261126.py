@@ -13,6 +13,9 @@ receipt = {"site": site, "guest_signup": None, "profile_commit": None}
 def capture(response):
     if response.request.method == "POST":
         path = urlsplit(response.url).path
+        if path.endswith("/matches/view"):
+            view = (response.request.post_data_json or {}).get("view", {})
+            receipt.setdefault("results_requests", []).append([view.get("tab"), view.get("opportunity_type"), view.get("research_topic"), response.status])
         if path.endswith("/auth/v1/signup"):
             receipt["guest_signup"] = response.status
         if path.endswith("/rpc/commit_profile_patch_cas"):
@@ -91,7 +94,7 @@ def run(page):
     all_tab = page.get_by_role("tab", name=re.compile("^All"))
     if all_tab.get_attribute("aria-selected") != "true":
         all_tab.click()
-        expect(all_tab).to_have_attribute("aria-selected", "true")
+        expect(all_tab).to_have_attribute("aria-selected", "true", timeout=90000)
     chips = page.locator("#filter-rail-chips")
     expect(chips).to_be_visible()
     receipt["available_filters"] = chips.locator("select").evaluate_all("xs=>xs.map(x=>x.getAttribute('aria-label'))")
@@ -307,6 +310,13 @@ if __name__ == "__main__":
         page.set_default_timeout(45000)
         try:
             run(page)
+        except Exception:
+            receipt["current_url"] = page.url
+            receipt["visible_status"] = page.get_by_role("status").all_text_contents()
+            receipt["visible_alerts"] = page.get_by_role("alert").all_text_contents()
+            receipt["visible_headings"] = page.get_by_role("heading").all_text_contents()
+            page.screenshot(path=out/"last-view.png",timeout=12000)
+            raise
         finally:
             (out / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
             print(json.dumps(receipt), flush=True)
