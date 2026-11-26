@@ -1,0 +1,119 @@
+{
+  "observed_utc_date": "2026-11-26",
+  "production_commit": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "official_directory": "https://www.scheller.gatech.edu/directory/index.json",
+  "reviewed_appointment": "https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
+  "department_live_counts": {
+    "acct": 9,
+    "fin": 12,
+    "itm": 10,
+    "laweth": 5,
+    "mktg": 9,
+    "ob": 9,
+    "om": 14,
+    "strat": 9
+  },
+  "previously_published_ids_returned": {
+    "acct": [
+      "faculty-gatech-acct-09be6a6d",
+      "faculty-gatech-acct-1e97bc16",
+      "faculty-gatech-acct-31b13e3f",
+      "faculty-gatech-acct-33fcbd2b",
+      "faculty-gatech-acct-3e6e30a9",
+      "faculty-gatech-acct-4f682651",
+      "faculty-gatech-acct-7963c8d8",
+      "faculty-gatech-acct-85ea5304",
+      "faculty-gatech-acct-a326f9c1"
+    ],
+    "fin": [
+      "faculty-gatech-fin-02303f65",
+      "faculty-gatech-fin-2738f35f",
+      "faculty-gatech-fin-2d78841d",
+      "faculty-gatech-fin-42464de0",
+      "faculty-gatech-fin-4da99d7b",
+      "faculty-gatech-fin-5b612ddb",
+      "faculty-gatech-fin-8e2ef090",
+      "faculty-gatech-fin-ca4b4cdc",
+      "faculty-gatech-fin-da355a48",
+      "faculty-gatech-fin-e9662d2b",
+      "faculty-gatech-fin-f9a6382c",
+      "faculty-gatech-fin-fe2ccfaf"
+    ],
+    "itm": [
+      "faculty-gatech-itm-02f97ad2",
+      "faculty-gatech-itm-0fa3dd68",
+      "faculty-gatech-itm-4131a1bf",
+      "faculty-gatech-itm-4fb32997",
+      "faculty-gatech-itm-a0d0412a",
+      "faculty-gatech-itm-c6514178",
+      "faculty-gatech-itm-d1e6de02",
+      "faculty-gatech-itm-d7bc338e",
+      "faculty-gatech-itm-ddf54635",
+      "faculty-gatech-itm-ecc71602"
+    ],
+    "laweth": [
+      "faculty-gatech-laweth-09c8bfbf",
+      "faculty-gatech-laweth-617aad2a",
+      "faculty-gatech-laweth-86822ccf",
+      "faculty-gatech-laweth-b28b3999",
+      "faculty-gatech-laweth-dace11a6"
+    ],
+    "mktg": [
+      "faculty-gatech-mktg-14638833",
+      "faculty-gatech-mktg-32f3fa59",
+      "faculty-gatech-mktg-34e4a46e",
+      "faculty-gatech-mktg-5ca2a879",
+      "faculty-gatech-mktg-70dd36cf",
+      "faculty-gatech-mktg-8a87c762",
+      "faculty-gatech-mktg-8e028fa1",
+      "faculty-gatech-mktg-b6ff15dd",
+      "faculty-gatech-mktg-d79e4c7d"
+    ],
+    "ob": [
+      "faculty-gatech-ob-2ea56aa5",
+      "faculty-gatech-ob-517800cd",
+      "faculty-gatech-ob-5405f17f",
+      "faculty-gatech-ob-6ea120d1",
+      "faculty-gatech-ob-74bb6c7f",
+      "faculty-gatech-ob-79bba330",
+      "faculty-gatech-ob-825c275d",
+      "faculty-gatech-ob-ad1050bd",
+      "faculty-gatech-ob-d2f37118"
+    ],
+    "om": [
+      "faculty-gatech-om-06c9dfe6",
+      "faculty-gatech-om-0f4ceb92",
+      "faculty-gatech-om-4337d137",
+      "faculty-gatech-om-67814111",
+      "faculty-gatech-om-8a19389d",
+      "faculty-gatech-om-94c7736b",
+      "faculty-gatech-om-9a5e8635",
+      "faculty-gatech-om-b2ab7c54",
+      "faculty-gatech-om-bb7db1a6",
+      "faculty-gatech-om-c2be7903",
+      "faculty-gatech-om-c777ef6c",
+      "faculty-gatech-om-d6523ae0",
+      "faculty-gatech-om-f99ae112",
+      "faculty-gatech-om-fe6f06d8"
+    ],
+    "strat": [
+      "faculty-gatech-strat-06542f5f",
+      "faculty-gatech-strat-09ab5adf",
+      "faculty-gatech-strat-1863a0b4",
+      "faculty-gatech-strat-386afd15",
+      "faculty-gatech-strat-68d6a64d",
+      "faculty-gatech-strat-71ca9a73",
+      "faculty-gatech-strat-ae28215a",
+      "faculty-gatech-strat-d03cc3f1",
+      "faculty-gatech-strat-e9ae1b8e"
+    ]
+  },
+  "former_appointment_original": "faculty-gatech-itm-21b8dd50",
+  "regular_replay_count": 2,
+  "units_authorizing_removal_by_absence": 0,
+  "originals_preserved": 1419,
+  "before_fix_production_details_http_200": 78,
+  "before_fix_production_details_with_current_rank": 77,
+  "before_fix_production_details_with_current_source": 77,
+  "before_fix_outdated_appointment_had_contact_action": true
+}
