@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-26T22:45:42.229765+00:00",
+  "correction_sha": "80529cb9bb6201727ca3b1fb2e526a28d685a82f",
+  "outcome": "blocked",
+  "detail_requests": 0,
+  "requests": [
+    {
+      "url": "https://joinalab.com/about",
+      "at": "2026-11-26T22:45:42.229910+00:00",
+      "http": 200
+    },
+    {
+      "url": "https://joinalab.com/api/health",
+      "at": "2026-11-26T22:45:47.154917+00:00",
+      "http": 200
+    }
+  ],
+  "originals": [],
+  "deployment_before": {
+    "frontend": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "backend": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+  },
+  "main": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "blocker": "The merged source and the two public releases are not yet in the required ancestry."
+}
