@@ -48,7 +48,7 @@ from backend.lib.opportunity_detail import pay_is_inferred
 from backend.lib.public_projection import redact_embedded_emails
 from backend.routes.matches import _in_view_scope, _match_view_row
 from src.evidence import faculty_contact_claims_unverified, record_kind, stated_listing_deadline
-from src.matcher.ranker import _word_re, expand_search_aliases, without_web_addresses
+from src.matcher.ranker import _normalize_type_key, _word_re, expand_search_aliases, without_web_addresses
 
 
 def days_until(deadline: str | None) -> int | None:
@@ -252,6 +252,11 @@ def match_filter(opp: dict, filters: dict) -> bool:
     real opportunities.json data is well-formed but cron should never
     crash on a single malformed row.
     """
+    wanted_type = filters.get("opportunityType")
+    if wanted_type:
+        raw_type = opp.get("opportunity_type")
+        if not isinstance(raw_type, str) or _normalize_type_key(raw_type) != wanted_type:
+            return False
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     eligibility = opp.get("eligibility") or {}
     if not isinstance(eligibility, dict):

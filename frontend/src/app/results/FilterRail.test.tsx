@@ -137,11 +137,9 @@ describe('FilterRail (R69-B mobile collapse)', () => {
     renderRail();
     const chips = document.getElementById('filter-rail-chips');
     expect(chips).toBeTruthy();
-    // 6 dropdowns + minScore. We can't easily count comboboxes by role
-    // because MinScoreFilter renders a button, but the chips container
-    // must hold at least 6 <select> elements.
+    // Scope is absent for this fixture, and min-score has its own button.
     const selects = within(chips!).getAllByRole('combobox');
-    expect(selects.length).toBe(6);
+    expect(selects.length).toBe(7);
   });
 });
 
@@ -163,7 +161,7 @@ describe('FilterRail — discovery-scope facet', () => {
     expect(screen.getByText('results.filters.scopeMySchool')).toBeInTheDocument();
     expect(screen.getByText('results.filters.scopeOpen')).toBeInTheDocument();
     const chips = document.getElementById('filter-rail-chips');
-    expect(within(chips!).getAllByRole('combobox').length).toBe(7);
+    expect(within(chips!).getAllByRole('combobox').length).toBe(8);
   });
 
   it('selecting a scope updates filters.scope', () => {
@@ -186,15 +184,24 @@ describe('FilterRail — every dropdown says what it filters', () => {
     const chips = document.getElementById('filter-rail-chips');
     const names = within(chips!).getAllByRole('combobox').map((select) => select.getAttribute('aria-label'));
     expect(names).toEqual([
-      'results.filters.paidAria', 'results.filters.intlAria', 'results.filters.sourceAria',
+      'results.filters.typeAria', 'results.filters.paidAria', 'results.filters.intlAria', 'results.filters.sourceAria',
       'results.filters.scopeAria', 'results.filters.locAria', 'results.filters.deadlineAria', 'results.filters.sortAria',
     ]);
     expect(screen.getByRole('combobox', { name: 'results.filters.paidAria' })).toHaveValue('');
   });
 
+  it('lets a student narrow their existing results to a released opportunity type', () => {
+    const { onFiltersChange } = renderRail({ filters: { ...DEFAULT_FILTERS, paid: 'yes' } });
+    const select = screen.getByRole('combobox', { name: 'results.filters.typeAria' });
+    expect(within(select).getAllByRole('option').map(option => option.getAttribute('value')))
+      .toEqual(['', 'research', 'summer_program', 'internship']);
+    fireEvent.change(select, { target: { value: 'internship' } });
+    expect(onFiltersChange).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, paid: 'yes', opportunityType: 'internship' });
+  });
+
   it('has a name for each select in both languages', async () => {
     const { translate } = await import('@/i18n/translate');
-    for (const key of ['paidAria', 'intlAria', 'sourceAria', 'scopeAria', 'locAria', 'deadlineAria', 'sortAria']) {
+    for (const key of ['typeAria', 'typeAll', 'paidAria', 'intlAria', 'sourceAria', 'scopeAria', 'locAria', 'deadlineAria', 'sortAria']) {
       for (const locale of ['en', 'zh'] as const) {
         expect(translate(locale, `results.filters.${key}`), `${locale} ${key}`).not.toBe(`results.filters.${key}`);
       }

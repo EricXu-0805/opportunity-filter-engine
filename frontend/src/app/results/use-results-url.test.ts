@@ -9,6 +9,11 @@ import {
 } from './use-results-url';
 
 describe('readInitialFiltersFromUrl', () => {
+  it('ignores unknown and unreleased opportunity types in shared URLs', () => {
+    for (const type of ['other', 'fellowship']) {
+      expect(readInitialFiltersFromUrl(new URLSearchParams({ type })).filters.opportunityType).toBeUndefined();
+    }
+  });
   it('R69-A: defaults activeTab to "high_priority" when ?tab= is absent', () => {
     const result = readInitialFiltersFromUrl(new URLSearchParams(''));
     expect(result.activeTab).toBe('high_priority');

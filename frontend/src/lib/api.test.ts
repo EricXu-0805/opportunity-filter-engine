@@ -283,13 +283,12 @@ describe('getMatchView', () => {
         results: [],
         filtered_total: 0,
         view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
-        // Kept in step with the wire the backend emits. This test is about
-        // the REQUEST — getMatchView returns the body verbatim and validates
-        // nothing — so the field is scenery here, not evidence of acceptance.
+        applied_opportunity_type: 'research',
         contract_version: 'match-view-v3-faculty-trust',
       }),
     );
     const view = {
+      opportunity_type: 'research' as const,
       tab: 'starred' as const,
       search_query: 'ml',
       paid: 'yes' as const,
@@ -317,6 +316,10 @@ describe('getMatchView', () => {
     expect(body.view).toEqual(view);
     expect(body.page_size).toBe(50);
     expect(body.cursor).toBe('opaque-cursor');
+
+    // A previous Render deployment silently ignores a new view field.
+    fetchMock.mockResolvedValue(okJson({ results: [], filtered_total: 0 }));
+    await expect(getMatchView(makeProfile(), view)).rejects.toThrow(/opportunity type/);
   });
 
   it('fails closed when a caller asks for AI refine before release acceptance', async () => {

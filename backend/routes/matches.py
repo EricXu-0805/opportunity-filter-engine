@@ -224,6 +224,7 @@ class _MatchViewRow:
     kind: str
     deadline: date | None
     source: object
+    opportunity_type: str
     scoped: bool
     school: object
     audience: object
@@ -253,6 +254,7 @@ def _view_row_from_card(card: dict, record: dict | None = None) -> _MatchViewRow
         # The scorer's deadline evidence bar, for a confirmed listing only.
         deadline=stated_listing_deadline(record if record is not None else card),
         source=card.get("source"),
+        opportunity_type=card.get("opportunity_type") if isinstance(card.get("opportunity_type"), str) else "",
         scoped="school" in card or "audience" in card,
         school=card.get("school"),
         audience=card.get("audience"),
@@ -280,7 +282,7 @@ _EMPTY_VIEW_ROW = _view_row_from_card({})
 # The card columns _view_row_from_card reads, besides the title, the
 # eligibility subset and the rebound source_type handled below.
 _VIEW_CARD_FIELDS = (
-    "organization", "department", "paid", "deadline", "is_rolling", "source",
+    "organization", "department", "paid", "deadline", "is_rolling", "source", "opportunity_type",
     "on_campus", "posted_date", "school", "audience", "description_clean",
     "deadline_is_estimate", "keywords",
 )
@@ -1092,6 +1094,9 @@ def _decode_match_cursor(cursor: str) -> tuple[str, int]:
 
 def _normalized_view_payload(view: MatchViewState) -> dict:
     payload = view.model_dump()
+    if not view.opportunity_type:
+        # Preserve the identity of existing unfiltered pages and cursors.
+        payload.pop("opportunity_type")
     # Set semantics: insertion order from local storage must not mint a new
     # view generation for the same favorites/dismissals.
     payload["favorite_ids"] = sorted(payload["favorite_ids"])
@@ -1909,6 +1914,8 @@ def _apply_match_view_rows(
             or row.international_friendly != "yes"
         ):
             continue
+        if view.opportunity_type and _normalize_type_key(row.opportunity_type) != view.opportunity_type:
+            continue
         if view.source and source != view.source:
             continue
         on_campus = row.on_campus if is_confirmed_listing else None
@@ -2272,6 +2279,7 @@ async def get_match_view(
         view_counts=pageable.counts,
         source_facets=pageable.sources,
         scope_available=pageable.scope_available,
+        applied_opportunity_type=body.view.opportunity_type,
         deadline_facets=pageable.deadlines,
         view_id=view_id,
     )

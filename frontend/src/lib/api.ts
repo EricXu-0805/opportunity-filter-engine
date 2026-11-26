@@ -474,6 +474,7 @@ export async function getMatches(
 }
 
 export interface MatchViewRequestState {
+  opportunity_type?: string;
   tab: 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
   search_query: string;
   paid: '' | 'yes' | 'no';
@@ -506,7 +507,7 @@ export async function getMatchView(
   // reason the route documents: the server's spend backstop reads the query,
   // not the body.
   const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
-  return request<MatchesResponse>(`/matches/view?llm=${llm ? 'true' : 'false'}`, {
+  const data = await request<MatchesResponse>(`/matches/view?llm=${llm ? 'true' : 'false'}`, {
     method: 'POST',
     body: JSON.stringify({
       profile: toProfileRequest(profile),
@@ -518,6 +519,11 @@ export async function getMatchView(
     timeoutMs: 70_000,
     retries: 2,
   });
+  if (view.opportunity_type && data.applied_opportunity_type !== view.opportunity_type) {
+    // An older backend ignores unknown view fields during a split deployment.
+    throw new Error('The server could not confirm the selected opportunity type.');
+  }
+  return data;
 }
 
 export async function getOpportunities(): Promise<OpportunitiesResponse> {
