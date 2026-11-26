@@ -8,7 +8,7 @@ PURA page did on 2026-11-05.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -34,6 +34,17 @@ class ProgramWindow:
 
 
 _REVIEWED = date(2026, 11, 5)
+_DSI_HOST = "https://datascience.uchicago.edu/education/summerlab/"
+_DSI_WINDOW = ProgramWindow(
+    _DSI_HOST, _DSI_HOST + "program-details/", date(2026, 11, 26), date(2027, 1, 11),
+    "Application deadline: January 11, 2027, 11:59pm CT",
+)
+_DSI_2027_NOTES = (
+    "Applications close January 11, 2027 at 11:59 p.m. Central.",
+    "The 2026 program has concluded; the 2027 program application is not posted yet "
+    "(the page says to check back in fall 2026). Graduating college seniors are not eligible.",
+)
+_DSI_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab"
 _NCSA = "https://reu.ncsa.illinois.edu/"
 _SUPERB = "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/"
 _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
@@ -88,11 +99,7 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         "March 1: Application deadline.",
         date(2026, 11, 15), "November 15: Online application opens.", "America/Chicago", "November 15",
     ),
-    ("uchicago", "dsi_summer_lab"): ProgramWindow(
-        "https://datascience.uchicago.edu/education/summerlab/",
-        "https://datascience.uchicago.edu/education/summerlab/program-details/",
-        date(2026, 11, 26), date(2027, 1, 11), "Application deadline: January 11, 2027, 11:59pm CT",
-    ),
+    ("uchicago", "dsi_summer_lab"): _DSI_WINDOW,
     ("jhu", "summer_pura"): ProgramWindow(
         "https://hour.jhu.edu/opportunities/summerpura/", "https://hour.jhu.edu/opportunities/summerpura/",
         _REVIEWED, date(2027, 2, 1),
@@ -128,7 +135,12 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
 _WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
 _WISCONSIN_HOST = "https://wiscience.wisc.edu/research/summer_research_program/"
 _UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
+_SRO_APPLICATION_LINKS = {
+    _DSI_DIRECTORY: {_DSI_HOST, _DSI_HOST + "#program-overview"},
+    _WISCONSIN_DIRECTORY: {_WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
+}
 _AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-d6b78515"): ("2027-01-12", replace(_DSI_WINDOW, url=_DSI_DIRECTORY)),
     ("uiuc_sro", "sro-3c378261"): ("2027-02-15", ProgramWindow(
         _WISCONSIN_DIRECTORY, _WISCONSIN_HOST, date(2026, 11, 26), date(2027, 2, 10),
         "Apply by February 10, 2027.",
@@ -158,9 +170,9 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
             return None
         application = record.get("application")
-        if not isinstance(application, dict) or application.get("application_url") not in (
-            window.url, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/",
-        ):
+        if window.url == _DSI_DIRECTORY and record.get("organization") != "University of Chicago":
+            return None
+        if not isinstance(application, dict) or application.get("application_url") not in _SRO_APPLICATION_LINKS[window.url]:
             return None
     return window
 
@@ -194,6 +206,12 @@ def reviewed_window(record: object) -> ProgramWindow | None:
         return None
     window = WINDOWS.get((school, key))
     if window is None or record.get("url") != window.url or record.get("source_url") != window.url:
+        return None
+    if window is _DSI_WINDOW and (
+        record.get("id") != "uchicago-8cd2def060b6" or record.get("source") != "uchicago_external_research"
+        or record.get("deadline") not in (None, window.closes_on.isoformat())
+        or metadata.get("deadline_note") not in _DSI_2027_NOTES
+    ):
         return None
     return window
 
