@@ -25,6 +25,7 @@ class ProfileReview:
     previous_title: str | None = None
     previous_department_label: str | None = None
     previous_is_directory: bool = False
+    other_verified_names: tuple[str, ...] = ()
 
     @property
     def reviewed_on(self) -> date:
@@ -150,6 +151,11 @@ REVIEWS = {
         "tamu", "Department of International Affairs", "John Schuessler", "https://bush.tamu.edu/faculty/jschuessler",
         "https://bush.tamu.edu/directory/john-schuessler/",
         "https://bush.tamu.edu/directory/john-schuessler/", _NOV_25),
+    "faculty-ucf-cs-edfc1c62": ProfileReview(
+        "ucf", "Department of Computer Science", "Ali Al Kinoon",
+        "http://www.cs.ucf.edu/person/alialkinoon/", "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+        "https://www.cecs.ucf.edu/faculty/alialkinoon/", datetime(2026, 11, 26, 18, 23, tzinfo=UTC),
+        other_verified_names=("Ali Alkinoon",)),
     "faculty-umd-math-0f940cb3": _umd_math_directory_profile("Uri Bader", "2138-bader-uri"),
     "faculty-umd-math-36800e3a": _umd_math_directory_profile("Henri Berestycki", "2050-berestycki-henri"),
     "faculty-umd-math-dcee82bf": _umd_math_directory_profile("Giovanni Forni", "1261-gforni"),
@@ -217,7 +223,8 @@ def _matches_review(row: dict, review: ProfileReview) -> bool:
     return (
         row.get("school") == review.school and row.get("department") == review.department
         and row.get("source") == f"{review.school}_faculty" and row.get("source_type") == "faculty_research"
-        and row.get("pi_name") == review.name and row.get("url") in (review.previous_url, review.profile_url)
+        and row.get("pi_name") in (review.name, *review.other_verified_names)
+        and row.get("url") in (review.previous_url, review.profile_url)
     )
 
 
