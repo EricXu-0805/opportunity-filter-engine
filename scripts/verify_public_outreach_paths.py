@@ -170,6 +170,17 @@ def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_p
                 rows = list(csv.DictReader(f))
             assert len(rows) == 1 and rows[0]['Title'] == evidence[-1]['opportunity']['title'], rows
             assert query in rows[0]['Title'], rows
+            if export_phase == 'after':
+                expect(button).to_have_attribute('title', 'Download the favorites that match this tab and its filters')
+                assert rows[0]['Score'] == format(evidence[-1]['final_score'], '.1f')
+                assert urlsplit(rows[0]['URL']).scheme == 'https'
+                page.goto(SITE + '/results?tab=starred&ai=0&q=Ahmed%20Alaa', wait_until='domcontentloaded')
+                counted = page.get_by_role('button', name='Export filtered favorites (1) as CSV', exact=True)
+                with page.expect_download() as second:
+                    counted.click()
+                with open(second.value.path(), encoding='utf-8-sig', newline='') as f:
+                    assert list(csv.DictReader(f)) == rows
+                print('PASS starred filtered count 1 and identical CSV in both views',flush=True)
             print('PASS', export_phase, 'saved in account: 2, CSV rows: 1, actual title:', rows[0]['Title'],
                   'button:', label, 'frontend:', page.locator('html').get_attribute('data-release-sha'), flush=True)
             browser.close()
