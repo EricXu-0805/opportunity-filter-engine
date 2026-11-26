@@ -50,7 +50,6 @@ from ..evidence import (
     target_truth,
 )
 from ..normalizers.school_audience import SOURCE_DEFAULTS
-from .experience_fit import confirmed_methods, experience_for_target, target_methods
 from ..student_evidence import courses_counted_as_taken
 from .config import (
     BUCKET_THRESHOLDS,
@@ -90,6 +89,7 @@ from .config import (
     TOPIC_UNKNOWN_PENALTY,
     WEIGHTS_DEFAULT,
 )
+from .experience_fit import confirmed_methods, experience_for_target, target_methods
 
 # Every school slug the platform collects for. All are R1s, so records hosted
 # at any of them share one brand score — ranking registered schools against

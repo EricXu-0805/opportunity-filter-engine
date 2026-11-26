@@ -114,6 +114,7 @@ def _profile_text(value: object, field: str, limit: int) -> None:
 
 class MatchExperience(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     id: str = Field(min_length=1, max_length=80)
     revision: int = Field(gt=0, le=9007199254740991)
     source: Literal["manual", "github"]
@@ -151,7 +152,7 @@ class ProfileRequest(BaseModel):
     experience_level: str = "beginner"
     resume_ready: bool = False
     can_cold_email: bool = True
-    match_experiences: list[MatchExperience] = Field(default_factory=list, max_length=100)
+    match_experiences: list[MatchExperience] = Field(default_factory=list, max_length=100, exclude_if=lambda rows: not rows)
     research_interests_text: str = ""
     linkedin_url: str = ""
     github_url: str = ""
@@ -267,7 +268,7 @@ class ProfileRequest(BaseModel):
 
     @model_validator(mode="after")
     def complete_profile_budget(self):
-        profile = self.model_dump(exclude={"match_experiences"} if not self.match_experiences else set())
+        profile = self.model_dump()
         actual = len(json.dumps(profile, ensure_ascii=False, separators=(",", ":")))
         if actual > PROFILE_MAX_CHARACTERS:
             _profile_error("profile", actual=actual, limit=PROFILE_MAX_CHARACTERS)
