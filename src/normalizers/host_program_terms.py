@@ -12,14 +12,22 @@ _SMU_PAGE = (
 )
 _SMU_STIPEND = "$5,600 stipend"
 _SMU_YEARS = ("sophomore", "junior")
+_SMU_CITIZENSHIP = "U.S. citizen or permanent resident"
+_CRISP_LOCATION_PAGE = "https://cancer.iu.edu/education/summer/index.html"
+_CRISP_LOCATION_QUOTE = "The program will be held in-person at the cancer center in Indianapolis."
 # The application portal and the campus program page describe the same award.
 _SMU_QUOTES = {
+    "citizenship": (_SMU_PAGE, _SMU_CITIZENSHIP),
+    "international_students": (_SMU_PAGE, _SMU_CITIZENSHIP),
+    "work_authorization_notes": (_SMU_PAGE, _SMU_CITIZENSHIP),
     "paid": (_SMU_PAGE, "$5600 stipend"),
     "compensation": (_SMU_PAGE, "$5600 stipend"),
     "duration": (SMU_WINDOW.page, "The REU runs each summer for eight weeks"),
     "class_year": (_SMU_PAGE, "Completed second or third year of college or university with a strong academic record"),
 }
 _CRISP_QUOTES = {
+    "location": (_CRISP_LOCATION_PAGE, _CRISP_LOCATION_QUOTE),
+    "remote_option": (_CRISP_LOCATION_PAGE, _CRISP_LOCATION_QUOTE),
     "paid": (_CRISP_PAGE, "Receive a stipend (payment)"),
     "min_gpa": (_CRISP_PAGE, "Have a cumulative GPA of 3.2 or higher"),
 }
@@ -46,12 +54,28 @@ def apply_terms(record: dict) -> None:
         inferred.pop("paid", None)
     if record["id"] == CRISP_ID:
         eligibility["min_gpa"] = 3.2
+        if record.get("location") == "Bloomington, IN":
+            record["metadata"]["superseded_directory_location"] = {
+                "value": record["location"], "source_url": record["url"],
+            }
+        record["location"] = "Indianapolis, IN"
+        record["remote_option"] = "no"
         return
+    previous_note = eligibility.get("work_auth_notes")
+    if previous_note and previous_note != _SMU_CITIZENSHIP:
+        record["metadata"]["superseded_work_auth_notes"] = {
+            "value": previous_note, "source_url": record["url"],
+            "basis": "directory" if record["source"] == "uiuc_sro" else "nsf_reu_solicitation",
+        }
+    eligibility["citizenship_required"] = True
+    eligibility["international_friendly"] = "no"
+    eligibility["work_auth_notes"] = _SMU_CITIZENSHIP
     record["compensation_details"] = _SMU_STIPEND
     record["duration"] = "8 weeks"
     eligibility["preferred_year"] = list(_SMU_YEARS)
     if isinstance(inferred, dict):
-        inferred.pop("eligibility.preferred_year", None)
+        for key in ("preferred_year", "international_friendly", "citizenship_required"):
+            inferred.pop("eligibility." + key, None)
     if record["source"] == "nsf_reu":
         # This collector extracts skills from the grant abstract, which lists
         # what the bootcamp teaches. The application does not require them.
@@ -75,6 +99,11 @@ def quote(record: dict, field: str) -> dict | None:
         "duration": (record.get("duration"), "8 weeks"),
         "class_year": (eligibility.get("preferred_year"), list(_SMU_YEARS)),
         "min_gpa": (eligibility.get("min_gpa"), 3.2),
+        "citizenship": (eligibility.get("citizenship_required"), True),
+        "international_students": (eligibility.get("international_friendly"), "no"),
+        "work_authorization_notes": (eligibility.get("work_auth_notes"), _SMU_CITIZENSHIP),
+        "location": (record.get("location"), "Indianapolis, IN"),
+        "remote_option": (record.get("remote_option"), "no"),
     }
     actual, expected = observed[field]
     if actual != expected:

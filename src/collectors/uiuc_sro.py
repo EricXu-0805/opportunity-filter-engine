@@ -1044,7 +1044,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                         # A new external destination is stronger than carried detail.
                         carried = [k for k in carried if k not in ("application", "deadline", "deadline_is_estimate", "is_rolling")]
                     if changed_host or opp.get("deadline"):
-                        carried = [k for k in carried if k not in ("eligibility", "paid", "compensation_details", "duration")]
+                        carried = [k for k in carried if k not in ("eligibility", "paid", "compensation_details", "duration", "location")]
                 for key in carried:
                     opp[key] = deepcopy(prior[key])
                 if "deadline" in carried:

@@ -667,7 +667,10 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
         basis = _basis_for(canonical, "eligibility.international_friendly") or _INTL_TEMPLATES.get(source)
         reviewed = reviewed_program_audience(canonical)
         domestic_only = reviewed.domestic_only if reviewed is not None else None
-        if basis is None and domestic_only is not None and intl == "no":
+        host_quote = host_program_terms.quote(canonical, "international_students")
+        if host_quote:
+            basis, intl_quote = None, host_quote
+        elif basis is None and domestic_only is not None and intl == "no":
             intl_quote = {"text": domestic_only.quote,
                           "source_url": public_projection.safe_public_http_url(domestic_only.page),
                           "observed_at": domestic_only.read_on.isoformat()}
@@ -680,7 +683,10 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     citizenship_basis = _basis_for(canonical, "eligibility.citizenship_required")
     if citizenship is True:
         basis, quote = citizenship_basis or _CITIZENSHIP_TEMPLATES.get(source), None
-        if basis is None:
+        host_quote = host_program_terms.quote(canonical, "citizenship")
+        if host_quote:
+            basis, quote = None, host_quote
+        elif basis is None:
             basis, quote = _configured(canonical, "citizenship")
         field.put("citizenship", "required", basis, quote)
     elif citizenship is False and citizenship_basis is None and (
@@ -696,7 +702,7 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     # SRO notes written before the collector read the field are keyword
     # windows (`SRO_NOTE_WINDOW_RE`), not a statement.
     if not (source == "uiuc_sro" and notes and SRO_NOTE_WINDOW_RE.search(notes)):
-        field.source("work_authorization_notes", notes)
+        field.source("work_authorization_notes", notes, host_program_terms.quote(canonical, "work_authorization_notes"))
     return field
 
 
@@ -835,11 +841,12 @@ def _location(payload: dict, canonical: dict, source: str) -> _Field:
     if location:
         basis = location_basis(canonical, location)
         if basis != "institution":
-            field.put("location", location, basis)
+            field.put("location", location, basis, host_program_terms.quote(canonical, "location"))
     remote = _text(payload.get("remote_option"))
     if remote in {"remote", "hybrid", "no"}:
-        if source in _REMOTE_FROM_POSTING:
-            field.source("remote_option", remote)
+        quote = host_program_terms.quote(canonical, "remote_option")
+        if quote or source in _REMOTE_FROM_POSTING:
+            field.source("remote_option", remote, quote)
         elif source in _REMOTE_TEMPLATES:
             field.infer("remote_option", remote, _REMOTE_TEMPLATES[source])
     return field

@@ -551,10 +551,18 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert fields["timing"]["explicit"]["duration"] == "8 weeks"
         assert fields["funding"]["quotes"]["compensation"]["source_url"].startswith("https://www.smu.edu/")
         assert row["eligibility"]["skills_required"] == [] and row["eligibility"]["preferred_year"] == ["sophomore", "junior"]
+        details = fields["eligibility"]
+        assert details["explicit"]["work_authorization_notes"] == "U.S. citizen or permanent resident"
+        assert details["explicit"]["international_students"] == "no" and details["explicit"]["citizenship"] == "required"
+        for key in ("work_authorization_notes", "international_students", "citizenship"):
+            assert details["quotes"][key]["source_url"].startswith("https://www.smu.edu/")
         assert host_program_terms.quote({**row, "compensation_details": "$4,800"}, "compensation") is None
     crisp_fields = build_detail_fields(copy.deepcopy(crisp), crisp)["fields"]
     assert crisp_fields["funding"]["quotes"]["paid"]["source_url"] == crisp_host
     assert crisp_fields["eligibility"]["explicit"]["min_gpa"] == 3.2
+    assert crisp_fields["location"]["explicit"] == {"location": "Indianapolis, IN", "remote_option": "no"}
+    assert crisp_fields["location"]["quotes"]["location"]["source_url"] == "https://cancer.iu.edu/education/summer/index.html"
+    assert grant["metadata"]["superseded_work_auth_notes"]["basis"] == "nsf_reu_solicitation"
     assert grant["start_date"] is None and grant["metadata"]["nsf_award_start_date"] == "12/01/2025"
     assert grant["application"]["application_url"] == SMU.window.page
     assert grant["metadata"]["superseded_award_deadline_estimate"]["date"] == "2026-02-15"
@@ -577,6 +585,7 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert changed["deadline"].startswith("2028") and changed["deadline_is_estimate"]
         assert changed["eligibility"]["min_gpa"] is None and changed["paid"] == new["paid"] != "yes"
         assert changed["compensation_details"] != "$5,600 stipend" and host_program_terms.checked_window(changed) is None
+        assert changed["location"] != "Indianapolis, IN" and changed["eligibility"]["work_auth_notes"] != "U.S. citizen or permanent resident"
     for item in (directory(crisp_url, "2/1/27", smu_host), directory(SMU.directory_url, "2/15/27", crisp_host),
                  normalize_award({**award, "awardeeName": "Another university"}),
                  normalize_award({**award, "title": "REU Site: Different program"}),
