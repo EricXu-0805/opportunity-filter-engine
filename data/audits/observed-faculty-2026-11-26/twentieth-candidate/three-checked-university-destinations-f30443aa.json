@@ -1,0 +1,53 @@
+{
+  "release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+  "checked_at": "2026-11-26T23:01:51.138329+00:00",
+  "source": "Followed the exact links labeled by each published server-rendered original detail, then read the actual university HTML. No account actions.",
+  "rows": [
+    {
+      "id": "faculty-tamu-ece-d96cfd82",
+      "label": "View source",
+      "actual_link": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+      "official_status": 200,
+      "landing": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor",
+      "host_page_title": "Department of Electrical and Computer Engineering < Texas A&M Catalogs < Texas A&M University, College Station, TX",
+      "terms": {
+        "Savari, Serap A": true,
+        "Associate Professor": true
+      },
+      "passed": true,
+      "same_faculty_entry_has_title": true
+    },
+    {
+      "id": "faculty-ucsd-nano-8a42e65d",
+      "label": "View faculty profile",
+      "actual_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "official_status": 200,
+      "landing": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "host_page_title": "Faculty Profiles | Jacobs School of Engineering",
+      "terms": {
+        "Zeinab Jahed": true,
+        "Associate Professor": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-ucf-cs-edfc1c62",
+      "label": "View faculty profile",
+      "actual_link": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "official_status": 200,
+      "landing": "https://www.cecs.ucf.edu/faculty/alialkinoon/",
+      "host_page_title": "Ali Alkinoon",
+      "terms": {
+        "Ali Alkinoon": true,
+        "Lecturer": true
+      },
+      "passed": true
+    }
+  ],
+  "initial_third_name_check": {
+    "formal_directory_spelling": "Ali Al Kinoon",
+    "named_college_biography_spelling": "Ali Alkinoon",
+    "first_exact_directory_spelling_present_on_college_page": false,
+    "verified_alias_source": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/e456f3aedc09f9e356ac73ecc2e50dea504e4851/src/normalizers/reviewed_faculty_profiles.py"
+  }
+}
