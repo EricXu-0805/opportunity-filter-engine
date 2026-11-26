@@ -1,0 +1,74 @@
+name: Verify saved search filters on two signed-in devices
+on:
+  push:
+    branches: [codex/diagnose-m04-public-targets]
+    paths: ['.github/workflows/verify-m25-saved-account.yml', 'data/audits/verify_m25_signed_in_devices.py']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check out the reviewed application commit
+        uses: actions/checkout@v6
+        with:
+          ref: 091c3800c9b5310fba6c591d3eaa1f588390055f
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Start disposable profile database, Auth and PostgREST
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/m25"
+          mkdir -p "$fixture"; cd "$fixture"; supabase init
+          mkdir -p supabase/migrations
+          src="$GITHUB_WORKSPACE/product/supabase/migrations"
+          cp "$src"/*.sql supabase/migrations/
+          rm -f supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql
+          sed -i 's/^enable_anonymous_sign_ins = false/enable_anonymous_sign_ins = true/' supabase/config.toml
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -Ei 'error|failed|fatal|denied' "$fixture/start.log" | tail -8 | cut -c1-220 || true
+            exit 1
+          fi
+          # Storage finishes creating its schema at startup. Apply its trigger now in this disposable container.
+          docker exec -i supabase_db_m25 sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -h 127.0.0.1 -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres' < "$src/20261125130000_guard_tracker_attachment_replacement.sql"
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'
+      - name: Install locked frontend and Chromium
+        working-directory: product/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run predev --if-present
+      - name: Exercise normal application controls against real GoTrue and PostgREST
+        run: |
+          set -euo pipefail
+          cfg="$RUNNER_TEMP/m25/status.json"
+          export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="$(jq -r .ANON_KEY "$cfg")"
+          export SUPABASE_URL=http://127.0.0.1:54321
+          export SUPABASE_SERVICE_ROLE_KEY="$(jq -r .SERVICE_ROLE_KEY "$cfg")"
+          export NEXT_TELEMETRY_DISABLED=1
+          export BACKEND_URL=http://127.0.0.1:8100
+          python -m pip install --quiet -r product/requirements.txt playwright==1.55.0
+          (cd product && python scripts/shard_corpus.py assemble && python -m uvicorn backend.main:app --host 127.0.0.1 --port 8100) >"$RUNNER_TEMP/m25-api.log" 2>&1 &
+          api=$!
+          (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/m25-front.log" 2>&1 &
+          front=$!
+          trap 'kill "$api" "$front" 2>/dev/null || true' EXIT
+          curl --silent --fail --retry 35 --retry-all-errors --retry-delay 3 --max-time 180 http://127.0.0.1:8100/api/health >/dev/null
+          curl --silent --fail --retry 35 --retry-all-errors --retry-delay 3 --max-time 180 http://127.0.0.1:3100/ >/dev/null
+          python -u data/audits/verify_m25_signed_in_devices.py "$cfg" before
