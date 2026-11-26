@@ -53,13 +53,15 @@ def make_student(page, student):
             box = page.get_by_placeholder("Add more…" if index else "Search or add a skill…", exact=True)
             box.fill(skill)
             box.press("Enter")
-            level = page.locator("[title^='Click to change level']").filter(has_text=re.compile("^" + re.escape(skill) + "$", re.I))
-            if level.count() == 1:
-                level.click()
+            chip = page.locator("span.min-w-0.break-all").filter(has_text=re.compile("^" + re.escape(skill) + "$", re.I))
+            level = chip.locator("..").get_by_title("Click to change level (Beginner)", exact=True)
+            level.click()
+            expect(chip.locator("..").get_by_title("Click to change level (Experienced)", exact=True)).to_be_visible()
     page.locator("#research_interests").fill(interests)
     for label in ("Research", "Summer program", "Internship"):
         target = page.locator('fieldset[aria-describedby="seeking-types-help"]').get_by_role("button", name=label, exact=True)
-        if target.get_attribute("aria-pressed") != "true":
+        wanted = student != "ucb-sophomore" or label == "Summer program"
+        if (target.get_attribute("aria-pressed") == "true") != wanted:
             target.click()
     generate = page.get_by_test_id("generate-matches")
     expect(generate).to_be_enabled(timeout=45000)
