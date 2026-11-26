@@ -36,6 +36,7 @@ REVIEWED_PROFILES = {
     89834: ("ddejoy", "Daniel DeJoy"),
     89845: ("jkeyton", "Joann Keyton"),
     89846: ("jkiwanu", "James Kiwanuka-Tondo"),
+    89855: ("mjohnson", "Melissa A. Johnson"),
     89859: ("nhsnow", "Nancy Snow"),
     89861: ("pcaple", "Patricia Caple"),
     89864: ("rleonard", "Becky Leonard"),
@@ -59,6 +60,7 @@ REVIEWED_PROFILES = {
     90874: ("gomez", "Joseph Gomez"),
     90883: ("jbalaba", "John Balaban"),
     90886: ("jferster", "Judith Ferster"),
+    90894: ("jnwall", "John N Wall"),
     90895: ("jont", "Jon Thompson"),
     90896: ("josmall", "Judy Small"),
     90910: ("leila", "Leila May"),
@@ -78,6 +80,7 @@ REVIEWED_PROFILES = {
     90960: ("tenshi", "John Kessel"),
     90966: ("west", "Harry West"),
     90968: ("wjramm", "Wanda Ramm"),
+    90971: ("wpshaw", "William Shaw"),
     90984: ("achekhov", "Vladimir Bilenkin"),
     90997: ("dsbeckma", "Diane Beckman"),
     91001: ("etai", "Eika Tai"),
@@ -114,6 +117,8 @@ REVIEWED_PROFILES = {
     91411: ("kklein", "Kitty Klein"),
     91414: ("lbward", "Lynne Baker-Ward"),
     91417: ("mark-wilson", "Mark Wilson"),
+    91419: ("mehasket", "Mary E Haskett"),
+    91420: ("mershon", "Donald H. Mershon"),
     91425: ("remitche", "Roger Mitchell"),
     91431: ("schulte", "Ann Schulte"),
     91434: ("tmhess", "Thomas Hess"),
@@ -132,6 +137,18 @@ REVIEWED_PROFILES = {
     91670: ("wrs", "William Smith"),
     91698: ("wewormsl", "William Wormsley"),
     96395: ("jherkert", "Joseph Herkert"),
+}
+
+
+# These names were independently verified on the same immutable CMS post,
+# personal URL and official departmental retirement card.
+REVIEWED_PUBLIC_ALIASES = {
+    89855: "Melissa Johnson",
+    BRADEN_POST: "Jeff Braden",
+    90894: "John Wall",
+    90971: "William Shaw PhD",
+    91419: "Mary Haskett",
+    91420: "Donald Mershon",
 }
 
 
@@ -186,10 +203,9 @@ def current_faculty(records: list[dict]) -> list[dict]:
             source_name = faculty_graph._wp_text(wp_title or "")
             reviewed_name = REVIEWED_PROFILES[person["id"]][1]
             expected_names = {" ".join(reviewed_name.split()).casefold()}
-            if person["id"] == BRADEN_POST:
-                # The college CMS and the departmental card link the same post
-                # under his full name and his preferred name, respectively.
-                expected_names.add("jeff braden")
+            public_alias = REVIEWED_PUBLIC_ALIASES.get(person["id"])
+            if public_alias:
+                expected_names.add(public_alias.casefold())
             names = {" ".join(n.split()).casefold() for n in (card_name, source_name)}
             if not names <= expected_names:
                 faculty_graph._cover("ambiguous_rows")
@@ -208,9 +224,9 @@ def current_faculty(records: list[dict]) -> list[dict]:
             if not current_group and not current_rank:
                 faculty_graph._cover("ambiguous_rows")
                 continue
-            if person["id"] == BRADEN_POST and source_name != reviewed_name:
-                # The CHASS record ID hashes the full CMS name. Keep it when
-                # a verified return to faculty uses the preferred name.
+            if public_alias and source_name != reviewed_name:
+                # CHASS IDs hash the original CMS name. A newly verified
+                # appointment using the alias must restore the same record.
                 person = {**person, "title": {"rendered": reviewed_name}}
         faculty_graph._cover("parsed_faculty_rows")
         current.append(person)
