@@ -1,0 +1,2729 @@
+{
+  "started_at": "2026-11-26T18:09:30.363628+00:00",
+  "data_scope": "50 records on the public Vanderbilt mathematics Primary Faculty page. Other unlisted affiliations are not inferred. Cohort: missing faculty_title in B12, compared to current production.",
+  "school_url": "https://as.vanderbilt.edu/math/faculty/",
+  "source_file_sha256": "e37ae71e3d7241815388b1f35d9c22ce5fed7093a9dab95244b06c2dd3297353",
+  "school_page_title": "Primary Faculty |   Department of Mathematics | Vanderbilt University",
+  "old_shard_commit": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "rows": [
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "stored_name": "Krzysztof Kapulkin",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "shard_rank": "",
+      "listed_name": "Chris Kapulkin",
+      "university_lines": [
+        "Professor of Mathematics",
+        "Dual Appointment: Computer Science"
+      ],
+      "ordinary_page": {
+        "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-1d5fbacf",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:37.535147+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-1d5fbacf"
+          }
+        ],
+        "heading": "Krzysztof Kapulkin",
+        "release_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "source_buttons": [
+          {
+            "label": "View faculty profile",
+            "href": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin"
+          }
+        ],
+        "status_labels": [
+          "Loading opportunity...",
+          "Checking for profile updates…",
+          "Loading contact details…"
+        ],
+        "stated_title_lines_in_visible_text": [],
+        "identity_and_faculty_link": true
+      },
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-1d5fbacf",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:38.511011+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-1d5fbacf?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-1d5fbacf",
+        "public_name": "Krzysztof Kapulkin",
+        "title": "Krzysztof Kapulkin",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+        "source_url": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-08-20T06:29:29.190135",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-727dd848",
+      "stored_name": "Philip Crooke",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+      "shard_rank": "",
+      "listed_name": "Philip Crooke",
+      "university_lines": [
+        "Research Professor",
+        "Professor Emeritus"
+      ],
+      "ordinary_page": {
+        "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-727dd848",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:40.432367+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-727dd848"
+          }
+        ],
+        "heading": "Philip Crooke",
+        "release_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "source_buttons": [
+          {
+            "label": "View faculty profile",
+            "href": "https://as.vanderbilt.edu/math/bio/philip-crooke"
+          }
+        ],
+        "status_labels": [
+          "Loading opportunity...",
+          "Checking for profile updates…",
+          "Loading contact details…"
+        ],
+        "stated_title_lines_in_visible_text": [],
+        "identity_and_faculty_link": true
+      },
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-727dd848",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:40.999943+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-727dd848?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-727dd848",
+        "public_name": "Philip Crooke",
+        "title": "Philip Crooke",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+        "source_url": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487236",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-f7a0a768",
+      "stored_name": "Edward Saff",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/edward-saff",
+      "shard_rank": "",
+      "listed_name": "Edward Saff",
+      "university_lines": [
+        "Distinguished Professor Emeritus",
+        "Distinguished Research Professor"
+      ],
+      "ordinary_page": {
+        "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-f7a0a768",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:43.269609+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-f7a0a768"
+          }
+        ],
+        "heading": "Edward Saff",
+        "release_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "source_buttons": [
+          {
+            "label": "View faculty profile",
+            "href": "https://as.vanderbilt.edu/math/bio/edward-saff"
+          }
+        ],
+        "status_labels": [
+          "Loading opportunity...",
+          "Checking for profile updates…",
+          "Loading contact details…"
+        ],
+        "stated_title_lines_in_visible_text": [],
+        "identity_and_faculty_link": true
+      },
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-f7a0a768",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:43.986484+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-f7a0a768?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-f7a0a768",
+        "public_name": "Edward Saff",
+        "title": "Edward Saff",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/edward-saff",
+        "source_url": "https://as.vanderbilt.edu/math/bio/edward-saff",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488368",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-233f7153",
+      "stored_name": "Alex Lupsasca",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/alex-lupsasca",
+      "shard_rank": "",
+      "listed_name": "Alex Lupsasca",
+      "university_lines": [
+        "Assistant Professor",
+        "Primary appointment: Physics"
+      ],
+      "ordinary_page": {
+        "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-233f7153",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:46.218971+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/opportunities/faculty-vanderbilt-math-233f7153"
+          }
+        ],
+        "heading": "Alex Lupsasca",
+        "release_sha": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "source_buttons": [
+          {
+            "label": "View faculty profile",
+            "href": "https://as.vanderbilt.edu/math/bio/alex-lupsasca"
+          }
+        ],
+        "status_labels": [
+          "Loading opportunity...",
+          "Checking for profile updates…",
+          "Loading contact details…"
+        ],
+        "stated_title_lines_in_visible_text": [],
+        "identity_and_faculty_link": true
+      },
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-233f7153",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:47.069122+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-233f7153?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-233f7153",
+        "public_name": "Alex Lupsasca",
+        "title": "Alex Lupsasca",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/alex-lupsasca",
+        "source_url": "https://as.vanderbilt.edu/math/bio/alex-lupsasca",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487766",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9ac31063",
+      "stored_name": "Akram Aldroubi",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/akram-aldroubi",
+      "shard_rank": "",
+      "listed_name": "Akram Aldroubi",
+      "university_lines": [
+        "Stevenson Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9ac31063",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:48.479231+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9ac31063?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-9ac31063",
+        "public_name": "Akram Aldroubi",
+        "title": "Akram Aldroubi",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/akram-aldroubi",
+        "source_url": "https://as.vanderbilt.edu/math/bio/akram-aldroubi",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.486857",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-92a7243e",
+      "stored_name": "Dietmar Bisch",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/dietmar-bisch",
+      "shard_rank": "",
+      "listed_name": "Dietmar Bisch",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-92a7243e",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:49.980354+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-92a7243e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-92a7243e",
+        "public_name": "Dietmar Bisch",
+        "title": "Dietmar Bisch",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/dietmar-bisch",
+        "source_url": "https://as.vanderbilt.edu/math/bio/dietmar-bisch",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.486956",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-7db3f2fa",
+      "stored_name": "Anna Marie Bohmann",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/annamarie-bohmann",
+      "shard_rank": "",
+      "listed_name": "Anna Marie Bohmann",
+      "university_lines": [
+        "Associate Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-7db3f2fa",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:51.495028+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-7db3f2fa?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-7db3f2fa",
+        "public_name": "Anna Marie Bohmann",
+        "title": "Anna Marie Bohmann",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/annamarie-bohmann",
+        "source_url": "https://as.vanderbilt.edu/math/bio/annamarie-bohmann",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487003",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-aca9b9bb",
+      "stored_name": "Madeline Brandt",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/madeline-brandt",
+      "shard_rank": "",
+      "listed_name": "Madeline Brandt",
+      "university_lines": [
+        "Assistant Professor",
+        "Cornelius Vanderbilt Dean's Faculty Fellow"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-aca9b9bb",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:53.011935+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-aca9b9bb?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-aca9b9bb",
+        "public_name": "Madeline Brandt",
+        "title": "Madeline Brandt",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/madeline-brandt",
+        "source_url": "https://as.vanderbilt.edu/math/bio/madeline-brandt",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487044",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-4a34c098",
+      "stored_name": "Karen Butt",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/karen-butt",
+      "shard_rank": "",
+      "listed_name": "Karen Butt",
+      "university_lines": [
+        "Assistant Professor of Mathematics"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-4a34c098",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:54.501923+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-4a34c098?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-4a34c098",
+        "public_name": "Karen Butt",
+        "title": "Karen Butt",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/karen-butt",
+        "source_url": "https://as.vanderbilt.edu/math/bio/karen-butt",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487087",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-d1ba43a4",
+      "stored_name": "Henry Chan",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/henry-chan",
+      "shard_rank": "",
+      "listed_name": "Henry Chan",
+      "university_lines": [
+        "Assistant Dean, Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-d1ba43a4",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:09:56.054796+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-d1ba43a4?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-d1ba43a4",
+        "public_name": "Henry Chan",
+        "title": "Henry Chan",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/henry-chan",
+        "source_url": "https://as.vanderbilt.edu/math/bio/henry-chan",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487125",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-4b7b1cbe",
+      "stored_name": "Darren Creutz",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/darren-creutz",
+      "shard_rank": "",
+      "listed_name": "Darren Creutz",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-4b7b1cbe",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:00.740854+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-4b7b1cbe?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-4b7b1cbe",
+        "public_name": "Darren Creutz",
+        "title": "Darren Creutz",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/darren-creutz",
+        "source_url": "https://as.vanderbilt.edu/math/bio/darren-creutz",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487176",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-58d474c0",
+      "stored_name": "Sayan Das",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/sayan-das",
+      "shard_rank": "",
+      "listed_name": "Sayan Das",
+      "university_lines": [
+        "Assistant Professor of Mathematics"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-58d474c0",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:02.070753+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-58d474c0?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-58d474c0",
+        "public_name": "Sayan Das",
+        "title": "Sayan Das",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/sayan-das",
+        "source_url": "https://as.vanderbilt.edu/math/bio/sayan-das",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487275",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-1b0133fd",
+      "stored_name": "Marcelo Disconzi",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/marcelo-disconzi",
+      "shard_rank": "",
+      "listed_name": "Marcelo Disconzi",
+      "university_lines": [
+        "Associate Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-1b0133fd",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:03.578022+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-1b0133fd?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-1b0133fd",
+        "public_name": "Marcelo Disconzi",
+        "title": "Marcelo Disconzi",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/marcelo-disconzi",
+        "source_url": "https://as.vanderbilt.edu/math/bio/marcelo-disconzi",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487314",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-cf3d26ad",
+      "stored_name": "Spencer Dowdall",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/spencer-dowdall",
+      "shard_rank": "",
+      "listed_name": "Spencer Dowdall",
+      "university_lines": [
+        "Associate Professor",
+        "Director of Postdoctoral Training"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-cf3d26ad",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:05.055482+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-cf3d26ad?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-cf3d26ad",
+        "public_name": "Spencer Dowdall",
+        "title": "Spencer Dowdall",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/spencer-dowdall",
+        "source_url": "https://as.vanderbilt.edu/math/bio/spencer-dowdall",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487353",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-ac3c4dec",
+      "stored_name": "Mark Ellingham",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/mark-ellingham",
+      "shard_rank": "",
+      "listed_name": "Mark Ellingham",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-ac3c4dec",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:06.568296+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-ac3c4dec?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-ac3c4dec",
+        "public_name": "Mark Ellingham",
+        "title": "Mark Ellingham",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/mark-ellingham",
+        "source_url": "https://as.vanderbilt.edu/math/bio/mark-ellingham",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487390",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-bff54fb3",
+      "stored_name": "Jacob Haley",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/jacob-haley",
+      "shard_rank": "",
+      "listed_name": "Jacob Haley",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-bff54fb3",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:08.137340+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-bff54fb3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-bff54fb3",
+        "public_name": "Jacob Haley",
+        "title": "Jacob Haley",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/jacob-haley",
+        "source_url": "https://as.vanderbilt.edu/math/bio/jacob-haley",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487427",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-af44295f",
+      "stored_name": "Doug Hardin",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/doug-hardin",
+      "shard_rank": "",
+      "listed_name": "Doug Hardin",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-af44295f",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:09.614772+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-af44295f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-af44295f",
+        "public_name": "Doug Hardin",
+        "title": "Doug Hardin",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/doug-hardin",
+        "source_url": "https://as.vanderbilt.edu/math/bio/doug-hardin",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487463",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-62b94c8f",
+      "stored_name": "Bailey Heath",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/bailey-heath",
+      "shard_rank": "",
+      "listed_name": "Bailey Heath",
+      "university_lines": [
+        "Senior Lecturer in Mathematics"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-62b94c8f",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:11.187833+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-62b94c8f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-62b94c8f",
+        "public_name": "Bailey Heath",
+        "title": "Bailey Heath",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/bailey-heath",
+        "source_url": "https://as.vanderbilt.edu/math/bio/bailey-heath",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487501",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-976727e7",
+      "stored_name": "Blane Hollingsworth",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/blane-hollingsworth",
+      "shard_rank": "",
+      "listed_name": "Blane Hollingsworth",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-976727e7",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:12.605033+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-976727e7?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-976727e7",
+        "public_name": "Blane Hollingsworth",
+        "title": "Blane Hollingsworth",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/blane-hollingsworth",
+        "source_url": "https://as.vanderbilt.edu/math/bio/blane-hollingsworth",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487537",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-003f2725",
+      "stored_name": "Hannah Housden",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/hannahhousden",
+      "shard_rank": "",
+      "listed_name": "Hannah Housden",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-003f2725",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:14.129674+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-003f2725?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-003f2725",
+        "public_name": "Hannah Housden",
+        "title": "Hannah Housden",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/hannahhousden",
+        "source_url": "https://as.vanderbilt.edu/math/bio/hannahhousden",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487574",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e5abb7b3",
+      "stored_name": "Shitu Fawaz Jimoh",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/shitufawaz-jimoh",
+      "shard_rank": "",
+      "listed_name": "Shitu Fawaz Jimoh",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e5abb7b3",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:18.722719+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e5abb7b3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-e5abb7b3",
+        "public_name": "Shitu Fawaz Jimoh",
+        "title": "Shitu Fawaz Jimoh",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/shitufawaz-jimoh",
+        "source_url": "https://as.vanderbilt.edu/math/bio/shitufawaz-jimoh",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487611",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-748ee12b",
+      "stored_name": "Tekin Karadağ",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/tekin-karada",
+      "shard_rank": "",
+      "listed_name": "Tekin Karadağ",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-748ee12b",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:20.161171+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-748ee12b?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-748ee12b",
+        "public_name": "Tekin Karadağ",
+        "title": "Tekin Karadağ",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/tekin-karada",
+        "source_url": "https://as.vanderbilt.edu/math/bio/tekin-karada",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487688",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-b05184b0",
+      "stored_name": "Wanlin Li",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/li-wanlin",
+      "shard_rank": "",
+      "listed_name": "Wanlin Li",
+      "university_lines": [
+        "Assistant Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-b05184b0",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:21.671938+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-b05184b0?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-b05184b0",
+        "public_name": "Wanlin Li",
+        "title": "Wanlin Li",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/li-wanlin",
+        "source_url": "https://as.vanderbilt.edu/math/bio/li-wanlin",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487729",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-62ebf5a9",
+      "stored_name": "Dan Margalit",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/dan-margalit",
+      "shard_rank": "",
+      "listed_name": "Dan Margalit",
+      "university_lines": [
+        "Stevenson Professor",
+        "Department Chair"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-62ebf5a9",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:23.245765+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-62ebf5a9?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-62ebf5a9",
+        "public_name": "Dan Margalit",
+        "title": "Dan Margalit",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/dan-margalit",
+        "source_url": "https://as.vanderbilt.edu/math/bio/dan-margalit",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487803",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-adb2e776",
+      "stored_name": "Alice Mark",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/alice-mark",
+      "shard_rank": "",
+      "listed_name": "Alice Mark",
+      "university_lines": [
+        "Assistant Professor of the Practice",
+        "Barbara Burnett Director of Undergraduate Mathematics Education"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-adb2e776",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:24.720110+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-adb2e776?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-adb2e776",
+        "public_name": "Alice Mark",
+        "title": "Alice Mark",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/alice-mark",
+        "source_url": "https://as.vanderbilt.edu/math/bio/alice-mark",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487838",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-11a4831f",
+      "stored_name": "Amadeus Martin",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/amadeus-martin",
+      "shard_rank": "",
+      "listed_name": "Amadeus Martin",
+      "university_lines": [
+        "Senior Lecturer in Mathematics"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-11a4831f",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:26.163791+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-11a4831f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-11a4831f",
+        "public_name": "Amadeus Martin",
+        "title": "Amadeus Martin",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/amadeus-martin",
+        "source_url": "https://as.vanderbilt.edu/math/bio/amadeus-martin",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487872",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-19be968e",
+      "stored_name": "Sean McAfee",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/sean-mcafee",
+      "shard_rank": "",
+      "listed_name": "Sean McAfee",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-19be968e",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:27.681046+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-19be968e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-19be968e",
+        "public_name": "Sean McAfee",
+        "title": "Sean McAfee",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/sean-mcafee",
+        "source_url": "https://as.vanderbilt.edu/math/bio/sean-mcafee",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487908",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-c12b0bf6",
+      "stored_name": "Mike Neamtu",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/mike-neamtu",
+      "shard_rank": "",
+      "listed_name": "Mike Neamtu",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-c12b0bf6",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:29.245234+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-c12b0bf6?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-c12b0bf6",
+        "public_name": "Mike Neamtu",
+        "title": "Mike Neamtu",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/mike-neamtu",
+        "source_url": "https://as.vanderbilt.edu/math/bio/mike-neamtu",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487943",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-76b40b18",
+      "stored_name": "Jila Niknejad",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/jila-niknejad",
+      "shard_rank": "",
+      "listed_name": "Jila Niknejad",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-76b40b18",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:31.143520+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-76b40b18?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-76b40b18",
+        "public_name": "Jila Niknejad",
+        "title": "Jila Niknejad",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/jila-niknejad",
+        "source_url": "https://as.vanderbilt.edu/math/bio/jila-niknejad",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.487978",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-6b9a40d2",
+      "stored_name": "Denis Osin",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/denis-osin",
+      "shard_rank": "",
+      "listed_name": "Denis Osin",
+      "university_lines": [
+        "Stevenson Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-6b9a40d2",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:32.229346+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-6b9a40d2?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-6b9a40d2",
+        "public_name": "Denis Osin",
+        "title": "Denis Osin",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/denis-osin",
+        "source_url": "https://as.vanderbilt.edu/math/bio/denis-osin",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488013",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e6bb6cd9",
+      "stored_name": "Jean-Francois Paquet",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet",
+      "shard_rank": "",
+      "listed_name": "Jean-Francois Paquet",
+      "university_lines": [
+        "Assistant Professor",
+        "Primary appointment: Physics",
+        "Steven and Bunny Fayne Dean's Faculty Fellow"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e6bb6cd9",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:36.751932+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e6bb6cd9?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-e6bb6cd9",
+        "public_name": "Jean-Francois Paquet",
+        "title": "Jean-Francois Paquet",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet",
+        "source_url": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488051",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9fec5207",
+      "stored_name": "Gregory Patchell",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/gregory-patchell",
+      "shard_rank": "",
+      "listed_name": "Gregory Patchell",
+      "university_lines": [
+        "Assistant Professor of Mathematics"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9fec5207",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:38.245071+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9fec5207?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-9fec5207",
+        "public_name": "Gregory Patchell",
+        "title": "Gregory Patchell",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/gregory-patchell",
+        "source_url": "https://as.vanderbilt.edu/math/bio/gregory-patchell",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488088",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e9826b43",
+      "stored_name": "Jesse Peterson",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/jesse-peterson",
+      "shard_rank": "",
+      "listed_name": "Jesse Peterson",
+      "university_lines": [
+        "Adjoint Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e9826b43",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:39.773673+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e9826b43?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-e9826b43",
+        "public_name": "Jesse Peterson",
+        "title": "Jesse Peterson",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/jesse-peterson",
+        "source_url": "https://as.vanderbilt.edu/math/bio/jesse-peterson",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488124",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-a72735e2",
+      "stored_name": "Tom Potter",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/tom-potter",
+      "shard_rank": "",
+      "listed_name": "Tom Potter",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-a72735e2",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:41.306950+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-a72735e2?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-a72735e2",
+        "public_name": "Tom Potter",
+        "title": "Tom Potter",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/tom-potter",
+        "source_url": "https://as.vanderbilt.edu/math/bio/tom-potter",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488160",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-fd2c4247",
+      "stored_name": "Alexander Powell",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/alexander-powell",
+      "shard_rank": "",
+      "listed_name": "Alexander Powell",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-fd2c4247",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:42.792030+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-fd2c4247?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-fd2c4247",
+        "public_name": "Alexander Powell",
+        "title": "Alexander Powell",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/alexander-powell",
+        "source_url": "https://as.vanderbilt.edu/math/bio/alexander-powell",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488218",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e6c40273",
+      "stored_name": "Rares Rasdeaconu",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/rares-rasdeaconu",
+      "shard_rank": "",
+      "listed_name": "Rares Rasdeaconu",
+      "university_lines": [
+        "Research Associate Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e6c40273",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:44.335369+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e6c40273?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-e6c40273",
+        "public_name": "Rares Rasdeaconu",
+        "title": "Rares Rasdeaconu",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/rares-rasdeaconu",
+        "source_url": "https://as.vanderbilt.edu/math/bio/rares-rasdeaconu",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488257",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-dfa1ba47",
+      "stored_name": "Taylor Rhoads",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/taylor-rhoads",
+      "shard_rank": "",
+      "listed_name": "Taylor Rhoads",
+      "university_lines": [
+        "Senior Lecturer",
+        "Director of Undergraduate Studies"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-dfa1ba47",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:46.054960+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-dfa1ba47?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-dfa1ba47",
+        "public_name": "Taylor Rhoads",
+        "title": "Taylor Rhoads",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/taylor-rhoads",
+        "source_url": "https://as.vanderbilt.edu/math/bio/taylor-rhoads",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488295",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-0f21f127",
+      "stored_name": "Larry G. Rolen",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/larryg-rolen",
+      "shard_rank": "",
+      "listed_name": "Larry G. Rolen",
+      "university_lines": [
+        "Assistant Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-0f21f127",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:47.367804+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-0f21f127?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-0f21f127",
+        "public_name": "Larry G. Rolen",
+        "title": "Larry G. Rolen",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/larryg-rolen",
+        "source_url": "https://as.vanderbilt.edu/math/bio/larryg-rolen",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488332",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9d267bc4",
+      "stored_name": "Larry Schumaker",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/larry-schumaker",
+      "shard_rank": "",
+      "listed_name": "Larry Schumaker",
+      "university_lines": [
+        "Stevenson Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9d267bc4",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:48.792992+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9d267bc4?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-9d267bc4",
+        "public_name": "Larry Schumaker",
+        "title": "Larry Schumaker",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/larry-schumaker",
+        "source_url": "https://as.vanderbilt.edu/math/bio/larry-schumaker",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488404",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-4a0b810e",
+      "stored_name": "Sam Sehayek",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/sam-sehayek",
+      "shard_rank": "",
+      "listed_name": "Sam Sehayek",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-4a0b810e",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:50.710756+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-4a0b810e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-4a0b810e",
+        "public_name": "Sam Sehayek",
+        "title": "Sam Sehayek",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/sam-sehayek",
+        "source_url": "https://as.vanderbilt.edu/math/bio/sam-sehayek",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488572",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-fda8f56d",
+      "stored_name": "Gieri Simonett",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/gieri-simonett",
+      "shard_rank": "",
+      "listed_name": "Gieri Simonett",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-fda8f56d",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:54.793521+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-fda8f56d?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-fda8f56d",
+        "public_name": "Gieri Simonett",
+        "title": "Gieri Simonett",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/gieri-simonett",
+        "source_url": "https://as.vanderbilt.edu/math/bio/gieri-simonett",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488610",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-86386ebd",
+      "stored_name": "Stephen G. Simpson",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/stephen-simpson",
+      "shard_rank": "",
+      "listed_name": "Stephen G. Simpson",
+      "university_lines": [
+        "Research Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-86386ebd",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:56.671735+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-86386ebd?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-86386ebd",
+        "public_name": "Stephen G. Simpson",
+        "title": "Stephen G. Simpson",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/stephen-simpson",
+        "source_url": "https://as.vanderbilt.edu/math/bio/stephen-simpson",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488649",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-cef39986",
+      "stored_name": "Jared Speck",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/jared-speck",
+      "shard_rank": "",
+      "listed_name": "Jared Speck",
+      "university_lines": [
+        "Stevenson Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-cef39986",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:57.849362+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-cef39986?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-cef39986",
+        "public_name": "Jared Speck",
+        "title": "Jared Speck",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/jared-speck",
+        "source_url": "https://as.vanderbilt.edu/math/bio/jared-speck",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488686",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-76afc187",
+      "stored_name": "Ioana Suvaina",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/ioana-suvaina",
+      "shard_rank": "",
+      "listed_name": "Ioana Suvaina",
+      "university_lines": [
+        "Associate Professor",
+        "Director of Graduate Studies"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-76afc187",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:10:59.323061+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-76afc187?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-76afc187",
+        "public_name": "Ioana Suvaina",
+        "title": "Ioana Suvaina",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/ioana-suvaina",
+        "source_url": "https://as.vanderbilt.edu/math/bio/ioana-suvaina",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488721",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-db08a99f",
+      "stored_name": "Nicholas Wawrykow",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/nicholas-wawrykow",
+      "shard_rank": "",
+      "listed_name": "Nicholas Wawrykow",
+      "university_lines": [
+        "Research Assistant Professor in Mathematics"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-db08a99f",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:11:00.885990+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-db08a99f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-db08a99f",
+        "public_name": "Nicholas Wawrykow",
+        "title": "Nicholas Wawrykow",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/nicholas-wawrykow",
+        "source_url": "https://as.vanderbilt.edu/math/bio/nicholas-wawrykow",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488756",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-d2f3b2f3",
+      "stored_name": "Glenn Webb",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/glenn-webb",
+      "shard_rank": "",
+      "listed_name": "Glenn Webb",
+      "university_lines": [
+        "Centennial Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-d2f3b2f3",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:11:02.348029+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-d2f3b2f3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-d2f3b2f3",
+        "public_name": "Glenn Webb",
+        "title": "Glenn Webb",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/glenn-webb",
+        "source_url": "https://as.vanderbilt.edu/math/bio/glenn-webb",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488791",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-5627cf6c",
+      "stored_name": "Jay Yang",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/jay-yang",
+      "shard_rank": "",
+      "listed_name": "Jay Yang",
+      "university_lines": [
+        "Research Assistant Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-5627cf6c",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:11:03.898835+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-5627cf6c?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-5627cf6c",
+        "public_name": "Jay Yang",
+        "title": "Jay Yang",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/jay-yang",
+        "source_url": "https://as.vanderbilt.edu/math/bio/jay-yang",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488825",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-9fdcdcb0",
+      "stored_name": "Li Ying",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/li-ying",
+      "shard_rank": "",
+      "listed_name": "Li Ying",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9fdcdcb0",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:11:05.365930+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-9fdcdcb0?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-9fdcdcb0",
+        "public_name": "Li Ying",
+        "title": "Li Ying",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/li-ying",
+        "source_url": "https://as.vanderbilt.edu/math/bio/li-ying",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488860",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-e0439483",
+      "stored_name": "Faith Zhang",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/faith-zhang",
+      "shard_rank": "",
+      "listed_name": "Faith Zhang",
+      "university_lines": [
+        "Senior Lecturer"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e0439483",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:11:06.885164+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-e0439483?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-e0439483",
+        "public_name": "Faith Zhang",
+        "title": "Faith Zhang",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/faith-zhang",
+        "source_url": "https://as.vanderbilt.edu/math/bio/faith-zhang",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488895",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "id": "faculty-vanderbilt-math-bcb6a8a9",
+      "stored_name": "Dechao Zheng",
+      "university_bio": "https://as.vanderbilt.edu/math/bio/dechao-zheng",
+      "shard_rank": "",
+      "listed_name": "Dechao Zheng",
+      "university_lines": [
+        "Professor"
+      ],
+      "anonymous_api": {
+        "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-bcb6a8a9",
+        "attempts": [
+          {
+            "at": "2026-11-26T18:11:08.407389+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/opportunities/faculty-vanderbilt-math-bcb6a8a9?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+          }
+        ],
+        "id": "faculty-vanderbilt-math-bcb6a8a9",
+        "public_name": "Dechao Zheng",
+        "title": "Dechao Zheng",
+        "url_returned": "https://as.vanderbilt.edu/math/bio/dechao-zheng",
+        "source_url": "https://as.vanderbilt.edu/math/bio/dechao-zheng",
+        "department": "Department of Mathematics",
+        "faculty_title": "",
+        "rank_key_present": true,
+        "source_observation": null,
+        "target_truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-19T16:07:13.488930",
+          "expires_at": null
+        },
+        "identity_and_profile_match": true
+      },
+      "api_version_bracket": "91140c465b5cd546e129c04f5097064b91fddb57"
+    }
+  ],
+  "version_windows": [
+    {
+      "before": {
+        "at": "2026-11-26T18:09:35.013419+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:09:34.843560+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:09:35.010627+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "after": {
+        "at": "2026-11-26T18:09:59.655502+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:09:57.556395+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:09:59.653166+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "ids": [
+        "faculty-vanderbilt-math-1d5fbacf",
+        "faculty-vanderbilt-math-727dd848",
+        "faculty-vanderbilt-math-f7a0a768",
+        "faculty-vanderbilt-math-233f7153",
+        "faculty-vanderbilt-math-9ac31063",
+        "faculty-vanderbilt-math-92a7243e",
+        "faculty-vanderbilt-math-7db3f2fa",
+        "faculty-vanderbilt-math-aca9b9bb",
+        "faculty-vanderbilt-math-4a34c098",
+        "faculty-vanderbilt-math-d1ba43a4"
+      ],
+      "paired_sha": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "before": {
+        "at": "2026-11-26T18:09:59.655502+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:09:57.556395+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:09:59.653166+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "after": {
+        "at": "2026-11-26T18:10:17.154798+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:10:15.698319+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:10:17.151886+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "ids": [
+        "faculty-vanderbilt-math-4b7b1cbe",
+        "faculty-vanderbilt-math-58d474c0",
+        "faculty-vanderbilt-math-1b0133fd",
+        "faculty-vanderbilt-math-cf3d26ad",
+        "faculty-vanderbilt-math-ac3c4dec",
+        "faculty-vanderbilt-math-bff54fb3",
+        "faculty-vanderbilt-math-af44295f",
+        "faculty-vanderbilt-math-62b94c8f",
+        "faculty-vanderbilt-math-976727e7",
+        "faculty-vanderbilt-math-003f2725"
+      ],
+      "paired_sha": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "before": {
+        "at": "2026-11-26T18:10:17.154798+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:10:15.698319+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:10:17.151886+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "after": {
+        "at": "2026-11-26T18:10:35.218939+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:10:33.817369+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:10:35.209873+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "ids": [
+        "faculty-vanderbilt-math-e5abb7b3",
+        "faculty-vanderbilt-math-748ee12b",
+        "faculty-vanderbilt-math-b05184b0",
+        "faculty-vanderbilt-math-62ebf5a9",
+        "faculty-vanderbilt-math-adb2e776",
+        "faculty-vanderbilt-math-11a4831f",
+        "faculty-vanderbilt-math-19be968e",
+        "faculty-vanderbilt-math-c12b0bf6",
+        "faculty-vanderbilt-math-76b40b18",
+        "faculty-vanderbilt-math-6b9a40d2"
+      ],
+      "paired_sha": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "before": {
+        "at": "2026-11-26T18:10:35.218939+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:10:33.817369+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:10:35.209873+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "after": {
+        "at": "2026-11-26T18:10:53.293959+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:10:51.857784+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:10:53.291582+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "ids": [
+        "faculty-vanderbilt-math-e6bb6cd9",
+        "faculty-vanderbilt-math-9fec5207",
+        "faculty-vanderbilt-math-e9826b43",
+        "faculty-vanderbilt-math-a72735e2",
+        "faculty-vanderbilt-math-fd2c4247",
+        "faculty-vanderbilt-math-e6c40273",
+        "faculty-vanderbilt-math-dfa1ba47",
+        "faculty-vanderbilt-math-0f21f127",
+        "faculty-vanderbilt-math-9d267bc4",
+        "faculty-vanderbilt-math-4a0b810e"
+      ],
+      "paired_sha": "91140c465b5cd546e129c04f5097064b91fddb57"
+    },
+    {
+      "before": {
+        "at": "2026-11-26T18:10:53.293959+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:10:51.857784+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:10:53.291582+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "after": {
+        "at": "2026-11-26T18:11:11.388892+00:00",
+        "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+        "front_attempts": [
+          {
+            "at": "2026-11-26T18:11:09.908139+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/about"
+          }
+        ],
+        "back_attempts": [
+          {
+            "at": "2026-11-26T18:11:11.386593+00:00",
+            "http": 200,
+            "url": "https://joinalab.com/api/health"
+          }
+        ]
+      },
+      "ids": [
+        "faculty-vanderbilt-math-fda8f56d",
+        "faculty-vanderbilt-math-86386ebd",
+        "faculty-vanderbilt-math-cef39986",
+        "faculty-vanderbilt-math-76afc187",
+        "faculty-vanderbilt-math-db08a99f",
+        "faculty-vanderbilt-math-d2f3b2f3",
+        "faculty-vanderbilt-math-5627cf6c",
+        "faculty-vanderbilt-math-9fdcdcb0",
+        "faculty-vanderbilt-math-e0439483",
+        "faculty-vanderbilt-math-bcb6a8a9"
+      ],
+      "paired_sha": "91140c465b5cd546e129c04f5097064b91fddb57"
+    }
+  ],
+  "school_profiles": {
+    "Chris Kapulkin": {
+      "requested_url": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:26.807201+00:00",
+          "http": 200,
+          "url": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin/"
+        }
+      ],
+      "final": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin/",
+      "heading_evidence": [
+        "Professor of Mathematics Dual Appointment: Computer Science"
+      ],
+      "exact_rank_lines_found": [
+        "Professor of Mathematics",
+        "Dual Appointment: Computer Science"
+      ],
+      "document_first_h1": "Department of Mathematics",
+      "named_profile_h1": "Chris Kapulkin",
+      "named_profile_appointment_block": "Professor of Mathematics Dual Appointment: Computer Science",
+      "identity_rechecked_at": "2026-11-26T18:12:22.569161+00:00"
+    },
+    "Philip Crooke": {
+      "requested_url": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:28.282718+00:00",
+          "http": 200,
+          "url": "https://as.vanderbilt.edu/math/bio/philip-crooke/"
+        }
+      ],
+      "final": "https://as.vanderbilt.edu/math/bio/philip-crooke/",
+      "heading_evidence": [
+        "Research Professor Professor Emeritus"
+      ],
+      "exact_rank_lines_found": [
+        "Research Professor",
+        "Professor Emeritus"
+      ],
+      "document_first_h1": "Department of Mathematics",
+      "named_profile_h1": "Philip Crooke",
+      "named_profile_appointment_block": "Research Professor Professor Emeritus",
+      "identity_rechecked_at": "2026-11-26T18:12:29.640410+00:00"
+    },
+    "Edward Saff": {
+      "requested_url": "https://as.vanderbilt.edu/math/bio/edward-saff",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:29.831541+00:00",
+          "http": 200,
+          "url": "https://as.vanderbilt.edu/math/bio/edward-saff/"
+        }
+      ],
+      "final": "https://as.vanderbilt.edu/math/bio/edward-saff/",
+      "heading_evidence": [
+        "Distinguished Professor Emeritus Distinguished Research Professor"
+      ],
+      "exact_rank_lines_found": [
+        "Distinguished Professor Emeritus",
+        "Distinguished Research Professor"
+      ],
+      "document_first_h1": "Department of Mathematics",
+      "named_profile_h1": "Edward Saff",
+      "named_profile_appointment_block": "Distinguished Professor Emeritus Distinguished Research Professor",
+      "identity_rechecked_at": "2026-11-26T18:12:36.678067+00:00"
+    },
+    "Alex Lupsasca": {
+      "requested_url": "https://as.vanderbilt.edu/math/bio/alex-lupsasca",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:31.403222+00:00",
+          "http": 200,
+          "url": "https://as.vanderbilt.edu/math/bio/alex-lupsasca/"
+        }
+      ],
+      "final": "https://as.vanderbilt.edu/math/bio/alex-lupsasca/",
+      "heading_evidence": [
+        "Assistant Professor Primary appointment: Physics"
+      ],
+      "exact_rank_lines_found": [
+        "Assistant Professor",
+        "Primary appointment: Physics"
+      ],
+      "document_first_h1": "Department of Mathematics",
+      "named_profile_h1": "Alex Lupsasca",
+      "named_profile_appointment_block": "Assistant Professor Primary appointment: Physics",
+      "identity_rechecked_at": "2026-11-26T18:12:42.945068+00:00"
+    },
+    "Madeline Brandt": {
+      "requested_url": "https://as.vanderbilt.edu/math/bio/madeline-brandt",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:32.802462+00:00",
+          "http": 200,
+          "url": "https://as.vanderbilt.edu/math/bio/madeline-brandt/"
+        }
+      ],
+      "final": "https://as.vanderbilt.edu/math/bio/madeline-brandt/",
+      "heading_evidence": [
+        "Assistant Professor Cornelius Vanderbilt Dean's Faculty Fellow"
+      ],
+      "exact_rank_lines_found": [
+        "Assistant Professor",
+        "Cornelius Vanderbilt Dean's Faculty Fellow"
+      ],
+      "document_first_h1": "Department of Mathematics",
+      "named_profile_h1": "Madeline Brandt",
+      "named_profile_appointment_block": "Assistant Professor Cornelius Vanderbilt Dean's Faculty Fellow",
+      "identity_rechecked_at": "2026-11-26T18:12:55.831340+00:00"
+    },
+    "Jean-Francois Paquet": {
+      "requested_url": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:34.291264+00:00",
+          "http": 200,
+          "url": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet/"
+        }
+      ],
+      "final": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet/",
+      "heading_evidence": [
+        "Assistant Professor Primary appointment: Physics Steven and Bunny Fayne Dean's Faculty Fellow"
+      ],
+      "exact_rank_lines_found": [
+        "Assistant Professor",
+        "Primary appointment: Physics",
+        "Steven and Bunny Fayne Dean's Faculty Fellow"
+      ],
+      "document_first_h1": "Department of Mathematics",
+      "named_profile_h1": "Jean-Francois Paquet",
+      "named_profile_appointment_block": "Assistant Professor Primary appointment: Physics Steven and Bunny Fayne Dean's Faculty Fellow",
+      "identity_rechecked_at": "2026-11-26T18:13:01.585853+00:00"
+    },
+    "Krzysztof Kapulkin, College of Connected Computing": {
+      "requested_url": "https://computing.vanderbilt.edu/person/krzysztof-kapulkin/",
+      "attempts": [
+        {
+          "at": "2026-11-26T18:11:39.512645+00:00",
+          "http": 200,
+          "url": "https://computing.vanderbilt.edu/person/krzysztof-kapulkin/"
+        }
+      ],
+      "final": "https://computing.vanderbilt.edu/person/krzysztof-kapulkin/",
+      "heading_evidence": [],
+      "exact_rank_lines_found": [],
+      "campus_appointment_phrases": [
+        "Professor of Computer Science and Mathematics"
+      ],
+      "document_first_h1": "Chris  Kapulkin",
+      "named_profile_h1": "Chris Kapulkin",
+      "identity_rechecked_at": "2026-11-26T18:13:06.660513+00:00"
+    }
+  },
+  "round_errors": [],
+  "initial": {
+    "at": "2026-11-26T18:09:35.013419+00:00",
+    "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+    "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+    "front_attempts": [
+      {
+        "at": "2026-11-26T18:09:34.843560+00:00",
+        "http": 200,
+        "url": "https://joinalab.com/about"
+      }
+    ],
+    "back_attempts": [
+      {
+        "at": "2026-11-26T18:09:35.010627+00:00",
+        "http": 200,
+        "url": "https://joinalab.com/api/health"
+      }
+    ]
+  },
+  "end_of_production_reads": {
+    "at": "2026-11-26T18:11:11.388892+00:00",
+    "frontend": "91140c465b5cd546e129c04f5097064b91fddb57",
+    "backend": "91140c465b5cd546e129c04f5097064b91fddb57",
+    "front_attempts": [
+      {
+        "at": "2026-11-26T18:11:09.908139+00:00",
+        "http": 200,
+        "url": "https://joinalab.com/about"
+      }
+    ],
+    "back_attempts": [
+      {
+        "at": "2026-11-26T18:11:11.386593+00:00",
+        "http": 200,
+        "url": "https://joinalab.com/api/health"
+      }
+    ]
+  },
+  "fresh_university_roster": {
+    "url": "https://as.vanderbilt.edu/math/faculty/",
+    "attempts": [
+      {
+        "at": "2026-11-26T18:11:26.376547+00:00",
+        "http": 200,
+        "url": "https://as.vanderbilt.edu/math/faculty/"
+      }
+    ],
+    "all_50_name_url_and_rank_lines_identical": true,
+    "count": 50,
+    "fresh_sha256": "e37ae71e3d7241815388b1f35d9c22ce5fed7093a9dab95244b06c2dd3297353"
+  },
+  "outcomes": {
+    "count": 50,
+    "all_old_ids_unique": true,
+    "production_exact_id_person_destination": 50,
+    "api_blank_rank": 50,
+    "api_by_release": {
+      "91140c465b5cd546e129c04f5097064b91fddb57": 50
+    },
+    "representative_html_profiles": 4,
+    "with_source_lines": 50,
+    "both_emeritus_and_research_appointments": [
+      "faculty-vanderbilt-math-727dd848",
+      "faculty-vanderbilt-math-f7a0a768"
+    ],
+    "explicit_dual_or_other_primary": [
+      {
+        "id": "faculty-vanderbilt-math-1d5fbacf",
+        "listed_name": "Chris Kapulkin",
+        "lines": [
+          "Professor of Mathematics",
+          "Dual Appointment: Computer Science"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-233f7153",
+        "listed_name": "Alex Lupsasca",
+        "lines": [
+          "Assistant Professor",
+          "Primary appointment: Physics"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-e6bb6cd9",
+        "listed_name": "Jean-Francois Paquet",
+        "lines": [
+          "Assistant Professor",
+          "Primary appointment: Physics",
+          "Steven and Bunny Fayne Dean's Faculty Fellow"
+        ]
+      }
+    ],
+    "additional_nonempty_p_or_br_roles": [
+      {
+        "id": "faculty-vanderbilt-math-1d5fbacf",
+        "name": "Chris Kapulkin",
+        "lines": [
+          "Professor of Mathematics",
+          "Dual Appointment: Computer Science"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-727dd848",
+        "name": "Philip Crooke",
+        "lines": [
+          "Research Professor",
+          "Professor Emeritus"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-f7a0a768",
+        "name": "Edward Saff",
+        "lines": [
+          "Distinguished Professor Emeritus",
+          "Distinguished Research Professor"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-233f7153",
+        "name": "Alex Lupsasca",
+        "lines": [
+          "Assistant Professor",
+          "Primary appointment: Physics"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-aca9b9bb",
+        "name": "Madeline Brandt",
+        "lines": [
+          "Assistant Professor",
+          "Cornelius Vanderbilt Dean's Faculty Fellow"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-cf3d26ad",
+        "name": "Spencer Dowdall",
+        "lines": [
+          "Associate Professor",
+          "Director of Postdoctoral Training"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-62ebf5a9",
+        "name": "Dan Margalit",
+        "lines": [
+          "Stevenson Professor",
+          "Department Chair"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-adb2e776",
+        "name": "Alice Mark",
+        "lines": [
+          "Assistant Professor of the Practice",
+          "Barbara Burnett Director of Undergraduate Mathematics Education"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-e6bb6cd9",
+        "name": "Jean-Francois Paquet",
+        "lines": [
+          "Assistant Professor",
+          "Primary appointment: Physics",
+          "Steven and Bunny Fayne Dean's Faculty Fellow"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-dfa1ba47",
+        "name": "Taylor Rhoads",
+        "lines": [
+          "Senior Lecturer",
+          "Director of Undergraduate Studies"
+        ]
+      },
+      {
+        "id": "faculty-vanderbilt-math-76afc187",
+        "name": "Ioana Suvaina",
+        "lines": [
+          "Associate Professor",
+          "Director of Graduate Studies"
+        ]
+      }
+    ]
+  },
+  "completed_at": "2026-11-26T18:11:39.523527+00:00"
+}

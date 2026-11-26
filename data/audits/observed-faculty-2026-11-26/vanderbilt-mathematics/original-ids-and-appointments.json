@@ -1,0 +1,402 @@
+[
+  {
+    "id": "faculty-vanderbilt-math-9ac31063",
+    "name": "Akram Aldroubi",
+    "campus_name": "Akram Aldroubi",
+    "profile": "https://as.vanderbilt.edu/math/bio/akram-aldroubi",
+    "rank": "Stevenson Professor",
+    "campus_cell": "Akram Aldroubi Stevenson Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-92a7243e",
+    "name": "Dietmar Bisch",
+    "campus_name": "Dietmar Bisch",
+    "profile": "https://as.vanderbilt.edu/math/bio/dietmar-bisch",
+    "rank": "Professor",
+    "campus_cell": "Dietmar Bisch Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-7db3f2fa",
+    "name": "Anna Marie Bohmann",
+    "campus_name": "Anna Marie Bohmann",
+    "profile": "https://as.vanderbilt.edu/math/bio/annamarie-bohmann",
+    "rank": "Associate Professor",
+    "campus_cell": "Anna Marie Bohmann Associate Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-aca9b9bb",
+    "name": "Madeline Brandt",
+    "campus_name": "Madeline Brandt",
+    "profile": "https://as.vanderbilt.edu/math/bio/madeline-brandt",
+    "rank": "Assistant Professor · Cornelius Vanderbilt Dean's Faculty Fellow",
+    "campus_cell": "Madeline Brandt Assistant Professor Cornelius Vanderbilt Dean's Faculty Fellow"
+  },
+  {
+    "id": "faculty-vanderbilt-math-4a34c098",
+    "name": "Karen Butt",
+    "campus_name": "Karen Butt",
+    "profile": "https://as.vanderbilt.edu/math/bio/karen-butt",
+    "rank": "Assistant Professor of Mathematics",
+    "campus_cell": "Karen Butt Assistant Professor of Mathematics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-d1ba43a4",
+    "name": "Henry Chan",
+    "campus_name": "Henry Chan",
+    "profile": "https://as.vanderbilt.edu/math/bio/henry-chan",
+    "rank": "Assistant Dean, Senior Lecturer",
+    "campus_cell": "Henry Chan Assistant Dean, Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-4b7b1cbe",
+    "name": "Darren Creutz",
+    "campus_name": "Darren Creutz",
+    "profile": "https://as.vanderbilt.edu/math/bio/darren-creutz",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Darren Creutz Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-727dd848",
+    "name": "Philip Crooke",
+    "campus_name": "Philip Crooke",
+    "profile": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+    "rank": "",
+    "campus_cell": "Philip Crooke Research Professor Professor Emeritus"
+  },
+  {
+    "id": "faculty-vanderbilt-math-58d474c0",
+    "name": "Sayan Das",
+    "campus_name": "Sayan Das",
+    "profile": "https://as.vanderbilt.edu/math/bio/sayan-das",
+    "rank": "Assistant Professor of Mathematics",
+    "campus_cell": "Sayan Das Assistant Professor of Mathematics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-1b0133fd",
+    "name": "Marcelo Disconzi",
+    "campus_name": "Marcelo Disconzi",
+    "profile": "https://as.vanderbilt.edu/math/bio/marcelo-disconzi",
+    "rank": "Associate Professor",
+    "campus_cell": "Marcelo Disconzi Associate Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-cf3d26ad",
+    "name": "Spencer Dowdall",
+    "campus_name": "Spencer Dowdall",
+    "profile": "https://as.vanderbilt.edu/math/bio/spencer-dowdall",
+    "rank": "Associate Professor Director of Postdoctoral Training",
+    "campus_cell": "Spencer Dowdall Associate Professor Director of Postdoctoral Training"
+  },
+  {
+    "id": "faculty-vanderbilt-math-ac3c4dec",
+    "name": "Mark Ellingham",
+    "campus_name": "Mark Ellingham",
+    "profile": "https://as.vanderbilt.edu/math/bio/mark-ellingham",
+    "rank": "Professor",
+    "campus_cell": "Mark Ellingham Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-bff54fb3",
+    "name": "Jacob Haley",
+    "campus_name": "Jacob Haley",
+    "profile": "https://as.vanderbilt.edu/math/bio/jacob-haley",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Jacob Haley Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-af44295f",
+    "name": "Doug Hardin",
+    "campus_name": "Doug Hardin",
+    "profile": "https://as.vanderbilt.edu/math/bio/doug-hardin",
+    "rank": "Professor",
+    "campus_cell": "Doug Hardin Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-62b94c8f",
+    "name": "Bailey Heath",
+    "campus_name": "Bailey Heath",
+    "profile": "https://as.vanderbilt.edu/math/bio/bailey-heath",
+    "rank": "Senior Lecturer in Mathematics",
+    "campus_cell": "Bailey Heath Senior Lecturer in Mathematics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-976727e7",
+    "name": "Blane Hollingsworth",
+    "campus_name": "Blane Hollingsworth",
+    "profile": "https://as.vanderbilt.edu/math/bio/blane-hollingsworth",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Blane Hollingsworth Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-003f2725",
+    "name": "Hannah Housden",
+    "campus_name": "Hannah Housden",
+    "profile": "https://as.vanderbilt.edu/math/bio/hannahhousden",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Hannah Housden Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-e5abb7b3",
+    "name": "Shitu Fawaz Jimoh",
+    "campus_name": "Shitu Fawaz Jimoh",
+    "profile": "https://as.vanderbilt.edu/math/bio/shitufawaz-jimoh",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Shitu Fawaz Jimoh Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-1d5fbacf",
+    "name": "Krzysztof Kapulkin",
+    "campus_name": "Chris Kapulkin",
+    "profile": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+    "rank": "Professor of Mathematics · Dual Appointment: Computer Science",
+    "campus_cell": "Chris Kapulkin Professor of Mathematics Dual Appointment: Computer Science"
+  },
+  {
+    "id": "faculty-vanderbilt-math-748ee12b",
+    "name": "Tekin Karadağ",
+    "campus_name": "Tekin Karadağ",
+    "profile": "https://as.vanderbilt.edu/math/bio/tekin-karada",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Tekin Karadağ Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-b05184b0",
+    "name": "Wanlin Li",
+    "campus_name": "Wanlin Li",
+    "profile": "https://as.vanderbilt.edu/math/bio/li-wanlin",
+    "rank": "Assistant Professor",
+    "campus_cell": "Wanlin Li Assistant Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-233f7153",
+    "name": "Alex Lupsasca",
+    "campus_name": "Alex Lupsasca",
+    "profile": "https://as.vanderbilt.edu/math/bio/alex-lupsasca",
+    "rank": "Assistant Professor Primary appointment: Physics",
+    "campus_cell": "Alex Lupsasca Assistant Professor Primary appointment: Physics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-62ebf5a9",
+    "name": "Dan Margalit",
+    "campus_name": "Dan Margalit",
+    "profile": "https://as.vanderbilt.edu/math/bio/dan-margalit",
+    "rank": "Stevenson Professor Department Chair",
+    "campus_cell": "Dan Margalit Stevenson Professor Department Chair"
+  },
+  {
+    "id": "faculty-vanderbilt-math-adb2e776",
+    "name": "Alice Mark",
+    "campus_name": "Alice Mark",
+    "profile": "https://as.vanderbilt.edu/math/bio/alice-mark",
+    "rank": "Assistant Professor of the Practice Barbara Burnett Director of Undergraduate Mathematics Education",
+    "campus_cell": "Alice Mark Assistant Professor of the Practice Barbara Burnett Director of Undergraduate Mathematics Education"
+  },
+  {
+    "id": "faculty-vanderbilt-math-11a4831f",
+    "name": "Amadeus Martin",
+    "campus_name": "Amadeus Martin",
+    "profile": "https://as.vanderbilt.edu/math/bio/amadeus-martin",
+    "rank": "Senior Lecturer in Mathematics",
+    "campus_cell": "Amadeus Martin Senior Lecturer in Mathematics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-19be968e",
+    "name": "Sean McAfee",
+    "campus_name": "Sean McAfee",
+    "profile": "https://as.vanderbilt.edu/math/bio/sean-mcafee",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Sean McAfee Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-c12b0bf6",
+    "name": "Mike Neamtu",
+    "campus_name": "Mike Neamtu",
+    "profile": "https://as.vanderbilt.edu/math/bio/mike-neamtu",
+    "rank": "Professor",
+    "campus_cell": "Mike Neamtu Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-76b40b18",
+    "name": "Jila Niknejad",
+    "campus_name": "Jila Niknejad",
+    "profile": "https://as.vanderbilt.edu/math/bio/jila-niknejad",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Jila Niknejad Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-6b9a40d2",
+    "name": "Denis Osin",
+    "campus_name": "Denis Osin",
+    "profile": "https://as.vanderbilt.edu/math/bio/denis-osin",
+    "rank": "Stevenson Professor",
+    "campus_cell": "Denis Osin Stevenson Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-e6bb6cd9",
+    "name": "Jean-Francois Paquet",
+    "campus_name": "Jean-Francois Paquet",
+    "profile": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet",
+    "rank": "Assistant Professor Primary appointment: Physics Steven and Bunny Fayne Dean's Faculty Fellow",
+    "campus_cell": "Jean-Francois Paquet Assistant Professor Primary appointment: Physics Steven and Bunny Fayne Dean's Faculty Fellow"
+  },
+  {
+    "id": "faculty-vanderbilt-math-9fec5207",
+    "name": "Gregory Patchell",
+    "campus_name": "Gregory Patchell",
+    "profile": "https://as.vanderbilt.edu/math/bio/gregory-patchell",
+    "rank": "Assistant Professor of Mathematics",
+    "campus_cell": "Gregory Patchell Assistant Professor of Mathematics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-e9826b43",
+    "name": "Jesse Peterson",
+    "campus_name": "Jesse Peterson",
+    "profile": "https://as.vanderbilt.edu/math/bio/jesse-peterson",
+    "rank": "Adjoint Professor",
+    "campus_cell": "Jesse Peterson Adjoint Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-a72735e2",
+    "name": "Tom Potter",
+    "campus_name": "Tom Potter",
+    "profile": "https://as.vanderbilt.edu/math/bio/tom-potter",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Tom Potter Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-fd2c4247",
+    "name": "Alexander Powell",
+    "campus_name": "Alexander Powell",
+    "profile": "https://as.vanderbilt.edu/math/bio/alexander-powell",
+    "rank": "Professor",
+    "campus_cell": "Alexander Powell Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-e6c40273",
+    "name": "Rares Rasdeaconu",
+    "campus_name": "Rares Rasdeaconu",
+    "profile": "https://as.vanderbilt.edu/math/bio/rares-rasdeaconu",
+    "rank": "Research Associate Professor",
+    "campus_cell": "Rares Rasdeaconu Research Associate Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-dfa1ba47",
+    "name": "Taylor Rhoads",
+    "campus_name": "Taylor Rhoads",
+    "profile": "https://as.vanderbilt.edu/math/bio/taylor-rhoads",
+    "rank": "Senior Lecturer Director of Undergraduate Studies",
+    "campus_cell": "Taylor Rhoads Senior Lecturer Director of Undergraduate Studies"
+  },
+  {
+    "id": "faculty-vanderbilt-math-0f21f127",
+    "name": "Larry G. Rolen",
+    "campus_name": "Larry G. Rolen",
+    "profile": "https://as.vanderbilt.edu/math/bio/larryg-rolen",
+    "rank": "Assistant Professor",
+    "campus_cell": "Larry G. Rolen Assistant Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-f7a0a768",
+    "name": "Edward Saff",
+    "campus_name": "Edward Saff",
+    "profile": "https://as.vanderbilt.edu/math/bio/edward-saff",
+    "rank": "",
+    "campus_cell": "Edward Saff Distinguished Professor Emeritus Distinguished Research Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-9d267bc4",
+    "name": "Larry Schumaker",
+    "campus_name": "Larry Schumaker",
+    "profile": "https://as.vanderbilt.edu/math/bio/larry-schumaker",
+    "rank": "Stevenson Professor",
+    "campus_cell": "Larry Schumaker Stevenson Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-4a0b810e",
+    "name": "Sam Sehayek",
+    "campus_name": "Sam Sehayek",
+    "profile": "https://as.vanderbilt.edu/math/bio/sam-sehayek",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Sam Sehayek Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-fda8f56d",
+    "name": "Gieri Simonett",
+    "campus_name": "Gieri Simonett",
+    "profile": "https://as.vanderbilt.edu/math/bio/gieri-simonett",
+    "rank": "Professor",
+    "campus_cell": "Gieri Simonett Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-86386ebd",
+    "name": "Stephen G. Simpson",
+    "campus_name": "Stephen G. Simpson",
+    "profile": "https://as.vanderbilt.edu/math/bio/stephen-simpson",
+    "rank": "Research Professor",
+    "campus_cell": "Stephen G. Simpson Research Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-cef39986",
+    "name": "Jared Speck",
+    "campus_name": "Jared Speck",
+    "profile": "https://as.vanderbilt.edu/math/bio/jared-speck",
+    "rank": "Stevenson Professor",
+    "campus_cell": "Jared Speck Stevenson Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-76afc187",
+    "name": "Ioana Suvaina",
+    "campus_name": "Ioana Suvaina",
+    "profile": "https://as.vanderbilt.edu/math/bio/ioana-suvaina",
+    "rank": "Associate Professor Director of Graduate Studies",
+    "campus_cell": "Ioana Suvaina Associate Professor Director of Graduate Studies"
+  },
+  {
+    "id": "faculty-vanderbilt-math-db08a99f",
+    "name": "Nicholas Wawrykow",
+    "campus_name": "Nicholas Wawrykow",
+    "profile": "https://as.vanderbilt.edu/math/bio/nicholas-wawrykow",
+    "rank": "Research Assistant Professor in Mathematics",
+    "campus_cell": "Nicholas Wawrykow Research Assistant Professor in Mathematics"
+  },
+  {
+    "id": "faculty-vanderbilt-math-d2f3b2f3",
+    "name": "Glenn Webb",
+    "campus_name": "Glenn Webb",
+    "profile": "https://as.vanderbilt.edu/math/bio/glenn-webb",
+    "rank": "Centennial Professor",
+    "campus_cell": "Glenn Webb Centennial Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-5627cf6c",
+    "name": "Jay Yang",
+    "campus_name": "Jay Yang",
+    "profile": "https://as.vanderbilt.edu/math/bio/jay-yang",
+    "rank": "Research Assistant Professor",
+    "campus_cell": "Jay Yang Research Assistant Professor"
+  },
+  {
+    "id": "faculty-vanderbilt-math-9fdcdcb0",
+    "name": "Li Ying",
+    "campus_name": "Li Ying",
+    "profile": "https://as.vanderbilt.edu/math/bio/li-ying",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Li Ying Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-e0439483",
+    "name": "Faith Zhang",
+    "campus_name": "Faith Zhang",
+    "profile": "https://as.vanderbilt.edu/math/bio/faith-zhang",
+    "rank": "Senior Lecturer",
+    "campus_cell": "Faith Zhang Senior Lecturer"
+  },
+  {
+    "id": "faculty-vanderbilt-math-bcb6a8a9",
+    "name": "Dechao Zheng",
+    "campus_name": "Dechao Zheng",
+    "profile": "https://as.vanderbilt.edu/math/bio/dechao-zheng",
+    "rank": "Professor",
+    "campus_cell": "Dechao Zheng Professor"
+  }
+]
