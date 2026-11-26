@@ -1,0 +1,229 @@
+{
+  "as_of": "2026-11-26T20:39:45+00:00",
+  "scope": "Read-only rehearsal of full B19 on projected B18 source and data. B18 and B19 were not merged or deployed by this rehearsal.",
+  "published_prior_main": "87b1e916c0c88c32bba327256706a2beff293346",
+  "original_b18": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "original_b19": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "upstream_complete_b18_tree": "996af9265084f8b5eaff9efddadd56f308b4a6f3",
+  "complete_b19_preview_tree": "993024a084319a01155f8f4cf08f6460b69ccca9",
+  "b18_source": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/7976262732d0cd6c70878b15c45ca0548b20b06b/data/audits/observed-faculty-2026-11-26/eighteenth-candidate/b18-full-prospective-main-with-thursday-originals.json",
+  "expected_b19_data_tree": "74a39764222889d8d3d6220dcc5d765b09756c25",
+  "raw_git_conflict_paths": [
+    "data/processed/shards/national.json",
+    "data/processed/shards/utexas.json",
+    "src/normalizers/reviewed_faculty_profiles.py"
+  ],
+  "unchanged_upstream_source_resolutions": [
+    "src/normalizers/reviewed_faculty_profiles.py"
+  ],
+  "code_and_tests": {
+    "backend/lib/opportunity_detail.py": "identical to B19 source",
+    "backend/lib/public_opportunity_detail.py": "identical to B19 source",
+    "backend/lib/public_projection.py": "identical to B19 source",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx": "identical to B19 source",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx": "identical to B19 source",
+    "frontend/src/lib/faculty-profile-copy.test.ts": "identical to B19 source",
+    "frontend/src/lib/faculty-profile-copy.ts": "identical to B19 source",
+    "frontend/src/lib/types.ts": "identical to B19 source",
+    "src/collectors/campus_graph.py": "identical to B19 source",
+    "src/collectors/faculty_graph.py": "identical to B19 source",
+    "src/collectors/schools/ucsd_faculty.py": "identical to B19 source",
+    "src/collectors/schools/wisc.py": "identical to B19 source",
+    "src/collectors/uiuc_sro.py": "identical to B19 source",
+    "src/evidence.py": "identical to B19 source",
+    "src/normalizers/host_program_terms.py": "identical to B19 source",
+    "src/normalizers/reviewed_faculty_profiles.py": "identical to B19 source",
+    "src/normalizers/wisc_biological_interactions.py": "identical to B19 source",
+    "src/program_windows.py": "identical to B19 source",
+    "tests/test_faculty_profile_summary_contract.py": "identical to B19 source",
+    "tests/test_program_windows.py": "identical to B19 source",
+    "tests/test_reviewed_faculty_profiles.py": "identical to B19 source",
+    "tests/test_ucsd_nano_adjunct.py": "identical to B19 source",
+    "tests/test_ucsd_nano_emeritus.py": "identical to B19 source",
+    "tests/test_wisconsin_program_identity.py": "identical to B19 source"
+  },
+  "expected_and_actual_changed_paths": [
+    "backend/lib/opportunity_detail.py",
+    "backend/lib/public_opportunity_detail.py",
+    "backend/lib/public_projection.py",
+    "data/processed/shards/national.json",
+    "data/processed/shards/ucsd.json",
+    "data/processed/shards/utexas.json",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.test.tsx",
+    "frontend/src/app/opportunities/[id]/OpportunityDetail.tsx",
+    "frontend/src/lib/faculty-profile-copy.test.ts",
+    "frontend/src/lib/faculty-profile-copy.ts",
+    "frontend/src/lib/school-stats.json",
+    "frontend/src/lib/types.ts",
+    "src/collectors/campus_graph.py",
+    "src/collectors/faculty_graph.py",
+    "src/collectors/schools/ucsd_faculty.py",
+    "src/collectors/schools/wisc.py",
+    "src/collectors/uiuc_sro.py",
+    "src/evidence.py",
+    "src/normalizers/host_program_terms.py",
+    "src/normalizers/reviewed_faculty_profiles.py",
+    "src/normalizers/wisc_biological_interactions.py",
+    "src/program_windows.py",
+    "tests/test_faculty_profile_summary_contract.py",
+    "tests/test_program_windows.py",
+    "tests/test_reviewed_faculty_profiles.py",
+    "tests/test_ucsd_nano_adjunct.py",
+    "tests/test_ucsd_nano_emeritus.py",
+    "tests/test_wisconsin_program_identity.py"
+  ],
+  "complete_processed_paths_compared": 125,
+  "result": "All processed shard and ledger blobs and official 115-school stats match the independently verified data projection.",
+  "future_gate": "Revalidate on the actual B18 production release, preserving any subsequent records and field updates.",
+  "full_scope_gate": {
+    "positive": true,
+    "frozen_snapshot_negative": {
+      "passed": false,
+      "unexpected_changed_paths": 19,
+      "different_current_national_rows": 5066,
+      "different_current_utexas_rows": 2007,
+      "dropped_national_ids": 59,
+      "dropped_utexas_ids": 1
+    }
+  },
+  "normal_api_original_detail_reads": [
+    {
+      "original_id": "faculty-ucsd-nano-25a6d469",
+      "heading": "Sadik Esener",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=31"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-dc9e3de3",
+      "heading": "Michael Heller",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=1"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-2aa92754",
+      "heading": "Darren Lipomi",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=345"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-04ac1d79",
+      "heading": "Ying Shirley Meng",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=284"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-27240933",
+      "heading": "Sheng Xu",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=387"
+    },
+    {
+      "original_id": "faculty-ncsu-chass-089a76c8",
+      "heading": "Jeffery Braden",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://chass.ncsu.edu/people/jpbraden/"
+    },
+    {
+      "original_id": "faculty-umd-phys-5e8e0edd",
+      "heading": "Elizabeth Beise",
+      "actionable": false,
+      "status": 200,
+      "reviewed_school_source": "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html"
+    },
+    {
+      "original_id": "faculty-ucsd-nano-e94320ae",
+      "heading": "Shyue Ping Ong",
+      "actionable": true,
+      "status": 200
+    },
+    {
+      "original_id": "faculty-ucsd-che-8330aad7",
+      "heading": "Jinhye Bae",
+      "actionable": true,
+      "status": 200
+    },
+    {
+      "original_id": "faculty-ucsd-nano-d24bdcfa",
+      "heading": "Shaochen Chen",
+      "actionable": true,
+      "status": 200
+    },
+    {
+      "original_id": "faculty-utexas-mpdd-5850399f",
+      "heading": "Zhengrong Cui",
+      "actionable": true,
+      "status": 200,
+      "retained_two_paper_titles": [
+        "Drum Filling of Thin-Film Freeze-Dried Monoclonal Antibody Powder in UniDose Powder Nasal Spray System",
+        "IgM has a better relative distribution in inflammation sites and tumor tissues than IgG"
+      ]
+    },
+    {
+      "original_id": "wisc-86cba49b83d7",
+      "heading": "Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)",
+      "actionable": true,
+      "status": 200,
+      "current_official_amount_and_source_verified": true
+    },
+    {
+      "original_id": "sro-595e912d",
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "actionable": true,
+      "status": 200,
+      "current_official_amount_and_source_verified": true
+    },
+    {
+      "original_id": "sro-3c378261",
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "actionable": true,
+      "status": 200,
+      "current_official_amount_and_source_verified": true
+    },
+    {
+      "original_id": "nsf-reu-2447670",
+      "heading": "REU: Advancing Data Science in the Public Interest",
+      "actionable": true,
+      "status": 200,
+      "current_official_eligibility_and_source_verified": true
+    },
+    {
+      "original_id": "sro-44f176cd",
+      "heading": "REU Advancing Data Science in the Public Interest",
+      "actionable": true,
+      "status": 200,
+      "current_official_eligibility_and_source_verified": true
+    },
+    {
+      "original_id": "sro-3ec4ea4e",
+      "heading": "Cancer Research Internship Summer Program (CRISP)",
+      "actionable": true,
+      "status": 200,
+      "current_official_eligibility_and_source_verified": true
+    }
+  ],
+  "targeted_source_regressions": {
+    "passed": 224,
+    "suites": [
+      "test_faculty_profile_summary_contract",
+      "test_program_windows",
+      "test_reviewed_faculty_profiles",
+      "test_ucsd_nano_adjunct",
+      "test_ucsd_nano_emeritus",
+      "test_wisconsin_program_identity"
+    ]
+  },
+  "school_stats": {
+    "normal_gate": "scripts/gen_school_stats.py --check",
+    "assembled_records": 149943,
+    "both_assembled_and_shard_only_passed": true,
+    "school_count": 115,
+    "campus_total": 130771,
+    "national_count": 5630
+  }
+}
