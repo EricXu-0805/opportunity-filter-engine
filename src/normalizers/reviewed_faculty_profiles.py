@@ -173,6 +173,23 @@ REVIEWS = {
         previous_title="Assistant Professor, Philosophy &",
         independently_verified_profile=True, appointment_summary="Kate Stanton is an associate professor of philosophy at Pitt "
                             "with a secondary appointment in Linguistics."),
+    "faculty-pitt-ling-0dbe04f3": ProfileReview(
+        "pitt", "Department of Linguistics", "Amanda Godley",
+        "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+        "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+        "https://www.education.pitt.edu/wp-content/uploads/2023/06/Amanda-Godley-CV.pdf",
+        datetime(2026, 11, 26, 19, 40, tzinfo=UTC),
+        title="Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+        previous_title="Associate Professor, English Education and", independently_verified_profile=True,
+        appointment_summary="Pitt lists Amanda Godley as a professor in the School of Education "
+                            "with a secondary appointment in Linguistics."),
+    "faculty-pitt-ling-84276229": ProfileReview(
+        "pitt", "Department of Linguistics", "Richard Donato",
+        "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+        "https://www.iise.pitt.edu/people/richard-donato", "https://www.app.education.pitt.edu/people/faculty",
+        datetime(2026, 11, 26, 19, 40, tzinfo=UTC), title="Emeritus Faculty, School of Education",
+        previous_title="Professor of foreign language education,", independently_verified_profile=True,
+        appointment_summary="Pitt's School of Education identifies Richard Donato as emeritus faculty."),
     "faculty-pitt-phil-2930bf5f": ProfileReview(
         "pitt", "Department of Philosophy", "Kate Stanton", "https://www.philosophy.pitt.edu/people",
         "https://www.philosophy.pitt.edu/people/kstanton", "https://www.philosophy.pitt.edu/people/kstanton",

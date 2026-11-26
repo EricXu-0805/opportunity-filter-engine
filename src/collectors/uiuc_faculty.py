@@ -44,6 +44,7 @@ from ..evidence import (
     faculty_verification_scope,
     inferred_method,
     is_directory_discipline,
+    is_known_unit_mailbox,
     is_research_clause_fragment,
     record_kind,
     source_last_seen_at,
@@ -1780,7 +1781,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # None for that person and this line re-installs the stale value, so no
     # scrape fix can ever dislodge it (UKy shipped a faculty member with the
     # college's ciwebmanager@ box). Let those decay instead of resurrecting them.
-    if email and _ROLE_MAILBOX.match(email) and incoming.get("pi_name"):
+    if email and incoming.get("pi_name") and (_ROLE_MAILBOX.match(email) or is_known_unit_mailbox(email)):
         email = None
     # Nor onto a card read under its directory's In Memoriam heading.
     if (incoming.get("metadata") or {}).get("deactivation_reason") == IN_MEMORIAM_REASON:
