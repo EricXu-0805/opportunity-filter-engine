@@ -1,0 +1,2695 @@
+{
+  "release": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "cohorts": {
+    "one per unit and one detailed roster link": [
+      "faculty-msu-phys-fcaa117e",
+      "faculty-msu-math-d8495ab6",
+      "faculty-msu-stat-9d0ed871",
+      "faculty-msu-bmb-cc33ac38",
+      "faculty-msu-mgi-11d69e41",
+      "faculty-msu-ibio-ed4d5ea3",
+      "faculty-msu-psl-ad267457",
+      "faculty-msu-ees-97040f25",
+      "faculty-msu-bmb-d4a0f856"
+    ],
+    "previously numeric and unusable links": [
+      "faculty-msu-phys-4c910e1c",
+      "faculty-msu-phys-91db5547",
+      "faculty-msu-math-cd34856d",
+      "faculty-msu-math-e2891df4",
+      "faculty-msu-math-363836ca",
+      "faculty-msu-math-2bd1295b",
+      "faculty-msu-math-945da1cf",
+      "faculty-msu-math-ad789a28",
+      "faculty-msu-math-1d6d8c00",
+      "faculty-msu-stat-13be0b4e",
+      "faculty-msu-stat-4a2be08b",
+      "faculty-msu-bmb-07e6d53d",
+      "faculty-msu-bmb-c681ae7f",
+      "faculty-msu-mgi-1172a556",
+      "faculty-msu-mgi-5ca9b09b",
+      "faculty-msu-mgi-58139ab2",
+      "faculty-msu-ibio-cb03d504",
+      "faculty-msu-psl-19d4bb6d"
+    ],
+    "named and cross-listed appointment controls": [
+      "faculty-msu-cmse-5b280249",
+      "faculty-msu-ees-143a2d80",
+      "faculty-msu-ees-25f2304e",
+      "faculty-msu-ees-61e8597d",
+      "faculty-msu-ibio-ed1756b8",
+      "faculty-msu-mgi-90b82060",
+      "faculty-msu-psl-4bb606e2",
+      "faculty-msu-psl-4e91dab5",
+      "faculty-msu-psl-f201ae17"
+    ],
+    "newly supported foundation appointments": [
+      "faculty-msu-bmb-f5a0490b",
+      "faculty-msu-ibio-c37f66a6",
+      "faculty-msu-mgi-750c0c00",
+      "faculty-msu-phys-663bb7b1",
+      "faculty-msu-stat-1bd37418",
+      "faculty-msu-stat-d53fe8f5"
+    ],
+    "duplicate mathematics cross-listing": [
+      "faculty-msu-math-7d462896"
+    ]
+  },
+  "started_at": "2026-11-26T20:40:45.907905+00:00",
+  "initial": {
+    "frontend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "backend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541"
+  },
+  "first_reads": [
+    {
+      "id": "faculty-msu-bmb-07e6d53d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-07e6d53d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-07e6d53d",
+      "api_http": 200,
+      "name": "Alexander R Dickson",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100331",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Alexander R Dickson",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100331"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-c681ae7f",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-c681ae7f",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-c681ae7f",
+      "api_http": 200,
+      "name": "Susanne Hoffmann-Benning",
+      "rank": "Fixed Term Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100403",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Susanne Hoffmann-Benning",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100403"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-cc33ac38",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-cc33ac38",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-cc33ac38",
+      "api_http": 200,
+      "name": "Peter K Lundquist",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100502",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Peter K Lundquist",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100502"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-d4a0f856",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-d4a0f856",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-d4a0f856",
+      "api_http": 200,
+      "name": "Claire Vieille",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100493",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Claire Vieille",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100493"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-f5a0490b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-f5a0490b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-f5a0490b",
+      "api_http": 200,
+      "name": "Gregg A Howe",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100370",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Gregg A Howe",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100370"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-cmse-5b280249",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-cmse-5b280249",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-cmse-5b280249",
+      "api_http": 200,
+      "name": "Andrew Christlieb",
+      "rank": "MSU Research Foundation Distinguished Professor",
+      "homepage": "https://engineering.msu.edu/directory/faculty/christli",
+      "roster": "https://engineering.msu.edu/directory/faculty/christli",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Andrew Christlieb",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://engineering.msu.edu/directory/faculty/christli"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-143a2d80",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-143a2d80",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-143a2d80",
+      "api_http": 200,
+      "name": "Allen McNamara",
+      "rank": "Geological Sciences Endow Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101234",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Allen McNamara",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101234"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-25f2304e",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-25f2304e",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-25f2304e",
+      "api_http": 200,
+      "name": "Megan Elwood Madden",
+      "rank": "Geological Sciences Endow Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/105563",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Megan Elwood Madden",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/105563"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-61e8597d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-61e8597d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-61e8597d",
+      "api_http": 200,
+      "name": "Songqiao Wei",
+      "rank": "Geological Sci Endow Assc Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101051",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Songqiao Wei",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101051"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-97040f25",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-97040f25",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-97040f25",
+      "api_http": 200,
+      "name": "Julie C Libarkin",
+      "rank": "Faculty, Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/103390",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Julie C Libarkin",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/103390"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-c37f66a6",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-c37f66a6",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-c37f66a6",
+      "api_http": 200,
+      "name": "Elena Gennadyevna Litchman",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101346",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Elena Gennadyevna Litchman",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101346"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-cb03d504",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-cb03d504",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-cb03d504",
+      "api_http": 200,
+      "name": "Grace Smith Vidaurre",
+      "rank": "1855 Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104435",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Grace Smith Vidaurre",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104435"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-ed1756b8",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-ed1756b8",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-ed1756b8",
+      "api_http": 200,
+      "name": "Elise Zipkin",
+      "rank": "Red Cedar Distinguished Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101331",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Elise Zipkin",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101331"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-ed4d5ea3",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-ed4d5ea3",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-ed4d5ea3",
+      "api_http": 200,
+      "name": "Nick Haddad",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101336",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Nick Haddad",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101336"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-1d6d8c00",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-1d6d8c00",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-1d6d8c00",
+      "api_http": 200,
+      "name": "Rongrong Wang",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101060",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Rongrong Wang",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101060"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-2bd1295b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-2bd1295b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-2bd1295b",
+      "api_http": 200,
+      "name": "Christian A Parkinson",
+      "rank": "Assistant Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104912",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Christian A Parkinson",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104912"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-363836ca",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-363836ca",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-363836ca",
+      "api_http": 200,
+      "name": "Elizabeth Munch",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101076",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Elizabeth Munch",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101076"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-7d462896",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-7d462896",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-7d462896",
+      "api_http": 404,
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-945da1cf",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-945da1cf",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-945da1cf",
+      "api_http": 200,
+      "name": "Jianliang Qian",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101039",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Jianliang Qian",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101039"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-ad789a28",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-ad789a28",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-ad789a28",
+      "api_http": 200,
+      "name": "Ekaterina A Rapinchuk",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101074",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Ekaterina A Rapinchuk",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101074"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-cd34856d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-cd34856d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-cd34856d",
+      "api_http": 200,
+      "name": "Longxiu Huang",
+      "rank": "Assistant Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102984",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Longxiu Huang",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102984"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-d8495ab6",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-d8495ab6",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-d8495ab6",
+      "api_http": 200,
+      "name": "Keith S Promislow",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101602",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Keith S Promislow",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101602"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-e2891df4",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-e2891df4",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-e2891df4",
+      "api_http": 200,
+      "name": "Mark A Iwen",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101122",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Mark A Iwen",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101122"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-1172a556",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-1172a556",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-1172a556",
+      "api_http": 200,
+      "name": "Christopher H Contag",
+      "rank": "Hannah Distinguished Professor of Biomedical Engineering and Microbiology & Molecular Genetics, Chairperson, Prof, J & K Cornelius Chair",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/103365",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Christopher H Contag",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/103365"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-11d69e41",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-11d69e41",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-11d69e41",
+      "api_http": 200,
+      "name": "Linda Mansfield",
+      "rank": "University Distinguished Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/103376",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Linda Mansfield",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/103376"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-58139ab2",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-58139ab2",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-58139ab2",
+      "api_http": 200,
+      "name": "Thomas V O'Halloran",
+      "rank": "Foundation Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100832",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Thomas V O'Halloran",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100832"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-5ca9b09b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-5ca9b09b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-5ca9b09b",
+      "api_http": 200,
+      "name": "Kathleen A Hoag",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Kathleen A Hoag",
+      "controls": [
+        {
+          "label": "View source",
+          "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-750c0c00",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-750c0c00",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-750c0c00",
+      "api_http": 200,
+      "name": "Shannon Manning",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101706",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Shannon Manning",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101706"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-90b82060",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-90b82060",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-90b82060",
+      "api_http": 200,
+      "name": "Sarah E Evans",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101377",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Sarah E Evans",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101377"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-4c910e1c",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-4c910e1c",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-4c910e1c",
+      "api_http": 200,
+      "name": "Sean M Couch",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101031",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Sean M Couch",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101031"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-663bb7b1",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-663bb7b1",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-663bb7b1",
+      "api_http": 200,
+      "name": "Joey W Huston",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102018",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Joey W Huston",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102018"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-91db5547",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-91db5547",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-91db5547",
+      "api_http": 200,
+      "name": "Wolfgang Eitel Kerzendorf",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101041",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Wolfgang Eitel Kerzendorf",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101041"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-fcaa117e",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-fcaa117e",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-fcaa117e",
+      "api_http": 200,
+      "name": "Lisa Jill Lapidus",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102073",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Lisa Jill Lapidus",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102073"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-19d4bb6d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-19d4bb6d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-19d4bb6d",
+      "api_http": 200,
+      "name": "Luisa Seguella",
+      "rank": "Fixed Term Assistant Professor Research",
+      "homepage": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Luisa Seguella",
+      "controls": [
+        {
+          "label": "View source",
+          "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/35"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-4bb606e2",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-4bb606e2",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-4bb606e2",
+      "api_http": 200,
+      "name": "Geoffroy Olivier Laumet",
+      "rank": "Red Cedar Distinguished Asc Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102221",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Geoffroy Olivier Laumet",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102221"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-4e91dab5",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-4e91dab5",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-4e91dab5",
+      "api_http": 200,
+      "name": "Alfred J Robison",
+      "rank": "Red Cedar Distinguished Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102252",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Alfred J Robison",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102252"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-ad267457",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-ad267457",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-ad267457",
+      "api_http": 200,
+      "name": "Qingguang Zhang",
+      "rank": "Assistant Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104406",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Qingguang Zhang",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104406"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-f201ae17",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-f201ae17",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-f201ae17",
+      "api_http": 200,
+      "name": "Gina Leinninger",
+      "rank": "Red Cedar Distinguished Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102272",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Gina Leinninger",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102272"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-13be0b4e",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-13be0b4e",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-13be0b4e",
+      "api_http": 200,
+      "name": "Guanqun Cao",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104239",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Guanqun Cao",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104239"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-1bd37418",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-1bd37418",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-1bd37418",
+      "api_http": 200,
+      "name": "Tapabrata Maiti",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102583",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Tapabrata Maiti",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102583"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-4a2be08b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-4a2be08b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-4a2be08b",
+      "api_http": 200,
+      "name": "Huan Lei",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101035",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Huan Lei",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101035"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-9d0ed871",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-9d0ed871",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-9d0ed871",
+      "api_http": 200,
+      "name": "Vincent F Melfi",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102591",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Vincent F Melfi",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102591"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-d53fe8f5",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-d53fe8f5",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-d53fe8f5",
+      "api_http": 200,
+      "name": "Yimin Xiao",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102595",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Yimin Xiao",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102595"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    }
+  ],
+  "first_finished_versions": {
+    "frontend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "backend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541"
+  },
+  "transient_retries": [],
+  "rows": [
+    {
+      "id": "faculty-msu-bmb-07e6d53d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-07e6d53d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-07e6d53d",
+      "api_http": 200,
+      "name": "Alexander R Dickson",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100331",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Alexander R Dickson",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100331"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-c681ae7f",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-c681ae7f",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-c681ae7f",
+      "api_http": 200,
+      "name": "Susanne Hoffmann-Benning",
+      "rank": "Fixed Term Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100403",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Susanne Hoffmann-Benning",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100403"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-cc33ac38",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-cc33ac38",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-cc33ac38",
+      "api_http": 200,
+      "name": "Peter K Lundquist",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100502",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Peter K Lundquist",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100502"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-d4a0f856",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-d4a0f856",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-d4a0f856",
+      "api_http": 200,
+      "name": "Claire Vieille",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100493",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Claire Vieille",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100493"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-bmb-f5a0490b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-bmb-f5a0490b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-bmb-f5a0490b",
+      "api_http": 200,
+      "name": "Gregg A Howe",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100370",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Gregg A Howe",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100370"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-cmse-5b280249",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-cmse-5b280249",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-cmse-5b280249",
+      "api_http": 200,
+      "name": "Andrew Christlieb",
+      "rank": "MSU Research Foundation Distinguished Professor",
+      "homepage": "https://engineering.msu.edu/directory/faculty/christli",
+      "roster": "https://engineering.msu.edu/directory/faculty/christli",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Andrew Christlieb",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://engineering.msu.edu/directory/faculty/christli"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-143a2d80",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-143a2d80",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-143a2d80",
+      "api_http": 200,
+      "name": "Allen McNamara",
+      "rank": "Geological Sciences Endow Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101234",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Allen McNamara",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101234"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-25f2304e",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-25f2304e",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-25f2304e",
+      "api_http": 200,
+      "name": "Megan Elwood Madden",
+      "rank": "Geological Sciences Endow Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/105563",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Megan Elwood Madden",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/105563"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-61e8597d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-61e8597d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-61e8597d",
+      "api_http": 200,
+      "name": "Songqiao Wei",
+      "rank": "Geological Sci Endow Assc Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101051",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Songqiao Wei",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101051"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ees-97040f25",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ees-97040f25",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ees-97040f25",
+      "api_http": 200,
+      "name": "Julie C Libarkin",
+      "rank": "Faculty, Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/103390",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Julie C Libarkin",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/103390"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-c37f66a6",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-c37f66a6",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-c37f66a6",
+      "api_http": 200,
+      "name": "Elena Gennadyevna Litchman",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101346",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Elena Gennadyevna Litchman",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101346"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-cb03d504",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-cb03d504",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-cb03d504",
+      "api_http": 200,
+      "name": "Grace Smith Vidaurre",
+      "rank": "1855 Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104435",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Grace Smith Vidaurre",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104435"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-ed1756b8",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-ed1756b8",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-ed1756b8",
+      "api_http": 200,
+      "name": "Elise Zipkin",
+      "rank": "Red Cedar Distinguished Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101331",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Elise Zipkin",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101331"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-ibio-ed4d5ea3",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-ibio-ed4d5ea3",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-ibio-ed4d5ea3",
+      "api_http": 200,
+      "name": "Nick Haddad",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101336",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/4",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Nick Haddad",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101336"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-1d6d8c00",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-1d6d8c00",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-1d6d8c00",
+      "api_http": 200,
+      "name": "Rongrong Wang",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101060",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Rongrong Wang",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101060"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-2bd1295b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-2bd1295b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-2bd1295b",
+      "api_http": 200,
+      "name": "Christian A Parkinson",
+      "rank": "Assistant Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104912",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Christian A Parkinson",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104912"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-363836ca",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-363836ca",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-363836ca",
+      "api_http": 200,
+      "name": "Elizabeth Munch",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101076",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Elizabeth Munch",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101076"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-7d462896",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-7d462896",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-7d462896",
+      "api_http": 404,
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-945da1cf",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-945da1cf",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-945da1cf",
+      "api_http": 200,
+      "name": "Jianliang Qian",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101039",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Jianliang Qian",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101039"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-ad789a28",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-ad789a28",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-ad789a28",
+      "api_http": 200,
+      "name": "Ekaterina A Rapinchuk",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101074",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Ekaterina A Rapinchuk",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101074"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-cd34856d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-cd34856d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-cd34856d",
+      "api_http": 200,
+      "name": "Longxiu Huang",
+      "rank": "Assistant Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102984",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Longxiu Huang",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102984"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-d8495ab6",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-d8495ab6",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-d8495ab6",
+      "api_http": 200,
+      "name": "Keith S Promislow",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101602",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Keith S Promislow",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101602"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-math-e2891df4",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-math-e2891df4",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-math-e2891df4",
+      "api_http": 200,
+      "name": "Mark A Iwen",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101122",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/3",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Mark A Iwen",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101122"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-1172a556",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-1172a556",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-1172a556",
+      "api_http": 200,
+      "name": "Christopher H Contag",
+      "rank": "Hannah Distinguished Professor of Biomedical Engineering and Microbiology & Molecular Genetics, Chairperson, Prof, J & K Cornelius Chair",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/103365",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Christopher H Contag",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/103365"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-11d69e41",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-11d69e41",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-11d69e41",
+      "api_http": 200,
+      "name": "Linda Mansfield",
+      "rank": "University Distinguished Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/103376",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Linda Mansfield",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/103376"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-58139ab2",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-58139ab2",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-58139ab2",
+      "api_http": 200,
+      "name": "Thomas V O'Halloran",
+      "rank": "Foundation Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/100832",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Thomas V O'Halloran",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/100832"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-5ca9b09b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-5ca9b09b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-5ca9b09b",
+      "api_http": 200,
+      "name": "Kathleen A Hoag",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Kathleen A Hoag",
+      "controls": [
+        {
+          "label": "View source",
+          "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-750c0c00",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-750c0c00",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-750c0c00",
+      "api_http": 200,
+      "name": "Shannon Manning",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101706",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Shannon Manning",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101706"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-mgi-90b82060",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-mgi-90b82060",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-mgi-90b82060",
+      "api_http": 200,
+      "name": "Sarah E Evans",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101377",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Sarah E Evans",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101377"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-4c910e1c",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-4c910e1c",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-4c910e1c",
+      "api_http": 200,
+      "name": "Sean M Couch",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101031",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Sean M Couch",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101031"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-663bb7b1",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-663bb7b1",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-663bb7b1",
+      "api_http": 200,
+      "name": "Joey W Huston",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102018",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Joey W Huston",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102018"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-91db5547",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-91db5547",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-91db5547",
+      "api_http": 200,
+      "name": "Wolfgang Eitel Kerzendorf",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101041",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Wolfgang Eitel Kerzendorf",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101041"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-phys-fcaa117e",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-phys-fcaa117e",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-phys-fcaa117e",
+      "api_http": 200,
+      "name": "Lisa Jill Lapidus",
+      "rank": "Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102073",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/34",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Lisa Jill Lapidus",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102073"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-19d4bb6d",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-19d4bb6d",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-19d4bb6d",
+      "api_http": 200,
+      "name": "Luisa Seguella",
+      "rank": "Fixed Term Assistant Professor Research",
+      "homepage": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Luisa Seguella",
+      "controls": [
+        {
+          "label": "View source",
+          "href": "https://directory.natsci.msu.edu/Directory/Directory/Department/35"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-4bb606e2",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-4bb606e2",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-4bb606e2",
+      "api_http": 200,
+      "name": "Geoffroy Olivier Laumet",
+      "rank": "Red Cedar Distinguished Asc Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102221",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Geoffroy Olivier Laumet",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102221"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-4e91dab5",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-4e91dab5",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-4e91dab5",
+      "api_http": 200,
+      "name": "Alfred J Robison",
+      "rank": "Red Cedar Distinguished Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102252",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Alfred J Robison",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102252"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-ad267457",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-ad267457",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-ad267457",
+      "api_http": 200,
+      "name": "Qingguang Zhang",
+      "rank": "Assistant Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104406",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Qingguang Zhang",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104406"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-psl-f201ae17",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-psl-f201ae17",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-psl-f201ae17",
+      "api_http": 200,
+      "name": "Gina Leinninger",
+      "rank": "Red Cedar Distinguished Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102272",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/35",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Gina Leinninger",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102272"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-13be0b4e",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-13be0b4e",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-13be0b4e",
+      "api_http": 200,
+      "name": "Guanqun Cao",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/104239",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Guanqun Cao",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/104239"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-1bd37418",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-1bd37418",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-1bd37418",
+      "api_http": 200,
+      "name": "Tapabrata Maiti",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102583",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Tapabrata Maiti",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102583"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-4a2be08b",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-4a2be08b",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-4a2be08b",
+      "api_http": 200,
+      "name": "Huan Lei",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/101035",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Huan Lei",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/101035"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-9d0ed871",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-9d0ed871",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-9d0ed871",
+      "api_http": 200,
+      "name": "Vincent F Melfi",
+      "rank": "Associate Professor",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102591",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Vincent F Melfi",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102591"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    },
+    {
+      "id": "faculty-msu-stat-d53fe8f5",
+      "api": "https://joinalab.com/api/opportunities/faculty-msu-stat-d53fe8f5",
+      "detail": "https://joinalab.com/opportunities/faculty-msu-stat-d53fe8f5",
+      "api_http": 200,
+      "name": "Yimin Xiao",
+      "rank": "MSU Research FDN DIST. Prof",
+      "homepage": "https://directory.natsci.msu.edu/directory/Profiles/Person/102595",
+      "roster": "https://directory.natsci.msu.edu/Directory/Directory/Department/2",
+      "actionable": true,
+      "html_http": 200,
+      "heading": "Yimin Xiao",
+      "controls": [
+        {
+          "label": "View faculty profile",
+          "href": "https://directory.natsci.msu.edu/directory/Profiles/Person/102595"
+        }
+      ],
+      "checks": {
+        "same_id": true,
+        "same_person": true,
+        "same_homepage": true,
+        "same_roster": true,
+        "same_rank": true,
+        "right_actionability": true,
+        "same_heading": true,
+        "same_control": true,
+        "no_false_homepage": true
+      },
+      "passed": true
+    }
+  ],
+  "final": {
+    "frontend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "backend": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541"
+  },
+  "finished_at": "2026-11-26T20:43:46.384587+00:00"
+}
