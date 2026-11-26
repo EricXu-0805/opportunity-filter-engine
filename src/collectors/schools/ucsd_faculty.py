@@ -340,7 +340,7 @@ SCHOOL: dict = {
             "scrape": {
                 "url": "https://physics.ucsd.edu/people/faculty",
                 "selectors": {
-                    "card": ".profiles_container .row > .col-sm-3 > .pe-5:has(> a[href] > h4)",
+                    "card": ".profiles_container .row > .col-sm-3 > .pe-5:has(> a[href])",
                     "name": "a[href] > h4",
                     "link": "a[href]:has(> h4)",
                     "title": "h5",
