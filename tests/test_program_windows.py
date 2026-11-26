@@ -496,7 +496,11 @@ def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
 def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path):
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+    from src.matcher.ranker import _filter_context, hard_exclusion
+    from src.normalizers import host_program_terms
+    from src.normalizers.wisc_biological_interactions import SUMMARY, SUPPORT
     from src.program_windows import public_opening
+    from src.saved_searches.filter import match_filter
 
     directory = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
     old_host = "https://wiscience.wisc.edu/IBS-SRP"
@@ -521,6 +525,20 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
         assert (opens["on"], opens["source_url"]) == ("2026-11-01", host)
         timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
         assert timing["quotes"]["deadline"]["source_url"] == host
+        assert SUMMARY in row["description_clean"] and "excluded by funding rules" not in row["description_clean"]
+        assert row["paid"] == "yes" and row["compensation_details"] == SUPPORT and row["duration"] == "10 weeks"
+        assert row["eligibility"]["min_gpa"] is None and row["eligibility"]["preferred_year"] == []
+        loaded = data_loader._sanitize_opportunity(copy.deepcopy(row))
+        assert loaded["description_clean"].count("UW–Madison students may apply") == 1
+        student = {"home_school": "wisc", "year": "freshman", "major": "Biology", "gpa": 2.8}
+        assert hard_exclusion(loaded, _filter_context(student)) is None
+        card = project_public_opportunity_payload(loaded, loaded)
+        assert card["paid"] == "yes" and not card.get("paid_attribution")
+        assert not card.get("compensation_attribution")
+        assert match_filter(loaded, {"paid": "yes"}) and not match_filter(loaded, {"paid": "no"})
+        funding = build_detail_fields(card, loaded)["fields"]["funding"]
+        assert funding["explicit"]["compensation"] == SUPPORT
+        assert funding["quotes"]["paid"]["source_url"] == host
     assert preferred["metadata"]["superseded_directory_deadline"]["source_url"] == directory + "-0"
     output = tmp_path / "programs.json"
     output.write_text(json.dumps([host_record, alias, preferred]))
@@ -533,10 +551,33 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
     for other in (
         {**host_record, "deadline": "2028-02-09"},
         {**host_record, "id": "different-campus-record"},
+        {**preferred, "organization": "Another University"},
         source_row(directory + "-0", old_host, "Anticipated 2/15/28"),
         source_row(directory + "-0", "https://example.edu/unrelated"),
     ):
         assert reviewed_window(other) is None and public_opening(other) is None
+        before = copy.deepcopy(other)
+        host_program_terms.apply_terms(other)
+        assert other == before and host_program_terms.quote(other, "paid") is None
+    # The same-cycle shallow retry must retain the last deep source paragraph.
+    preferred["description_clean"] += "\n\nPrevious deep source paragraph."
+    preferred["description_raw"] = "Previous deep source paragraph."
+    output.write_text(json.dumps([host_record, alias, preferred]))
+    shallow = source_row(directory + "-0", directory + "-0")
+    shallow["organization"] = ""
+    merge_into_processed([shallow], str(output))
+    same = next(r for r in json.loads(output.read_text()) if r["id"] == preferred["id"])
+    assert same["description_clean"].count("Previous deep source paragraph.") == 1
+    assert same["description_clean"].count(SUMMARY) == 1
+    new_cycle = source_row(directory + "-0", old_host, "Anticipated 2/15/28")
+    new_cycle["description_clean"] = new_cycle["description_raw"] = "New cohort eligibility is pending."
+    for _ in range(2):
+        merge_into_processed([copy.deepcopy(new_cycle)], str(output))
+        current = next(r for r in json.loads(output.read_text()) if r["id"] == preferred["id"])
+        assert current["description_clean"] == current["description_raw"] == "New cohort eligibility is pending."
+        assert current["deadline"] == "2028-02-15" and current["compensation_details"] != SUPPORT
+
+
 
 
 def test_ligo_surf_keeps_its_two_application_routes_separate():
@@ -596,6 +637,22 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert public_opening(row)["on"] == opening
         timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
         assert timing["explicit"]["deadline"] == close and timing["quotes"]["deadline"]["source_url"] == page
+        majors = ["Biomedical science", "Behavioral science"] if row is crisp else [
+            "Mathematics", "Statistics", "Computer Science", "Social science",
+        ]
+        assert row["eligibility"]["majors"] == majors
+        loaded = data_loader._sanitize_opportunity(copy.deepcopy(row))
+        card = project_public_opportunity_payload(loaded, loaded)
+        assert "majors_attribution" not in card
+        detail = build_detail_fields(card, loaded)["fields"]["eligibility"]
+        assert detail["explicit"]["majors"] == majors
+        host = crisp_host if row is crisp else smu_host.lower()
+        assert detail["quotes"]["majors"]["source_url"] == host
+        text = card["description_clean"]
+        if row is crisp:
+            assert text.count("incoming first-year students") == 1 and "behavioral science" in text
+        else:
+            assert text.count("two academic routes") == 1 and "Social science majors can apply" in text
         first = copy.deepcopy(row)
         apply_program_window(row)
         assert row == first
@@ -640,6 +697,9 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert changed["deadline"].startswith("2028") and changed["deadline_is_estimate"]
         assert changed["eligibility"]["min_gpa"] is None and changed["paid"] == new["paid"] != "yes"
         assert changed["compensation_details"] != "$5,600 stipend" and host_program_terms.checked_window(changed) is None
+        assert host_program_terms.quote(changed, "majors") is None
+        assert "two academic routes" not in changed["description_clean"]
+        assert "incoming first-year students" not in changed["description_clean"]
         assert changed["location"] != "Indianapolis, IN" and changed["eligibility"]["work_auth_notes"] != "U.S. citizen or permanent resident"
     for item in (directory(crisp_url, "2/1/27", smu_host), directory(SMU.directory_url, "2/15/27", crisp_host),
                  normalize_award({**award, "awardeeName": "Another university"}),

@@ -47,7 +47,7 @@ from src.contact_instructions import (
     capture_metadata,
     same_source_page,
 )
-from src.normalizers import bu_stars
+from src.normalizers import host_program_terms
 from src.normalizers.ucb_dedup import dedupe_against_existing
 from src.program_windows import apply_program_window
 
@@ -317,7 +317,7 @@ def _normalize_program(
         },
     }
     apply_program_window(record)
-    bu_stars.apply_terms(record)
+    host_program_terms.apply_terms(record)
     return record
 
 
