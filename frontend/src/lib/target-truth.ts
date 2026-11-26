@@ -332,11 +332,6 @@ export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url'
     const destination = safeHttpUrl(opp.url);
     return destination && MSU_NATSCI_PROFILE.test(destination) ? destination : undefined;
   }
-  if (opp.source === 'jhu_faculty' && opp.source_url === 'https://neuroscience.jhu.edu/research/faculty') {
-    const destination = safeHttpUrl(opp.url);
-    return destination && /^https:\/\/neuroscience\.jhu\.edu\/research\/faculty\/[1-9]\d*$/.test(destination)
-      ? destination : undefined;
-  }
   const georgetownEnglishRoster = opp.source === 'georgetown_faculty'
     && opp.source_url === 'https://english.georgetown.edu/people/full-time-faculty-2/';
   if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster) {

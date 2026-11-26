@@ -1,7 +1,6 @@
 """Read the Snyder department's appointments for its matched School of Medicine IDs."""
 
 from collections import defaultdict
-from datetime import UTC, datetime
 
 from . import ucb_common
 
@@ -53,7 +52,7 @@ def _apply(row, receipt, seen):
     _set_title(row, receipt["title"])
     metadata = row["metadata"]
     metadata.pop("faculty_title_read_status", None)
-    row.update(url=receipt["profile"], source_url=ROSTER)
+    row.update(url=receipt["profile"], source_url=receipt["profile"])
     # The directory establishes the listing and quoted position. The remaining
     # medical-school seed fields still have no new individual-page verification.
     metadata.update(faculty_title_observation=receipt.copy(),
@@ -66,14 +65,14 @@ def observe(records) -> int:
     if not candidates:
         return 0
     soup = ucb_common.fetch_soup(ROSTER)
-    if soup is None:
+    if soup is None or soup._ofe_final_url != ROSTER:
         return 0
     by_path = defaultdict(list)
     for card in soup.select("ul.facultylist > li[data-type]"):
         link = card.select_one("a[href^='/research/faculty/']")
         if link:
             by_path[link["href"]].append(card)
-    seen = datetime.now(UTC).isoformat()
+    seen = soup._ofe_observed_at
     observed = 0
     for row in candidates:
         profile_id = PROFILES[row["id"]][1]
@@ -102,9 +101,25 @@ def observe(records) -> int:
             # inherit the department link or the medical seed's old title.
             _withhold_changed_appointment(row)
             continue
-        _apply(row, {"profile": f"{ROSTER}/{profile_id}", "source": ROSTER,
+        profile_url = f"{ROSTER}/{profile_id}"
+        profile = ucb_common.fetch_soup(profile_url, timeout=8, max_retries=1)
+        if profile is None:
+            continue
+        if profile._ofe_final_url != profile_url:
+            _withhold_changed_appointment(row)
+            continue
+        identity = profile.select_one('meta[property="og:title"][content]')
+        position = profile.select_one(".textcontentcontainer .subtitle")
+        if identity is None or position is None:
+            continue
+        quoted = next(position.stripped_strings, "").partition(";")[0]
+        if (identity["content"].strip() != row["pi_name"]
+                or " ".join(quoted.split()) != title):
+            _withhold_changed_appointment(row)
+            continue
+        _apply(row, {"profile": profile_url, "source": ROSTER,
                      "title": title, "name": row["pi_name"], "section": section,
-                     "checked_on": seen[:10]}, seen)
+                     "checked_on": seen[:10], "profile_observed_at": profile._ofe_observed_at}, seen)
         observed += 1
     return observed
 
@@ -122,7 +137,7 @@ def preserve_observation(previous, incoming):
     receipt = metadata.get("faculty_title_observation") or {}
     profile = f'{ROSTER}/{PROFILES[incoming["id"]][1]}'
     if (previous.get("department") == DEPARTMENT and previous.get("url") == profile
-            and previous.get("source_url") == ROSTER and receipt.get("source") == ROSTER
+            and previous.get("source_url") in (profile, ROSTER) and receipt.get("source") == ROSTER
             and receipt.get("profile") == profile and receipt.get("name") == incoming["pi_name"]
             and receipt.get("title") == metadata.get("faculty_title") and metadata.get("last_seen_at")
             and incoming["metadata"].get("verification_scope") == "curated"

@@ -520,14 +520,3 @@ describe('Michigan State Natural Science faculty destinations', () => {
     expect(facultyProfileUrl({ ...row, source_url: engineering, url: engineering })).toBe(engineering);
   });
 });
-
-it('opens the matched JHU Neuroscience person while citing the department roster', () => {
-  const source_url = 'https://neuroscience.jhu.edu/research/faculty';
-  const person = source_url + '/7';
-  const row = { source: 'jhu_faculty', source_url, url: person };
-  expect(facultyProfileUrl(row)).toBe(person);
-  expect(opportunitySourceUrl(row)).toBe(source_url);
-  for (const url of [source_url, person + '/lab', 'https://another.example/research/faculty/7']) {
-    expect(facultyProfileUrl({ ...row, url })).toBeUndefined();
-  }
-});

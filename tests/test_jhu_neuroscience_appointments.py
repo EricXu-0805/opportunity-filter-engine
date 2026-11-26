@@ -20,7 +20,18 @@ def _card(profile, name, section, title):
 
 
 def _page(*cards):
-    return BeautifulSoup(f'<ul class="facultylist">{"".join(cards)}</ul>', "html.parser")
+    soup = BeautifulSoup(f'<ul class="facultylist">{"".join(cards)}</ul>', "html.parser")
+    return ucb_common._mark_fetched_soup_observation(
+        soup, requested_url=jhu_neuroscience.ROSTER, final_url=jhu_neuroscience.ROSTER,
+    )
+
+
+def _profile(url, name, title):
+    soup = BeautifulSoup(
+        f'<meta property="og:title" content="{name}"><div class="textcontentcontainer">'
+        f'<p class="subtitle">{title}</p></div>', "html.parser",
+    )
+    return ucb_common._mark_fetched_soup_observation(soup, requested_url=url, final_url=url)
 
 
 def test_department_observation_survives_failed_read_and_yields_to_restored_primary(monkeypatch, tmp_path):
@@ -33,7 +44,18 @@ def test_department_observation_survives_failed_read_and_yields_to_restored_prim
     primary = _card(62, "Ernst Niebur", "Primary", "Professor of Neuroscience<br/>Director of Admissions")
     secondary = _card(9, "Jeremy Nathans", "Secondary", "Professor of Molecular Biology and Genetics")
     soup = _page(adjunct, primary, secondary)
-    monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: soup)
+    profile_name = "Seth Blackshaw"
+    seth_title = "Adjunct Professor of Neuroscience; Professor of Ophthalmology"
+
+    def fetch(url, **kwargs):
+        if url == jhu_neuroscience.ROSTER:
+            return (ucb_common._mark_fetched_soup_observation(soup, requested_url=url, final_url=url)
+                    if soup is not None else None)
+        if url.endswith("/7"):
+            return _profile(url, profile_name, seth_title) if profile_name else None
+        return _profile(url, "Ernst Niebur", "Professor of Neuroscience<br/>Director of Admissions")
+
+    monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
 
     def refresh():
         ledger = {}
@@ -51,7 +73,8 @@ def test_department_observation_survives_failed_read_and_yields_to_restored_prim
     assert source_verified_at(first[SETH]) is None
     receipt = first[SETH]["metadata"]["faculty_title_observation"]
     assert receipt["profile"] == first[SETH]["url"] == f"{jhu_neuroscience.ROSTER}/7"
-    assert receipt["source"] == first[SETH]["source_url"] == jhu_neuroscience.ROSTER
+    assert receipt["source"] == jhu_neuroscience.ROSTER
+    assert first[SETH]["source_url"] == first[SETH]["url"]
     second = refresh()
     assert second.keys() == first.keys()
     assert second[SETH]["metadata"]["first_seen_at"] == first[SETH]["metadata"]["first_seen_at"]
@@ -61,7 +84,10 @@ def test_department_observation_survives_failed_read_and_yields_to_restored_prim
     assert failed[SETH] == second[SETH]
     assert source_last_seen_at(failed[JEREMY]) is None
 
-    soup = _page(_card(7, "Someone Else", "Primary", "Professor of Neuroscience"))
+    soup = _page(adjunct)
+    profile_name = ""
+    assert refresh()[SETH] == second[SETH]
+    profile_name = "Someone Else"
     contradicted = refresh()[SETH]
     assert "faculty_title_observation" not in contradicted["metadata"]
     assert contradicted["metadata"]["faculty_title"] == ""
@@ -70,6 +96,8 @@ def test_department_observation_survives_failed_read_and_yields_to_restored_prim
     assert refresh()[SETH]["metadata"]["faculty_title"] == ""
 
     soup = _page(_card(7, "Seth Blackshaw", "Primary", "Professor of Neuroscience"))
+    profile_name = "Seth Blackshaw"
+    seth_title = "Professor of Neuroscience"
     restored = refresh()[SETH]
     assert restored["metadata"]["faculty_title"] == "Professor of Neuroscience"
     assert restored["metadata"]["faculty_title_observation"]["section"] == "Primary"
