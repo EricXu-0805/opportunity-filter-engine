@@ -1,0 +1,30 @@
+name: Check public faculty publication advice in two languages
+on:
+  push:
+    branches: [audit/b20-original-details-20261126]
+    paths: ['data/audits/maintenance-2026-11-26/retired-publication-observation.json']
+permissions:
+  contents: read
+jobs:
+  read-details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install playwright
+          playwright install --with-deps chromium
+      - name: Follow the three original public routes in English and Chinese
+        run: |
+          MANIFEST=data/audits/maintenance-2026-11-26/retired-publication-observation.json
+          python data/audits/maintenance-2026-11-26/check_retired_publication_advice.py "$(jq -r .sha "$MANIFEST")" "$(jq -r .expectation "$MANIFEST")" retired-publication-receipt.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: retired-publication-advice
+          path: retired-publication-receipt.json
