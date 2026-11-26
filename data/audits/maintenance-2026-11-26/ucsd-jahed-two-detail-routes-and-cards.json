@@ -1,0 +1,47 @@
+{
+  "checked_at": "2026-11-26T19:46:12+00:00",
+  "same_frontend_backend_sha": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c",
+  "target": {
+    "id": "faculty-ucsd-nano-8a42e65d",
+    "pi_name": "Zeinab Jahed",
+    "api_http": 200,
+    "page_http": 200,
+    "button_label": "View faculty profile",
+    "rendered_href": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+    "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+    "active": true,
+    "frontend_sha": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c",
+    "rank_source": {
+      "text": "Associate Professor",
+      "source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "observed_at": "2026-11-26"
+    }
+  },
+  "legacy_control": {
+    "id": "faculty-ucsd-nano-467aa36b",
+    "pi_name": "Ken Vecchio",
+    "api_http": 200,
+    "page_http": 200,
+    "button_label": "View faculty profile",
+    "rendered_href": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+    "source_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+    "active": true,
+    "frontend_sha": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c"
+  },
+  "matching_view_http": 200,
+  "matching_query": {
+    "tab": "all",
+    "today": "2026-11-26",
+    "search_query": "Zeinab Jahed",
+    "source": "ucsd_faculty"
+  },
+  "matching_ids": [
+    "faculty-ucsd-nano-8a42e65d"
+  ],
+  "actual_card_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+  "actual_card_source_url": null,
+  "matched_count": 1,
+  "scope": "Loopback public Chromium details and full-corpus matching. No account or saved-state write.",
+  "actions_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885531755",
+  "matching_and_saved_card_tests": "Both ordinary components passed using the matching and detail responses in the same Actions job. No account state was created or changed."
+}
