@@ -57,8 +57,17 @@ async def audit():
             return await p.evaluate("JSON.parse(localStorage.getItem('ofe_custom_imports')||'[]')")
         async def paste(source,scope):
             await p.goto(site+'/import',wait_until='domcontentloaded')
-            await p.get_by_role('tab',name='By text',exact=True).click()
-            await p.get_by_placeholder('Paste the full posting',exact=False).fill(source)
+            tab=p.get_by_role('tab',name='By text',exact=True)
+            box=p.get_by_placeholder('Paste the full posting',exact=False)
+            # In Next development the account's first hydration can remount this
+            # tab; wait for the actual mode control to respond before entering input.
+            for _ in range(8):
+                await tab.click(timeout=25000)
+                try:
+                    await expect(box).to_be_visible(timeout=1700)
+                    break
+                except AssertionError:pass
+            await box.fill(source)
             async with p.expect_response(lambda r:urlsplit(r.url).path=='/api/import-text',timeout=50000) as got:
                 await button('Extract with AI').click()
             r=await got.value;payload=await r.json()
