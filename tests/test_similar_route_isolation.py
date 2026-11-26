@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 import threading
 from copy import deepcopy
 
@@ -57,6 +59,8 @@ def corpus(monkeypatch):
         opportunities, "load_opportunities_by_id",
         lambda: {record["id"]: record for record in records},
     )
+    monkeypatch.setattr(opportunities, "load_indexed_opportunities",
+                        lambda: (records, opportunities.load_opportunities_by_id()))
     return records
 
 
@@ -98,6 +102,44 @@ def test_another_detail_reuses_match_candidates_until_release_changes(monkeypatc
     assert len(scanned) == 2
 
 
+def test_similar_keeps_source_and_candidates_together_during_hot_reload(monkeypatch, tmp_path):
+    from backend import data_loader
+
+    monkeypatch.setattr(data_loader, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(data_loader, "_opp_cache", [])
+    monkeypatch.setattr(data_loader, "_opp_cache_by_id", {})
+    monkeypatch.setattr(data_loader, "_opp_cache_mtime", 0)
+    monkeypatch.setattr(data_loader, "_opp_cache_generation", 0)
+    # Each file passes the normal canonicalizer and publishes a new list/index.
+    # Leave the process-wide matching model used by other tests in place.
+    monkeypatch.setattr(data_loader, "_prepare_ranker_corpus", lambda _rows, _mtime: None)
+    monkeypatch.setattr(data_loader, "_publish_hooks", [])
+    path = tmp_path / "opportunities.json"
+
+    def publish(ids, stamp):
+        candidate = tmp_path / "candidate.json"
+        candidate.write_text(json.dumps([_record(row_id) for row_id in ids]))
+        os.utime(candidate, (stamp, stamp))
+        candidate.replace(path)
+        return data_loader.load_opportunities()
+
+    publish(["source", "old-peer"], 100)
+    original_resolve = opportunities.release_visible_opportunity_by_id
+
+    def resolve_then_reload(lookup, row_id):
+        source = original_resolve(lookup, row_id)
+        assert source and source["id"] == "source"
+        assert [r["id"] for r in publish(["new-peer"], 101)] == ["new-peer"]
+        return source
+
+    monkeypatch.setattr(opportunities, "release_visible_opportunity_by_id", resolve_then_reload)
+    response = TestClient(app).get("/api/opportunities/source/similar?limit=3")
+    assert response.status_code == 200
+    assert [r["id"] for r in response.json()["opportunities"]] == ["old-peer"]
+    monkeypatch.setattr(opportunities, "release_visible_opportunity_by_id", original_resolve)
+    assert TestClient(app).get("/api/opportunities/source/similar?limit=3").status_code == 404
+
+
 def test_similar_scan_keeps_health_and_detail_responsive(monkeypatch, corpus):
     """Hold corpus iteration, then exercise two real sibling HTTP handlers.
 
@@ -118,7 +160,8 @@ def test_similar_scan_keeps_health_and_detail_responsive(monkeypatch, corpus):
         finally:
             finished.set()
 
-    monkeypatch.setattr(opportunities, "load_opportunities", gated_records)
+    monkeypatch.setattr(opportunities, "load_indexed_opportunities",
+                        lambda: (gated_records(), opportunities.load_opportunities_by_id()))
 
     async def probe():
         async with httpx.AsyncClient(
@@ -168,8 +211,8 @@ def test_similar_scan_keeps_health_and_detail_responsive(monkeypatch, corpus):
     ("/api/opportunities/source/similar?limit=invalid", 422),
 ])
 def test_similar_refuses_invalid_requests_before_corpus_scan(monkeypatch, corpus, path, status):
-    def unexpected_scan():
+    def unexpected_scan(_rows):
         raise AssertionError("refused requests must not scan the corpus")
 
-    monkeypatch.setattr(opportunities, "load_opportunities", unexpected_scan)
+    monkeypatch.setattr(opportunities, "release_actionable_corpus", unexpected_scan)
     assert TestClient(app).get(path).status_code == status

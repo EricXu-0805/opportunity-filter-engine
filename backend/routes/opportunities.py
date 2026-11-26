@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import (
     corpus_version,
+    load_indexed_opportunities,
     load_opportunities,
     load_opportunities_by_id,
 )
@@ -566,7 +567,7 @@ def get_similar_opportunities(
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
-    lookup = load_opportunities_by_id()
+    corpus, lookup = load_indexed_opportunities()
     source = release_visible_opportunity_by_id(lookup, opportunity_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -577,7 +578,7 @@ def get_similar_opportunities(
     source_org = (source.get("organization") or "").lower()
 
     scored: list[tuple[float, dict]] = []
-    for opp in release_actionable_corpus(load_opportunities()):
+    for opp in release_actionable_corpus(corpus):
         if opp.get("id") == opportunity_id:
             continue
         if not (opp.get("metadata") or {}).get("is_active", True):
