@@ -27,9 +27,12 @@ with sync_playwright() as pw:
         ):
             resp = page.goto(url, wait_until="domcontentloaded")
             assert resp and resp.ok
-            body = " ".join(page.locator("body").inner_text().split())
-            assert all(s.casefold() in body.casefold() for s in snippets), (url, snippets)
-            receipt[kind] = {"url": page.url, "status": resp.status, "source_terms_present": list(snippets)}
+            # BU uses accordions. Their content exists in the loaded page even
+            # while a section is collapsed.
+            body = " ".join((page.locator("body").text_content() or "").split())
+            present = [s for s in snippets if s.casefold() in body.casefold()]
+            receipt[kind] = {"url": page.url, "title": page.title(), "status": resp.status,
+                             "source_terms_present": present, "missing": [s for s in snippets if s not in present]}
         for oid in ("bu-bbc659c6ac92", "sro-60f60fbd", "sro-bc33bc08", "sro-51c40e5b"):
             reply = ctx.request.get(SITE + "/api/opportunities/" + oid, params={"_release_scope": SCOPE})
             entry = receipt["records"][oid] = {"status": reply.status}
@@ -73,6 +76,7 @@ with sync_playwright() as pw:
                     expect(item).to_contain_text(text)
                     expect(item.get_by_role("link")).to_have_attribute("href",url)
             page.get_by_test_id("fact-field-eligibility").screenshot(path=out / (oid + ".png"), animations="disabled")
+        assert not receipt["program"]["missing"] and not receipt["faq"]["missing"], (receipt["program"], receipt["faq"])
     finally:
         (out/"boston-stars-eligibility.json").write_text(json.dumps(receipt,indent=2)+"\n")
         print(json.dumps(receipt,ensure_ascii=False))
