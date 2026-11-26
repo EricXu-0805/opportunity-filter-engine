@@ -20,7 +20,7 @@ def focus(p,el,reverse=False):
     raise AssertionError(('unreachable by keyboard',str(el)))
 
 def state(p):
-    p.wait_for_timeout(380)
+    p.wait_for_timeout(1500)
     return p.evaluate("""async () => {
       const e = document.activeElement, c = getComputedStyle(e);
       const entry = await new Promise(resolve => {
@@ -99,10 +99,14 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         p.wait_for_url('**/results**',timeout=90000)
         group=p.get_by_role('tablist').filter(has=p.get_by_role('tab',name=re.compile(r'^(All|全部|所有)')))
         first=group.get_by_role('tab').first;expect(first).to_be_visible(timeout=65000)
-        focus(p,group.locator('[aria-selected=true]'))
-        p.keyboard.press('Home')
-        if not first.evaluate('e=>document.activeElement===e'):
+        if first.get_attribute('tabindex') is None:
+            # The original buttons are all in sequential tab order. The first can
+            # be behind the selected category, followed by hundreds of card controls.
             focus(p,first)
+        else:
+            focus(p,group.locator('[aria-selected=true]'))
+            p.keyboard.press('Home')
+            expect(first).to_be_focused()
         p.keyboard.press('Enter'); expect(first).to_have_attribute('aria-selected','true')
         p.keyboard.press('ArrowRight');p.wait_for_timeout(450)
         second=group.get_by_role('tab').nth(1)
