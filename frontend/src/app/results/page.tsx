@@ -1013,7 +1013,7 @@ function ResultsContent() {
       */}
 
       {!loading && data && (
-        <ResultsTabs activeTab={activeTab} onChange={handleTabChange} counts={counts} t={t} />
+        <ResultsTabs activeTab={activeTab} onChange={handleTabChange} counts={counts} t={t} hasPanel={!error} />
       )}
 
       {!loading && data && profile && (
@@ -1114,7 +1114,7 @@ function ResultsContent() {
       )}
 
       {!loading && !error && data && (
-        <div className="space-y-6">
+        <div id="match-category-results" role="tabpanel" aria-labelledby={`match-category-tab-${activeTab}`} className="space-y-6">
           {filteredTotal === 0 ? (
             <EmptyState
               hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}

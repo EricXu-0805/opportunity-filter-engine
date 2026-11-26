@@ -1,7 +1,9 @@
+import { useRef, type KeyboardEvent } from 'react';
 import { TABS, type Tab, type TFunc } from './types';
 
 export interface ResultsTabsProps {
   activeTab: Tab;
+  hasPanel?: boolean;
   onChange: (tab: Tab) => void;
   counts: Record<Tab, number>;
   t: TFunc;
@@ -16,17 +18,37 @@ export interface ResultsTabsProps {
  * left" rather than as broken UI. The mask is removed at `sm:` because the
  * 5 tabs fit comfortably in the desktop container.
  */
-export function ResultsTabs({ activeTab, onChange, counts, t }: ResultsTabsProps) {
+export function ResultsTabs({ activeTab, onChange, counts, t, hasPanel = true }: ResultsTabsProps) {
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight': next = (index + 1) % TABS.length; break;
+      case 'ArrowLeft': next = (index - 1 + TABS.length) % TABS.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = TABS.length - 1; break;
+      default: return;
+    }
+    event.preventDefault();
+    if (TABS[next].key !== activeTab) onChange(TABS[next].key);
+    buttons.current[next]?.focus();
+  }
+
   return (
     <div
       className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 sm:mb-10 no-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] sm:[mask-image:none]"
     >
       <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1" role="tablist" aria-label={t('results.matchCategoryAria')}>
-        {TABS.map(({ key, labelKey, icon: Icon, color }) => (
+        {TABS.map(({ key, labelKey, icon: Icon, color }, index) => (
           <button
             key={key}
             type="button"
             role="tab"
+            ref={button => { buttons.current[index] = button; }}
+            id={`match-category-tab-${key}`}
+            tabIndex={activeTab === key ? 0 : -1}
+            aria-controls={hasPanel ? 'match-category-results' : undefined}
+            onKeyDown={event => navigate(event, index)}
             aria-selected={activeTab === key}
             onClick={() => onChange(key)}
             className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-medium whitespace-nowrap transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
