@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-26",
+  "item": "M17",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1376",
+  "feature_commit": "cd28aa79a298c44d172aab25a42a5153e1002473",
+  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45818516665",
+  "before_fix_production": {
+    "site": "https://joinalab.com",
+    "request": "POST /api/matches/view?llm=false",
+    "browser_route": "/results",
+    "matcher_version": "41.2539eabb",
+    "public_target_id": "faculty-ib-78788e71",
+    "source_record": "https://joinalab.com/opportunities/faculty-ib-78788e71",
+    "input": "Synthetic UIUC Integrative Biology profile; research-only, Junior, beginner; ecology, wetlands and geospatial analysis. Verified response against the same target found by its public title.",
+    "controlled_work": "I mapped public land use using GIS.",
+    "status_pair": [
+      "confirmed",
+      "withdrawn"
+    ],
+    "final_scores": [
+      51.8,
+      51.8
+    ],
+    "readiness_scores": [
+      56,
+      56
+    ],
+    "experience_receipts": [
+      null,
+      null
+    ]
+  },
+  "isolated_exact_corpus_replay": {
+    "profile": "Synthetic junior Integrative Biology profile, beginner, manual work originally confirmed by its author. Same input and target for each state.",
+    "statuses": [
+      "candidate",
+      "confirmed",
+      "withdrawn"
+    ],
+    "results": {
+      "faculty-ib-78788e71": {
+        "final": [
+          47.7,
+          49.1,
+          47.7
+        ],
+        "readiness": [
+          56,
+          60,
+          56
+        ],
+        "eligibility": [
+          73.6,
+          73.6,
+          73.6
+        ]
+      },
+      "faculty-anthropology-aec66c90": {
+        "final": [
+          55.1,
+          56.9,
+          55.1
+        ],
+        "readiness": [
+          56,
+          60,
+          56
+        ],
+        "eligibility": [
+          56.8,
+          56.8,
+          56.8
+        ]
+      },
+      "faculty-ucb-cee-30f276d1": {
+        "final": [
+          39.6,
+          39.6,
+          39.6
+        ],
+        "readiness": [
+          56,
+          56,
+          56
+        ],
+        "safe_exclusion": "A collector keyword says GIS; the source states logistics. No evidence or credit is produced."
+      }
+    }
+  },
+  "corpus_scope": {
+    "active_records_with_any_supported_method": 59,
+    "school_shards": 34,
+    "source_research_text_or_explicit_topic": 58,
+    "explicit_required_skill": 1,
+    "date_and_actionability": "Corpus figures are before requester-specific campus, release, date, and eligibility filters. Each actual match still uses the ordinary visible universe."
+  },
+  "end_to_end": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45818677731",
+    "status": "pending"
+  },
+  "production_acceptance": "pending"
+}
