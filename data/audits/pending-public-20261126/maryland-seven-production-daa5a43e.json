@@ -1,0 +1,82 @@
+{
+  "observed_utc": "2026-11-26T17:25:19.537152+00:00",
+  "production_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "public_originals": [
+    {
+      "original": "faculty-umd-math-0f940cb3",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-36800e3a",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-dcee82bf",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-90a4b94e",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-9eb3e2a4",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-0300a4bb",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    },
+    {
+      "original": "faculty-umd-math-93280e3c",
+      "detail_http": 200,
+      "html_http": 200,
+      "school_destination_http": 200,
+      "faculty_link_matches": true,
+      "campus_heading_matches_person": true,
+      "rank_matches_release": true,
+      "anonymous_contact_status": "sign_in_required"
+    }
+  ],
+  "school_coverage": {
+    "listing_count": 6,
+    "faculty_contact_count": 1359,
+    "unreviewed_count": 0,
+    "total_count": 1365
+  }
+}
