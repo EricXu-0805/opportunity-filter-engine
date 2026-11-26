@@ -332,9 +332,11 @@ export function facultyProfileUrl(opp: Pick<Opportunity, 'source' | 'source_url'
     const destination = safeHttpUrl(opp.url);
     return destination && MSU_NATSCI_PROFILE.test(destination) ? destination : undefined;
   }
-  if (opp.source === 'ucb_datascience_faculty') {
-    // The CDSS collector stores the link on the person's name in url. A
-    // roster-only card has the same URL in both fields (or lacks provenance).
+  const georgetownEnglishRoster = opp.source === 'georgetown_faculty'
+    && opp.source_url === 'https://english.georgetown.edu/people/full-time-faculty-2/';
+  if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster) {
+    // These collectors store the person's link in url and the roster in source_url.
+    // A roster-only card has no separate profile.
     const destination = safeHttpUrl(opp.url);
     const directory = safeHttpUrl(opp.source_url);
     return directory && destination && destination !== directory ? destination : undefined;

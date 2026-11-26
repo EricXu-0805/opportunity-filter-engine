@@ -30,6 +30,26 @@ from __future__ import annotations
 from .. import faculty_graph
 
 
+def _engineering_directory(unit: str, old_card: str) -> dict:
+    # Drupal's grid places several people in each .views-row. Only each
+    # individual node binds one person's name, rank and destination.
+    return {
+        "selectors": {
+            "card": f".directory-person, {old_card}:has(a.dir_link):not(:has(.directory-person))",
+            "name": ".field--name-field-person-name, a.dir_link",
+            "link": "a.directory-person-wrapper-link, a.dir_link",
+            "title": ".field--name-field-person-job-title-s-",
+        },
+        "profile_enrich": {
+            "always": True,
+            "profile_url_re": rf"^https://{unit}\.gatech\.edu/(?:directory/person|people)/[^/?#]+/?$",
+            "identity_selector": "h1",
+            "email_selector": ".field--name-field-person-email",
+            "bound_contact": {"allowed_email_domains": ["gatech.edu"], "nested_record_selector": ".directory-person"},
+        },
+    }
+
+
 # Scheller College of Business ships its whole roster as one authoritative JSON
 # feed; each academic area filters that feed and ladder-filters the titles.
 def _scheller(short: str, name: str, majors: list[str], area: str) -> dict:
@@ -93,10 +113,23 @@ SCHOOL: dict = {
             "short": "MATH",
             "name": "School of Mathematics",
             "majors": ["Mathematics", "Applied Mathematics"],
+            # The original ID used the two spaces still printed by the school.
+            # The shared card reader normalizes that whitespace for display.
+            "profile_id_names": {
+                "math.gatech.edu/people/dmitrii-ostrovskii": ("Dmitrii Ostrovskii", "Dmitrii  Ostrovskii"),
+            },
             "directory_url": "https://math.gatech.edu/people?field_job_type_tid=11",
             "scrape": {
                 "url": "https://math.gatech.edu/people?field_job_type_tid=11",
-                "selectors": {"card": "tr", "name": "td a", "link": "td a"},
+                # The faculty filter now returns individual cards. Older copies
+                # used a table with a linked name in the first cell.
+                "selectors": {
+                    "card": ".profile-card, tr:has(a:is(td a[href*='/people/']))",
+                    "name": ".profile-name a, td a[href*='/people/']",
+                    "link": ".profile-name a, td a[href*='/people/']",
+                    "title": ".profile-title",
+                    "bound_contact": {"allowed_email_domains": ["gatech.edu"]},
+                },
             },
             # The per-profile pages carry no research field, but a dedicated
             # aggregator page lists each professor's areas keyed by /people/<slug>.
@@ -156,9 +189,7 @@ SCHOOL: dict = {
             "directory_url": "https://chbe.gatech.edu/directory1?field_person_category_target_id=1",
             "scrape": {
                 "url": "https://chbe.gatech.edu/directory1?field_person_category_target_id=1",
-                "selectors": {"card": ".views-row", "name": "a.dir_link",
-                              "link": "a.dir_link",
-                              "title": ".field--name-field-person-job-title-s-"},
+                **_engineering_directory("chbe", ".views-row"),
                 "ladder_filter": {"drop": r"emerit|adjunct|affiliat|of the practice"
                                           r"|academic professional"},
             },
@@ -193,16 +224,16 @@ SCHOOL: dict = {
         {'short': 'AE',
          'name': 'Daniel Guggenheim School of Aerospace Engineering',
          'majors': ['Aerospace Engineering'],
-         'directory_url': 'https://ae.gatech.edu/people?tid=1',
-         'scrape': {'url': 'https://ae.gatech.edu/people?tid=1',
-                    'selectors': {'card': '.node--type-dir-person',
-                                  'name': 'a.dir_link',
-                                  'link': 'a.dir_link',
-                                  'title': '.field--name-field-person-job-title-s-'},
+         'profile_id_names': {
+             'ae.gatech.edu/directory/person/masatoshi-hirabayashi': (
+                 'Masatoshi Hirabayashi', 'Masatoshi "Toshi" Hirabayashi'),
+         },
+         'directory_url': 'https://ae.gatech.edu/browser-directory?tid=1',
+         'scrape': {'url': 'https://ae.gatech.edu/browser-directory?tid=1',
+                    **_engineering_directory("ae", ".node--type-dir-person"),
                     'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|of the practice|academic '
                                               'professional|research '
-                                              '(scientist|engineer)|post.?doc|lecturer|instructor'},
-                    'paginate': {'param': 'page', 'start': 1, 'max': 8}}},
+                                              '(scientist|engineer)|post.?doc|lecturer|instructor'}}},
         {'short': 'BME',
          'name': 'Wallace H. Coulter Department of Biomedical Engineering',
          'majors': ['Biomedical Engineering'],
@@ -237,7 +268,23 @@ SCHOOL: dict = {
                                   'name': '.faculty-name a',
                                   'link': '.faculty-name a',
                                   'title': '.faculty-title'},
-                    'link_filter': '/faculty/',
+                    # New faculty have user or personal paths alongside staff. A
+                    # named professor rank on the card qualifies those paths;
+                    # legacy faculty paths may instead carry a chair/director title.
+                    'field_filter': {
+                        'selector': ".faculty-name a[href*='/faculty/'], "
+                                    ".faculty-title:-soup-contains('Professor', 'professor')",
+                        'require_present': True,
+                    },
+                    'profile_enrich': {
+                        'always': True,
+                        'profile_url_re': r'^https://(?:www\.)?me\.gatech\.edu/(?:user/\d+|[\w-]+)/?$',
+                        'identity_selector': '.banner-text-wrapper h2',
+                        'research_selector': ".banner-text-wrapper h5:-soup-contains('Research Area')",
+                        'email_selector': ".banner-text-wrapper p:has(strong:-soup-contains('Email'))",
+                        'bound_contact': {'allowed_email_domains': ['gatech.edu'],
+                                          'nested_record_selector': '.banner-text-wrapper, h2'},
+                    },
                     'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|lecturer|of the '
                                               'practice|of practice|academic professional|research '
                                               '(scientist|engineer|faculty|professor)|helluva|coordinator|^staff$'},
@@ -329,8 +376,8 @@ SCHOOL: dict = {
         {'short': 'ID',
          'name': 'School of Industrial Design',
          'majors': ['Industrial Design'],
-         'directory_url': 'https://id.gatech.edu/people',
-         'scrape': {'url': 'https://id.gatech.edu/people',
+         'directory_url': 'https://id.gatech.edu/people/faculty-staff',
+         'scrape': {'url': 'https://id.gatech.edu/people/faculty-staff',
                     'selectors': {'card': '.profile-card',
                                   'name': 'h3',
                                   'link': '.card-link a',

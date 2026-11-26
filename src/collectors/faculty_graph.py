@@ -791,13 +791,15 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     if email and isinstance(email_source, str) and email_source:
         metadata["email_source"] = email_source
 
+    # The English roster always supplies Georgetown's citation. JSON rosters
+    # such as MSU keep their enriched personal page when it was read directly.
+    cite_directory = dept.get("cite_directory") or (
+        scope == "directory" and (dept.get("json_dir") or {}).get("cite_directory")
+    )
     record = {
         "id": opp_id,
         "source": school["source"],
-        # Some JSON rosters publish a person's destination and the appointment
-        # evidence separately. An enriched personal page remains its own source.
-        "source_url": (dept["directory_url"] if scope == "directory"
-                       and (dept.get("json_dir") or {}).get("cite_directory") else profile_url),
+        "source_url": dept["directory_url"] if cite_directory else profile_url,
         "source_type": "faculty_research",
         "title": opp_title,
         "organization": school["organization"],
@@ -2747,7 +2749,15 @@ def _enrich_profile(
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
     email = None
-    if enrich.get("email_selector"):
+    if contact_config := enrich.get("bound_contact"):
+        from .ucb_common import unique_bound_container_contact
+
+        fields = soup.select(enrich["email_selector"])
+        if len(fields) == 1:
+            email = unique_bound_container_contact(
+                fields[0], contact_config, nested_record_selector=contact_config["nested_record_selector"],
+            )
+    elif enrich.get("email_selector"):
         e_el = soup.select_one(enrich["email_selector"])
         if e_el is not None:
             email = _email_from_el(e_el)

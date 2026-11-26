@@ -113,6 +113,28 @@ def observation(unit_id="bio", *, observed_ids=(), baseline=None,
     return obs
 
 
+@pytest.mark.parametrize(("live_fields", "reason"), [
+    ({"live_roster_count": 1, "retained_only_count": 0}, "count_is_not_authority"),
+    ({"live_roster_count": 0, "retained_only_count": 1}, "empty_roster"),
+    ({"live_roster_count": True}, "empty_roster"),
+    ({"live_roster_count": "1"}, "empty_roster"),
+    ({}, "empty_roster"),
+])
+def test_uncounted_roster_distinguishes_live_people_from_retained_records(live_fields, reason):
+    previous = rec("faculty-testu-bio-aaaa0001")
+    current = rec("faculty-testu-bio-bbbb0002", seen=RECENT)
+    entry = observation(observed_ids=[current["id"]], cov=coverage(0))
+    entry.update(live_fields)
+    units = finalize_unit_ledger({"bio": entry}, [previous, current], "testu_faculty")
+    assert units["bio"]["failure_reason"] == reason
+    assert not units["bio"]["retirement_authorized"]
+    result = deactivate_stale_faculty([previous, current], {"testu_faculty": units}, today=TODAY)
+    assert previous["metadata"]["is_active"]
+    if reason == "count_is_not_authority":
+        assert result["records_preserved_missing_lineage"] > 0
+        assert result["records_preserved_failed_source"] == 0
+
+
 def test_ucsc_directory_preserves_the_person_in_the_uid_query():
     endpoint = "https://campusdirectory.ucsc.edu/cd_detail"
     record = {"url": endpoint + "?ref=dept&uid=gomalley#bio"}

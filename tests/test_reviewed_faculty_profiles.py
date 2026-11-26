@@ -23,12 +23,19 @@ VT_APPOINTMENTS = {
     "faculty-vt-che-b0225752": ("Postdoctoral researcher", "trainee_title"),
 }
 PREVIOUS_TITLES = {
+    "faculty-gatech-arch-3a9c2373": "Assistant Professor",
+    "faculty-gatech-arch-e98bc4d9": "Professor; Director, MS in Urban Design Program",
+    "faculty-gatech-arch-196687bf": "Associate Professor",
+    "faculty-gatech-itm-21b8dd50": "Steven A. Denning Professor in Technology & Management",
     **dict.fromkeys(VT_APPOINTMENTS, ""),
     "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
     "faculty-ucsc-lit-f8043691": "Professor of Literature",
 }
 ARCHIVED = {
+    "faculty-gatech-arch-e98bc4d9": ("Professor Emeritus", "retired_title"),
+    "faculty-gatech-arch-196687bf": ("Associate Professor Emeritus", "retired_title"),
+    "faculty-gatech-itm-21b8dd50": ("Professor Emeritus", "retired_title"),
     **VT_APPOINTMENTS,
     "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),
@@ -101,6 +108,42 @@ def test_directory_timestamps_cannot_restore_old_urls_or_appointments(seen, veri
     retired = next(row for row in rows if row["id"] == BEISE)
     assert retired["metadata"]["is_active"] is False
     assert retired["metadata"]["faculty_title"] == "Professor Emerita"
+
+
+def test_emeritus_profile_updates_generated_invitation_but_keeps_independent_source_text():
+    row = _old("faculty-gatech-itm-21b8dd50")
+    row["organization"] = "Georgia Institute of Technology"
+    old = (f"Research opportunity with {row['metadata']['faculty_title']} Han Zhang in the {row['department']} "
+           "at Georgia Institute of Technology. Contact the professor directly to inquire about "
+           "undergraduate research positions in their lab.")
+    row.update(description_clean=old, description_raw="A separately sourced research statement.",
+               eligibility={"eligibility_text_raw": old})
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert row["description_raw"] == "A separately sourced research statement."
+    assert row["description_clean"] == row["eligibility"]["eligibility_text_raw"]
+    assert "Professor Emeritus" in row["description_clean"] and "Contact" not in row["description_clean"]
+    assert row["metadata"]["is_active"] is False
+
+    updated = _old("faculty-gatech-itm-21b8dd50")
+    updated["metadata"]["faculty_title"] = "Visiting Professor"
+    before = deepcopy(updated)
+    assert apply_reviewed_faculty_profiles([updated], today=AS_OF) == 0 and updated == before
+
+
+def test_archived_appointment_keeps_research_from_the_legacy_invitation():
+    row = _old("faculty-gatech-arch-196687bf")
+    row["organization"] = "Georgia Institute of Technology"
+    intro = ("Research opportunity with Associate Professor W. Jude LeBlanc in the School of Architecture "
+             "at Georgia Institute of Technology.")
+    invitation = " Contact the professor directly to inquire about undergraduate research positions in their lab."
+    research = " Research areas: Furniture , Architecture , Urban Design"
+    original_source = intro + " A different, independently sourced sentence." + invitation
+    row.update(description_clean=intro + research + invitation, description_raw=original_source)
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert row["description_clean"] == ("Georgia Institute of Technology lists W. Jude LeBlanc as "
+                                        "Associate Professor Emeritus in School of Architecture." + research)
+    assert row["description_raw"] == original_source
+    assert row["metadata"]["is_active"] is False
 
 
 def test_a_changed_ucsc_appointment_is_outside_the_review():

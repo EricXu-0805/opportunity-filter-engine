@@ -11,6 +11,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 
 const mocks = vi.hoisted(() => ({
+  hasProfile: vi.fn<() => boolean | undefined>(),
   getInteractionsFull: vi.fn(),
   trackInteraction: vi.fn(),
   removeInteraction: vi.fn(),
@@ -19,6 +20,11 @@ const mocks = vi.hoisted(() => ({
   getAuthState: vi.fn(),
   onAuthChange: vi.fn(),
   getShortlistOpportunities: vi.fn(),
+}));
+
+vi.mock('@/lib/use-local-storage-json', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/use-local-storage-json')>(),
+  useHasLocalStorageKey: () => mocks.hasProfile(),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -63,6 +69,7 @@ function authState(uid: string | null) {
 }
 
 beforeEach(() => {
+  mocks.hasProfile.mockReturnValue(true);
   mocks.getInteractionsFull.mockReset();
   mocks.trackInteraction.mockReset();
   mocks.removeInteraction.mockReset();
@@ -101,6 +108,17 @@ async function openStatusMenuAndClear(title: string) {
   fireEvent.click(await screen.findByText('results.statusMenu.remove'));
   fireEvent.click(await screen.findByText('results.statusMenu.removeConfirmYes'));
 }
+
+it.each([
+  [false, 'tracker.emptyProfileCta', '/'],
+  [true, 'tracker.emptyCta', '/results'],
+  [undefined, 'tracker.emptyCta', '/results'],
+] as const)('sends an empty board to the destination its owner can open (profile = %s)', async (hasProfile, label, href) => {
+  mocks.hasProfile.mockReturnValue(hasProfile);
+  mocks.getInteractionsFull.mockResolvedValue(new Map());
+  render(<TrackerPage />);
+  expect(await screen.findByRole('link', { name: label })).toHaveAttribute('href', href);
+});
 
 describe('TrackerPage — DOM: a notes draft survives a genuine status-triggered column move', () => {
   it('typing into the textarea (never blurred), then picking a DIFFERENT status: the card unmounts from one column <section> and remounts in another — the SAME text must still be there', async () => {
