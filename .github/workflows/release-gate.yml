@@ -83,6 +83,9 @@ jobs:
         # always moved on by the time anyone dispatches this.
         run: git checkout --detach "${{ steps.sha.outputs.sha }}"
 
+      - name: Install the candidate's runtime dependencies
+        run: python -m pip install -r requirements.txt
+
       - name: Assemble corpus work file from shards
         # The corpus gate counts committed shard records; assemble also enforces
         # the minimum-record floor, so a checkout with an empty shards directory
@@ -116,7 +119,9 @@ jobs:
         run: |
           set -euo pipefail
           EVIDENCE="data/releases/evidence/${{ steps.sha.outputs.sha }}.json"
-          git fetch --depth=1 origin "${{ github.event.repository.default_branch }}"
+          # The ledger derives its data version with git log -- <shards>.
+          # A depth-one fetch makes the tip appear to have changed every file.
+          git fetch origin "${{ github.event.repository.default_branch }}"
           if git show "FETCH_HEAD:$EVIDENCE" > /tmp/operator-evidence.json 2>/dev/null; then
             python -c "import json;d=json.load(open('/tmp/operator-evidence.json'));print('operator evidence for', sorted(k for k in d if not k.startswith('_')))"
           else
