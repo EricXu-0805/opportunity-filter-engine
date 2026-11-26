@@ -999,6 +999,18 @@ def _settle_program_duplicates(index: dict, seen_ids: set[str], prior: dict, tod
                         deactivation_reason=DUPLICATE_REASON, deactivated_at=stamp or today)
 
 
+def _observed_or_retained_window(opp: dict, prior: dict) -> dict:
+    """Evaluate a list-only observation with the last known deep link and host."""
+    new_link = (opp.get("application") or {}).get("application_url")
+    candidate = {**opp, "organization": opp.get("organization") or prior.get("organization")}
+    if not new_link or new_link == opp.get("url"):
+        candidate["application"] = prior.get("application")
+    if opp.get("deadline") is None:
+        candidate["deadline"] = prior.get("deadline")
+        candidate["deadline_is_estimate"] = prior.get("deadline_is_estimate")
+    return candidate
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1039,14 +1051,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                 if opp["id"] in SRO_WINDOW_ORGANIZATIONS and reviewed_window(prior):
                     # On a list-only refresh, test the observations together with
                     # retained host evidence before carrying the old cohort's facts.
-                    new_link = (opp.get("application") or {}).get("application_url")
-                    candidate = {**opp, "organization": opp.get("organization") or prior.get("organization")}
-                    if not new_link or new_link == opp.get("url"):
-                        candidate["application"] = prior.get("application")
-                    if opp.get("deadline") is None:
-                        candidate["deadline"] = prior.get("deadline")
-                        candidate["deadline_is_estimate"] = prior.get("deadline_is_estimate")
-                    if reviewed_window(candidate) is None:
+                    if reviewed_window(_observed_or_retained_window(opp, prior)) is None:
                         carried = [k for k in carried if k not in (
                             "organization", "application", "eligibility", "deadline", "deadline_is_estimate", "is_rolling",
                         )]
@@ -1059,8 +1064,13 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                     if changed_host:
                         # A new external destination is stronger than carried detail.
                         carried = [k for k in carried if k not in ("application", "deadline", "deadline_is_estimate", "is_rolling")]
-                    if changed_host or opp.get("deadline"):
+                    changed_organization = bool(opp.get("organization") and opp["organization"] != prior.get("organization"))
+                    if changed_host or changed_organization or opp.get("deadline"):
                         carried = [k for k in carried if k not in ("eligibility", "paid", "compensation_details", "duration", "location")]
+                        # A different cohort cannot inherit the old host's eligibility summary.
+                        # A shallow reread of the same cohort still keeps its deep source text.
+                        if not host_program_terms.checked_window(_observed_or_retained_window(opp, prior)):
+                            carried = [k for k in carried if k not in ("description_clean", "description_raw")]
                 for key in carried:
                     opp[key] = deepcopy(prior[key])
                 if "deadline" in carried:
