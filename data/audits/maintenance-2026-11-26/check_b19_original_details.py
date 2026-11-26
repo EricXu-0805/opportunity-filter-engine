@@ -2,6 +2,7 @@
 import argparse
 import json
 import re
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -32,7 +33,12 @@ TITLES = [
 
 def check(page, site, oid, sha, scope):
     url = site + "/opportunities/" + oid
-    public = requests.get(site + "/api/opportunities/" + oid, params={"_release_scope": scope}, timeout=30)
+    for attempt in range(3):
+        public = requests.get(site + "/api/opportunities/" + oid, params={"_release_scope": scope}, timeout=30)
+        if public.status_code != 429 or attempt == 2:
+            break
+        wait = public.headers.get("Retry-After", "60")
+        time.sleep(max(1, int(wait) if wait.isdigit() else 60) + 1)
     public.raise_for_status()
     api = public.json()
     assert api["id"] == oid
@@ -109,12 +115,15 @@ def main():
         browser = pw.chromium.launch(headless=True)
         context = browser.new_context(locale="en-US", viewport={"width": 1400, "height": 960})
         for oid in [*ARCHIVES, *CONTROL, CUI, *WISCONSIN, *SMU, CRISP]:
+            if rows:
+                time.sleep(18)
             page = context.new_page()
             try:
                 rows.append({"ok": True, **check(page, site, oid, args.sha, args.scope)})
             except Exception as exc:
                 rows.append({"ok": False, "id": oid, "failure": f"{type(exc).__name__}: {str(exc)[:240]}",
                              "visible_headings": page.get_by_role("main").get_by_role("heading").all_text_contents()[:24]})
+            print(oid, "PASS" if rows[-1]["ok"] else rows[-1], flush=True)
             page.close()
         browser.close()
     report = {"time_utc": datetime.now(UTC).isoformat(timespec="seconds"), "site": site,
