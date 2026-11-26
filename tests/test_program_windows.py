@@ -496,7 +496,11 @@ def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
 def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path):
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+    from src.matcher.ranker import _filter_context, hard_exclusion
+    from src.normalizers import host_program_terms
+    from src.normalizers.wisc_biological_interactions import SUMMARY, SUPPORT
     from src.program_windows import public_opening
+    from src.saved_searches.filter import match_filter
 
     directory = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
     old_host = "https://wiscience.wisc.edu/IBS-SRP"
@@ -521,6 +525,20 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
         assert (opens["on"], opens["source_url"]) == ("2026-11-01", host)
         timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
         assert timing["quotes"]["deadline"]["source_url"] == host
+        assert SUMMARY in row["description_clean"] and "excluded by funding rules" not in row["description_clean"]
+        assert row["paid"] == "yes" and row["compensation_details"] == SUPPORT and row["duration"] == "10 weeks"
+        assert row["eligibility"]["min_gpa"] is None and row["eligibility"]["preferred_year"] == []
+        loaded = data_loader._sanitize_opportunity(copy.deepcopy(row))
+        assert loaded["description_clean"].count("UW–Madison students may apply") == 1
+        student = {"home_school": "wisc", "year": "freshman", "major": "Biology", "gpa": 2.8}
+        assert hard_exclusion(loaded, _filter_context(student)) is None
+        card = project_public_opportunity_payload(loaded, loaded)
+        assert card["paid"] == "yes" and not card.get("paid_attribution")
+        assert not card.get("compensation_attribution")
+        assert match_filter(loaded, {"paid": "yes"}) and not match_filter(loaded, {"paid": "no"})
+        funding = build_detail_fields(card, loaded)["fields"]["funding"]
+        assert funding["explicit"]["compensation"] == SUPPORT
+        assert funding["quotes"]["paid"]["source_url"] == host
     assert preferred["metadata"]["superseded_directory_deadline"]["source_url"] == directory + "-0"
     output = tmp_path / "programs.json"
     output.write_text(json.dumps([host_record, alias, preferred]))
@@ -533,10 +551,15 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
     for other in (
         {**host_record, "deadline": "2028-02-09"},
         {**host_record, "id": "different-campus-record"},
+        {**preferred, "organization": "Another University"},
         source_row(directory + "-0", old_host, "Anticipated 2/15/28"),
         source_row(directory + "-0", "https://example.edu/unrelated"),
     ):
         assert reviewed_window(other) is None and public_opening(other) is None
+        before = copy.deepcopy(other)
+        host_program_terms.apply_terms(other)
+        assert other == before and host_program_terms.quote(other, "paid") is None
+
 
 
 def test_ligo_surf_keeps_its_two_application_routes_separate():

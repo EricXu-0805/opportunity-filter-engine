@@ -180,6 +180,8 @@ SRO_WINDOW_ORGANIZATIONS = {
     **dict.fromkeys(STARS_SRO_IDS, "Boston University"),
     "sro-e74d89e9": "University of Michigan",
     "sro-7f860ddc": "McGovern Medical School",
+    "sro-595e912d": "University of Wisconsin-Madison",
+    "sro-3c378261": "University of Wisconsin-Madison",
 }
 _AGGREGATOR_WINDOWS = {
     ("uiuc_sro", "sro-e74d89e9"): ("2027-02-10", ProgramWindow(
@@ -256,8 +258,12 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
             return None
         organization = SRO_WINDOW_ORGANIZATIONS.get(record["id"])
-        if organization and record.get("organization") != organization:
-            return None
+        observed_organization = record.get("organization")
+        if organization and observed_organization != organization:
+            # The legacy Wisconsin calendar was also verified by the stable
+            # directory permalink before shallow reads included a host name.
+            if window.page != _WISCONSIN_HOST or observed_organization:
+                return None
         application = record.get("application")
         if not isinstance(application, dict) or application.get("application_url") not in _SRO_APPLICATION_LINKS[window.url]:
             return None

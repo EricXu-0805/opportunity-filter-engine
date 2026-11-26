@@ -1,11 +1,11 @@
 """Student-facing terms checked on the same host pages as reviewed 2027 cohorts."""
 
-from src.normalizers import bu_stars
+from src.normalizers import bu_stars, wisc_biological_interactions
 from src.program_windows import SMU_WINDOW, ProgramWindow, reviewed_window
 
 CRISP_ID = "sro-3ec4ea4e"
 SMU_IDS = ("nsf-reu-2447670", "sro-44f176cd")
-IDS = (CRISP_ID, *SMU_IDS, *bu_stars.IDS)
+IDS = (CRISP_ID, *SMU_IDS, *bu_stars.IDS, *wisc_biological_interactions.IDS)
 _CRISP_PAGE = "https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html"
 _SMU_PAGE = (
     "https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/"
@@ -38,6 +38,8 @@ def checked_window(record: dict) -> ProgramWindow | None:
     oid = record.get("id")
     if oid not in IDS:
         return None
+    if oid in wisc_biological_interactions.IDS:
+        return wisc_biological_interactions.checked_window(record)
     if oid in bu_stars.IDS:
         return bu_stars.checked_window(record)
     window = reviewed_window(record)
@@ -46,6 +48,9 @@ def checked_window(record: dict) -> ProgramWindow | None:
 
 
 def apply_terms(record: dict) -> None:
+    if record.get("id") in wisc_biological_interactions.IDS:
+        wisc_biological_interactions.apply_terms(record)
+        return
     if record.get("id") in bu_stars.IDS:
         bu_stars.apply_terms(record)
         return
@@ -89,6 +94,8 @@ def apply_terms(record: dict) -> None:
 
 
 def quote(record: dict, field: str) -> dict | None:
+    if record.get("id") in wisc_biological_interactions.IDS:
+        return wisc_biological_interactions.quote(record, field)
     if record.get("id") in bu_stars.IDS:
         return bu_stars.quote(record, field)
     window = checked_window(record)
