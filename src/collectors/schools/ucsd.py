@@ -127,22 +127,18 @@ SCHOOL: dict = {
                 ),
                 program(
                     "srp_summer",
-                    "Summer Research Program (SRP) — Paid Summer Cohorts (UCSD)",
+                    "UC San Diego Summer Research Programs — Program Directory",
                     "https://ugresearch.ucsd.edu/programs/urh-summer/index.html",
-                    "URH's Summer Research Program umbrella: 8+ cohort programs of 8 "
-                    "or 10 weeks (UC Scholars, URS, McNair, CAMP, EMPOWER, Hope SRP, "
-                    "TUSRP, STARTastro, the Ahmadian fellowship, the Tyler Center "
-                    "international fellowship). Every SRP student is paid a stipend "
-                    "for 30+ hours/week of mentor-directed research, ending with the "
-                    "Summer Research Conference.",
-                    lab_or_program="Summer Research Program (SRP)",
+                    "UC San Diego's Undergraduate Research Hub lists the summer programs it coordinates, "
+                    "including UC Scholars, McNair, CAMP, EMPOWER and the Undergraduate Research Scholarships. "
+                    "Each has its own coordinator, eligibility and application. Select the individual program "
+                    "for its requirements, timing and award details.",
+                    lab_or_program="Summer Research Program directory",
                     opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="Summer stipend (8–10 weeks, full-time)",
-                    preferred_year=["freshman", "sophomore", "junior"],
-                    international_friendly="yes",
-                    deadline_note="Annual summer cycle — applications typically due in winter/early spring.",
-                    keywords=["summer research", "paid", "stipend", "cohort"],
+                    reference_only=True,
+                    is_rolling=False,
+                    preferred_year=[],
+                    keywords=["summer research", "program directory"],
                 ),
                 program(
                     "uc_scholars",
