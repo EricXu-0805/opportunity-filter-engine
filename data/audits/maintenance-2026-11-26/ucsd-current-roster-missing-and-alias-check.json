@@ -1,0 +1,83 @@
+{
+  "scope": "Inventory reconciliation only. No source code or corpus rows changed. One confirmed NENG omission, two appointments at the combined department awaiting an unambiguous program mapping, and one existing original ID under the familiar name Ken Vecchio. A guessed candidate ID returning 404 alone does not establish absence.",
+  "official_combined_department": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+  "existing_nano_directory": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+  "original_ucsd_shard_count": 1508,
+  "confirmed_missing_appointment": "Zeinab Jahed",
+  "program_mapping_pending": [
+    "Alyssa Powell",
+    "Wanlu Li"
+  ],
+  "existing_original_id_for_Kenneth_Vecchio": "faculty-ucsd-nano-467aa36b",
+  "members": [
+    {
+      "name": "Zeinab Jahed",
+      "official_biography": "https://jacobsschool.ucsd.edu/faculty/profile?id=527",
+      "official_rank_and_unit": [
+        "Associate Professor, NENG"
+      ],
+      "new_combined_department_card_rank": "Associate Professor",
+      "older_nano_roster_rows_with_same_surname": [],
+      "existing_ucsd_candidates_by_surname_or_official_link_or_matching_published_email": [],
+      "would_be_nano_id": "faculty-ucsd-nano-8a42e65d",
+      "public_http_for_that_candidate_id": 404
+    },
+    {
+      "name": "Wanlu Li",
+      "official_biography": "https://jacobsschool.ucsd.edu/people/profile/wanlu-li",
+      "official_rank_and_unit": [
+        "Assistant Professor, Chemical and Nano Engineering",
+        "Aiiso Yufeng Li Family Department of Chemical and Nano Engineering at the UC San Diego Jacobs School of Engineering"
+      ],
+      "new_combined_department_card_rank": "Assistant Professor",
+      "older_nano_roster_rows_with_same_surname": [],
+      "existing_ucsd_candidates_by_surname_or_official_link_or_matching_published_email": [],
+      "would_be_nano_id": "faculty-ucsd-nano-ce621a9a",
+      "public_http_for_that_candidate_id": 404
+    },
+    {
+      "name": "Alyssa Powell",
+      "official_biography": "https://jacobsschool.ucsd.edu/people/profile/alyssa-powell",
+      "official_rank_and_unit": [
+        "Assistant Teaching Professor, Chemical and Nano Engineering",
+        "Aiiso Yufeng Li Family Department of Chemical and Nano Engineering at the UC San Diego Jacobs School of Engineering"
+      ],
+      "new_combined_department_card_rank": "Assistant Teaching Professor",
+      "older_nano_roster_rows_with_same_surname": [],
+      "existing_ucsd_candidates_by_surname_or_official_link_or_matching_published_email": [
+        [
+          "faculty-ucsd-tdps-74d69f63",
+          "Lora Powell",
+          true
+        ],
+        [
+          "faculty-ucsd-psych-c9760763",
+          "Lindsey Powell",
+          true
+        ]
+      ],
+      "would_be_nano_id": "faculty-ucsd-nano-4596de44",
+      "public_http_for_that_candidate_id": 404
+    },
+    {
+      "name": "Kenneth Vecchio",
+      "official_biography": "https://jacobsschool.ucsd.edu/faculty/profile?id=156",
+      "official_rank_and_unit": [
+        "Professor, NENG"
+      ],
+      "new_combined_department_card_rank": "Distinguished Professor",
+      "older_nano_roster_rows_with_same_surname": [
+        "Vecchio, Ken"
+      ],
+      "existing_ucsd_candidates_by_surname_or_official_link_or_matching_published_email": [
+        [
+          "faculty-ucsd-nano-467aa36b",
+          "Ken Vecchio",
+          true
+        ]
+      ],
+      "would_be_nano_id": "faculty-ucsd-nano-65d27bf2",
+      "public_http_for_that_candidate_id": 404
+    }
+  ]
+}
