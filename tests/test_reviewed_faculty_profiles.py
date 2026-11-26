@@ -22,9 +22,10 @@ VT_APPOINTMENTS = {
     "faculty-vt-che-2b84e643": ("Postdoctoral researchers", "trainee_title"),
     "faculty-vt-che-b0225752": ("Postdoctoral researcher", "trainee_title"),
 }
+NANO_ADJUNCTS = {"faculty-ucsd-nano-2aa92754", "faculty-ucsd-nano-04ac1d79", "faculty-ucsd-nano-27240933"}
 NANO_EMERITI = {"faculty-ucsd-nano-25a6d469", "faculty-ucsd-nano-dc9e3de3"}
 PREVIOUS_TITLES = {
-    **dict.fromkeys(NANO_EMERITI, ""),
+    **dict.fromkeys(NANO_EMERITI | NANO_ADJUNCTS, ""),
     **dict.fromkeys(VT_APPOINTMENTS, ""),
     "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
@@ -32,6 +33,7 @@ PREVIOUS_TITLES = {
 }
 ARCHIVED = {
     **dict.fromkeys(NANO_EMERITI, ("Professor Emeritus", "retired_title")),
+    **dict.fromkeys(NANO_ADJUNCTS, ("Adjunct Professor", "outside_unit_ladder")),
     **VT_APPOINTMENTS,
     "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),

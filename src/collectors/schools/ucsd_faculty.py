@@ -70,6 +70,7 @@ _LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit|\badjunct|\bvisiting"
 _JACOBS_CAPSULE_RE = (r'class="mt-5 font-weight-bold">\s*(?:<(?:p|span)>\s*)*([^<]+)')
 
 _JACOBS_PROFILE = "https://jacobsschool.ucsd.edu/faculty/profile?id="
+_NANO_CURRENT_DIRECTORY = "https://www.nanoengineering.ucsd.edu/index.php/fac"
 _JACOBS_OLD_BIO = "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid="
 
 # These historic NANO cards need independent evidence of a current department
@@ -78,7 +79,27 @@ _JACOBS_OLD_BIO = "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?f
 _NANO_PROFILE_NAMES = {
     _JACOBS_PROFILE + "1": ("Michael Heller", "Mike Heller"),
     _JACOBS_PROFILE + "31": ("Sadik Esener",),
+    _JACOBS_PROFILE + "345": ("Darren Lipomi",),
+    _JACOBS_PROFILE + "284": ("Ying Shirley Meng", "Shirley Meng"),
+    _JACOBS_PROFILE + "387": ("Sheng Xu",),
 }
+
+
+# These three are still grouped under Professors on the older source table.
+# If their biography changes rank, require the current department card as well.
+_NANO_REVIEWED_ADJUNCTS = {_JACOBS_PROFILE + number for number in ("345", "284", "387")}
+
+
+def _nano_department_ladder_appointment(href: str, names: tuple[str, ...]) -> bool:
+    directory = ucb_common.fetch_soup(_NANO_CURRENT_DIRECTORY)
+    if not directory:
+        return False
+    matches = []
+    for card in directory.select(".faculty-information"):
+        anchor, role = card.select_one("h4 a[href]"), card.find("h5")
+        if anchor and role and anchor["href"] == href and anchor.get_text(" ", strip=True) in names:
+            matches.append(role.get_text(" ", strip=True))
+    return len(matches) == 1 and bool(matches[0]) and faculty_graph._passes_ladder(matches[0], _LADDER)
 
 
 def _nano_reviewed_rank(card, name: str, href: str) -> str:
@@ -103,7 +124,13 @@ def _nano_reviewed_rank(card, name: str, href: str) -> str:
     rank = nano_roles[0]
     if faculty_graph.is_retired_title(rank):
         return rank
-    return rank if "recall" not in rank.casefold() and faculty_graph._passes_ladder(rank, _LADDER) else ""
+    if href in _NANO_REVIEWED_ADJUNCTS and "adjunct" in rank.casefold():
+        return rank
+    if "recall" in rank.casefold() or not faculty_graph._passes_ladder(rank, _LADDER):
+        return ""
+    if href in _NANO_REVIEWED_ADJUNCTS and not _nano_department_ladder_appointment(href, names):
+        return ""
+    return rank
 
 
 # Blink "profile-listing-card" grid shared by the social-science departments.
@@ -262,6 +289,10 @@ SCHOOL: dict = {
                             (_JACOBS_OLD_BIO + "1", "Mike Heller"): _JACOBS_PROFILE + "1",
                             (_JACOBS_OLD_BIO + "1", "Michael Heller"): _JACOBS_PROFILE + "1",
                             (_JACOBS_OLD_BIO + "31", "Sadik Esener"): _JACOBS_PROFILE + "31",
+                            ("https://www.lipomigroup.org/", "Darren Lipomi"): _JACOBS_PROFILE + "345",
+                            ("http://smeng.ucsd.edu/", "Shirley Meng"): _JACOBS_PROFILE + "284",
+                            ("http://smeng.ucsd.edu/", "Ying Shirley Meng"): _JACOBS_PROFILE + "284",
+                            ("http://xugroup.eng.ucsd.edu/", "Sheng Xu"): _JACOBS_PROFILE + "387",
                             ("http://jacobsschool.ucsd.edu/faculty/faculty_bios/"
                              "findprofile.sfe?department=NANO&fmp_recid=396", "Ping Liu"): _JACOBS_PROFILE + "396",
                         },
@@ -269,6 +300,7 @@ SCHOOL: dict = {
                         "email": "td a[href^='mailto:']",
                     },
                     "name_flip": True,
+                    "ladder_filter": _LADDER,
                     "section_filter": {"heading": "strong", "exclude": r"\bemerit(?:us|a|i|ae)\b"},
                 },
             ),
@@ -277,6 +309,7 @@ SCHOOL: dict = {
             "profile_id_names": {
                 _JACOBS_PROFILE + "31": ("Sadik Esener", "Esener"),
                 _JACOBS_PROFILE + "1": ("Michael Heller", "Mike Heller"),
+                _JACOBS_PROFILE + "284": ("Ying Shirley Meng", "Shirley Meng"),
             },
             # Roster links point at personal lab sites (no shared template to
             # regex), so research rides the Jacobs JSON:API name→keywords join,
