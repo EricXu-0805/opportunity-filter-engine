@@ -1,0 +1,54 @@
+[
+  {
+    "scenario": "live university program page",
+    "id": "uchicago-8cd2def060b6",
+    "seen_at": "2026-11-26T21:16:54.012595",
+    "deadline": "2027-01-11",
+    "cutoff": "2027-01-11T23:59:00-06:00",
+    "compensation": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food.",
+    "fall_enrollment": true,
+    "extra_funding": true,
+    "real_page_capture": true,
+    "pages_loaded": 1,
+    "pages_attempted": 1
+  },
+  {
+    "scenario": "capture unavailable",
+    "id": "uchicago-8cd2def060b6",
+    "seen_at": "2026-11-26T21:16:54.013092",
+    "deadline": "2027-01-11",
+    "cutoff": "2027-01-11T23:59:00-06:00",
+    "compensation": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food.",
+    "fall_enrollment": true,
+    "extra_funding": true,
+    "real_page_capture": false,
+    "pages_loaded": 0,
+    "pages_attempted": 1
+  },
+  {
+    "scenario": "recovered actual university HTML",
+    "id": "uchicago-8cd2def060b6",
+    "seen_at": "2026-11-26T21:16:54.025594",
+    "deadline": "2027-01-11",
+    "cutoff": "2027-01-11T23:59:00-06:00",
+    "compensation": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food.",
+    "fall_enrollment": true,
+    "extra_funding": true,
+    "real_page_capture": true,
+    "pages_loaded": 1,
+    "pages_attempted": 1
+  },
+  {
+    "scenario": "later class",
+    "id": "uchicago-8cd2def060b6",
+    "seen_at": "2026-11-26T21:16:54.033862",
+    "deadline": null,
+    "cutoff": null,
+    "compensation": "The new budget is pending.",
+    "fall_enrollment": false,
+    "extra_funding": false,
+    "real_page_capture": true,
+    "pages_loaded": 1,
+    "pages_attempted": 1
+  }
+]

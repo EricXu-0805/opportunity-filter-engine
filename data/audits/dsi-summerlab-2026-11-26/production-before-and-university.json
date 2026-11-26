@@ -1,0 +1,102 @@
+{
+  "start": "2026-11-26T21:01:28.739767+00:00",
+  "end": "2026-11-26T21:01:55.666875+00:00",
+  "frontend_backend_before": [
+    "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541"
+  ],
+  "frontend_backend_after": [
+    "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541"
+  ],
+  "details": [
+    {
+      "id": "uchicago-8cd2def060b6",
+      "url": "https://joinalab.com/opportunities/uchicago-8cd2def060b6",
+      "h1": "DSI Summer Lab (Data Science Institute)",
+      "page_http": 200,
+      "api_http": 200,
+      "deadline": null,
+      "deadline_is_estimate": null,
+      "is_rolling": true,
+      "compensation": "$5,600 stipend for 8 weeks (2026), plus free optional housing",
+      "application_url": "https://datascience.uchicago.edu/education/summerlab/",
+      "visible_chrome": {
+        "title": "DSI Summer Lab (Data Science Institute)",
+        "deadline": "No deadline found",
+        "cycle_message": "The 2026 program has concluded; the 2027 program application is not posted yet",
+        "funding": "$5,600 stipend for 8 weeks (2026), plus free optional housing"
+      }
+    },
+    {
+      "id": "sro-d6b78515",
+      "url": "https://joinalab.com/opportunities/sro-d6b78515",
+      "h1": "Data Science Institute Summer Lab",
+      "page_http": 200,
+      "api_http": 200,
+      "deadline": "2027-01-12",
+      "deadline_is_estimate": true,
+      "is_rolling": false,
+      "compensation": "$5,600",
+      "application_url": "https://datascience.uchicago.edu/education/summerlab/#program-overview",
+      "visible_chrome": {
+        "title": "Data Science Institute Summer Lab",
+        "deadline": "2027-01-12",
+        "deadline_label": "Estimated by us",
+        "directory_note": "1/12/27 (anticipated)",
+        "funding": "$5,600"
+      }
+    }
+  ],
+  "university_sources": [
+    {
+      "url": "https://datascience.uchicago.edu/education/summerlab/",
+      "http": 200,
+      "bytes": 116606,
+      "sha256": "3e124e165d6e14639308267b5c5bcefcf0ebb872e716a5224615c7e049ce87bd",
+      "observations": {
+        "january_11_2027": true,
+        "closing_clock_central": true,
+        "summer_2027": true,
+        "eight_weeks": true,
+        "base_5600": false,
+        "additional_1800": false,
+        "conditional_nsf_funding": false,
+        "mentions_work_authorization": false
+      }
+    },
+    {
+      "url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+      "http": 200,
+      "bytes": 108844,
+      "sha256": "6aae08dbfe08fb5f257e2b60878386e36fe7379c2a844541d9b2b045d1bf2cc0",
+      "observations": {
+        "january_11_2027": true,
+        "closing_clock_central": true,
+        "summer_2027": true,
+        "eight_weeks": true,
+        "base_5600": true,
+        "additional_1800": true,
+        "conditional_nsf_funding": true,
+        "mentions_work_authorization": false
+      }
+    },
+    {
+      "url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+      "http": 200,
+      "bytes": 112664,
+      "sha256": "fe0cc7c59214c7ce520cc389a154ffc5df04b24e1b882c81f383e0f4d22f9e7d",
+      "observations": {
+        "january_11_2027": false,
+        "closing_clock_central": true,
+        "summer_2027": true,
+        "eight_weeks": true,
+        "base_5600": true,
+        "additional_1800": false,
+        "conditional_nsf_funding": false,
+        "mentions_work_authorization": true
+      }
+    }
+  ],
+  "method": "Read both saved web routes in normal Chrome. Independently read the frontend HTML, truth-aware anonymous public API and university pages over HTTPS, checking the release SHA before and after."
+}

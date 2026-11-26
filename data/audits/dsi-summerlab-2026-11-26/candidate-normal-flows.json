@@ -1,0 +1,290 @@
+{
+  "source_commit": "cd745b4016ff29e23001de9cf6614e94ee6d94b2",
+  "assembled_count": 149892,
+  "details": {
+    "uchicago-8cd2def060b6": {
+      "deadline": "2027-01-11",
+      "closes_at": "2027-01-11T23:59:00-06:00",
+      "timing": {
+        "state": "source",
+        "explicit": {
+          "deadline": "2027-01-11"
+        },
+        "inferred": {
+          "application_window": {
+            "value": "Applications close January 11, 2027 at 11:59 p.m. Central.",
+            "basis": "configured"
+          }
+        },
+        "unknown": [
+          "rolling",
+          "start_date",
+          "duration",
+          "posted_date"
+        ],
+        "quotes": {
+          "deadline": {
+            "text": "Application deadline: January 11, 2027, 11:59pm CT",
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "observed_at": "2026-11-26"
+          }
+        },
+        "provenance": {
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/",
+          "observed_at": "2026-11-26T13:11:28.380285"
+        }
+      },
+      "funding": {
+        "state": "source",
+        "explicit": {
+          "compensation": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food."
+        },
+        "inferred": {
+          "paid": {
+            "value": "stipend",
+            "basis": "configured"
+          }
+        },
+        "unknown": [],
+        "quotes": {
+          "compensation": {
+            "text": "$1,800 travel and food stipend along with the $5,600 program stipend",
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "observed_at": "2026-11-26"
+          }
+        },
+        "provenance": {
+          "source_url": "https://datascience.uchicago.edu/education/summerlab/",
+          "observed_at": "2026-11-26T13:11:28.380285"
+        }
+      },
+      "actual_action": true,
+      "reason_code": null,
+      "organization": "UChicago Data Science Institute",
+      "is_rolling": false
+    },
+    "sro-d6b78515": {
+      "deadline": "2027-01-11",
+      "closes_at": "2027-01-11T23:59:00-06:00",
+      "timing": {
+        "state": "source",
+        "explicit": {
+          "deadline": "2027-01-11",
+          "duration": "Summer (8 weeks)"
+        },
+        "inferred": {},
+        "unknown": [
+          "rolling",
+          "application_window",
+          "start_date",
+          "posted_date"
+        ],
+        "quotes": {
+          "deadline": {
+            "text": "Application deadline: January 11, 2027, 11:59pm CT",
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "observed_at": "2026-11-26"
+          }
+        },
+        "provenance": {
+          "source_url": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab",
+          "observed_at": "2026-11-22T14:30:36.699663+00:00"
+        }
+      },
+      "funding": {
+        "state": "source",
+        "explicit": {
+          "paid": "yes",
+          "compensation": "$5,600 for eight weeks in 2027. Optional housing is free for college students. Selected NSF-funded undergraduates who are U.S. citizens or permanent residents receive an additional $1,800 for travel and food."
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {
+          "paid": {
+            "text": "$1,800 travel and food stipend along with the $5,600 program stipend",
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "observed_at": "2026-11-26"
+          },
+          "compensation": {
+            "text": "$1,800 travel and food stipend along with the $5,600 program stipend",
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "observed_at": "2026-11-26"
+          }
+        },
+        "provenance": {
+          "source_url": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab",
+          "observed_at": "2026-11-22T14:30:36.699663+00:00"
+        }
+      },
+      "actual_action": true,
+      "reason_code": null,
+      "organization": "University of Chicago",
+      "is_rolling": false
+    }
+  },
+  "views": [
+    {
+      "view": {},
+      "total": 1,
+      "unfiltered_total": 1171,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    },
+    {
+      "view": {
+        "source": "uiuc_sro"
+      },
+      "total": 1,
+      "unfiltered_total": 1171,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    },
+    {
+      "view": {
+        "source": "uchicago_external_research"
+      },
+      "total": 1,
+      "unfiltered_total": 1171,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    },
+    {
+      "view": {
+        "favorite_ids": [
+          "sro-d6b78515"
+        ]
+      },
+      "total": 1,
+      "unfiltered_total": 1171,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    },
+    {
+      "view": {
+        "tab": "starred",
+        "favorite_ids": [
+          "uchicago-8cd2def060b6",
+          "sro-d6b78515"
+        ]
+      },
+      "total": 2,
+      "unfiltered_total": 1171,
+      "ids": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ]
+    }
+  ],
+  "clock": [
+    {
+      "utc": "2027-01-12T05:58:59+00:00",
+      "delta_seconds": -1,
+      "match": {
+        "view": {
+          "today": "2027-01-11",
+          "deadline": "7"
+        },
+        "total": 1,
+        "unfiltered_total": 1162,
+        "ids": [
+          "uchicago-8cd2def060b6"
+        ]
+      },
+      "actions": {
+        "uchicago-8cd2def060b6": [
+          true,
+          null
+        ],
+        "sro-d6b78515": [
+          true,
+          null
+        ]
+      }
+    },
+    {
+      "utc": "2027-01-12T05:59:00+00:00",
+      "delta_seconds": 0,
+      "match": {
+        "view": {
+          "today": "2027-01-11",
+          "deadline": "7"
+        },
+        "total": 0,
+        "unfiltered_total": 1162,
+        "ids": []
+      },
+      "actions": {
+        "uchicago-8cd2def060b6": [
+          false,
+          "listing_closed"
+        ],
+        "sro-d6b78515": [
+          false,
+          "listing_closed"
+        ]
+      }
+    },
+    {
+      "utc": "2027-01-12T13:59:00+00:00",
+      "delta_seconds": 28800,
+      "match": {
+        "view": {
+          "today": "2027-01-11",
+          "deadline": "7"
+        },
+        "total": 0,
+        "unfiltered_total": 1164,
+        "ids": []
+      },
+      "actions": {
+        "uchicago-8cd2def060b6": [
+          false,
+          "listing_closed"
+        ],
+        "sro-d6b78515": [
+          false,
+          "listing_closed"
+        ]
+      }
+    }
+  ],
+  "same_profile_parallel_queries": [
+    {
+      "view": {},
+      "total": 1,
+      "unfiltered_total": 1171,
+      "ids": [
+        "uchicago-8cd2def060b6"
+      ]
+    },
+    {
+      "view": {
+        "source": "uiuc_sro"
+      },
+      "total": 1,
+      "unfiltered_total": 1171,
+      "ids": [
+        "sro-d6b78515"
+      ]
+    },
+    {
+      "view": {
+        "tab": "starred",
+        "favorite_ids": [
+          "uchicago-8cd2def060b6",
+          "sro-d6b78515"
+        ]
+      },
+      "total": 2,
+      "unfiltered_total": 1171,
+      "ids": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ]
+    }
+  ]
+}

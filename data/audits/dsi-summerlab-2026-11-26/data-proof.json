@@ -1,0 +1,53 @@
+{
+  "base_main": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "old_dsi_head": "8ad7012021b637ba5dc93e8c21e5e98ee67a2ec6",
+  "thursday_data_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1464",
+  "original_order_sha256": "b96c1c9286c72840c9dda656c6a2e943a27d48d2191c5ff12fd9c410eabfe2a2",
+  "total_rows": 14198,
+  "unchanged_rows_compared_to_b16": 14196,
+  "changed": [
+    "sro-d6b78515",
+    "uchicago-8cd2def060b6"
+  ],
+  "retained_post_thursday_changes": [
+    "sro-e74d89e9",
+    "stanford-1a20b2e045cf",
+    "ucsb-45d0bef1a207"
+  ],
+  "all_117_files": 117,
+  "changes_in_shards": [
+    "data/processed/shards/national.json"
+  ],
+  "first_seen_preserved": true,
+  "head_national_blob": "72e40958cda40664d15a3b249a3f1e47a5da6443",
+  "new_source_head": "cd745b4016ff29e23001de9cf6614e94ee6d94b2",
+  "protected_school_collector_equals_real_main": true,
+  "existing_third_party_conflict_count_before": 1,
+  "existing_third_party_conflict_count_after": 1,
+  "no_new_collaborator_conflict": true,
+  "tree": "01ac6a14dc16d3fc038e3039c2e10af5466e41df",
+  "all_original_ids": 14198,
+  "ids_and_positions_equal_through_thursday_data": true,
+  "all_first_seen_fields_preserved": true,
+  "assembled_count": 149892,
+  "canonical_school_stats_count": 115,
+  "delta_fields": {
+    "sro-d6b78515": [
+      "compensation_details",
+      "deadline",
+      "deadline_is_estimate",
+      "metadata"
+    ],
+    "uchicago-8cd2def060b6": [
+      "compensation_details",
+      "deadline",
+      "is_rolling",
+      "eligibility",
+      "description",
+      "description_clean",
+      "metadata",
+      "deadline_is_estimate"
+    ]
+  },
+  "normal_merge_no_new_protected_conflict": true
+}
