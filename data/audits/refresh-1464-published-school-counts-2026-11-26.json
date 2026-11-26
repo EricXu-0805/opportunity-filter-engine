@@ -1,0 +1,120 @@
+{
+  "data_pull_request": 1464,
+  "scheduled_input": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+  "parent": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "refresh_data_pull_head": "01f83dface53a8499314fe4c5b58264e99d278a6",
+  "main_during_review": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+  "full_corpus_size_before_reassembly": 149875,
+  "all_schools": 115,
+  "shards": 117,
+  "unvisited_changed_shards_since_start": [
+    "ncsu",
+    "ucb",
+    "uconn",
+    "uiuc",
+    "umd"
+  ],
+  "pre_fix_replay_comparison_with_actual_pull_request": {
+    "uva": [
+      1638,
+      1640
+    ]
+  },
+  "affected_school_static_counts": {
+    "ncsu": {
+      "before": {
+        "listing_count": 5,
+        "faculty_contact_count": 2215,
+        "unreviewed_count": 0,
+        "total_count": 2220
+      },
+      "after": {
+        "listing_count": 5,
+        "faculty_contact_count": 2199,
+        "unreviewed_count": 0,
+        "total_count": 2204
+      }
+    },
+    "ucb": {
+      "before": {
+        "listing_count": 71,
+        "faculty_contact_count": 2154,
+        "unreviewed_count": 0,
+        "total_count": 2225
+      },
+      "after": {
+        "listing_count": 71,
+        "faculty_contact_count": 2161,
+        "unreviewed_count": 0,
+        "total_count": 2232
+      }
+    },
+    "uiuc": {
+      "before": {
+        "listing_count": 1,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2947
+      },
+      "after": {
+        "listing_count": 1,
+        "faculty_contact_count": 2945,
+        "unreviewed_count": 0,
+        "total_count": 2946
+      }
+    },
+    "uva": {
+      "before": {
+        "listing_count": 5,
+        "faculty_contact_count": 1633,
+        "unreviewed_count": 0,
+        "total_count": 1638
+      },
+      "after": {
+        "listing_count": 5,
+        "faculty_contact_count": 1635,
+        "unreviewed_count": 0,
+        "total_count": 1640
+      }
+    }
+  },
+  "old_generator": "school-stats: 115 schools, 130744 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+  "assemble_from_final_published_shards": "assemble: 149882 records -> opportunities.json",
+  "candidate_generator": "school-stats: 115 schools, 130734 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+  "independent_shards_only_byte_check": "school-stats: committed file matches the corpus.",
+  "original_counts_reproduced_by_restoring_run_start_unvisited_rows": [
+    "ncsu",
+    "ucb",
+    "uiuc"
+  ],
+  "replay_limit": "Virginia is the fourth discrepancy directly present in the actual data PR. Returning its unvisited rows to the run-start shard does not reconstruct the refresh job\u2019s in-memory Virginia intermediate. Its corrected count is verified independently against the actual published shards.",
+  "national_row_count_same": true,
+  "compared_shard_blobs": {
+    "run": {
+      "berkeley": "bc8abf1aa8d219c3b263ba9a6d19b7e5ea8994f4",
+      "illinois": "ebb54c203d7fafd0f4cb1a61ea312be0f8d8d8c7",
+      "ncstate": "8fcee1dde1b623dfe88fde58c334a663f142c461"
+    },
+    "parent": {
+      "berkeley": "e8bea1af92d4c0f00941d9380cf135ea91c280da",
+      "illinois": "ddaf65af006e2d85a9f6fa038087ca834828681a",
+      "ncstate": "397f3da6a2ca6e7725a071289cc09ec8700f3ba4"
+    },
+    "refresh": {
+      "berkeley": "e8bea1af92d4c0f00941d9380cf135ea91c280da",
+      "illinois": "ddaf65af006e2d85a9f6fa038087ca834828681a",
+      "ncstate": "397f3da6a2ca6e7725a071289cc09ec8700f3ba4"
+    },
+    "main13": {
+      "berkeley": "e8bea1af92d4c0f00941d9380cf135ea91c280da",
+      "illinois": "ddaf65af006e2d85a9f6fa038087ca834828681a",
+      "ncstate": "8a4403994cb00ae1a2e4e5e05a8c8880783b1bf9"
+    }
+  },
+  "fix_pr": 1465,
+  "tested_fix": "f5f45f35275b981aa8dd16ff7b7b8ba1634f1e88",
+  "test_suite": {
+    "passed": 208,
+    "ruff": "passed"
+  }
+}
