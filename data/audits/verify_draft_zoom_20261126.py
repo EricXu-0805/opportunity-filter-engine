@@ -100,6 +100,16 @@ try:
         page.wait_for_function("async () => (await navigator.clipboard.readText()).includes('Draft zoom check.')",timeout=10000)
         report["copy_action"]="Copy draft only"
         check_actions(page,"after copy at 200%")
+        recipient=page.locator("#cold-email-to")
+        composer=page.get_by_role("button",name="Open in Email",exact=True)
+        recipient.scroll_into_view_if_needed()
+        report["initial_recipient_present"]=bool(recipient.input_value().strip())
+        if not report["initial_recipient_present"]:
+            recipient.fill("layout-test@example.org")
+            recipient.press("Tab")
+        report["composer_with_recipient_enabled"]=composer.is_enabled()
+        report["visible_guidance"]=[t[:220] for t in page.get_by_role("dialog").locator("[role=status]:visible, [role=alert]:visible").all_inner_texts() if t.strip()][:6]
+        check_actions(page,"with recipient at 200%")
         report["copied_long_draft_characters"]=len(editor.input_value())
         page.get_by_test_id("cold-email-footer").screenshot(path=str(out/"footer-200.png"))
         report["result"]="passed"
