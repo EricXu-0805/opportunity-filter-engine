@@ -1,0 +1,2057 @@
+{
+  "observed_from": "2026-11-26T13:06:32.362934+00:00",
+  "observed_until": "2026-11-26T13:06:57.033303+00:00",
+  "production_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "scope": "Among 312 members emitted by the fully reviewed CHASS replay, 199 have a currently empty title with an exact-name, exact-personal-URL, single college roster card stating a lecturer, instructor or professorial appointment with no conflicting retired, visiting, staff, affiliate or advisory term. Four of them were independently rechecked against the live individual university pages and the current production public API. The other 195 are roster-to-shard comparisons, pending a direct-source remediation. Records with different names, nonfaculty, visitor, emeritus or compound roles need separate review.",
+  "college_faculty_roster": "https://chass.ncsu.edu/group/faculty/",
+  "public_samples": [
+    {
+      "id": "faculty-ncsu-chass-7c1bf7dc",
+      "stored_name": "Cynthia Zuckerman Hyman",
+      "current_cms_post": 89832,
+      "official_name": "Cynthia Zuckerman Hyman",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cezucker/",
+      "old_title": "",
+      "individual_page_status": 200,
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-7c1bf7dc",
+      "production_rank": "",
+      "production_actionable": true
+    },
+    {
+      "id": "faculty-ncsu-chass-07a537d8",
+      "stored_name": "David Berube",
+      "current_cms_post": 89835,
+      "official_name": "David Berube",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dmberube/",
+      "old_title": "",
+      "individual_page_status": 200,
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-07a537d8",
+      "production_rank": "",
+      "production_actionable": true
+    },
+    {
+      "id": "faculty-ncsu-chass-ae3b88dd",
+      "stored_name": "Fernanda Duarte",
+      "current_cms_post": 89840,
+      "official_name": "Fernanda Duarte",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/fduarte/",
+      "old_title": "",
+      "individual_page_status": 200,
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-ae3b88dd",
+      "production_rank": "",
+      "production_actionable": true
+    },
+    {
+      "id": "faculty-ncsu-chass-b417157a",
+      "stored_name": "Jessica Jameson",
+      "current_cms_post": 89843,
+      "official_name": "Jessica Jameson",
+      "official_rank": "Professor and Head",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jameson/",
+      "old_title": "",
+      "individual_page_status": 200,
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-b417157a",
+      "production_rank": "",
+      "production_actionable": true
+    }
+  ],
+  "all_individually_identified_candidates": [
+    {
+      "id": "faculty-ncsu-chass-7c1bf7dc",
+      "stored_name": "Cynthia Zuckerman Hyman",
+      "current_cms_post": 89832,
+      "official_name": "Cynthia Zuckerman Hyman",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cezucker/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-07a537d8",
+      "stored_name": "David Berube",
+      "current_cms_post": 89835,
+      "official_name": "David Berube",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dmberube/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ae3b88dd",
+      "stored_name": "Fernanda Duarte",
+      "current_cms_post": 89840,
+      "official_name": "Fernanda Duarte",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/fduarte/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-b417157a",
+      "stored_name": "Jessica Jameson",
+      "current_cms_post": 89843,
+      "official_name": "Jessica Jameson",
+      "official_rank": "Professor and Head",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jameson/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e0d5db3c",
+      "stored_name": "Jodi Wahba",
+      "current_cms_post": 89848,
+      "official_name": "Jodi Wahba",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jswahba/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-791fd6a3",
+      "stored_name": "Kenneth Zagacki",
+      "current_cms_post": 89851,
+      "official_name": "Kenneth Zagacki",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kszagack/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-70daa056",
+      "stored_name": "Lynsey Romo",
+      "current_cms_post": 89852,
+      "official_name": "Lynsey Romo",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lkromo/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-721dbfff",
+      "stored_name": "Julie Mayberry",
+      "current_cms_post": 89853,
+      "official_name": "Julie Mayberry",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mayberry/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-da7f12d7",
+      "stored_name": "Ryan Hurley",
+      "current_cms_post": 89863,
+      "official_name": "Ryan Hurley",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rjhurley/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-453fb1d4",
+      "stored_name": "Steve Wiley",
+      "current_cms_post": 89870,
+      "official_name": "Steve Wiley",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/wiley/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ea3ae396",
+      "stored_name": "Amy Berrier",
+      "current_cms_post": 90508,
+      "official_name": "Amy Berrier",
+      "official_rank": "Associate Director, Graduate Student Support and Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/adberrie/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-69e67544",
+      "stored_name": "Koren Kessler",
+      "current_cms_post": 90824,
+      "official_name": "Koren Kessler",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/akkessle/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-64cba46d",
+      "stored_name": "Anna Gibson",
+      "current_cms_post": 90825,
+      "official_name": "Anna Gibson",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/amknowl3/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-03566a7b",
+      "stored_name": "Al Rodriguez",
+      "current_cms_post": 90826,
+      "official_name": "Al Rodriguez",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/amrodri7/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e1562195",
+      "stored_name": "Andrew Johnston",
+      "current_cms_post": 90828,
+      "official_name": "Andrew Johnston",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/arjohn14/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6fa619f0",
+      "stored_name": "Barbara Bennett",
+      "current_cms_post": 90830,
+      "official_name": "Barbara Bennett",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/babennet/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-14dc3409",
+      "stored_name": "Bethany Van Scooter",
+      "current_cms_post": 90834,
+      "official_name": "Bethany Van Scooter",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/bvanscooter/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7f877396",
+      "stored_name": "Belle Boggs",
+      "current_cms_post": 90837,
+      "official_name": "Belle Boggs",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/bmboggs/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-9638de11",
+      "stored_name": "Benjamin Murphy",
+      "current_cms_post": 90838,
+      "official_name": "Benjamin Murphy",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/bmurphy2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-61c0bc04",
+      "stored_name": "Christa Gala",
+      "current_cms_post": 90840,
+      "official_name": "Christa Gala",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cagala/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-05844896",
+      "stored_name": "Chris Anson",
+      "current_cms_post": 90841,
+      "official_name": "Chris Anson",
+      "official_rank": "Distinguished University Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/canson/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-3c750260",
+      "stored_name": "Caitlin Stuckey",
+      "current_cms_post": 90844,
+      "official_name": "Caitlin Stuckey",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cbstucke/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-d459d949",
+      "stored_name": "Christopher Crosbie",
+      "current_cms_post": 90848,
+      "official_name": "Christopher Crosbie",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cjcrosbi/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7933cc05",
+      "stored_name": "Casie Fedukovich",
+      "current_cms_post": 90849,
+      "official_name": "Casie Fedukovich",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cjfeduko/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-62e5ee62",
+      "stored_name": "Catherine Mainland",
+      "current_cms_post": 90851,
+      "official_name": "Catherine Mainland",
+      "official_rank": "Senior Lecturer and Scheduling Officer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cmmainla/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8f2b2dae",
+      "stored_name": "Derwin Campbell",
+      "current_cms_post": 90860,
+      "official_name": "Derwin Campbell",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dlcampb2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e26783c1",
+      "stored_name": "Douglas Walls",
+      "current_cms_post": 90863,
+      "official_name": "Douglas Walls",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dmwalls/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-27ec5634",
+      "stored_name": "Elizabeth Wagner",
+      "current_cms_post": 90865,
+      "official_name": "Elizabeth Wagner",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/eawagne2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-522f8b51",
+      "stored_name": "Erik Thomas",
+      "current_cms_post": 90869,
+      "official_name": "Erik Thomas",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/erthomas/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6dbfdc52",
+      "stored_name": "Gabrielle Carrero",
+      "current_cms_post": 90873,
+      "official_name": "Gabrielle Carrero",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/gcarrer/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6d0888fe",
+      "stored_name": "Huiling Ding",
+      "current_cms_post": 90877,
+      "official_name": "Huiling Ding",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/hding/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e5e7495c",
+      "stored_name": "Holly Hayes",
+      "current_cms_post": 90879,
+      "official_name": "Holly Hayes",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/hehayes/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6693615b",
+      "stored_name": "Jennifer Nolan",
+      "current_cms_post": 90882,
+      "official_name": "Jennifer Nolan",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/janolans/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c4bb8501",
+      "stored_name": "Jeffrey Reaser",
+      "current_cms_post": 90891,
+      "official_name": "Jeffrey Reaser",
+      "official_rank": "Walt Wolfram Distinguished Professor of Sociolinguistics",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jlreaser/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8026d528",
+      "stored_name": "Robin Clayton",
+      "current_cms_post": 90898,
+      "official_name": "Robin Clayton",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jrclayt2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7395f048",
+      "stored_name": "Jim Knowles",
+      "current_cms_post": 90899,
+      "official_name": "Jim Knowles",
+      "official_rank": "Asst Professor, Director of Undergraduate Programs",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jrknowle/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-2941d123",
+      "stored_name": "Laura Waldrep",
+      "current_cms_post": 90908,
+      "official_name": "Laura Waldrep",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lajacobs/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-132f6869",
+      "stored_name": "Chad Lewis",
+      "current_cms_post": 90911,
+      "official_name": "Chad Lewis",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lewis/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-0ea24def",
+      "stored_name": "Melanie Graham",
+      "current_cms_post": 90917,
+      "official_name": "Melanie Graham",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/megraha2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-dab0da1f",
+      "stored_name": "Margaret Simon",
+      "current_cms_post": 90919,
+      "official_name": "Margaret Simon",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mfyfe/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-1db12ba5",
+      "stored_name": "Marsha Gordon",
+      "current_cms_post": 90921,
+      "official_name": "Marsha Gordon",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mgorgero/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ecdc38e8",
+      "stored_name": "Marc Dudley",
+      "current_cms_post": 90925,
+      "official_name": "Marc Dudley",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mkdudley/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-696b7b21",
+      "stored_name": "Michelle McMullin",
+      "current_cms_post": 90927,
+      "official_name": "Michelle McMullin",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mmcmull/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f45ade93",
+      "stored_name": "Paul Fyfe",
+      "current_cms_post": 90933,
+      "official_name": "Paul Fyfe",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/pcfyfe/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-2894bc92",
+      "stored_name": "Paul Isom",
+      "current_cms_post": 90934,
+      "official_name": "Paul Isom",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/pcisom/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-722f12cf",
+      "stored_name": "Rebecca Walsh",
+      "current_cms_post": 90939,
+      "official_name": "Rebecca Walsh",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rawalsh/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-a2a148fd",
+      "stored_name": "Brooke Mulhollem",
+      "current_cms_post": 90940,
+      "official_name": "Brooke Mulhollem",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rbcalton/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-798231e5",
+      "stored_name": "Robin Dodsworth",
+      "current_cms_post": 90944,
+      "official_name": "Robin Dodsworth",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rmdodswo/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-a43970c7",
+      "stored_name": "Richard Nace",
+      "current_cms_post": 90946,
+      "official_name": "Richard Nace",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ronace/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-2ad34100",
+      "stored_name": "Sarah Ruiz",
+      "current_cms_post": 90950,
+      "official_name": "Sarah Ruiz",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/segrunde/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-daea67f0",
+      "stored_name": "Stacey Pigg",
+      "current_cms_post": 90955,
+      "official_name": "Stacey Pigg",
+      "official_rank": "Professor and Director of Graduate Programs",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/slpigg/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f470c77c",
+      "stored_name": "Timothy Stinson",
+      "current_cms_post": 90961,
+      "official_name": "Timothy Stinson",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tlstinso/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-39682789",
+      "stored_name": "Thomas Phillips",
+      "current_cms_post": 90962,
+      "official_name": "Thomas Phillips",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tpphilli/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c6430c6a",
+      "stored_name": "Wanda Lloyd",
+      "current_cms_post": 90964,
+      "official_name": "Wanda Lloyd",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/wdlloyd/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-634147f9",
+      "stored_name": "Jason Miller",
+      "current_cms_post": 90967,
+      "official_name": "Jason Miller",
+      "official_rank": "Distinguished Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/wjmille3/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-d3acfc51",
+      "stored_name": "Zachary Beare",
+      "current_cms_post": 90973,
+      "official_name": "Zachary Beare",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/zbeare/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-a01c50a2",
+      "stored_name": "Anna Rita Bonaduce Dresler",
+      "current_cms_post": 90990,
+      "official_name": "Anna Rita Bonaduce Dresler",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/arbonadu/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-688fe32b",
+      "stored_name": "Debbera Carson",
+      "current_cms_post": 90993,
+      "official_name": "Debbera Carson",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dacarson/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-521c2507",
+      "stored_name": "Scott Despain",
+      "current_cms_post": 90994,
+      "official_name": "Scott Despain",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/despain/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-43cb2eb0",
+      "stored_name": "Dustin Heinen",
+      "current_cms_post": 90995,
+      "official_name": "Dustin Heinen",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dheinen/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-83d53ac5",
+      "stored_name": "Deborah Kane",
+      "current_cms_post": 90998,
+      "official_name": "Deborah Kane",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dtkane/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-49c53b8f",
+      "stored_name": "Elizabeth Saylor",
+      "current_cms_post": 90999,
+      "official_name": "Elizabeth Saylor",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ecsaylo2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4005b8f8",
+      "stored_name": "Greg Dawes",
+      "current_cms_post": 91003,
+      "official_name": "Greg Dawes",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/gadfll/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-b9ecb2db",
+      "stored_name": "Michael Garval",
+      "current_cms_post": 91004,
+      "official_name": "Michael Garval",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/garval/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-94409460",
+      "stored_name": "James Brown",
+      "current_cms_post": 91015,
+      "official_name": "James Brown",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jhbrown3/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-2b120c00",
+      "stored_name": "Jodi Khater",
+      "current_cms_post": 91021,
+      "official_name": "Jodi Khater",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jskhater/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5b7a37b5",
+      "stored_name": "Karen Coachman",
+      "current_cms_post": 91022,
+      "official_name": "Karen Coachman",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kacoachm/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f72acd08",
+      "stored_name": "Katherine Morel",
+      "current_cms_post": 91026,
+      "official_name": "Katherine Morel",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kmorel/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-085252e7",
+      "stored_name": "Laura Call",
+      "current_cms_post": 91033,
+      "official_name": "Laura Call",
+      "official_rank": "Associate Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lkcall/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7f099bcf",
+      "stored_name": "Lynda Nyota",
+      "current_cms_post": 91034,
+      "official_name": "Lynda Nyota",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lknyota/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-bd2cc58f",
+      "stored_name": "Inma Navarro",
+      "current_cms_post": 91044,
+      "official_name": "Inma Navarro",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mnavarr/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-44049348",
+      "stored_name": "Nathaniel Isaacson",
+      "current_cms_post": 91047,
+      "official_name": "Nathaniel Isaacson",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/nkisaacs/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-44086cc5",
+      "stored_name": "Nilakshi Phukan",
+      "current_cms_post": 91049,
+      "official_name": "Nilakshi Phukan",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/nphukan/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8d11b8ff",
+      "stored_name": "Rebecca Ronquest",
+      "current_cms_post": 91051,
+      "official_name": "Rebecca Ronquest",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/reronque/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-255e55c8",
+      "stored_name": "Robin Kube",
+      "current_cms_post": 91052,
+      "official_name": "Robin Kube",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rmkube/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4d69a339",
+      "stored_name": "Runlei Zhai",
+      "current_cms_post": 91055,
+      "official_name": "Runlei Zhai",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rzhai/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c0f303df",
+      "stored_name": "Shelley Garrigan",
+      "current_cms_post": 91057,
+      "official_name": "Shelley Garrigan",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/segarrig/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-67311efb",
+      "stored_name": "Samuel Sotillo",
+      "current_cms_post": 91058,
+      "official_name": "Samuel Sotillo",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/sfsotill/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c688c63c",
+      "stored_name": "Sujata Mody",
+      "current_cms_post": 91061,
+      "official_name": "Sujata Mody",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ssmody/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-50a3f813",
+      "stored_name": "Tara Di Cassio",
+      "current_cms_post": 91063,
+      "official_name": "Tara Di Cassio",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tldicass/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-9e24a5ee",
+      "stored_name": "Valerie Lambert",
+      "current_cms_post": 91066,
+      "official_name": "Valerie Lambert",
+      "official_rank": "Associate Professor of French Applied Linguistics and Director of Graduate Programs",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/vawust/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-05055b70",
+      "stored_name": "Wakako Sera",
+      "current_cms_post": 91068,
+      "official_name": "Wakako Sera",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/wsera/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-19666d12",
+      "stored_name": "Audrey Emerson",
+      "current_cms_post": 91070,
+      "official_name": "Audrey Emerson",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/zchen21/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7820d37b",
+      "stored_name": "Alicia McGill",
+      "current_cms_post": 91160,
+      "official_name": "Alicia McGill",
+      "official_rank": "Associate Professor, History",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/aemcgill/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-b2e752bd",
+      "stored_name": "David Zonderman",
+      "current_cms_post": 91172,
+      "official_name": "David Zonderman",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dazonder/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ca2020f5",
+      "stored_name": "Ebony Jones",
+      "current_cms_post": 91182,
+      "official_name": "Ebony Jones",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ejones5/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-86028098",
+      "stored_name": "Frederico Freitas",
+      "current_cms_post": 91184,
+      "official_name": "Frederico Freitas",
+      "official_rank": "Associate Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/fsantos2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-363f6f0c",
+      "stored_name": "David Gilmartin",
+      "current_cms_post": 91186,
+      "official_name": "David Gilmartin",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/gilmarti/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-a84f9489",
+      "stored_name": "Holly Hurlburt",
+      "current_cms_post": 91192,
+      "official_name": "Holly Hurlburt",
+      "official_rank": "Associate Dean, University College and Professor of History",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/hshurlbu/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-2399d72e",
+      "stored_name": "Julia Rudolph",
+      "current_cms_post": 91200,
+      "official_name": "Julia Rudolph",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jerudolp/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4183b79d",
+      "stored_name": "Kristen Alff",
+      "current_cms_post": 91213,
+      "official_name": "Kristen Alff",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kalff/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-0e8a5852",
+      "stored_name": "William Kimler",
+      "current_cms_post": 91214,
+      "official_name": "William Kimler",
+      "official_rank": "Assoc Professor and Director of Undergraduate Programs in History",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kimler/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5bf3ec41",
+      "stored_name": "Megan Cherry",
+      "current_cms_post": 91228,
+      "official_name": "Megan Cherry",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mlcherr2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ee0086d6",
+      "stored_name": "Matthew Booker",
+      "current_cms_post": 91230,
+      "official_name": "Matthew Booker",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mmbooker/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-56bc6f31",
+      "stored_name": "Susanna Lee",
+      "current_cms_post": 91251,
+      "official_name": "Susanna Lee",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/smlee4/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7f863a13",
+      "stored_name": "Tate Paulette",
+      "current_cms_post": 91257,
+      "official_name": "Tate Paulette",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tpaulet/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c009e270",
+      "stored_name": "Verena Kasper-Marienberg",
+      "current_cms_post": 91263,
+      "official_name": "Verena Kasper-Marienberg",
+      "official_rank": "Associate Professor of History",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/vikasper/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ebcafa52",
+      "stored_name": "Xiaolin Duan",
+      "current_cms_post": 91268,
+      "official_name": "Xiaolin Duan",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/xiaolinduan/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-1526cfdb",
+      "stored_name": "Frances Graham",
+      "current_cms_post": 91290,
+      "official_name": "Frances Graham",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/fdgraha3/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8901a7d5",
+      "stored_name": "Haddy Njie",
+      "current_cms_post": 91292,
+      "official_name": "Haddy Njie",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/hmnjie/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4aeb9010",
+      "stored_name": "Keith Earnshaw",
+      "current_cms_post": 91297,
+      "official_name": "Keith Earnshaw",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/krearnsh/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-beb8fa50",
+      "stored_name": "Patsy Sibley",
+      "current_cms_post": 91300,
+      "official_name": "Patsy Sibley",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/pasibley/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7098ad88",
+      "stored_name": "Rachel Gelfand",
+      "current_cms_post": 91301,
+      "official_name": "Rachel Gelfand",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rgelfan/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-146b757c",
+      "stored_name": "Theresa Edwards",
+      "current_cms_post": 91303,
+      "official_name": "Theresa Edwards",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tmedward/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4177cb96",
+      "stored_name": "Victoria Ralston",
+      "current_cms_post": 91305,
+      "official_name": "Victoria Ralston",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/vnralsto/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-1e5583af",
+      "stored_name": "Tatiana Rabinovich",
+      "current_cms_post": 91316,
+      "official_name": "Tatiana Rabinovich",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/trabino/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c0b12fda",
+      "stored_name": "Akram Khater",
+      "current_cms_post": 91322,
+      "official_name": "Akram Khater",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/akhater/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-45cd47e4",
+      "stored_name": "Amy Glaser",
+      "current_cms_post": 91333,
+      "official_name": "Amy Glaser",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/aglaser/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-81e69676",
+      "stored_name": "Benjamin Rancourt",
+      "current_cms_post": 91336,
+      "official_name": "Benjamin Rancourt",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/btrancou/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4159afe3",
+      "stored_name": "Eric Carter",
+      "current_cms_post": 91340,
+      "official_name": "Eric Carter",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ekcarter/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-9c89336d",
+      "stored_name": "Gary Comstock",
+      "current_cms_post": 91341,
+      "official_name": "Gary Comstock",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/glcomsto/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-97c900d6",
+      "stored_name": "Jason Bivins",
+      "current_cms_post": 91343,
+      "official_name": "Jason Bivins",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jcbivins/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-81fd8b40",
+      "stored_name": "Jason Staples",
+      "current_cms_post": 91345,
+      "official_name": "Jason Staples",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jstaple/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-931ea1c2",
+      "stored_name": "Kathleen Foody",
+      "current_cms_post": 91348,
+      "official_name": "Kathleen Foody",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kmfoody/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-2b24aedb",
+      "stored_name": "Levi McLaughlin",
+      "current_cms_post": 91350,
+      "official_name": "Levi McLaughlin",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lmclaug2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-3873d681",
+      "stored_name": "Marina Bykova",
+      "current_cms_post": 91352,
+      "official_name": "Marina Bykova",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mfbykova/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7a91f948",
+      "stored_name": "Robert Mabrito",
+      "current_cms_post": 91358,
+      "official_name": "Robert Mabrito",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ramabrit/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8fd14bb4",
+      "stored_name": "Ronald Endicott",
+      "current_cms_post": 91360,
+      "official_name": "Ronald Endicott",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rpendico/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7510bb3a",
+      "stored_name": "Sanem Soyarslan",
+      "current_cms_post": 91363,
+      "official_name": "Sanem Soyarslan",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ssoyars/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c8c93cd3",
+      "stored_name": "Timothy Hinton",
+      "current_cms_post": 91364,
+      "official_name": "Timothy Hinton",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/thinton/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4d1dd1ba",
+      "stored_name": "Anna Behler",
+      "current_cms_post": 91380,
+      "official_name": "Anna Behler",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/acbehler/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6e5b87a3",
+      "stored_name": "Anne McLaughlin",
+      "current_cms_post": 91381,
+      "official_name": "Anne McLaughlin",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/acmclaug/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ea9afebb",
+      "stored_name": "Adam Meade",
+      "current_cms_post": 91382,
+      "official_name": "Adam Meade",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/awmeade/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ab8283c2",
+      "stored_name": "Daniel Gruehn",
+      "current_cms_post": 91387,
+      "official_name": "Daniel Gruehn",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dgruehn/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c980cd22",
+      "stored_name": "Jason Allaire",
+      "current_cms_post": 91399,
+      "official_name": "Jason Allaire",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jcallair/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-38634ee1",
+      "stored_name": "John Begeny",
+      "current_cms_post": 91400,
+      "official_name": "John Begeny",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jcbegeny/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-abaae86b",
+      "stored_name": "Jing Feng",
+      "current_cms_post": 91403,
+      "official_name": "Jing Feng",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jfeng2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f3e2412a",
+      "stored_name": "Kelly Lynn Mulvey",
+      "current_cms_post": 91413,
+      "official_name": "Kelly Lynn Mulvey",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ksmulvey/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e71a0f6e",
+      "stored_name": "Lori Foster",
+      "current_cms_post": 91415,
+      "official_name": "Lori Foster",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/llfoster/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f7494a83",
+      "stored_name": "Natalie Murr",
+      "current_cms_post": 91422,
+      "official_name": "Natalie Murr",
+      "official_rank": "Assoc Clinical Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/nsmurr/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-00bd8a7d",
+      "stored_name": "Scott Stage",
+      "current_cms_post": 91428,
+      "official_name": "Scott Stage",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/sastage/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-836f34d7",
+      "stored_name": "Whitney Griffin",
+      "current_cms_post": 91436,
+      "official_name": "Whitney Griffin",
+      "official_rank": "Assoc Clinical Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/wbgriff2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7f565f1e",
+      "stored_name": "Yingchen He",
+      "current_cms_post": 91439,
+      "official_name": "Yingchen He",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/yhe29/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f8dd96f3",
+      "stored_name": "Anthony Solari",
+      "current_cms_post": 91462,
+      "official_name": "Anthony Solari",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/agsolari/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-abab393b",
+      "stored_name": "Amanda Stewart",
+      "current_cms_post": 91463,
+      "official_name": "Amanda Stewart",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ajstewa5/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-400038ab",
+      "stored_name": "Amanda Edwards",
+      "current_cms_post": 91465,
+      "official_name": "Amanda Edwards",
+      "official_rank": "Assoc Teaching Professor and Director Leadership in the Public Sector",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/aredwar2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-38786b1f",
+      "stored_name": "Andrew Taylor",
+      "current_cms_post": 91466,
+      "official_name": "Andrew Taylor",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ataylor/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-170c5f37",
+      "stored_name": "Branda Nowell",
+      "current_cms_post": 91468,
+      "official_name": "Branda Nowell",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/blnowell/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8b7c4ac7",
+      "stored_name": "Christopher Galik",
+      "current_cms_post": 91472,
+      "official_name": "Christopher Galik",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/csgalik/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-dc52234c",
+      "stored_name": "Dmitri Mitin",
+      "current_cms_post": 91475,
+      "official_name": "Dmitri Mitin",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dmitin/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e0d88147",
+      "stored_name": "Daniel Graham",
+      "current_cms_post": 91476,
+      "official_name": "Daniel Graham",
+      "official_rank": "Assistant Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dngraham/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-624747c8",
+      "stored_name": "Frank Perry",
+      "current_cms_post": 91478,
+      "official_name": "Frank Perry",
+      "official_rank": "Asst Extension Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/flperry/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ff92a0f0",
+      "stored_name": "Jeffrey Diebold",
+      "current_cms_post": 91487,
+      "official_name": "Jeffrey Diebold",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jcdiebol/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-d388777c",
+      "stored_name": "Jennifer Kuzma",
+      "current_cms_post": 91492,
+      "official_name": "Jennifer Kuzma",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jkuzma/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c727223b",
+      "stored_name": "Jim Zink",
+      "current_cms_post": 91496,
+      "official_name": "Jim Zink",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jrzink/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7d807213",
+      "stored_name": "Michael Struett",
+      "current_cms_post": 91500,
+      "official_name": "Michael Struett",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mjstruet/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c1ee52f6",
+      "stored_name": "Moses Khisa",
+      "current_cms_post": 91501,
+      "official_name": "Moses Khisa",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mkhisa/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5eeca31e",
+      "stored_name": "Mark Nance",
+      "current_cms_post": 91503,
+      "official_name": "Mark Nance",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mtnance/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-3a650403",
+      "stored_name": "Richard Mahoney",
+      "current_cms_post": 91505,
+      "official_name": "Richard Mahoney",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/rdmahone/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-55dfde5d",
+      "stored_name": "Steven Greene",
+      "current_cms_post": 91512,
+      "official_name": "Steven Greene",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/shgreene/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-05da1528",
+      "stored_name": "Sherry DeLeon",
+      "current_cms_post": 91514,
+      "official_name": "Sherry DeLeon",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/sjdutton/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-8850614e",
+      "stored_name": "Tracy Appling",
+      "current_cms_post": 91517,
+      "official_name": "Tracy Appling",
+      "official_rank": "Internship Director and Assistant Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tabiel/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-9c0e8aa1",
+      "stored_name": "Brady Kocher",
+      "current_cms_post": 91538,
+      "official_name": "Brady Kocher",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/brkocher/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-b1ac962a",
+      "stored_name": "Chris Budnick",
+      "current_cms_post": 91539,
+      "official_name": "Chris Budnick",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ckbudnic/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-9287ae6b",
+      "stored_name": "Darlene Johnson",
+      "current_cms_post": 91543,
+      "official_name": "Darlene Johnson",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dljohn12/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f11b14a1",
+      "stored_name": "David Miller",
+      "current_cms_post": 91544,
+      "official_name": "David Miller",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/dsmille5/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-150b30b8",
+      "stored_name": "Eric Tucker",
+      "current_cms_post": 91546,
+      "official_name": "Eric Tucker",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/edtucker/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c370aad0",
+      "stored_name": "Edward Bell",
+      "current_cms_post": 91547,
+      "official_name": "Edward Bell",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/eebell2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6a4f7c37",
+      "stored_name": "Intae Yoon",
+      "current_cms_post": 91554,
+      "official_name": "Intae Yoon",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/iyoon/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5a28d818",
+      "stored_name": "Kathy Rinehart",
+      "current_cms_post": 91561,
+      "official_name": "Kathy Rinehart",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kkrineha/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-d2804745",
+      "stored_name": "Kim Stansbury",
+      "current_cms_post": 91562,
+      "official_name": "Kim Stansbury",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/klstansb/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f0f50526",
+      "stored_name": "Lavita Green",
+      "current_cms_post": 91564,
+      "official_name": "Lavita Green",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lcgreen/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-4995ce58",
+      "stored_name": "Maura Nsonwu",
+      "current_cms_post": 91567,
+      "official_name": "Maura Nsonwu",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mbnsonwu/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-3a1f0ecc",
+      "stored_name": "Michelle Guarino",
+      "current_cms_post": 91568,
+      "official_name": "Michelle Guarino",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mhguarin/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e0d228c4",
+      "stored_name": "Renae Lockhart",
+      "current_cms_post": 91570,
+      "official_name": "Renae Lockhart",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mrrobins/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-ba5c33bc",
+      "stored_name": "Natalie Ames",
+      "current_cms_post": 91571,
+      "official_name": "Natalie Ames",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/nrames/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5c0dc405",
+      "stored_name": "Pamela Wheeler",
+      "current_cms_post": 91572,
+      "official_name": "Pamela Wheeler",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/pawheele/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-d880cfc0",
+      "stored_name": "Paige Averett",
+      "current_cms_post": 91573,
+      "official_name": "Paige Averett",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/peaveret/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-1de5c7ae",
+      "stored_name": "Sarah Ascienzo",
+      "current_cms_post": 91576,
+      "official_name": "Sarah Ascienzo",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/saascien/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-b97af1fe",
+      "stored_name": "Sung-Ju Kim",
+      "current_cms_post": 91577,
+      "official_name": "Sung-Ju Kim",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/skim67/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-36f1ace1",
+      "stored_name": "Shantel Sullivan",
+      "current_cms_post": 91579,
+      "official_name": "Shantel Sullivan",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/snsulli2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f18e5889",
+      "stored_name": "Sontina Barnes",
+      "current_cms_post": 91580,
+      "official_name": "Sontina Barnes",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ssbarnes/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-11555119",
+      "stored_name": "Trinette Langley",
+      "current_cms_post": 91581,
+      "official_name": "Trinette Langley",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/tblangl2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-747602ba",
+      "stored_name": "Terrance Ruth",
+      "current_cms_post": 91582,
+      "official_name": "Terrance Ruth",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/trruth/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-f3399fa9",
+      "stored_name": "Alison Greene",
+      "current_cms_post": 91590,
+      "official_name": "Alison Greene",
+      "official_rank": "Assoc Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/acgreene/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-cff66c78",
+      "stored_name": "Anna Manzoni",
+      "current_cms_post": 91592,
+      "official_name": "Anna Manzoni",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/amanzon/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-1b43f8fc",
+      "stored_name": "Andrew Davis",
+      "current_cms_post": 91593,
+      "official_name": "Andrew Davis",
+      "official_rank": "Associate Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/apdavis5/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e8175447",
+      "stored_name": "Chelsey Dyer",
+      "current_cms_post": 91597,
+      "official_name": "Chelsey Dyer",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cgdyer/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e8b4815f",
+      "stored_name": "Dru McGill",
+      "current_cms_post": 91602,
+      "official_name": "Dru McGill",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/demcgill/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-7ed3ecba",
+      "stored_name": "Emily Dew",
+      "current_cms_post": 91609,
+      "official_name": "Emily Dew",
+      "official_rank": "Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ekdew/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-34242310",
+      "stored_name": "John Millhauser",
+      "current_cms_post": 91617,
+      "official_name": "John Millhauser",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jkmillha/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-998b8f4a",
+      "stored_name": "Jessica Pfaffendorf",
+      "current_cms_post": 91619,
+      "official_name": "Jessica Pfaffendorf",
+      "official_rank": "Associate Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jpfaffe/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5e0d9e51",
+      "stored_name": "Kathryn Grossman",
+      "current_cms_post": 91621,
+      "official_name": "Kathryn Grossman",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kmgross2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-899466df",
+      "stored_name": "Laura DeMarco",
+      "current_cms_post": 91624,
+      "official_name": "Laura DeMarco",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lmdemarc/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-fce8de04",
+      "stored_name": "Michaela DeSoucey",
+      "current_cms_post": 91626,
+      "official_name": "Michaela DeSoucey",
+      "official_rank": "Professor and Director of the Graduate Program in Sociology",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/madesouc/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-db72f22f",
+      "stored_name": "Martha Crowley",
+      "current_cms_post": 91629,
+      "official_name": "Martha Crowley",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/mlcrowle/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-301e5009",
+      "stored_name": "Nora Haenn",
+      "current_cms_post": 91633,
+      "official_name": "Nora Haenn",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/nmhaenn/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-e1edfd25",
+      "stored_name": "Margaret Stiffler",
+      "current_cms_post": 91652,
+      "official_name": "Margaret Stiffler",
+      "official_rank": "Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/stiffler/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-dc5df382",
+      "stored_name": "Tara Clarke",
+      "current_cms_post": 91655,
+      "official_name": "Tara Clarke",
+      "official_rank": "Asst Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/taclarke/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-104df7e3",
+      "stored_name": "Thomas Shriver",
+      "current_cms_post": 91657,
+      "official_name": "Thomas Shriver",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/teshrive/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-c8f7c5ec",
+      "stored_name": "Melvin Thomas",
+      "current_cms_post": 91659,
+      "official_name": "Melvin Thomas",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/thomas/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-5a7cee05",
+      "stored_name": "Olga Kleiankina",
+      "current_cms_post": 95138,
+      "official_name": "Olga Kleiankina",
+      "official_rank": "Teaching Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/oakleian/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-6e4d9bfe",
+      "stored_name": "Jason Delborne",
+      "current_cms_post": 95144,
+      "official_name": "Jason Delborne",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jadelbor/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-fe45bd2c",
+      "stored_name": "Jennifer Despain",
+      "current_cms_post": 95187,
+      "official_name": "Jennifer Despain",
+      "official_rank": "Senior Lecturer",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/jhdespai/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-15e72219",
+      "stored_name": "Ross Bassett",
+      "current_cms_post": 95210,
+      "official_name": "Ross Bassett",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/ross-2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-9dbafbfb",
+      "stored_name": "Kirsti Cole",
+      "current_cms_post": 105339,
+      "official_name": "Kirsti Cole",
+      "official_rank": "Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/kkcole2/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-1f896716",
+      "stored_name": "Alok Amatya",
+      "current_cms_post": 105341,
+      "official_name": "Alok Amatya",
+      "official_rank": "Assistant Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/abamatya/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-62babe02",
+      "stored_name": "Lori Hoggard",
+      "current_cms_post": 105462,
+      "official_name": "Lori Hoggard",
+      "official_rank": "Assoc Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/lhoggar/",
+      "old_title": ""
+    },
+    {
+      "id": "faculty-ncsu-chass-328b034b",
+      "stored_name": "Colleen Patton",
+      "current_cms_post": 105478,
+      "official_name": "Colleen Patton",
+      "official_rank": "Asst Professor",
+      "department": "College of Humanities and Social Sciences",
+      "official_profile": "https://chass.ncsu.edu/people/cpatton4/",
+      "old_title": ""
+    }
+  ]
+}
