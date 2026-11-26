@@ -1,0 +1,138 @@
+{
+  "caltech": {
+    "release_before": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "release_after": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "at": "2026-11-26T09:37:57.264872+00:00",
+    "rows": [
+      {
+        "id": "faculty-caltech-phys-68128723",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-68128723",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-68128723",
+        "page_title": "Bradley W. Filippone at California Institute of Technology \u00b7 JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-68128723",
+        "observed_at": "2026-11-26T09:37:37.784356+00:00",
+        "research_topics_in_visible_field": [],
+        "expected_count": 1,
+        "api_state": "unknown",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/bradley-w-filippone",
+          "observed_at": "2026-11-21T16:37:56.310602"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-21T16:37:56.310602",
+        "actual_html_field": "Research Research areas Not provided Not provided",
+        "passed": false
+      },
+      {
+        "id": "faculty-caltech-phys-b6dd07e7",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-b6dd07e7",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-b6dd07e7",
+        "page_title": "Sergei Gukov at California Institute of Technology \u00b7 JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-b6dd07e7",
+        "observed_at": "2026-11-26T09:37:37.777926+00:00",
+        "research_topics_in_visible_field": [],
+        "expected_count": 9,
+        "api_state": "unknown",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/gukov",
+          "observed_at": "2026-11-21T16:37:56.310775"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-21T16:37:56.310775",
+        "actual_html_field": "Research Research areas Not provided Not provided",
+        "passed": false
+      },
+      {
+        "id": "faculty-caltech-phys-a55ac716",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-a55ac716",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-a55ac716",
+        "page_title": "Kenneth G. Libbrecht at California Institute of Technology \u00b7 JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-a55ac716",
+        "observed_at": "2026-11-26T09:37:37.708875+00:00",
+        "research_topics_in_visible_field": [],
+        "expected_count": 1,
+        "api_state": "unknown",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/kenneth-g-libbrecht",
+          "observed_at": "2026-11-21T16:37:56.311317"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-21T16:37:56.311317",
+        "actual_html_field": "Research Research areas Not provided Not provided",
+        "passed": false
+      },
+      {
+        "id": "faculty-caltech-phys-ce75d85a",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-ce75d85a",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-ce75d85a",
+        "page_title": "E. Sterl Phinney at California Institute of Technology \u00b7 JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-ce75d85a",
+        "observed_at": "2026-11-26T09:37:53.355967+00:00",
+        "research_topics_in_visible_field": [],
+        "expected_count": 1,
+        "api_state": "unknown",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/e-s-sterl-phinney",
+          "observed_at": "2026-11-21T16:37:56.311966"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-21T16:37:56.311966",
+        "actual_html_field": "Research Research areas Not provided Not provided",
+        "passed": false
+      },
+      {
+        "id": "faculty-caltech-phys-82f76699",
+        "detail_url": "https://joinalab.com/opportunities/faculty-caltech-phys-82f76699",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-caltech-phys-82f76699",
+        "page_title": "Hsin-Yuan (Robert) Huang at California Institute of Technology \u00b7 JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-caltech-phys-82f76699",
+        "observed_at": "2026-11-26T09:37:53.385631+00:00",
+        "research_topics_in_visible_field": [],
+        "expected_count": 1,
+        "api_state": "unknown",
+        "api_provenance": {
+          "source_url": "https://www.pma.caltech.edu/people/robert-huang",
+          "observed_at": "2026-11-21T16:37:56.311058"
+        },
+        "source_link_visible": true,
+        "observation_date_visible": true,
+        "snapshot_date": "2026-11-21T16:37:56.311058",
+        "actual_html_field": "Research Research areas Not provided Not provided",
+        "passed": false
+      }
+    ],
+    "accepted": false
+  },
+  "jhu": {
+    "release_before": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "release_after": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "at": "2026-11-26T09:39:09.290685+00:00",
+    "rows": [
+      {
+        "id": "faculty-jhu-som-ab46342e",
+        "detail_url": "https://joinalab.com/opportunities/faculty-jhu-som-ab46342e",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-jhu-som-ab46342e",
+        "page_title": "Daeyeol Lee at Johns Hopkins University \u00b7 JoinALab",
+        "html_status": 200,
+        "formal_api_id": "faculty-jhu-som-ab46342e",
+        "observed_at": "2026-11-26T09:39:06.157579+00:00",
+        "public_works": null,
+        "author_id": null,
+        "authors_status": null,
+        "visible_titles": [],
+        "old_oncology_titles_visible": false,
+        "passed": false
+      }
+    ],
+    "accepted": false
+  }
+}
