@@ -25,8 +25,9 @@ with sync_playwright() as pw:
         assert frontend == release
         for oid, host, expected in cases:
             response = page.goto(host, wait_until="domcontentloaded")
-            received = " ".join(page.locator("body").inner_text().split()).lower()
-            assert response.status == 200 and all(s.lower() in received for s in expected), (oid,response.status)
+            received = " ".join((page.locator("body").text_content() or "").split()).lower()
+            missing = [s for s in expected if s.lower() not in received]
+            assert response.status == 200 and not missing, (oid, response.status, missing)
             response = context.request.get(site + "/api/opportunities/" + oid, params={
                 "_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
             })
