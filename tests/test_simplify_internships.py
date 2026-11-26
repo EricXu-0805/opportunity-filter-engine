@@ -182,6 +182,7 @@ def test_waymo_matches_the_application_requisition_and_holds_unverified_rows(mon
             return {"jobs": [
                 {"id": 8265173, "title": title, "absolute_url": raw["url"]},
                 {"id": 123, "title": "Unrelated intern", "absolute_url": raw["url"]},
+                {"id": 4, "title": "Malformed intern", "absolute_url": "https://[invalid"},
             ]}
 
     def board(url, **kwargs):
@@ -203,7 +204,10 @@ def test_waymo_matches_the_application_requisition_and_holds_unverified_rows(mon
     assert si.merge_into_processed(rows, str(target)) == (2, 0)
     stored = json.loads(target.read_text())
     assert [r["id"] for r in stored] == [rows[0]["id"], rows[2]["id"]]
-    monkeypatch.setattr(si, "_waymo_titles", lambda: {})
+    def board_failed(url, **kwargs):
+        raise si.requests.Timeout("test timeout")
+
+    monkeypatch.setattr(si.requests, "get", board_failed)
     retry = fetch_and_normalize()
     assert si.merge_into_processed(retry, str(target)) == (0, 1)
     assert json.loads(target.read_text())[0] == stored[0]

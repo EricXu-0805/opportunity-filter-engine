@@ -147,7 +147,12 @@ def _epoch_to_iso(value) -> str | None:
 
 def _waymo_job_id(url: str) -> str | None:
     """Bind employer evidence to the same requisition as the application link."""
-    parts = urlsplit(url)
+    if not isinstance(url, str):
+        return None
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return None
     ids = parse_qs(parts.query).get("gh_jid", [])
     if (parts.scheme == "https" and parts.netloc == "careers.withwaymo.com"
             and parts.path.rstrip("/") == "/jobs" and len(ids) == 1 and ids[0].isdigit()):
@@ -345,6 +350,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
 
     index = {opp["id"]: opp for opp in existing}
     added, updated = 0, 0
+    withheld = []
 
     for opp in new_opps:
         if (opp.get("organization", "").casefold() == "waymo"
@@ -353,6 +359,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             # Keep older verified rows unchanged on an unread board or a missing
             # requisition. The source ID still counts towards this run's active
             # set, and new unverifiable listings can be retried next refresh.
+            withheld.append(opp["id"])
             continue
         if opp["id"] in index:
             opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
@@ -364,6 +371,9 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             index[opp["id"]] = opp
             added += 1
 
+    if withheld:
+        logger.warning("Held %d Waymo internships without matching employer job evidence: %s",
+                       len(withheld), ", ".join(withheld))
     all_opps = list(index.values())
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
