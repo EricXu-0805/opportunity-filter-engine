@@ -1,0 +1,70 @@
+{
+  "backend_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "cold_read_corrected_text": true,
+  "cold_read_source_and_title": true,
+  "finished_utc": "2026-11-26T09:53:08.240035+00:00",
+  "free_unsent_draft_checks": [
+    {
+      "http": 200,
+      "revision": 1,
+      "status": "candidate",
+      "target": "faculty-ucb-eecs-d683bc2c",
+      "variants": 3,
+      "variants_quoting_confirmed_with_source": []
+    },
+    {
+      "http": 200,
+      "revision": 2,
+      "status": "confirmed",
+      "target": "faculty-ucb-eecs-d683bc2c",
+      "variants": 3,
+      "variants_quoting_confirmed_with_source": [
+        "balanced",
+        "skills",
+        "concise"
+      ]
+    },
+    {
+      "http": 200,
+      "revision": 2,
+      "status": "confirmed",
+      "target": "faculty-cs-321c7f13",
+      "variants": 3,
+      "variants_quoting_confirmed_with_source": [
+        "balanced",
+        "skills",
+        "concise"
+      ]
+    },
+    {
+      "http": 200,
+      "revision": 3,
+      "status": "rejected",
+      "target": "faculty-cs-321c7f13",
+      "variants": 3,
+      "variants_quoting_confirmed_with_source": []
+    }
+  ],
+  "frontend_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "guest_signup_http": 200,
+  "included_merge": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "lookups": [
+    422,
+    200
+  ],
+  "observed_writes": [
+    "candidate",
+    "confirmed",
+    "rejected"
+  ],
+  "same_named_fork": {
+    "author": "unoju",
+    "base": "octocat/Hello-World",
+    "head": "unoju/Hello-World",
+    "id": "github-pr:140900"
+  },
+  "site": "https://joinalab.com",
+  "source": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1298",
+  "started_utc": "2026-11-26T09:52:46.416543+00:00",
+  "verified_official_pull_id": 5504607756
+}
