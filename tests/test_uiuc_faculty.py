@@ -4467,3 +4467,18 @@ def test_a_row_retired_for_a_gone_page_is_live_again_once_a_roster_lists_it(tmp_
     row = _merge(tmp_path, [stored], [fresh])["Avery Example"]
     assert (row["id"], row["metadata"]["is_active"]) == (stored["id"], True)
     assert _INACTIVE_STATE.isdisjoint(row["metadata"])
+
+
+def test_truncated_anthropology_card_keeps_the_verified_emeritus_id():
+    from src.collectors.uiuc_faculty import DEPARTMENTS, normalize_faculty
+
+    dept = DEPARTMENTS["anthro"]
+    card = {"name": "Paul A", "title": "Professor Emeritus",
+            "url": "https://anthro.illinois.edu/directory/profile/p-garber"}
+    row = normalize_faculty(card, dept, keywords=[])
+    assert (row["pi_name"], row["id"]) == ("Paul A Garber", "faculty-anthropology-3ec19539")
+    assert row["metadata"]["is_active"] is False
+    other = normalize_faculty({**card, "url": "https://anthro.illinois.edu/directory/profile/other"}, dept, keywords=[])
+    assert other["pi_name"] == "Paul A" and other["id"] != row["id"]
+    renamed = normalize_faculty({**card, "name": "Another Person"}, dept, keywords=[])
+    assert renamed["pi_name"] == "Another Person" and renamed["id"] != row["id"]
