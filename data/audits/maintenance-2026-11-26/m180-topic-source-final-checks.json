@@ -1,0 +1,44 @@
+{
+  "verified_at": "2026-11-26T20:46:09+00:00",
+  "source": {
+    "baseRefName": "integrate/verified-maintenance-20261126-b21",
+    "headRefOid": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "state": "OPEN",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1478"
+  },
+  "standard": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889016942",
+  "security": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889044269",
+  "normal_chromium": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45890656995",
+  "independently_checked_files": [
+    "frontend/src/app/opportunities/[id]/DetailSections.test.tsx",
+    "frontend/src/app/opportunities/[id]/DetailSections.tsx"
+  ],
+  "jobs": [
+    [
+      "Decide (run or skip the suite)",
+      "success"
+    ],
+    [
+      "E2E (Playwright)",
+      "success"
+    ],
+    [
+      "Migrations (Flow B merge + CLI replay)",
+      "success"
+    ],
+    [
+      "Backend (lint + pytest)",
+      "success"
+    ],
+    [
+      "Frontend (typecheck + build)",
+      "success"
+    ],
+    [
+      "Deploy backend (Render hook)",
+      "skipped"
+    ]
+  ]
+}
