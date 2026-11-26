@@ -1,0 +1,23 @@
+{
+  "observed": "2026-11-26T22:56:12.016508+00:00",
+  "services": [
+    {
+      "url": "https://joinalab.com/about",
+      "status": 200,
+      "sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "t": 3.91
+    },
+    {
+      "url": "https://joinalab.com/api/health",
+      "status": 200,
+      "sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "t": 3.89
+    },
+    {
+      "url": "https://opportunity-filter-engine-api.onrender.com/api/health",
+      "status": 200,
+      "sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "t": 3.71
+    }
+  ]
+}
