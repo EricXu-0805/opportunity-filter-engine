@@ -34,6 +34,17 @@ class ProgramWindow:
 
 
 _REVIEWED = date(2026, 11, 5)
+_DSI_HOST = "https://datascience.uchicago.edu/education/summerlab/"
+DSI_WINDOW = ProgramWindow(
+    _DSI_HOST, _DSI_HOST + "program-details/", date(2026, 11, 26), date(2027, 1, 11),
+    "Application deadline: January 11, 2027, 11:59pm CT",
+)
+_DSI_2027_NOTES = (
+    "Applications close January 11, 2027 at 11:59 p.m. Central.",
+    "The 2026 program has concluded; the 2027 program application is not posted yet "
+    "(the page says to check back in fall 2026). Graduating college seniors are not eligible.",
+)
+DSI_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab"
 _NCSA = "https://reu.ncsa.illinois.edu/"
 _SUPERB = "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/"
 _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
@@ -102,6 +113,7 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         "March 1: Application deadline.",
         date(2026, 11, 15), "November 15: Online application opens.", "America/Chicago", "November 15",
     ),
+    ("uchicago", "dsi_summer_lab"): DSI_WINDOW,
     ("jhu", "summer_pura"): ProgramWindow(
         "https://hour.jhu.edu/opportunities/summerpura/", "https://hour.jhu.edu/opportunities/summerpura/",
         _REVIEWED, date(2027, 2, 1),
@@ -161,6 +173,7 @@ _STARS_SRO = "https://researchops.web.illinois.edu/opportunity/summer-training-r
 STARS_SRO_CURRENT = _STARS_SRO + "-stars-program"
 STARS_SRO_ALIAS = _STARS_SRO + "-program-stars"
 _AGGREGATOR_WINDOWS = {
+    ("uiuc_sro", "sro-d6b78515"): ("2027-01-12", replace(DSI_WINDOW, url=DSI_DIRECTORY)),
     ("uiuc_sro", "sro-60f60fbd"): ("2027-02-01", replace(STARS_WINDOW, url=STARS_SRO_CURRENT)),
     ("uiuc_sro", "sro-bc33bc08"): ("2027-02-01", replace(STARS_WINDOW, url=STARS_SRO_ALIAS)),
     ("uiuc_sro", "sro-3ec4ea4e"): ("2027-02-01", ProgramWindow(
@@ -186,6 +199,7 @@ _AGGREGATOR_WINDOWS = {
 
 
 _SRO_APPLICATION_LINKS = {
+    DSI_DIRECTORY: {_DSI_HOST, _DSI_HOST + "#program-overview"},
     STARS_SRO_CURRENT: {STARS_HOST},
     STARS_SRO_ALIAS: {STARS_OLD_HOST, STARS_HOST},
     _CRISP_DIRECTORY: {_CRISP_DIRECTORY, _CRISP_HOST},
@@ -221,6 +235,8 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         # SRO records the pagination URL as source_url. The stable detail URL
         # identifies the entry; the deep page supplies its external host link.
         if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
+            return None
+        if window.url == DSI_DIRECTORY and record.get("organization") != "University of Chicago":
             return None
         if window.page == STARS_HOST and record.get("organization") != "Boston University":
             return None
@@ -264,6 +280,12 @@ def reviewed_window(record: object) -> ProgramWindow | None:
         return None
     # The legacy Wisconsin host redirects to a multi-year program. A later
     # campus harvest with a different explicit date describes another cycle.
+    if window is DSI_WINDOW and (
+        record.get("id") != "uchicago-8cd2def060b6" or record.get("source") != "uchicago_external_research"
+        or record.get("deadline") not in (None, window.closes_on.isoformat())
+        or metadata.get("deadline_note") not in _DSI_2027_NOTES
+    ):
+        return None
     if window is STARS_WINDOW and (
         record.get("id") != "bu-bbc659c6ac92" or record.get("source") != "bu_research_programs"
         or record.get("deadline") not in (None, window.closes_on.isoformat())

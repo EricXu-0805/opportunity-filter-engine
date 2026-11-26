@@ -4,6 +4,8 @@ from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass, replace
 
 from src.program_windows import (
+    DSI_DIRECTORY,
+    DSI_WINDOW,
     NCSA_DIRECTORY,
     SMU_DIRECTORY,
     SMU_WINDOW,
@@ -55,9 +57,8 @@ class ProgramPair:
             checked = reviewed_window(record)
             if checked and checked.page == self.window.page and checked.closes_on == self.window.closes_on:
                 continue
-            # STaRS states no opening date. Its current cards bind the
-            # non-estimated student close to BU's actual program destination.
-            if (projected and self.window == STARS_WINDOW and record.get("deadline_is_estimate") is False
+            # A verified closing-date citation also identifies programs with no stated opening day.
+            if (projected and self.window in (STARS_WINDOW, DSI_WINDOW) and record.get("deadline_is_estimate") is False
                     and record.get("application_deadline_source_url") == self.window.page):
                 continue
             # Other public cards omit collector metadata but carry the source-bound opening.
@@ -96,6 +97,9 @@ class ProgramPair:
         return [oid for oid in ids if oid not in self.ids or oid == keep]
 
 
+DSI = ProgramPair(
+    "uchicago-8cd2def060b6", "uchicago_external_research", DSI_WINDOW, "sro-d6b78515", DSI_DIRECTORY,
+)
 NCSA = ProgramPair(
     "ext-uiuc-ncsa-reu", "manual", WINDOWS[("manual", "ext-uiuc-ncsa-reu")], "sro-1532726e", NCSA_DIRECTORY
 )
@@ -125,7 +129,7 @@ STARS = ProgramPair(
 _STARS_FALLBACK = replace(
     STARS, directory_id="sro-bc33bc08", directory_url=STARS_SRO_ALIAS, previous_directory_ids=(STARS.directory_id,),
 )
-SOURCES_BY_PROGRAM = ((NCSA,), (WISCONSIN, _WISCONSIN_FALLBACK), (SMU,), (STARS, _STARS_FALLBACK))
+SOURCES_BY_PROGRAM = ((DSI,), (NCSA,), (WISCONSIN, _WISCONSIN_FALLBACK), (SMU,), (STARS, _STARS_FALLBACK))
 ALL_IDS = frozenset(oid for choices in SOURCES_BY_PROGRAM for pair in choices for oid in pair.ids)
 
 
