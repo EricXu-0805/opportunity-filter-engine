@@ -2268,6 +2268,41 @@ class TestCorpusPrecomputeEquivalence:
             assert top_fast == top_base
             assert [asdict(r) for r in fast] == [asdict(r) for r in baseline]
 
+    def test_target_work_methods_follow_confirmations_and_the_current_record(self, _isolated_precompute, monkeypatch):
+        import src.matcher.ranker as rk
+
+        record = {**self._mini_corpus()[0], "metadata": {"research_areas_raw": "GIS and urban planning"}}
+        profile = self._profiles()[0]
+        entry = {"id": "course-project", "revision": 2, "source": "manual",
+                 "status": "confirmed", "text": "I used GIS to map wetlands."}
+        reads = []
+        original = rk.target_methods
+
+        def count_methods(required, research):
+            reads.append(tuple(research))
+            return original(required, research)
+
+        monkeypatch.setattr(rk, "target_methods", count_methods)
+        rk.register_corpus([record])
+        for status in ("candidate", "withdrawn"):
+            visitor = {**profile, "match_experiences": [{**entry, "status": status}]}
+            assert rk.rank_opportunity(visitor, record).experience_basis is None
+        assert reads == []
+
+        visitor = {**profile, "match_experiences": [entry]}
+        for _ in range(2):
+            result = rk.rank_opportunity(visitor, record)
+            assert result.experience_basis == {"entry_id": entry["id"], "revision": 2,
+                                               "method": "GIS", "target_source": "research_area"}
+        assert len(reads) == 1
+        assert rk.rank_opportunity(profile, record).experience_basis is None
+
+        replacement = {**record, "metadata": {"research_areas_raw": "Independent arts research"}}
+        rk.register_corpus([replacement])
+        for _ in range(2):
+            assert rk.rank_opportunity(visitor, replacement).experience_basis is None
+        assert len(reads) == 2
+
     def test_register_corpus_invalidates_on_new_list(self, _isolated_precompute):
         import src.matcher.ranker as rk
         corpus = self._mini_corpus()

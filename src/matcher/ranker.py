@@ -3168,7 +3168,7 @@ class _OppStatic:
     kw_labels: bool
     # When topics_ours: the row's own words (see _own_words); else ().
     own_words: tuple[str, ...]
-    experience_terms: tuple[tuple[str, str], ...]
+    experience_terms: tuple[tuple[str, str], ...] | None
     ov_kws: tuple[str, ...]
     course_signals: tuple[frozenset[str], ...]
     first_exp: bool
@@ -3359,6 +3359,20 @@ def _topic_candidate(keyword: str) -> tuple[str, str, frozenset[str]]:
     )
 
 
+def _target_experience_terms(opp: dict) -> tuple[tuple[str, str], ...]:
+    """Read stated methods only when a student has confirmed experience to match."""
+    required = ()
+    if not faculty_contact_claims_unverified(opp) and skills_basis(opp, "eligibility.skills_required") is None:
+        required = faculty_safe_eligibility(opp).get("skills_required")
+    research = [
+        (opp.get("metadata") or {}).get("research_areas_raw")
+        if not is_inferred(opp, "metadata.research_areas_raw") else ""
+    ]
+    if opp.get("source") in KEYWORDS_FROM_SOURCE and keywords_are_source_topics(opp):
+        research.extend(opp.get("keywords") or ())
+    return target_methods(required, research)
+
+
 def _build_opp_static(opp: dict) -> _OppStatic:
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     keywords = opp.get("keywords", []) or []
@@ -3442,11 +3456,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         topics_ours=topics_ours,
         kw_labels=kw_labels,
         own_words=_own_words(opp, clean_pi) if topics_ours else (),
-        experience_terms=target_methods(
-            elig.get("skills_required") if not is_faculty_contact and skills_basis(opp, "eligibility.skills_required") is None else (),
-            ((opp.get("metadata") or {}).get("research_areas_raw") if not is_inferred(opp, "metadata.research_areas_raw") else "",
-             *(keywords if opp.get("source") in KEYWORDS_FROM_SOURCE and keywords_are_source_topics(opp) else ())),
-        ),
+        experience_terms=None,
         ov_kws=ov_kws,
         course_signals=course_signals,
         first_exp=(
@@ -4025,7 +4035,11 @@ def _rank_opportunity_unlocked(
         elig_score, elig_fit, elig_gap = precomputed_eligibility
     else:
         elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
-    experience_basis = experience_for_target(interests.confirmed_methods, st.experience_terms) if interests.confirmed_methods else None
+    experience_basis = None
+    if interests.confirmed_methods:
+        if st.experience_terms is None:
+            st.experience_terms = _target_experience_terms(opportunity)
+        experience_basis = experience_for_target(interests.confirmed_methods, st.experience_terms)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity, course_sets, experience_basis)
     up_score, up_fit, up_gap = score_upside(
         profile, opportunity,
