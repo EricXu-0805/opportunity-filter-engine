@@ -1,0 +1,58 @@
+{
+  "scope": "Local observation only, on the exact 149954 saved-record B26 corpus. Moving canonical retained-results sorting into the existing scoring collector guard was evaluated as an alternative, then rejected. No product commit or deployment.",
+  "at": "2026-11-26T23:14:53.229524+00:00",
+  "candidate_base": "2a05dc73ffc05d52777b2f12a0793e2bc6eece15",
+  "all_ten_responses_equal": true,
+  "method": "Four fresh processes in A/B/B/A order with one hash seed, normal local HTTP routes, identical profile, full-corpus registration and startup. Five timed requests each per persona followed by twelve ordinary health requests and an explicitly measured full collection. The last collection is outside first/repeat timings.",
+  "observations": {
+    "base-1": {
+      "peak_resident_mib": 1515.953,
+      "cross_first_sec": 7.100031416863203,
+      "cross_next_cached_sec": 0.02581016579642892,
+      "full_collections_cross_first": [
+        1,
+        1.0480011673644185,
+        164,
+        1.0480011673644185
+      ],
+      "full_collections_cross_next_cached": null
+    },
+    "sorted-1": {
+      "peak_resident_mib": 1549.531,
+      "cross_first_sec": 5.815921583212912,
+      "cross_next_cached_sec": 1.2252096659503877,
+      "full_collections_cross_first": null,
+      "full_collections_cross_next_cached": [
+        1,
+        0.9758464591577649,
+        96,
+        0.9758464591577649
+      ]
+    },
+    "sorted-2": {
+      "peak_resident_mib": 1642.266,
+      "cross_first_sec": 5.866676583420485,
+      "cross_next_cached_sec": 1.2928456668742,
+      "full_collections_cross_first": null,
+      "full_collections_cross_next_cached": [
+        1,
+        1.0271651251241565,
+        96,
+        1.0271651251241565
+      ]
+    },
+    "base-2": {
+      "peak_resident_mib": 1599.969,
+      "cross_first_sec": 7.23067641723901,
+      "cross_next_cached_sec": 0.02625237498432398,
+      "full_collections_cross_first": [
+        1,
+        1.070289040915668,
+        164,
+        1.070289040915668
+      ],
+      "full_collections_cross_next_cached": null
+    }
+  },
+  "decision": "The shorter first request shifted full collection to the next cached read. Its 1.225 and 1.293 seconds violate the 1-second warm budget; retain the original behavior. Earlier corpus+date contact-strength repair remains independently supported by full rankings, memory, and exact CI at PR 1495."
+}
