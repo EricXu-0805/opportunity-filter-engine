@@ -1,0 +1,35 @@
+{
+  "time": "2026-11-26T09:23:05.164623+00:00",
+  "url": "https://joinalab.com",
+  "release": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "frontend_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "upload_error_text": "Invalid PDF structure.",
+  "upload_error_role_alert": false,
+  "earlier_revision": 1,
+  "preserved_after_invalid_upload_revision": 1,
+  "old_pdf_preserved_after_error": true,
+  "retry_completed_after_reopen": true,
+  "visible_source_lines": 1,
+  "unknown_course_statuses": 1,
+  "previous_courses_cleared": true,
+  "anonymous_accounts": 1,
+  "save_revisions": [
+    1,
+    2
+  ],
+  "read_revision": 2,
+  "first_party_profile_read": true,
+  "stored_source_text_contains_course_list": true,
+  "courses_displayed_after_reopen": [
+    "CS 225"
+  ],
+  "expected_after_fix": [
+    "CS 225 Data Structures",
+    "数据结构",
+    "機器學習",
+    "算法",
+    "线性代数",
+    "统计"
+  ],
+  "result": "reproduced"
+}
