@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
@@ -68,11 +69,18 @@ def main():
     wanted.update(r["url"].strip() for r in original if r["url"].strip() not in {CURRENT,OLD})
     wanted={s for s in wanted if urlsplit(s).netloc=="phys.ufl.edu"}
     with ThreadPoolExecutor(max_workers=3) as pool: sites=dict(pool.map(check_person,sorted(wanted)))
+    ranks_on_cards={card["rank"] for card in roster}
+    for item in sites.values():
+        if "title_fields" in item:
+            item["title_fields"]=[role for role in item["title_fields"] if role in ranks_on_cards]
     result={"timestamp":datetime.now(UTC).isoformat(timespec="seconds"),"legacy":a,"current":b,
             "old_and_new_return_same_ordered_cards":True,"old_table_rows":len(live.select("table tr")),
             "cards":roster,"originals":[{"id":r["id"],"name":r["pi_name"],"old_profile":r["url"],
                 "previous_title":r["metadata"]["faculty_title"],"active":r["metadata"].get("is_active")}
                 for r in original],"profiles":sites}
-    Path("../uf-physics-evidence.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
+    encoded=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
+    assert not re.search(r"[\w.+-]+@[\w.-]+\.\w{2,}",encoded)
+    assert not re.search(r"(?<!\d)\(?\d{3}\)?[ .-]+\d{3}[ .-]+\d{4}(?!\d)",encoded)
+    Path("../uf-physics-evidence.json").write_text(encoded)
     print(len(roster), "cards;",sum(i["passes_title_gate"] for i in roster),"passes by title;",len(sites),"public destinations.")
 if __name__=="__main__":main()

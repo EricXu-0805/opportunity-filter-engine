@@ -19,7 +19,7 @@ jobs:
           path: audit
       - uses: actions/checkout@v6
         with:
-          ref: ac904dd766e9bf4cf7fa1d31f70aef357ab131ac
+          ref: 6d67369a1e40847db3f3c8beda3ef668e85eec40
           path: candidate
           persist-credentials: false
       - uses: actions/setup-python@v6

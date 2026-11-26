@@ -1,11 +1,8 @@
 """Replay the normal UF refresh and persistent merge under both entry URLs and an outage."""
-import copy
 import json
 import tempfile
-from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -28,7 +25,7 @@ def public_fields(r):
 
 
 def main():
-    seed=json.loads(Path("data/processed/shards/uf.json").read_bytes())
+    seed=json.loads(Path("../audit/data/processed/shards/uf.json").read_bytes())
     initial=index(seed); original={i:r for i,r in initial.items() if i.startswith("faculty-uf-phy-")}
     current=ucb_common.fetch_soup(CURRENT);old=ucb_common.fetch_soup(OLD)
     assert old and current and current.select("article.ufclas-team-grid__item")
@@ -37,7 +34,6 @@ def main():
     # is the normal result when the campus page is unavailable.
     rounds=[]; before=seed
     physics=next(d for d in uf_faculty.SCHOOL["departments"] if d["short"]=="PHY")
-    baseline_ledger={}; baseline=copy.deepcopy(physics)
     for label, page in (("canonical",current),("unavailable",None),("legacy_redirect",old),("repeat",current)):
         previous=index(before)
         with tempfile.TemporaryDirectory() as temp, pytest.MonkeyPatch.context() as mp:
@@ -46,7 +42,11 @@ def main():
             mp.setattr(refresh_all,"fetch_uf_faculty",uf_faculty.fetch_and_normalize)
             mp.setattr(refresh_all,"merge_uf_faculty",uf_faculty.merge_into_processed)
             mp.setattr(ucb_common,"PROCESSED_FILE",processed)
-            mp.setattr(ucb_common,"fetch_soup",lambda request,**kw: page if request==CURRENT else None)
+            def read(request, **kwargs):
+                if request==CURRENT and page is not None:
+                    return page
+                return ucb_common._fetch_failed("connection_failed")
+            mp.setattr(ucb_common,"fetch_soup",read)
             summary=refresh_all.refresh_all(deep=True,schools={"uf"})
             source=summary["sources"]["uf_faculty"]
             unit=source["stale_unit_ledger"]["phy"]
@@ -55,12 +55,14 @@ def main():
         assert len(before)==len(rows)==len(initial) and set(rows)==set(initial)
         assert all(r["metadata"].get("first_seen_at")==rows[i]["metadata"].get("first_seen_at") for i,r in initial.items())
         assert all(rows[i]["metadata"].get("is_active") is not False for i in original)
+        if page is None:
+            assert unit["fetch_status"]=="failed" and unit["directory_fetch_failure"]=="connection_failed"
         observed=unit["observed_count"]
         assert observed==(0 if page is None else len(original))
         seen_moved=[i for i in sorted(original) if rows[i]["metadata"]["last_seen_at"]!=previous[i]["metadata"]["last_seen_at"]]
         assert len(seen_moved)==(0 if page is None else len(original))
         rounds.append({"case":label,"fetch":unit["fetch_status"],"parse":unit["parse_status"],
-                      "completeness":unit["completeness_status"],"observed":observed,
+                      "completeness":unit["completeness_status"],"failure_reason":unit.get("directory_fetch_failure"),"observed":observed,
                       "coverage":{k:v for k,v in unit.get("coverage",{}).items() if isinstance(v,int)},
                       "originals_seen_at_changed":len(seen_moved),"retained_uf_ids":len(rows),
                       "active_originals":sum(rows[i]["metadata"].get("is_active") is not False for i in original)})
