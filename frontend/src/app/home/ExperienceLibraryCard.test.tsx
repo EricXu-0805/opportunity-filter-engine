@@ -22,11 +22,11 @@ function Harness({ initial }: { initial: ProfileData }) {
 const stored = (): ExperienceEntry[] => JSON.parse(screen.getByTestId('entries').textContent!);
 const editorFor = (text: string) => { const el = screen.getAllByText(text).find((item) => item.closest('summary'))!.closest('details')!; el.open = true; return el; };
 describe('experience library review', () => {
-  it('says which features read confirmed entries: cold emails and both résumés, not matching', () => {
+  it('names the current consumers and the external evidence that can inform matching', () => {
     // It used to say résumé rewriting ignored the library, yet every target-résumé
     // experience line, the lines AI may rewrite, is a confirmed library entry.
-    expect(dictionaries.en.home.experience.description).toBe('Review your resume excerpts or add an experience. Only entries you confirm can supply experience facts for cold emails, your résumé master and target résumés. Matching and the résumé bullet editor do not use this library yet.');
-    expect(dictionaries.zh.home.experience.description).toBe('核对简历原文片段，也可以手动补充经历。只有你确认的条目才会作为经历事实，供邮件、简历母版和目标简历选用；匹配和经历条目编辑暂未接入。');
+    expect(dictionaries.en.home.experience.description).toBe('Review résumé excerpts or add an experience. Confirm the entries you want to use in email drafts, your résumé master and target résumés. A match can also show when a confirmed manual, LinkedIn or GitHub entry describes a method the opportunity names.');
+    expect(dictionaries.zh.home.experience.description).toBe('核对简历原文片段，也可以手动补充经历。请确认哪些经历可以用于邮件草稿、简历母版和目标简历。如果你确认的手填、LinkedIn 或 GitHub 经历描述了该机会提到的方法，匹配结果也会标出采用的经历。');
   });
   it('extracts candidates, confirms a correction with original quote and preserves it on re-extraction', async () => {
     render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'Built a Python robot.\n\nMeasured 20 trials.' }} />);
