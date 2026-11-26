@@ -1,0 +1,3090 @@
+{
+  "M176_scheduled_runs": [
+    {
+      "collector_start": "2026-11-25T17:06:18.043847",
+      "created_at": "2026-11-25T17:03:48Z",
+      "deferred_deadline": [],
+      "duration_minutes": 164.37,
+      "id": "45660672280",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 67,
+      "suspicious_zero": [
+        "haverford_faculty"
+      ],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+      "workflow_sha": "d54c4fa12525929acaf0cfd08aa43fe1f5df3491"
+    },
+    {
+      "collector_start": "2026-11-24T17:31:00.485862",
+      "created_at": "2026-11-24T17:28:34Z",
+      "deferred_deadline": [],
+      "duration_minutes": 165.34,
+      "id": "45448976476",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 100,
+      "suspicious_zero": [
+        "ucb_datascience_faculty"
+      ],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45448976476",
+      "workflow_sha": "4af48b717e4f31549b1971c682b5107d9b881b11"
+    },
+    {
+      "collector_start": "2026-11-23T17:57:46.811848",
+      "created_at": "2026-11-23T17:55:32Z",
+      "deferred_deadline": [],
+      "duration_minutes": 207.99,
+      "id": "45232854848",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 63,
+      "suspicious_zero": [],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45232854848",
+      "workflow_sha": "932e6671059a00658771f65ca5d1d93ec94d28e2"
+    },
+    {
+      "collector_start": "2026-11-22T14:28:48.956133",
+      "created_at": "2026-11-22T14:27:10Z",
+      "deferred_deadline": [],
+      "duration_minutes": 38.64,
+      "id": "45032886962",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 32,
+      "suspicious_zero": [],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45032886962",
+      "workflow_sha": "902dcca45fcd1500e9c5069341bab041e81e6e32"
+    },
+    {
+      "collector_start": "2026-11-21T14:33:56.610183",
+      "created_at": "2026-11-21T14:31:40Z",
+      "deferred_deadline": [],
+      "duration_minutes": 174.72,
+      "id": "44914388022",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 61,
+      "suspicious_zero": [
+        "colby_faculty"
+      ],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44914388022",
+      "workflow_sha": "f65f7911ba633deb9b56ca1102f6d33f77855947"
+    },
+    {
+      "collector_start": "2026-11-20T15:20:27.795681",
+      "created_at": "2026-11-20T15:18:16Z",
+      "deferred_deadline": [],
+      "duration_minutes": 161.72,
+      "id": "44761914990",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 46,
+      "suspicious_zero": [],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44761914990",
+      "workflow_sha": "4fc6b5d01dda219e159f7d9cb108ce6e5b20fc49"
+    },
+    {
+      "collector_start": "2026-11-19T15:42:23.058622",
+      "created_at": "2026-11-19T15:38:18Z",
+      "deferred_deadline": [],
+      "duration_minutes": 88.56,
+      "id": "44557047479",
+      "partial_deadline": [],
+      "result": "success",
+      "sources": 45,
+      "suspicious_zero": [],
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44557047479",
+      "workflow_sha": "777bf39020d1136c4cd5e51ac8311ec5d23e48fe"
+    }
+  ],
+  "by_record_source": {
+    "amherst_faculty": {
+      "active": 266,
+      "fresh": 265,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "amherst_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "arizona_faculty": {
+      "active": 1483,
+      "fresh": 1450,
+      "seen_outside_window": 33,
+      "without_usable_sighting": 0
+    },
+    "arizona_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "asu_faculty": {
+      "active": 2446,
+      "fresh": 2307,
+      "seen_outside_window": 139,
+      "without_usable_sighting": 0
+    },
+    "asu_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "barnard_faculty": {
+      "active": 212,
+      "fresh": 212,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "barnard_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "bates_faculty": {
+      "active": 178,
+      "fresh": 178,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "bates_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "bc_faculty": {
+      "active": 841,
+      "fresh": 767,
+      "seen_outside_window": 68,
+      "without_usable_sighting": 6
+    },
+    "bc_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "boulder_faculty": {
+      "active": 1599,
+      "fresh": 1556,
+      "seen_outside_window": 43,
+      "without_usable_sighting": 0
+    },
+    "boulder_labs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "boulder_research_programs": {
+      "active": 5,
+      "fresh": 4,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "bowdoin_faculty": {
+      "active": 234,
+      "fresh": 233,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "bowdoin_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "brown_faculty": {
+      "active": 1190,
+      "fresh": 1159,
+      "seen_outside_window": 31,
+      "without_usable_sighting": 0
+    },
+    "brown_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "brynmawr_faculty": {
+      "active": 155,
+      "fresh": 151,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "brynmawr_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "bu_faculty": {
+      "active": 1833,
+      "fresh": 1799,
+      "seen_outside_window": 34,
+      "without_usable_sighting": 0
+    },
+    "bu_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "buffalo_faculty": {
+      "active": 839,
+      "fresh": 798,
+      "seen_outside_window": 41,
+      "without_usable_sighting": 0
+    },
+    "buffalo_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "caltech_external_research": {
+      "active": 13,
+      "fresh": 13,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "caltech_faculty": {
+      "active": 432,
+      "fresh": 429,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "caltech_labs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "caltech_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "carleton_faculty": {
+      "active": 296,
+      "fresh": 276,
+      "seen_outside_window": 20,
+      "without_usable_sighting": 0
+    },
+    "carleton_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "casewestern_faculty": {
+      "active": 726,
+      "fresh": 724,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "casewestern_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "cincinnati_faculty": {
+      "active": 1050,
+      "fresh": 1039,
+      "seen_outside_window": 11,
+      "without_usable_sighting": 0
+    },
+    "cincinnati_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "clemson_faculty": {
+      "active": 911,
+      "fresh": 893,
+      "seen_outside_window": 18,
+      "without_usable_sighting": 0
+    },
+    "clemson_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "cmc_faculty": {
+      "active": 158,
+      "fresh": 158,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "cmc_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "cmu_faculty": {
+      "active": 865,
+      "fresh": 825,
+      "seen_outside_window": 40,
+      "without_usable_sighting": 0
+    },
+    "cmu_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "cmu_uro_projects": {
+      "active": 38,
+      "fresh": 38,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "colby_faculty": {
+      "active": 239,
+      "fresh": 0,
+      "seen_outside_window": 234,
+      "without_usable_sighting": 5
+    },
+    "colby_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "colgate_faculty": {
+      "active": 318,
+      "fresh": 307,
+      "seen_outside_window": 11,
+      "without_usable_sighting": 0
+    },
+    "colgate_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "coloradocollege_faculty": {
+      "active": 212,
+      "fresh": 205,
+      "seen_outside_window": 7,
+      "without_usable_sighting": 0
+    },
+    "coloradocollege_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "colostate_faculty": {
+      "active": 940,
+      "fresh": 927,
+      "seen_outside_window": 13,
+      "without_usable_sighting": 0
+    },
+    "colostate_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "columbia_faculty": {
+      "active": 1062,
+      "fresh": 765,
+      "seen_outside_window": 297,
+      "without_usable_sighting": 0
+    },
+    "columbia_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "cornell_faculty": {
+      "active": 1578,
+      "fresh": 1567,
+      "seen_outside_window": 11,
+      "without_usable_sighting": 0
+    },
+    "cornell_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "dartmouth_faculty": {
+      "active": 927,
+      "fresh": 868,
+      "seen_outside_window": 59,
+      "without_usable_sighting": 0
+    },
+    "dartmouth_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "davidson_faculty": {
+      "active": 225,
+      "fresh": 225,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "davidson_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "drexel_faculty": {
+      "active": 570,
+      "fresh": 553,
+      "seen_outside_window": 17,
+      "without_usable_sighting": 0
+    },
+    "drexel_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "duke_external_research": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "duke_faculty": {
+      "active": 1195,
+      "fresh": 1058,
+      "seen_outside_window": 137,
+      "without_usable_sighting": 0
+    },
+    "duke_labs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "duke_research_programs": {
+      "active": 47,
+      "fresh": 45,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "emory_faculty": {
+      "active": 1442,
+      "fresh": 1410,
+      "seen_outside_window": 32,
+      "without_usable_sighting": 0
+    },
+    "emory_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "fsu_faculty": {
+      "active": 667,
+      "fresh": 661,
+      "seen_outside_window": 6,
+      "without_usable_sighting": 0
+    },
+    "fsu_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "gatech_external_research": {
+      "active": 2,
+      "fresh": 2,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "gatech_faculty": {
+      "active": 1302,
+      "fresh": 1027,
+      "seen_outside_window": 275,
+      "without_usable_sighting": 0
+    },
+    "gatech_labs": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "gatech_research_programs": {
+      "active": 18,
+      "fresh": 13,
+      "seen_outside_window": 5,
+      "without_usable_sighting": 0
+    },
+    "georgetown_faculty": {
+      "active": 861,
+      "fresh": 857,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "georgetown_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "grinnell_faculty": {
+      "active": 246,
+      "fresh": 242,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "grinnell_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "hamilton_faculty": {
+      "active": 236,
+      "fresh": 236,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "hamilton_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "harvard_faculty": {
+      "active": 449,
+      "fresh": 357,
+      "seen_outside_window": 92,
+      "without_usable_sighting": 0
+    },
+    "harvard_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "haverford_faculty": {
+      "active": 120,
+      "fresh": 0,
+      "seen_outside_window": 120,
+      "without_usable_sighting": 0
+    },
+    "haverford_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "houston_faculty": {
+      "active": 1080,
+      "fresh": 1032,
+      "seen_outside_window": 46,
+      "without_usable_sighting": 2
+    },
+    "houston_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "iastate_faculty": {
+      "active": 671,
+      "fresh": 653,
+      "seen_outside_window": 18,
+      "without_usable_sighting": 0
+    },
+    "iastate_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "indiana_faculty": {
+      "active": 1678,
+      "fresh": 1148,
+      "seen_outside_window": 530,
+      "without_usable_sighting": 0
+    },
+    "indiana_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "jhu_faculty": {
+      "active": 4557,
+      "fresh": 78,
+      "seen_outside_window": 851,
+      "without_usable_sighting": 3628
+    },
+    "jhu_labs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "jhu_research_programs": {
+      "active": 22,
+      "fresh": 22,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "kenyon_faculty": {
+      "active": 171,
+      "fresh": 170,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "kenyon_research_programs": {
+      "active": 11,
+      "fresh": 11,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "lehigh_faculty": {
+      "active": 571,
+      "fresh": 464,
+      "seen_outside_window": 107,
+      "without_usable_sighting": 0
+    },
+    "lehigh_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "lsu_faculty": {
+      "active": 1233,
+      "fresh": 1118,
+      "seen_outside_window": 115,
+      "without_usable_sighting": 0
+    },
+    "lsu_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "macalester_faculty": {
+      "active": 204,
+      "fresh": 194,
+      "seen_outside_window": 10,
+      "without_usable_sighting": 0
+    },
+    "macalester_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "manual": {
+      "active": 16,
+      "fresh": 0,
+      "seen_outside_window": 16,
+      "without_usable_sighting": 0
+    },
+    "miami_faculty": {
+      "active": 477,
+      "fresh": 476,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "miami_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "middlebury_faculty": {
+      "active": 319,
+      "fresh": 308,
+      "seen_outside_window": 11,
+      "without_usable_sighting": 0
+    },
+    "middlebury_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "mit_faculty": {
+      "active": 1430,
+      "fresh": 1303,
+      "seen_outside_window": 127,
+      "without_usable_sighting": 0
+    },
+    "mit_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "msu_faculty": {
+      "active": 1033,
+      "fresh": 561,
+      "seen_outside_window": 472,
+      "without_usable_sighting": 0
+    },
+    "msu_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ncsu_faculty": {
+      "active": 2322,
+      "fresh": 2110,
+      "seen_outside_window": 212,
+      "without_usable_sighting": 0
+    },
+    "ncsu_research_programs": {
+      "active": 11,
+      "fresh": 11,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "nd_faculty": {
+      "active": 1257,
+      "fresh": 864,
+      "seen_outside_window": 393,
+      "without_usable_sighting": 0
+    },
+    "nd_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "neu_faculty": {
+      "active": 2060,
+      "fresh": 1856,
+      "seen_outside_window": 204,
+      "without_usable_sighting": 0
+    },
+    "neu_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "njit_faculty": {
+      "active": 504,
+      "fresh": 80,
+      "seen_outside_window": 424,
+      "without_usable_sighting": 0
+    },
+    "njit_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "northwestern_faculty": {
+      "active": 2812,
+      "fresh": 1077,
+      "seen_outside_window": 33,
+      "without_usable_sighting": 1702
+    },
+    "northwestern_labs": {
+      "active": 11,
+      "fresh": 11,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "northwestern_research_programs": {
+      "active": 17,
+      "fresh": 17,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "nsf_reu": {
+      "active": 160,
+      "fresh": 145,
+      "seen_outside_window": 15,
+      "without_usable_sighting": 0
+    },
+    "nyu_faculty": {
+      "active": 2269,
+      "fresh": 1178,
+      "seen_outside_window": 1091,
+      "without_usable_sighting": 0
+    },
+    "nyu_research_programs": {
+      "active": 11,
+      "fresh": 11,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "oregonstate_faculty": {
+      "active": 612,
+      "fresh": 297,
+      "seen_outside_window": 315,
+      "without_usable_sighting": 0
+    },
+    "oregonstate_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "osu_faculty": {
+      "active": 2506,
+      "fresh": 1807,
+      "seen_outside_window": 699,
+      "without_usable_sighting": 0
+    },
+    "osu_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "pitt_faculty": {
+      "active": 1120,
+      "fresh": 1050,
+      "seen_outside_window": 70,
+      "without_usable_sighting": 0
+    },
+    "pitt_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "pomona_faculty": {
+      "active": 280,
+      "fresh": 277,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "pomona_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "princeton_faculty": {
+      "active": 616,
+      "fresh": 380,
+      "seen_outside_window": 236,
+      "without_usable_sighting": 0
+    },
+    "princeton_labs": {
+      "active": 4,
+      "fresh": 3,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "princeton_research_programs": {
+      "active": 10,
+      "fresh": 9,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "psu_faculty": {
+      "active": 2790,
+      "fresh": 2534,
+      "seen_outside_window": 256,
+      "without_usable_sighting": 0
+    },
+    "psu_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "purdue_external_research": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "purdue_faculty": {
+      "active": 2183,
+      "fresh": 1979,
+      "seen_outside_window": 204,
+      "without_usable_sighting": 0
+    },
+    "purdue_labs": {
+      "active": 16,
+      "fresh": 16,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "purdue_research_programs": {
+      "active": 46,
+      "fresh": 46,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "rice_faculty": {
+      "active": 999,
+      "fresh": 985,
+      "seen_outside_window": 14,
+      "without_usable_sighting": 0
+    },
+    "rice_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "rochester_faculty": {
+      "active": 851,
+      "fresh": 778,
+      "seen_outside_window": 73,
+      "without_usable_sighting": 0
+    },
+    "rochester_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "rpi_faculty": {
+      "active": 455,
+      "fresh": 434,
+      "seen_outside_window": 21,
+      "without_usable_sighting": 0
+    },
+    "rpi_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "rutgers_faculty": {
+      "active": 2039,
+      "fresh": 2022,
+      "seen_outside_window": 17,
+      "without_usable_sighting": 0
+    },
+    "rutgers_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "sbu_faculty": {
+      "active": 913,
+      "fresh": 545,
+      "seen_outside_window": 368,
+      "without_usable_sighting": 0
+    },
+    "sbu_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "simplify_internships": {
+      "active": 5060,
+      "fresh": 5060,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "smith_faculty": {
+      "active": 315,
+      "fresh": 315,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "smith_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "stanford_external_research": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "stanford_faculty": {
+      "active": 1367,
+      "fresh": 913,
+      "seen_outside_window": 454,
+      "without_usable_sighting": 0
+    },
+    "stanford_labs": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "stanford_research_programs": {
+      "active": 26,
+      "fresh": 24,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "stevens_faculty": {
+      "active": 337,
+      "fresh": 327,
+      "seen_outside_window": 10,
+      "without_usable_sighting": 0
+    },
+    "stevens_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "swarthmore_faculty": {
+      "active": 228,
+      "fresh": 221,
+      "seen_outside_window": 7,
+      "without_usable_sighting": 0
+    },
+    "swarthmore_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "syracuse_faculty": {
+      "active": 831,
+      "fresh": 704,
+      "seen_outside_window": 127,
+      "without_usable_sighting": 0
+    },
+    "syracuse_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "tamu_faculty": {
+      "active": 3279,
+      "fresh": 2664,
+      "seen_outside_window": 615,
+      "without_usable_sighting": 0
+    },
+    "tamu_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "tufts_faculty": {
+      "active": 2121,
+      "fresh": 1802,
+      "seen_outside_window": 319,
+      "without_usable_sighting": 0
+    },
+    "tufts_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_anthro_faculty": {
+      "active": 26,
+      "fresh": 26,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_arch_faculty": {
+      "active": 49,
+      "fresh": 49,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_astro_faculty": {
+      "active": 18,
+      "fresh": 18,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_bioe_faculty": {
+      "active": 32,
+      "fresh": 32,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_cbe_faculty": {
+      "active": 19,
+      "fresh": 19,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_cee_faculty": {
+      "active": 65,
+      "fresh": 56,
+      "seen_outside_window": 9,
+      "without_usable_sighting": 0
+    },
+    "ucb_chem_faculty": {
+      "active": 51,
+      "fresh": 51,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_classics_faculty": {
+      "active": 17,
+      "fresh": 17,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_complit_faculty": {
+      "active": 17,
+      "fresh": 17,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_datascience_faculty": {
+      "active": 10,
+      "fresh": 0,
+      "seen_outside_window": 10,
+      "without_usable_sighting": 0
+    },
+    "ucb_dcrp_faculty": {
+      "active": 25,
+      "fresh": 25,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_econ_faculty": {
+      "active": 58,
+      "fresh": 55,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "ucb_education_faculty": {
+      "active": 46,
+      "fresh": 46,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_eecs_faculty": {
+      "active": 145,
+      "fresh": 145,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_english_faculty": {
+      "active": 51,
+      "fresh": 51,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_eps_faculty": {
+      "active": 27,
+      "fresh": 27,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_espm_faculty": {
+      "active": 64,
+      "fresh": 64,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_external_research": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_extra_faculty": {
+      "active": 160,
+      "fresh": 148,
+      "seen_outside_window": 12,
+      "without_usable_sighting": 0
+    },
+    "ucb_filmmedia_faculty": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_french_faculty": {
+      "active": 11,
+      "fresh": 11,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_geog_faculty": {
+      "active": 19,
+      "fresh": 19,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_german_faculty": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_haas_faculty": {
+      "active": 104,
+      "fresh": 104,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_history_faculty": {
+      "active": 59,
+      "fresh": 59,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_ib_faculty": {
+      "active": 44,
+      "fresh": 44,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_ieor_faculty": {
+      "active": 19,
+      "fresh": 19,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_journalism_faculty": {
+      "active": 36,
+      "fresh": 36,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_labs": {
+      "active": 15,
+      "fresh": 9,
+      "seen_outside_window": 6,
+      "without_usable_sighting": 0
+    },
+    "ucb_larch_faculty": {
+      "active": 19,
+      "fresh": 19,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_law_faculty": {
+      "active": 81,
+      "fresh": 81,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_ling_faculty": {
+      "active": 18,
+      "fresh": 16,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "ucb_math_faculty": {
+      "active": 77,
+      "fresh": 77,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_mcb_faculty": {
+      "active": 80,
+      "fresh": 80,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_me_faculty": {
+      "active": 64,
+      "fresh": 64,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_mse_faculty": {
+      "active": 19,
+      "fresh": 19,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_music_faculty": {
+      "active": 18,
+      "fresh": 18,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_ne_faculty": {
+      "active": 15,
+      "fresh": 15,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_neuro_faculty": {
+      "active": 16,
+      "fresh": 16,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_nst_faculty": {
+      "active": 17,
+      "fresh": 17,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_philos_faculty": {
+      "active": 40,
+      "fresh": 40,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_physics_faculty": {
+      "active": 37,
+      "fresh": 37,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_pmb_faculty": {
+      "active": 25,
+      "fresh": 25,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_polisci_faculty": {
+      "active": 44,
+      "fresh": 44,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_psych_faculty": {
+      "active": 37,
+      "fresh": 37,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_publicpolicy_faculty": {
+      "active": 18,
+      "fresh": 18,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_research_programs": {
+      "active": 56,
+      "fresh": 52,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "ucb_rhetoric_faculty": {
+      "active": 23,
+      "fresh": 23,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_scandinavian_faculty": {
+      "active": 10,
+      "fresh": 9,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "ucb_slavic_faculty": {
+      "active": 14,
+      "fresh": 14,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_soc_faculty": {
+      "active": 38,
+      "fresh": 36,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "ucb_socwel_faculty": {
+      "active": 25,
+      "fresh": 25,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_spanish_portuguese_faculty": {
+      "active": 23,
+      "fresh": 23,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_sph_faculty": {
+      "active": 126,
+      "fresh": 126,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_stat_faculty": {
+      "active": 48,
+      "fresh": 48,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_tdps_faculty": {
+      "active": 34,
+      "fresh": 34,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucb_urap": {
+      "active": 1,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 1
+    },
+    "ucb_urap_projects": {
+      "active": 202,
+      "fresh": 1,
+      "seen_outside_window": 201,
+      "without_usable_sighting": 0
+    },
+    "ucf_faculty": {
+      "active": 803,
+      "fresh": 799,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "ucf_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uchicago_external_research": {
+      "active": 3,
+      "fresh": 3,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uchicago_faculty": {
+      "active": 1201,
+      "fresh": 1053,
+      "seen_outside_window": 148,
+      "without_usable_sighting": 0
+    },
+    "uchicago_labs": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uchicago_research_programs": {
+      "active": 11,
+      "fresh": 11,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uci_faculty": {
+      "active": 1301,
+      "fresh": 1170,
+      "seen_outside_window": 131,
+      "without_usable_sighting": 0
+    },
+    "uci_labs": {
+      "active": 2,
+      "fresh": 2,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uci_research_programs": {
+      "active": 13,
+      "fresh": 13,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucla_external_research": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucla_faculty": {
+      "active": 2006,
+      "fresh": 1617,
+      "seen_outside_window": 389,
+      "without_usable_sighting": 0
+    },
+    "ucla_labs": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucla_research_programs": {
+      "active": 18,
+      "fresh": 14,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "uconn_faculty": {
+      "active": 1172,
+      "fresh": 1137,
+      "seen_outside_window": 35,
+      "without_usable_sighting": 0
+    },
+    "uconn_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucr_faculty": {
+      "active": 1172,
+      "fresh": 1135,
+      "seen_outside_window": 37,
+      "without_usable_sighting": 0
+    },
+    "ucr_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucsb_external_research": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucsb_faculty": {
+      "active": 848,
+      "fresh": 824,
+      "seen_outside_window": 24,
+      "without_usable_sighting": 0
+    },
+    "ucsb_labs": {
+      "active": 2,
+      "fresh": 2,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucsb_research_programs": {
+      "active": 13,
+      "fresh": 13,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucsb_urca_projects": {
+      "active": 252,
+      "fresh": 252,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucsc_faculty": {
+      "active": 747,
+      "fresh": 701,
+      "seen_outside_window": 46,
+      "without_usable_sighting": 0
+    },
+    "ucsc_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "ucsd_faculty": {
+      "active": 1464,
+      "fresh": 1310,
+      "seen_outside_window": 154,
+      "without_usable_sighting": 0
+    },
+    "ucsd_labs": {
+      "active": 3,
+      "fresh": 1,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "ucsd_research_programs": {
+      "active": 29,
+      "fresh": 27,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "udel_faculty": {
+      "active": 1018,
+      "fresh": 1005,
+      "seen_outside_window": 13,
+      "without_usable_sighting": 0
+    },
+    "udel_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uf_faculty": {
+      "active": 2124,
+      "fresh": 1974,
+      "seen_outside_window": 150,
+      "without_usable_sighting": 0
+    },
+    "uf_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uga_faculty": {
+      "active": 2179,
+      "fresh": 2096,
+      "seen_outside_window": 83,
+      "without_usable_sighting": 0
+    },
+    "uga_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uiowa_faculty": {
+      "active": 933,
+      "fresh": 925,
+      "seen_outside_window": 8,
+      "without_usable_sighting": 0
+    },
+    "uiowa_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uiuc_drp": {
+      "active": 2,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 2
+    },
+    "uiuc_faculty": {
+      "active": 2946,
+      "fresh": 2793,
+      "seen_outside_window": 153,
+      "without_usable_sighting": 0
+    },
+    "uiuc_other": {
+      "active": 7,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 7
+    },
+    "uiuc_siebel": {
+      "active": 14,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 14
+    },
+    "uiuc_sro": {
+      "active": 322,
+      "fresh": 322,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uiuc_urap": {
+      "active": 1,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 1
+    },
+    "uiuc_ursa": {
+      "active": 1,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 1
+    },
+    "uky_faculty": {
+      "active": 773,
+      "fresh": 770,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "uky_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "umass_faculty": {
+      "active": 1562,
+      "fresh": 1540,
+      "seen_outside_window": 22,
+      "without_usable_sighting": 0
+    },
+    "umass_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "umd_faculty": {
+      "active": 1347,
+      "fresh": 924,
+      "seen_outside_window": 423,
+      "without_usable_sighting": 0
+    },
+    "umd_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "umich_external_research": {
+      "active": 2,
+      "fresh": 2,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "umich_faculty": {
+      "active": 1483,
+      "fresh": 129,
+      "seen_outside_window": 1216,
+      "without_usable_sighting": 138
+    },
+    "umich_labs": {
+      "active": 3,
+      "fresh": 3,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "umich_research_programs": {
+      "active": 6,
+      "fresh": 6,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "umn_faculty": {
+      "active": 1449,
+      "fresh": 1371,
+      "seen_outside_window": 78,
+      "without_usable_sighting": 0
+    },
+    "umn_research_programs": {
+      "active": 7,
+      "fresh": 7,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "unc_faculty": {
+      "active": 595,
+      "fresh": 411,
+      "seen_outside_window": 184,
+      "without_usable_sighting": 0
+    },
+    "unl_faculty": {
+      "active": 1263,
+      "fresh": 1041,
+      "seen_outside_window": 222,
+      "without_usable_sighting": 0
+    },
+    "unl_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "upenn_external_research": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "upenn_faculty": {
+      "active": 1873,
+      "fresh": 1633,
+      "seen_outside_window": 240,
+      "without_usable_sighting": 0
+    },
+    "upenn_labs": {
+      "active": 2,
+      "fresh": 2,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "upenn_research_programs": {
+      "active": 26,
+      "fresh": 26,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "usc_faculty": {
+      "active": 1560,
+      "fresh": 1488,
+      "seen_outside_window": 72,
+      "without_usable_sighting": 0
+    },
+    "usc_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "usf_faculty": {
+      "active": 780,
+      "fresh": 627,
+      "seen_outside_window": 153,
+      "without_usable_sighting": 0
+    },
+    "usf_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "utah_faculty": {
+      "active": 1125,
+      "fresh": 1108,
+      "seen_outside_window": 17,
+      "without_usable_sighting": 0
+    },
+    "utah_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "utdallas_faculty": {
+      "active": 1098,
+      "fresh": 1013,
+      "seen_outside_window": 85,
+      "without_usable_sighting": 0
+    },
+    "utdallas_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "utexas_external_research": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "utexas_faculty": {
+      "active": 2218,
+      "fresh": 1985,
+      "seen_outside_window": 233,
+      "without_usable_sighting": 0
+    },
+    "utexas_research_programs": {
+      "active": 24,
+      "fresh": 21,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "utk_faculty": {
+      "active": 1053,
+      "fresh": 1034,
+      "seen_outside_window": 19,
+      "without_usable_sighting": 0
+    },
+    "utk_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uva_faculty": {
+      "active": 1635,
+      "fresh": 1144,
+      "seen_outside_window": 491,
+      "without_usable_sighting": 0
+    },
+    "uva_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uw_external_research": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uw_faculty": {
+      "active": 2247,
+      "fresh": 2094,
+      "seen_outside_window": 153,
+      "without_usable_sighting": 0
+    },
+    "uw_labs": {
+      "active": 3,
+      "fresh": 3,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "uw_research_programs": {
+      "active": 27,
+      "fresh": 23,
+      "seen_outside_window": 4,
+      "without_usable_sighting": 0
+    },
+    "vanderbilt_faculty": {
+      "active": 1154,
+      "fresh": 937,
+      "seen_outside_window": 217,
+      "without_usable_sighting": 0
+    },
+    "vanderbilt_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "vassar_faculty": {
+      "active": 259,
+      "fresh": 256,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "vassar_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "vt_faculty": {
+      "active": 1864,
+      "fresh": 1779,
+      "seen_outside_window": 85,
+      "without_usable_sighting": 0
+    },
+    "vt_research_programs": {
+      "active": 9,
+      "fresh": 9,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "washu_faculty": {
+      "active": 1092,
+      "fresh": 1083,
+      "seen_outside_window": 9,
+      "without_usable_sighting": 0
+    },
+    "washu_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "wellesley_faculty": {
+      "active": 288,
+      "fresh": 286,
+      "seen_outside_window": 2,
+      "without_usable_sighting": 0
+    },
+    "wellesley_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "wesleyan_faculty": {
+      "active": 358,
+      "fresh": 331,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 27
+    },
+    "wesleyan_research_programs": {
+      "active": 10,
+      "fresh": 10,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "wisc_external_research": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "wisc_faculty": {
+      "active": 1935,
+      "fresh": 1305,
+      "seen_outside_window": 630,
+      "without_usable_sighting": 0
+    },
+    "wisc_labs": {
+      "active": 1,
+      "fresh": 1,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "wisc_research_programs": {
+      "active": 21,
+      "fresh": 13,
+      "seen_outside_window": 8,
+      "without_usable_sighting": 0
+    },
+    "wlu_faculty": {
+      "active": 233,
+      "fresh": 230,
+      "seen_outside_window": 3,
+      "without_usable_sighting": 0
+    },
+    "wlu_research_programs": {
+      "active": 8,
+      "fresh": 8,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "wpi_faculty": {
+      "active": 470,
+      "fresh": 469,
+      "seen_outside_window": 1,
+      "without_usable_sighting": 0
+    },
+    "wpi_research_programs": {
+      "active": 4,
+      "fresh": 4,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "yale_faculty": {
+      "active": 1251,
+      "fresh": 1133,
+      "seen_outside_window": 118,
+      "without_usable_sighting": 0
+    },
+    "yale_research_programs": {
+      "active": 5,
+      "fresh": 5,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    }
+  },
+  "categories": {
+    "CMU_project_snapshot": {
+      "active": 38,
+      "fresh": 38,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 0
+    },
+    "four_known_file_roster_units": {
+      "active": 5330,
+      "fresh": 0,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 5330
+    },
+    "manual": {
+      "active": 16,
+      "fresh": 0,
+      "seen_outside_window": 16,
+      "without_usable_sighting": 0
+    },
+    "other": {
+      "active": 131232,
+      "fresh": 114590,
+      "seen_outside_window": 16616,
+      "without_usable_sighting": 26
+    },
+    "other_curated_faculty": {
+      "active": 509,
+      "fresh": 331,
+      "seen_outside_window": 0,
+      "without_usable_sighting": 178
+    }
+  },
+  "cutoff": "2026-11-12T09:19:50.138525+00:00",
+  "national": {
+    "active": 5605,
+    "faculty_active": 0,
+    "faculty_fresh": 0,
+    "fresh": 5579,
+    "last_seen_at": "2026-11-25T19:03:20.642577+00:00",
+    "state": "partially_stale"
+  },
+  "notes": [
+    "The four file-backed faculty units are JHU BSPH/SOM and Northwestern Kellogg/Feinberg. A directory clock on a legacy file roster is not a sighting. A genuine later source sighting is eligible. The other_curated_faculty category is not equivalent to a known frozen file.",
+    "Record-source names in by_record_source refer to actual stored record source labels. The operational source ledger reports different units and its separate threshold is applied to producer health.",
+    "The seven runs below are the latest scheduled runs; manual runs are excluded. They fall outside the monthly enrichment week and cannot accept M176."
+  ],
+  "observed_at": "2026-11-26T09:19:50.138525+00:00",
+  "production": "https://joinalab.com/api/health",
+  "release": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "report": {
+    "active_records": 137125,
+    "fresh_records": 114959,
+    "freshness_percent": 83.84,
+    "freshness_threshold": 95.0,
+    "fully_fresh_school_count": 6,
+    "fully_stale_school_count": 0,
+    "fully_stale_schools": [],
+    "generated_at": "2026-11-26T09:19:50.138525+00:00",
+    "inactive_records": 12649,
+    "no_active_record_school_count": 1,
+    "no_active_record_schools": [
+      "ucd"
+    ],
+    "no_fresh_faculty_school_count": 2,
+    "no_fresh_faculty_schools": [
+      "colby",
+      "haverford"
+    ],
+    "partially_stale_school_count": 110,
+    "school_count": 117,
+    "schools": {
+      "amherst": {
+        "active": 275,
+        "faculty_active": 266,
+        "faculty_fresh": 265,
+        "fresh": 274,
+        "last_seen_at": "2026-11-23T20:23:00.868884+00:00",
+        "state": "partially_stale"
+      },
+      "arizona": {
+        "active": 1487,
+        "faculty_active": 1483,
+        "faculty_fresh": 1450,
+        "fresh": 1454,
+        "last_seen_at": "2026-11-19T16:10:41.309047+00:00",
+        "state": "partially_stale"
+      },
+      "asu": {
+        "active": 2452,
+        "faculty_active": 2446,
+        "faculty_fresh": 2307,
+        "fresh": 2313,
+        "last_seen_at": "2026-11-23T20:09:01.958786+00:00",
+        "state": "partially_stale"
+      },
+      "barnard": {
+        "active": 221,
+        "faculty_active": 212,
+        "faculty_fresh": 212,
+        "fresh": 221,
+        "last_seen_at": "2026-11-21T16:43:04.016279+00:00",
+        "state": "fully_fresh"
+      },
+      "bates": {
+        "active": 187,
+        "faculty_active": 178,
+        "faculty_fresh": 178,
+        "fresh": 187,
+        "last_seen_at": "2026-11-21T16:40:20.752303+00:00",
+        "state": "fully_fresh"
+      },
+      "bc": {
+        "active": 850,
+        "faculty_active": 841,
+        "faculty_fresh": 767,
+        "fresh": 776,
+        "last_seen_at": "2026-11-23T20:33:36.040481+00:00",
+        "state": "partially_stale"
+      },
+      "boulder": {
+        "active": 1608,
+        "faculty_active": 1599,
+        "faculty_fresh": 1556,
+        "fresh": 1564,
+        "last_seen_at": "2026-11-19T16:24:37.651150+00:00",
+        "state": "partially_stale"
+      },
+      "bowdoin": {
+        "active": 244,
+        "faculty_active": 234,
+        "faculty_fresh": 233,
+        "fresh": 243,
+        "last_seen_at": "2026-11-25T18:57:44.619642+00:00",
+        "state": "partially_stale"
+      },
+      "brown": {
+        "active": 1194,
+        "faculty_active": 1190,
+        "faculty_fresh": 1159,
+        "fresh": 1163,
+        "last_seen_at": "2026-11-19T16:00:24.349341+00:00",
+        "state": "partially_stale"
+      },
+      "brynmawr": {
+        "active": 163,
+        "faculty_active": 155,
+        "faculty_fresh": 151,
+        "fresh": 159,
+        "last_seen_at": "2026-11-21T16:43:33.150395+00:00",
+        "state": "partially_stale"
+      },
+      "bu": {
+        "active": 1839,
+        "faculty_active": 1833,
+        "faculty_fresh": 1799,
+        "fresh": 1805,
+        "last_seen_at": "2026-11-25T17:32:01.077609+00:00",
+        "state": "partially_stale"
+      },
+      "buffalo": {
+        "active": 845,
+        "faculty_active": 839,
+        "faculty_fresh": 798,
+        "fresh": 804,
+        "last_seen_at": "2026-11-23T20:09:51.163168+00:00",
+        "state": "partially_stale"
+      },
+      "caltech": {
+        "active": 448,
+        "faculty_active": 432,
+        "faculty_fresh": 429,
+        "fresh": 445,
+        "last_seen_at": "2026-11-21T16:38:11.042348+00:00",
+        "state": "partially_stale"
+      },
+      "carleton": {
+        "active": 306,
+        "faculty_active": 296,
+        "faculty_fresh": 276,
+        "fresh": 286,
+        "last_seen_at": "2026-11-23T20:24:59.726816+00:00",
+        "state": "partially_stale"
+      },
+      "casewestern": {
+        "active": 730,
+        "faculty_active": 726,
+        "faculty_fresh": 724,
+        "fresh": 728,
+        "last_seen_at": "2026-11-21T15:32:15.702431+00:00",
+        "state": "partially_stale"
+      },
+      "cincinnati": {
+        "active": 1054,
+        "faculty_active": 1050,
+        "faculty_fresh": 1039,
+        "fresh": 1043,
+        "last_seen_at": "2026-11-20T16:37:07.438185+00:00",
+        "state": "partially_stale"
+      },
+      "clemson": {
+        "active": 915,
+        "faculty_active": 911,
+        "faculty_fresh": 893,
+        "fresh": 897,
+        "last_seen_at": "2026-11-20T16:36:17.140011+00:00",
+        "state": "partially_stale"
+      },
+      "cmc": {
+        "active": 168,
+        "faculty_active": 158,
+        "faculty_fresh": 158,
+        "fresh": 168,
+        "last_seen_at": "2026-11-23T20:31:49.819888+00:00",
+        "state": "fully_fresh"
+      },
+      "cmu": {
+        "active": 909,
+        "faculty_active": 865,
+        "faculty_fresh": 825,
+        "fresh": 869,
+        "last_seen_at": "2026-11-20T16:32:59.536372+00:00",
+        "state": "partially_stale"
+      },
+      "colby": {
+        "active": 247,
+        "faculty_active": 239,
+        "faculty_fresh": 0,
+        "fresh": 8,
+        "last_seen_at": "2026-11-21T14:40:21.576416+00:00",
+        "state": "partially_stale"
+      },
+      "colgate": {
+        "active": 327,
+        "faculty_active": 318,
+        "faculty_fresh": 307,
+        "fresh": 316,
+        "last_seen_at": "2026-11-25T18:27:20.055966+00:00",
+        "state": "partially_stale"
+      },
+      "coloradocollege": {
+        "active": 219,
+        "faculty_active": 212,
+        "faculty_fresh": 205,
+        "fresh": 212,
+        "last_seen_at": "2026-11-25T18:56:01.545956+00:00",
+        "state": "partially_stale"
+      },
+      "colostate": {
+        "active": 945,
+        "faculty_active": 940,
+        "faculty_fresh": 927,
+        "fresh": 932,
+        "last_seen_at": "2026-11-21T15:18:09.742875+00:00",
+        "state": "partially_stale"
+      },
+      "columbia": {
+        "active": 1069,
+        "faculty_active": 1062,
+        "faculty_fresh": 765,
+        "fresh": 772,
+        "last_seen_at": "2026-11-20T15:56:02.624905+00:00",
+        "state": "partially_stale"
+      },
+      "cornell": {
+        "active": 1582,
+        "faculty_active": 1578,
+        "faculty_fresh": 1567,
+        "fresh": 1571,
+        "last_seen_at": "2026-11-19T16:05:47.287074+00:00",
+        "state": "partially_stale"
+      },
+      "dartmouth": {
+        "active": 935,
+        "faculty_active": 927,
+        "faculty_fresh": 868,
+        "fresh": 876,
+        "last_seen_at": "2026-11-25T17:26:06.053786+00:00",
+        "state": "partially_stale"
+      },
+      "davidson": {
+        "active": 233,
+        "faculty_active": 225,
+        "faculty_fresh": 225,
+        "fresh": 233,
+        "last_seen_at": "2026-11-23T20:33:03.301093+00:00",
+        "state": "fully_fresh"
+      },
+      "drexel": {
+        "active": 575,
+        "faculty_active": 570,
+        "faculty_fresh": 553,
+        "fresh": 558,
+        "last_seen_at": "2026-11-25T17:40:37.125332+00:00",
+        "state": "partially_stale"
+      },
+      "duke": {
+        "active": 1252,
+        "faculty_active": 1195,
+        "faculty_fresh": 1058,
+        "fresh": 1113,
+        "last_seen_at": "2026-11-25T18:16:18.158308+00:00",
+        "state": "partially_stale"
+      },
+      "emory": {
+        "active": 1450,
+        "faculty_active": 1442,
+        "faculty_fresh": 1410,
+        "fresh": 1418,
+        "last_seen_at": "2026-11-23T20:35:59.569434+00:00",
+        "state": "partially_stale"
+      },
+      "fsu": {
+        "active": 672,
+        "faculty_active": 667,
+        "faculty_fresh": 661,
+        "fresh": 666,
+        "last_seen_at": "2026-11-23T20:10:59.469138+00:00",
+        "state": "partially_stale"
+      },
+      "gatech": {
+        "active": 1321,
+        "faculty_active": 1302,
+        "faculty_fresh": 1027,
+        "fresh": 1041,
+        "last_seen_at": "2026-11-21T15:01:38.706936+00:00",
+        "state": "partially_stale"
+      },
+      "georgetown": {
+        "active": 869,
+        "faculty_active": 861,
+        "faculty_fresh": 857,
+        "fresh": 865,
+        "last_seen_at": "2026-11-24T19:12:01.592192+00:00",
+        "state": "partially_stale"
+      },
+      "grinnell": {
+        "active": 255,
+        "faculty_active": 246,
+        "faculty_fresh": 242,
+        "fresh": 251,
+        "last_seen_at": "2026-11-23T20:19:01.647126+00:00",
+        "state": "partially_stale"
+      },
+      "hamilton": {
+        "active": 245,
+        "faculty_active": 236,
+        "faculty_fresh": 236,
+        "fresh": 245,
+        "last_seen_at": "2026-11-23T20:21:46.343149+00:00",
+        "state": "fully_fresh"
+      },
+      "harvard": {
+        "active": 457,
+        "faculty_active": 449,
+        "faculty_fresh": 357,
+        "fresh": 365,
+        "last_seen_at": "2026-11-25T17:27:38.689496+00:00",
+        "state": "partially_stale"
+      },
+      "haverford": {
+        "active": 129,
+        "faculty_active": 120,
+        "faculty_fresh": 0,
+        "fresh": 9,
+        "last_seen_at": "2026-11-25T17:13:49.492410+00:00",
+        "state": "partially_stale"
+      },
+      "houston": {
+        "active": 1086,
+        "faculty_active": 1080,
+        "faculty_fresh": 1032,
+        "fresh": 1038,
+        "last_seen_at": "2026-11-19T16:21:31.606277+00:00",
+        "state": "partially_stale"
+      },
+      "iastate": {
+        "active": 675,
+        "faculty_active": 671,
+        "faculty_fresh": 653,
+        "fresh": 657,
+        "last_seen_at": "2026-11-23T20:17:13.667197+00:00",
+        "state": "partially_stale"
+      },
+      "indiana": {
+        "active": 1682,
+        "faculty_active": 1678,
+        "faculty_fresh": 1148,
+        "fresh": 1152,
+        "last_seen_at": "2026-11-25T17:57:23.215834+00:00",
+        "state": "partially_stale"
+      },
+      "jhu": {
+        "active": 4586,
+        "faculty_active": 4557,
+        "faculty_fresh": 78,
+        "fresh": 107,
+        "last_seen_at": "2026-11-20T17:02:57.680278+00:00",
+        "state": "partially_stale"
+      },
+      "kenyon": {
+        "active": 182,
+        "faculty_active": 171,
+        "faculty_fresh": 170,
+        "fresh": 181,
+        "last_seen_at": "2026-11-25T18:56:35.456784+00:00",
+        "state": "partially_stale"
+      },
+      "lehigh": {
+        "active": 575,
+        "faculty_active": 571,
+        "faculty_fresh": 464,
+        "fresh": 468,
+        "last_seen_at": "2026-11-25T17:55:00.404926+00:00",
+        "state": "partially_stale"
+      },
+      "lsu": {
+        "active": 1239,
+        "faculty_active": 1233,
+        "faculty_fresh": 1118,
+        "fresh": 1124,
+        "last_seen_at": "2026-11-21T15:27:08.309568+00:00",
+        "state": "partially_stale"
+      },
+      "macalester": {
+        "active": 211,
+        "faculty_active": 204,
+        "faculty_fresh": 194,
+        "fresh": 201,
+        "last_seen_at": "2026-11-23T20:22:17.592070+00:00",
+        "state": "partially_stale"
+      },
+      "miami": {
+        "active": 482,
+        "faculty_active": 477,
+        "faculty_fresh": 476,
+        "fresh": 481,
+        "last_seen_at": "2026-11-20T16:55:49.235437+00:00",
+        "state": "partially_stale"
+      },
+      "middlebury": {
+        "active": 328,
+        "faculty_active": 319,
+        "faculty_fresh": 308,
+        "fresh": 317,
+        "last_seen_at": "2026-11-23T20:32:28.528633+00:00",
+        "state": "partially_stale"
+      },
+      "mit": {
+        "active": 1437,
+        "faculty_active": 1430,
+        "faculty_fresh": 1303,
+        "fresh": 1310,
+        "last_seen_at": "2026-11-24T18:30:47.024432+00:00",
+        "state": "partially_stale"
+      },
+      "msu": {
+        "active": 1039,
+        "faculty_active": 1033,
+        "faculty_fresh": 561,
+        "fresh": 567,
+        "last_seen_at": "2026-11-24T18:49:19.646844+00:00",
+        "state": "partially_stale"
+      },
+      "national": {
+        "active": 5605,
+        "faculty_active": 0,
+        "faculty_fresh": 0,
+        "fresh": 5579,
+        "last_seen_at": "2026-11-25T19:03:20.642577+00:00",
+        "state": "partially_stale"
+      },
+      "ncsu": {
+        "active": 2333,
+        "faculty_active": 2322,
+        "faculty_fresh": 2110,
+        "fresh": 2121,
+        "last_seen_at": "2026-11-23T20:06:38.654794+00:00",
+        "state": "partially_stale"
+      },
+      "nd": {
+        "active": 1265,
+        "faculty_active": 1257,
+        "faculty_fresh": 864,
+        "fresh": 872,
+        "last_seen_at": "2026-11-19T16:08:11.860025+00:00",
+        "state": "partially_stale"
+      },
+      "neu": {
+        "active": 2068,
+        "faculty_active": 2060,
+        "faculty_fresh": 1856,
+        "fresh": 1864,
+        "last_seen_at": "2026-11-21T15:16:04.635204+00:00",
+        "state": "partially_stale"
+      },
+      "njit": {
+        "active": 508,
+        "faculty_active": 504,
+        "faculty_fresh": 80,
+        "fresh": 84,
+        "last_seen_at": "2026-11-24T18:51:35.816515+00:00",
+        "state": "partially_stale"
+      },
+      "northwestern": {
+        "active": 2840,
+        "faculty_active": 2812,
+        "faculty_fresh": 1077,
+        "fresh": 1105,
+        "last_seen_at": "2026-11-20T17:22:57.503245+00:00",
+        "state": "partially_stale"
+      },
+      "nyu": {
+        "active": 2280,
+        "faculty_active": 2269,
+        "faculty_fresh": 1178,
+        "fresh": 1189,
+        "last_seen_at": "2026-11-24T19:13:29.928591+00:00",
+        "state": "partially_stale"
+      },
+      "oregonstate": {
+        "active": 616,
+        "faculty_active": 612,
+        "faculty_fresh": 297,
+        "fresh": 301,
+        "last_seen_at": "2026-11-19T16:13:18.057943+00:00",
+        "state": "partially_stale"
+      },
+      "osu": {
+        "active": 2514,
+        "faculty_active": 2506,
+        "faculty_fresh": 1807,
+        "fresh": 1815,
+        "last_seen_at": "2026-11-21T15:04:27.771727+00:00",
+        "state": "partially_stale"
+      },
+      "pitt": {
+        "active": 1124,
+        "faculty_active": 1120,
+        "faculty_fresh": 1050,
+        "fresh": 1054,
+        "last_seen_at": "2026-11-19T16:11:50.072470+00:00",
+        "state": "partially_stale"
+      },
+      "pomona": {
+        "active": 288,
+        "faculty_active": 280,
+        "faculty_fresh": 277,
+        "fresh": 285,
+        "last_seen_at": "2026-11-21T16:44:24.078675+00:00",
+        "state": "partially_stale"
+      },
+      "princeton": {
+        "active": 630,
+        "faculty_active": 616,
+        "faculty_fresh": 380,
+        "fresh": 392,
+        "last_seen_at": "2026-11-20T15:30:31.674143+00:00",
+        "state": "partially_stale"
+      },
+      "psu": {
+        "active": 2800,
+        "faculty_active": 2790,
+        "faculty_fresh": 2534,
+        "fresh": 2544,
+        "last_seen_at": "2026-11-24T18:39:14.647388+00:00",
+        "state": "partially_stale"
+      },
+      "purdue": {
+        "active": 2245,
+        "faculty_active": 2183,
+        "faculty_fresh": 1979,
+        "fresh": 2041,
+        "last_seen_at": "2026-11-25T18:00:53.785327+00:00",
+        "state": "partially_stale"
+      },
+      "rice": {
+        "active": 1004,
+        "faculty_active": 999,
+        "faculty_fresh": 985,
+        "fresh": 990,
+        "last_seen_at": "2026-11-19T16:06:30.919959+00:00",
+        "state": "partially_stale"
+      },
+      "rochester": {
+        "active": 859,
+        "faculty_active": 851,
+        "faculty_fresh": 778,
+        "fresh": 786,
+        "last_seen_at": "2026-11-25T17:28:23.431149+00:00",
+        "state": "partially_stale"
+      },
+      "rpi": {
+        "active": 459,
+        "faculty_active": 455,
+        "faculty_fresh": 434,
+        "fresh": 438,
+        "last_seen_at": "2026-11-25T17:59:00.551248+00:00",
+        "state": "partially_stale"
+      },
+      "rutgers": {
+        "active": 2046,
+        "faculty_active": 2039,
+        "faculty_fresh": 2022,
+        "fresh": 2029,
+        "last_seen_at": "2026-11-23T20:04:13.033585+00:00",
+        "state": "partially_stale"
+      },
+      "sbu": {
+        "active": 920,
+        "faculty_active": 913,
+        "faculty_fresh": 545,
+        "fresh": 552,
+        "last_seen_at": "2026-11-21T15:16:31.108863+00:00",
+        "state": "partially_stale"
+      },
+      "smith": {
+        "active": 322,
+        "faculty_active": 315,
+        "faculty_fresh": 315,
+        "fresh": 322,
+        "last_seen_at": "2026-11-25T18:18:21.324732+00:00",
+        "state": "fully_fresh"
+      },
+      "stanford": {
+        "active": 1394,
+        "faculty_active": 1367,
+        "faculty_fresh": 913,
+        "fresh": 938,
+        "last_seen_at": "2026-11-20T15:30:09.699936+00:00",
+        "state": "partially_stale"
+      },
+      "stevens": {
+        "active": 342,
+        "faculty_active": 337,
+        "faculty_fresh": 327,
+        "fresh": 332,
+        "last_seen_at": "2026-11-23T20:11:29.112675+00:00",
+        "state": "partially_stale"
+      },
+      "swarthmore": {
+        "active": 238,
+        "faculty_active": 228,
+        "faculty_fresh": 221,
+        "fresh": 231,
+        "last_seen_at": "2026-11-21T16:43:56.387694+00:00",
+        "state": "partially_stale"
+      },
+      "syracuse": {
+        "active": 836,
+        "faculty_active": 831,
+        "faculty_fresh": 704,
+        "fresh": 709,
+        "last_seen_at": "2026-11-19T16:19:13.320486+00:00",
+        "state": "partially_stale"
+      },
+      "tamu": {
+        "active": 3286,
+        "faculty_active": 3279,
+        "faculty_fresh": 2664,
+        "fresh": 2671,
+        "last_seen_at": "2026-11-24T18:37:37.748482+00:00",
+        "state": "partially_stale"
+      },
+      "tufts": {
+        "active": 2129,
+        "faculty_active": 2121,
+        "faculty_fresh": 1802,
+        "fresh": 1810,
+        "last_seen_at": "2026-11-23T20:36:54.107009+00:00",
+        "state": "partially_stale"
+      },
+      "ucb": {
+        "active": 2428,
+        "faculty_active": 2154,
+        "faculty_fresh": 2115,
+        "fresh": 2177,
+        "last_seen_at": "2026-11-24T19:30:47.416486+00:00",
+        "state": "partially_stale"
+      },
+      "ucd": {
+        "active": 0,
+        "faculty_active": 0,
+        "faculty_fresh": 0,
+        "fresh": 0,
+        "last_seen_at": null,
+        "state": "no_active_records"
+      },
+      "ucf": {
+        "active": 808,
+        "faculty_active": 803,
+        "faculty_fresh": 799,
+        "fresh": 804,
+        "last_seen_at": "2026-11-20T16:57:27.269402+00:00",
+        "state": "partially_stale"
+      },
+      "uchicago": {
+        "active": 1213,
+        "faculty_active": 1201,
+        "faculty_fresh": 1053,
+        "fresh": 1065,
+        "last_seen_at": "2026-11-21T15:34:14.589693+00:00",
+        "state": "partially_stale"
+      },
+      "uci": {
+        "active": 1316,
+        "faculty_active": 1301,
+        "faculty_fresh": 1170,
+        "fresh": 1185,
+        "last_seen_at": "2026-11-21T15:37:54.165175+00:00",
+        "state": "partially_stale"
+      },
+      "ucla": {
+        "active": 2025,
+        "faculty_active": 2006,
+        "faculty_fresh": 1617,
+        "fresh": 1632,
+        "last_seen_at": "2026-11-19T15:56:17.916009+00:00",
+        "state": "partially_stale"
+      },
+      "uconn": {
+        "active": 1178,
+        "faculty_active": 1172,
+        "faculty_fresh": 1137,
+        "fresh": 1143,
+        "last_seen_at": "2026-11-24T18:58:50.010544+00:00",
+        "state": "partially_stale"
+      },
+      "ucr": {
+        "active": 1178,
+        "faculty_active": 1172,
+        "faculty_fresh": 1135,
+        "fresh": 1141,
+        "last_seen_at": "2026-11-23T20:07:51.574264+00:00",
+        "state": "partially_stale"
+      },
+      "ucsb": {
+        "active": 1115,
+        "faculty_active": 848,
+        "faculty_fresh": 824,
+        "fresh": 1091,
+        "last_seen_at": "2026-11-21T16:44:43.208648+00:00",
+        "state": "partially_stale"
+      },
+      "ucsc": {
+        "active": 751,
+        "faculty_active": 747,
+        "faculty_fresh": 701,
+        "fresh": 705,
+        "last_seen_at": "2026-11-20T16:35:33.552200+00:00",
+        "state": "partially_stale"
+      },
+      "ucsd": {
+        "active": 1496,
+        "faculty_active": 1464,
+        "faculty_fresh": 1310,
+        "fresh": 1338,
+        "last_seen_at": "2026-11-20T17:01:54.892519+00:00",
+        "state": "partially_stale"
+      },
+      "udel": {
+        "active": 1023,
+        "faculty_active": 1018,
+        "faculty_fresh": 1005,
+        "fresh": 1010,
+        "last_seen_at": "2026-11-19T16:22:19.801217+00:00",
+        "state": "partially_stale"
+      },
+      "uf": {
+        "active": 2131,
+        "faculty_active": 2124,
+        "faculty_fresh": 1974,
+        "fresh": 1981,
+        "last_seen_at": "2026-11-20T16:32:37.275782+00:00",
+        "state": "partially_stale"
+      },
+      "uga": {
+        "active": 2186,
+        "faculty_active": 2179,
+        "faculty_fresh": 2096,
+        "fresh": 2103,
+        "last_seen_at": "2026-11-19T16:23:52.496384+00:00",
+        "state": "partially_stale"
+      },
+      "uiowa": {
+        "active": 937,
+        "faculty_active": 933,
+        "faculty_fresh": 925,
+        "fresh": 929,
+        "last_seen_at": "2026-11-23T20:18:10.264649+00:00",
+        "state": "partially_stale"
+      },
+      "uiuc": {
+        "active": 2976,
+        "faculty_active": 2946,
+        "faculty_fresh": 2793,
+        "fresh": 2793,
+        "last_seen_at": "2026-11-23T19:46:34.952439+00:00",
+        "state": "partially_stale"
+      },
+      "uky": {
+        "active": 779,
+        "faculty_active": 773,
+        "faculty_fresh": 770,
+        "fresh": 776,
+        "last_seen_at": "2026-11-25T17:51:54.877136+00:00",
+        "state": "partially_stale"
+      },
+      "umass": {
+        "active": 1571,
+        "faculty_active": 1562,
+        "faculty_fresh": 1540,
+        "fresh": 1549,
+        "last_seen_at": "2026-11-21T15:11:57.748180+00:00",
+        "state": "partially_stale"
+      },
+      "umd": {
+        "active": 1354,
+        "faculty_active": 1347,
+        "faculty_fresh": 924,
+        "fresh": 931,
+        "last_seen_at": "2026-11-25T17:30:42.763314+00:00",
+        "state": "partially_stale"
+      },
+      "umich": {
+        "active": 1492,
+        "faculty_active": 1483,
+        "faculty_fresh": 129,
+        "fresh": 138,
+        "last_seen_at": "2026-11-21T14:33:58.475494+00:00",
+        "state": "partially_stale"
+      },
+      "umn": {
+        "active": 1456,
+        "faculty_active": 1449,
+        "faculty_fresh": 1371,
+        "fresh": 1378,
+        "last_seen_at": "2026-11-24T18:35:13.399065+00:00",
+        "state": "partially_stale"
+      },
+      "unc": {
+        "active": 595,
+        "faculty_active": 595,
+        "faculty_fresh": 411,
+        "fresh": 411,
+        "last_seen_at": "2026-11-25T19:02:59.854528+00:00",
+        "state": "partially_stale"
+      },
+      "unl": {
+        "active": 1268,
+        "faculty_active": 1263,
+        "faculty_fresh": 1041,
+        "fresh": 1046,
+        "last_seen_at": "2026-11-20T16:55:26.317942+00:00",
+        "state": "partially_stale"
+      },
+      "upenn": {
+        "active": 1901,
+        "faculty_active": 1873,
+        "faculty_fresh": 1633,
+        "fresh": 1661,
+        "last_seen_at": "2026-11-21T16:37:35.768084+00:00",
+        "state": "partially_stale"
+      },
+      "usc": {
+        "active": 1568,
+        "faculty_active": 1560,
+        "faculty_fresh": 1488,
+        "fresh": 1496,
+        "last_seen_at": "2026-11-24T18:32:38.310220+00:00",
+        "state": "partially_stale"
+      },
+      "usf": {
+        "active": 785,
+        "faculty_active": 780,
+        "faculty_fresh": 627,
+        "fresh": 632,
+        "last_seen_at": "2026-11-24T18:49:47.776280+00:00",
+        "state": "partially_stale"
+      },
+      "utah": {
+        "active": 1130,
+        "faculty_active": 1125,
+        "faculty_fresh": 1108,
+        "fresh": 1113,
+        "last_seen_at": "2026-11-24T19:11:39.174968+00:00",
+        "state": "partially_stale"
+      },
+      "utdallas": {
+        "active": 1102,
+        "faculty_active": 1098,
+        "faculty_fresh": 1013,
+        "fresh": 1017,
+        "last_seen_at": "2026-11-21T15:31:28.711181+00:00",
+        "state": "partially_stale"
+      },
+      "utexas": {
+        "active": 2242,
+        "faculty_active": 2218,
+        "faculty_fresh": 1985,
+        "fresh": 2006,
+        "last_seen_at": "2026-11-19T15:50:27.605743+00:00",
+        "state": "partially_stale"
+      },
+      "utk": {
+        "active": 1058,
+        "faculty_active": 1053,
+        "faculty_fresh": 1034,
+        "fresh": 1039,
+        "last_seen_at": "2026-11-21T15:17:16.734552+00:00",
+        "state": "partially_stale"
+      },
+      "uva": {
+        "active": 1644,
+        "faculty_active": 1635,
+        "faculty_fresh": 1144,
+        "fresh": 1153,
+        "last_seen_at": "2026-11-24T19:30:28.236994+00:00",
+        "state": "partially_stale"
+      },
+      "uw": {
+        "active": 2277,
+        "faculty_active": 2247,
+        "faculty_fresh": 2094,
+        "fresh": 2120,
+        "last_seen_at": "2026-11-25T17:21:55.491572+00:00",
+        "state": "partially_stale"
+      },
+      "vanderbilt": {
+        "active": 1158,
+        "faculty_active": 1154,
+        "faculty_fresh": 937,
+        "fresh": 941,
+        "last_seen_at": "2026-11-19T16:07:16.904914+00:00",
+        "state": "partially_stale"
+      },
+      "vassar": {
+        "active": 267,
+        "faculty_active": 259,
+        "faculty_fresh": 256,
+        "fresh": 264,
+        "last_seen_at": "2026-11-25T18:17:22.032071+00:00",
+        "state": "partially_stale"
+      },
+      "vt": {
+        "active": 1873,
+        "faculty_active": 1864,
+        "faculty_fresh": 1779,
+        "fresh": 1788,
+        "last_seen_at": "2026-11-19T16:09:27.523731+00:00",
+        "state": "partially_stale"
+      },
+      "washu": {
+        "active": 1100,
+        "faculty_active": 1092,
+        "faculty_fresh": 1083,
+        "fresh": 1091,
+        "last_seen_at": "2026-11-20T16:34:44.549651+00:00",
+        "state": "partially_stale"
+      },
+      "wellesley": {
+        "active": 298,
+        "faculty_active": 288,
+        "faculty_fresh": 286,
+        "fresh": 296,
+        "last_seen_at": "2026-11-25T18:57:19.502891+00:00",
+        "state": "partially_stale"
+      },
+      "wesleyan": {
+        "active": 368,
+        "faculty_active": 358,
+        "faculty_fresh": 331,
+        "fresh": 341,
+        "last_seen_at": "2026-11-25T18:27:38.298302+00:00",
+        "state": "partially_stale"
+      },
+      "wisc": {
+        "active": 1957,
+        "faculty_active": 1935,
+        "faculty_fresh": 1305,
+        "fresh": 1319,
+        "last_seen_at": "2026-11-25T17:24:30.733253+00:00",
+        "state": "partially_stale"
+      },
+      "wlu": {
+        "active": 241,
+        "faculty_active": 233,
+        "faculty_fresh": 230,
+        "fresh": 238,
+        "last_seen_at": "2026-11-25T18:19:02.026669+00:00",
+        "state": "partially_stale"
+      },
+      "wpi": {
+        "active": 474,
+        "faculty_active": 470,
+        "faculty_fresh": 469,
+        "fresh": 473,
+        "last_seen_at": "2026-11-24T18:52:52.472077+00:00",
+        "state": "partially_stale"
+      },
+      "yale": {
+        "active": 1256,
+        "faculty_active": 1251,
+        "faculty_fresh": 1133,
+        "fresh": 1138,
+        "last_seen_at": "2026-11-25T17:29:15.879371+00:00",
+        "state": "partially_stale"
+      }
+    },
+    "stale_days": 14.0,
+    "stale_records": 22166,
+    "unexplained_empty_schools": [],
+    "unsupported_schools": [
+      "ucd"
+    ]
+  },
+  "school_only": {
+    "active": 131520,
+    "fresh": 109380
+  },
+  "source_health": {
+    "fully_stale_schools": [
+      "colby",
+      "haverford"
+    ],
+    "no_fresh_faculty_schools": [
+      "colby",
+      "haverford"
+    ],
+    "source_age_limit_days": 17.0
+  },
+  "window": "14 days; policy threshold >=95%. Only source sightings at or after cutoff count. Every active row is included in the denominator. Inactive rows are excluded."
+}
