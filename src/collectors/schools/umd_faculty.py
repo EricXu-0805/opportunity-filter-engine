@@ -105,6 +105,9 @@ _CLARK_SELECTORS = {
     # source-stated academic rank establishes the appointment, not the office.
     "title": ".title-wrapper h3",
     "leadership_title_re": r"\b(?:chair|director|dean|president|leader)\b",
+    # Clark explicitly lists a second current appointment on this same line.
+    # Celi's faculty biography confirms ongoing work and advising in that role.
+    "title_html_re": r'<div class="title-wrapper">\s*<h3>Professor Emeritus,\s*(Research Professor)\s*</h3>',
     "bound_contact": {"allowed_email_domains": ["umd.edu"]},
 }
 
