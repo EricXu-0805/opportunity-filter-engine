@@ -1,11 +1,13 @@
 """Read two manually entered program records on production against their live source pages."""
 import json
 from playwright.sync_api import sync_playwright, expect
-from verify_m25_results_20261126 import capture, enter_results, out, receipt, site
+from verify_m25_results_20261126 import capture, enter_results, is_view, out, receipt, site
 
 cases = [
-    ("ext-cmu-reuse", "Carnegie Mellon REUSE", "https://www.cmu.edu/scs/s3d/reuse/", "criteria"),
-    ("ext-umn-reu", "Computing for Social Good", "https://reu.cs.umn.edu/apply", "programming"),
+    ("ext-usc-ict", "Institute for Creative Technologies REU", "https://ict.usc.edu/reu/", "january 27, 2027"),
+    ("ext-uiuc-ncsa-reu", "FoDOMMaT", "https://reu.ncsa.illinois.edu/", "python"),
+    ("ext-utexas-tacc", "TACC REU", "https://tacc.utexas.edu/education/undergraduates-graduates/reu/", "april 1, 2027"),
+    ("ext-umbc-bigdata", "UMBC Big Data REU", "https://bigdatareu.umbc.edu/2026-program-and-application/", "march 03, 2026"),
 ]
 
 with sync_playwright() as pw:
@@ -27,6 +29,7 @@ with sync_playwright() as pw:
             detail = api.json()
             entry["target_truth"] = detail["target_truth"]
             entry["detail_skills"] = detail["eligibility"]["skills_required"]
+            entry["eligibility"] = {k: detail["eligibility"].get(k) for k in ("international_friendly", "work_auth_notes", "majors")}
             entry["rolling"] = detail.get("is_rolling")
             entry["deadline"] = detail.get("deadline")
             page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded")
@@ -36,7 +39,13 @@ with sync_playwright() as pw:
             entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if any(k in s.lower() for k in ["python","c++","rolling","january 28","2027-01-28","basic programming","upcoming","closed"])]
             page.screenshot(path=out / (oid + "-detail.png"))
             from urllib.parse import quote
-            page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
+            with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as network:
+                page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
+            wire = network.value.json()
+            assert network.value.ok
+            entry["search_total"] = wire["filtered_total"]
+            entry["listed"] = any(row["opportunity_id"] == oid for row in wire["results"])
+            assert entry["listed"] or not wire["has_more"]
             card = page.locator("#match-card-" + oid)
             if detail["target_truth"]["actionable"]:
                 expect(card).to_be_visible(timeout=90000)
