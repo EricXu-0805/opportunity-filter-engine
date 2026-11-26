@@ -1,0 +1,131 @@
+{
+  "standard_ci_pending_at_creation": true,
+  "comparison": "Four fresh processes, same hosted Ubuntu 24.04 runner, Python 3.11, base-candidate-candidate-base. Source and candidate use the same 117 shards and date. Both result order and complete score/reason fields are hashed.",
+  "source_pr": 1495,
+  "base": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "candidate": "7482cb1ba9766d61a8995aeb42884793e66689bd",
+  "measurement_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45904548607",
+  "ids": 149943,
+  "observations": {
+    "uiuc_cs_cross_all3": {
+      "ranked": 82611,
+      "full_ranking_sha256": "700a881b84c683fbcff333b1edb7ee3f44cab4b6f0788fdbc195e385696c3116",
+      "base_first": [
+        [
+          13.311794077000002,
+          13.310959726
+        ],
+        [
+          13.672429917999978,
+          13.671396348999998
+        ]
+      ],
+      "candidate_first": [
+        [
+          12.371514930000018,
+          12.369978934000002
+        ],
+        [
+          12.337664778000033,
+          12.333589199999999
+        ]
+      ]
+    },
+    "ucb_eecs": {
+      "ranked": 2557,
+      "full_ranking_sha256": "05923e7e67164099bdf98bb11dc01880f4f323c9c9a8edc24ad2d6cfd7820e5a",
+      "base_first": [
+        [
+          0.46188201999999023,
+          0.4619975709999977
+        ],
+        [
+          0.4702815120000423,
+          0.47060767800000036
+        ]
+      ],
+      "candidate_first": [
+        [
+          0.44209796699999515,
+          0.4420578980000016
+        ],
+        [
+          0.4399395259999892,
+          0.4400710769999989
+        ]
+      ]
+    }
+  },
+  "peak_mib": {
+    "base": [
+      1529.844,
+      1521.117
+    ],
+    "candidate": [
+      1520.715,
+      1520.777
+    ]
+  },
+  "startup_seconds": {
+    "base": [
+      16.336834031999985,
+      16.35518720799996
+    ],
+    "candidate": [
+      17.025139327000005,
+      17.043730151999966
+    ]
+  },
+  "peak_median_difference_mib": -4.7345000000000255,
+  "peak_maximum_difference_mib": -9.067000000000007,
+  "http_checks": {
+    "uiuc_cs_cross_all3": {
+      "full_http_payloads_identical_per_process": 11,
+      "actions_in_order": [
+        "first",
+        "repeat",
+        "repeat",
+        "repeat",
+        "repeat",
+        "next",
+        "next",
+        "next",
+        "search",
+        "hide",
+        "restore"
+      ],
+      "repeat_medians_seconds": [
+        0.03376994700001035,
+        0.03425645500000485,
+        0.03406981150001798,
+        0.03415919950001012
+      ]
+    },
+    "ucb_eecs": {
+      "full_http_payloads_identical_per_process": 11,
+      "actions_in_order": [
+        "first",
+        "repeat",
+        "repeat",
+        "repeat",
+        "repeat",
+        "next",
+        "next",
+        "next",
+        "search",
+        "hide",
+        "restore"
+      ],
+      "repeat_medians_seconds": [
+        0.034125083499986886,
+        0.03436170850000053,
+        0.034249056999982486,
+        0.0345195055000147
+      ]
+    }
+  },
+  "first_request_improvement_percent": {
+    "uiuc_cs_cross_all3": 8.43,
+    "ucb_eecs": 5.38
+  }
+}
