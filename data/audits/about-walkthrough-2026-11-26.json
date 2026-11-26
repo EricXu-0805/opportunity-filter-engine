@@ -1,0 +1,49 @@
+{
+  "issue": "U31",
+  "candidate": "836499d534736e97804076cd2c6e623cd6a0c5f0",
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1353",
+  "recorded_product_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "recording_environment": "production build of the deployed application on loopback with the repository account test fixture and a fictional match view",
+  "interaction": [
+    "type research interests",
+    "generate matches",
+    "open a fictional match reason",
+    "add to favorites"
+  ],
+  "movie": {
+    "duration_seconds": 22.68,
+    "dimensions": [
+      980,
+      630
+    ],
+    "codec": "H.264",
+    "bytes": 257432,
+    "sha256": "ce0540974ddfadf526df1602c9b9b0c2e4f5b05b513114f87e722bf349371f3b"
+  },
+  "capture": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45804822626/job/139857163439",
+  "candidate_player": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45805649787/job/139860064575",
+  "browsers": [
+    {
+      "locale": "en",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "locale": "zh",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "checks_in_each_browser": {
+    "initially_collapsed": true,
+    "played": true,
+    "paused": true,
+    "caption_cues_in_selected_language": 5,
+    "requested_video_http_status": 206,
+    "horizontal_overflow": false,
+    "return_to_matching_home": true
+  },
+  "external_email_actions": 0,
+  "production_player_evidence": null,
+  "real_user_observation": null
+}
