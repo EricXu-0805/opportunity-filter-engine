@@ -487,3 +487,26 @@ def test_reviewed_namesakes_removed_from_detail_cards_writing_and_legacy_replay(
     assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 1
     assert mixed["metadata"]["recent_works"] == [retained]
     assert apply_works([mixed], {mixed["url"]: [wrong, retained]}) == 0
+
+
+def test_reviewed_utk_battery_work_stays_with_its_own_author_after_refresh():
+    from backend.lib.public_opportunity_detail import project_public_detail
+    from src.collectors.openalex_enrich import apply_works
+
+    wrong = {"title": "Lithium Ion Battery Pack Robust State of Charge and Charging Method Estimation using Fuzzy Logic",
+             "year": 2025}
+    retained = {"title": "In Situ High‐Temperature Phase Elucidation of Secondary Particles and Segregating "
+                         "Nanoparticles with Surface Coating‐Networking Architecture for High‐Voltage Cathode Life at High Rate",
+                "year": 2025}
+    profile = "https://tickle.utk.edu/mae/faculty/manikandan-palanisamy/"
+    record = _verified([retained, wrong], id="faculty-utk-mabe-e496c152", url=profile)
+    assert project_public_detail(record)["metadata"]["recent_works"] == [retained]
+    # A DOI-bearing refresh may normalize or abbreviate the displayed title.
+    incoming = {**wrong, "title": "Lithium Ion Battery Pack Robust State of Charge",
+                "doi": "https://doi.org/10.1109/ICICCS65191.2025.10984683"}
+    mapping = {profile: {"author_id": "A5065912750", "works": [incoming, retained]}}
+    assert apply_works([record], mapping) == 1
+    assert record["metadata"]["recent_works"] == [retained]
+    assert apply_works([record], mapping) == 0
+    assert verified_recent_works({**record, "id": "other-author",
+                                  "metadata": {**record["metadata"], "recent_works": [wrong]}}) == [wrong]
