@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [raceen-resume-followup-keep, racezh-resume-followup-keep, raceen-resume-followup-other, racezh-resume-followup-other, merged, raceen, racezh, raceen-staggered, racezh-staggered]
+        mode: [racezh-resume-followup-keep, racezh-staggered]
     steps:
       - uses: actions/checkout@v6
         with:

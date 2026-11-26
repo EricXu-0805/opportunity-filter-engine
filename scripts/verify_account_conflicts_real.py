@@ -97,8 +97,13 @@ async def scenario(browser,mode):
             await expect(remove).to_be_visible(timeout=30000)
             note = 'I independently checked the second sensor sample.'
             editor = page.locator('#experience-library details').last
-            await editor.locator('summary').click()
+            await page.bring_to_front()
+            if not await editor.locator('textarea').is_visible():
+                await editor.locator('summary').click()
+            await expect(editor.locator('textarea')).to_be_visible()
             await context.set_offline(True)
+            if not await editor.locator('textarea').is_visible():
+                await editor.locator('summary').click()
             outage = True
             await editor.locator('textarea').fill(note)
             await editor.get_by_role('button').click()
@@ -201,13 +206,13 @@ async def scenario(browser,mode):
             if await keep[index].is_visible():
                 dims=await keep[index].evaluate("(b)=>({width:innerWidth,height:b.getBoundingClientRect().height,line:parseFloat(getComputedStyle(b).lineHeight),pad:parseFloat(getComputedStyle(b).paddingTop)+parseFloat(getComputedStyle(b).paddingBottom)})")
                 assert dims['width'] == 390 and dims['height']-dims['pad'] <= dims['line']*2+3,dims
-            await tab.evaluate("""() => {window.receiptViews=[];window.statusHistory=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]')){window.receiptClicks++;window.receiptClickTime=Date.now()}},true);new MutationObserver(()=>{
+            await tab.evaluate("""() => {window.receiptViews=[];window.statusHistory=[];window.receiptClicks=0;document.addEventListener('click',e=>{if(e.target.closest('[data-testid="conflict-keep-mine"]')){window.receiptClicks++;window.receiptClickTime=Date.now();window.beforeClickStatus=document.querySelector('#profile-save-status')?.innerText}},true);new MutationObserver(()=>{
                 const msg=document.querySelector('#profile-save-status')?.innerText;
                 if(msg && window.statusHistory.at(-1)!==msg && window.statusHistory.length<30) window.statusHistory.push(msg);
                 const s = document.querySelector('[data-testid="conflict-stale"]');
                 const retry=document.querySelector('[data-testid="retry-sync"]');
                 const failed=/Saved on this device only|仅保存在本设备|没能同步/.test((document.querySelector('#profile-save-status')?.innerText || ''));
-                if(s || retry || failed) window.receiptViews.push({stale:!!s,retry:!!retry,failed});
+                if(window.receiptClicks && msg!==window.beforeClickStatus && (s || retry || failed)) window.receiptViews.push({stale:!!s,retry:!!retry,failed});
             }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}""")
         outcomes.clear()
         staggered = mode.endswith('-staggered')
@@ -290,7 +295,7 @@ async def scenario(browser,mode):
             await expect(tab.get_by_text('Profile saved',exact=True)).to_have_count(0)
         await expect(receiver.locator('#student_name')).to_have_value('Synthetic retained edit')
         assert 'merged_away' in outcomes and 'unavailable' in outcomes, outcomes
-        print('PASS deployed two-tab guest merge, failed edit retained, both stale, neither offered retry or claimed saved:',outcomes)
+        print('PASS isolated database two-tab guest merge, failed edit retained, both stale, neither offered retry or claimed saved:',outcomes)
 
     await context.close()
 
