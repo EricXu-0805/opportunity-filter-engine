@@ -229,7 +229,7 @@ async def run(mode):
                 if switching:
                     on = page.get_by_role('button', name='Notifications on', exact=True)
                     await expect(on).to_have_attribute('aria-pressed', 'true')
-                    await page.get_by_test_id('account-menu').click()
+                    await page.locator('[data-testid="account-menu"]:visible').first.click()
                     await page.get_by_role('menuitem', name='Sign out').click()
                     await page.get_by_role('dialog').get_by_role('button', name='Sign out', exact=True).click()
                     await expect(page.get_by_role('dialog')).to_have_count(0)
@@ -242,7 +242,7 @@ async def run(mode):
                     other = rpc('/auth/v1/signup', {'email':'m48-second@example.invalid', 'password':'local-fixture-only'})
                     await page.evaluate("s => localStorage.setItem('ofe_auth', JSON.stringify(s))", other)
                     await page.reload(wait_until='domcontentloaded')
-                    await expect(page.get_by_test_id('account-menu')).to_have_attribute('aria-label', re.compile('m48-second'))
+                    await expect(page.locator('[data-testid="account-menu"]:visible').first).to_have_attribute('aria-label', re.compile('m48-second'))
                     await expect(enabled).to_have_attribute('aria-pressed','false')
                     for _ in range(100):
                         if ('GET', other['user']['id']) in owner_events:
