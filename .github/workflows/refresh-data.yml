@@ -526,11 +526,11 @@ jobs:
             # rather than only that the totals moved.
             python3 scripts/source_freshness_report.py report || true
 
-            # The switcher's static fallback is derived from the shards by the
-            # same function the coverage API uses, so it has to be rewritten in
-            # the same commit that moves them. Skipping it would ship a first
-            # paint counting last week's corpus, and tests/test_school_coverage.py
-            # fails the refresh PR rather than letting that land silently.
+            # The coverage loader prefers the scrape's existing work file.
+            # Rebuild it from the final shards, including newer main records,
+            # retained shards and deadline retirements, before counting them.
+            # The original scrape is still in /tmp for the next publish attempt.
+            python3 scripts/shard_corpus.py assemble --force
             python3 scripts/gen_school_stats.py
 
             git add data/processed/shards data/processed/collector_status.json
