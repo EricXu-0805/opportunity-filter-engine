@@ -1,0 +1,54 @@
+{
+  "time": "2026-11-26T12:42:44.050519+00:00",
+  "rows": [
+    {
+      "id": "faculty-umd-math-0300a4bb",
+      "name": "James A. Yorke",
+      "observed_url": "http://yorke.umd.edu/",
+      "landing_error": "ReadTimeout",
+      "recheck": [
+        {
+          "request": "http://yorke.umd.edu/",
+          "error": "ReadTimeout"
+        },
+        {
+          "request": "https://yorke.umd.edu/",
+          "error": "ReadTimeout"
+        }
+      ]
+    },
+    {
+      "id": "faculty-umd-math-fab275b7",
+      "name": "Yun Yang",
+      "observed_url": "https://sites.google.com/site/yunyangstat/",
+      "landing_error": "ReadTimeout",
+      "recheck": [
+        {
+          "request": "https://sites.google.com/site/yunyangstat/",
+          "http": 200,
+          "final": "https://sites.google.com/site/yunyangstat/",
+          "page_title": "Yun Yang",
+          "name_on_page": true
+        }
+      ]
+    }
+  ],
+  "replay": {
+    "at": "2026-11-26T12:49:42.244442+00:00",
+    "id": "faculty-umd-math-0300a4bb",
+    "department_roster": "https://www-math.umd.edu/people/faculty.html",
+    "all_cards": 61,
+    "eligible_ids": 61,
+    "source_before": "http://yorke.umd.edu/",
+    "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-0300a4bb",
+    "live_main_action": [
+      "http://yorke.umd.edu/"
+    ],
+    "official_corrected_profile": "https://ipst.umd.edu/people/james-a-yorke",
+    "profile_http": 200,
+    "person_heading": "James A. Yorke",
+    "source_after_normal_refresh": "https://ipst.umd.edu/people/james-a-yorke",
+    "normal_serving_source": "https://ipst.umd.edu/people/james-a-yorke",
+    "repeat_left_unchanged": true
+  }
+}
