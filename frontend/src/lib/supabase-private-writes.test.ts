@@ -510,7 +510,7 @@ describe('late local-fallback writes re-validate the SAME token immediately befo
     localStorage.setItem('ofe_favs_fallback', JSON.stringify(['local-only-opp']));
     establishIdentity(U1);
 
-    const select = vi.fn().mockResolvedValue({ data: [{ opportunity_id: 'remote-opp' }], error: null });
+    const select = vi.fn().mockResolvedValue({ data: [{ opportunity_id: 'remote-opp' }], count: 1, error: null });
     const insert = vi.fn().mockImplementation(() => {
       // The switch lands exactly here — after getFavorites decided to
       // backfill (identity was valid then) but before its response is
@@ -760,7 +760,7 @@ describe('getFavorites: safe one-time re-read after first-owner priming (READ-on
     expect(captureOwnerToken().uid).toBeNull();
 
     mockGetSession.mockResolvedValue(session(U1)); // ensureAnonSession resolves to a real, fresh identity
-    const eq = vi.fn().mockResolvedValue({ data: [{ opportunity_id: OPP }], error: null });
+    const eq = vi.fn().mockResolvedValue({ data: [{ opportunity_id: OPP }], count: 1, error: null });
     mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq }) }) }));
 
     const result = await getFavorites();
@@ -786,7 +786,7 @@ describe('getFavorites: safe one-time re-read after first-owner priming (READ-on
 describe('sanity: getFavorites is unaffected by the owner-token signature change on writes', () => {
   it('still reads favorites without requiring a token, when nothing races', async () => {
     establishIdentity(U1);
-    const eq = vi.fn().mockResolvedValue({ data: [{ opportunity_id: OPP }], error: null });
+    const eq = vi.fn().mockResolvedValue({ data: [{ opportunity_id: OPP }], count: 1, error: null });
     mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ order: () => ({ eq }) }) }));
     const set = await getFavorites();
     expect(set.has(OPP)).toBe(true);
@@ -879,6 +879,19 @@ describe('interaction reads: throw on query failure, null/empty only on a CONFIR
     expect(result.has('1000')).toBe(true);
     expect(gt.mock.calls).toEqual([['opportunity_id', '0999'], ['opportunity_id', '0999']]);
     expect(eq.mock.calls).toEqual(Array(4).fill(['device_id', U1]));
+  });
+
+  it('reads compact statuses until an empty page when responses omit the count', async () => {
+    establishIdentity(U1);
+    const gt = vi.fn()
+      .mockResolvedValueOnce({ data: [{ opportunity_id: 'b', interaction_type: 'applied' }], count: null, error: null })
+      .mockResolvedValueOnce({ data: [], count: null, error: null });
+    const order = vi.fn().mockResolvedValueOnce({
+      data: [{ opportunity_id: 'a', interaction_type: 'dismissed' }], count: null, error: null,
+    }).mockReturnValue({ gt });
+    mockFrom.mockImplementation(() => ({ select: () => ({ eq: () => ({ order }) }) }));
+    expect(await getInteractions()).toEqual(new Map([['a', 'dismissed'], ['b', 'applied']]));
+    expect(gt.mock.calls).toEqual([['opportunity_id', 'a'], ['opportunity_id', 'b']]);
   });
 
   it('reads the final compact status while requesting only IDs and statuses', async () => {

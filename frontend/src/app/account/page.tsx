@@ -30,7 +30,7 @@ import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import {
   getAuthState,
-  getFavorites,
+  getFavoritesSnapshot,
   getInteractionsFull,
   joinWaitlist,
   onAuthChange,
@@ -121,7 +121,7 @@ export default function AccountPage() {
       const [authState, hydration, favs, interactions] = await Promise.all([
         getAuthState(),
         hydrateProfile(),
-        getFavorites(),
+        getFavoritesSnapshot(),
         getInteractionsFull(),
       ]);
       if (cancelledRef.current || generationRef.current !== generation) return;
@@ -138,7 +138,7 @@ export default function AccountPage() {
       }
       setAuth(authState);
       setSnapshot(toSnapshot(hydration.profile as Record<string, unknown> | null, locale));
-      setFavCount(favs.size);
+      setFavCount(favs.complete ? favs.ids.size : null);
       setTrackCount(interactions.size);
       setLoadError(false);
     } catch {
