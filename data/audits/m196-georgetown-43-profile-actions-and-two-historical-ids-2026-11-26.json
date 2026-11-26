@@ -1,0 +1,281 @@
+{
+  "baseline": "8dbbbb23523f56c70b1acf25812e48b839fb28b5",
+  "observed_utc": "2026-11-26T15:00:34.030539+00:00",
+  "school_rows_original_sequence": 892,
+  "current_english_originals": 43,
+  "personal_links_repaired": 42,
+  "holmes_citation_restored_to_list": 1,
+  "historical_original_rows_preserved": [
+    "faculty-georgetown-engl-9b02f5b4",
+    "faculty-georgetown-engl-debbaefc"
+  ],
+  "normal_repeated_official_directory_merges": 2,
+  "added_on_repeat": 0,
+  "before_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/3b44c6f7985bdc0fa70950cab1b015bfa4de1f70/data/audits/m196-georgetown-42-live-roster-destinations-2026-11-26.json",
+  "local_api": [
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwokAAC/randall-bass?searchType=Contact-Info&searchText=randall%20bass",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-3f3f47fd",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003UH000008FwblYAC/jessica-batychenko?searchType=Contact-Info&searchText=jessica%20batychenko",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-60a11198",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWn1AAG/caetlin-bensonallott?searchType=Contact-Info&searchText=caetlin%20benson",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-f9d788e9",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003UH00000Vw8EhYAJ/alex-brostoff",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-912a5304",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jMw5QIAS/elizabeth-catchmark?searchType=Contact-Info&searchText=catchmark",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-a9eb9b96",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jN3TiIAK/manu-chander?searchType=Contact-Info&searchText=chander",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-1cd68f39",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVHiAAO/maureen-corrigan?searchType=Contact-Info&searchText=maureen%20corrigan",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-e1e0eacd",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RZgNAAW/maggie-debelius?searchType=Contact-Info&searchText=margaret%20debelius",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-7b76c532",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWdRAAW/jennifer-natalya-fink?searchType=Contact-Info&searchText=jennifer%20natalya%20fink",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-cbc96696",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgPhAAK/carolyn-forch%C3%A9?searchType=Contact-Info&searchText=carolyn%20forche",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-b55b14a1",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RfVhAAK/david-s-gewanter-phd?searchType=Contact-Info&searchText=david%20gewanter",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-95ad177a",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgkYAAS/john-glavin?searchType=Contact-Info&searchText=john%20glavin",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-b072d3d6",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Tw4pAAC/nathan-hensley?searchType=Contact-Info&searchText=nathan%20hensley",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-888650c1",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rf5JAAS/brian-hochman?searchType=Contact-Info&searchText=brian%20hochman",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-e97a4daf",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003UH000011D0p9YAC/fatima-jafar?searchType=Contact-Info&searchText=fatima%20jafar",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-42b9eeaa",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RePLAA0/m-lindsay-kaplan?searchType=Contact-Info&searchText=lindsay%20kaplan",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-c5c27dac",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cJxCrQAK/peggy-lee?searchType=Contact-Info&searchText=peggy%20lee",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-c3711a29",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TmvhAAC/sherry-linkon?searchType=Contact-Info&searchText=sherry%20linkon",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-983db631",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rjf5AAC/david-lipscomb?searchType=Contact-Info&searchText=david%20lipscomb",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-0b30af59",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-0b965fab",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RBIXAA4/monica-maxwell-phd?searchType=Contact-Info&searchText=monica%20maxwell",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-4cc038ec",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RcRSAA0/mark-mcmorris?searchType=Contact-Info&searchText=mark%20mcmorris",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-eabebde9",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-3628e405",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014ReiYAAS/lori-merish?searchType=Contact-Info&searchText=lori%20merish",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-66c04eaa",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-b09a1a61",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-a3879e7d",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWRFAA4/patrick-omalley?searchType=Contact-Info&searchText=patrick%20o%27malley",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-a9bfca89",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cu3B2QAI/lindsey-oneil?searchType=Contact-Info&searchText=o%27neil",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-7aeebe3d",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jOsa6IAC/j-palmeri?searchType=Contact-Info&searchText=palmeri",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-b6ef30b2",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfI6AAK/c%C3%B3il%C3%ADn-parsons?searchType=Contact-Info&searchText=coilin%20parsons",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-34f4f949",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014SeXiAAK/seth-perlow?searchType=Contact-Info&searchText=seth%20perlow",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-a58be95d",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014SM4eAAG/amanda-phillips?searchType=Contact-Info&searchText=amanda%20phillips",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-347f78f1",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWqtAAG/libbie-rifkin?searchType=Contact-Info&searchText=libbie%20rifkin",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-a672670d",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfTfAAK/nicole-rizzuto?searchType=Contact-Info&searchText=nicole%20rizzuto",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-598b7188",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gIAAQ/phil-sandick?searchType=Contact-Info&searchText=phil%20sandick",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-14396d28",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVhhAAG/daniel-shore?searchType=Contact-Info&searchText=daniel%20shore",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-5574b293",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwMpAAK/christine-so?searchType=Contact-Info&searchText=christine%20so",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-e6b06bba",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002XGKx2QAH/mecca-sullivan?searchType=Contact-Info&searchText=mecca%20sullivan",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-d3964c5c",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gSAAQ/rebecca-tarsa?searchType=Contact-Info&searchText=rebecca%20tarsa",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-fbdd4dd9",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RdTbAAK/kathryn-d-temple",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    },
+    {
+      "id": "faculty-georgetown-engl-414f6f7a",
+      "person_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rr5BAAS/duncan-wu?searchType=Contact-Info&searchText=duncan%20wu",
+      "roster_citation": "https://english.georgetown.edu/people/full-time-faculty-2/",
+      "old_observed_at_preserved": true
+    }
+  ],
+  "test_counts": {
+    "backend": 828,
+    "frontend": 62
+  },
+  "production_after_release": "pending",
+  "next_natural_refresh": "2026-12-01 06:07 UTC nominal schedule (cohort 2). Read actual scheduled unit results and published IDs."
+}
