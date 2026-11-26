@@ -247,11 +247,11 @@ class TestSeedNormalization:
         for o in all_records:
             window = reviewed_window(o)
             assert o.get("deadline") == (window.closes_on.isoformat() if window else None)
-            directory = (o["metadata"]["collector_school"], o["metadata"]["collector_key"]) in {
-                ("caltech", "chen_institute"), ("ucr", "ucr_cnas_student_research"), ("umd", "honors_college"),
+            nonrolling = (o["metadata"]["collector_school"], o["metadata"]["collector_key"]) in {
+                ("caltech", "ligo_surf"), ("caltech", "chen_institute"), ("ucr", "ucr_cnas_student_research"), ("umd", "honors_college"),
                 ("udel", "udel_undergraduate_research_program"), ("bc", "bc_undergrad_research_opportunities"),
             }
-            assert o.get("is_rolling") is (window is None and not directory)
+            assert o.get("is_rolling") is (window is None and not nonrolling)
 
     def test_the_configured_rows_read_as_graduate_only_are_the_listed_ones(self, all_records):
         from src.matcher.ranker import _requires_graduate_standing

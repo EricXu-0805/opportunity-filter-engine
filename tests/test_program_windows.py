@@ -428,3 +428,22 @@ def test_duke_focus_preference_window_is_cohort_specific(monkeypatch):
     assert row["deadline"] == "2026-05-13" and not row["metadata"].get("reference_only")
     monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
     assert evidence.target_truth(row).reason_code == "listing_closed"
+
+
+def test_ligo_surf_keeps_its_two_application_routes_separate():
+    emitted = _row("caltech", "ligo_surf")
+    assert emitted["id"] == "caltech-acdbfe29c21d"
+    assert emitted["source_url"] == "https://ligosurf.caltech.edu/apply"
+    assert emitted["application"]["application_url"] == emitted["source_url"]
+    assert emitted["deadline"] is None
+    assert emitted["is_rolling"] is False
+    terms = emitted["metadata"]["deadline_note"]
+    assert "NSF ETAP close January 15, 2027" in terms
+    assert "applications close January 5, 2027" in terms
+    assert "reference letters are due January 10, 2027" in terms
+    eligibility = emitted["eligibility"]
+    assert eligibility["citizenship_required"] is None
+    assert eligibility["international_friendly"] == "unknown"
+    assert "U.S. national status" in eligibility["work_auth_notes"]
+    assert "institutions in India" in eligibility["work_auth_notes"]
+    assert evidence.configured_note_last_date(emitted) == date(2027, 1, 15)
