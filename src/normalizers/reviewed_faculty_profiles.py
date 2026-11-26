@@ -62,6 +62,17 @@ def _umd_math_directory_profile(name: str, profile: str) -> ProfileReview:
 
 
 REVIEWS = {
+    "faculty-pitt-cs-0a7196f1": ProfileReview(
+        "pitt", "Department of Computer Science", "Erin Walker",
+        "https://www.cs.pitt.edu/people/full-time-faculty/erin-walker",
+        "https://www.sci.pitt.edu/people/erin-walker",
+        "https://www.sci.pitt.edu/sites/default/files/inline-images/PDFs/SCI_2025_Research_Report-compressed.pdf#page=15",
+        datetime(2026, 11, 26, 20, 30, tzinfo=UTC),
+        title="Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, "
+              "Research Scientist, Learning Research & Development Center",
+        previous_title="Associate Professor; Research Scientist, LRDC; Associate Dean for Research, SCI",
+        appointment_summary="Erin Walker is a Professor in the Department of Computer Science and Associate Dean "
+                            "for Research in Pitt’s School of Computing and Information."),
     "faculty-pitt-ling-14fc90c7": ProfileReview(
         "pitt", "Department of Linguistics", "Charles Perfetti",
         "http://www.pitt.edu/~perfetti/charles-perfetti.htm",
