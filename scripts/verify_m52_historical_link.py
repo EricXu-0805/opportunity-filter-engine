@@ -96,4 +96,5 @@ async def main():
         assert r['profile_data']['skills']==[{'name':'PyTorch','level':'experienced','source':'shared'}]
         print('ISOLATED RECEIPT',json.dumps({'normal_creator':'Share profile button to Chromium clipboard','wire_version':1,'self_contained_keys':sorted(wire),'publisher_changed_after_copy':True,'original_link_remained_identical':True,'recipient_view_and_dismiss_stored_writes':0,'normal_accept_action':'Generate Matches','recipient_explicit_conflict_answers':choices,'recipient_home_school_retained':'purdue','recipient_name_and_resume_preserved':True,'shared_skill_requires_own_confirmation':True,'recipient_revisions':[before['revision'],r['revision']]}),flush=True)
         await chrome.close()
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())

@@ -2,7 +2,7 @@ name: Verify owner-managed profile shares with isolated GoTrue and PostgREST
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/verify-managed-profile-share.yml']
+    paths: ['.github/workflows/verify-managed-profile-share.yml', 'scripts/verify_m52_managed_ui.py']
 permissions:
   contents: read
 jobs:
@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: a6e725def87be51e0229e99d338b4cd827b65ab6
+          ref: ee9b4402250f0324d972e648a12e391d8c304792
           path: product
           persist-credentials: false
       - uses: actions/setup-node@v6
@@ -45,3 +45,21 @@ jobs:
           docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'
       - name: Exercise current, replaced, revoked, expired and retried private shares
         run: python -u product/supabase/tests/verify_managed_profile_shares.py "$RUNNER_TEMP/m212/status.json"
+      - name: Install locked frontend and Chromium
+        working-directory: product/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run predev --if-present
+      - name: Exercise normal application controls against real GoTrue and PostgREST
+        run: |
+          set -euo pipefail
+          cfg="$RUNNER_TEMP/m212/status.json"
+          export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="$(jq -r .ANON_KEY "$cfg")"
+          export NEXT_TELEMETRY_DISABLED=1
+          export NEXT_PUBLIC_MANAGED_PROFILE_SHARES=true
+          export BACKEND_URL=http://127.0.0.1:8100
+          python -m pip install --quiet playwright==1.55.0
+          (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/frontend.log" 2>&1 &
+          for attempt in {1..80}; do if curl -fsS --max-time 15 http://127.0.0.1:3100/ >/dev/null 2>&1; then break; fi; sleep 1; done
+          python -u scripts/verify_m52_managed_ui.py "$cfg"
