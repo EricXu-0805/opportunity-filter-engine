@@ -1,6 +1,7 @@
 """Real local Auth / revision writes / React / ranking engine / free email generation; deliberately no model."""
 import asyncio
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -42,8 +43,14 @@ async def main():
             return c
         async def results(ctx):
             page=await ctx.new_page()
-            async with page.expect_response(lambda r:'/api/matches/view?' in r.url and r.ok,timeout=90000) as seen:
-                await page.goto(site+'/results?tab=all',wait_until='domcontentloaded')
+            await page.goto(site,wait_until='domcontentloaded')
+            await expect(page.locator('#student_name')).to_have_value('Experience Match QA',timeout=60000)
+            # The normal Generate Matches action first persists the hydrated cloud
+            # profile to this new device. A bare results deep link is not that action.
+            await page.get_by_role('button',name='Generate Matches',exact=True).click()
+            await page.wait_for_url('**/results**',timeout=70000)
+            async with page.expect_response(lambda r:'/api/matches/view?' in r.url and r.ok and r.request.post_data_json['view'].get('tab')=='all',timeout=90000) as seen:
+                await page.get_by_role('button',name=re.compile(r'^All(?:\s|$)')).first.click()
             event=await seen.value
             assert 'llm=false' in event.url
             payload=event.request.post_data_json['profile']
