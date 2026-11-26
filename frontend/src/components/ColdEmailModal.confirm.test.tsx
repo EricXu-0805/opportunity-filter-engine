@@ -317,6 +317,32 @@ describe('CE0-1 — copying or opening a draft is not a contact', () => {
     expectNoConfirmedUi('after a non-contact action');
   });
 
+  it('cancels obsolete copy receipt timers on a second copy and on close', async () => {
+    await becomeOwner('u1');
+    const view = renderModal();
+    await openedOn('opp-A');
+    const scheduled = vi.spyOn(globalThis, 'setTimeout');
+    const cleared = vi.spyOn(globalThis, 'clearTimeout');
+    const receiptTimers = () => scheduled.mock.calls.flatMap(([, delay], index) =>
+      delay === 2000 ? [scheduled.mock.results[index].value] : []);
+    try {
+      await reachConfirmStrip();
+      await waitFor(() => expect(receiptTimers()).toHaveLength(1));
+      fireEvent.click(screen.getByText('coldEmail.copied'));
+      await waitFor(() => expect(receiptTimers()).toHaveLength(2));
+      const [first, second] = receiptTimers();
+      expect(cleared).toHaveBeenCalledWith(first);
+      expect(cleared).not.toHaveBeenCalledWith(second);
+      view.unmount();
+      expect(cleared).toHaveBeenCalledWith(second);
+      expect(confirmContactMock).not.toHaveBeenCalled();
+    } finally {
+      for (const timer of receiptTimers()) clearTimeout(timer);
+      cleared.mockRestore();
+      scheduled.mockRestore();
+    }
+  });
+
   it('a clipboard that refuses reports the failure and claims nothing', async () => {
     // Found by running this flow in a real browser: `writeText` rejects on a
     // denied permission, an unfocused document or an insecure context, and the
