@@ -1,0 +1,123 @@
+{
+  "at": "2026-11-26T23:26:44.880772+00:00",
+  "scope": "M140, one original Miami Chemistry row and possible alternate university destinations. A faculty-role confirmation and a usable personal destination have separate requirements.",
+  "original_id": "faculty-miami-chem-a0149798",
+  "role_receipt": {
+    "public_program_page": "https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+    "school_heading": "Claes Wahlestedt, M.D., Ph.D.",
+    "appointment": "Professor of Chemistry (Secondary)",
+    "primary_department": "Psychiatry and Behavioral Sciences",
+    "observation": "The published university document names the secondary Chemistry appointment. A direct guest request to this URL returned a 403 in both browser checks."
+  },
+  "prior_destination_local_http": 403,
+  "normal_chromium_runs": [
+    {
+      "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45910227401",
+      "at": "2026-11-26T23:19:46.827396+00:00",
+      "id": "faculty-miami-chem-a0149798",
+      "sources": {
+        "institutional_profile": {
+          "url": "https://scholarship.miami.edu/esploro/profile/claes_wahlestedt",
+          "http": 200,
+          "visible_name": null,
+          "browser_title": "University of Miami Search results",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "scholarship.miami.edu"
+        },
+        "graduate_faculty": {
+          "url": "https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+          "http": 403,
+          "visible_name": null,
+          "browser_title": "Access Denied",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "med.miami.edu"
+        },
+        "chemistry_roster": {
+          "url": "https://chemistry.as.miami.edu/people/faculty/index.html",
+          "http": 200,
+          "visible_name": null,
+          "browser_title": "Faculty | Department of Chemistry | University of Miami",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "chemistry.as.miami.edu"
+        }
+      },
+      "backend_before": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "saved": {
+        "http": 200,
+        "id": "faculty-miami-chem-a0149798",
+        "name": "Claes R. Wahlestedt",
+        "role": "Professor",
+        "has_public_profile": false,
+        "has_public_source": false,
+        "actionable": true
+      },
+      "backend_after": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "verified_personal_destination": false,
+      "verified_chemistry_appointment": false
+    },
+    {
+      "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45910605365",
+      "at": "2026-11-26T23:23:30.342593+00:00",
+      "id": "faculty-miami-chem-a0149798",
+      "sources": {
+        "institutional_profile": {
+          "url": "https://scholarship.miami.edu/esploro/profile/claes_wahlestedt/overview?institution=01UOML_INST",
+          "http": 200,
+          "visible_name": null,
+          "browser_title": "University of Miami Search results",
+          "landed_path": "/esploro/search/researchers",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "scholarship.miami.edu"
+        },
+        "publications_profile": {
+          "url": "https://scholarship.miami.edu/esploro/profile/claes_wahlestedt/output/publication?institution=01UOML_INST",
+          "http": 200,
+          "visible_name": null,
+          "browser_title": "University of Miami Search results",
+          "landed_path": "/esploro/search/researchers",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "scholarship.miami.edu"
+        },
+        "graduate_faculty": {
+          "url": "https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+          "http": 403,
+          "visible_name": null,
+          "browser_title": "Access Denied",
+          "landed_path": "/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "med.miami.edu"
+        },
+        "chemistry_roster": {
+          "url": "https://chemistry.as.miami.edu/people/faculty/index.html",
+          "http": 200,
+          "visible_name": null,
+          "browser_title": "Faculty | Department of Chemistry | University of Miami",
+          "landed_path": "/people/faculty/index.html",
+          "named_in_visible_text": false,
+          "psychiatry_in_named_portal": false,
+          "final_host": "chemistry.as.miami.edu"
+        }
+      },
+      "backend_before": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "saved": {
+        "http": 200,
+        "id": "faculty-miami-chem-a0149798",
+        "name": "Claes R. Wahlestedt",
+        "role": "Professor",
+        "has_public_profile": false,
+        "has_public_source": false,
+        "actionable": true
+      },
+      "backend_after": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "verified_personal_destination": false,
+      "verified_chemistry_appointment": false
+    }
+  ],
+  "disposition": "Keep the original ID and Chemistry appointment. Do not substitute an author search page for a named university profile. Follow the next actual Miami refresh for this one ID and check any newly supplied personal destination in the ordinary browser."
+}
