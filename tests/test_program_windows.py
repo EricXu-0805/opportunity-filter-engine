@@ -392,3 +392,49 @@ def test_wlu_dart_keeps_its_identity_and_closes_the_2026_neuroscience_fellowship
     monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
     truth = evidence.target_truth(data_loader._sanitize_opportunity(row))
     assert (truth.actionable, truth.reason_code) == (False, "listing_closed")
+
+
+def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_and_alias(tmp_path):
+    from src.collectors.base import RawOpportunity
+    from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+    from src.program_windows import public_opening
+
+    directory = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
+    old_host = "https://wiscience.wisc.edu/IBS-SRP"
+    host = "https://wiscience.wisc.edu/research/summer_research_program/"
+    host_record = _row("wisc", "ibs_srp_cmbs_reu")
+    original_id = host_record["id"]
+    assert original_id == "wisc-86cba49b83d7"
+
+    def source_row(page, program_url, raw_date="Anticipated 2/15/27"):
+        return raw_to_normalized(RawOpportunity(
+            "uiuc_sro", "https://researchops.web.illinois.edu/?page=9",
+            "Cellular and Molecular Biology of Stress Summer Research Program", "", page,
+            organization="University of Wisconsin-Madison",
+            extra_fields={"deadline_raw": raw_date, "program_url": program_url},
+        ))
+
+    preferred = source_row(directory + "-0", old_host)
+    alias = source_row(directory, "https://wiscience.wisc.edu/research/srp/")
+    for row in (host_record, preferred, alias):
+        assert row["deadline"] == "2027-02-10" and not row["is_rolling"] and not row["deadline_is_estimate"]
+        opens = public_opening(row)
+        assert (opens["on"], opens["source_url"]) == ("2026-11-01", host)
+        timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
+        assert timing["quotes"]["deadline"]["source_url"] == host
+    assert preferred["metadata"]["superseded_directory_deadline"]["source_url"] == directory + "-0"
+    output = tmp_path / "programs.json"
+    output.write_text(json.dumps([host_record, alias, preferred]))
+    merge_into_processed([preferred, alias], str(output))
+    result = {r["id"]: r for r in json.loads(output.read_text())}
+    assert set(result) == {"sro-595e912d", "sro-3c378261", original_id}
+    assert result["sro-595e912d"]["metadata"]["is_active"] is True
+    assert result["sro-3c378261"]["metadata"]["duplicate_of"] == "sro-595e912d"
+    assert result["sro-3c378261"]["metadata"]["is_active"] is False
+    for other in (
+        {**host_record, "deadline": "2028-02-09"},
+        {**host_record, "id": "different-campus-record"},
+        source_row(directory + "-0", old_host, "Anticipated 2/15/28"),
+        source_row(directory + "-0", "https://example.edu/unrelated"),
+    ):
+        assert reviewed_window(other) is None and public_opening(other) is None

@@ -8,7 +8,7 @@ PURA page did on 2026-11-05.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -40,6 +40,13 @@ _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
 _HAAS = "https://research.berkeley.edu/haas-scholars/"
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
 _SFP = "https://sfp.caltech.edu/undergraduate-research/programs/"
+_WISCONSIN_OLD_HOST = "https://wiscience.wisc.edu/IBS-SRP"
+_WISCONSIN_HOST = "https://wiscience.wisc.edu/research/summer_research_program/"
+_WISCONSIN_WINDOW = ProgramWindow(
+    _WISCONSIN_OLD_HOST, _WISCONSIN_HOST, date(2026, 11, 26), date(2027, 2, 10),
+    "Apply by February 10, 2027.", date(2026, 11, 1),
+    "Open November 1, 2026–February 10, 2027.", "America/Chicago", "November 1, 2026",
+)
 _DART = "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web"
 _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 
@@ -103,6 +110,7 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
         _SFP + "wavefellows", _SFP + "wavefellows/application_information", _REVIEWED, date(2027, 1, 8),
         "Applications are due on or before January 8.",
     ),
+    ("wisc", "ibs_srp_cmbs_reu"): _WISCONSIN_WINDOW,
     ("wlu", "wlu_dart"): ProgramWindow(
         _DART, _DART, date(2026, 11, 26), date(2026, 2, 8),
         "via email by February 8th",
@@ -114,17 +122,24 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
 # exact incoming estimate with the host window so it cannot migrate to another
 # year, a replaced program, or a newly confirmed date.
 _WISCONSIN_DIRECTORY = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
-_WISCONSIN_HOST = "https://wiscience.wisc.edu/research/summer_research_program/"
 _UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
 _AGGREGATOR_WINDOWS = {
-    ("uiuc_sro", "sro-3c378261"): ("2027-02-15", ProgramWindow(
-        _WISCONSIN_DIRECTORY, _WISCONSIN_HOST, date(2026, 11, 26), date(2027, 2, 10),
-        "Apply by February 10, 2027.",
-    )),
+    ("uiuc_sro", "sro-595e912d"): (
+        "2027-02-15", replace(_WISCONSIN_WINDOW, url=_WISCONSIN_DIRECTORY + "-0"),
+    ),
+    ("uiuc_sro", "sro-3c378261"): (
+        "2027-02-15", replace(_WISCONSIN_WINDOW, url=_WISCONSIN_DIRECTORY),
+    ),
     ("nsf_reu", "nsf-reu-2447669"): ("2026-02-15", ProgramWindow(
         _UND_AWARD, "https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
         date(2026, 11, 26), date(2026, 3, 15), "Applications will be accepted through March 15, 2026.",
     )),
+}
+
+
+_SRO_APPLICATION_LINKS = {
+    _WISCONSIN_DIRECTORY: {_WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
+    _WISCONSIN_DIRECTORY + "-0": {_WISCONSIN_DIRECTORY + "-0", _WISCONSIN_HOST, _WISCONSIN_OLD_HOST},
 }
 
 
@@ -146,9 +161,7 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
         if not isinstance(source_url, str) or source_url.split("?", 1)[0] != "https://researchops.web.illinois.edu/":
             return None
         application = record.get("application")
-        if not isinstance(application, dict) or application.get("application_url") not in (
-            window.url, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/",
-        ):
+        if not isinstance(application, dict) or application.get("application_url") not in _SRO_APPLICATION_LINKS[window.url]:
             return None
     return window
 
@@ -183,6 +196,13 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     window = WINDOWS.get((school, key))
     if window is None or record.get("url") != window.url or record.get("source_url") != window.url:
         return None
+    # The legacy Wisconsin host redirects to a multi-year program. A later
+    # campus harvest with a different explicit date describes another cycle.
+    if window is _WISCONSIN_WINDOW and (
+        record.get("id") != "wisc-86cba49b83d7" or record.get("source") != "wisc_external_research"
+        or record.get("deadline") not in (None, window.closes_on.isoformat())
+    ):
+        return None
     return window
 
 
@@ -200,6 +220,10 @@ def apply_program_window(record: dict) -> None:
         record["is_rolling"] = False
         if record.get("source") in ("nsf_reu", "uiuc_sro"):
             metadata = record["metadata"]
+            if record.get("id") in {"sro-595e912d", "sro-3c378261"}:
+                metadata["superseded_directory_deadline"] = {
+                    "date": "2027-02-15", "anticipated": True, "source_url": window.url,
+                }
             metadata.pop("deadline_note", None)
             stamps = metadata.get("inferred_fields")
             if isinstance(stamps, dict):
