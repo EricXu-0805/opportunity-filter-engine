@@ -1,7 +1,7 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 import { MAX_RESUME_TEXT_CHARACTERS } from './resume-input';
-import { resumeExcerptMatches, validateExperienceEntries, wellFormedUnicode } from './experience-evidence';
+import { resumeQuoteMatches, validateExperienceEntries, wellFormedUnicode } from './experience-evidence';
 import type { ExperienceEntry } from './types';
 
 export interface MatchExperience {
@@ -26,7 +26,7 @@ export function matchExperienceEntries(entries?: ExperienceEntry[], resumeText?:
   const digest = characters.length > 0 && characters.length <= MAX_RESUME_TEXT_CHARACTERS
     ? bytesToHex(sha256(new TextEncoder().encode(resumeText))) : '';
   return confirmed.filter(entry => entry.source.kind !== 'resume'
-    || resumeExcerptMatches(entry.source, digest, characters));
+    || (entry.source.signature === digest && resumeQuoteMatches(entry.source, characters)));
 }
 
 export function matchExperienceRows(entries?: ExperienceEntry[], resumeText?: string): MatchExperience[] | null {

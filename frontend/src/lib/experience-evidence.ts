@@ -121,19 +121,19 @@ export interface ExperienceSourceContext {
   expectedDigest: string;
 }
 
-/** The full-text digest and character offsets must refer to the same source. */
-export function resumeExcerptMatches(source: Extract<ExperienceSource, { kind: 'resume' }>,
-  digest: string, characters: readonly string[]): boolean {
-  return source.signature === digest && characters.slice(source.start, source.end).join('') === source.quote;
+/** Check an original excerpt against exact Unicode code-point offsets. */
+export function resumeQuoteMatches(source: Extract<ExperienceSource, { kind: 'resume' }>,
+  characters: readonly string[]): boolean {
+  return characters.slice(source.start, source.end).join('') === source.quote;
 }
 
 export function isActiveExperience(entry: ExperienceEntry, context: ExperienceSourceContext): boolean {
   if (!validateExperienceEntries([entry]).ok || entry.status !== 'confirmed') return false;
   if (entry.source.kind !== 'resume') return true;
   const { source } = entry;
-  return wellFormedUnicode(context.rawText) && DIGEST.test(context.expectedDigest)
+  return source.signature === context.expectedDigest && wellFormedUnicode(context.rawText)
     && resumeTextCharacters(context.rawText) <= MAX_RESUME_TEXT_CHARACTERS
-    && resumeExcerptMatches(source, context.expectedDigest, Array.from(context.rawText));
+    && resumeQuoteMatches(source, Array.from(context.rawText));
 }
 
 /** This fail-closed read is for generation eligibility, never for saving or
