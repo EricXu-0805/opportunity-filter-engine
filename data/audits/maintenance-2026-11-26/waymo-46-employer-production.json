@@ -1,0 +1,817 @@
+{
+  "observed_utc": "2026-11-26T12:04:10.297241+00:00",
+  "published_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "reproduction_pr": 1335,
+  "board_url": "https://boards-api.greenhouse.io/v1/boards/waymo/jobs",
+  "jobs": [
+    {
+      "id": "simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61",
+      "employer_id": "8197899",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8197899",
+      "employer_title": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "page_http": 200,
+      "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "visible_title": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+      "apply_links": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8197899"
+      ],
+      "page_matched": true
+    },
+    {
+      "id": "simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009",
+      "employer_id": "8210138",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8210138",
+      "employer_title": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "page_http": 200,
+      "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "visible_title": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+      "apply_links": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8210138"
+      ],
+      "page_matched": true
+    },
+    {
+      "id": "simplify-intern-f42adf96-f242-4f29-8953-d237b9a04ad2",
+      "employer_id": "8203191",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-f42adf96-f242-4f29-8953-d237b9a04ad2",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8203191",
+      "employer_title": "2027 Summer Intern, PhD, Learning-Based Behavior for Special Vehicles",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Learning-Based Behavior for Special Vehicles",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-e764c6d5-8016-405f-9cf4-3ab1d55828be",
+      "employer_id": "8221851",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-e764c6d5-8016-405f-9cf4-3ab1d55828be",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8221851",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software/ML Engineer, Simulation",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software/ML Engineer, Simulation",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-e88effb2-7748-41ae-9be2-407af5870c56",
+      "employer_id": "8221795",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-e88effb2-7748-41ae-9be2-407af5870c56",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8221795",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, Simulation Evaluation ML Model",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software Engineer, Simulation Evaluation ML Model",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-e9282391-e76d-43c0-99fe-824b03704b2c",
+      "employer_id": "8223735",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-e9282391-e76d-43c0-99fe-824b03704b2c",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8223735",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning Engineer",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Machine Learning Engineer",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-6b159730-9852-401d-b64d-e07e1b5e80ba",
+      "employer_id": "8221956",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-6b159730-9852-401d-b64d-e07e1b5e80ba",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8221956",
+      "employer_title": "2027 Summer Intern, PhD, Data Science",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Data Science",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-9f31b43a-95ad-41c8-aef4-c59287ea5477",
+      "employer_id": "8224729",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-9f31b43a-95ad-41c8-aef4-c59287ea5477",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8224729",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software Engineer",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-a27b01fe-9ba5-4ec8-894b-61cfd1f1fdf6",
+      "employer_id": "8227640",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a27b01fe-9ba5-4ec8-894b-61cfd1f1fdf6",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8227640",
+      "employer_title": "2027 Summer Intern, PhD, Research Scientist, Foundation Models",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research Scientist, Foundation Models",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-865a11a8-4b8f-4167-99a1-2b819a80bdf2",
+      "employer_id": "8231711",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-865a11a8-4b8f-4167-99a1-2b819a80bdf2",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8231711",
+      "employer_title": "2027 Summer Intern, MS/PhD, Systems Engineer, Autonomous Vehicle Networks & Diagnostics",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Systems Engineer, Autonomous Vehicle Networks & Diagnostics",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-dcfc9399-37e0-42cc-965a-fd425dfbb1ce",
+      "employer_id": "8234161",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-dcfc9399-37e0-42cc-965a-fd425dfbb1ce",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8234161",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineering, Onboard Software Integrity",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software Engineering, Onboard Software Integrity",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-3548b466-2e50-4b00-9af5-beccc61fd77d",
+      "employer_id": "8233746",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-3548b466-2e50-4b00-9af5-beccc61fd77d",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8233746",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, Sys Intel & Machine Learning",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software Engineer, Sys Intel & Machine Learning",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-557e1909-4373-42e8-847b-ee26942d838b",
+      "employer_id": "8227411",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-557e1909-4373-42e8-847b-ee26942d838b",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8227411",
+      "employer_title": "2027 Summer Intern, MS/PhD, Perception, Machine Learning",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Perception, Machine Learning",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-6acc24ca-3ff2-4d56-a40c-e531d2a57522",
+      "employer_id": "8237997",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-6acc24ca-3ff2-4d56-a40c-e531d2a57522",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8237997",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning Research, Planning/Prediction",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Machine Learning Research, Planning/Prediction",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-cdebfd0a-6bc1-4ec9-904b-67106dabdb42",
+      "employer_id": "8234876",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-cdebfd0a-6bc1-4ec9-904b-67106dabdb42",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8234876",
+      "employer_title": "2027 Summer Intern, PhD, Planner Machine Learning",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Planner Machine Learning",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-d275435a-21ef-455d-80a8-3d9afd93c8a9",
+      "employer_id": "8240198",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-d275435a-21ef-455d-80a8-3d9afd93c8a9",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8240198",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, Onboard Developer Platform",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software Engineer, Onboard Developer Platform",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-a6dbbd93-025c-446e-9591-2e57776b8c43",
+      "employer_id": "8243556",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a6dbbd93-025c-446e-9591-2e57776b8c43",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8243556",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-5cd416b9-4e14-4c94-ba8f-96c9143bd4dc",
+      "employer_id": "8243732",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-5cd416b9-4e14-4c94-ba8f-96c9143bd4dc",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8243732",
+      "employer_title": "2027 Summer Intern, PhD, Research, World Action Model",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, World Action Model",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1",
+      "employer_id": "8198582",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8198582",
+      "employer_title": "2027 Summer Intern, MBA, Salesforce Product Owner",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters"
+      ],
+      "title": "2027 Summer Intern, MBA, Salesforce Product Owner",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "page_http": 200,
+      "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "visible_title": "This opportunity is temporarily unavailable",
+      "apply_links": [],
+      "page_matched": false
+    },
+    {
+      "id": "simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841",
+      "employer_id": "8257205",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8257205",
+      "employer_title": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "undergraduate",
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "page_http": 200,
+      "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "visible_title": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+      "apply_links": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8257205"
+      ],
+      "page_matched": true
+    },
+    {
+      "id": "simplify-intern-87566803-f6c9-48c3-a131-43c4bfe824ee",
+      "employer_id": "8257159",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-87566803-f6c9-48c3-a131-43c4bfe824ee",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8257159",
+      "employer_title": "2027 Summer Intern, MS/PhD, ML Systems & Behavior Discovery",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, ML Systems & Behavior Discovery",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-a6a5ed46-6265-445b-abcd-f0a3316ee4ec",
+      "employer_id": "8257801",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a6a5ed46-6265-445b-abcd-f0a3316ee4ec",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8257801",
+      "employer_title": "2027 Summer Intern, MS/PhD,  Research, Perception Foundation Models",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD,  Research, Perception Foundation Models",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-c8f21f2d-6090-47e0-9b3c-d232b71af4e6",
+      "employer_id": "8227633",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-c8f21f2d-6090-47e0-9b3c-d232b71af4e6",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8227633",
+      "employer_title": "2027 Summer Intern, MS/PhD, Perception, Robotics",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Perception, Robotics",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "employer_id": "8265173",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8265173",
+      "employer_title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "page_http": 200,
+      "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "visible_title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "apply_links": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8265173"
+      ],
+      "page_matched": true
+    },
+    {
+      "id": "simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754",
+      "employer_id": "8262154",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8262154",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning, Planning/Prediction",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Machine Learning, Planning/Prediction",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011",
+      "employer_id": "8257006",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8257006",
+      "employer_title": "2027 Summer Intern, PhD, Research, Post Training",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, Post Training",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-90fc898a-0084-4663-aec5-a815133f8492",
+      "employer_id": "8258070",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-90fc898a-0084-4663-aec5-a815133f8492",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8258070",
+      "employer_title": "2027 Summer Intern, PhD, Research, AV Planning",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, AV Planning",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-e80ebee1-3fe9-4a36-ad51-08f17f3179c8",
+      "employer_id": "8265868",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-e80ebee1-3fe9-4a36-ad51-08f17f3179c8",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8265868",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning, Simulation Realism",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Machine Learning, Simulation Realism",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-342edb51-b682-4daa-80fd-21c355143f3e",
+      "employer_id": "8279620",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-342edb51-b682-4daa-80fd-21c355143f3e",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8279620",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning, Planning/Prediction",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Machine Learning, Planning/Prediction",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91",
+      "employer_id": "8244128",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8244128",
+      "employer_title": "2027 Summer Intern, MS/PhD, Semantics",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Semantics",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-e5fc4725-7c7e-4f70-8b44-393f041df42f",
+      "employer_id": "8301854",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-e5fc4725-7c7e-4f70-8b44-393f041df42f",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8301854",
+      "employer_title": "2027 Summer Intern, PhD, Research, VLM Harnesses for AV Planning",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, VLM Harnesses for AV Planning",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-d6b3c17b-06b4-4829-928b-91ee1bba4851",
+      "employer_id": "8289816",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-d6b3c17b-06b4-4829-928b-91ee1bba4851",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8289816",
+      "employer_title": "2027 Summer Intern, PhD, Research, Behavior Post-training",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, Behavior Post-training",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-64a04930-5ef0-4b6e-a89b-0ef7d8a6cf17",
+      "employer_id": "8283558",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-64a04930-5ef0-4b6e-a89b-0ef7d8a6cf17",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8283558",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning - Simulation & Closed-Loop Training",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Machine Learning - Simulation & Closed-Loop Training",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf",
+      "employer_id": "8292367",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8292367",
+      "employer_title": "2027 Summer Intern, PhD, Research Scientist, Visual Reasoning",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research Scientist, Visual Reasoning",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-f20248ee-cb81-4a5b-8c0c-1af93286831e",
+      "employer_id": "8306841",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-f20248ee-cb81-4a5b-8c0c-1af93286831e",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8306841",
+      "employer_title": "2027 Summer Intern, PhD, AI Foundations - Recipes",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, AI Foundations - Recipes",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-a1081a4b-fb8c-4479-9220-d7baabef2872",
+      "employer_id": "8306779",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a1081a4b-fb8c-4479-9220-d7baabef2872",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8306779",
+      "employer_title": "2027 Summer Intern, PhD, Research, RSI for Autonomous Driving",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, RSI for Autonomous Driving",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-87448ebb-0faa-4adb-8da5-961c6675e99c",
+      "employer_id": "8306867",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-87448ebb-0faa-4adb-8da5-961c6675e99c",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8306867",
+      "employer_title": "2027 Summer Intern, PhD, Research, Multimodal Foundation Models",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research, Multimodal Foundation Models",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444",
+      "employer_id": "8287385",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8287385",
+      "employer_title": "2027 Summer Intern, MS/PhD, Software Engineer, ML Frameworks and Efficiency",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Software Engineer, ML Frameworks and Efficiency",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a",
+      "employer_id": "8304574",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8304574",
+      "employer_title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-2925b61d-685b-4e5f-9dfd-2135a9e1f5eb",
+      "employer_id": "8319171",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-2925b61d-685b-4e5f-9dfd-2135a9e1f5eb",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8319171",
+      "employer_title": "2027 Summer Intern, MS/PhD, Sensor Performance Engineer Intern",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Sensor Performance Engineer Intern",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-5ff8900e-61d6-4596-aada-70ac75491c47",
+      "employer_id": "8337719",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-5ff8900e-61d6-4596-aada-70ac75491c47",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8337719",
+      "employer_title": "2027 Summer Intern, PhD, Research Scientist Intern",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Research Scientist Intern",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-6bd2bc4c-a45f-43fc-85b7-a95cc3796271",
+      "employer_id": "8350687",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-6bd2bc4c-a45f-43fc-85b7-a95cc3796271",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8350687",
+      "employer_title": "2027 Summer Intern, MS/PhD, Depot Automation",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, MS/PhD, Depot Automation",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085",
+      "employer_id": "8350832",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8350832",
+      "employer_title": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "undergraduate",
+        "masters"
+      ],
+      "title": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "page_http": 200,
+      "frontend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "visible_title": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+      "apply_links": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8350832"
+      ],
+      "page_matched": true
+    },
+    {
+      "id": "simplify-intern-a37b7658-0363-49fa-878d-5f9db8bfb47b",
+      "employer_id": "8351210",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-a37b7658-0363-49fa-878d-5f9db8bfb47b",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8351210",
+      "employer_title": "2027 Summer Intern, PhD, Machine Learning - Generative World Models & Controllable Simulation",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Machine Learning - Generative World Models & Controllable Simulation",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    },
+    {
+      "id": "simplify-intern-983f493f-336e-4200-b72e-8c62140cf351",
+      "employer_id": "8358262",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-983f493f-336e-4200-b72e-8c62140cf351",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8358262",
+      "employer_title": "2027 Summer Intern, Machine Learning, MS/PhD, Simulation Realism (World Model) ",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "masters",
+        "phd"
+      ],
+      "title": "2027 Summer Intern, Machine Learning, MS/PhD, Simulation Realism (World Model)",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true,
+      "official_title_trailing_space": true,
+      "employer_detail_http": 200,
+      "rechecked_api_source": "https://careers.withwaymo.com/jobs?gh_jid=8358262"
+    },
+    {
+      "id": "simplify-intern-62a276ae-a9d7-4971-91d6-af6673585530",
+      "employer_id": "8401116",
+      "detail": "https://joinalab.com/opportunities/simplify-intern-62a276ae-a9d7-4971-91d6-af6673585530",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8401116",
+      "employer_title": "2027 Summer Intern, PhD, Agentic AI",
+      "api_http": 200,
+      "id_matches": true,
+      "degree_options": [
+        "phd"
+      ],
+      "title": "2027 Summer Intern, PhD, Agentic AI",
+      "source_and_title_match": true,
+      "degree_matches_shard": true,
+      "term_current": true
+    }
+  ],
+  "api_checks_passed": 46,
+  "frontend_samples": 6,
+  "correct_visible_details": 5,
+  "production_end_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "natural_national_refresh_due": "2026-11-29",
+  "employer_title_comparison": "Trims surrounding whitespace; one official title has a trailing space."
+}
