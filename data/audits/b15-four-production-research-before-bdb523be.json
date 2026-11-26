@@ -1,0 +1,43 @@
+{
+  "release": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+  "time_utc": "2026-11-26T19:49:57.155520+00:00",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-3453199b",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-3453199b",
+      "school_source": "https://chass.ncsu.edu/people/lcmcgowe/",
+      "old_research_sha256": "d89a66d13d0f0cd7c538927916dd21b43b366ce782e9393507409a103f256a24",
+      "expected_repaired_fragment": "science & technology policy evaluation",
+      "repaired_fragment_currently_visible_in_panel": false,
+      "current_research_panel": "Research\nRESEARCH AREAS\nSOURCE SAYS\nprogram evaluation, cooperative research centers, collaboration, science &amp; technology policy evaluation, innovation studies\n\nSource page\nObserved 2026-11-02"
+    },
+    {
+      "id": "faculty-ncsu-py-f3dae007",
+      "detail": "https://joinalab.com/opportunities/faculty-ncsu-py-f3dae007",
+      "school_source": "https://physics.sciences.ncsu.edu/people/tmschaef/",
+      "old_research_sha256": "9190c6bf13155a2d900f1b6f6db8506db63766f519e3c516c172b35b1f9bfc80",
+      "expected_repaired_fragment": "T>10¹⁰ Kelvin",
+      "repaired_fragment_currently_visible_in_panel": false,
+      "current_research_panel": "Research\nRESEARCH AREAS\nSOURCE SAYS\nSchaefer studies Quantumchromodynamics (QCD) and the behavior of matter under extreme conditions. This includes the behavior of matter at very high temperature (T&gt;10 10 Kelvin), which is relevant to the very early Universe and to high energy collisions of Heavy Ions, as well as matter at low temp\n\nSource page\nObserved 2026-11-02"
+    },
+    {
+      "id": "faculty-wisc-phys-d231956a",
+      "detail": "https://joinalab.com/opportunities/faculty-wisc-phys-d231956a",
+      "school_source": "https://www.physics.wisc.edu/directory/bose-tulika/",
+      "old_research_sha256": "91879258dd59fd9e2d18250e2221b10cdfaaf066bdfde2efef55dc8eb48f50a7",
+      "expected_repaired_fragment": "Software & Computing",
+      "repaired_fragment_currently_visible_in_panel": false,
+      "current_research_panel": "Research\nRESEARCH AREAS\nSOURCE SAYS\nExperimental particle physics, CMS experiment at the LHC, Searches for exotic particles, Dark Matter, Standard Model measurements, Trigger and Data-acquisition systems, Software &amp;amp; Computing\n\nSource page\nObserved 2026-11-04"
+    },
+    {
+      "id": "faculty-wisc-bme-723e017b",
+      "detail": "https://joinalab.com/opportunities/faculty-wisc-bme-723e017b",
+      "school_source": "https://directory.engr.wisc.edu/bme/",
+      "old_research_sha256": "ebc682e7ecfd2e59d889a8814ceb2f54265ca5ecb3f0a82a005c4f021566b6ec",
+      "expected_repaired_fragment": "mice...",
+      "repaired_fragment_currently_visible_in_panel": false,
+      "current_research_panel": "Research\nRESEARCH AREAS\nSOURCE SAYS\nThe research in our laboratory focuses on understanding the molecular mechanisms that regulate brain development, with the goal of developing better treatment for brain disorders.We use transgenic mice,&amp;nb...\n\nSource page\nObserved 2026-11-25"
+    }
+  ],
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886444199"
+}
