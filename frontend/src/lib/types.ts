@@ -34,6 +34,8 @@ export interface SkillWithLevel {
    *  confirm, so a spurious match — "Relevant coursework: Introduction to
    *  Python" — is visible rather than silently becoming a claim. */
   evidence?: string;
+  /** Independent repository evidence for a skill still attributed to the résumé. */
+  github_receipt?: { account: string; evidence: string };
 }
 
 // ── Courses (checklist M13) ──────────────────────────────────────────
