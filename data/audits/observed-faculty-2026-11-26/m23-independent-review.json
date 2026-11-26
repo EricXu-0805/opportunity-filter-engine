@@ -1,0 +1,85 @@
+{
+  "observed_utc": "2026-11-26T09:43:54.363820+00:00",
+  "base": "3560e46669ca4d181b9d5e113c069bcd1dd5f74e",
+  "1322": {
+    "head": "8e51ac278a74bfb04fa5635124a385bed26cdadc",
+    "national": {
+      "number_of_original_ids_retained": 14139,
+      "changed_original_ids": [
+        "ext-uiuc-ncsa-reu",
+        "ext-umbc-bigdata",
+        "ext-usc-ict",
+        "ext-utexas-tacc"
+      ]
+    },
+    "independent_source_checks": [
+      {
+        "id": "ext-usc-ict",
+        "source": "https://ict.usc.edu/reu/",
+        "confirmed": "2027 cycle opens 2026-11-09, closes 2027-01-27; U.S. citizenship or permanent residency, undergraduates through the start of the program."
+      },
+      {
+        "id": "ext-uiuc-ncsa-reu",
+        "source": "https://reu.ncsa.illinois.edu/",
+        "confirmed": "2026-12-15 to 2027-02-15 applications; U.S. citizens or permanent residents, any major and year, Python experience and previous exposure to ML."
+      },
+      {
+        "id": "ext-utexas-tacc",
+        "source": "https://tacc.utexas.edu/education/undergraduates-graduates/reu/",
+        "confirmed": "2026-11-01 to 2027-04-01 application period. One additional non-NSF participant is contingent on funding."
+      },
+      {
+        "id": "ext-umbc-bigdata",
+        "source": "https://bigdatareu.umbc.edu/2026-program-and-application/",
+        "additional_source": "https://bigdatareu.umbc.edu/general-information/faqs/",
+        "confirmed": "2026 deadline extended to March 3; completed July 24; programming, calculus and statistics/data science are preferences."
+      }
+    ]
+  },
+  "1323": {
+    "head": "b32b78a0429a70a05b339f2ca8a9e254a48e20ee",
+    "manual_seed": {
+      "number_of_original_ids_retained": 13,
+      "changed_original_ids": [
+        "uiuc-sro-database"
+      ]
+    },
+    "uiuc": {
+      "number_of_original_ids_retained": 3463,
+      "changed_original_ids": [
+        "uiuc-sro-database"
+      ]
+    },
+    "source_url": "https://researchops.web.illinois.edu/",
+    "official_surface": "Search/filter directory for many undergraduate programs, each with separate timing and deadline.",
+    "independent_base_readback": {
+      "canonical": {
+        "listing_count": 5,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2951
+      },
+      "fallback": {
+        "listing_count": 5,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2951
+      }
+    },
+    "independent_head_readback": {
+      "canonical": {
+        "listing_count": 4,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2950
+      },
+      "fallback": {
+        "listing_count": 5,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2951
+      }
+    },
+    "scope": "Independent data and source review before deployment. At this head reference data is fixed but exact school fallback listing_count and total_count still include the removed opener."
+  }
+}
