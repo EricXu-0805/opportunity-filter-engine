@@ -1,0 +1,41 @@
+name: Check About video playback on desktop and mobile
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-u31-demo.yml', 'scripts/check_u31_player.cjs']
+permissions:
+  contents: read
+jobs:
+  player:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          path: product
+          ref: 836499d534736e97804076cd2c6e623cd6a0c5f0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/frontend/package-lock.json
+      - name: Build the actual candidate and check browser playback
+        env:
+          BACKEND_URL: http://127.0.0.1:8100
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-loopback-stub-anon-key-not-a-real-key
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          set -euo pipefail
+          cd product/frontend
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run start -- --port 3100 --hostname 127.0.0.1 >"$RUNNER_TEMP/about-next.log" 2>&1 &
+          for check in {1..40}; do
+            if curl -fsS --max-time 4 http://127.0.0.1:3100/about >/dev/null; then break; fi
+            sleep 1
+          done
+          cd ../..
+          node scripts/check_u31_player.cjs "$GITHUB_WORKSPACE/product/frontend" http://127.0.0.1:3100
