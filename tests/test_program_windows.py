@@ -606,6 +606,7 @@ def test_ligo_surf_keeps_its_two_application_routes_separate():
 
 
 def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monkeypatch, tmp_path):
+    from backend.lib.public_opportunity_detail import project_public_detail
     from src.collectors.base import RawOpportunity
     from src.collectors.nsf_reu import normalize_award
     from src.collectors.uiuc_sro import raw_to_normalized
@@ -654,6 +655,9 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert detail["explicit"]["majors"] == majors
         host = crisp_host if row is crisp else smu_host.lower()
         assert detail["quotes"]["majors"]["source_url"] == host
+        full_detail = project_public_detail(loaded)
+        assert full_detail["reviewed_program_summary"] in card["description_clean"]
+        assert len(card["description_clean"]) <= 1500 and full_detail.get("description_raw") == loaded.get("description_raw")
         text = card["description_clean"]
         if row is crisp:
             assert text.count("incoming first-year students") == 1 and "behavioral science" in text

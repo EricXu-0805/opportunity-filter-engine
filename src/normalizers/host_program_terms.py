@@ -25,6 +25,7 @@ _SMU_STUDY = (
     "SMU has two academic routes. Students majoring in mathematics, statistics or computer science "
     "must also be interested in social science. Social science majors can apply if they are interested in data science."
 )
+_ACADEMIC_SUMMARIES = {CRISP_ID: _CRISP_STUDY, **dict.fromkeys(SMU_IDS, _SMU_STUDY)}
 _CRISP_LOCATION_PAGE = "https://cancer.iu.edu/education/summer/index.html"
 _CRISP_LOCATION_QUOTE = "The program will be held in-person at the cancer center in Indianapolis."
 # The application portal and the campus program page describe the same award.
@@ -63,7 +64,8 @@ def checked_window(record: dict) -> ProgramWindow | None:
 def reviewed_summary(record: dict) -> str | None:
     if wisc_biological_interactions.checked_window(record):
         return wisc_biological_interactions.SUMMARY
-    return None
+    summary = _ACADEMIC_SUMMARIES.get(record.get("id"))
+    return summary if summary and checked_window(record) else None
 
 
 def apply_terms(record: dict) -> None:
@@ -83,10 +85,11 @@ def apply_terms(record: dict) -> None:
     eligibility["majors"] = list(_CRISP_MAJORS if crisp else _SMU_MAJORS)
     # The flat list feeds matching. Preserve the host's paired interests and
     # student stage for readers, alongside the original source's description.
-    requirement = _CRISP_STUDY if crisp else _SMU_STUDY
+    requirement = _ACADEMIC_SUMMARIES[record["id"]]
     clean = record.get("description_clean") or ""
     if not clean.startswith(requirement):
-        record["description_clean"] = (requirement + "\n\n" + clean).rstrip()
+        clean = (requirement + "\n\n" + clean).rstrip()
+    record["description_clean"] = clean[:1500]
     record["paid"] = "yes"
     if isinstance(inferred, dict):
         inferred.pop("paid", None)
