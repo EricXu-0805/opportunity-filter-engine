@@ -1,0 +1,150 @@
+{
+  "parent": "65d14e6968a093c66b2273d971ffb749d796c82a",
+  "candidate": "1d6b6ce706a22a5e29883913801413d3eb943125",
+  "tree": "dfb7f870c551baf6161be0e3c0086529accad7a0",
+  "unique_corpus_ids": 149869,
+  "file_count": 22,
+  "shards": {
+    "gatech": {
+      "before": 1373,
+      "after": 1419,
+      "added": 46,
+      "existing_changed": 137,
+      "old_id_order_sha256": "d7be344813377fe7f084f06b1b972e6f9c79e887db72d088696416dc70c165a9",
+      "unchanged_first_seen_dates": 1373,
+      "changed_original_ids_sha256": "432056f5b65c3753dd5d339f4bbcdee2a5d9be0a7513d26b39bb62ce6fedecad"
+    },
+    "georgetown": {
+      "before": 892,
+      "after": 892,
+      "added": 0,
+      "existing_changed": 43,
+      "old_id_order_sha256": "f0b48c67604c3824d664020a1d96819c82ba54c8c24298763672c35eef76a67b",
+      "unchanged_first_seen_dates": 892,
+      "changed_original_ids_sha256": "41aae112a4c76417701f9706298ba9af1212ebe68d81df6cbd0a39dff5e75f7c"
+    },
+    "indiana": {
+      "before": 1694,
+      "after": 1697,
+      "added": 3,
+      "existing_changed": 11,
+      "old_id_order_sha256": "0420f0cb1995603079ba0f88d725c884d47a60d6eb45b644f648f9543a33a2b3",
+      "unchanged_first_seen_dates": 1694,
+      "changed_original_ids_sha256": "8721054dfc8968e33384a98baa182c13e2dd27190587526314c534ab2e0fe66f"
+    },
+    "umd": {
+      "before": 1455,
+      "after": 1455,
+      "added": 0,
+      "existing_changed": 2,
+      "old_id_order_sha256": "8a808a44376315369d024cbccf151b282ef788747c4f7fbd05533450765b6686",
+      "unchanged_first_seen_dates": 1455,
+      "changed_original_ids_sha256": "c9aff70a7df478cf4661cfc2b1e296f5c810e15ca9be62344ca827e2600121ab"
+    }
+  },
+  "campus_counts": {
+    "gatech": {
+      "before": {
+        "listing_count": 18,
+        "faculty_contact_count": 1302,
+        "unreviewed_count": 0,
+        "total_count": 1320
+      },
+      "after": {
+        "listing_count": 18,
+        "faculty_contact_count": 1342,
+        "unreviewed_count": 0,
+        "total_count": 1360
+      }
+    },
+    "indiana": {
+      "before": {
+        "listing_count": 3,
+        "faculty_contact_count": 1678,
+        "unreviewed_count": 0,
+        "total_count": 1681
+      },
+      "after": {
+        "listing_count": 3,
+        "faculty_contact_count": 1677,
+        "unreviewed_count": 0,
+        "total_count": 1680
+      }
+    },
+    "umd": {
+      "before": {
+        "listing_count": 6,
+        "faculty_contact_count": 1359,
+        "unreviewed_count": 0,
+        "total_count": 1365
+      },
+      "after": {
+        "listing_count": 6,
+        "faculty_contact_count": 1357,
+        "unreviewed_count": 0,
+        "total_count": 1363
+      }
+    }
+  },
+  "national_count": 5598,
+  "included_sources": [
+    1411,
+    1435,
+    1438,
+    1441,
+    1444,
+    1434,
+    1446,
+    1432
+  ],
+  "sources": [
+    {
+      "pr": 1411,
+      "sha": "0aa71cfa5dcebee5239f0a963ac42ffcfd476857",
+      "ci": 45841922247
+    },
+    {
+      "pr": 1435,
+      "sha": "2cb80a82efce669262d529578b330b99c55b5c3a",
+      "ci": 45847362061
+    },
+    {
+      "pr": 1438,
+      "sha": "5aecb7a8e0d7e8b84016c1259b451ddbb47d66da",
+      "ci": 45848459988
+    },
+    {
+      "pr": 1441,
+      "sha": "841daca85110462e559610ceb1404433e9968c4c",
+      "ci": 45850588873
+    },
+    {
+      "pr": 1444,
+      "sha": "2d69a47deb9bb5968ea1df9a3d4fd667d2b9ef51",
+      "ci": 45852301656
+    },
+    {
+      "pr": 1434,
+      "sha": "53c57eb6a6c8ca0f31cd1b439ba9887677a34d8c",
+      "ci": 45846368507
+    },
+    {
+      "pr": 1446,
+      "sha": "9819f4fc851b78bb18251e96d4c4f419d1524178",
+      "ci": 45856211079
+    },
+    {
+      "pr": 1432,
+      "sha": "f4e1c138af26dd2845c90ac7b46d103555287f87",
+      "ci": 45844739947
+    }
+  ],
+  "local_tests": {
+    "frontend": 167,
+    "tsc": "pass",
+    "backend_sources_and_corpus": 725
+  },
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1451",
+  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45864087068",
+  "security_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45864086843"
+}
