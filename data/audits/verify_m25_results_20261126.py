@@ -60,6 +60,10 @@ def run(page):
             field.fill(value)
     page.locator("#grade").select_option(label="Junior")
     page.locator("#research_interests").fill("machine learning, artificial intelligence, healthcare")
+    for label in ("Research", "Summer program", "Internship"):
+        target = page.locator('fieldset[aria-describedby="seeking-types-help"]').get_by_role("button", name=label, exact=True)
+        if target.get_attribute("aria-pressed") != "true":
+            target.click()
     generate = page.get_by_test_id("generate-matches")
     expect(generate).to_be_enabled(timeout=45000)
     generate.click()
@@ -96,7 +100,7 @@ def run(page):
             if first["ids"]:
                 expect(page.locator("#match-card-" + first["ids"][0])).to_be_visible(timeout=50000)
             if val == "research" and first["next_page"]:
-                more = page.get_by_role("button", name=re.compile("Show more|Load more", re.I))
+                more = page.get_by_role("button", name="Next", exact=True)
                 with page.expect_response(lambda r: is_view(r) and bool((r.request.post_data_json or {}).get("cursor")), timeout=90000) as next_req:
                     more.click()
                 second = read_page(next_req.value, val)
@@ -104,6 +108,38 @@ def run(page):
                 assert first["view_id"] == second["view_id"] and first["total"] == second["total"]
                 receipt[val]["second"] = second
         chips.screenshot(path=out / "filtered-internships.png")
+    # From the saved-search discrepancy replay, using the original stable IDs.
+    estimates = (
+        "nsf-reu-2548403 nsf-reu-2548073 nsf-reu-2548017 nsf-reu-2619097 nsf-reu-2547402 nsf-reu-2548122 "
+        "nsf-reu-2547979 nsf-reu-2445879 nsf-reu-2447145 nsf-reu-2447817 nsf-reu-2447649 nsf-reu-2447228 "
+        "nsf-reu-2447880 nsf-reu-2447670 nsf-reu-2447359 nsf-reu-2447769 nsf-reu-2447683 nsf-reu-2446949 "
+        "nsf-reu-2447304 nsf-reu-2447669 nsf-reu-2447875 nsf-reu-2447543 nsf-reu-2447667 nsf-reu-2609947 "
+        "nsf-reu-2547958 nsf-reu-2546381 nsf-reu-2548086 nsf-reu-2548476 nsf-reu-2548380 nsf-reu-2548411 "
+        "nsf-reu-2548005 nsf-reu-2548451 nsf-reu-2548268 nsf-reu-2547457 nsf-reu-2446884 nsf-reu-2548272 "
+        "nsf-reu-2548189 nsf-reu-2548016 nsf-reu-2548233 nsf-reu-2548040 nsf-reu-2547774 nsf-reu-2547394 "
+        "nsf-reu-2548171 nsf-reu-2548378 nsf-reu-2548396 nsf-reu-2548054 nsf-reu-2546940 nsf-reu-2547299 "
+        "nsf-reu-2548006 nsf-reu-2548392 nsf-reu-2548175 nsf-reu-2447234 nsf-reu-2548324 nsf-reu-2447634 "
+        "nsf-reu-2547564 nsf-reu-2547627 nsf-reu-2548434 nsf-reu-2547923 nsf-reu-2548401 nsf-reu-2447548 "
+        "nsf-reu-2547512 nsf-reu-2547945 nsf-reu-2547135 nsf-reu-2548274 nsf-reu-2548144 nsf-reu-2548326 "
+        "nsf-reu-2548211 nsf-reu-2547890 nsf-reu-2548510 nsf-reu-2547056 nsf-reu-2548118 nsf-reu-2548038 "
+        "nsf-reu-2447829 "
+    ).split()
+    records = page.request.post(site + "/api/opportunities/batch", data={"ids": estimates}, timeout=90000)
+    assert records.ok, records.status
+    batch = records.json()
+    assert batch["requested"] == batch["found"] == len(set(estimates)) == 73
+    dates = {row["id"]: row.get("deadline") for row in batch["opportunities"] if row.get("deadline_is_estimate") is True}
+    assert set(dates) == set(estimates)
+    receipt["production_estimates"] = dates
+    # Read a published results URL with an explicit date selection even when
+    # its zero-count option is hidden. All cards and counts come from the
+    # production service for the profile submitted through the form above.
+    with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("deadline") == "passed", timeout=90000) as filtered:
+        page.goto(site + "/results?tab=all&source=nsf_reu&dl=passed&ai=0", wait_until="domcontentloaded")
+    data = filtered.value.json()
+    assert filtered.value.ok and data["filtered_total"] == data["view_counts"]["all"] == 0
+    assert data["results"] == [] and not data["has_more"]
+    receipt["production_passed_nsf_results"] = {"total": data["filtered_total"], "view_id": data["view_id"]}
     oid = "nsf-reu-2548403"
     page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded")
     marker = page.get_by_text("Estimated by us", exact=True).first
