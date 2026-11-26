@@ -3,7 +3,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from playwright.sync_api import sync_playwright, expect
 
 SITE=os.environ.get('OFE_KEYBOARD_SITE','https://joinalab.com')
@@ -49,12 +49,38 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         data={'ofe_lang':locale,'ofe_onboarding_seen':'1','ofe_school_confirmed':json.dumps({'slug':'uiuc','ts':'2026-11-26T00:00:00Z'})}
         ctx.add_init_script("if(location.origin==="+json.dumps(SITE)+"&&!localStorage.getItem('keyboard-qa')){for(const[k,v]of Object.entries("+json.dumps(data)+"))localStorage.setItem(k,v);localStorage.setItem('keyboard-qa','1')}")
         writes=[]
+        remember_note = os.environ.get('OFE_TEST_OWN_NOTE') == '1'
+        own_user = {}
+        sample = 'Keyboard note for this test visit.' if locale == 'en' else '本次验收访客的键盘测试备注。'
+        target = os.environ.get('OFE_KEYBOARD_TARGET','faculty-ib-78788e71')
+        def observe_auth(response):
+            url = urlsplit(response.url)
+            if url.hostname == DATABASE and url.path == '/auth/v1/signup' and response.ok:
+                data = response.json()
+                assert data['user']['is_anonymous']
+                own_user['id'] = data['user']['id']
+        if remember_note:
+            ctx.on('response', observe_auth)
         def guard(r):
             addr=urlsplit(r.request.url)
             if addr.hostname not in (HOST,DATABASE) or (LOCAL and addr.hostname!=HOST):return r.abort()
             if r.request.method in ('GET','HEAD','OPTIONS'):return r.continue_()
             if addr.hostname==DATABASE and addr.path=='/auth/v1/signup' and not writes and not (r.request.post_data_json or {}).get('email'):
                 writes.append('own anonymous sign-up');return r.continue_()
+            if remember_note and own_user and addr.hostname == DATABASE and addr.path == '/rest/v1/interactions':
+                payload = r.request.post_data_json or {}
+                own = own_user['id']
+                if (r.request.method == 'POST' and payload.get('device_id') == own and
+                        payload.get('opportunity_id') == target and payload.get('interaction_type') == 'dismissed' and
+                        set(payload) == {'device_id','opportunity_id','interaction_type','updated_at'}):
+                    writes.append('own dismissed status')
+                    return r.continue_()
+                query = parse_qs(addr.query)
+                if (r.request.method == 'PATCH' and query.get('device_id') == ['eq.' + own] and
+                        query.get('opportunity_id') == ['eq.' + target] and payload.get('notes') == sample and
+                        set(payload) == {'notes','updated_at'}):
+                    writes.append('own synthetic note')
+                    return r.continue_()
             return r.abort()
         ctx.route('**/*',guard)
         target = os.environ.get('OFE_KEYBOARD_TARGET','faculty-ib-78788e71')
@@ -106,6 +132,33 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         case={'locale':locale,'layout':after,'detail_id':target,'records_trigger':start,'notes_edit_focus':before_arrow,'notes_preview_focus':view,'settled_preview_focus':view_late,
               'arrow_changes_focus_and_selection':moved,'fallback_tab_enter_works':not moved,
               'editor_read_only_before_tracking':True,'external_messages':0}
+        if remember_note:
+            status = p.get_by_role('button',name='Not interested' if locale == 'en' else '不感兴趣',exact=True)
+            expect(status).to_be_enabled(timeout=30000)
+            focus(p,status)
+            p.keyboard.press('Enter')
+            expect(status).to_have_attribute('aria-pressed','true',timeout=20000)
+            expect(note).to_be_enabled()
+            focus(p,note)
+            def is_note_receipt(response):
+                return (urlsplit(response.url).path == '/rest/v1/interactions'
+                        and response.request.method == 'PATCH')
+            with p.expect_response(is_note_receipt,timeout=18000) as result:
+                p.keyboard.insert_text(sample)
+            ack=result.value
+            assert ack.ok and ack.json() == [{'opportunity_id':target}]
+            focus(p,edit,reverse=True)
+            p.keyboard.press('ArrowRight')
+            expect(p.get_by_role('tabpanel').get_by_text(sample,exact=True)).to_be_visible()
+            p.reload(wait_until='domcontentloaded')
+            expect(status).to_have_attribute('aria-pressed','true',timeout=25000)
+            if trigger.get_attribute('aria-expanded') != 'true':
+                focus(p,trigger)
+                p.keyboard.press('Enter')
+            expect(note).to_have_value(sample,timeout=15000)
+            assert writes == ['own anonymous sign-up','own dismissed status','own synthetic note'], writes
+            case['own_private_note']={'status':'dismissed','write_http':ack.status,
+                'read_back_in_preview':True,'read_back_after_reloading':True,'writes':writes}
         print('DETAIL KEYBOARD CASE',json.dumps(case,ensure_ascii=False),flush=True)
         if LOCAL:
             assert all(item['visible'] and item['uncovered'] and item['focused'] for item in (before_arrow,view)),case
