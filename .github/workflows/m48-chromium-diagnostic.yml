@@ -1,0 +1,24 @@
+name: M48 isolated Chromium diagnostic
+on:
+  push:
+    branches: [diagnose/m48-worker-in-ci-20261126]
+permissions:
+  contents: read
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: frontend
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: node e2e/m48-diagnostic.mjs
