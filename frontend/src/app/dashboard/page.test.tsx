@@ -416,6 +416,7 @@ describe('DashboardPage — one saved count with /favorites', () => {
     expect(screen.queryByText('Imported a')).toBeNull();
     expect(screen.queryByText('dashboard.deadlines.emptyTitle')).toBeNull();
     expect(screen.getByText('dashboard.deadlines.browserUnavailable')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'dashboard.deadlines.browserImportsLink' })).toHaveAttribute('href', '/favorites');
   });
 
   it('keeps verified browser deadlines while the account read remains incomplete', async () => {

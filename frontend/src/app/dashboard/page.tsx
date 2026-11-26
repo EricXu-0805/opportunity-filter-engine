@@ -874,7 +874,7 @@ function DeadlineContent({
   ) : browserSaved === null ? (
     <p role="status" className="px-6 py-3 text-xs text-amber-700">
       {t('dashboard.deadlines.browserUnavailable')}{' '}
-      <Link href="/favorites" className="font-semibold underline">{t('favorites.title')}</Link>
+      <Link href="/favorites" className="font-semibold underline">{t('dashboard.deadlines.browserImportsLink')}</Link>
     </p>
   ) : null;
   const items = [...state.items, ...browserItems].sort(sortDeadlines).slice(0, 8);

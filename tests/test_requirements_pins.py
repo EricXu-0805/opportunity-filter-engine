@@ -9,6 +9,7 @@ from pathlib import Path
 import soupsieve
 import starlette
 from packaging.requirements import Requirement
+from packaging.version import Version
 
 _REQUIREMENTS = (Path(__file__).resolve().parents[1] / "requirements.txt").read_text()
 
@@ -40,5 +41,13 @@ def test_soupsieve_is_pinned_on_both_sides_of_python_3_11_5():
 
 
 def test_web_push_is_pinned_to_the_version_used_by_the_dispatcher_tests():
-    dependency = next(Requirement(line) for line in _REQUIREMENTS.splitlines() if line.startswith("pywebpush"))
-    assert str(dependency.specifier) == f"=={version('pywebpush')}"
+    # The dispatcher is tested against the 2.x transport API. A different
+    # major release needs that compatibility reviewed, even if pip resolved it.
+    requirements = [Requirement(line) for line in _REQUIREMENTS.splitlines()
+                    if line.strip() and not line.lstrip().startswith("#")]
+    dependency, = [req for req in requirements if req.name.lower() == "pywebpush"]
+    assert dependency.marker is None and dependency.url is None
+    pin, = dependency.specifier
+    assert pin.operator == "==" and "*" not in pin.version
+    assert Version(pin.version).major == 2
+    assert Version(pin.version) == Version(version("pywebpush"))

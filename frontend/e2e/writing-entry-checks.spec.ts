@@ -199,40 +199,61 @@ test.describe('Writing entry checks use current profiles', () => {
     } finally { gate?.release(); await owner.http.dispose(); }
   });
 
-  test('Favorites Tailor checks new skills and courses but sends the complete manual bullets unchanged', async ({ page }) => {
-    const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
-    let gate: Awaited<ReturnType<typeof gateProfileRead>> | undefined;
-    try {
-      await enter(page, 'favorites'); await page.getByRole('button', { name: 'Tailor resume', exact: true }).click();
-      const input = page.locator('#tailor-bullets-input'); await input.fill(MANUAL);
-      const skills: ProfileData['skills'] = [{ name: 'R', level: 'beginner' }];
-      await commit(owner, { name: NEW_NAME, skills, coursework: ['STAT 400'] });
-      expect((await localProfile(page))!.name).toBe(OLD_NAME);
-      gate = await gateProfileRead(page);
-      await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
-      await expect.poll(gate.started).toBe(true); expect(requests).toEqual([]);
-      gate.release();
-      const dialog = page.getByRole('dialog', { name: 'Tailor My Resume' });
-      await expect(dialog.getByRole('status').filter({
-        hasText: 'Your profile changed. Existing text and edits are kept',
-      })).toBeVisible();
-      await expect(input).toHaveValue(MANUAL);
-      // Text entered before the initial binding finishes has unknown provenance.
-      // Both that draft and a stale bound draft require the student's review.
-      const review = dialog.getByRole('button', { name: 'I reviewed these bullets', exact: true });
-      await expect(review).toBeEnabled();
-      expect(requests).toEqual([]);
-      await review.click();
-      await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
-      await expect.poll(() => requests.length).toBe(1);
-      expect(requests[0]).toMatchObject({ path: '/api/tailor', opportunity_id: TARGET,
-        profile: { name: NEW_NAME, hard_skills: skills, coursework: ['STAT 400'] }, original_bullets: [MANUAL] });
-      await expect(input).toHaveValue(MANUAL);
-      await expect(page.getByRole('button', { name: 'Re-tailor', exact: true })).toBeEnabled();
-      expect(writes).toEqual([]);
-      await page.screenshot({ path: test.info().outputPath('favorites-tailor-latest-profile-manual-bullets.png') });
-    } finally { gate?.release(); await owner.http.dispose(); }
-  });
+  for (const origin of ['bound', 'unknown'] as const) {
+    test(`Favorites Tailor checks draft provenance (${origin}) before sending the original bullets with new skills and courses`, async ({ page }) => {
+      const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
+      let gate: Awaited<ReturnType<typeof gateProfileRead>> | undefined;
+      try {
+        await enter(page, 'favorites');
+        const key = STORAGE_KEYS.TAILOR_DRAFT_PREFIX + owner.uid + ':' + TARGET;
+        if (origin === 'unknown') {
+          // Older releases saved plain text under this account/opportunity key.
+          await page.evaluate(({ key, text }) => localStorage.setItem(key, text), { key, text: MANUAL });
+        }
+        await page.getByRole('button', { name: 'Tailor resume', exact: true }).click();
+        const input = page.locator('#tailor-bullets-input');
+        if (origin === 'bound') {
+          await input.fill(MANUAL);
+          await expect.poll(() => page.evaluate(({ key, text }) => Object.keys(localStorage).some(storageKey => {
+            if (!storageKey.endsWith(key)) return false;
+            const draft = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+            return draft?.text === text && Boolean(draft.origin?.binding);
+          }), { key, text: MANUAL })).toBe(true);
+        } else {
+          await expect(input).toHaveValue(MANUAL);
+          await expect(page.getByText('Check that these bullets are accurate before tailoring.', { exact: true })).toBeVisible();
+        }
+        const skills: ProfileData['skills'] = [{ name: 'R', level: 'beginner' }];
+        await commit(owner, { name: NEW_NAME, skills, coursework: ['STAT 400'] });
+        expect((await localProfile(page))!.name).toBe(OLD_NAME);
+        gate = await gateProfileRead(page);
+        await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
+        await expect.poll(gate.started).toBe(true); expect(requests).toEqual([]);
+        gate.release();
+        const dialog = page.getByRole('dialog', { name: 'Tailor My Resume' });
+        await expect(dialog.getByRole('status').filter({
+          hasText: 'Your profile changed. Existing text and edits are kept',
+        })).toBeVisible();
+        await expect(input).toHaveValue(MANUAL);
+        const reason = origin === 'bound'
+          ? 'Your profile, opportunity requirements, or tailoring rules changed. Review these bullets before continuing.'
+          : 'Check that these bullets are accurate before tailoring.';
+        await expect(dialog.getByTestId('tailor-draft-review')).toContainText(reason);
+        const review = dialog.getByRole('button', { name: 'I reviewed these bullets', exact: true });
+        await expect(review).toBeEnabled();
+        expect(requests).toEqual([]);
+        await review.click();
+        await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
+        await expect.poll(() => requests.length).toBe(1);
+        expect(requests[0]).toMatchObject({ path: '/api/tailor', opportunity_id: TARGET,
+          profile: { name: NEW_NAME, hard_skills: skills, coursework: ['STAT 400'] }, original_bullets: [MANUAL] });
+        await expect(input).toHaveValue(MANUAL);
+        await expect(page.getByRole('button', { name: 'Re-tailor', exact: true })).toBeEnabled();
+        expect(writes).toEqual([]);
+        await page.screenshot({ path: test.info().outputPath('favorites-tailor-latest-profile-manual-bullets.png') });
+      } finally { gate?.release(); await owner.http.dispose(); }
+    });
+  }
 
   test('Detail legacy renovation checks a silently replaced source before structuring and rewriting', async ({ page }) => {
     const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
