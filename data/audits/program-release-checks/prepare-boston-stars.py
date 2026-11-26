@@ -30,11 +30,12 @@ else:
         assert set(records) == set(originals)
         links = receipt["original_links"] = {}
         for oid in originals:
-            page.goto(site+"/opportunities/"+oid,wait_until="domcontentloaded")
+            original = page.goto(site+"/opportunities/"+oid,wait_until="domcontentloaded")
+            assert original and original.ok
             expect(page.get_by_role("heading",level=1)).to_have_text(records[oid]["title"],timeout=70000)
             button = page.get_by_role("link",name=re.compile(r"^Apply\\b",re.I)).first
             expect(button).to_have_attribute("href", "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/")
-            links[oid] = {"status":200, "page":page.url, "student_deadline":records[oid]["deadline"], "host":button.get_attribute("href")}
+            links[oid] = {"status":original.status, "page":page.url, "student_deadline":records[oid]["deadline"], "host":button.get_attribute("href")}
             assert links[oid]["student_deadline"] == "2027-01-15"
         # The ordinary browser''')
 dst.write_text(script)
