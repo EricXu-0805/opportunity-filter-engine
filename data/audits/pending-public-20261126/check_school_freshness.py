@@ -75,8 +75,9 @@ with sync_playwright() as pw:
         if hint:
             expect(note).to_contain_text(hint)
         else:
-            assert note.inner_text().strip() == 'Last successful check: ' + date
+            expect(note).to_have_text('Last successful check: ' + date)
         receipt['picker'][slug] = {'api': data, 'visible': note.inner_text()}
+        print('Picker', slug, data['status'], note.inner_text(), flush=True)
         note.screenshot(path=EVIDENCE / (slug + '-picker.png'))
     page.locator('#student_name').fill('Sample Student')
     for selector, value in [('#college','College of Computing, Data Science, and Society'),('#major','Computer Science')]:
