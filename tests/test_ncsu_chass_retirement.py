@@ -88,3 +88,31 @@ def test_bradens_preferred_name_can_restore_only_his_confirmed_appointment(monke
         row = faculty_graph._normalize(ncsu_faculty.SCHOOL, dept, returned)
         assert row['id'] == 'faculty-ncsu-chass-089a76c8'
         assert row['metadata']['is_active']
+
+
+def test_five_reviewed_public_names_keep_the_same_id_when_reappointed(monkeypatch):
+    dept = next(d for d in ncsu_faculty.SCHOOL['departments'] if d['short'] == 'CHASS')
+    cases = [
+        ('mehasket', 'Mary E Haskett', 'Mary Haskett', 'dcb028fb', 11927),
+        ('mershon', 'Donald H. Mershon', 'Donald Mershon', 'ff4905cc', 11927),
+        ('wpshaw', 'William Shaw', 'William Shaw PhD', '38b191e6', 11869),
+        ('jnwall', 'John N Wall', 'John Wall', '98436171', 11869),
+        ('mjohnson', 'Melissa A. Johnson', 'Melissa Johnson', 'acb2eb75', 11866),
+    ]
+    rows = [person(slug, full, [11847, term]) for slug, full, _, _, term in cases]
+    monkeypatch.setattr(faculty_graph, '_wp_get_json', lambda url: rows)
+
+    def observe(rank):
+        source = ''.join(card(r, display, rank) for r, (_, _, display, _, _) in zip(rows, cases, strict=True))
+        roster = BeautifulSoup(source, 'html.parser')
+        monkeypatch.setattr(ncsu_chass.ucb_common, 'fetch_soup', lambda url, **kw: roster)
+        return faculty_graph._fetch_wp_api(dept)
+
+    assert observe('Emeritus') == []
+    for row, (_, _, display, _, _) in zip(rows, cases, strict=True):
+        row['group'] = [11847]
+        row['title'] = {'rendered': display}
+    listed = observe('Professor')
+    assert {faculty_graph._normalize(ncsu_faculty.SCHOOL, dept, r)['id'] for r in listed} == {
+        'faculty-ncsu-chass-' + suffix for _, _, _, suffix, _ in cases
+    }
