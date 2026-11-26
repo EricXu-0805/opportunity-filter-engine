@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from src.contact_instructions import contact_instruction_pages, same_source_page
-from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method, stamp_inferred
+from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method, is_retired_title, stamp_inferred
 
 from .deactivate_stale_faculty import (
     deactivate_deceased_faculty,
@@ -59,6 +59,12 @@ def _umd_math_directory_profile(name: str, profile: str) -> ProfileReview:
 
 
 REVIEWS = {
+    "faculty-gatech-itm-21b8dd50": ProfileReview(
+        "gatech", "Information Technology Management (Scheller College of Business)", "Han Zhang",
+        "https://www.scheller.gatech.edu/directory/faculty/zhang/index.html",
+        "https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
+        "https://www.scheller.gatech.edu/directory/index.json", datetime(2026, 11, 26, 15, 26, tzinfo=UTC),
+        title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management"),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
         "faculty/Baird.html", "Professor Emeritus"),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
@@ -237,7 +243,19 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
         "reviewed_on": review.reviewed_on.isoformat(),
     }
     if review.title:
-        metadata["faculty_profile_review"]["previous_title"] = metadata.get("faculty_title")
+        previous_title = metadata.get("faculty_title")
+        metadata["faculty_profile_review"]["previous_title"] = previous_title
+        if previous_title and is_retired_title(review.title) and row.get("organization"):
+            # This older collector template invites applications. Change only
+            # its exact wording, preserving separately authored research prose.
+            legacy = (f"Research opportunity with {previous_title} {review.name} in the {review.department} "
+                      f"at {row['organization']}. Contact the professor directly to inquire about "
+                      "undergraduate research positions in their lab.")
+            corrected = f"{row['organization']} lists {review.name} as {review.title} in {review.department}."
+            for target, field in ((row, "description_clean"), (row, "description_raw"),
+                                  (row.get("eligibility") or {}, "eligibility_text_raw")):
+                if target.get(field) == legacy:
+                    target[field] = corrected
         metadata["faculty_title"] = review.title
         if classify_title:
             deactivate_deceased_faculty([row], today=review.reviewed_on)
