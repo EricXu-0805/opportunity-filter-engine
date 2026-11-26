@@ -1,0 +1,268 @@
+{
+  "checked_utc": "2026-11-26T15:09:24.488727+00:00",
+  "official_roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+  "method": "Read the English department’s 43 named cards and their exact person-specific GUFaculty360 destinations in a real Chrome browser, then opened each campus-provided destination and read the rendered faculty name from its accessible heading. No session, email or signed-in data was used. Names are transcribed as displayed, including nickname, initial and surname differences. These are external source observations, not post-deploy product acceptance or a scheduled refresh.",
+  "distinct_originals": 43,
+  "distinct_destinations": 43,
+  "rendered_person_headings": 43,
+  "rows": [
+    {
+      "original_id": "faculty-georgetown-engl-19ef3e36",
+      "directory_name": "Patricia Akhimie",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie",
+      "rendered_heading": "Patricia Akhimie"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-6746abcd",
+      "directory_name": "Randall Bass",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwokAAC/randall-bass?searchType=Contact-Info&searchText=randall%20bass",
+      "rendered_heading": "Randall J Bass"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-3f3f47fd",
+      "directory_name": "Jessica Batychenko",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003UH000008FwblYAC/jessica-batychenko?searchType=Contact-Info&searchText=jessica%20batychenko",
+      "rendered_heading": "Jessica Batychenko"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-60a11198",
+      "directory_name": "Caetlin Benson-Allott",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWn1AAG/caetlin-bensonallott?searchType=Contact-Info&searchText=caetlin%20benson",
+      "rendered_heading": "Caetlin Benson-Allott"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-f9d788e9",
+      "directory_name": "Alex Brostoff",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003UH00000Vw8EhYAJ/alex-brostoff",
+      "rendered_heading": "Alex Brostoff"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-912a5304",
+      "directory_name": "Elizabeth Catchmark (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jMw5QIAS/elizabeth-catchmark?searchType=Contact-Info&searchText=catchmark",
+      "rendered_heading": "Elizabeth Catchmark"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-a9eb9b96",
+      "directory_name": "Manu Samriti Chander (He/Him/His)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jN3TiIAK/manu-chander?searchType=Contact-Info&searchText=chander",
+      "rendered_heading": "Manu Chander"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-1cd68f39",
+      "directory_name": "Maureen Corrigan",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVHiAAO/maureen-corrigan?searchType=Contact-Info&searchText=maureen%20corrigan",
+      "rendered_heading": "Maureen D Corrigan"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-e1e0eacd",
+      "directory_name": "Margaret Debelius",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RZgNAAW/maggie-debelius?searchType=Contact-Info&searchText=margaret%20debelius",
+      "rendered_heading": "Margaret A Debelius"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-7b76c532",
+      "directory_name": "Jennifer Natalya Fink (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWdRAAW/jennifer-natalya-fink?searchType=Contact-Info&searchText=jennifer%20natalya%20fink",
+      "rendered_heading": "Jennifer N Fink"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-cbc96696",
+      "directory_name": "Carolyn Forché",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgPhAAK/carolyn-forch%C3%A9?searchType=Contact-Info&searchText=carolyn%20forche",
+      "rendered_heading": "Carolyn L Forche Mattison"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-b55b14a1",
+      "directory_name": "David Gewanter (He/Him/His)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RfVhAAK/david-s-gewanter-phd?searchType=Contact-Info&searchText=david%20gewanter",
+      "rendered_heading": "David S Gewanter"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-95ad177a",
+      "directory_name": "John Glavin",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgkYAAS/john-glavin?searchType=Contact-Info&searchText=john%20glavin",
+      "rendered_heading": "John J Glavin"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-b072d3d6",
+      "directory_name": "Nathan Hensley (He/Him/His)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Tw4pAAC/nathan-hensley?searchType=Contact-Info&searchText=nathan%20hensley",
+      "rendered_heading": "Nathan Hensley"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-888650c1",
+      "directory_name": "Brian Hochman (He/Him/His)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rf5JAAS/brian-hochman?searchType=Contact-Info&searchText=brian%20hochman",
+      "rendered_heading": "Brian Hochman"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-be9bd333",
+      "directory_name": "Marisa Holmes",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "rendered_heading": "Marisa Koulen Holmes"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-e97a4daf",
+      "directory_name": "Fatima Jafar",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003UH000011D0p9YAC/fatima-jafar?searchType=Contact-Info&searchText=fatima%20jafar",
+      "rendered_heading": "Fatima Jafar"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-42b9eeaa",
+      "directory_name": "M. Lindsay Kaplan (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RePLAA0/m-lindsay-kaplan?searchType=Contact-Info&searchText=lindsay%20kaplan",
+      "rendered_heading": "M Lindsay Kaplan"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-c5c27dac",
+      "directory_name": "Peggy Lee (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cJxCrQAK/peggy-lee?searchType=Contact-Info&searchText=peggy%20lee",
+      "rendered_heading": "Peggy Lee"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-c3711a29",
+      "directory_name": "Sherry Linkon",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TmvhAAC/sherry-linkon?searchType=Contact-Info&searchText=sherry%20linkon",
+      "rendered_heading": "Sherry Lee Linkon"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-983db631",
+      "directory_name": "David Lipscomb",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rjf5AAC/david-lipscomb?searchType=Contact-Info&searchText=david%20lipscomb",
+      "rendered_heading": "David C Lipscomb"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-0b30af59",
+      "directory_name": "Eddie Maloney",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney",
+      "rendered_heading": "Edward J Maloney"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-0b965fab",
+      "directory_name": "Monica Maxwell",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RBIXAA4/monica-maxwell-phd?searchType=Contact-Info&searchText=monica%20maxwell",
+      "rendered_heading": "Monica A Maxwell"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-4cc038ec",
+      "directory_name": "Mark McMorris",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RcRSAA0/mark-mcmorris?searchType=Contact-Info&searchText=mark%20mcmorris",
+      "rendered_heading": "Mark D McMorris"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-eabebde9",
+      "directory_name": "Sarah McNamer",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer",
+      "rendered_heading": "Sarah McNamer"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-3628e405",
+      "directory_name": "Lori Merish (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014ReiYAAS/lori-merish?searchType=Contact-Info&searchText=lori%20merish",
+      "rendered_heading": "Lori A Merish"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-66c04eaa",
+      "directory_name": "Angelyn L. Mitchell",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell",
+      "rendered_heading": "Angelyn L Mitchell"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-b09a1a61",
+      "directory_name": "Amani Morrison (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison",
+      "rendered_heading": "Amani Morrison"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-a3879e7d",
+      "directory_name": "Patrick R. O’Malley",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWRFAA4/patrick-omalley?searchType=Contact-Info&searchText=patrick%20o%27malley",
+      "rendered_heading": "Patrick R. O'Malley"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-a9bfca89",
+      "directory_name": "Lindsey O’Neil",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cu3B2QAI/lindsey-oneil?searchType=Contact-Info&searchText=o%27neil",
+      "rendered_heading": "Lindsey O'Neil"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-7aeebe3d",
+      "directory_name": "J Palmeri (They/He)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jOsa6IAC/j-palmeri?searchType=Contact-Info&searchText=palmeri",
+      "rendered_heading": "J Palmeri"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-b6ef30b2",
+      "directory_name": "Cóilín Parsons",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfI6AAK/c%C3%B3il%C3%ADn-parsons?searchType=Contact-Info&searchText=coilin%20parsons",
+      "rendered_heading": "Cóilín Parsons"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-34f4f949",
+      "directory_name": "Seth Perlow",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014SeXiAAK/seth-perlow?searchType=Contact-Info&searchText=seth%20perlow",
+      "rendered_heading": "Seth Perlow"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-a58be95d",
+      "directory_name": "Amanda Phillips (They/He/She)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014SM4eAAG/amanda-phillips?searchType=Contact-Info&searchText=amanda%20phillips",
+      "rendered_heading": "Amanda D. Phillips"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-347f78f1",
+      "directory_name": "Libbie S. Rifkin",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWqtAAG/libbie-rifkin?searchType=Contact-Info&searchText=libbie%20rifkin",
+      "rendered_heading": "Libbie S Rifkin"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-a672670d",
+      "directory_name": "Nicole Rizzuto",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfTfAAK/nicole-rizzuto?searchType=Contact-Info&searchText=nicole%20rizzuto",
+      "rendered_heading": "Nicole Rizzuto"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-598b7188",
+      "directory_name": "Phil Sandick",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gIAAQ/phil-sandick?searchType=Contact-Info&searchText=phil%20sandick",
+      "rendered_heading": "Philip Sandick"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-14396d28",
+      "directory_name": "Daniel Shore",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVhhAAG/daniel-shore?searchType=Contact-Info&searchText=daniel%20shore",
+      "rendered_heading": "Daniel A Shore"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-5574b293",
+      "directory_name": "Christine So",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwMpAAK/christine-so?searchType=Contact-Info&searchText=christine%20so",
+      "rendered_heading": "Christine C So"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-e6b06bba",
+      "directory_name": "Mecca Jamilah Sullivan",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002XGKx2QAH/mecca-sullivan?searchType=Contact-Info&searchText=mecca%20sullivan",
+      "rendered_heading": "Mecca Jamilah Sullivan"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-d3964c5c",
+      "directory_name": "Rebecca Tarsa",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gSAAQ/rebecca-tarsa?searchType=Contact-Info&searchText=rebecca%20tarsa",
+      "rendered_heading": "Rebecca Tarsa Harcourt"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-fbdd4dd9",
+      "directory_name": "Kathryn Temple (She/Her/Hers)",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014RdTbAAK/kathryn-d-temple",
+      "rendered_heading": "Kathryn D Temple"
+    },
+    {
+      "original_id": "faculty-georgetown-engl-414f6f7a",
+      "directory_name": "Duncan Wu",
+      "official_link": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rr5BAAS/duncan-wu?searchType=Contact-Info&searchText=duncan%20wu",
+      "rendered_heading": "Duncan Wu"
+    }
+  ]
+}
