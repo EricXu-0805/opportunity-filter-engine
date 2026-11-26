@@ -263,7 +263,7 @@ A verdict lands through the same paths the automation uses:
   requests, an author lookup and one `/works` page, made before the shards are
   read and also in a dry run. The current gate picks among them from the
   author's own fields, as in `harvest_works_by_roster`, and `apply_works` stamps
-  the survivors on the whole corpus. The command refuses, and writes nothing:
+  the survivors on the selected record after checking matching URLs and author IDs across all schools. The command refuses, and writes nothing:
   * when OpenAlex has no such author, or answers with the author it was merged
     into (name that one);
   * when the budget runs out, or the works request comes back empty, which is

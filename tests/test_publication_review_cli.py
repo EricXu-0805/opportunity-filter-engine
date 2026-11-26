@@ -212,6 +212,21 @@ class TestDryRunsLeaveTheLedgerAlone:
         assert (entry["status"], entry["result"]) == (VERIFIED_COMPLETE, DISPOSITION_VERIFIED)
         assert entry["attempt_count"] == 1
 
+    def test_harvest_apply_leaves_unclaimed_reviewed_titles_alone(self, tmp_path, monkeypatch):
+        ledger = _seeded_ledger(tmp_path)
+        record = faculty()
+        invalidate_record(record)
+        mapping, manifest = self._apply_files(tmp_path, record)
+        other = faculty("faculty-asu-ece-36055db6", name="Other Faculty", school="asu",
+                        works=[{"title": "Simulation and experimental study on laser cutting of C/C composite finger seal",
+                                "year": 2025}])
+        before = copy.deepcopy(other)
+        rc, written = _run(monkeypatch, {"uiuc": [record], "asu": [other]}, "--ledger", str(ledger),
+                           "apply", str(mapping), "--manifest", str(manifest), "--save")
+        assert rc == 0 and written == [["uiuc"]]
+        assert other == before
+        assert record["metadata"]["publication_author_id"] == "A5000"
+
     def test_a_dry_run_does_not_count_as_an_attempt(self, tmp_path, monkeypatch):
         """A dry run's STARTED event used to make the real run that followed it
         read as a retry (attempt_count 2, retry_count 1)."""
@@ -608,8 +623,31 @@ class TestVerifiedVerdict:
         assert rc == 0
         assert works_are_verified(disk.record("amb-1"))
 
+    def test_unrelated_pending_title_cleanup_does_not_block_review(self, queue, monkeypatch, openalex):
+        disk, ledger = queue
+        unrelated = faculty("faculty-asu-ece-36055db6", name="Other Faculty", school="asu",
+                            works=[{"title": "Simulation and experimental study on laser cutting of C/C composite finger seal",
+                                    "year": 2025}])
+        disk.shards["asu"] = [unrelated]
+        before = copy.deepcopy(unrelated)
+        assert _review(monkeypatch, disk, ledger, "amb-1", "--verified", _AUTHOR,
+                       "--reviewer", "test", "--save") == 0
+        assert disk.record("amb-1")["metadata"]["publication_author_id"] == _AUTHOR
+        assert disk.record(unrelated["id"]) == before
+
+    def test_same_person_key_in_another_school_keeps_single_review_atomic(self, queue, monkeypatch, openalex):
+        disk, ledger = queue
+        other = copy.deepcopy(disk.record("amb-1"))
+        other.update(id="other-duplicate", school="other")
+        disk.shards["other"] = [other]
+        before = copy.deepcopy(disk.shards)
+        assert _review(monkeypatch, disk, ledger, "amb-1", "--verified", _AUTHOR,
+                       "--reviewer", "test", "--save") == 3
+        assert disk.shards == before
+        assert disk.writes == []
+
     def test_refuses_when_landing_it_would_change_another_record(self, queue, monkeypatch, openalex):
-        """apply_works sees the whole corpus. Naming an author id another
+        """Naming an author id another
         professor already holds strips the attribution from both (one id, two
         people), and a record the verdict is not about must not change."""
         disk, ledger = queue
