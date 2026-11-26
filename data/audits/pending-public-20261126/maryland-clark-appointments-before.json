@@ -1,0 +1,4907 @@
+{
+  "observed_utc": "2026-11-26T11:55:33.434618+00:00",
+  "production_backend_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "sources": {
+    "ECE": {
+      "pages": [
+        [
+          200,
+          48,
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          48,
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ],
+        [
+          200,
+          48,
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=2"
+        ],
+        [
+          200,
+          5,
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=3"
+        ]
+      ],
+      "unique_individuals": 149
+    },
+    "ME": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          24,
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ],
+        [
+          200,
+          24,
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=2"
+        ],
+        [
+          200,
+          24,
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=3"
+        ],
+        [
+          200,
+          15,
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=4"
+        ]
+      ],
+      "unique_individuals": 111
+    },
+    "BIOE": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://bioe.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          24,
+          "https://bioe.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ],
+        [
+          200,
+          20,
+          "https://bioe.umd.edu/clark/facultydir?drfilter=-1&page=2"
+        ]
+      ],
+      "unique_individuals": 68
+    },
+    "AE": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://aero.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          24,
+          "https://aero.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ],
+        [
+          200,
+          19,
+          "https://aero.umd.edu/clark/facultydir?drfilter=-1&page=2"
+        ]
+      ],
+      "unique_individuals": 67
+    },
+    "CEE": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          24,
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ],
+        [
+          200,
+          24,
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=2"
+        ],
+        [
+          200,
+          7,
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=3"
+        ]
+      ],
+      "unique_individuals": 79
+    },
+    "CHBE": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://chbe.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          22,
+          "https://chbe.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ]
+      ],
+      "unique_individuals": 46
+    },
+    "MSE": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          24,
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ],
+        [
+          200,
+          24,
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=2"
+        ],
+        [
+          200,
+          18,
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=3"
+        ]
+      ],
+      "unique_individuals": 90
+    },
+    "FPE": {
+      "pages": [
+        [
+          200,
+          24,
+          "https://fpe.umd.edu/clark/facultydir?drfilter=-1"
+        ],
+        [
+          200,
+          2,
+          "https://fpe.umd.edu/clark/facultydir?drfilter=-1&page=1"
+        ]
+      ],
+      "unique_individuals": 26
+    }
+  },
+  "people": [
+    {
+      "official_numeric_id": "417",
+      "normalized_name": "Alireza Khaligh",
+      "units": [
+        {
+          "unit": "ECE",
+          "observed_id": "faculty-umd-ece-e6ccf284",
+          "card_titles": [
+            "Director, Institute for Systems Research (ISR)",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/417/Alireza-Khaligh",
+          "source_http": 200,
+          "official_name": "Khaligh, Alireza",
+          "official_affiliations": "Electrical and Computer Engineering The Institute for Systems Research Maryland Energy Innovation Institute"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ece-e6ccf284",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ece-e6ccf284",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ece-e6ccf284"
+    },
+    {
+      "official_numeric_id": "1040",
+      "normalized_name": "Michelle Mazurek",
+      "units": [
+        {
+          "unit": "ECE",
+          "observed_id": "faculty-umd-ece-615f9711",
+          "card_titles": [
+            "Director, Maryland Cybersecurity Center",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1040/Michelle-Mazurek",
+          "source_http": 200,
+          "official_name": "Mazurek, Michelle",
+          "official_affiliations": "Computer Science Maryland Cybersecurity Center UMIACS Electrical and Computer Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-cs-ec45fae9",
+      "already_published": true,
+      "historical": [
+        "faculty-umd-cs-ec45fae9"
+      ],
+      "before_http": 200,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-cs-ec45fae9",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-cs-ec45fae9",
+      "prior_public_name": "Michelle Mazurek",
+      "prior_public_url": "https://www.cs.umd.edu/people/mmazurek",
+      "prior_public_title": "Professor"
+    },
+    {
+      "official_numeric_id": "448",
+      "normalized_name": "Patrick G. O'Shea",
+      "units": [
+        {
+          "unit": "ECE",
+          "observed_id": "faculty-umd-ece-ddfd861f",
+          "card_titles": [
+            "Vice President for Research",
+            "Professor",
+            "Distinguished Scholar-Teacher",
+            "FIEEE, FIAE, FRSA, FAPS, FAAAS"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/448/Patrick-G-O%27Shea",
+          "source_http": 200,
+          "official_name": "O'Shea, Patrick G.",
+          "official_affiliations": "Electrical and Computer Engineering Institute for Research in Electronics & Applied Physics"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ece-ddfd861f",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ece-ddfd861f",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ece-ddfd861f"
+    },
+    {
+      "official_numeric_id": "484",
+      "normalized_name": "Ankur Srivastava",
+      "units": [
+        {
+          "unit": "ECE",
+          "observed_id": "faculty-umd-ece-bdf563fd",
+          "card_titles": [
+            "Director, Semiconductor Initiative and Innovation",
+            "Professor",
+            "Former Director, Institute for Systems Research (2019-2024)",
+            "Former  Associate Dean, Graduate Programs (2018-2019)"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/484/Ankur-Srivastava",
+          "source_http": 200,
+          "official_name": "Srivastava, Ankur",
+          "official_affiliations": "Electrical and Computer Engineering The Institute for Systems Research"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ece-bdf563fd",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ece-bdf563fd",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ece-bdf563fd"
+    },
+    {
+      "official_numeric_id": "722",
+      "normalized_name": "Ichiro Takeuchi",
+      "units": [
+        {
+          "unit": "ECE",
+          "observed_id": "faculty-umd-ece-52eda433",
+          "card_titles": [
+            "Department Chair",
+            "Minta Martin Professor",
+            "Fellow, MRS",
+            "Fellow, APS",
+            "Fellow, Japan Society of Applied Physics"
+          ],
+          "qualifying_appointment": "Minta Martin Professor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi",
+          "source_http": 200,
+          "official_name": "Takeuchi, Ichiro",
+          "official_affiliations": "Materials Science and Engineering Maryland Energy Innovation Institute Electrical and Computer Engineering Maryland Quantum Materials Center"
+        },
+        {
+          "unit": "MSE",
+          "observed_id": "faculty-umd-mse-7a7397b3",
+          "card_titles": [
+            "Department Chair",
+            "Minta Martin Professor",
+            "Fellow, MRS",
+            "Fellow, APS",
+            "Fellow, Japan Society of Applied Physics"
+          ],
+          "qualifying_appointment": "Minta Martin Professor",
+          "source_profile": "https://mse.umd.edu/clark/faculty/722/Ichiro-Takeuchi",
+          "source_http": 200,
+          "official_name": "Takeuchi, Ichiro",
+          "official_affiliations": "Materials Science and Engineering Maryland Energy Innovation Institute Electrical and Computer Engineering Maryland Quantum Materials Center"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ece-52eda433",
+      "already_published": true,
+      "historical": [
+        "faculty-umd-ece-52eda433"
+      ],
+      "before_http": 200,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ece-52eda433",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ece-52eda433",
+      "prior_public_name": "Ichiro Takeuchi",
+      "prior_public_url": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi",
+      "prior_public_title": "Professor and Chair"
+    },
+    {
+      "official_numeric_id": "490",
+      "normalized_name": "Sennur Ulukus",
+      "units": [
+        {
+          "unit": "ECE",
+          "observed_id": "faculty-umd-ece-a4499b8f",
+          "card_titles": [
+            "Department Chair",
+            "Distinguished University Professor",
+            "Anthony Ephremides Chair in Information Sciences and Systems",
+            "Distinguished Scholar-Teacher",
+            "Founding Co-Director, Masters in Applied Machine Learning",
+            "Founding Director, Masters in Engineering AI"
+          ],
+          "qualifying_appointment": "Distinguished University Professor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/490/Sennur-Ulukus",
+          "source_http": 200,
+          "official_name": "Ulukus, Sennur",
+          "official_affiliations": "Electrical and Computer Engineering The Institute for Systems Research"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ece-a4499b8f",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ece-a4499b8f",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ece-a4499b8f"
+    },
+    {
+      "official_numeric_id": "1618",
+      "normalized_name": "Samuel Graham Jr.",
+      "units": [
+        {
+          "unit": "ME",
+          "observed_id": "faculty-umd-me-3814f66d",
+          "card_titles": [
+            "Dean",
+            "Nariman Farvardin Professor"
+          ],
+          "qualifying_appointment": "Nariman Farvardin Professor",
+          "source_profile": "https://me.umd.edu/clark/faculty/1618/Samuel-GrahamJr",
+          "source_http": 200,
+          "official_name": "Graham, Jr., Samuel",
+          "official_affiliations": "A. James Clark School of Engineering Mechanical Engineering"
+        }
+      ],
+      "contact_present_on_roster": false,
+      "chosen": "faculty-umd-me-3814f66d",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-me-3814f66d",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-me-3814f66d"
+    },
+    {
+      "official_numeric_id": "567",
+      "normalized_name": "F. Patrick McCluskey",
+      "units": [
+        {
+          "unit": "ME",
+          "observed_id": "faculty-umd-me-a2f74a77",
+          "card_titles": [
+            "Leader, Electronics and Product Systems Division",
+            "Professor and Interim Chair"
+          ],
+          "qualifying_appointment": "Professor and Interim Chair",
+          "source_profile": "https://me.umd.edu/clark/faculty/567/F-Patrick-McCluskey",
+          "source_http": 200,
+          "official_name": "McCluskey, F. Patrick",
+          "official_affiliations": "Mechanical Engineering Maryland Energy Innovation Institute"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-me-a2f74a77",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-me-a2f74a77",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-me-a2f74a77"
+    },
+    {
+      "official_numeric_id": "595",
+      "normalized_name": "Ryan D. Sochol",
+      "units": [
+        {
+          "unit": "ME",
+          "observed_id": "faculty-umd-me-fbacae93",
+          "card_titles": [
+            "Director, Maryland Robotics Center",
+            "Associate Professor",
+            "Fischell Institute Fellow"
+          ],
+          "qualifying_appointment": "Associate Professor",
+          "source_profile": "https://me.umd.edu/clark/faculty/595/Ryan-D-Sochol",
+          "source_http": 200,
+          "official_name": "Sochol, Ryan D.",
+          "official_affiliations": "Mechanical Engineering Fischell Department of Bioengineering Maryland Robotics Center The Institute for Systems Research Robert E. Fischell Institute for Biomedical Devices"
+        },
+        {
+          "unit": "BIOE",
+          "observed_id": "faculty-umd-bioe-be4d6eb1",
+          "card_titles": [
+            "Director, Maryland Robotics Center",
+            "Associate Professor",
+            "Fischell Institute Fellow"
+          ],
+          "qualifying_appointment": "Associate Professor",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/595/Ryan-D-Sochol",
+          "source_http": 200,
+          "official_name": "Sochol, Ryan D.",
+          "official_affiliations": "Mechanical Engineering Fischell Department of Bioengineering Maryland Robotics Center The Institute for Systems Research Robert E. Fischell Institute for Biomedical Devices"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-me-fbacae93",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-me-fbacae93",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-me-fbacae93"
+    },
+    {
+      "official_numeric_id": "1011",
+      "normalized_name": "Alisa Morss Clyne",
+      "units": [
+        {
+          "unit": "BIOE",
+          "observed_id": "faculty-umd-bioe-7d3a7d0a",
+          "card_titles": [
+            "Interim Department Chair",
+            "Professor",
+            "Fischell Fellow"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne",
+          "source_http": 200,
+          "official_name": "Clyne, Alisa Morss",
+          "official_affiliations": "Fischell Department of Bioengineering Brain and Behavior Institute Robert E. Fischell Institute for Biomedical Devices"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-bioe-7d3a7d0a",
+      "already_published": true,
+      "historical": [
+        "faculty-umd-bioe-7d3a7d0a"
+      ],
+      "before_http": 200,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-bioe-7d3a7d0a",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-bioe-7d3a7d0a",
+      "prior_public_name": "Alisa Morss Clyne",
+      "prior_public_url": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne",
+      "prior_public_title": "Professor"
+    },
+    {
+      "official_numeric_id": "219",
+      "normalized_name": "Kimberly Stroka",
+      "units": [
+        {
+          "unit": "BIOE",
+          "observed_id": "faculty-umd-bioe-8a3e5f2a",
+          "card_titles": [
+            "Associate Chair and Director of Undergraduate Studies",
+            "Associate Professor"
+          ],
+          "qualifying_appointment": "Associate Professor",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/219/Kimberly-Stroka",
+          "source_http": 200,
+          "official_name": "Stroka, Kimberly",
+          "official_affiliations": "Fischell Department of Bioengineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-bioe-8a3e5f2a",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-bioe-8a3e5f2a",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-bioe-8a3e5f2a"
+    },
+    {
+      "official_numeric_id": "21",
+      "normalized_name": "Alison B. Flatau",
+      "units": [
+        {
+          "unit": "AE",
+          "observed_id": "faculty-umd-ae-5041d999",
+          "card_titles": [
+            "Department Chair",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://aero.umd.edu/clark/faculty/21/Alison-B-Flatau",
+          "source_http": 200,
+          "official_name": "Flatau, Alison B.",
+          "official_affiliations": "Aerospace Engineering Materials Science and Engineering"
+        },
+        {
+          "unit": "MSE",
+          "observed_id": "faculty-umd-mse-87b3169d",
+          "card_titles": [
+            "Department Chair",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://mse.umd.edu/clark/faculty/21/Alison-B-Flatau",
+          "source_http": 200,
+          "official_name": "Flatau, Alison B.",
+          "official_affiliations": "Aerospace Engineering Materials Science and Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ae-5041d999",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ae-5041d999",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ae-5041d999"
+    },
+    {
+      "official_numeric_id": "51",
+      "normalized_name": "Pino Martin",
+      "units": [
+        {
+          "unit": "AE",
+          "observed_id": "faculty-umd-ae-7a7fab6a",
+          "card_titles": [
+            "CRoCCo Laboratory Director and Founder",
+            "Professor of Aerospace"
+          ],
+          "qualifying_appointment": "Professor of Aerospace",
+          "source_profile": "https://aero.umd.edu/clark/faculty/51/Pino-Martin",
+          "source_http": 200,
+          "official_name": "Martin, Pino",
+          "official_affiliations": "Aerospace Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ae-7a7fab6a",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ae-7a7fab6a",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ae-7a7fab6a"
+    },
+    {
+      "official_numeric_id": "61",
+      "normalized_name": "Darryll J. Pines",
+      "units": [
+        {
+          "unit": "AE",
+          "observed_id": "faculty-umd-ae-5d6fa086",
+          "card_titles": [
+            "President, University of Maryland College Park",
+            "Glenn L. Martin Professor of Aerospace Engineering"
+          ],
+          "qualifying_appointment": "Glenn L. Martin Professor of Aerospace Engineering",
+          "source_profile": "https://aero.umd.edu/clark/faculty/61/Darryll-J-Pines",
+          "source_http": 200,
+          "official_name": "Pines, Darryll J.",
+          "official_affiliations": "Aerospace Engineering Alfred Gessow Rotorcraft Center"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-ae-5d6fa086",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-ae-5d6fa086",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-ae-5d6fa086"
+    },
+    {
+      "official_numeric_id": "240",
+      "normalized_name": "Natasha Andrade",
+      "units": [
+        {
+          "unit": "CEE",
+          "observed_id": "faculty-umd-cee-09c3398d",
+          "card_titles": [
+            "Associate Chair for Undergraduate Programs",
+            "Principal Lecturer"
+          ],
+          "qualifying_appointment": "Principal Lecturer",
+          "source_profile": "https://cee.umd.edu/clark/faculty/240/Natasha-Andrade",
+          "source_http": 200,
+          "official_name": "Andrade, Natasha",
+          "official_affiliations": "Civil and Environmental Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-cee-09c3398d",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-cee-09c3398d",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-cee-09c3398d"
+    },
+    {
+      "official_numeric_id": "249",
+      "normalized_name": "Kaye L. Brubaker",
+      "units": [
+        {
+          "unit": "CEE",
+          "observed_id": "faculty-umd-cee-7bfc6dd8",
+          "card_titles": [
+            "Director, Maryland Water Resources Research Center",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://cee.umd.edu/clark/faculty/249/Kaye-L-Brubaker",
+          "source_http": 200,
+          "official_name": "Brubaker, Kaye L.",
+          "official_affiliations": "Civil and Environmental Engineering Maryland Energy Innovation Institute"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-cee-7bfc6dd8",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-cee-7bfc6dd8",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-cee-7bfc6dd8"
+    },
+    {
+      "official_numeric_id": "256",
+      "normalized_name": "Allen P. Davis",
+      "units": [
+        {
+          "unit": "CEE",
+          "observed_id": "faculty-umd-cee-e78daa70",
+          "card_titles": [
+            "Associate Chair for Faculty Development and Advancement",
+            "Professor",
+            "Charles A. Irish Sr. Chair in Civil Engineering",
+            "Affiliate Professor, Department of Plant Science and Landscape Architecture",
+            "Distinguished Scholar-Teacher"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://cee.umd.edu/clark/faculty/256/Allen-P-Davis",
+          "source_http": 200,
+          "official_name": "Davis, Allen P.",
+          "official_affiliations": "Civil and Environmental Engineering Maryland Energy Innovation Institute"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-cee-e78daa70",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-cee-e78daa70",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-cee-e78daa70"
+    },
+    {
+      "official_numeric_id": "297",
+      "normalized_name": "Alba Torrents",
+      "units": [
+        {
+          "unit": "CEE",
+          "observed_id": "faculty-umd-cee-7272ff63",
+          "card_titles": [
+            "Ben Dyer Centennial Chair",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://cee.umd.edu/clark/faculty/297/Alba-Torrents",
+          "source_http": 200,
+          "official_name": "Torrents, Alba",
+          "official_affiliations": "Civil and Environmental Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-cee-7272ff63",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-cee-7272ff63",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-cee-7272ff63"
+    },
+    {
+      "official_numeric_id": "1706",
+      "normalized_name": "Xianfeng (Terry) Yang",
+      "units": [
+        {
+          "unit": "CEE",
+          "observed_id": "faculty-umd-cee-53d4c71d",
+          "card_titles": [
+            "Director of Maryland Transportation Institute (MTI)",
+            "Clark Faculty Fellow",
+            "Associate Chair for Graduate Programs",
+            "Associate Professor"
+          ],
+          "qualifying_appointment": "Associate Professor",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1706/Xianfeng-Terry-Yang",
+          "source_http": 200,
+          "official_name": "Yang, Xianfeng (Terry)",
+          "official_affiliations": "A. James Clark School of Engineering Civil and Environmental Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-cee-53d4c71d",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-cee-53d4c71d",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-cee-53d4c71d"
+    },
+    {
+      "official_numeric_id": "1959",
+      "normalized_name": "Sudarsanam (Suresh) Babu",
+      "units": [
+        {
+          "unit": "MSE",
+          "observed_id": "faculty-umd-mse-fdd307eb",
+          "card_titles": [
+            "Clark Distinguished Chair",
+            "Professor"
+          ],
+          "qualifying_appointment": "Professor",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1959/Sudarsanam-Suresh-Babu",
+          "source_http": 200,
+          "official_name": "Babu, Sudarsanam (Suresh)",
+          "official_affiliations": "Materials Science and Engineering Maryland Robotics Center"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-mse-fdd307eb",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-mse-fdd307eb",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-mse-fdd307eb"
+    },
+    {
+      "official_numeric_id": "2039",
+      "normalized_name": "Kasra Sardashti",
+      "units": [
+        {
+          "unit": "MSE",
+          "observed_id": "faculty-umd-mse-2121a633",
+          "card_titles": [
+            "Executive Director of Quantum Collaborative Research Corps",
+            "Associate Research Professor of Physics",
+            "Research Lead at LPS Qubit Collaboratory"
+          ],
+          "qualifying_appointment": "Associate Research Professor of Physics",
+          "source_profile": "https://mse.umd.edu/clark/faculty/2039/Kasra-Sardashti",
+          "source_http": 200,
+          "official_name": "Sardashti, Kasra",
+          "official_affiliations": "Materials Science and Engineering"
+        }
+      ],
+      "contact_present_on_roster": true,
+      "chosen": "faculty-umd-mse-2121a633",
+      "already_published": false,
+      "historical": [],
+      "before_http": 404,
+      "real_api": "https://joinalab.com/api/opportunities/faculty-umd-mse-2121a633",
+      "public_detail": "https://joinalab.com/opportunities/faculty-umd-mse-2121a633"
+    }
+  ],
+  "normal_replay_on_old_ids": [
+    {
+      "pass": 1,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 41,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    },
+    {
+      "pass": 2,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 41,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    }
+  ],
+  "normal_replay_on_published_candidates": [
+    {
+      "pass": 1,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 41,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    },
+    {
+      "pass": 2,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 41,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    }
+  ],
+  "per_unit": {
+    "ece": {
+      "official_card_count": 149,
+      "old_eligible_count": 110,
+      "fixed_eligible_count": 116,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 33,
+      "roster_people": [
+        {
+          "name": "Abed, Eyad H.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/346/Eyad-H-Abed"
+        },
+        {
+          "name": "Abshire, Pamela",
+          "source_profile": "https://ece.umd.edu/clark/faculty/347/Pamela-Abshire"
+        },
+        {
+          "name": "Aloimonos, Yiannis",
+          "source_profile": "https://ece.umd.edu/clark/faculty/350/Yiannis-Aloimonos"
+        },
+        {
+          "name": "Anlage, Steven",
+          "source_profile": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage"
+        },
+        {
+          "name": "Antonsen, Jr., Thomas M.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr"
+        },
+        {
+          "name": "Asgari, Bahar",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2024/Bahar-Asgari"
+        },
+        {
+          "name": "Babadi, Behtash",
+          "source_profile": "https://ece.umd.edu/clark/faculty/356/Behtash-Babadi"
+        },
+        {
+          "name": "Baras, John S.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/357/John-S-Baras"
+        },
+        {
+          "name": "Barbe, David F.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/358/David-F-Barbe"
+        },
+        {
+          "name": "Barg, Alexander",
+          "source_profile": "https://ece.umd.edu/clark/faculty/359/Alexander-Barg"
+        },
+        {
+          "name": "Barua, Rajeev",
+          "source_profile": "https://ece.umd.edu/clark/faculty/361/Rajeev-Barua"
+        },
+        {
+          "name": "Basu, Debtanu",
+          "source_profile": "https://ece.umd.edu/clark/faculty/362/Debtanu-Basu"
+        },
+        {
+          "name": "Belta, Calin",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1872/Calin-Belta"
+        },
+        {
+          "name": "Bhattacharyya, Shuvra S.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/365/Shuvra-S-Bhattacharyya"
+        },
+        {
+          "name": "Butts, Daniel",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1171/Daniel-Butts"
+        },
+        {
+          "name": "Chellappa, Rama",
+          "source_profile": "https://ece.umd.edu/clark/faculty/369/Rama-Chellappa"
+        },
+        {
+          "name": "Chembo, Yanne",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1031/Yanne-Chembo"
+        },
+        {
+          "name": "Chen, Po-Yen",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1396/PoYen-Chen"
+        },
+        {
+          "name": "Chopra, Nikhil",
+          "source_profile": "https://ece.umd.edu/clark/faculty/520/Nikhil-Chopra"
+        },
+        {
+          "name": "Crouse, Donald",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1727/Donald-Crouse"
+        },
+        {
+          "name": "Cukier, Michel",
+          "source_profile": "https://ece.umd.edu/clark/faculty/523/Michel-Cukier"
+        },
+        {
+          "name": "Dachman-Soled, Dana",
+          "source_profile": "https://ece.umd.edu/clark/faculty/377/Dana-Dachman-Soled"
+        },
+        {
+          "name": "Dagenais, Mario",
+          "source_profile": "https://ece.umd.edu/clark/faculty/378/Mario-Dagenais"
+        },
+        {
+          "name": "Daniels, Kevin",
+          "source_profile": "https://ece.umd.edu/clark/faculty/805/Kevin-Daniels"
+        },
+        {
+          "name": "Davis, Larry",
+          "source_profile": "https://ece.umd.edu/clark/faculty/380/Larry-Davis"
+        },
+        {
+          "name": "Davisson, L.D.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/381/LD-Davisson"
+        },
+        {
+          "name": "Dumitraș, Tudor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/384/Tudor-Dumitra%C8%99"
+        },
+        {
+          "name": "Duraiswami, Ramani",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1430/Ramani-Duraiswami"
+        },
+        {
+          "name": "Dutt, Avik",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1661/Avik-Dutt"
+        },
+        {
+          "name": "Dutta, Sanghamitra",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1711/Sanghamitra-Dutta"
+        },
+        {
+          "name": "Emad, Fawzi P.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/388/Fawzi-P-Emad"
+        },
+        {
+          "name": "Ephremides, Anthony",
+          "source_profile": "https://ece.umd.edu/clark/faculty/389/Anthony-Ephremides"
+        },
+        {
+          "name": "Espy-Wilson, Carol",
+          "source_profile": "https://ece.umd.edu/clark/faculty/391/Carol-Espy-Wilson"
+        },
+        {
+          "name": "Farvardin, Nariman",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1731/Nariman-Farvardin"
+        },
+        {
+          "name": "Feizi, Soheil",
+          "source_profile": "https://ece.umd.edu/clark/faculty/984/Soheil-Feizi"
+        },
+        {
+          "name": "Fleischer, Jason",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1728/Jason-Fleischer"
+        },
+        {
+          "name": "Franklin, Manoj",
+          "source_profile": "https://ece.umd.edu/clark/faculty/394/Manoj-Franklin"
+        },
+        {
+          "name": "Fu, Michael",
+          "source_profile": "https://ece.umd.edu/clark/faculty/395/Michael-Fu"
+        },
+        {
+          "name": "Gan, Yu",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2051/Yu-Gan"
+        },
+        {
+          "name": "Ghodssi, Reza",
+          "source_profile": "https://ece.umd.edu/clark/faculty/396/Reza-Ghodssi"
+        },
+        {
+          "name": "Goldhar, Julius",
+          "source_profile": "https://ece.umd.edu/clark/faculty/397/Julius-Goldhar"
+        },
+        {
+          "name": "Goldsman, Neil",
+          "source_profile": "https://ece.umd.edu/clark/faculty/398/Neil-Goldsman"
+        },
+        {
+          "name": "Goldstein, Thomas",
+          "source_profile": "https://ece.umd.edu/clark/faculty/988/Thomas-Goldstein"
+        },
+        {
+          "name": "Gomez, Romel",
+          "source_profile": "https://ece.umd.edu/clark/faculty/399/Romel-Gomez"
+        },
+        {
+          "name": "Gong, Cheng",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1203/Cheng-Gong"
+        },
+        {
+          "name": "Granatstein, Victor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/400/Victor-Granatstein"
+        },
+        {
+          "name": "Grutter, Karen",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1732/Karen-Grutter"
+        },
+        {
+          "name": "Guha, Saikat",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1891/Saikat-Guha"
+        },
+        {
+          "name": "Hafezi, Mohammad",
+          "source_profile": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi"
+        },
+        {
+          "name": "Harger, Robert O.     IN MEMORIAM",
+          "source_profile": "https://ece.umd.edu/clark/faculty/405/Robert-O-----IN-MEMORIAM-Harger"
+        },
+        {
+          "name": "Harris, Andrew",
+          "source_profile": "https://ece.umd.edu/clark/faculty/406/Andrew-Harris"
+        },
+        {
+          "name": "Hawkins, Bill",
+          "source_profile": "https://ece.umd.edu/clark/faculty/407/Bill-Hawkins"
+        },
+        {
+          "name": "Ho, Ping-Tong",
+          "source_profile": "https://ece.umd.edu/clark/faculty/409/PingTong-Ho"
+        },
+        {
+          "name": "Hollingsworth, Jeffery",
+          "source_profile": "https://ece.umd.edu/clark/faculty/410/Jeffery-Hollingsworth"
+        },
+        {
+          "name": "Horiuchi, Timothy",
+          "source_profile": "https://ece.umd.edu/clark/faculty/411/Timothy-Horiuchi"
+        },
+        {
+          "name": "Huang, Furong",
+          "source_profile": "https://ece.umd.edu/clark/faculty/989/Furong-Huang"
+        },
+        {
+          "name": "Huang, Heng",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1936/Heng-Huang"
+        },
+        {
+          "name": "Iliadis, Agis",
+          "source_profile": "https://ece.umd.edu/clark/faculty/412/Agis-Iliadis"
+        },
+        {
+          "name": "Jacobs, David",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1431/David-Jacobs"
+        },
+        {
+          "name": "JaJa, Joseph",
+          "source_profile": "https://ece.umd.edu/clark/faculty/415/Joseph-JaJa"
+        },
+        {
+          "name": "Kashef, Mohamed",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2036/Mohamed-Kashef"
+        },
+        {
+          "name": "Khaligh, Alireza",
+          "source_profile": "https://ece.umd.edu/clark/faculty/417/Alireza-Khaligh"
+        },
+        {
+          "name": "Khandani, Mehdi Kalantari",
+          "source_profile": "https://ece.umd.edu/clark/faculty/808/Mehdi-Kalantari-Khandani"
+        },
+        {
+          "name": "Kollár, Alicia",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r"
+        },
+        {
+          "name": "Krishnaprasad, P. S.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/423/P-S-Krishnaprasad"
+        },
+        {
+          "name": "Kusne, Aaron Gilad",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2026/Aaron-Gilad-Kusne"
+        },
+        {
+          "name": "Kwon, Yonghwi",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1845/Yonghwi-Kwon"
+        },
+        {
+          "name": "La, Richard J.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/424/Richard-J-La"
+        },
+        {
+          "name": "Landreman, Matt",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman"
+        },
+        {
+          "name": "Lathrop, Daniel",
+          "source_profile": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop"
+        },
+        {
+          "name": "Lawson, Wesley",
+          "source_profile": "https://ece.umd.edu/clark/faculty/426/Wesley-Lawson"
+        },
+        {
+          "name": "Le, Son T.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1726/Son-T-Le"
+        },
+        {
+          "name": "Lee, C.H.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/428/CH-Lee"
+        },
+        {
+          "name": "Levin, David",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1243/David-Levin"
+        },
+        {
+          "name": "Levine, William",
+          "source_profile": "https://ece.umd.edu/clark/faculty/430/William-Levine"
+        },
+        {
+          "name": "Li, Ang",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1839/Ang-Li"
+        },
+        {
+          "name": "Lin, Ming",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1314/Ming-Lin"
+        },
+        {
+          "name": "Mait, Joseph",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1755/Joseph-Mait"
+        },
+        {
+          "name": "Makowski, Armand",
+          "source_profile": "https://ece.umd.edu/clark/faculty/433/Armand-Makowski"
+        },
+        {
+          "name": "Manikonda, Vikram",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2022/Vikram-Manikonda"
+        },
+        {
+          "name": "Manocha, Dinesh",
+          "source_profile": "https://ece.umd.edu/clark/faculty/901/Dinesh-Manocha"
+        },
+        {
+          "name": "Marcus, Steve",
+          "source_profile": "https://ece.umd.edu/clark/faculty/434/Steve-Marcus"
+        },
+        {
+          "name": "Martins, Nuno",
+          "source_profile": "https://ece.umd.edu/clark/faculty/435/Nuno-Martins"
+        },
+        {
+          "name": "Marzetta, Thomas",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2004/Thomas-Marzetta"
+        },
+        {
+          "name": "Mayergoyz, Isaak D.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/436/Isaak-D-Mayergoyz"
+        },
+        {
+          "name": "Mazurek, Michelle",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1040/Michelle-Mazurek"
+        },
+        {
+          "name": "Melngailis, John",
+          "source_profile": "https://ece.umd.edu/clark/faculty/439/John-Melngailis"
+        },
+        {
+          "name": "Metzler, Christopher",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1733/Christopher-Metzler"
+        },
+        {
+          "name": "Milchberg, Howard",
+          "source_profile": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg"
+        },
+        {
+          "name": "Mogul, Nicole",
+          "source_profile": "https://ece.umd.edu/clark/faculty/441/Nicole-Mogul"
+        },
+        {
+          "name": "Monroe, Christopher",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe"
+        },
+        {
+          "name": "Moody, Jason",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1729/Jason-Moody"
+        },
+        {
+          "name": "Moody, Jesse",
+          "source_profile": "https://ece.umd.edu/clark/faculty/2005/Jesse-Moody"
+        },
+        {
+          "name": "Murphy, Thomas E.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/443/Thomas-E-Murphy"
+        },
+        {
+          "name": "Narayan, Prakash",
+          "source_profile": "https://ece.umd.edu/clark/faculty/445/Prakash-Narayan"
+        },
+        {
+          "name": "Newcomb, Robert     IN MEMORIAM",
+          "source_profile": "https://ece.umd.edu/clark/faculty/446/Robert-----IN-MEMORIAM-Newcomb"
+        },
+        {
+          "name": "O'Shea, Patrick G.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/448/Patrick-G-O%27Shea"
+        },
+        {
+          "name": "Orloff, Jon",
+          "source_profile": "https://ece.umd.edu/clark/faculty/450/Jon-Orloff"
+        },
+        {
+          "name": "Oruc, A. Yavuz",
+          "source_profile": "https://ece.umd.edu/clark/faculty/451/A-Yavuz-Oruc"
+        },
+        {
+          "name": "Ott, Edward",
+          "source_profile": "https://ece.umd.edu/clark/faculty/452/Edward-Ott"
+        },
+        {
+          "name": "Paley, Derek A.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/58/Derek-A-Paley"
+        },
+        {
+          "name": "Papamarcou, Adrian",
+          "source_profile": "https://ece.umd.edu/clark/faculty/455/Adrian-Papamarcou"
+        },
+        {
+          "name": "Park, Donghun",
+          "source_profile": "https://ece.umd.edu/clark/faculty/456/Donghun-Park"
+        },
+        {
+          "name": "Peckerar, Martin",
+          "source_profile": "https://ece.umd.edu/clark/faculty/458/Martin-Peckerar"
+        },
+        {
+          "name": "Peng, Huaishu",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1764/Huaishu-Peng"
+        },
+        {
+          "name": "Pessoa, Luiz",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1039/Luiz-Pessoa"
+        },
+        {
+          "name": "Phaneuf, Ray",
+          "source_profile": "https://ece.umd.edu/clark/faculty/701/Ray-Phaneuf"
+        },
+        {
+          "name": "Pugsley, James",
+          "source_profile": "https://ece.umd.edu/clark/faculty/463/James-Pugsley"
+        },
+        {
+          "name": "Qu, Gang",
+          "source_profile": "https://ece.umd.edu/clark/faculty/464/Gang-Qu"
+        },
+        {
+          "name": "Rabin, Herbert",
+          "source_profile": "https://ece.umd.edu/clark/faculty/466/Herbert-Rabin"
+        },
+        {
+          "name": "Rabin, Oded",
+          "source_profile": "https://ece.umd.edu/clark/faculty/704/Oded-Rabin"
+        },
+        {
+          "name": "Raissi-Dehkordi, Majid",
+          "source_profile": "https://ece.umd.edu/clark/faculty/467/Majid-Raissi-Dehkordi"
+        },
+        {
+          "name": "Regli, William",
+          "source_profile": "https://ece.umd.edu/clark/faculty/902/William-Regli"
+        },
+        {
+          "name": "Rios Ocampo, Carlos A.",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1486/Carlos-A-Rios-Ocampo"
+        },
+        {
+          "name": "Romero, Danilo",
+          "source_profile": "https://ece.umd.edu/clark/faculty/994/Danilo-Romero"
+        },
+        {
+          "name": "Roy, Nirupam",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1878/Nirupam-Roy"
+        },
+        {
+          "name": "Rubloff, Gary",
+          "source_profile": "https://ece.umd.edu/clark/faculty/709/Gary-Rubloff"
+        },
+        {
+          "name": "Sajjad, Aqil",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1916/Aqil-Sajjad"
+        },
+        {
+          "name": "Shah, Sahil",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1398/Sahil-Shah"
+        },
+        {
+          "name": "Shaikhanov, Zhambyl",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1909/Zhambyl-Shaikhanov"
+        },
+        {
+          "name": "Shamma, Shihab",
+          "source_profile": "https://ece.umd.edu/clark/faculty/476/Shihab-Shamma"
+        },
+        {
+          "name": "Shayman, Mark",
+          "source_profile": "https://ece.umd.edu/clark/faculty/477/Mark-Shayman"
+        },
+        {
+          "name": "Shrivastava, Abhinav",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1399/Abhinav-Shrivastava"
+        },
+        {
+          "name": "Silio, Charles",
+          "source_profile": "https://ece.umd.edu/clark/faculty/480/Charles-Silio"
+        },
+        {
+          "name": "Simon, Jonathan",
+          "source_profile": "https://ece.umd.edu/clark/faculty/481/Jonathan-Simon"
+        },
+        {
+          "name": "Smela, Elisabeth",
+          "source_profile": "https://ece.umd.edu/clark/faculty/593/Elisabeth-Smela"
+        },
+        {
+          "name": "Sprangle, Phillip",
+          "source_profile": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle"
+        },
+        {
+          "name": "Srivastava, Ankur",
+          "source_profile": "https://ece.umd.edu/clark/faculty/484/Ankur-Srivastava"
+        },
+        {
+          "name": "Striffler, Charles",
+          "source_profile": "https://ece.umd.edu/clark/faculty/485/Charles-Striffler"
+        },
+        {
+          "name": "Takeuchi, Ichiro",
+          "source_profile": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi"
+        },
+        {
+          "name": "Thakker, Rikin",
+          "source_profile": "https://ece.umd.edu/clark/faculty/487/Rikin-Thakker"
+        },
+        {
+          "name": "Tiglao, Nestor",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1749/Nestor-Tiglao"
+        },
+        {
+          "name": "Tits, André",
+          "source_profile": "https://ece.umd.edu/clark/faculty/488/Andr-Tits"
+        },
+        {
+          "name": "Tokekar, Pratap",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1267/Pratap-Tokekar"
+        },
+        {
+          "name": "Tretter, Steven",
+          "source_profile": "https://ece.umd.edu/clark/faculty/489/Steven-Tretter"
+        },
+        {
+          "name": "Tubaldi, Eleonora",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1292/Eleonora-Tubaldi"
+        },
+        {
+          "name": "Ulukus, Sennur",
+          "source_profile": "https://ece.umd.edu/clark/faculty/490/Sennur-Ulukus"
+        },
+        {
+          "name": "Vishkin, Uzi",
+          "source_profile": "https://ece.umd.edu/clark/faculty/491/Uzi-Vishkin"
+        },
+        {
+          "name": "Waks, Edo",
+          "source_profile": "https://ece.umd.edu/clark/faculty/492/Edo-Waks"
+        },
+        {
+          "name": "Walsworth, Ronald",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1205/Ronald-Walsworth"
+        },
+        {
+          "name": "Wu, Jerry",
+          "source_profile": "https://ece.umd.edu/clark/faculty/496/Jerry-Wu"
+        },
+        {
+          "name": "Wu, Min",
+          "source_profile": "https://ece.umd.edu/clark/faculty/497/Min-Wu"
+        },
+        {
+          "name": "Xu, Nan",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1901/Nan-Xu"
+        },
+        {
+          "name": "Yeung, Donald",
+          "source_profile": "https://ece.umd.edu/clark/faculty/499/Donald-Yeung"
+        },
+        {
+          "name": "Yu, Cunxi",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1834/Cunxi-Yu"
+        },
+        {
+          "name": "Zaki, Kawthar",
+          "source_profile": "https://ece.umd.edu/clark/faculty/501/Kawthar-Zaki"
+        },
+        {
+          "name": "Zan, Xin",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1843/Xin-Zan"
+        },
+        {
+          "name": "Zhang, Kaiqing",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1748/Kaiqing-Zhang"
+        },
+        {
+          "name": "Zhou, You",
+          "source_profile": "https://ece.umd.edu/clark/faculty/1395/You-Zhou"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-ece-d91f6d97",
+        "faculty-umd-ece-5578ecf1",
+        "faculty-umd-ece-c068c59a",
+        "faculty-umd-ece-5904f3bd",
+        "faculty-umd-ece-5e531650",
+        "faculty-umd-ece-d9671a2e",
+        "faculty-umd-ece-d83bcaf6",
+        "faculty-umd-ece-1b1330fb",
+        "faculty-umd-ece-61f421a0",
+        "faculty-umd-ece-8dbb81d1",
+        "faculty-umd-ece-33ace4d5",
+        "faculty-umd-ece-bc86af7d",
+        "faculty-umd-ece-4d25a7a7",
+        "faculty-umd-ece-41653824",
+        "faculty-umd-ece-7d67bd26",
+        "faculty-umd-ece-303915f0",
+        "faculty-umd-ece-3189abed",
+        "faculty-umd-ece-c7f88dd5",
+        "faculty-umd-ece-634478c9",
+        "faculty-umd-ece-ffcc47bd",
+        "faculty-umd-ece-9dff1962",
+        "faculty-umd-ece-1ba8d2b3",
+        "faculty-umd-ece-d7c15a7f",
+        "faculty-umd-ece-a78ca554",
+        "faculty-umd-ece-691265c2",
+        "faculty-umd-ece-88a783b0",
+        "faculty-umd-ece-3d7d078d",
+        "faculty-umd-ece-e3a51028",
+        "faculty-umd-ece-f5794403",
+        "faculty-umd-ece-0c0963f5",
+        "faculty-umd-ece-adc694dd",
+        "faculty-umd-ece-e0197097",
+        "faculty-umd-ece-cc09c9c8",
+        "faculty-umd-ece-0e4fdb58",
+        "faculty-umd-ece-68e49f13",
+        "faculty-umd-ece-ab66fb78",
+        "faculty-umd-ece-ecd04252",
+        "faculty-umd-ece-232579d5",
+        "faculty-umd-ece-7e38774e",
+        "faculty-umd-ece-34afef5f",
+        "faculty-umd-ece-84fe424f",
+        "faculty-umd-ece-6265e55e",
+        "faculty-umd-ece-f68d027c",
+        "faculty-umd-ece-9e5f9d28",
+        "faculty-umd-ece-9bbdab9b",
+        "faculty-umd-ece-93ce4157",
+        "faculty-umd-ece-f29ff69e",
+        "faculty-umd-ece-c14eee59",
+        "faculty-umd-ece-0dedcc9d",
+        "faculty-umd-ece-c83975fd",
+        "faculty-umd-ece-ad345634",
+        "faculty-umd-ece-017967c9",
+        "faculty-umd-ece-df3064ce",
+        "faculty-umd-ece-29f9cec3",
+        "faculty-umd-ece-6f0c7ddb",
+        "faculty-umd-ece-11021992",
+        "faculty-umd-ece-1e2820e0",
+        "faculty-umd-ece-66cbda3e",
+        "faculty-umd-ece-b03efecc",
+        "faculty-umd-ece-515b72eb",
+        "faculty-umd-ece-f34789e6",
+        "faculty-umd-ece-cd88044e",
+        "faculty-umd-ece-0912e477",
+        "faculty-umd-ece-247c1b08",
+        "faculty-umd-ece-f3c2786f",
+        "faculty-umd-ece-f49e3f74",
+        "faculty-umd-ece-e9453c5d",
+        "faculty-umd-ece-06451585",
+        "faculty-umd-ece-0a1fd506",
+        "faculty-umd-ece-97413a76",
+        "faculty-umd-ece-3d413ed9",
+        "faculty-umd-ece-a99cea66",
+        "faculty-umd-ece-0dd319b1",
+        "faculty-umd-ece-93a9500c",
+        "faculty-umd-ece-73a01361",
+        "faculty-umd-ece-3a49c280",
+        "faculty-umd-ece-d87a9814",
+        "faculty-umd-ece-61d19ff9",
+        "faculty-umd-ece-77bd3dc3",
+        "faculty-umd-ece-3d5297d8",
+        "faculty-umd-ece-8abc3864",
+        "faculty-umd-ece-136ea85f",
+        "faculty-umd-ece-c4e42575",
+        "faculty-umd-ece-52eda433",
+        "faculty-umd-ece-4ba79ca9",
+        "faculty-umd-ece-54038ba0",
+        "faculty-umd-ece-2b62a8ea",
+        "faculty-umd-ece-cf2e218a",
+        "faculty-umd-ece-82f466b0",
+        "faculty-umd-ece-e43d2c35",
+        "faculty-umd-ece-de6bbf0c",
+        "faculty-umd-ece-5e53667f",
+        "faculty-umd-ece-0a43afb8",
+        "faculty-umd-ece-9c825e55",
+        "faculty-umd-ece-646fa13f",
+        "faculty-umd-ece-b24ce301",
+        "faculty-umd-ece-064a343d",
+        "faculty-umd-ece-6ff8415f",
+        "faculty-umd-ece-169be80e",
+        "faculty-umd-ece-1fe07ac6",
+        "faculty-umd-ece-e208a274",
+        "faculty-umd-ece-30842815",
+        "faculty-umd-ece-119a91a4",
+        "faculty-umd-ece-3b1079a9",
+        "faculty-umd-ece-82cea1e0",
+        "faculty-umd-ece-d124868c",
+        "faculty-umd-ece-09b45e43",
+        "faculty-umd-ece-dd63d024",
+        "faculty-umd-ece-1de15cb6",
+        "faculty-umd-ece-26492e6c",
+        "faculty-umd-ece-eff58b4b",
+        "faculty-umd-ece-06b70a1b",
+        "faculty-umd-ece-8a237331",
+        "faculty-umd-ece-bbcbbe3b",
+        "faculty-umd-ece-1ee5e9ab",
+        "faculty-umd-ece-a8f411d5",
+        "faculty-umd-ece-b2004e9b",
+        "faculty-umd-ece-67422909",
+        "faculty-umd-ece-26acc17d",
+        "faculty-umd-ece-4e57a84f",
+        "faculty-umd-ece-35f24f7f"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1",
+          "c6c63e8773f9bba0df908b8ce626ceb570dcf87f572332b04ac2340dd8531ed5"
+        ],
+        [
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "14695294588228d2f8ca36a03511b6e62332ac841abca388b4a38dd32467b9bf"
+        ],
+        [
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=2",
+          "2f44780bd1148719a170f63917d5b65f978706bc8212cb14f659916d5212adf0"
+        ],
+        [
+          "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=3",
+          "83fbe61a0e8d716a5e105cc87f7292fbdb613b787d8beea383f9a6228ff95ada"
+        ]
+      ]
+    },
+    "me": {
+      "official_card_count": 111,
+      "old_eligible_count": 70,
+      "fixed_eligible_count": 73,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 38,
+      "roster_people": [
+        {
+          "name": "Agonafer, Damena",
+          "source_profile": "https://me.umd.edu/clark/faculty/1724/Damena-Agonafer"
+        },
+        {
+          "name": "Ainane, Sami",
+          "source_profile": "https://me.umd.edu/clark/faculty/1313/Sami-Ainane"
+        },
+        {
+          "name": "Aute, Vikrant C.",
+          "source_profile": "https://me.umd.edu/clark/faculty/505/Vikrant-C-Aute"
+        },
+        {
+          "name": "Azarian, Michael",
+          "source_profile": "https://me.umd.edu/clark/faculty/506/Michael-Azarian"
+        },
+        {
+          "name": "Azarm, Shapour",
+          "source_profile": "https://me.umd.edu/clark/faculty/507/Shapour-Azarm"
+        },
+        {
+          "name": "Balachandran, Balakumar",
+          "source_profile": "https://me.umd.edu/clark/faculty/508/Balakumar-Balachandran"
+        },
+        {
+          "name": "Baz, Amr",
+          "source_profile": "https://me.umd.edu/clark/faculty/511/Amr-Baz"
+        },
+        {
+          "name": "Berger, Dr. Bruce S.",
+          "source_profile": "https://me.umd.edu/clark/faculty/513/Dr-Bruce-S-Berger"
+        },
+        {
+          "name": "Bernard, Peter",
+          "source_profile": "https://me.umd.edu/clark/faculty/515/Peter-Bernard"
+        },
+        {
+          "name": "Bigio, David",
+          "source_profile": "https://me.umd.edu/clark/faculty/516/David-Bigio"
+        },
+        {
+          "name": "Bruck, Hugh",
+          "source_profile": "https://me.umd.edu/clark/faculty/517/Hugh-Bruck"
+        },
+        {
+          "name": "Brundage, Michael",
+          "source_profile": "https://me.umd.edu/clark/faculty/1823/Michael-Brundage"
+        },
+        {
+          "name": "Buckley, Jr., Dr. Frank T.",
+          "source_profile": "https://me.umd.edu/clark/faculty/518/Jr-Dr-Frank-T-Buckley"
+        },
+        {
+          "name": "Carton, Molly",
+          "source_profile": "https://me.umd.edu/clark/faculty/1953/Molly-Carton"
+        },
+        {
+          "name": "Chen, Bo",
+          "source_profile": "https://me.umd.edu/clark/faculty/1952/Bo-Chen"
+        },
+        {
+          "name": "Cheng, Lin",
+          "source_profile": "https://me.umd.edu/clark/faculty/1917/Lin-Cheng"
+        },
+        {
+          "name": "Chopra, Nikhil",
+          "source_profile": "https://me.umd.edu/clark/faculty/520/Nikhil-Chopra"
+        },
+        {
+          "name": "Christou, Aris",
+          "source_profile": "https://me.umd.edu/clark/faculty/652/Aris-Christou"
+        },
+        {
+          "name": "Chung, Peter W.",
+          "source_profile": "https://me.umd.edu/clark/faculty/522/Peter-W-Chung"
+        },
+        {
+          "name": "Cleanthous, Aris",
+          "source_profile": "https://me.umd.edu/clark/faculty/1107/Aris-Cleanthous"
+        },
+        {
+          "name": "Cukier, Michel",
+          "source_profile": "https://me.umd.edu/clark/faculty/523/Michel-Cukier"
+        },
+        {
+          "name": "Cunniff, Dr. Patrick F.",
+          "source_profile": "https://me.umd.edu/clark/faculty/524/Dr-Patrick-F-Cunniff"
+        },
+        {
+          "name": "Dally, James W.",
+          "source_profile": "https://me.umd.edu/clark/faculty/525/James-W-Dally"
+        },
+        {
+          "name": "Dankowicz, Harry",
+          "source_profile": "https://me.umd.edu/clark/faculty/1868/Harry-Dankowicz"
+        },
+        {
+          "name": "Das, Diganta",
+          "source_profile": "https://me.umd.edu/clark/faculty/526/Diganta-Das"
+        },
+        {
+          "name": "Das, Siddhartha",
+          "source_profile": "https://me.umd.edu/clark/faculty/527/Siddhartha-Das"
+        },
+        {
+          "name": "Dasgupta, Abhijit",
+          "source_profile": "https://me.umd.edu/clark/faculty/528/Abhijit-Dasgupta"
+        },
+        {
+          "name": "DeVoe, Don",
+          "source_profile": "https://me.umd.edu/clark/faculty/531/Don-DeVoe"
+        },
+        {
+          "name": "Diaz-Mercado, Yancy",
+          "source_profile": "https://me.umd.edu/clark/faculty/900/Yancy-Diaz-Mercado"
+        },
+        {
+          "name": "diMarzo, Marino",
+          "source_profile": "https://me.umd.edu/clark/faculty/615/Marino-diMarzo"
+        },
+        {
+          "name": "Duncan, James",
+          "source_profile": "https://me.umd.edu/clark/faculty/535/James-Duncan"
+        },
+        {
+          "name": "Dutt, Avik",
+          "source_profile": "https://me.umd.edu/clark/faculty/1661/Avik-Dutt"
+        },
+        {
+          "name": "Fathy, Hosam",
+          "source_profile": "https://me.umd.edu/clark/faculty/1216/Hosam-Fathy"
+        },
+        {
+          "name": "Fazelpour, Mohammad",
+          "source_profile": "https://me.umd.edu/clark/faculty/1304/Mohammad-Fazelpour"
+        },
+        {
+          "name": "Fischell, Robert E.",
+          "source_profile": "https://me.umd.edu/clark/faculty/1197/Robert-E-Fischell"
+        },
+        {
+          "name": "Fourney, William",
+          "source_profile": "https://me.umd.edu/clark/faculty/22/William-Fourney"
+        },
+        {
+          "name": "Fuge, Mark D.",
+          "source_profile": "https://me.umd.edu/clark/faculty/539/Mark-D-Fuge"
+        },
+        {
+          "name": "Gabriel, Steven A.",
+          "source_profile": "https://me.umd.edu/clark/faculty/540/Steven-A-Gabriel"
+        },
+        {
+          "name": "Giri, Ashutosh",
+          "source_profile": "https://me.umd.edu/clark/faculty/2038/Ashutosh-Giri"
+        },
+        {
+          "name": "Graham, Jr., Samuel",
+          "source_profile": "https://me.umd.edu/clark/faculty/1618/Samuel-GrahamJr"
+        },
+        {
+          "name": "Groth, Katrina",
+          "source_profile": "https://me.umd.edu/clark/faculty/807/Katrina-Groth"
+        },
+        {
+          "name": "Gupta, Ashwani K.",
+          "source_profile": "https://me.umd.edu/clark/faculty/542/Ashwani-K-Gupta"
+        },
+        {
+          "name": "Hahn, Jin-Oh",
+          "source_profile": "https://me.umd.edu/clark/faculty/545/JinOh-Hahn"
+        },
+        {
+          "name": "Hamilton, Leonard",
+          "source_profile": "https://me.umd.edu/clark/faculty/1190/Leonard-Hamilton"
+        },
+        {
+          "name": "Han, Bongtae",
+          "source_profile": "https://me.umd.edu/clark/faculty/546/Bongtae-Han"
+        },
+        {
+          "name": "Helu, Moneer",
+          "source_profile": "https://me.umd.edu/clark/faculty/1854/Moneer-Helu"
+        },
+        {
+          "name": "Hu, Liangbing",
+          "source_profile": "https://me.umd.edu/clark/faculty/669/Liangbing-Hu"
+        },
+        {
+          "name": "Huertas Cerdeira, Cecilia",
+          "source_profile": "https://me.umd.edu/clark/faculty/1617/Cecilia-Huertas-Cerdeira"
+        },
+        {
+          "name": "Huitink, David",
+          "source_profile": "https://me.umd.edu/clark/faculty/1920/David-Huitink"
+        },
+        {
+          "name": "Hwang, Yunho",
+          "source_profile": "https://me.umd.edu/clark/faculty/549/Yunho-Hwang"
+        },
+        {
+          "name": "Kiger, Kenneth",
+          "source_profile": "https://me.umd.edu/clark/faculty/554/Kenneth-Kiger"
+        },
+        {
+          "name": "Kim, Jeong H.",
+          "source_profile": "https://me.umd.edu/clark/faculty/421/Jeong-H-Kim"
+        },
+        {
+          "name": "Kim, Jungho",
+          "source_profile": "https://me.umd.edu/clark/faculty/556/Jungho-Kim"
+        },
+        {
+          "name": "Kirk, Dr. James A.",
+          "source_profile": "https://me.umd.edu/clark/faculty/557/Dr-James-A-Kirk"
+        },
+        {
+          "name": "Kriesberg, David",
+          "source_profile": "https://me.umd.edu/clark/faculty/1625/David-Kriesberg"
+        },
+        {
+          "name": "Krivtsov, Vasiliy",
+          "source_profile": "https://me.umd.edu/clark/faculty/1030/Vasiliy-Krivtsov"
+        },
+        {
+          "name": "Kumar, Sunil",
+          "source_profile": "https://me.umd.edu/clark/faculty/1996/Sunil-Kumar"
+        },
+        {
+          "name": "Larsson, Johan",
+          "source_profile": "https://me.umd.edu/clark/faculty/558/Johan-Larsson"
+        },
+        {
+          "name": "Lee, Jay",
+          "source_profile": "https://me.umd.edu/clark/faculty/1772/Jay-Lee"
+        },
+        {
+          "name": "Lejeune, Miguel",
+          "source_profile": "https://me.umd.edu/clark/faculty/1919/Miguel-Lejeune"
+        },
+        {
+          "name": "Li, Teng",
+          "source_profile": "https://me.umd.edu/clark/faculty/559/Teng-Li"
+        },
+        {
+          "name": "Lin, Lingnan",
+          "source_profile": "https://me.umd.edu/clark/faculty/1948/Lingnan-Lin"
+        },
+        {
+          "name": "Liu, Xinan",
+          "source_profile": "https://me.umd.edu/clark/faculty/562/Xinan-Liu"
+        },
+        {
+          "name": "Magrab, Dr. Edward B.",
+          "source_profile": "https://me.umd.edu/clark/faculty/564/Dr-Edward-B-Magrab"
+        },
+        {
+          "name": "Marks, Dr. Colin",
+          "source_profile": "https://me.umd.edu/clark/faculty/565/Dr-Colin-Marks"
+        },
+        {
+          "name": "Massoud, Mahmoud",
+          "source_profile": "https://me.umd.edu/clark/faculty/689/Mahmoud-Massoud"
+        },
+        {
+          "name": "McCluskey, F. Patrick",
+          "source_profile": "https://me.umd.edu/clark/faculty/567/F-Patrick-McCluskey"
+        },
+        {
+          "name": "McGregor, Davis",
+          "source_profile": "https://me.umd.edu/clark/faculty/1858/Davis-McGregor"
+        },
+        {
+          "name": "Mitchell, Steve",
+          "source_profile": "https://me.umd.edu/clark/faculty/1165/Steve-Mitchell"
+        },
+        {
+          "name": "Modarres, Mohammad",
+          "source_profile": "https://me.umd.edu/clark/faculty/568/Mohammad-Modarres"
+        },
+        {
+          "name": "Mosleh, Dr. Ali",
+          "source_profile": "https://me.umd.edu/clark/faculty/569/Dr-Ali-Mosleh"
+        },
+        {
+          "name": "Mote Jr., C.D. (Dan)",
+          "source_profile": "https://me.umd.edu/clark/faculty/570/CD-Dan-Mote-Jr"
+        },
+        {
+          "name": "Muehlbauer, Jan",
+          "source_profile": "https://me.umd.edu/clark/faculty/1290/Jan-Muehlbauer"
+        },
+        {
+          "name": "Nguyen, Vincent",
+          "source_profile": "https://me.umd.edu/clark/faculty/1188/Vincent-Nguyen"
+        },
+        {
+          "name": "Ni, Shuna",
+          "source_profile": "https://me.umd.edu/clark/faculty/1704/Shuna-Ni"
+        },
+        {
+          "name": "Ohadi, Michael",
+          "source_profile": "https://me.umd.edu/clark/faculty/571/Michael-Ohadi"
+        },
+        {
+          "name": "Osterman, Michael",
+          "source_profile": "https://me.umd.edu/clark/faculty/573/Michael-Osterman"
+        },
+        {
+          "name": "Pecht, Michael",
+          "source_profile": "https://me.umd.edu/clark/faculty/574/Michael-Pecht"
+        },
+        {
+          "name": "Piomelli, Dr. Ugo",
+          "source_profile": "https://me.umd.edu/clark/faculty/576/Dr-Ugo-Piomelli"
+        },
+        {
+          "name": "Pourgol, Mohammad",
+          "source_profile": "https://me.umd.edu/clark/faculty/1400/Mohammad-Pourgol"
+        },
+        {
+          "name": "Raffan-Montoya, Fernando",
+          "source_profile": "https://me.umd.edu/clark/faculty/923/Fernando-Raffan-Montoya"
+        },
+        {
+          "name": "Regli, William",
+          "source_profile": "https://me.umd.edu/clark/faculty/902/William-Regli"
+        },
+        {
+          "name": "Riaz, Amir",
+          "source_profile": "https://me.umd.edu/clark/faculty/579/Amir-Riaz"
+        },
+        {
+          "name": "Roush, Dr. Marvin",
+          "source_profile": "https://me.umd.edu/clark/faculty/581/Dr-Marvin-Roush"
+        },
+        {
+          "name": "Sandborn, Peter",
+          "source_profile": "https://me.umd.edu/clark/faculty/582/Peter-Sandborn"
+        },
+        {
+          "name": "Sanford, Dr. R. J.",
+          "source_profile": "https://me.umd.edu/clark/faculty/583/Dr-R-J-Sanford"
+        },
+        {
+          "name": "Sauret, Alban",
+          "source_profile": "https://me.umd.edu/clark/faculty/1918/Alban-Sauret"
+        },
+        {
+          "name": "Semerjian, Dr. Hratch G.",
+          "source_profile": "https://me.umd.edu/clark/faculty/587/Dr-Hratch-G-Semerjian"
+        },
+        {
+          "name": "Sengers, Jan V.",
+          "source_profile": "https://me.umd.edu/clark/faculty/336/Jan-V-Sengers"
+        },
+        {
+          "name": "Shooshtari, Amir",
+          "source_profile": "https://me.umd.edu/clark/faculty/591/Amir-Shooshtari"
+        },
+        {
+          "name": "Smela, Elisabeth",
+          "source_profile": "https://me.umd.edu/clark/faculty/593/Elisabeth-Smela"
+        },
+        {
+          "name": "Sochol, Ryan D.",
+          "source_profile": "https://me.umd.edu/clark/faculty/595/Ryan-D-Sochol"
+        },
+        {
+          "name": "Srebric, Jelena",
+          "source_profile": "https://me.umd.edu/clark/faculty/597/Jelena-Srebric"
+        },
+        {
+          "name": "Stoliarov, Stanislav I.",
+          "source_profile": "https://me.umd.edu/clark/faculty/632/Stanislav-I-Stoliarov"
+        },
+        {
+          "name": "Sunderland, Peter B.",
+          "source_profile": "https://me.umd.edu/clark/faculty/633/Peter-B-Sunderland"
+        },
+        {
+          "name": "Thamire, Chandrasekhar",
+          "source_profile": "https://me.umd.edu/clark/faculty/600/Chandrasekhar-Thamire"
+        },
+        {
+          "name": "Tohidi, Ali",
+          "source_profile": "https://me.umd.edu/clark/faculty/1957/Ali-Tohidi"
+        },
+        {
+          "name": "Trouvé, Arnaud",
+          "source_profile": "https://me.umd.edu/clark/faculty/601/Arnaud-Trouv%C3%A9"
+        },
+        {
+          "name": "Tubaldi, Eleonora",
+          "source_profile": "https://me.umd.edu/clark/faculty/1292/Eleonora-Tubaldi"
+        },
+        {
+          "name": "Utter, Robert",
+          "source_profile": "https://me.umd.edu/clark/faculty/1995/Robert-Utter"
+        },
+        {
+          "name": "Valentino, Gianna",
+          "source_profile": "https://me.umd.edu/clark/faculty/1754/Gianna-Valentino"
+        },
+        {
+          "name": "VanGessel, Frank",
+          "source_profile": "https://me.umd.edu/clark/faculty/1694/Frank-VanGessel"
+        },
+        {
+          "name": "Vaughn-Cooke, Monifa",
+          "source_profile": "https://me.umd.edu/clark/faculty/602/Monifa-Vaughn-Cooke"
+        },
+        {
+          "name": "Wallace, James",
+          "source_profile": "https://me.umd.edu/clark/faculty/603/James-Wallace"
+        },
+        {
+          "name": "Walston, Dr. William H.",
+          "source_profile": "https://me.umd.edu/clark/faculty/604/Dr-William-H-Walston"
+        },
+        {
+          "name": "Weiss, Brian",
+          "source_profile": "https://me.umd.edu/clark/faculty/1824/Brian-Weiss"
+        },
+        {
+          "name": "Wu, Lianping",
+          "source_profile": "https://me.umd.edu/clark/faculty/1997/Lianping-Wu"
+        },
+        {
+          "name": "Yang, Bao",
+          "source_profile": "https://me.umd.edu/clark/faculty/605/Bao-Yang"
+        },
+        {
+          "name": "Yu, Miao",
+          "source_profile": "https://me.umd.edu/clark/faculty/607/Miao-Yu"
+        },
+        {
+          "name": "Zhao, Yunfei",
+          "source_profile": "https://me.umd.edu/clark/faculty/1771/Yunfei-Zhao"
+        },
+        {
+          "name": "Zhu, Shengwei",
+          "source_profile": "https://me.umd.edu/clark/faculty/1371/Shengwei-Zhu"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-me-d38ca93b",
+        "faculty-umd-me-396ffcc9",
+        "faculty-umd-me-a74c0cee",
+        "faculty-umd-me-33f13b92",
+        "faculty-umd-me-fd6686b8",
+        "faculty-umd-me-ec08035f",
+        "faculty-umd-me-6da75989",
+        "faculty-umd-me-9ea74549",
+        "faculty-umd-me-85f51838",
+        "faculty-umd-me-9d32f017",
+        "faculty-umd-me-10832408",
+        "faculty-umd-me-bbb09df6",
+        "faculty-umd-me-9681597e",
+        "faculty-umd-me-5e5cd6fd",
+        "faculty-umd-me-de45d74a",
+        "faculty-umd-me-5e14cc93",
+        "faculty-umd-me-ffb06f80",
+        "faculty-umd-me-0c3bb5f0",
+        "faculty-umd-me-e086845e",
+        "faculty-umd-me-76adda01",
+        "faculty-umd-me-4d859222",
+        "faculty-umd-me-bfc6e028",
+        "faculty-umd-me-abb6ced9",
+        "faculty-umd-me-146a254f",
+        "faculty-umd-me-cc99fcf3",
+        "faculty-umd-me-50780b9a",
+        "faculty-umd-me-bc8c8851",
+        "faculty-umd-me-7fffcff0",
+        "faculty-umd-me-13e2e88b",
+        "faculty-umd-me-efa878ed",
+        "faculty-umd-me-d386959d",
+        "faculty-umd-me-1ef16fa5",
+        "faculty-umd-me-1482543a",
+        "faculty-umd-me-a0aeec05",
+        "faculty-umd-me-5a00ac8f",
+        "faculty-umd-me-b2cff253",
+        "faculty-umd-me-f2fee549",
+        "faculty-umd-me-8a5099cb",
+        "faculty-umd-me-8698a5ab",
+        "faculty-umd-me-d555c5ba",
+        "faculty-umd-me-7d47b680",
+        "faculty-umd-me-0ebe4bde",
+        "faculty-umd-me-da63225b",
+        "faculty-umd-me-90373c69",
+        "faculty-umd-me-116e9f88",
+        "faculty-umd-me-97385b53",
+        "faculty-umd-me-4fb4bb5d",
+        "faculty-umd-me-1bfc5707",
+        "faculty-umd-me-478d65a5",
+        "faculty-umd-me-d34d5e86",
+        "faculty-umd-me-99ad3160",
+        "faculty-umd-me-b405ddb9",
+        "faculty-umd-me-023c1854",
+        "faculty-umd-me-10c31d1d",
+        "faculty-umd-me-48223b40",
+        "faculty-umd-me-ee79f2bb",
+        "faculty-umd-me-40daa4e1",
+        "faculty-umd-me-b239f1a5",
+        "faculty-umd-me-d1f93059",
+        "faculty-umd-me-906ad57a",
+        "faculty-umd-me-e18b0e16",
+        "faculty-umd-me-816c5897",
+        "faculty-umd-me-fa69cfd7",
+        "faculty-umd-me-4f948215",
+        "faculty-umd-me-40a565a4",
+        "faculty-umd-me-4098394b"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1",
+          "48100c44d4045e32fa677a9909d50c3db9b09a3419f11e54c5d437a7f92e17a7"
+        ],
+        [
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "62aa29496399c70cd4945997e19c5214efd2efe8fa0d9a3cb3d0dac3021a2410"
+        ],
+        [
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=2",
+          "b2230f2a5eeab2c9648d5bbe50c1220a44d5344a140f845f5d6e8dcf4ecc4ab8"
+        ],
+        [
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=3",
+          "15c8f69ad0a370cfcec177e2a190940c871744e1e382fad58931ddf8df452b68"
+        ],
+        [
+          "https://enme.umd.edu/clark/facultydir?drfilter=-1&page=4",
+          "8e446f3bbace1e33928a577bcb54b455928ae134b6f755c2cf0a3eedd8ea4ee4"
+        ]
+      ]
+    },
+    "bioe": {
+      "official_card_count": 68,
+      "old_eligible_count": 51,
+      "fixed_eligible_count": 54,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 14,
+      "roster_people": [
+        {
+          "name": "Anastasiadis, Pavlos",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1961/Pavlos-Anastasiadis"
+        },
+        {
+          "name": "Aranda-Espinoza, Helim",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/82/Helim-Aranda-Espinoza"
+        },
+        {
+          "name": "Azarnoosh, Jimmy",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1973/Jimmy-Azarnoosh"
+        },
+        {
+          "name": "Bentley, William E.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/89/William-E-Bentley"
+        },
+        {
+          "name": "Blair, Brian",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1436/Brian-Blair"
+        },
+        {
+          "name": "Callura, Jarred",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1437/Jarred-Callura"
+        },
+        {
+          "name": "Cattaneo, Maurizio",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1449/Maurizio-Cattaneo"
+        },
+        {
+          "name": "Cleary, Kevin",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1465/Kevin-Cleary"
+        },
+        {
+          "name": "Clyne, Alisa Morss",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne"
+        },
+        {
+          "name": "Cooksey, Gregory",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1761/Gregory-Cooksey"
+        },
+        {
+          "name": "Doctor, Allan",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2012/Allan-Doctor"
+        },
+        {
+          "name": "Duncan, Gregg",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/797/Gregg-Duncan"
+        },
+        {
+          "name": "Eisenstein, Edward",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/123/Edward-Eisenstein"
+        },
+        {
+          "name": "Fernandes, Rohan",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1083/Rohan-Fernandes"
+        },
+        {
+          "name": "Fischell, Robert E.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1197/Robert-E-Fischell"
+        },
+        {
+          "name": "Fisher, John",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/127/John-Fisher"
+        },
+        {
+          "name": "Gan, Yu",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2051/Yu-Gan"
+        },
+        {
+          "name": "Goldberg, Deborah S.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/320/Deborah-S-Goldberg"
+        },
+        {
+          "name": "Hasday, Jeffery",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2013/Jeffery-Hasday"
+        },
+        {
+          "name": "Herold, Keith",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/137/Keith-Herold"
+        },
+        {
+          "name": "Huang, Huang Chiao",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/798/Huang-Chiao-Huang"
+        },
+        {
+          "name": "Hughes, James",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1657/James-Hughes"
+        },
+        {
+          "name": "Inoue, Hiroshi",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/143/Hiroshi-Inoue"
+        },
+        {
+          "name": "Jay, Steven",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/145/Steven-Jay"
+        },
+        {
+          "name": "Jia, Xiaofeng",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1992/Xiaofeng-Jia"
+        },
+        {
+          "name": "Johnson, Arthur T.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/148/Arthur-T-Johnson"
+        },
+        {
+          "name": "Kahn, Jason",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/150/Jason-Kahn"
+        },
+        {
+          "name": "Karlsson, Amy J.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/322/Amy-J-Karlsson"
+        },
+        {
+          "name": "Kjellerup, Birthe",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/274/Birthe-Kjellerup"
+        },
+        {
+          "name": "Kofinas, Peter",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/159/Peter-Kofinas"
+        },
+        {
+          "name": "Koh, Kyung",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1720/Kyung-Koh"
+        },
+        {
+          "name": "Kondo, Beatrice",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1788/Beatrice-Kondo"
+        },
+        {
+          "name": "Korin, Netanel",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2049/Netanel-Korin"
+        },
+        {
+          "name": "Kuo, Catherine K.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1321/Catherine-K-Kuo"
+        },
+        {
+          "name": "Li, Xiaoyan",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1442/Xiaoyan-Li"
+        },
+        {
+          "name": "Losert, Wolfgang",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert"
+        },
+        {
+          "name": "Lowe, Tao",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1300/Tao-Lowe"
+        },
+        {
+          "name": "Luo, Yaguang",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1329/Yaguang-Luo"
+        },
+        {
+          "name": "Ma, Lan",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/167/Lan-Ma"
+        },
+        {
+          "name": "Maisel, Katharina",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1012/Katharina-Maisel"
+        },
+        {
+          "name": "Matysiak, Silvina",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/169/Silvina-Matysiak"
+        },
+        {
+          "name": "Mayer, Dirk",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1330/Dirk-Mayer"
+        },
+        {
+          "name": "Molinari, Sara",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1830/Sara-Molinari"
+        },
+        {
+          "name": "Moore, Erika",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1846/Erika-Moore"
+        },
+        {
+          "name": "Mueller, Jenna",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1320/Jenna-Mueller"
+        },
+        {
+          "name": "Ou, Wenquan",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1931/Wenquan-Ou"
+        },
+        {
+          "name": "Pick, Christian",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1758/Christian-Pick"
+        },
+        {
+          "name": "Raghavan, Srinivasa R.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/333/Srinivasa-R-Raghavan"
+        },
+        {
+          "name": "Ren, Lei",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2014/Lei-Ren"
+        },
+        {
+          "name": "Saeedi, Osamah",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1331/Osamah-Saeedi"
+        },
+        {
+          "name": "Scarcelli, Giuliano",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/199/Giuliano-Scarcelli"
+        },
+        {
+          "name": "Sherman, Jules",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1960/Jules-Sherman"
+        },
+        {
+          "name": "Siegel, Eliot",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1710/Eliot-Siegel"
+        },
+        {
+          "name": "Singh, Nevil",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2015/Nevil-Singh"
+        },
+        {
+          "name": "Sochol, Ryan D.",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/595/Ryan-D-Sochol"
+        },
+        {
+          "name": "Stroka, Kimberly",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/219/Kimberly-Stroka"
+        },
+        {
+          "name": "Tang, Cha-Min",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/2016/ChaMin-Tang"
+        },
+        {
+          "name": "Tao, Yang",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/222/Yang-Tao"
+        },
+        {
+          "name": "White, Ian",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/230/Ian-White"
+        },
+        {
+          "name": "Woodworth, Graeme",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1466/Graeme-Woodworth"
+        },
+        {
+          "name": "Wu, Zhongjun",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/800/Zhongjun-Wu"
+        },
+        {
+          "name": "Xu, Alexander",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1894/Alexander-Xu"
+        },
+        {
+          "name": "Xu, Nan",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1901/Nan-Xu"
+        },
+        {
+          "name": "Xu, Jiangsheng",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1444/Jiangsheng-Xu"
+        },
+        {
+          "name": "Yan, Li",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1443/Li-Yan"
+        },
+        {
+          "name": "Zhang, Li-Qun",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/801/LiQun-Zhang"
+        },
+        {
+          "name": "Zhang, Jitao",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1014/Jitao-Zhang"
+        },
+        {
+          "name": "Zierden, Hannah",
+          "source_profile": "https://bioe.umd.edu/clark/faculty/1693/Hannah-Zierden"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-bioe-8a517d70",
+        "faculty-umd-bioe-317de711",
+        "faculty-umd-bioe-995bd7ea",
+        "faculty-umd-bioe-fe9a6a06",
+        "faculty-umd-bioe-8e69f77a",
+        "faculty-umd-bioe-7d3a7d0a",
+        "faculty-umd-bioe-c37d1e80",
+        "faculty-umd-bioe-71fb22a9",
+        "faculty-umd-bioe-b53bcd65",
+        "faculty-umd-bioe-b583a25f",
+        "faculty-umd-bioe-7f9ec70b",
+        "faculty-umd-bioe-b488025e",
+        "faculty-umd-bioe-cdc55101",
+        "faculty-umd-bioe-1f125f8f",
+        "faculty-umd-bioe-f133724e",
+        "faculty-umd-bioe-e224400f",
+        "faculty-umd-bioe-ae154efb",
+        "faculty-umd-bioe-bef22290",
+        "faculty-umd-bioe-bce71f68",
+        "faculty-umd-bioe-b921d0a5",
+        "faculty-umd-bioe-4610ce38",
+        "faculty-umd-bioe-440d5429",
+        "faculty-umd-bioe-e87d1f53",
+        "faculty-umd-bioe-45804ba7",
+        "faculty-umd-bioe-fc0ab50d",
+        "faculty-umd-bioe-6ec7a078",
+        "faculty-umd-bioe-e0454353",
+        "faculty-umd-bioe-d965a0b8",
+        "faculty-umd-bioe-d4618493",
+        "faculty-umd-bioe-7fbc9d7e",
+        "faculty-umd-bioe-b9ce8dec",
+        "faculty-umd-bioe-d2f7727a",
+        "faculty-umd-bioe-2a352e22",
+        "faculty-umd-bioe-9b16ea25",
+        "faculty-umd-bioe-e6239b7f",
+        "faculty-umd-bioe-e4af2e3a",
+        "faculty-umd-bioe-7b15a930",
+        "faculty-umd-bioe-547863d6",
+        "faculty-umd-bioe-65a36f4b",
+        "faculty-umd-bioe-3c68f8eb",
+        "faculty-umd-bioe-f2bb88ce",
+        "faculty-umd-bioe-02c54bf1",
+        "faculty-umd-bioe-780ea6a5",
+        "faculty-umd-bioe-f119a584",
+        "faculty-umd-bioe-06295a11",
+        "faculty-umd-bioe-0288f662",
+        "faculty-umd-bioe-4efb01e8",
+        "faculty-umd-bioe-c93ce78a",
+        "faculty-umd-bioe-e5f77775",
+        "faculty-umd-bioe-96457eb1",
+        "faculty-umd-bioe-97a98a0f",
+        "faculty-umd-bioe-5137bd56",
+        "faculty-umd-bioe-107934fa",
+        "faculty-umd-bioe-be1ed42f",
+        "faculty-umd-bioe-1b91d9c6",
+        "faculty-umd-bioe-2ae64104",
+        "faculty-umd-bioe-50fb32f9",
+        "faculty-umd-bioe-fe574cb2",
+        "faculty-umd-bioe-19322222",
+        "faculty-umd-bioe-e3da5c6b",
+        "faculty-umd-bioe-b6e4f074",
+        "faculty-umd-bioe-5fe78bbb",
+        "faculty-umd-bioe-ad0be9e5",
+        "faculty-umd-bioe-35f5b84c",
+        "faculty-umd-bioe-04bf3aeb",
+        "faculty-umd-bioe-f9ecccb5",
+        "faculty-umd-bioe-c770780e",
+        "faculty-umd-bioe-b44e28c9",
+        "faculty-umd-bioe-2b3c8919",
+        "faculty-umd-bioe-80d0bf59",
+        "faculty-umd-bioe-a38c0e37",
+        "faculty-umd-bioe-d8dfe559",
+        "faculty-umd-bioe-40d6aeb5",
+        "faculty-umd-bioe-88a65201",
+        "faculty-umd-bioe-fb5cacf9",
+        "faculty-umd-bioe-ea0ff30d",
+        "faculty-umd-bioe-edcd7072",
+        "faculty-umd-bioe-19fc0846",
+        "faculty-umd-bioe-5af4cad2",
+        "faculty-umd-bioe-94ab4519",
+        "faculty-umd-bioe-b4828cde",
+        "faculty-umd-bioe-d3763d42",
+        "faculty-umd-bioe-77985d23",
+        "faculty-umd-bioe-6c94d279",
+        "faculty-umd-bioe-087bab40",
+        "faculty-umd-bioe-d18e5073",
+        "faculty-umd-bioe-808b407b",
+        "faculty-umd-bioe-6ec99857",
+        "faculty-umd-bioe-2005eb45",
+        "faculty-umd-bioe-6559775a",
+        "faculty-umd-bioe-d5c89211"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://bioe.umd.edu/clark/facultydir?drfilter=-1",
+          "35e343ad9a89be3e0d391e4bfd3557614af06eec8d3e778fff3c6470849efc1c"
+        ],
+        [
+          "https://bioe.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "2e2287e3aa234f1d6068deea5f98ffd43448cdfedf0aa1e5dda7464568aaa066"
+        ],
+        [
+          "https://bioe.umd.edu/clark/facultydir?drfilter=-1&page=2",
+          "e14908ecde2b6447bd3b4a5f598bd7d1d9aaa49716a41a9a8b440ff5ebb5bd96"
+        ]
+      ]
+    },
+    "ae": {
+      "official_card_count": 67,
+      "old_eligible_count": 50,
+      "fixed_eligible_count": 53,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 14,
+      "roster_people": [
+        {
+          "name": "Akin, David",
+          "source_profile": "https://aero.umd.edu/clark/faculty/3/David-Akin"
+        },
+        {
+          "name": "Allred, Aaron",
+          "source_profile": "https://aero.umd.edu/clark/faculty/2068/Aaron-Allred"
+        },
+        {
+          "name": "Anderson, Jr., John",
+          "source_profile": "https://aero.umd.edu/clark/faculty/4/John-AndersonJr"
+        },
+        {
+          "name": "Baeder, James",
+          "source_profile": "https://aero.umd.edu/clark/faculty/5/James-Baeder"
+        },
+        {
+          "name": "Balachandran, Balakumar",
+          "source_profile": "https://aero.umd.edu/clark/faculty/508/Balakumar-Balachandran"
+        },
+        {
+          "name": "Banes, Anthony Vincent",
+          "source_profile": "https://aero.umd.edu/clark/faculty/6/Anthony-Vincent-Banes"
+        },
+        {
+          "name": "Barbee, Brent W.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/7/Brent-W-Barbee"
+        },
+        {
+          "name": "Barlow, Jewel",
+          "source_profile": "https://aero.umd.edu/clark/faculty/8/Jewel-Barlow"
+        },
+        {
+          "name": "Beutner, Thomas",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1848/Thomas-Beutner"
+        },
+        {
+          "name": "Bhundiya, Harsh",
+          "source_profile": "https://aero.umd.edu/clark/faculty/2060/Harsh-Bhundiya"
+        },
+        {
+          "name": "Bowden, Mary",
+          "source_profile": "https://aero.umd.edu/clark/faculty/12/Mary-Bowden"
+        },
+        {
+          "name": "Brehm, Christoph",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1451/Christoph-Brehm"
+        },
+        {
+          "name": "Cadou, Christopher",
+          "source_profile": "https://aero.umd.edu/clark/faculty/13/Christopher-Cadou"
+        },
+        {
+          "name": "Carignan, Craig",
+          "source_profile": "https://aero.umd.edu/clark/faculty/14/Craig-Carignan"
+        },
+        {
+          "name": "Castano, Lina",
+          "source_profile": "https://aero.umd.edu/clark/faculty/15/Lina-Castano"
+        },
+        {
+          "name": "Celi, Roberto",
+          "source_profile": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi"
+        },
+        {
+          "name": "Choi, Young",
+          "source_profile": "https://aero.umd.edu/clark/faculty/17/Young-Choi"
+        },
+        {
+          "name": "Chopra, Inderjit",
+          "source_profile": "https://aero.umd.edu/clark/faculty/18/Inderjit-Chopra"
+        },
+        {
+          "name": "Costello III, Donald \"Bucket\"",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1903/Donald-Bucket-Costello-III"
+        },
+        {
+          "name": "Datta, Anubhav",
+          "source_profile": "https://aero.umd.edu/clark/faculty/19/Anubhav-Datta"
+        },
+        {
+          "name": "Flatau, Alison B.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/21/Alison-B-Flatau"
+        },
+        {
+          "name": "Fourney, William",
+          "source_profile": "https://aero.umd.edu/clark/faculty/22/William-Fourney"
+        },
+        {
+          "name": "Grauer, Jared",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1896/Jared-Grauer"
+        },
+        {
+          "name": "Gupta, Ashwani K.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/542/Ashwani-K-Gupta"
+        },
+        {
+          "name": "Hart, Kip",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1895/Kip-Hart"
+        },
+        {
+          "name": "Hartzell, Christine M.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/28/Christine-M-Hartzell"
+        },
+        {
+          "name": "Healy, Liam M.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/29/Liam-M-Healy"
+        },
+        {
+          "name": "Hubbard, Jr., James E.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/36/James-E-HubbardJr"
+        },
+        {
+          "name": "Huertas Cerdeira, Cecilia",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1617/Cecilia-Huertas-Cerdeira"
+        },
+        {
+          "name": "Israel, David",
+          "source_profile": "https://aero.umd.edu/clark/faculty/39/David-Israel"
+        },
+        {
+          "name": "Jaffe, Paul",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1884/Paul-Jaffe"
+        },
+        {
+          "name": "Johnson, Chloe",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1956/Chloe-Johnson"
+        },
+        {
+          "name": "Larsson, Johan",
+          "source_profile": "https://aero.umd.edu/clark/faculty/558/Johan-Larsson"
+        },
+        {
+          "name": "Laurence, Stuart J.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/45/Stuart-J-Laurence"
+        },
+        {
+          "name": "Lee, Sung",
+          "source_profile": "https://aero.umd.edu/clark/faculty/46/Sung-Lee"
+        },
+        {
+          "name": "Leishman, J. Gordon",
+          "source_profile": "https://aero.umd.edu/clark/faculty/47/J-Gordon-Leishman"
+        },
+        {
+          "name": "Leiste, Ulrich",
+          "source_profile": "https://aero.umd.edu/clark/faculty/48/Ulrich-Leiste"
+        },
+        {
+          "name": "Lewis, Mark J.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/49/Mark-J-Lewis"
+        },
+        {
+          "name": "Martin, Pino",
+          "source_profile": "https://aero.umd.edu/clark/faculty/51/Pino-Martin"
+        },
+        {
+          "name": "Martin, John",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1856/John-Martin"
+        },
+        {
+          "name": "Murray, Colleen",
+          "source_profile": "https://aero.umd.edu/clark/faculty/2001/Colleen-Murray"
+        },
+        {
+          "name": "Nagaraj, V. T.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/54/V-T-Nagaraj"
+        },
+        {
+          "name": "Nedungadi, Ashish",
+          "source_profile": "https://aero.umd.edu/clark/faculty/55/Ashish-Nedungadi"
+        },
+        {
+          "name": "Nguyen, Tam",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1926/Tam-Nguyen"
+        },
+        {
+          "name": "Otte, Michael",
+          "source_profile": "https://aero.umd.edu/clark/faculty/796/Michael-Otte"
+        },
+        {
+          "name": "Paley, Derek A.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/58/Derek-A-Paley"
+        },
+        {
+          "name": "Palumbo, Dominic",
+          "source_profile": "https://aero.umd.edu/clark/faculty/59/Dominic-Palumbo"
+        },
+        {
+          "name": "Park, Jungjin",
+          "source_profile": "https://aero.umd.edu/clark/faculty/60/Jungjin-Park"
+        },
+        {
+          "name": "Pines, Darryll J.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/61/Darryll-J-Pines"
+        },
+        {
+          "name": "Pratt, Lucas",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1886/Lucas-Pratt"
+        },
+        {
+          "name": "Rabin, Oded",
+          "source_profile": "https://aero.umd.edu/clark/faculty/704/Oded-Rabin"
+        },
+        {
+          "name": "Raffan-Montoya, Fernando",
+          "source_profile": "https://aero.umd.edu/clark/faculty/923/Fernando-Raffan-Montoya"
+        },
+        {
+          "name": "Sanner, Robert M.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/63/Robert-M-Sanner"
+        },
+        {
+          "name": "Sedwick, Ray",
+          "source_profile": "https://aero.umd.edu/clark/faculty/66/Ray-Sedwick"
+        },
+        {
+          "name": "Silbaugh, Benjamin",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1817/Benjamin-Silbaugh"
+        },
+        {
+          "name": "Silk, Eric",
+          "source_profile": "https://aero.umd.edu/clark/faculty/67/Eric-Silk"
+        },
+        {
+          "name": "Sunderland, Peter B.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/633/Peter-B-Sunderland"
+        },
+        {
+          "name": "Tohidi, Ali",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1957/Ali-Tohidi"
+        },
+        {
+          "name": "Tritschler, John",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1885/John-Tritschler"
+        },
+        {
+          "name": "Trouvé, Arnaud",
+          "source_profile": "https://aero.umd.edu/clark/faculty/601/Arnaud-Trouv%C3%A9"
+        },
+        {
+          "name": "Valentino, Gianna",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1754/Gianna-Valentino"
+        },
+        {
+          "name": "Wereley, Norman M.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/70/Norman-M-Wereley"
+        },
+        {
+          "name": "Winkelmann, Allen",
+          "source_profile": "https://aero.umd.edu/clark/faculty/71/Allen-Winkelmann"
+        },
+        {
+          "name": "Xu, Huan",
+          "source_profile": "https://aero.umd.edu/clark/faculty/72/Huan-Xu"
+        },
+        {
+          "name": "Yoo, Byungseok",
+          "source_profile": "https://aero.umd.edu/clark/faculty/74/Byungseok-Yoo"
+        },
+        {
+          "name": "Young, Jarred",
+          "source_profile": "https://aero.umd.edu/clark/faculty/1113/Jarred-Young"
+        },
+        {
+          "name": "Yu, Kenneth H.",
+          "source_profile": "https://aero.umd.edu/clark/faculty/75/Kenneth-H-Yu"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-ae-4e4fab3c",
+        "faculty-umd-ae-6929e79d",
+        "faculty-umd-ae-b8663548",
+        "faculty-umd-ae-b8a330c9",
+        "faculty-umd-ae-3f5a1ccd",
+        "faculty-umd-ae-139f6e96",
+        "faculty-umd-ae-52760988",
+        "faculty-umd-ae-b89ef586",
+        "faculty-umd-ae-db9936f9",
+        "faculty-umd-ae-b30d20e6",
+        "faculty-umd-ae-87c5dc52",
+        "faculty-umd-ae-0538b297",
+        "faculty-umd-ae-88bf9e62",
+        "faculty-umd-ae-1fc1ffc6",
+        "faculty-umd-ae-d2c13bb1",
+        "faculty-umd-ae-a994043f",
+        "faculty-umd-ae-082077ab",
+        "faculty-umd-ae-09373feb",
+        "faculty-umd-ae-3fefe44b",
+        "faculty-umd-ae-b04e30e6",
+        "faculty-umd-ae-e8f2b2b5",
+        "faculty-umd-ae-8ceb4822",
+        "faculty-umd-ae-d3030c48",
+        "faculty-umd-ae-fea523a1",
+        "faculty-umd-ae-3a8a1acb",
+        "faculty-umd-ae-8ac23557",
+        "faculty-umd-ae-d0b3629f",
+        "faculty-umd-ae-cfde5092",
+        "faculty-umd-ae-bb54b97f",
+        "faculty-umd-ae-b335bae9",
+        "faculty-umd-ae-87f88acb",
+        "faculty-umd-ae-670a6926",
+        "faculty-umd-ae-e0a6e02a",
+        "faculty-umd-ae-3f98c25b",
+        "faculty-umd-ae-36325f5c",
+        "faculty-umd-ae-f4236072",
+        "faculty-umd-ae-3953483f",
+        "faculty-umd-ae-c45665e5",
+        "faculty-umd-ae-3a385665",
+        "faculty-umd-ae-60cad7bc",
+        "faculty-umd-ae-b4a1faf3",
+        "faculty-umd-ae-77a91b81",
+        "faculty-umd-ae-052ce6ba",
+        "faculty-umd-ae-68c8af76",
+        "faculty-umd-ae-a7045862",
+        "faculty-umd-ae-0a3b3a78"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://aero.umd.edu/clark/facultydir?drfilter=-1",
+          "ca0633a39ad45e62dc4cbaf247dbc88862e9063318c3479ade1fd9cf8f0ae68b"
+        ],
+        [
+          "https://aero.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "bf6ffb8c90edfa83ff87c200f6ce1f092cc54b8e67726f6359fba6235521bb66"
+        ],
+        [
+          "https://aero.umd.edu/clark/facultydir?drfilter=-1&page=2",
+          "ab193f0747ad79de3fa25c74369164f940da5f468827e9efc82ecf8522dbbc73"
+        ]
+      ]
+    },
+    "cee": {
+      "official_card_count": 79,
+      "old_eligible_count": 47,
+      "fixed_eligible_count": 52,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 27,
+      "roster_people": [
+        {
+          "name": "Alexander, India",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1913/India-Alexander"
+        },
+        {
+          "name": "Amir-Faryar, Behzad",
+          "source_profile": "https://cee.umd.edu/clark/faculty/238/Behzad-Amir-Faryar"
+        },
+        {
+          "name": "Anderson, Marya",
+          "source_profile": "https://cee.umd.edu/clark/faculty/827/Marya-Anderson"
+        },
+        {
+          "name": "Andrade, Natasha",
+          "source_profile": "https://cee.umd.edu/clark/faculty/240/Natasha-Andrade"
+        },
+        {
+          "name": "Arcellana, Patricia",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1999/Patricia-Arcellana"
+        },
+        {
+          "name": "Asa-Awuku, Akua",
+          "source_profile": "https://cee.umd.edu/clark/faculty/307/Akua-Asa-Awuku"
+        },
+        {
+          "name": "Attoh-Okine, Nii O.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1722/Nii-O-Attoh-Okine"
+        },
+        {
+          "name": "Austin, Mark A.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/241/Mark-A-Austin"
+        },
+        {
+          "name": "Aydilek, Ahmet H.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/242/Ahmet-H-Aydilek"
+        },
+        {
+          "name": "Ayyub, Bilal M.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/243/Bilal-M-Ayyub"
+        },
+        {
+          "name": "Baecher, Gregory B.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/244/Gregory-B-Baecher"
+        },
+        {
+          "name": "Barham, Thomas",
+          "source_profile": "https://cee.umd.edu/clark/faculty/245/Thomas-Barham"
+        },
+        {
+          "name": "Bensi, Michelle (Shelby)",
+          "source_profile": "https://cee.umd.edu/clark/faculty/802/Michelle-Shelby-Bensi"
+        },
+        {
+          "name": "Birkner, Francis B.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/246/Francis-B-Birkner"
+        },
+        {
+          "name": "Britton, Kathryn",
+          "source_profile": "https://cee.umd.edu/clark/faculty/248/Kathryn-Britton"
+        },
+        {
+          "name": "Brubaker, Kaye L.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/249/Kaye-L-Brubaker"
+        },
+        {
+          "name": "Capozzi, Staci",
+          "source_profile": "https://cee.umd.edu/clark/faculty/847/Staci-Capozzi"
+        },
+        {
+          "name": "Chang, Gang-Len",
+          "source_profile": "https://cee.umd.edu/clark/faculty/251/GangLen-Chang"
+        },
+        {
+          "name": "Chang, Peter C.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/252/Peter-C-Chang"
+        },
+        {
+          "name": "Chaverri, Priscila",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1698/Priscila-Chaverri"
+        },
+        {
+          "name": "Cirillo, Cinzia",
+          "source_profile": "https://cee.umd.edu/clark/faculty/253/Cinzia-Cirillo"
+        },
+        {
+          "name": "Cui, Qingbin",
+          "source_profile": "https://cee.umd.edu/clark/faculty/255/Qingbin-Cui"
+        },
+        {
+          "name": "Davis, Allen P.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/256/Allen-P-Davis"
+        },
+        {
+          "name": "Davis, Jocelyn",
+          "source_profile": "https://cee.umd.edu/clark/faculty/257/Jocelyn-Davis"
+        },
+        {
+          "name": "Donaldson, Bruce K.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/258/Bruce-K-Donaldson"
+        },
+        {
+          "name": "Driessnack, John",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1459/John-Driessnack"
+        },
+        {
+          "name": "Elrahman, Ossama",
+          "source_profile": "https://cee.umd.edu/clark/faculty/2058/Ossama-Elrahman"
+        },
+        {
+          "name": "Eun, Jongwan",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1915/Jongwan-Eun"
+        },
+        {
+          "name": "Fan, Xudong (Andrew)",
+          "source_profile": "https://cee.umd.edu/clark/faculty/2064/Xudong-Andrew-Fan"
+        },
+        {
+          "name": "Feng, Yuan",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1940/Yuan-Feng"
+        },
+        {
+          "name": "Fu, Chung C.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/261/Chung-C-Fu"
+        },
+        {
+          "name": "Galloway, Gerald",
+          "source_profile": "https://cee.umd.edu/clark/faculty/263/Gerald-Galloway"
+        },
+        {
+          "name": "Gayton, Cynthia",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1462/Cynthia-Gayton"
+        },
+        {
+          "name": "Golden, Bruce",
+          "source_profile": "https://cee.umd.edu/clark/faculty/265/Bruce-Golden"
+        },
+        {
+          "name": "Goodings, Deborah J.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/266/Deborah-J-Goodings"
+        },
+        {
+          "name": "Goulias, Dimitrios G.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/267/Dimitrios-G-Goulias"
+        },
+        {
+          "name": "Groff, Mark",
+          "source_profile": "https://cee.umd.edu/clark/faculty/268/Mark-Groff"
+        },
+        {
+          "name": "Haghani, Ali",
+          "source_profile": "https://cee.umd.edu/clark/faculty/269/Ali-Haghani"
+        },
+        {
+          "name": "Hao, Oliver J.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/271/Oliver-J-Hao"
+        },
+        {
+          "name": "Hendricks, Marccus",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1762/Marccus-Hendricks"
+        },
+        {
+          "name": "Herovic, Emma",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1829/Emma-Herovic"
+        },
+        {
+          "name": "Hu, Ming",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1470/Ming-Hu"
+        },
+        {
+          "name": "Jacobs, Thomas",
+          "source_profile": "https://cee.umd.edu/clark/faculty/839/Thomas-Jacobs"
+        },
+        {
+          "name": "Johnson, John",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1201/John-Johnson"
+        },
+        {
+          "name": "Kalnay, Eugenia",
+          "source_profile": "https://cee.umd.edu/clark/faculty/552/Eugenia-Kalnay"
+        },
+        {
+          "name": "Kjellerup, Birthe",
+          "source_profile": "https://cee.umd.edu/clark/faculty/274/Birthe-Kjellerup"
+        },
+        {
+          "name": "Li, Guangbin",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1032/Guangbin-Li"
+        },
+        {
+          "name": "Link, Ed",
+          "source_profile": "https://cee.umd.edu/clark/faculty/276/Ed-Link"
+        },
+        {
+          "name": "Lovell, David",
+          "source_profile": "https://cee.umd.edu/clark/faculty/277/David-Lovell"
+        },
+        {
+          "name": "Lynn, Scott",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1712/Scott-Lynn"
+        },
+        {
+          "name": "McConnel, Laura",
+          "source_profile": "https://cee.umd.edu/clark/faculty/279/Laura-McConnel"
+        },
+        {
+          "name": "McCuen, Richard H.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/280/Richard-H-McCuen"
+        },
+        {
+          "name": "Myers, James",
+          "source_profile": "https://cee.umd.edu/clark/faculty/284/James-Myers"
+        },
+        {
+          "name": "Ni, Shuna",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1704/Shuna-Ni"
+        },
+        {
+          "name": "Niemeier, Deb",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1215/Deb-Niemeier"
+        },
+        {
+          "name": "O'Connell, Ken",
+          "source_profile": "https://cee.umd.edu/clark/faculty/285/Ken-O%27Connell"
+        },
+        {
+          "name": "O'Connor, Michael",
+          "source_profile": "https://cee.umd.edu/clark/faculty/2050/Michael-O%27Connor"
+        },
+        {
+          "name": "Pack, Michael",
+          "source_profile": "https://cee.umd.edu/clark/faculty/840/Michael-Pack"
+        },
+        {
+          "name": "Powell, Thomas J.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/287/Thomas-J-Powell"
+        },
+        {
+          "name": "Ragan, Robert M.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/288/Robert-M-Ragan"
+        },
+        {
+          "name": "Reilly, Allison",
+          "source_profile": "https://cee.umd.edu/clark/faculty/289/Allison-Reilly"
+        },
+        {
+          "name": "Roberts, Jennifer",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1688/Jennifer-Roberts"
+        },
+        {
+          "name": "Rosenberg Goldstein, Rachel E.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1608/Rachel-E-Rosenberg-Goldstein"
+        },
+        {
+          "name": "Schelling, David R.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/290/David-R-Schelling"
+        },
+        {
+          "name": "Schonfeld, Paul",
+          "source_profile": "https://cee.umd.edu/clark/faculty/291/Paul-Schonfeld"
+        },
+        {
+          "name": "Schulman, Neil",
+          "source_profile": "https://cee.umd.edu/clark/faculty/292/Neil-Schulman"
+        },
+        {
+          "name": "Schwartz, Charles W.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/293/Charles-W-Schwartz"
+        },
+        {
+          "name": "Skibniewski, Mirosław J.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/295/Mirosaw-J-Skibniewski"
+        },
+        {
+          "name": "Sternberg, Yaron M.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/296/Yaron-M-Sternberg"
+        },
+        {
+          "name": "Torrents, Alba",
+          "source_profile": "https://cee.umd.edu/clark/faculty/297/Alba-Torrents"
+        },
+        {
+          "name": "Vannoy, Donald W.",
+          "source_profile": "https://cee.umd.edu/clark/faculty/298/Donald-W-Vannoy"
+        },
+        {
+          "name": "Wang, ShiaauLir",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1463/ShiaauLir-Wang"
+        },
+        {
+          "name": "Webster-Trotman, Shana",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1202/Shana-Webster-Trotman"
+        },
+        {
+          "name": "Wei, Jianqiang",
+          "source_profile": "https://cee.umd.edu/clark/faculty/2010/Jianqiang-Wei"
+        },
+        {
+          "name": "White, Frank",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1464/Frank-White"
+        },
+        {
+          "name": "Wild, Thomas",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1467/Thomas-Wild"
+        },
+        {
+          "name": "Wooldridge, Stephen",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1200/Stephen-Wooldridge"
+        },
+        {
+          "name": "Yang, Xianfeng (Terry)",
+          "source_profile": "https://cee.umd.edu/clark/faculty/1706/Xianfeng-Terry-Yang"
+        },
+        {
+          "name": "Zhang, Yunfeng",
+          "source_profile": "https://cee.umd.edu/clark/faculty/303/Yunfeng-Zhang"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-cee-5df13192",
+        "faculty-umd-cee-bf0cc807",
+        "faculty-umd-cee-7eec9180",
+        "faculty-umd-cee-7d50d108",
+        "faculty-umd-cee-ee32aeb7",
+        "faculty-umd-cee-d2e7d1c2",
+        "faculty-umd-cee-2d5b53be",
+        "faculty-umd-cee-80ce93b9",
+        "faculty-umd-cee-65f9967a",
+        "faculty-umd-cee-085c5a29",
+        "faculty-umd-cee-f1e49666",
+        "faculty-umd-cee-73c1813a",
+        "faculty-umd-cee-64ee51c0",
+        "faculty-umd-cee-c6f2cc70",
+        "faculty-umd-cee-6e560e8b",
+        "faculty-umd-cee-eaa4d9f0",
+        "faculty-umd-cee-7930c18f",
+        "faculty-umd-cee-5f18e2b7",
+        "faculty-umd-cee-ccb412cf",
+        "faculty-umd-cee-de02b9ba",
+        "faculty-umd-cee-70a2545e",
+        "faculty-umd-cee-a7c9fd6d",
+        "faculty-umd-cee-4620f605",
+        "faculty-umd-cee-b3a04cfe",
+        "faculty-umd-cee-f1595cce",
+        "faculty-umd-cee-2aa62074",
+        "faculty-umd-cee-dbc0df47",
+        "faculty-umd-cee-6f1cf5c6",
+        "faculty-umd-cee-e0ecea4a",
+        "faculty-umd-cee-5c2baf19",
+        "faculty-umd-cee-a843de0b",
+        "faculty-umd-cee-6d02d293",
+        "faculty-umd-cee-e65a4dac",
+        "faculty-umd-cee-4c933446",
+        "faculty-umd-cee-cee8a943",
+        "faculty-umd-cee-da2f34dc",
+        "faculty-umd-cee-10aa3db2",
+        "faculty-umd-cee-c72ae738",
+        "faculty-umd-cee-4bc5d05d",
+        "faculty-umd-cee-689347f5",
+        "faculty-umd-cee-2296f8e8",
+        "faculty-umd-cee-f39c3644",
+        "faculty-umd-cee-864bce13",
+        "faculty-umd-cee-f06a9030"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1",
+          "c399057d196102868cd8b12ddb3f1a59446d47d3e6b085c9ad9e8f15dd70e3e4"
+        ],
+        [
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "8dc93328426ab03cdcd0bf70f75132904c354165b09e77971076281a85778abb"
+        ],
+        [
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=2",
+          "90e131fae65b62d022cfc308b9a556e5d47e59df3df31f716b0fe67a2ec6663c"
+        ],
+        [
+          "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=3",
+          "5f2f75c7702df410cfa97e98554f5ae863ec9a1a18baa09f25b0f00ec56f5246"
+        ]
+      ]
+    },
+    "chbe": {
+      "official_card_count": 46,
+      "old_eligible_count": 26,
+      "fixed_eligible_count": 26,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 20,
+      "roster_people": [
+        {
+          "name": "Adomaitis, Raymond A.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/304/Raymond-A-Adomaitis"
+        },
+        {
+          "name": "Al-Sheikhly, Mohamad",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/637/Mohamad-Al-Sheikhly"
+        },
+        {
+          "name": "Albertus, Paul",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1027/Paul-Albertus"
+        },
+        {
+          "name": "Anisimov, Mikhail",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/306/Mikhail-Anisimov"
+        },
+        {
+          "name": "Asa-Awuku, Akua",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/307/Akua-Asa-Awuku"
+        },
+        {
+          "name": "Bentley, William E.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/89/William-E-Bentley"
+        },
+        {
+          "name": "Calabrese, Richard V.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/309/Richard-V-Calabrese"
+        },
+        {
+          "name": "Chen, Po-Yen",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1396/PoYen-Chen"
+        },
+        {
+          "name": "Cho, Seulki",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1900/Seulki-Cho"
+        },
+        {
+          "name": "Choi, Kyu Yong",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/310/Kyu-Yong-Choi"
+        },
+        {
+          "name": "DeVoe, Don",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/531/Don-DeVoe"
+        },
+        {
+          "name": "Dimitrakopoulos, Panagiotis (Panos)",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/312/Panagiotis-Panos-Dimitrakopoulos"
+        },
+        {
+          "name": "Duncan, Keith L.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/975/Keith-L-Duncan"
+        },
+        {
+          "name": "Dwivedi, Vivek",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/313/Vivek-Dwivedi"
+        },
+        {
+          "name": "Ehrman, Sheryl H.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/315/Sheryl-H-Ehrman"
+        },
+        {
+          "name": "Fawole, Esohe",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1857/Esohe-Fawole"
+        },
+        {
+          "name": "Fisher, John",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/127/John-Fisher"
+        },
+        {
+          "name": "Fuentevilla, Daphne",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1268/Daphne-Fuentevilla"
+        },
+        {
+          "name": "Gibbons, William T.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/319/William-T-Gibbons"
+        },
+        {
+          "name": "Greer, Sandra C.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/321/Sandra-C-Greer"
+        },
+        {
+          "name": "Karlsson, Amy J.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/322/Amy-J-Karlsson"
+        },
+        {
+          "name": "Kio, Michael",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1835/Michael-Kio"
+        },
+        {
+          "name": "Klauda, Jeffery",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/324/Jeffery-Klauda"
+        },
+        {
+          "name": "Kofinas, Peter",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/159/Peter-Kofinas"
+        },
+        {
+          "name": "Lazarus, Nathan",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1404/Nathan-Lazarus"
+        },
+        {
+          "name": "Lee, Sang Bok",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/681/Sang-Bok-Lee"
+        },
+        {
+          "name": "Lo, Yangming \"Martin\"",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1405/Yangming-Martin-Lo"
+        },
+        {
+          "name": "McAvoy, Thomas J.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/329/Thomas-J-McAvoy"
+        },
+        {
+          "name": "Molinari, Sara",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1830/Sara-Molinari"
+        },
+        {
+          "name": "Mulholland, George W.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/330/George-W-Mulholland"
+        },
+        {
+          "name": "Muro, Silvia",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/177/Silvia-Muro"
+        },
+        {
+          "name": "Parke, Caitlin",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1836/Caitlin-Parke"
+        },
+        {
+          "name": "Ponce, Aldo",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/332/Aldo-Ponce"
+        },
+        {
+          "name": "Raghavan, Srinivasa R.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/333/Srinivasa-R-Raghavan"
+        },
+        {
+          "name": "Sengers, Jan V.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/336/Jan-V-Sengers"
+        },
+        {
+          "name": "Short, James",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1837/James-Short"
+        },
+        {
+          "name": "Smith, Theodore G.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/337/Theodore-G-Smith"
+        },
+        {
+          "name": "Sriram, Ganesh",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/338/Ganesh-Sriram"
+        },
+        {
+          "name": "Vega-Vila, Juan Carlos",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1819/Juan-Carlos-Vega-Vila"
+        },
+        {
+          "name": "Wachsman, Eric",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/727/Eric-Wachsman"
+        },
+        {
+          "name": "Wang, Chunsheng",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/340/Chunsheng-Wang"
+        },
+        {
+          "name": "Woehl, Taylor J.",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/343/Taylor-J-Woehl"
+        },
+        {
+          "name": "Yang, Arthur",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/344/Arthur-Yang"
+        },
+        {
+          "name": "Yang, Xiaochuan \"Ben\"",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1406/Xiaochuan-Ben-Yang"
+        },
+        {
+          "name": "Zhang, Chen",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/903/Chen-Zhang"
+        },
+        {
+          "name": "Zierden, Hannah",
+          "source_profile": "https://chbe.umd.edu/clark/faculty/1693/Hannah-Zierden"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-chbe-5235ba81",
+        "faculty-umd-chbe-e87019f3",
+        "faculty-umd-chbe-7eb989ce",
+        "faculty-umd-chbe-11249654",
+        "faculty-umd-chbe-29c695fd",
+        "faculty-umd-chbe-d1fe0726",
+        "faculty-umd-chbe-b1c4ab26",
+        "faculty-umd-chbe-f7dcce78",
+        "faculty-umd-chbe-b3cd6617",
+        "faculty-umd-chbe-5580d624",
+        "faculty-umd-chbe-6c7eba99",
+        "faculty-umd-chbe-d6872120",
+        "faculty-umd-chbe-dba1753a",
+        "faculty-umd-chbe-adc8e254",
+        "faculty-umd-chbe-654c3a54",
+        "faculty-umd-chbe-7fe812bf",
+        "faculty-umd-chbe-c9f89128",
+        "faculty-umd-chbe-b724f7e4",
+        "faculty-umd-chbe-abc06161"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://chbe.umd.edu/clark/facultydir?drfilter=-1",
+          "229f0e8d029f33b5a2ce1730a6195df441a0792672cf802c850abc298370d907"
+        ],
+        [
+          "https://chbe.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "3a308e935431bbf4f2e88e197293a18a27781f69d2f54963aa0b0c296205f440"
+        ]
+      ]
+    },
+    "mse": {
+      "official_card_count": 90,
+      "old_eligible_count": 33,
+      "fixed_eligible_count": 37,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 53,
+      "roster_people": [
+        {
+          "name": "Al-Sheikhly, Mohamad",
+          "source_profile": "https://mse.umd.edu/clark/faculty/637/Mohamad-Al-Sheikhly"
+        },
+        {
+          "name": "Allen, Edward \"Ned\"",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1432/Edward-Ned-Allen"
+        },
+        {
+          "name": "Ankem, Sreeramamurthy",
+          "source_profile": "https://mse.umd.edu/clark/faculty/640/Sreeramamurthy-Ankem"
+        },
+        {
+          "name": "Aranda-Espinoza, Helim",
+          "source_profile": "https://mse.umd.edu/clark/faculty/82/Helim-Aranda-Espinoza"
+        },
+        {
+          "name": "Azuah, Richard T.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/643/Richard-T-Azuah"
+        },
+        {
+          "name": "Babu, Sudarsanam (Suresh)",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1959/Sudarsanam-Suresh-Babu"
+        },
+        {
+          "name": "Bartolo, Robert E.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/360/Robert-E-Bartolo"
+        },
+        {
+          "name": "Bozena, Alexandra",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1150/Alexandra-Bozena"
+        },
+        {
+          "name": "Briber, Robert M.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/647/Robert-M-Briber"
+        },
+        {
+          "name": "Brocker, Christoph",
+          "source_profile": "https://mse.umd.edu/clark/faculty/648/Christoph-Brocker"
+        },
+        {
+          "name": "Campo, Eva",
+          "source_profile": "https://mse.umd.edu/clark/faculty/981/Eva-Campo"
+        },
+        {
+          "name": "Chen, Tianran",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1152/Tianran-Chen"
+        },
+        {
+          "name": "Christou, Aris",
+          "source_profile": "https://mse.umd.edu/clark/faculty/652/Aris-Christou"
+        },
+        {
+          "name": "Chun, Carolyn",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1899/Carolyn-Chun"
+        },
+        {
+          "name": "Cumings, John",
+          "source_profile": "https://mse.umd.edu/clark/faculty/656/John-Cumings"
+        },
+        {
+          "name": "Dai, Jiaqi",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1153/Jiaqi-Dai"
+        },
+        {
+          "name": "Duncan, Keith L.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/975/Keith-L-Duncan"
+        },
+        {
+          "name": "Fisher, John",
+          "source_profile": "https://mse.umd.edu/clark/faculty/127/John-Fisher"
+        },
+        {
+          "name": "Flatau, Alison B.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/21/Alison-B-Flatau"
+        },
+        {
+          "name": "Fontecha Solano, Daniela",
+          "source_profile": "https://mse.umd.edu/clark/faculty/2048/Daniela-Fontecha-Solano"
+        },
+        {
+          "name": "Gagnon, Cedric",
+          "source_profile": "https://mse.umd.edu/clark/faculty/663/Cedric-Gagnon"
+        },
+        {
+          "name": "Gilde, Luke",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1148/Luke-Gilde"
+        },
+        {
+          "name": "Gong, Yunhui",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1159/Yunhui-Gong"
+        },
+        {
+          "name": "Gregorczyk, Keith",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1161/Keith-Gregorczyk"
+        },
+        {
+          "name": "Han, Charles",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1139/Charles-Han"
+        },
+        {
+          "name": "Henderson, Stephen",
+          "source_profile": "https://mse.umd.edu/clark/faculty/668/Stephen-Henderson"
+        },
+        {
+          "name": "Hottinger, Mike",
+          "source_profile": "https://mse.umd.edu/clark/faculty/2062/Mike-Hottinger"
+        },
+        {
+          "name": "Hu, Liangbing",
+          "source_profile": "https://mse.umd.edu/clark/faculty/669/Liangbing-Hu"
+        },
+        {
+          "name": "Koeth, Timothy W.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/676/Timothy-W-Koeth"
+        },
+        {
+          "name": "Kukla, Maija M.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/680/Maija-M-Kukla"
+        },
+        {
+          "name": "Lee, Sang Bok",
+          "source_profile": "https://mse.umd.edu/clark/faculty/681/Sang-Bok-Lee"
+        },
+        {
+          "name": "Li, Zhihan",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1142/Zhihan-Li"
+        },
+        {
+          "name": "Li, Tangyuan",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1334/Tangyuan-Li"
+        },
+        {
+          "name": "Liang, Chu",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1143/Chu-Liang"
+        },
+        {
+          "name": "Lin, Chuan-Fu",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1477/ChuanFu-Lin"
+        },
+        {
+          "name": "Liu, Yun",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1335/Yun-Liu"
+        },
+        {
+          "name": "Livingston, Richard",
+          "source_profile": "https://mse.umd.edu/clark/faculty/686/Richard-Livingston"
+        },
+        {
+          "name": "Lloyd, Isabel",
+          "source_profile": "https://mse.umd.edu/clark/faculty/687/Isabel-Lloyd"
+        },
+        {
+          "name": "Mao, Yimin",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1204/Yimin-Mao"
+        },
+        {
+          "name": "Massoud, Mahmoud",
+          "source_profile": "https://mse.umd.edu/clark/faculty/689/Mahmoud-Massoud"
+        },
+        {
+          "name": "Mastrikov, Yuri",
+          "source_profile": "https://mse.umd.edu/clark/faculty/690/Yuri-Mastrikov"
+        },
+        {
+          "name": "McOwen, Dennis W.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1336/Dennis-W-McOwen"
+        },
+        {
+          "name": "Mo, Yifei",
+          "source_profile": "https://mse.umd.edu/clark/faculty/691/Yifei-Mo"
+        },
+        {
+          "name": "OBrien Stephens, Catherine",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1158/Catherine-OBrien-Stephens"
+        },
+        {
+          "name": "Oehrlein, Gottlieb S.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/696/Gottlieb-S-Oehrlein"
+        },
+        {
+          "name": "Osborn, Rebecca",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1337/Rebecca-Osborn"
+        },
+        {
+          "name": "Pate, Brian D.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/699/Brian-D-Pate"
+        },
+        {
+          "name": "Phaneuf, Ray",
+          "source_profile": "https://mse.umd.edu/clark/faculty/701/Ray-Phaneuf"
+        },
+        {
+          "name": "Ping, Weiwei",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1338/Weiwei-Ping"
+        },
+        {
+          "name": "Ponce, Aldo",
+          "source_profile": "https://mse.umd.edu/clark/faculty/332/Aldo-Ponce"
+        },
+        {
+          "name": "Rabin, Oded",
+          "source_profile": "https://mse.umd.edu/clark/faculty/704/Oded-Rabin"
+        },
+        {
+          "name": "Rashkeev, Sergey",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1144/Sergey-Rashkeev"
+        },
+        {
+          "name": "Ratcliff, William",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1760/William-Ratcliff"
+        },
+        {
+          "name": "Ren, Shenqiang",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1833/Shenqiang-Ren"
+        },
+        {
+          "name": "Richardson, Christopher",
+          "source_profile": "https://mse.umd.edu/clark/faculty/982/Christopher-Richardson"
+        },
+        {
+          "name": "Rios Ocampo, Carlos A.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1486/Carlos-A-Rios-Ocampo"
+        },
+        {
+          "name": "Rodriguez, Efrain E.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/705/Efrain-E-Rodriguez"
+        },
+        {
+          "name": "Rodriguez, Jose",
+          "source_profile": "https://mse.umd.edu/clark/faculty/706/Jose-Rodriguez"
+        },
+        {
+          "name": "Rowe, John Michael",
+          "source_profile": "https://mse.umd.edu/clark/faculty/976/John-Michael-Rowe"
+        },
+        {
+          "name": "Rubloff, Gary",
+          "source_profile": "https://mse.umd.edu/clark/faculty/709/Gary-Rubloff"
+        },
+        {
+          "name": "Salamanca-Riba, Lourdes G.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/712/Lourdes-G-Salamanca-Riba"
+        },
+        {
+          "name": "Sardashti, Kasra",
+          "source_profile": "https://mse.umd.edu/clark/faculty/2039/Kasra-Sardashti"
+        },
+        {
+          "name": "Scisco, Gibson",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1648/Gibson-Scisco"
+        },
+        {
+          "name": "Seo, Youngsik",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1145/Youngsik-Seo"
+        },
+        {
+          "name": "Sita, Lawrence",
+          "source_profile": "https://mse.umd.edu/clark/faculty/719/Lawrence-Sita"
+        },
+        {
+          "name": "Smela, Elisabeth",
+          "source_profile": "https://mse.umd.edu/clark/faculty/593/Elisabeth-Smela"
+        },
+        {
+          "name": "Stanev, Valentin",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1340/Valentin-Stanev"
+        },
+        {
+          "name": "Stewart, David M.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1282/David-M-Stewart"
+        },
+        {
+          "name": "Takeuchi, Ichiro",
+          "source_profile": "https://mse.umd.edu/clark/faculty/722/Ichiro-Takeuchi"
+        },
+        {
+          "name": "Takeuchi, Saya",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1583/Saya-Takeuchi"
+        },
+        {
+          "name": "Talin, A. Alec",
+          "source_profile": "https://mse.umd.edu/clark/faculty/980/A-Alec-Talin"
+        },
+        {
+          "name": "Tyagi, Madhu Sudan",
+          "source_profile": "https://mse.umd.edu/clark/faculty/725/Madhu-Sudan-Tyagi"
+        },
+        {
+          "name": "Valentino, Gianna",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1754/Gianna-Valentino"
+        },
+        {
+          "name": "Vekhov, Yegor",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1341/Yegor-Vekhov"
+        },
+        {
+          "name": "Wachsman, Eric",
+          "source_profile": "https://mse.umd.edu/clark/faculty/727/Eric-Wachsman"
+        },
+        {
+          "name": "Wang, Chunsheng",
+          "source_profile": "https://mse.umd.edu/clark/faculty/340/Chunsheng-Wang"
+        },
+        {
+          "name": "Wang, Howard",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1141/Howard-Wang"
+        },
+        {
+          "name": "Wang, Chengwei",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1342/Chengwei-Wang"
+        },
+        {
+          "name": "Wang, Shuo",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1343/Shuo-Wang"
+        },
+        {
+          "name": "Wang, Xizheng",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1344/Xizheng-Wang"
+        },
+        {
+          "name": "Woehl, Taylor J.",
+          "source_profile": "https://mse.umd.edu/clark/faculty/343/Taylor-J-Woehl"
+        },
+        {
+          "name": "Wu, Meiling",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1149/Meiling-Wu"
+        },
+        {
+          "name": "Xu, Shanshan",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1140/Shanshan-Xu"
+        },
+        {
+          "name": "Xu, Zhijun",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1345/Zhijun-Xu"
+        },
+        {
+          "name": "Ye, Qiang",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1347/Qiang-Ye"
+        },
+        {
+          "name": "Zhang, Yichao",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1910/Yichao-Zhang"
+        },
+        {
+          "name": "Zhang, Xin",
+          "source_profile": "https://mse.umd.edu/clark/faculty/731/Xin-Zhang"
+        },
+        {
+          "name": "Zhao, Ji-Cheng 'JC'",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1195/JiCheng-JC-Zhao"
+        },
+        {
+          "name": "Zhao, Yang",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1348/Yang-Zhao"
+        },
+        {
+          "name": "Zhou, You",
+          "source_profile": "https://mse.umd.edu/clark/faculty/1395/You-Zhou"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-mse-d12fd416",
+        "faculty-umd-mse-9c4e5200",
+        "faculty-umd-mse-a1c79147",
+        "faculty-umd-mse-e519de38",
+        "faculty-umd-mse-6922bcde",
+        "faculty-umd-mse-ce98308d",
+        "faculty-umd-mse-fe569db2",
+        "faculty-umd-mse-f6371880",
+        "faculty-umd-mse-c0112dc9",
+        "faculty-umd-mse-b943ed7f",
+        "faculty-umd-mse-f96e6b60",
+        "faculty-umd-mse-e984c7d7",
+        "faculty-umd-mse-ada5275e",
+        "faculty-umd-mse-2008d9f8",
+        "faculty-umd-mse-6325c001",
+        "faculty-umd-mse-3139ca7b"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1",
+          "b205fa88c8ad2f5c2265a0b15f90a4d4b14954a0c1db4d3a97017dcc331976cb"
+        ],
+        [
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "8748dbc03e2a119fc2300a676d06ba61e042573c3748694364b992fb5864684e"
+        ],
+        [
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=2",
+          "e8895f7a0a03783fe2e55c854ae60d5794cfcf5ff7d3ee3fc6e576e4f1aa1b8f"
+        ],
+        [
+          "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=3",
+          "876bedaeaa32faf082249503ea3560ae3e48587542b42e0448d63ea5b70b6766"
+        ]
+      ]
+    },
+    "fpe": {
+      "official_card_count": 26,
+      "old_eligible_count": 10,
+      "fixed_eligible_count": 10,
+      "fixed_unparsed": 0,
+      "fixed_classified_outside_scope": 16,
+      "roster_people": [
+        {
+          "name": "Anderson, Paul",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1717/Paul-Anderson"
+        },
+        {
+          "name": "Andrews, Jr., Robert C.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1801/Robert-C-AndrewsJr"
+        },
+        {
+          "name": "Brannigan, Vincent",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/612/Vincent-Brannigan"
+        },
+        {
+          "name": "Campbell, Chris",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1249/Chris-Campbell"
+        },
+        {
+          "name": "DeBold, Tom",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1689/Tom-DeBold"
+        },
+        {
+          "name": "diMarzo, Marino",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/615/Marino-diMarzo"
+        },
+        {
+          "name": "Gollner, Michael",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/917/Michael-Gollner"
+        },
+        {
+          "name": "Good, Thomas",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1907/Thomas-Good"
+        },
+        {
+          "name": "Gwynne, Steve",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1702/Steve-Gwynne"
+        },
+        {
+          "name": "Hallock, Christopher",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1911/Christopher-Hallock"
+        },
+        {
+          "name": "Hopkins, Mark",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1912/Mark-Hopkins"
+        },
+        {
+          "name": "Hrybyk, Rosalie",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1955/Rosalie-Hrybyk"
+        },
+        {
+          "name": "Isman, Kenneth E.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/618/Kenneth-E-Isman"
+        },
+        {
+          "name": "Johnson, Duane",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1922/Duane-Johnson"
+        },
+        {
+          "name": "Koffel, William",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1897/William-Koffel"
+        },
+        {
+          "name": "Leventon, Isaac",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1250/Isaac-Leventon"
+        },
+        {
+          "name": "Milke, James A.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/623/James-A-Milke"
+        },
+        {
+          "name": "Mowrer, Frederick W.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/624/Frederick-W-Mowrer"
+        },
+        {
+          "name": "Ni, Shuna",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1704/Shuna-Ni"
+        },
+        {
+          "name": "Raffan-Montoya, Fernando",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/923/Fernando-Raffan-Montoya"
+        },
+        {
+          "name": "Ryder, Noah L.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/628/Noah-L-Ryder"
+        },
+        {
+          "name": "Spivak, Steven M.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/631/Steven-M-Spivak"
+        },
+        {
+          "name": "Stoliarov, Stanislav I.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/632/Stanislav-I-Stoliarov"
+        },
+        {
+          "name": "Sunderland, Peter B.",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/633/Peter-B-Sunderland"
+        },
+        {
+          "name": "Tohidi, Ali",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/1957/Ali-Tohidi"
+        },
+        {
+          "name": "Trouvé, Arnaud",
+          "source_profile": "https://fpe.umd.edu/clark/faculty/601/Arnaud-Trouv%C3%A9"
+        }
+      ],
+      "prior_active_unit_ids": [
+        "faculty-umd-fpe-e92e33ff",
+        "faculty-umd-fpe-99fa5d01",
+        "faculty-umd-fpe-a7d34300",
+        "faculty-umd-fpe-5ad629af"
+      ],
+      "saved_source_sha256": [
+        [
+          "https://fpe.umd.edu/clark/facultydir?drfilter=-1",
+          "7b8ea612876b2a222c0d215989a36a9f4994d8d6c977a687dfd1c28127faeabe"
+        ],
+        [
+          "https://fpe.umd.edu/clark/facultydir?drfilter=-1&page=1",
+          "1fb1b7ef60734ef77f377300df780320947dd54b77f56614939ae0215b66c6b7"
+        ]
+      ]
+    }
+  },
+  "original_shard_commit": "f0d504d4d5373d777080356db11400dcb4eab19e",
+  "original_shard_rows": 1437,
+  "published_candidate_rows": 1455,
+  "scope": "Directory and individual public sources read on November 26. Counts of appointments before/after precede cross-unit identity collapse. An original unavailable from one listing is not by that fact retired by this change. Public probes are the pre-release state; the December 2 scheduled Maryland release needs its own receipt."
+}
