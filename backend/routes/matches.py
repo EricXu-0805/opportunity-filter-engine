@@ -881,7 +881,7 @@ class _MatchSnapshot:
     @cached_property
     def duplicate_program_indices(self) -> tuple[int, ...]:
         """The reviewed directory ranks stay fixed for this ranking snapshot."""
-        hidden = {pair.directory_id for pair in _snapshot_program_pairs(self.view_rows)}
+        hidden = {oid for pair in _snapshot_program_pairs(self.view_rows) for oid in pair.directory_ids}
         if not hidden:
             return ()
         return tuple(i for i, result in enumerate(self.visible) if result.opportunity_id in hidden)
@@ -1922,7 +1922,7 @@ def _apply_match_view_rows(
     starred: list[MatchResult] = []
     if pairs is None:
         pairs = _snapshot_program_pairs(rows)
-    default_duplicates = {pair.directory_id for pair in pairs}
+    default_duplicates = {oid for pair in pairs for oid in pair.directory_ids}
     member_ids = {oid for pair in pairs for oid in pair.ids}
     program_positions: dict[str, int] = {}
     for result in results:
@@ -2035,10 +2035,9 @@ def _apply_match_view_rows(
             starred.append(result)
     # Preserve any source that was the only one to survive this view. Remove
     # redundant rows from the end so earlier positions keep their meaning.
-    hidden_positions = [
-        program_positions[pair.redundant_id(favorite_ids)] for pair in pairs
-        if pair.host_id in program_positions and pair.directory_id in program_positions
-    ]
+    hidden_positions = {
+        program_positions[oid] for pair in pairs for oid in pair.redundant_ids(program_positions, favorite_ids)
+    }
     for index in sorted(hidden_positions, reverse=True):
         base.pop(index)
 

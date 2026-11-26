@@ -662,7 +662,7 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
 def test_boston_stars_student_deadline_and_current_application_destination(tmp_path):
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
-    from src.matcher.ranker import _filter_context, hard_exclusion
+    from src.matcher.ranker import _filter_context, _requires_graduate_standing, hard_exclusion, rank_opportunity
     from src.normalizers import bu_stars
     from src.normalizers.school_audience import apply_school_audience
     from src.program_windows import STARS_HOST, STARS_OLD_HOST
@@ -697,6 +697,12 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
         student = {"home_school": "uiuc", "year": "sophomore", "major": "Geoscience", "gpa": 2.9}
         assert hard_exclusion(loaded, _filter_context(student)) is None
         assert hard_exclusion(loaded, _filter_context({**student, "international_student": True})) == "citizenship_restricted"
+        ranked = rank_opportunity(student, loaded)
+        assert "opportunity.majors" not in ranked.unknowns and "profile.gpa" in ranked.unknowns
+        assert all("graduate / PhD" not in reason and "Limited prior experience" not in reason for reason in ranked.reasons_gap)
+        prep = {**loaded, "description_clean": "Learn how to apply to a PhD program in biomedical science."}
+        assert not _requires_graduate_standing(prep)
+        assert _requires_graduate_standing({**prep, "id": "unreviewed"})
         card = project_public_opportunity_payload(loaded, loaded)
         assert "preferred_year_attribution" not in card and "international_attribution" not in card
         fields = build_detail_fields(card, loaded)["fields"]
