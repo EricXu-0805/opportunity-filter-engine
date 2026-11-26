@@ -1903,6 +1903,10 @@ def _scrape_directory(dept: dict) -> list[dict]:
     else:
         soup = fetch(base)
     if soup is None:
+        if cfg.get("render") and _ACTIVE_COVERAGE is not None:
+            # The renderer returned no usable page. It does not expose an HTTP
+            # status, so keep this distinct from both a 403 and a parsed empty page.
+            _ACTIVE_COVERAGE["_directory_fetch_failure"] = "rendered_directory_unavailable"
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
