@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,6 +70,18 @@ def html_detail(expected, content, sha):
     assert document.html and document.html.get("data-release-sha") == sha, "Different frontend release"
     main = document.select_one("main")
     assert main, "The rendered detail did not load"
+    # A streamed Next.js response can put only the loading shell in <main>.
+    # Follow its actual Suspense segment/placeholder pairs. An unrelated hidden
+    # block or a heading copied only into a JSON script cannot fulfill a check.
+    if not main.select_one("h1"):
+        moves = re.compile(r'\$(RS|RC)\("([BPS]:[0-9a-f]+)","([BPS]:[0-9a-f]+)"\)')
+        for script in document.find_all("script"):
+            for mode, first, second in moves.findall(script.string or ""):
+                marker_id, segment_id = (second, first) if mode == "RS" else (first, second)
+                marker = document.find("template", id=marker_id)
+                segment = document.find("div", id=segment_id, hidden=True)
+                if marker is not None and segment is not None:
+                    marker.replace_with(*list(segment.contents))
     headings = [h.get_text(" ", strip=True) for h in main.select("h1")]
     assert expected["name"] in headings, "Missing original name in the rendered HTML"
     links = [a.get("href") for a in main.select("a[href]") if a.get_text(" ", strip=True) == "View faculty profile"]
