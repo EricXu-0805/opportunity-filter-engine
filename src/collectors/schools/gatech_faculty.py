@@ -127,7 +127,7 @@ SCHOOL: dict = {
                 # The faculty filter now returns individual cards. Older copies
                 # used a table with a linked name in the first cell.
                 "selectors": {
-                    "card": ".profile-card, tr:has(td a[href*='/people/'])",
+                    "card": ".profile-card, tr:has(a:is(td a[href*='/people/']))",
                     "name": ".profile-name a, td a[href*='/people/']",
                     "link": ".profile-name a, td a[href*='/people/']",
                     "title": ".profile-title",
