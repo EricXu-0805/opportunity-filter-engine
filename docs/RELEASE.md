@@ -508,6 +508,7 @@ Blueprint.
 | `NEXT_PUBLIC_AUTH_PROVIDERS` | required | No OAuth buttons render, so Google sign-in disappears. |
 | `NEXT_PUBLIC_SITE_URL` | required | Canonical, Open Graph and sitemap URLs name `opportunity-filter-engine.vercel.app`. On 10-08 production's canonical was `joinalab.com`. |
 | `NEXT_PUBLIC_AUTH_EMAIL_MODE` | optional | `dev-echo`: the magic-link form shows the test-sender warning. Set it to `live` to hide the warning. |
+| `NEXT_PUBLIC_MANAGED_PROFILE_SHARES` | optional | The home form offers legacy snapshots. Existing managed links can still be read or revoked. Set to `true` after migration `20261126120000` to offer new managed links. |
 | `NEXT_PUBLIC_API_URL`, `BACKEND_URL` | optional | Browser calls use `/api`, which the Next rewrite sends to the production Render URL (`127.0.0.1:8000` outside production). |
 | `VERCEL_GIT_COMMIT_SHA`, `OFE_RELEASE_SHA`, `VERCEL_ENV`, `OFE_ENVIRONMENT`, `NEXT_PUBLIC_RELEASE_SHA`, `NEXT_PUBLIC_RELEASE_ENV`, `NODE_ENV` | optional | The page says `data-release-sha="unknown"`, so the release record cannot bind the frontend. Vercel sets the first and third itself. |
 
