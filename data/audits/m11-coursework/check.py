@@ -99,13 +99,20 @@ with sync_playwright() as pw:
     old_row = next(x for x in reversed(reads) if 'Computer Vision' in (x['profile_data'].get('coursework') or []))
     old_picker = old.locator('input[type=file][accept*="pdf"]').first
     old_picker.set_input_files({'name': 'damaged-synthetic.pdf', 'mimeType': 'application/pdf', 'buffer': b'Not a PDF file. Synthetic test.'})
-    expect(old.get_by_role('alert').filter(has_text='PDF').first).to_be_visible(timeout=15000)
+    retry = old.get_by_role('button', name='Try again', exact=True)
+    expect(retry).to_be_visible(timeout=15000)
+    error = retry.locator('..').locator('p').first
+    expect(error).to_have_text('Invalid PDF structure.')
+    error_text = error.inner_text()
+    announced = error.get_attribute('role') == 'alert'
+
     expect(old.get_by_text('Computer Vision', exact=True)).to_be_visible()
     check = home(browser, sessions[0])
     expect(check.get_by_text('Computer Vision', exact=True)).to_be_visible()
     preserved = next(x for x in reversed(reads) if 'Computer Vision' in (x['profile_data'].get('coursework') or []))
     assert preserved['profile_data']['resume_text'] == old_row['profile_data']['resume_text']
     check.context.close()
+    retry.click()
     old_picker.set_input_files(str(FIXTURE))
     expected = EXPECTED if REQUIRED == 'fixed' else ['CS 225']
     expect(old.get_by_text(expected[0], exact=True)).to_be_visible(timeout=55000)
@@ -134,6 +141,7 @@ with sync_playwright() as pw:
         'time':datetime.now(timezone.utc).isoformat(), 'url':SITE,
         'release':fresh.request.get(SITE+'/api/health').json()['release_sha'],
         'frontend_sha':fresh.locator('html').get_attribute('data-release-sha'),
+        'upload_error_text':error_text, 'upload_error_role_alert':announced,
         'earlier_revision':old_row['revision'], 'preserved_after_invalid_upload_revision':preserved['revision'],
         'old_pdf_preserved_after_error':True, 'retry_completed_after_reopen':True,
         'visible_source_lines':len(courses), 'unknown_course_statuses':len(courses), 'previous_courses_cleared':True,
