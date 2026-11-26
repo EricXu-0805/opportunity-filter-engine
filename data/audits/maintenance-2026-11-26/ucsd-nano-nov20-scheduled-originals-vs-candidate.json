@@ -1,0 +1,125 @@
+{
+  "scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44761914990",
+  "actual_scheduled_event_head": "4fc6b5d01dda219e159f7d9cb108ce6e5b20fc49",
+  "published_refresh_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1211",
+  "refresh_pr_head": "32c986881b848d66ebcc89572496e1c9b7e25fca",
+  "original_ledger": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/32c986881b848d66ebcc89572496e1c9b7e25fca/data/processed/collector_status.json",
+  "original_campus_path": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/32c986881b848d66ebcc89572496e1c9b7e25fca/data/processed/shards/ucsd.json",
+  "original_shard_count": 1508,
+  "original_unit_ledger": {
+    "unit_id": "nano",
+    "unit_name": "Department of NanoEngineering",
+    "unit_url": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+    "started_at": "2026-11-20T16:57:49.498200+00:00",
+    "completed_at": "2026-11-20T16:57:50.634798+00:00",
+    "baseline_active_count": 37,
+    "observed_count": 37,
+    "baseline_identity_count": 32,
+    "matched_identity_count": 32,
+    "new_identity_count": 3,
+    "missed_present_identities": [],
+    "fetch_status": "ok",
+    "parse_status": "ok",
+    "completeness_status": "partial",
+    "retirement_authorized": false,
+    "coverage": {
+      "ambiguous_rows": 0,
+      "classified_nonfaculty_rows": 0,
+      "duplicate_rows": 5,
+      "identity_match_failures": 0,
+      "parsed_faculty_rows": 42,
+      "parser_errors": 0,
+      "partial_render_rows": 0,
+      "raw_roster_rows": 56,
+      "unparsed_rows": 14
+    }
+  },
+  "1120_distinct_roster_ids": 41,
+  "1126_candidate_normal_live_nano_scope": {
+    "candidate": "84e416233f5172ec9f602920e4b4e7eb72eaec64",
+    "unique_scoped_ids": 37,
+    "parsed_faculty_rows": 38,
+    "previously_stored_active_NANO_ids_found": 27,
+    "active_original_NANO_ids_missing": []
+  },
+  "identity_comparison": [
+    {
+      "id": "faculty-ucsd-nano-25a6d469",
+      "name_on_published_1120_shard": "Esener",
+      "1120_stored_active": true,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": true,
+      "candidate_name": "Sadik Esener",
+      "candidate_stored_active": false,
+      "candidate_seen_in_1126_nano_only_live_replay": false,
+      "candidate_citation": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "candidate_person_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=31"
+    },
+    {
+      "id": "faculty-ucsd-nano-dc9e3de3",
+      "name_on_published_1120_shard": "Mike Heller",
+      "1120_stored_active": true,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": true,
+      "candidate_name": "Michael Heller",
+      "candidate_stored_active": false,
+      "candidate_seen_in_1126_nano_only_live_replay": false,
+      "candidate_citation": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "candidate_person_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=1"
+    },
+    {
+      "id": "faculty-ucsd-nano-2aa92754",
+      "name_on_published_1120_shard": "Darren Lipomi",
+      "1120_stored_active": true,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": true,
+      "candidate_name": "Darren Lipomi",
+      "candidate_stored_active": false,
+      "candidate_seen_in_1126_nano_only_live_replay": false,
+      "candidate_citation": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "candidate_person_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=345"
+    },
+    {
+      "id": "faculty-ucsd-nano-04ac1d79",
+      "name_on_published_1120_shard": "Shirley Meng",
+      "1120_stored_active": true,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": true,
+      "candidate_name": "Ying Shirley Meng",
+      "candidate_stored_active": false,
+      "candidate_seen_in_1126_nano_only_live_replay": false,
+      "candidate_citation": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "candidate_person_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=284"
+    },
+    {
+      "id": "faculty-ucsd-nano-27240933",
+      "name_on_published_1120_shard": "Sheng Xu",
+      "1120_stored_active": true,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": true,
+      "candidate_name": "Sheng Xu",
+      "candidate_stored_active": false,
+      "candidate_seen_in_1126_nano_only_live_replay": false,
+      "candidate_citation": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "candidate_person_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=387"
+    },
+    {
+      "id": "faculty-ucsd-nano-8a42e65d",
+      "name_on_published_1120_shard": null,
+      "1120_stored_active": null,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": false,
+      "candidate_name": "Zeinab Jahed",
+      "candidate_stored_active": true,
+      "candidate_seen_in_1126_nano_only_live_replay": true,
+      "candidate_citation": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+      "candidate_person_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=527"
+    },
+    {
+      "id": "faculty-ucsd-nano-467aa36b",
+      "name_on_published_1120_shard": "Ken Vecchio",
+      "1120_stored_active": true,
+      "1120_seen_in_whole_campus_scheduled_unit_ledger": true,
+      "candidate_name": "Ken Vecchio",
+      "candidate_stored_active": true,
+      "candidate_seen_in_1126_nano_only_live_replay": true,
+      "candidate_citation": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156",
+      "candidate_person_url": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=156"
+    }
+  ],
+  "next_natural_refresh": "The November 20 run used campus-wide deduplication. The November 26 candidate replays only NANO. Use the next actual scheduled whole-campus run after deployment to compare both the unit ledger and the published shard by ID and avoid conflating emitted row counts, observed roster IDs and persons."
+}
