@@ -1,0 +1,46 @@
+{
+  "observed": "2026-11-26T20:10:45+00:00",
+  "formal_both_ends": "87b1e916c0c88c32bba327256706a2beff293346",
+  "source": "Public detail JSON with the published capability and the same URL\u2019s normal streamed HTML; no actions or account requests.",
+  "rows": [
+    {
+      "id": "faculty-pitt-frit-4c67c442",
+      "name": "Hyunjin Kim",
+      "reason": "inactive",
+      "actionable": false,
+      "api_http": 200,
+      "keywords_attribution": "inferred",
+      "topic_count": 5,
+      "ssr_http": 200,
+      "html_release": "87b1e916c0c88c32bba327256706a2beff293346",
+      "ssr_note": "Topics inferred by our system. Check them before using them in your email.",
+      "ssr_inactive_visible": true
+    },
+    {
+      "id": "faculty-duke-econ-cbbe8690",
+      "name": "Peter S. Arcidiacono",
+      "reason": "inactive",
+      "actionable": false,
+      "api_http": 200,
+      "keywords_attribution": "inferred",
+      "topic_count": 5,
+      "ssr_http": 200,
+      "html_release": "87b1e916c0c88c32bba327256706a2beff293346",
+      "ssr_note": "Topics inferred by our system. Check them before using them in your email.",
+      "ssr_inactive_visible": true
+    },
+    {
+      "id": "faculty-wisc-me-24b38826",
+      "name": "Jason Oakley",
+      "reason": "inactive",
+      "actionable": false,
+      "api_http": 200,
+      "keywords_attribution": "inferred",
+      "topic_count": 5,
+      "ssr_http": 200,
+      "html_release": "87b1e916c0c88c32bba327256706a2beff293346",
+      "ssr_note": "Topics inferred by our system. Check them before using them in your email.",
+      "ssr_inactive_visible": true
+    }
+  ]
+}
