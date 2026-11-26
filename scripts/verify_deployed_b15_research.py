@@ -70,7 +70,11 @@ def main():
             url = f"{SITE}/opportunities/{entry['id']}"
             response = page.goto(url, wait_until='domcontentloaded', timeout=60000)
             assert response and response.status == 200, entry['id']
-            expect(page.locator('main')).to_contain_text(entry['fragment'], timeout=30000)
+            research_panel = page.get_by_test_id('fact-field-research_content')
+            expect(research_panel).to_contain_text(entry['fragment'], timeout=30000)
+            if entry['id'] == 'faculty-ncsu-chass-3453199b':
+                description = page.locator('p.whitespace-pre-wrap').filter(has_text='Faculty research profile for Lindsey McGowen')
+                expect(description).to_contain_text(entry['fragment'], timeout=30000)
             pages.append({'id': entry['id'], 'status': response.status, 'page': url, 'visible_fragment': entry['fragment'], 'faculty_source': entry['school_source']})
         browser.close()
     check_deployment(release)
