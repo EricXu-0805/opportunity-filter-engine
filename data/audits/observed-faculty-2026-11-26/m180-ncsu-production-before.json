@@ -1,0 +1,1354 @@
+{
+  "observed_utc": "2026-11-26T10:14:40.906469+00:00",
+  "release_sha_before": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "public_school_retirement_group_ids": [
+    {
+      "id": "faculty-ncsu-chass-6cb0c1b0",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Joseph Herkert",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-6cb0c1b0"
+    },
+    {
+      "id": "faculty-ncsu-chass-da735178",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "William Smith",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-da735178"
+    },
+    {
+      "id": "faculty-ncsu-chass-c8c748bd",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "William Wormsley",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c8c748bd"
+    },
+    {
+      "id": "faculty-ncsu-chass-f6c04422",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Toby Parcel",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f6c04422"
+    },
+    {
+      "id": "faculty-ncsu-chass-618da59b",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Tim Wallace",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-618da59b"
+    },
+    {
+      "id": "faculty-ncsu-chass-7127258e",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Virginia Aldige",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-7127258e"
+    },
+    {
+      "id": "faculty-ncsu-chass-825124c2",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Ron Czaja",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-825124c2"
+    },
+    {
+      "id": "faculty-ncsu-chass-01017fff",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Theodore Greenstein",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-01017fff"
+    },
+    {
+      "id": "faculty-ncsu-chass-2c5ca7f5",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Margaret Zahn",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-2c5ca7f5"
+    },
+    {
+      "id": "faculty-ncsu-chass-8874c982",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Patty McCall",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-8874c982"
+    },
+    {
+      "id": "faculty-ncsu-chass-c5da53cb",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "Jeffrey Leiter",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c5da53cb"
+    },
+    {
+      "id": "faculty-ncsu-chass-8a7b1a0e",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Michael Schwalbe",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-8a7b1a0e"
+    },
+    {
+      "id": "faculty-ncsu-chass-e7bd2a4f",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "Risa Ellovich",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-e7bd2a4f"
+    },
+    {
+      "id": "faculty-ncsu-chass-5b9403a0",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Maxine Atkinson",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-5b9403a0"
+    },
+    {
+      "id": "faculty-ncsu-chass-766b7906",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "William Clifford",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-766b7906"
+    },
+    {
+      "id": "faculty-ncsu-chass-53a980d5",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Adam Davis",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-53a980d5"
+    },
+    {
+      "id": "faculty-ncsu-chass-af259a1c",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Marvin Soroos",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-af259a1c"
+    },
+    {
+      "id": "faculty-ncsu-chass-d8305216",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Bob Moog",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-d8305216"
+    },
+    {
+      "id": "faculty-ncsu-chass-8426ed71",
+      "review_outcome": "mixed_or_unconfirmed_retirement_title",
+      "http": 200,
+      "name": "G Garson",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-8426ed71"
+    },
+    {
+      "id": "faculty-ncsu-chass-86a2f80f",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Thomas Hess",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-86a2f80f"
+    },
+    {
+      "id": "faculty-ncsu-chass-ed249065",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Michael Wogalter",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ed249065"
+    },
+    {
+      "id": "faculty-ncsu-chass-d8c4ba8d",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Samuel Pond",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-d8c4ba8d"
+    },
+    {
+      "id": "faculty-ncsu-chass-ca7b565e",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Roger Mitchell",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ca7b565e"
+    },
+    {
+      "id": "faculty-ncsu-chass-ebe42923",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Ann Schulte",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ebe42923"
+    },
+    {
+      "id": "faculty-ncsu-chass-27a2fc46",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Lynne Baker-Ward",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-27a2fc46"
+    },
+    {
+      "id": "faculty-ncsu-chass-982a2d82",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Mark Wilson",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-982a2d82"
+    },
+    {
+      "id": "faculty-ncsu-chass-dcb028fb",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Mary E Haskett",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-dcb028fb"
+    },
+    {
+      "id": "faculty-ncsu-chass-ff4905cc",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Donald H. Mershon",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ff4905cc"
+    },
+    {
+      "id": "faculty-ncsu-chass-77beffdf",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "James Kalat",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-77beffdf"
+    },
+    {
+      "id": "faculty-ncsu-chass-b36ff5aa",
+      "review_outcome": "mixed_or_unconfirmed_retirement_title",
+      "http": 200,
+      "name": "Katharine Stewart",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-b36ff5aa"
+    },
+    {
+      "id": "faculty-ncsu-chass-53cdfe9a",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Kitty Klein",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-53cdfe9a"
+    },
+    {
+      "id": "faculty-ncsu-chass-bb2a287f",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Joan Michael",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-bb2a287f"
+    },
+    {
+      "id": "faculty-ncsu-chass-6691c85c",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "William Erchul",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-6691c85c"
+    },
+    {
+      "id": "faculty-ncsu-chass-0d338337",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Amy Halberstadt",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0d338337"
+    },
+    {
+      "id": "faculty-ncsu-chass-2f83bf51",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Doug Gillan",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-2f83bf51"
+    },
+    {
+      "id": "faculty-ncsu-chass-fee3291c",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Denis Gray",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-fee3291c"
+    },
+    {
+      "id": "faculty-ncsu-chass-1d403578",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "David Martin",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-1d403578"
+    },
+    {
+      "id": "faculty-ncsu-chass-a3b3f627",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Hal Levin",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-a3b3f627"
+    },
+    {
+      "id": "faculty-ncsu-chass-4c6f69c7",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Michael Pendlebury",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-4c6f69c7"
+    },
+    {
+      "id": "faculty-ncsu-chass-c42f300a",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "David Austin",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c42f300a"
+    },
+    {
+      "id": "faculty-ncsu-chass-31aed8b9",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "A. Donald VandeVeer",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-31aed8b9"
+    },
+    {
+      "id": "faculty-ncsu-chass-165fe06b",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "David Greene",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-165fe06b"
+    },
+    {
+      "id": "faculty-ncsu-chass-0bd3e213",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Stephanie Spencer",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0bd3e213"
+    },
+    {
+      "id": "faculty-ncsu-chass-f7f96c30",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "William Harris",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-20",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f7f96c30"
+    },
+    {
+      "id": "faculty-ncsu-chass-7bd17d24",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Edith Sylla",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-7bd17d24"
+    },
+    {
+      "id": "faculty-ncsu-chass-5ed4f6d7",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Alexander De Grand",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-5ed4f6d7"
+    },
+    {
+      "id": "faculty-ncsu-chass-c60e7c19",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Anthony LaVopa",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c60e7c19"
+    },
+    {
+      "id": "faculty-ncsu-chass-a3f975b4",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "James Banker",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-a3f975b4"
+    },
+    {
+      "id": "faculty-ncsu-chass-3ada8e26",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Turi Hoversten",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-3ada8e26"
+    },
+    {
+      "id": "faculty-ncsu-chass-f600e4ac",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Toby Brody",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f600e4ac"
+    },
+    {
+      "id": "faculty-ncsu-chass-3e0037ac",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Mary Witt",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-3e0037ac"
+    },
+    {
+      "id": "faculty-ncsu-chass-a802f469",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Yvonne Rollins",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-a802f469"
+    },
+    {
+      "id": "faculty-ncsu-chass-9cd4b0a6",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Martine Bell",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-9cd4b0a6"
+    },
+    {
+      "id": "faculty-ncsu-chass-49e38fb4",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Louise Salstad",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-49e38fb4"
+    },
+    {
+      "id": "faculty-ncsu-chass-b1f59d0e",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Michele Magill",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-b1f59d0e"
+    },
+    {
+      "id": "faculty-ncsu-chass-141f03e6",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Michele Darrah",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-141f03e6"
+    },
+    {
+      "id": "faculty-ncsu-chass-a4f06c3b",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "E Lioret",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-a4f06c3b"
+    },
+    {
+      "id": "faculty-ncsu-chass-26df05d8",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Larysa Mykyta",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-26df05d8"
+    },
+    {
+      "id": "faculty-ncsu-chass-6c8352f5",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Irwin Stern",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-6c8352f5"
+    },
+    {
+      "id": "faculty-ncsu-chass-d4e39c02",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Jillian Haeseler",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-d4e39c02"
+    },
+    {
+      "id": "faculty-ncsu-chass-595cab57",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Eika Tai",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-595cab57"
+    },
+    {
+      "id": "faculty-ncsu-chass-7fd5e8b6",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "John Mertz",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-7fd5e8b6"
+    },
+    {
+      "id": "faculty-ncsu-chass-93b95a67",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Gary Mathews",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-93b95a67"
+    },
+    {
+      "id": "faculty-ncsu-chass-dc604573",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Diane Beckman",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-dc604573"
+    },
+    {
+      "id": "faculty-ncsu-chass-0096f675",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Vladimir Bilenkin",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0096f675"
+    },
+    {
+      "id": "faculty-ncsu-chass-43f8b3c4",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Wanda Ramm",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-43f8b3c4"
+    },
+    {
+      "id": "faculty-ncsu-chass-08a6a48e",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "Walt Wolfram",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-08a6a48e"
+    },
+    {
+      "id": "faculty-ncsu-chass-38b191e6",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "William Shaw",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-38b191e6"
+    },
+    {
+      "id": "faculty-ncsu-chass-f779aad1",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Wilton Barnhardt",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f779aad1"
+    },
+    {
+      "id": "faculty-ncsu-chass-66ccd11d",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "Susan Katz",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-66ccd11d"
+    },
+    {
+      "id": "faculty-ncsu-chass-68e03470",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Jeanne Smoot",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-68e03470"
+    },
+    {
+      "id": "faculty-ncsu-chass-0fead013",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Sharon Setzer",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0fead013"
+    },
+    {
+      "id": "faculty-ncsu-chass-7dab7a46",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Allen Stein",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-7dab7a46"
+    },
+    {
+      "id": "faculty-ncsu-chass-48f6179f",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "John Kessel",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-48f6179f"
+    },
+    {
+      "id": "faculty-ncsu-chass-0533fcc5",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Harry West",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0533fcc5"
+    },
+    {
+      "id": "faculty-ncsu-chass-84e6cecc",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "RV Young",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-84e6cecc"
+    },
+    {
+      "id": "faculty-ncsu-chass-6317da3f",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Stan Dicks",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-6317da3f"
+    },
+    {
+      "id": "faculty-ncsu-chass-1308dd4b",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Robert Kochersberger",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-1308dd4b"
+    },
+    {
+      "id": "faculty-ncsu-chass-eb130a81",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "John Morillo",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-eb130a81"
+    },
+    {
+      "id": "faculty-ncsu-chass-b1612d52",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Mike Carter",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-b1612d52"
+    },
+    {
+      "id": "faculty-ncsu-chass-720c8b8d",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Paul Colby",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-720c8b8d"
+    },
+    {
+      "id": "faculty-ncsu-chass-1894dc04",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Philip Blank",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-1894dc04"
+    },
+    {
+      "id": "faculty-ncsu-chass-98d2e744",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Nancy Penrose",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-98d2e744"
+    },
+    {
+      "id": "faculty-ncsu-chass-cbb0d8d9",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Carmine Prioli",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-cbb0d8d9"
+    },
+    {
+      "id": "faculty-ncsu-chass-abfe3ef9",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Marvin Hunt",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-abfe3ef9"
+    },
+    {
+      "id": "faculty-ncsu-chass-6b705305",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Leila May",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-6b705305"
+    },
+    {
+      "id": "faculty-ncsu-chass-67420b77",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Lee Smith",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-67420b77"
+    },
+    {
+      "id": "faculty-ncsu-chass-6ae5927d",
+      "review_outcome": "mixed_or_unconfirmed_retirement_title",
+      "http": 200,
+      "name": "Linda Holley",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-6ae5927d"
+    },
+    {
+      "id": "faculty-ncsu-chass-1e045b11",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Lucinda MacKethan",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-1e045b11"
+    },
+    {
+      "id": "faculty-ncsu-chass-34394e34",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Margaret King",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-34394e34"
+    },
+    {
+      "id": "faculty-ncsu-chass-c48a2e7d",
+      "review_outcome": "mixed_or_unconfirmed_retirement_title",
+      "http": 200,
+      "name": "Maria Rouphail",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c48a2e7d"
+    },
+    {
+      "id": "faculty-ncsu-chass-433f5e0f",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Mary Thuente",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-433f5e0f"
+    },
+    {
+      "id": "faculty-ncsu-chass-34b13b74",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Jim Clark",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-34b13b74"
+    },
+    {
+      "id": "faculty-ncsu-chass-e8200533",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "John Easley",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-e8200533"
+    },
+    {
+      "id": "faculty-ncsu-chass-4574a4b4",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Judith Ferster",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-4574a4b4"
+    },
+    {
+      "id": "faculty-ncsu-chass-98436171",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "John N Wall",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-98436171"
+    },
+    {
+      "id": "faculty-ncsu-chass-af33539f",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Jon Thompson",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-af33539f"
+    },
+    {
+      "id": "faculty-ncsu-chass-c87be0e0",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Judy Small",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c87be0e0"
+    },
+    {
+      "id": "faculty-ncsu-chass-71f33bad",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "John Balaban",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-71f33bad"
+    },
+    {
+      "id": "faculty-ncsu-chass-cae62c8a",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Antony Harrison",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-cae62c8a"
+    },
+    {
+      "id": "faculty-ncsu-chass-57f02900",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Judi Gaitens",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-57f02900"
+    },
+    {
+      "id": "faculty-ncsu-chass-38b8ddf0",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Joseph Gomez",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-38b8ddf0"
+    },
+    {
+      "id": "faculty-ncsu-chass-0ed45fbe",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Michael Grimwood",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0ed45fbe"
+    },
+    {
+      "id": "faculty-ncsu-chass-f1ef75b0",
+      "review_outcome": "mixed_or_unconfirmed_retirement_title",
+      "http": 200,
+      "name": "Etta Barksdale",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f1ef75b0"
+    },
+    {
+      "id": "faculty-ncsu-chass-ee4950c7",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "David Covington",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ee4950c7"
+    },
+    {
+      "id": "faculty-ncsu-chass-5148f03d",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Cat Warren",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-5148f03d"
+    },
+    {
+      "id": "faculty-ncsu-chass-96c8e0ea",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Devin Orgeron",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-96c8e0ea"
+    },
+    {
+      "id": "faculty-ncsu-chass-89084a58",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Dick Reavis",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-89084a58"
+    },
+    {
+      "id": "faculty-ncsu-chass-52f21ae0",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Dorianne Laux",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-52f21ae0"
+    },
+    {
+      "id": "faculty-ncsu-chass-2245f23c",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Charlotte Gross",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-2245f23c"
+    },
+    {
+      "id": "faculty-ncsu-chass-23293f4c",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Barbara Baines",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-23293f4c"
+    },
+    {
+      "id": "faculty-ncsu-chass-1a99c291",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Robert Bateman",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-1a99c291"
+    },
+    {
+      "id": "faculty-ncsu-chass-103a03af",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Beryl Pittman",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-103a03af"
+    },
+    {
+      "id": "faculty-ncsu-chass-a8da80ea",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Anne Baker",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-a8da80ea"
+    },
+    {
+      "id": "faculty-ncsu-chass-043b7940",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Angela Davis-Gardner",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-043b7940"
+    },
+    {
+      "id": "faculty-ncsu-chass-333b7b71",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Dean Phillips",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-333b7b71"
+    },
+    {
+      "id": "faculty-ncsu-chass-14382765",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "Sandy Stallings",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-14382765"
+    },
+    {
+      "id": "faculty-ncsu-chass-4efb3edd",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Sarah Stein",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-4efb3edd"
+    },
+    {
+      "id": "faculty-ncsu-chass-9e6e4815",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "William Jordan",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-9e6e4815"
+    },
+    {
+      "id": "faculty-ncsu-chass-cefc8c15",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Becky Leonard",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-cefc8c15"
+    },
+    {
+      "id": "faculty-ncsu-chass-4152431b",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Robert Schrag",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-4152431b"
+    },
+    {
+      "id": "faculty-ncsu-chass-acb2eb75",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Melissa A. Johnson",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-acb2eb75"
+    },
+    {
+      "id": "faculty-ncsu-chass-4b621e05",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Nancy Snow",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-4b621e05"
+    },
+    {
+      "id": "faculty-ncsu-chass-c07541fe",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Patricia Caple",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-c07541fe"
+    },
+    {
+      "id": "faculty-ncsu-chass-fbcc8754",
+      "review_outcome": "name_differs_between_official_entries",
+      "http": 200,
+      "name": "Bob Larson",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-fbcc8754"
+    },
+    {
+      "id": "faculty-ncsu-chass-a71e7ad9",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Joann Keyton",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-a71e7ad9"
+    },
+    {
+      "id": "faculty-ncsu-chass-30622ea2",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "James Kiwanuka-Tondo",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-30622ea2"
+    },
+    {
+      "id": "faculty-ncsu-chass-74ae94c6",
+      "review_outcome": "mixed_or_unconfirmed_retirement_title",
+      "http": 200,
+      "name": "Edward Funkhouser",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-74ae94c6"
+    },
+    {
+      "id": "faculty-ncsu-chass-9dc91fcb",
+      "review_outcome": "additional_appointment_or_group",
+      "http": 200,
+      "name": "Charlotte Elleman",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-9dc91fcb"
+    },
+    {
+      "id": "faculty-ncsu-chass-f4808c47",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Anita Croasmun",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f4808c47"
+    },
+    {
+      "id": "faculty-ncsu-chass-07f045ac",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Jim Alchediak",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-07f045ac"
+    },
+    {
+      "id": "faculty-ncsu-chass-b48ebdaa",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Craig Smith",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-b48ebdaa"
+    },
+    {
+      "id": "faculty-ncsu-chass-37744c16",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "Daniel DeJoy",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-37744c16"
+    },
+    {
+      "id": "faculty-ncsu-chass-ea98ec3c",
+      "review_outcome": "retired_only",
+      "http": 200,
+      "name": "John Gilbert",
+      "actionable": true,
+      "reason": null,
+      "last_seen_listed_at": "2026-11-23",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-ea98ec3c"
+    }
+  ],
+  "release_sha_after": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "counts": {
+    "('retired_only', True)": 101,
+    "('name_differs_between_official_entries', True)": 20,
+    "('additional_appointment_or_group', True)": 7,
+    "('mixed_or_unconfirmed_retirement_title', True)": 6
+  },
+  "observations_finished_utc": "2026-11-26T10:20:56.288136+00:00"
+}
