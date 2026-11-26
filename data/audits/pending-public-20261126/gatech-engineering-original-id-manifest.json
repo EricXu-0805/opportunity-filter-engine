@@ -1,0 +1,1180 @@
+{
+  "source_commit": "2cb80a82efce669262d529578b330b99c55b5c3a",
+  "public_comparison_releases": [
+    "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "previous_school_rows": 1377,
+  "corrected_school_rows": 1419,
+  "previous_ids_disappeared": 0,
+  "existing_rows_updated": 60,
+  "new_ids": 42,
+  "old_id_order_preserved": true,
+  "units": {
+    "ae": {
+      "eligible": 51,
+      "parsed_official_cards": 71,
+      "previous_collector_emitted": 0,
+      "final_ledger_authorizes_retirement": true
+    },
+    "chbe": {
+      "eligible": 44,
+      "parsed_official_cards": 46,
+      "previous_collector_emitted": 0,
+      "final_ledger_authorizes_retirement": true
+    },
+    "me": {
+      "eligible": 103,
+      "parsed_official_cards": 295,
+      "previous_collector_emitted": 89,
+      "final_ledger_authorizes_retirement": true
+    }
+  },
+  "people": [
+    {
+      "unit_original_id": "faculty-gatech-ae-fb12ba57",
+      "source": "https://ae.gatech.edu/directory/person/krishan-k-ahuja",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-fb12ba57",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-d1e10d90",
+      "source": "https://ae.gatech.edu/directory/person/christos-e-athanasiou",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-d1e10d90",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-71fecfb5",
+      "source": "https://ae.gatech.edu/directory/person/christopher-carr",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-eas-1648259f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-eas-1648259f"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-798d3a79",
+      "source": "https://ae.gatech.edu/directory/person/yongxin-chen",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-798d3a79",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-a48aaad1",
+      "source": "https://ae.gatech.edu/directory/person/glen-chou",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-cs-0748aa11",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-cs-0748aa11"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-b5d0cf5e",
+      "source": "https://ae.gatech.edu/directory/person/john-christian",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-b5d0cf5e",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-e5b0a517",
+      "source": "https://ae.gatech.edu/directory/person/bolei-deng",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-e5b0a517",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-db501148",
+      "source": "https://ae.gatech.edu/directory/person/claudio-vinicius-di-leo",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-db501148",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-73ab2ec0",
+      "source": "https://ae.gatech.edu/directory/person/benjamin-lee-emerson-ii",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-73ab2ec0",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-321aa300",
+      "source": "https://ae.gatech.edu/directory/person/karen-m-feigh",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-321aa300",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-a070fc20",
+      "source": "https://ae.gatech.edu/directory/person/olivia-j-fischer",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-a070fc20",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-339a44aa",
+      "source": "https://ae.gatech.edu/directory/person/lu-gan",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-339a44aa",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-23ffb056",
+      "source": "https://ae.gatech.edu/directory/person/laurie-garrow",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-23ffb056",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-c7885ccb",
+      "source": "https://ae.gatech.edu/directory/person/brian-j-german",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-c7885ccb",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-b49febbb",
+      "source": "https://ae.gatech.edu/directory/person/brian-c-gunter",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-b49febbb",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-e0d224cb",
+      "source": "https://ae.gatech.edu/directory/person/wassim-m-haddad",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-e0d224cb",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-7be62004",
+      "source": "https://ae.gatech.edu/directory/person/masatoshi-hirabayashi",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-7be62004",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-240ddbad",
+      "source": "https://ae.gatech.edu/directory/person/koki-ho",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-240ddbad",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-1b05bdca",
+      "source": "https://ae.gatech.edu/directory/person/kai-james",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-1b05bdca",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-3653805e",
+      "source": "https://ae.gatech.edu/directory/person/george-kardomateas",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-3653805e",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-355f5a1a",
+      "source": "https://ae.gatech.edu/directory/person/graeme-james-kennedy",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-355f5a1a",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-3f619b95",
+      "source": "https://ae.gatech.edu/directory/person/sarah-hq-li",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-3f619b95",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-6edf75b5",
+      "source": "https://ae.gatech.edu/directory/person/timothy-charles-lieuwen",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-6edf75b5",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-4f3d2ad9",
+      "source": "https://ae.gatech.edu/directory/person/edgar-glenn-lightsey",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-4f3d2ad9",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-3764279f",
+      "source": "https://ae.gatech.edu/directory/person/dimitri-mavris",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-3764279f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-37b10f45",
+      "source": "https://ae.gatech.edu/directory/person/suresh-menon",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-37b10f45",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-d7d12ca4",
+      "source": "https://ae.gatech.edu/directory/person/keegan-j-moore",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-d7d12ca4",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-d6948cee",
+      "source": "https://ae.gatech.edu/directory/person/yashwanth-kumar-nakka",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-d6948cee",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-71526f05",
+      "source": "https://ae.gatech.edu/directory/person/joseph-oefelein",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-71526f05",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-e6761279",
+      "source": "https://ae.gatech.edu/directory/person/masahiro-hiro-ono",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-e6761279",
+      "verified_contact_after": false,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-281b1c8d",
+      "source": "https://ae.gatech.edu/directory/person/jonnalagadda-v-r-prasad",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-281b1c8d",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-5556daf0",
+      "source": "https://ae.gatech.edu/directory/person/elizabeth-qian",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-cse-266612b2",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-cse-266612b2"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-516e9935",
+      "source": "https://ae.gatech.edu/directory/person/juergen-rauleder",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-516e9935",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-00cbceaf",
+      "source": "https://ae.gatech.edu/directory/person/cristina-riso",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-00cbceaf",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-86d15f0a",
+      "source": "https://ae.gatech.edu/directory/person/thomas-gonzalez-roberts",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-inta-f6c031ca",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-inta-f6c031ca"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-f6bba6d7",
+      "source": "https://ae.gatech.edu/directory/person/jonathan-rogers",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-f6bba6d7",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-fac8fd57",
+      "source": "https://ae.gatech.edu/directory/person/alvaro-romero-calvo",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-fac8fd57",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-10f66ab6",
+      "source": "https://ae.gatech.edu/directory/person/stephen-m-ruffin",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-10f66ab6",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-c26c6f75",
+      "source": "https://ae.gatech.edu/directory/person/lakshmi-n-sankar",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-c26c6f75",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-f21fd540",
+      "source": "https://ae.gatech.edu/directory/person/jerry-m-seitzman",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-f21fd540",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-2158277c",
+      "source": "https://ae.gatech.edu/directory/person/marilyn-j-smith",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-2158277c",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-dc0eae5f",
+      "source": "https://ae.gatech.edu/directory/person/adam-m-steinberg",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-dc0eae5f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-e31f74ce",
+      "source": "https://ae.gatech.edu/directory/person/wenting-sun",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-e31f74ce",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-90f4ac7f",
+      "source": "https://ae.gatech.edu/directory/person/evangelos-theodorou",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-90f4ac7f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-1964a4f4",
+      "source": "https://ae.gatech.edu/directory/person/sedina-tsikata",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-1964a4f4",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-a9892581",
+      "source": "https://ae.gatech.edu/directory/person/panagiotis-tsiotras",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-a9892581",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-fb20ce82",
+      "source": "https://ae.gatech.edu/directory/person/kyriakos-g-vamvoudakis",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-fb20ce82",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-16e9cddc",
+      "source": "https://ae.gatech.edu/directory/person/mitchell-lr-walker-ii",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-16e9cddc",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-4dbaf6dc",
+      "source": "https://ae.gatech.edu/directory/person/vigor-yang",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-4dbaf6dc",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-53b67dae",
+      "source": "https://ae.gatech.edu/directory/person/pui-kuen-yeung",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-53b67dae",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-ae-8fab0a9f",
+      "source": "https://ae.gatech.edu/directory/person/beckett-zhou",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-ae-8fab0a9f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-861219e2",
+      "source": "https://chbe.gatech.edu/directory/person/alex-abramson",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-861219e2",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-f02bb175",
+      "source": "https://chbe.gatech.edu/directory/person/john-blazeck",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-f02bb175",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-ff6a9709",
+      "source": "https://chbe.gatech.edu/directory/person/andreas-bommarius",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-ff6a9709",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-9d3b8359",
+      "source": "https://chbe.gatech.edu/directory/person/fani-boukouvala",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-9d3b8359",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-e13eb7d9",
+      "source": "https://chbe.gatech.edu/directory/person/victor-breedveld",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-e13eb7d9",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-5de78526",
+      "source": "https://chbe.gatech.edu/directory/person/blair-brettmann",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-mse-c2fa3fd0",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-mse-c2fa3fd0"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-2df4c0c9",
+      "source": "https://chbe.gatech.edu/directory/person/julie-champion",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-2df4c0c9",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-5d82e50f",
+      "source": "https://chbe.gatech.edu/directory/person/lily-cheung",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-5d82e50f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-2c584ec4",
+      "source": "https://chbe.gatech.edu/directory/person/christian-cuba-torres",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-2c584ec4",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-414d139d",
+      "source": "https://chbe.gatech.edu/directory/person/george-degen",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-414d139d",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-1c828b58",
+      "source": "https://chbe.gatech.edu/directory/person/michael-filler",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-1c828b58",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-61d468c8",
+      "source": "https://chbe.gatech.edu/directory/person/david-flaherty",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-61d468c8",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-55c74d3b",
+      "source": "https://chbe.gatech.edu/directory/person/thomas-fuller",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-55c74d3b",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-6b5947f4",
+      "source": "https://chbe.gatech.edu/directory/person/martha-grover",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-6b5947f4",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-1eacde42",
+      "source": "https://chbe.gatech.edu/directory/person/marta-hatzell",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-1eacde42",
+      "verified_contact_after": false,
+      "retained_other_original_ids": [
+        "faculty-gatech-me-de86e3dc"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-e3004a97",
+      "source": "https://chbe.gatech.edu/directory/person/yuhang-hu",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-0a242fae",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-me-0a242fae"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-0d76b3db",
+      "source": "https://chbe.gatech.edu/directory/person/vida-jamali",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-0d76b3db",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-ce4f187a",
+      "source": "https://chbe.gatech.edu/directory/person/christopher-jones",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-ce4f187a",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-chem-fcbfc97f"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-64930fb8",
+      "source": "https://chbe.gatech.edu/directory/person/ravi-kane",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-64930fb8",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-1cc769a4",
+      "source": "https://chbe.gatech.edu/directory/person/ahyoung-kim",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-1cc769a4",
+      "verified_contact_after": false,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-07335447",
+      "source": "https://chbe.gatech.edu/directory/person/paul-kohl",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-07335447",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-92875f1c",
+      "source": "https://chbe.gatech.edu/directory/person/william-koros",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-92875f1c",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-8d0e4756",
+      "source": "https://chbe.gatech.edu/directory/person/bjarne-kreitz",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-8d0e4756",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-69cc0704",
+      "source": "https://chbe.gatech.edu/directory/person/nian-liu",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-69cc0704",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-a47ad886",
+      "source": "https://chbe.gatech.edu/directory/person/ryan-lively",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-a47ad886",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-0fbcab56",
+      "source": "https://chbe.gatech.edu/directory/person/hang-lu",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-0fbcab56",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-f4a0dc3f",
+      "source": "https://chbe.gatech.edu/directory/person/andrew-medford",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-f4a0dc3f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-1643e907",
+      "source": "https://chbe.gatech.edu/directory/person/sankar-nair",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-1643e907",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-9d35f438",
+      "source": "https://chbe.gatech.edu/directory/person/solomon-tolulope-oyakhire",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-9d35f438",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-495bccbb",
+      "source": "https://chbe.gatech.edu/directory/person/anant-paravastu",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-495bccbb",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-7ca97568",
+      "source": "https://chbe.gatech.edu/directory/person/pamela-peralta-yahya",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chem-eb374397",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-chem-eb374397"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-c2233830",
+      "source": "https://chbe.gatech.edu/directory/person/mark-prausnitz",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-c2233830",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-8a4d879a",
+      "source": "https://chbe.gatech.edu/directory/person/matthew-realff",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-8a4d879a",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-fd3c7ea8",
+      "source": "https://chbe.gatech.edu/directory/person/nick-sahinidis",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-fd3c7ea8",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-30f1fcc4",
+      "source": "https://chbe.gatech.edu/directory/person/joseph-scott",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-30f1fcc4",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-dd1e70f4",
+      "source": "https://chbe.gatech.edu/directory/person/carsten-sievers",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chem-ae9d5103",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-chem-ae9d5103"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-25e43286",
+      "source": "https://chbe.gatech.edu/directory/person/patricia-stathatou",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-25e43286",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-86770dd5",
+      "source": "https://chbe.gatech.edu/directory/person/natalie-stingelin",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-mse-583fca33",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-mse-583fca33"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-2b6dc2b9",
+      "source": "https://chbe.gatech.edu/directory/person/mark-styczynski",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-2b6dc2b9",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-7ab7c68f",
+      "source": "https://chbe.gatech.edu/directory/person/yonathan-thio",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-7ab7c68f",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-8231b6fc",
+      "source": "https://chbe.gatech.edu/directory/person/zhaohui-julene-tong",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-8231b6fc",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-439d1bb9",
+      "source": "https://chbe.gatech.edu/directory/person/corey-wilson",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-439d1bb9",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-b2a0a373",
+      "source": "https://chbe.gatech.edu/directory/person/julia-yang",
+      "source_http": 200,
+      "public_detail_before": 200,
+      "canonical_original_id_after": "faculty-gatech-chbe-b2a0a373",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-chbe-ec5b560b",
+      "source": "https://chbe.gatech.edu/directory/person/micah-s-ziegler",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-chbe-ec5b560b",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-spp-c4bd96c4"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-14f6a820",
+      "source": "https://me.gatech.edu/user/1106",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-14f6a820",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-fc6c1f84",
+      "source": "https://me.gatech.edu/user/1170",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-fc6c1f84",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-d340e6e4",
+      "source": "https://me.gatech.edu/user/1143",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-d340e6e4",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-7dc5fd2c",
+      "source": "https://me.gatech.edu/user/1105",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-7dc5fd2c",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-e1a17ff2",
+      "source": "https://me.gatech.edu/belfil",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-e1a17ff2",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-91cfbca1",
+      "source": "https://me.gatech.edu/user/1086",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-91cfbca1",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-ae-7f392eed"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-82843a0b",
+      "source": "https://me.gatech.edu/user/1059",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-82843a0b",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-fa6e1567",
+      "source": "https://me.gatech.edu/user/1188",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-fa6e1567",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-isye-fb596af8"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-5f7b3cd6",
+      "source": "https://me.gatech.edu/user/1104",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-bme-46eab31b",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-bme-46eab31b"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-135b40e5",
+      "source": "https://me.gatech.edu/user/1146",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-135b40e5",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-isye-a531c1ac"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-2c3689f2",
+      "source": "https://me.gatech.edu/user/1078",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-2c3689f2",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-9bc15406",
+      "source": "https://me.gatech.edu/user/1204",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-9bc15406",
+      "verified_contact_after": true,
+      "retained_other_original_ids": []
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-5d73a686",
+      "source": "https://me.gatech.edu/user/1091",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-5d73a686",
+      "verified_contact_after": true,
+      "retained_other_original_ids": [
+        "faculty-gatech-ece-2daf03a1"
+      ]
+    },
+    {
+      "unit_original_id": "faculty-gatech-me-321509ee",
+      "source": "https://me.gatech.edu/Michael_West_Jr",
+      "source_http": 200,
+      "public_detail_before": 404,
+      "canonical_original_id_after": "faculty-gatech-me-321509ee",
+      "verified_contact_after": false,
+      "retained_other_original_ids": [
+        "faculty-gatech-ece-1aba5b2d"
+      ]
+    }
+  ],
+  "saved_originals_now_point_to": {
+    "faculty-gatech-ece-2daf03a1": "faculty-gatech-me-5d73a686",
+    "faculty-gatech-ae-7f392eed": "faculty-gatech-me-91cfbca1"
+  },
+  "original_with_mechanical_emeritus_appointment": "faculty-gatech-me-699f15c9",
+  "separate_industrial_design_id_unchanged": "faculty-gatech-id-e7117291",
+  "checked_assembled_detail_ids": [
+    "faculty-gatech-ae-00cbceaf",
+    "faculty-gatech-ae-10f66ab6",
+    "faculty-gatech-ae-16e9cddc",
+    "faculty-gatech-ae-1964a4f4",
+    "faculty-gatech-ae-1b05bdca",
+    "faculty-gatech-ae-2158277c",
+    "faculty-gatech-ae-23ffb056",
+    "faculty-gatech-ae-240ddbad",
+    "faculty-gatech-ae-281b1c8d",
+    "faculty-gatech-ae-321aa300",
+    "faculty-gatech-ae-339a44aa",
+    "faculty-gatech-ae-355f5a1a",
+    "faculty-gatech-ae-3653805e",
+    "faculty-gatech-ae-3764279f",
+    "faculty-gatech-ae-37b10f45",
+    "faculty-gatech-ae-3f619b95",
+    "faculty-gatech-ae-4dbaf6dc",
+    "faculty-gatech-ae-4f3d2ad9",
+    "faculty-gatech-ae-516e9935",
+    "faculty-gatech-ae-53b67dae",
+    "faculty-gatech-ae-6edf75b5",
+    "faculty-gatech-ae-71526f05",
+    "faculty-gatech-ae-73ab2ec0",
+    "faculty-gatech-ae-798d3a79",
+    "faculty-gatech-ae-7be62004",
+    "faculty-gatech-ae-7f392eed",
+    "faculty-gatech-ae-8fab0a9f",
+    "faculty-gatech-ae-90f4ac7f",
+    "faculty-gatech-ae-a070fc20",
+    "faculty-gatech-ae-a9892581",
+    "faculty-gatech-ae-b49febbb",
+    "faculty-gatech-ae-b5d0cf5e",
+    "faculty-gatech-ae-c26c6f75",
+    "faculty-gatech-ae-c7885ccb",
+    "faculty-gatech-ae-d1e10d90",
+    "faculty-gatech-ae-d6948cee",
+    "faculty-gatech-ae-d7d12ca4",
+    "faculty-gatech-ae-db501148",
+    "faculty-gatech-ae-dc0eae5f",
+    "faculty-gatech-ae-e0d224cb",
+    "faculty-gatech-ae-e31f74ce",
+    "faculty-gatech-ae-e5b0a517",
+    "faculty-gatech-ae-e6761279",
+    "faculty-gatech-ae-f21fd540",
+    "faculty-gatech-ae-f6bba6d7",
+    "faculty-gatech-ae-fac8fd57",
+    "faculty-gatech-ae-fb12ba57",
+    "faculty-gatech-ae-fb20ce82",
+    "faculty-gatech-bme-46eab31b",
+    "faculty-gatech-chbe-07335447",
+    "faculty-gatech-chbe-0d76b3db",
+    "faculty-gatech-chbe-0fbcab56",
+    "faculty-gatech-chbe-1643e907",
+    "faculty-gatech-chbe-1c828b58",
+    "faculty-gatech-chbe-1cc769a4",
+    "faculty-gatech-chbe-1eacde42",
+    "faculty-gatech-chbe-25e43286",
+    "faculty-gatech-chbe-2b6dc2b9",
+    "faculty-gatech-chbe-2c584ec4",
+    "faculty-gatech-chbe-2df4c0c9",
+    "faculty-gatech-chbe-30f1fcc4",
+    "faculty-gatech-chbe-414d139d",
+    "faculty-gatech-chbe-439d1bb9",
+    "faculty-gatech-chbe-495bccbb",
+    "faculty-gatech-chbe-55c74d3b",
+    "faculty-gatech-chbe-5d82e50f",
+    "faculty-gatech-chbe-61d468c8",
+    "faculty-gatech-chbe-64930fb8",
+    "faculty-gatech-chbe-69cc0704",
+    "faculty-gatech-chbe-6b5947f4",
+    "faculty-gatech-chbe-7ab7c68f",
+    "faculty-gatech-chbe-8231b6fc",
+    "faculty-gatech-chbe-861219e2",
+    "faculty-gatech-chbe-8a4d879a",
+    "faculty-gatech-chbe-8d0e4756",
+    "faculty-gatech-chbe-92875f1c",
+    "faculty-gatech-chbe-9d35f438",
+    "faculty-gatech-chbe-9d3b8359",
+    "faculty-gatech-chbe-a47ad886",
+    "faculty-gatech-chbe-b2a0a373",
+    "faculty-gatech-chbe-c2233830",
+    "faculty-gatech-chbe-ce4f187a",
+    "faculty-gatech-chbe-e13eb7d9",
+    "faculty-gatech-chbe-ec5b560b",
+    "faculty-gatech-chbe-f02bb175",
+    "faculty-gatech-chbe-f4a0dc3f",
+    "faculty-gatech-chbe-fd3c7ea8",
+    "faculty-gatech-chbe-ff6a9709",
+    "faculty-gatech-chem-ae9d5103",
+    "faculty-gatech-chem-eb374397",
+    "faculty-gatech-chem-fcbfc97f",
+    "faculty-gatech-cs-0748aa11",
+    "faculty-gatech-cse-266612b2",
+    "faculty-gatech-eas-1648259f",
+    "faculty-gatech-ece-1aba5b2d",
+    "faculty-gatech-ece-2daf03a1",
+    "faculty-gatech-id-e7117291",
+    "faculty-gatech-inta-f6c031ca",
+    "faculty-gatech-isye-a531c1ac",
+    "faculty-gatech-isye-fb596af8",
+    "faculty-gatech-me-0a242fae",
+    "faculty-gatech-me-135b40e5",
+    "faculty-gatech-me-14f6a820",
+    "faculty-gatech-me-2c3689f2",
+    "faculty-gatech-me-321509ee",
+    "faculty-gatech-me-5d73a686",
+    "faculty-gatech-me-699f15c9",
+    "faculty-gatech-me-7dc5fd2c",
+    "faculty-gatech-me-82843a0b",
+    "faculty-gatech-me-91cfbca1",
+    "faculty-gatech-me-9bc15406",
+    "faculty-gatech-me-d340e6e4",
+    "faculty-gatech-me-de86e3dc",
+    "faculty-gatech-me-e1a17ff2",
+    "faculty-gatech-me-fa6e1567",
+    "faculty-gatech-me-fc6c1f84",
+    "faculty-gatech-mse-583fca33",
+    "faculty-gatech-mse-c2fa3fd0",
+    "faculty-gatech-spp-c4bd96c4"
+  ],
+  "checked_assembled_details": 119
+}
