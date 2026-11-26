@@ -12,11 +12,23 @@ _METHODS = (
     'ImageJ', 'LaTeX', 'qPCR', 'PCR', 'Western blot', 'flow cytometry', 'RNA sequencing',
 )
 _BY_NAME = {label.casefold(): label for label in _METHODS}
-_METHOD = re.compile(r"(?<![\w+#])(?:" + "|".join(re.escape(label) for label in sorted(_METHODS, key=len, reverse=True)) + r")(?![\w+#])", re.I)
-_ACTION = re.compile(r"\b(?:built|developed|implemented|analy[sz]ed|tested|used|wrote|designed|applied|trained|ran|mapped|processed|measured|coded|automated|validated|calibrated)\b|(?:使用|实现|實現|分析|开发|開發|编写|編寫|测量|測量|处理|處理|训练|訓練)", re.I)
+# Methods may touch Chinese text, which does not use spaces as word boundaries.
+_METHOD = re.compile(r"(?<![a-z0-9_+#])(?:"
+                     + "|".join(re.escape(label) for label in sorted(_METHODS, key=len, reverse=True))
+                     + r")(?![a-z0-9_+#])", re.I | re.ASCII)
+_ENGLISH_ACTION = (r"(?:built|developed|implemented|analy[sz]ed|tested|used|wrote|designed|applied|trained|ran|mapped|"
+                   r"processed|measured|coded|automated|validated|calibrated)")
+_CHINESE_ACTION = r"(?:使用|实现|實現|分析|开发|開發|编写|編寫|测量|測量|处理|處理|训练|訓練)"
+# A first-person statement or a résumé bullet can establish whose action it
+# was. The existence of a past-tense verb somewhere in a quotation cannot.
+_OWN_ACTION = re.compile(r"(?:^\s*[-•*]?\s*|\bI\s+(?:have\s+)?(?:personally\s+)?)" + _ENGLISH_ACTION + r"\b|"
+                         r"^\s*[-•*]?\s*(?:我|本人)?(?:曾经|曾經|曾|独立|獨立|亲自|親自)?" + _CHINESE_ACTION, re.I)
 _NOT_PERFORMED = re.compile(r"\b(?:not|never|no|without|haven['’]t|didn['’]t|learning to|intend to|plan to|would|may|might|could|interested in)\b|(?:没有|沒有|未使用|未曾|计划|計畫|想学|想學)", re.I)
 _OTHER_ACTOR = re.compile(r"\b(?:she|he|they|colleagues?|collaborators?|teammates?|supervisors?|my mentor|our team)\b|(?:同事|合作者|导师|導師|队友|隊友)", re.I)
 _CLAUSE = re.compile(r"[.!?;\n。！？；]+")
+# Do not attribute a second actor's method to a student's earlier verb.
+_OWN_CLAUSE = re.compile(_CLAUSE.pattern + r"|[,，]|\b(?:but|whereas|while|who|which|that|where|how)\b|"
+                        r"\band\b(?=\s+(?:[\w'-]+\s+){1,3}" + _ENGLISH_ACTION + r"\b)", re.I)
 
 
 def confirmed_methods(entries):
@@ -25,8 +37,8 @@ def confirmed_methods(entries):
     for entry in entries or ():
         if not isinstance(entry, dict) or entry.get("status") != "confirmed" or entry.get("source") not in ("manual", "github"):
             continue
-        for clause in _CLAUSE.split(entry["text"]):
-            if not _ACTION.search(clause) or _NOT_PERFORMED.search(clause) or _OTHER_ACTOR.search(clause):
+        for clause in _OWN_CLAUSE.split(entry["text"]):
+            if not _OWN_ACTION.search(clause) or _NOT_PERFORMED.search(clause) or _OTHER_ACTOR.search(clause):
                 continue
             for term in _METHOD.finditer(clause):
                 key = term.group().casefold()

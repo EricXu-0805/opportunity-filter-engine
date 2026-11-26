@@ -3030,8 +3030,14 @@ def test_confirmed_work_requires_a_performed_action_and_owned_target_source():
     target = target_methods([], ["Spatial planning and GIS"])
     assert experience_for_target(confirmed_methods([{**data, "text": "Water Lab — Research assistant\nFrom May to August\nMapped habitat loss using GIS."}]), target) == {
         "entry_id": "real", "revision": 3, "method": "GIS", "target_source": "research_area"}
-    for text in ["I did not use GIS.", "My colleague used GIS.", "I plan to build a GIS tool.", "GIS laboratory"]:
+    for text in ["I did not use GIS.", "My colleague used GIS.", "I plan to build a GIS tool.",
+                 "Alex used GIS.", "My professor used GIS.", "I observed how students used GIS.",
+                 "I wrote a project report, but Alex used GIS.", "I wrote reports and Alex used GIS.",
+                 "I analyzed how the department used GIS.", "导师使用GIS开展研究。", "GIS laboratory"]:
         assert not experience_for_target(confirmed_methods([{**data, "text": text}]), target)
+    for text in ["我使用GIS绘制了栖息地图。", "使用GIS分析数据。", "I personally used GIS in the lab."]:
+        assert experience_for_target(confirmed_methods([{**data, "text": text}]), target)["method"] == "GIS"
+    assert target_methods([], ["使用GIS研究城市规划"]) == (("gis", "research_area"),)
     assert not experience_for_target(confirmed_methods([{**data, "text": "I used GIS."}]), target_methods([], []))
     # Some faculty keyword taggers generated "GIS" from "logistics". Only the
     # actual target source, not a collection-level topic label, may support this.
