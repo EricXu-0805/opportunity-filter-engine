@@ -1,0 +1,218 @@
+{
+  "observed_at": "2026-11-26T10:57:58.154699+00:00",
+  "previous_main": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "merged_commit": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "tree": "b807562892e8e8a1b7deedde3133ab7a12f916e4",
+  "prs": [
+    {
+      "number": 1308,
+      "head": "48dcbe76f71341d9e88bc028c5e62ff31b6b122f",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:18Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1308"
+    },
+    {
+      "number": 1309,
+      "head": "ffd9851a7e41e8ab4f081283bec778a65205c4c3",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T09:45:50Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1309"
+    },
+    {
+      "number": 1310,
+      "head": "3d50aadbffafecb01bb8d7a27086c34538cf03b4",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:18Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1310"
+    },
+    {
+      "number": 1311,
+      "head": "9c898b990cab0e1a9fbe93baf79eab53705183cf",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1311"
+    },
+    {
+      "number": 1312,
+      "head": "99546012b7d8a59ff9e351f0f7a3b64ba067e3d0",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:18Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1312"
+    },
+    {
+      "number": 1313,
+      "head": "7e9e760af66db61455d3396c61425630b93fa4a3",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1313"
+    },
+    {
+      "number": 1314,
+      "head": "db6fb322c68f3ded04a238a80830f4e70c6f5ac0",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:18Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1314"
+    },
+    {
+      "number": 1315,
+      "head": "cb3013e06637736352d2fa0df1e809f6f37fd5f3",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1315"
+    },
+    {
+      "number": 1316,
+      "head": "3560e46669ca4d181b9d5e113c069bcd1dd5f74e",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1316"
+    },
+    {
+      "number": 1317,
+      "head": "b90f0f2d81c33bb68e295aaffde8012b3f19b8cc",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1317"
+    },
+    {
+      "number": 1318,
+      "head": "df38a744467a8493273a9d80e2da66f84a3be890",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1318"
+    },
+    {
+      "number": 1319,
+      "head": "df08403f87607e3d2daf7f857d67c0d44bccd2b3",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1319"
+    },
+    {
+      "number": 1320,
+      "head": "0890064bc0cc481890f57f6383b83b792372f213",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1320"
+    },
+    {
+      "number": 1321,
+      "head": "c766a73a0420ec206e910301802631316906b596",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1321"
+    },
+    {
+      "number": 1322,
+      "head": "8e51ac278a74bfb04fa5635124a385bed26cdadc",
+      "original_base": "fix/manual-reu-eligibility",
+      "github_state": "open",
+      "github_merged_at": null,
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1322"
+    },
+    {
+      "number": 1323,
+      "head": "cf686fc2e17800dbe9909eeb35f00c742618e807",
+      "original_base": "fix/manual-reu-eligibility",
+      "github_state": "open",
+      "github_merged_at": null,
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1323"
+    },
+    {
+      "number": 1324,
+      "head": "ba369206bb7f92464b9b2952b31c3d210328568b",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1324"
+    },
+    {
+      "number": 1326,
+      "head": "0bdf5f3c83d1be9f20bbffdab5b0f7b8e11b93a9",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:17Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1326"
+    },
+    {
+      "number": 1327,
+      "head": "652b8fefe6add02fde5165b680e46c39c6d12efa",
+      "original_base": "main",
+      "github_state": "closed",
+      "github_merged_at": "2026-11-26T10:55:15Z",
+      "included_in_main": true,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1327"
+    }
+  ],
+  "full_ci": {
+    "1310": {
+      "head": "3d50aadbffafecb01bb8d7a27086c34538cf03b4",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800635744",
+      "checked_tests": {
+        "Decide (run or skip the suite)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "E2E (Playwright)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    "1319": {
+      "head": "df08403f87607e3d2daf7f857d67c0d44bccd2b3",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800669769",
+      "checked_tests": {
+        "Decide (run or skip the suite)": "success",
+        "E2E (Playwright)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "Backend (lint + pytest)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    },
+    "1327": {
+      "head": "652b8fefe6add02fde5165b680e46c39c6d12efa",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800863307",
+      "checked_tests": {
+        "Decide (run or skip the suite)": "success",
+        "Backend (lint + pytest)": "success",
+        "Frontend (typecheck + build)": "success",
+        "Migrations (Flow B merge + CLI replay)": "success",
+        "E2E (Playwright)": "success",
+        "Deploy backend (Render hook)": "skipped"
+      }
+    }
+  },
+  "scope": "Exact main tree and constituent commit inclusion. #1309 was already in the previous main. Stacked PRs #1322 and #1323 have merged contents but their original non-main PR state is separate. Deployment and individual acceptance receipts are recorded separately."
+}
