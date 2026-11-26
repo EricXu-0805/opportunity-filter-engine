@@ -1,0 +1,335 @@
+{
+  "source_heads": {
+    "b18": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+    "#1454": "87d4d7d12d8a30dd557a6fdb799f2d3004e8d549",
+    "#1457": "13061d423178121463c101fd891e40b34d13ae77",
+    "#1423": "481e2b1a5321dd3bdb69625e40d6292aee0526d4",
+    "#1455": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+    "#1456": "87736b64a61878d19d48c83e380e74f2a2a43100",
+    "#1458": "c3451d2d0bf554f5611e58d16ac7e81ae3a77a9c"
+  },
+  "ucsd_ordered_original_ids_sha256": "bb2fa84facb435b7db36e594fc25a34fb328b0070aee10b654be46b720b084a6",
+  "ucsd_count": 1508,
+  "ucsd_source_only_ids": [
+    "faculty-ucsd-nano-04ac1d79",
+    "faculty-ucsd-nano-25a6d469",
+    "faculty-ucsd-nano-27240933",
+    "faculty-ucsd-nano-2aa92754",
+    "faculty-ucsd-nano-dc9e3de3"
+  ],
+  "ucsd_prior_changed_ids": [
+    "faculty-ucsd-ethn-1fd8a952",
+    "faculty-ucsd-psych-003726bc",
+    "faculty-ucsd-psych-bcbcc532",
+    "faculty-ucsd-usp-b948a9e8",
+    "ucsd-c6d547c9321a",
+    "ucsd-d93b49abd299"
+  ],
+  "ucsd_overlap": [],
+  "normalizer_conflicts": "Union of prior directory flag, all prior registries, new historical-name and unit-ladder flags and five NanoEngineering records. Both test maps retained.",
+  "m180_merged_source": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+  "m180_parent_equivalent": {
+    "main": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+    "b18_ancestor": "033b2a0bb3adb0c018d80da00aaf4eacdd83be7e",
+    "tree": "421bfd6a1399a5a3b8b6a244486de21bf4fa64f5",
+    "identical_four_file_patch_id": "af6d8eb15a99018257519707f87fb30009ac9219",
+    "released_ancestor_conflict_paths_retained_from_B18": [
+      "data/processed/shards/national.json",
+      "data/processed/shards/ncsu.json",
+      "data/processed/shards/umd.json",
+      "frontend/src/lib/school-stats.json",
+      "src/normalizers/reviewed_faculty_profiles.py",
+      "src/program_windows.py",
+      "tests/test_ncsu_chass_retirement.py",
+      "tests/test_program_windows.py"
+    ]
+  },
+  "exact_row_assertions": {
+    "utexas": {
+      "original_count_and_order_preserved": 2328,
+      "original_ids_sha256": "7e519b319ebdc1f1f32e2a15ee9b9b2ef5001e751cb0b3a533f42e5c3e36db1b",
+      "changed_records_and_full_field_paths": {
+        "faculty-utexas-mpdd-5850399f": [
+          "metadata.publication_attribution_status",
+          "metadata.publication_author_id",
+          "metadata.recent_works",
+          "metadata.works_gate"
+        ]
+      }
+    },
+    "national": {
+      "original_count_and_order_preserved": 14139,
+      "original_ids_sha256": "a11c0f3a0bfe7122b816ce025e28cc4eaae4ee2f1c742537a491f3e2982a4cfc",
+      "changed_records_and_full_field_paths": {
+        "nsf-reu-2447670": [
+          "description_clean",
+          "eligibility.majors",
+          "metadata.inferred_fields.eligibility.majors"
+        ],
+        "sro-3c378261": [
+          "compensation_details",
+          "description_clean",
+          "duration",
+          "eligibility.preferred_year"
+        ],
+        "sro-3ec4ea4e": [
+          "description_clean",
+          "eligibility.majors",
+          "metadata.inferred_fields.eligibility.majors"
+        ],
+        "sro-44f176cd": [
+          "description_clean",
+          "eligibility.majors",
+          "metadata.inferred_fields.eligibility.majors"
+        ],
+        "sro-595e912d": [
+          "compensation_details",
+          "description_clean",
+          "duration",
+          "eligibility.preferred_year"
+        ],
+        "wisc-86cba49b83d7": [
+          "compensation_details",
+          "description",
+          "description_clean",
+          "duration",
+          "eligibility.preferred_year",
+          "paid"
+        ]
+      }
+    },
+    "ucsd": {
+      "original_count_and_order_preserved": 1508,
+      "original_ids_sha256": "bb2fa84facb435b7db36e594fc25a34fb328b0070aee10b654be46b720b084a6",
+      "changed_records_and_full_field_paths": {
+        "faculty-ucsd-nano-04ac1d79": [
+          "description_clean",
+          "eligibility.eligibility_text_raw",
+          "metadata.deactivated_at",
+          "metadata.deactivation_reason",
+          "metadata.faculty_profile_review",
+          "metadata.faculty_title",
+          "metadata.is_active",
+          "pi_name",
+          "source_url",
+          "title",
+          "url"
+        ],
+        "faculty-ucsd-nano-25a6d469": [
+          "description_clean",
+          "eligibility.eligibility_text_raw",
+          "metadata.deactivated_at",
+          "metadata.deactivation_reason",
+          "metadata.faculty_profile_review",
+          "metadata.faculty_title",
+          "metadata.is_active",
+          "pi_name",
+          "source_url",
+          "title",
+          "url"
+        ],
+        "faculty-ucsd-nano-27240933": [
+          "description_clean",
+          "eligibility.eligibility_text_raw",
+          "metadata.deactivated_at",
+          "metadata.deactivation_reason",
+          "metadata.faculty_profile_review",
+          "metadata.faculty_title",
+          "metadata.is_active",
+          "source_url",
+          "url"
+        ],
+        "faculty-ucsd-nano-2aa92754": [
+          "description_clean",
+          "eligibility.eligibility_text_raw",
+          "metadata.deactivated_at",
+          "metadata.deactivation_reason",
+          "metadata.faculty_profile_review",
+          "metadata.faculty_title",
+          "metadata.is_active",
+          "source_url",
+          "url"
+        ],
+        "faculty-ucsd-nano-dc9e3de3": [
+          "description_clean",
+          "eligibility.eligibility_text_raw",
+          "metadata.deactivated_at",
+          "metadata.deactivation_reason",
+          "metadata.faculty_profile_review",
+          "metadata.faculty_title",
+          "metadata.is_active",
+          "pi_name",
+          "source_url",
+          "title",
+          "url"
+        ]
+      }
+    },
+    "wisc": {
+      "original_count_and_order_preserved": 2024,
+      "changed_records_and_full_field_paths": {}
+    },
+    "ncsu": {
+      "original_count_and_order_preserved": 2334,
+      "changed_records_and_full_field_paths": {}
+    },
+    "umd": {
+      "original_count_and_order_preserved": 1455,
+      "changed_records_and_full_field_paths": {}
+    }
+  },
+  "checked_utc": "2026-11-26T17:55:23+00:00",
+  "candidate_commit": "6726a16dc7dcd46e723f858c3d31378c422ad287",
+  "candidate_tree": "78f213fb7eb3ec44b5efb5339e4443dab2c16a80",
+  "safe_scope": "Isolated full-corpus release candidate. Public production routing and future natural collection remain distinct.",
+  "full_corpus_count": 149871,
+  "public_faculty_http": {
+    "faculty-ucsd-nano-04ac1d79": {
+      "id": "faculty-ucsd-nano-04ac1d79",
+      "name": "Ying Shirley Meng",
+      "link": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": false,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-ucsd-nano-25a6d469": {
+      "id": "faculty-ucsd-nano-25a6d469",
+      "name": "Sadik Esener",
+      "link": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": false,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-ucsd-nano-27240933": {
+      "id": "faculty-ucsd-nano-27240933",
+      "name": "Sheng Xu",
+      "link": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": false,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-ucsd-nano-2aa92754": {
+      "id": "faculty-ucsd-nano-2aa92754",
+      "name": "Darren Lipomi",
+      "link": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": false,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-ucsd-nano-dc9e3de3": {
+      "id": "faculty-ucsd-nano-dc9e3de3",
+      "name": "Michael Heller",
+      "link": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": false,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-ucsd-nano-e94320ae": {
+      "id": "faculty-ucsd-nano-e94320ae",
+      "name": "Shyue Ping Ong",
+      "link": "http://materialsvirtuallab.org/",
+      "api_status": 200,
+      "actionable": true,
+      "source_research_preserved": false
+    },
+    "faculty-ucsd-che-8330aad7": {
+      "id": "faculty-ucsd-che-8330aad7",
+      "name": "Jinhye Bae",
+      "link": "https://jbae.eng.ucsd.edu/",
+      "api_status": 200,
+      "actionable": true,
+      "source_research_preserved": false
+    },
+    "faculty-ucsd-nano-d24bdcfa": {
+      "id": "faculty-ucsd-nano-d24bdcfa",
+      "name": "Shaochen Chen",
+      "link": "http://schen.ucsd.edu/lab/",
+      "api_status": 200,
+      "actionable": true,
+      "source_research_preserved": true
+    },
+    "faculty-umd-phys-5e8e0edd": {
+      "id": "faculty-umd-phys-5e8e0edd",
+      "name": "Elizabeth Beise",
+      "link": "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": false,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-ncsu-chass-089a76c8": {
+      "id": "faculty-ncsu-chass-089a76c8",
+      "name": "Jeffery Braden",
+      "link": "https://chass.ncsu.edu/people/jpbraden/",
+      "api_status": 200,
+      "actionable": false,
+      "source_research_preserved": true,
+      "legacy_client_http": 409,
+      "product_outreach_ending": false
+    },
+    "faculty-utexas-mpdd-5850399f": {
+      "id": "faculty-utexas-mpdd-5850399f",
+      "name": "Zhengrong Cui",
+      "link": "https://pharmacy.utexas.edu/directory/zhengrong-cui",
+      "api_status": 200,
+      "actionable": true,
+      "source_research_preserved": true,
+      "verified_paper_titles": [
+        "Drum Filling of Thin-Film Freeze-Dried Monoclonal Antibody Powder in UniDose Powder Nasal Spray System",
+        "IgM has a better relative distribution in inflammation sites and tumor tissues than IgG"
+      ]
+    }
+  },
+  "candidate_tests": {
+    "backend_targeted_passed": 2887,
+    "frontend_targeted_passed": 38,
+    "typescript": "passed",
+    "whole_repo_ruff": "0.7.4 passed"
+  },
+  "full_corpus_http_match_and_program_details": [
+    "whole-corpus 149871",
+    "UW freshman GPA 2.8 default ['wisc-86cba49b83d7', 'sro-3c378261'] 2",
+    "UW freshman confirmed paid ['wisc-86cba49b83d7', 'sro-3c378261'] 2",
+    "UW campus source paid ['wisc-86cba49b83d7'] 1",
+    "UW directory paid ['sro-3c378261', 'sro-595e912d'] 2",
+    "UW unpaid [] 0",
+    "external freshman confirmed paid ['wisc-86cba49b83d7', 'sro-3c378261'] 2",
+    "wisc-86cba49b83d7 yes 10 weeks 2027-02-10 https://wiscience.wisc.edu/research/summer_research_program/",
+    "sro-595e912d yes 10 weeks 2027-02-10 https://wiscience.wisc.edu/research/summer_research_program/",
+    "sro-3c378261 yes 10 weeks 2027-02-10 https://wiscience.wisc.edu/research/summer_research_program/",
+    "changed 3 of 14139 national rows; full corpus 149871",
+    "sro-3ec4ea4e ['Biomedical science', 'Behavioral science'] https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html",
+    "nsf-reu-2447670 ['Mathematics', 'Statistics', 'Computer Science', 'Social science'] https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu",
+    "sro-44f176cd ['Mathematics', 'Statistics', 'Computer Science', 'Social science'] https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu",
+    "matches Statistics  ['nsf-reu-2447670']",
+    "matches Sociology nsf_reu ['nsf-reu-2447670']",
+    "matches Sociology uiuc_sro ['sro-44f176cd']",
+    "matches Behavioral science  ['sro-3ec4ea4e']",
+    "matches Biomedical science uiuc_sro ['sro-3ec4ea4e']"
+  ],
+  "registry_merge_check": {
+    "upstream_registry": 31,
+    "nano_stack_registry": 23,
+    "union_registry": 36,
+    "every_original_rule_field_identical": true,
+    "prior_directory_only_umd_ids": [
+      "faculty-umd-math-0f940cb3",
+      "faculty-umd-math-36800e3a",
+      "faculty-umd-math-90a4b94e",
+      "faculty-umd-math-93280e3c",
+      "faculty-umd-math-9eb3e2a4",
+      "faculty-umd-math-dcee82bf"
+    ]
+  }
+}
