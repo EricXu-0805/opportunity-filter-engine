@@ -1,0 +1,88 @@
+{
+  "main": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "checked_at": "2026-11-26T08:49:27.680214+00:00",
+  "run": "Independent live replay of the current UT collector limited to Mathematics and Neuroscience; an absence in these two directories alone does not establish departure. The scheduled Thursday shard remains pending.",
+  "source": "https://cns.utexas.edu/directory",
+  "counts_and_ids": {
+    "math": {
+      "base_active": 47,
+      "raw_directory_ids": 45,
+      "intersection": 45,
+      "absent": [
+        "faculty-utexas-math-245fa784",
+        "faculty-utexas-math-3483c4f5"
+      ],
+      "new": []
+    },
+    "neuro": {
+      "base_active": 34,
+      "raw_directory_ids": 31,
+      "intersection": 31,
+      "absent": [
+        "faculty-utexas-neuro-3048d2b3",
+        "faculty-utexas-neuro-bd8362ca",
+        "faculty-utexas-neuro-ed6d4734"
+      ],
+      "new": []
+    }
+  },
+  "formal_details": {
+    "faculty-utexas-neuro-ed6d4734": {
+      "formal_id": "faculty-utexas-neuro-ed6d4734",
+      "formal_url": "https://research.utexas.edu/profiles/harold-zakon",
+      "formal_research": {
+        "state": "inferred",
+        "explicit": {},
+        "inferred": {
+          "research_areas": {
+            "value": [
+              "Neuroscience"
+            ],
+            "basis": "system_tag"
+          }
+        },
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://research.utexas.edu/profiles/harold-zakon",
+          "observed_at": null
+        }
+      },
+      "http_status": 200,
+      "formal_source_url": "https://research.utexas.edu/profiles/harold-zakon",
+      "destination_url": "https://research.utexas.edu/profiles/harold-zakon",
+      "destination_title": "Harold Zakon | Texas Research",
+      "university_reference": {
+        "url": "https://research.utexas.edu/profiles/harold-zakon",
+        "status": 200,
+        "title": "Harold Zakon | Texas Research"
+      }
+    },
+    "faculty-utexas-neuro-87282d03": {
+      "formal_id": "faculty-utexas-neuro-87282d03",
+      "formal_url": "https://www.elstonlab.org/",
+      "formal_research": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Neuroscience"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://www.elstonlab.org/",
+          "observed_at": "2026-11-19T15:49:26.502444"
+        }
+      },
+      "http_status": 200,
+      "formal_source_url": "https://www.elstonlab.org/",
+      "destination_url": "https://www.elstonlab.org/",
+      "destination_title": "Elston Lab @ UT Austin",
+      "university_reference": {
+        "url": "https://neuroscience.utexas.edu/directory/thomas-w-elston",
+        "status": 200,
+        "title": "Thomas W. Elston | Department of Neuroscience"
+      }
+    }
+  }
+}
