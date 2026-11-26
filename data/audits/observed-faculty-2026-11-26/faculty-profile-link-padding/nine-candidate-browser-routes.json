@@ -1,0 +1,70 @@
+{
+  "revision": "cca25d15d7878e94eee857bb185fe14cdae4b099",
+  "checked_at": "2026-11-26T19:13:11.606771+00:00",
+  "site": "http://127.0.0.1:3000",
+  "rows": [
+    {
+      "id": "faculty-duke-nurs-9c95f492",
+      "expected": "https://scholars.duke.edu/person/marissa.abram",
+      "passed": true,
+      "page_name": "Marissa Abram",
+      "visible_person_link": "https://scholars.duke.edu/person/marissa.abram"
+    },
+    {
+      "id": "faculty-fsu-comm-4ebdf384",
+      "expected": "https://directory.cci.fsu.edu/elizabeth-ray/",
+      "passed": true,
+      "page_name": "Elizabeth Ray",
+      "visible_person_link": "https://directory.cci.fsu.edu/elizabeth-ray/"
+    },
+    {
+      "id": "faculty-miami-sonhs-3042ed43",
+      "expected": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7",
+      "passed": true,
+      "page_name": "Lonar Anthony Umadhay",
+      "visible_person_link": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7"
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "expected": "http://www.pitt.edu/~tessa/",
+      "passed": true,
+      "page_name": "Tessa Warren",
+      "visible_person_link": "http://www.pitt.edu/~tessa/"
+    },
+    {
+      "id": "faculty-ucsd-hwsph-29c119e1",
+      "expected": "http://profiles.ucsd.edu/gregory.norman",
+      "passed": true,
+      "page_name": "Gregory Norman",
+      "visible_person_link": "http://profiles.ucsd.edu/gregory.norman"
+    },
+    {
+      "id": "faculty-usc-soci-b0fa66b8",
+      "expected": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+      "passed": true,
+      "page_name": "Jody Agius Vallejo",
+      "visible_person_link": "https://dornsife.usc.edu/profile/jody-agius-vallejo/"
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "expected": null,
+      "passed": true,
+      "page_name": "Lori Levin",
+      "visible_person_link": null
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "expected": null,
+      "passed": true,
+      "page_name": "Lisa S. Lewis",
+      "visible_person_link": null
+    },
+    {
+      "id": "faculty-miami-chem-d89d76d6",
+      "expected": null,
+      "passed": true,
+      "page_name": "Leslie D Knecht",
+      "visible_person_link": null
+    }
+  ]
+}
