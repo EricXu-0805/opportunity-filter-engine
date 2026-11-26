@@ -53,10 +53,29 @@ def actual_view(params):
 def ids_and_total(response, page):
     assert response.ok
     data = response.json()
-    ids = [item['opportunity_id'] for item in data['results']]
-    if ids:
-        expect(page.locator('#match-card-' + ids[0])).to_be_visible(timeout=90000)
-    return ids, data['filtered_total']
+    total = data['filtered_total']
+    view_id = data['view_id']
+    ids = []
+    while True:
+        items = [item['opportunity_id'] for item in data['results']]
+        assert len(items) == len(set(items)) and not set(ids).intersection(items)
+        if items:
+            expect(page.locator('#match-card-' + items[0])).to_be_visible(timeout=90000)
+        ids.extend(items)
+        if not data['has_more']:
+            break
+        cursor = data['next_cursor']
+        assert cursor and items and len(ids) < total
+        with page.expect_response(lambda r: urlsplit(r.url).path == '/api/matches/view'
+                                  and (r.request.post_data_json or {}).get('cursor') == cursor,
+                                  timeout=90000) as following:
+            page.get_by_role('button', name='Next', exact=True).click()
+        assert following.value.ok
+        data = following.value.json()
+        assert data['view_id'] == view_id and data['filtered_total'] == total
+    assert len(ids) == total
+    return ids, total
+
 
 
 creds = {'email': str(uuid.uuid4()) + '@example.test', 'password': secrets.token_urlsafe(24) + '!1'}
