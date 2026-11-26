@@ -148,7 +148,11 @@ export default function OpportunityDetail({
   const showsProfileOrOffer = isCurrentListing || isActionableFaculty;
 
   const sourceDescription = opp.description_raw || opp.description_clean || '';
-  const description = localizedFacultyDescription(opp, sourceDescription, t) ?? sourceDescription;
+  const reviewedSummary = opp.reviewed_program_summary;
+  const programDescription = reviewedSummary && !sourceDescription.startsWith(reviewedSummary)
+    ? [reviewedSummary, sourceDescription].filter(Boolean).join('\n\n')
+    : sourceDescription;
+  const description = localizedFacultyDescription(opp, programDescription, t) ?? programDescription;
   // M03: the server's per-field source / inference / unknown classification.
   // Null on an older backend or a cached payload — then the legacy sections
   // render with their own hedges, exactly as before.

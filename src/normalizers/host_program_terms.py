@@ -47,6 +47,12 @@ def checked_window(record: dict) -> ProgramWindow | None:
     return window if window and window.page == expected else None
 
 
+def reviewed_summary(record: dict) -> str | None:
+    if wisc_biological_interactions.checked_window(record):
+        return wisc_biological_interactions.SUMMARY
+    return None
+
+
 def apply_terms(record: dict) -> None:
     if record.get("id") in wisc_biological_interactions.IDS:
         wisc_biological_interactions.apply_terms(record)

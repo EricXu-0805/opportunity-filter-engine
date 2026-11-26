@@ -707,6 +707,23 @@ describe('OpportunityDetail target-truth postures', () => {
 });
 
 
+describe('reviewed program descriptions', () => {
+  const summary = 'UW–Madison students may apply. Funding is limited.';
+  const raw = 'Original directory text with the project and mentor list.';
+  it.each([
+    ['sro-595e912d', summary, raw, summary + '\n\n' + raw],
+    ['sro-3c378261', summary, raw, summary + '\n\n' + raw],
+    ['wisc-86cba49b83d7', summary, undefined, summary],
+    ['unreviewed', undefined, raw, raw],
+  ])('keeps the current terms and original text for %s', (id, reviewed, original, expected) => {
+    const listing = { id, title: 'Program', record_kind: 'listing', source_type: 'summer_program',
+      target_truth: ACTIONABLE_TRUTH, description_raw: original, description_clean: summary,
+      reviewed_program_summary: reviewed };
+    render(<OpportunityDetail opp={listing as never} />);
+    expect(screen.getByTestId('section-description')).toHaveAttribute('data-description', expected);
+  });
+});
+
 describe('OpportunityDetail — a faculty profile described in the UI language', () => {
   // Under a Chinese 描述 heading the page printed the server's English
   // "Faculty research profile for ... Contact this faculty member ..." prose.
