@@ -1,0 +1,1563 @@
+{
+  "observed_utc": "2026-11-26T21:14:40.764870+00:00",
+  "deployed_sha": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+  "stage": "after",
+  "checked": 62,
+  "failures": [
+    "faculty-georgetown-engl-0b30af59",
+    "faculty-georgetown-engl-eabebde9",
+    "faculty-georgetown-engl-66c04eaa",
+    "faculty-georgetown-engl-b09a1a61"
+  ],
+  "details": [
+    {
+      "id": "faculty-georgetown-engl-0b30af59",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": false,
+        "frontend_release": true,
+        "personal_action": false,
+        "roster_citation_in_page": false
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-0b30af59",
+        "name": "Eddie Maloney",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-0b965fab",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-0b965fab",
+        "name": "Monica Maxwell",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RBIXAA4/monica-maxwell-phd?searchType=Contact-Info&searchText=monica%20maxwell",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-14396d28",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-14396d28",
+        "name": "Daniel Shore",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVhhAAG/daniel-shore?searchType=Contact-Info&searchText=daniel%20shore",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-19ef3e36",
+        "name": "Patricia Akhimie",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-1cd68f39",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-1cd68f39",
+        "name": "Maureen Corrigan",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVHiAAO/maureen-corrigan?searchType=Contact-Info&searchText=maureen%20corrigan",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-347f78f1",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-347f78f1",
+        "name": "Libbie S. Rifkin",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWqtAAG/libbie-rifkin?searchType=Contact-Info&searchText=libbie%20rifkin",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-34f4f949",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-34f4f949",
+        "name": "Seth Perlow",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014SeXiAAK/seth-perlow?searchType=Contact-Info&searchText=seth%20perlow",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-3628e405",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-3628e405",
+        "name": "Lori Merish (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014ReiYAAS/lori-merish?searchType=Contact-Info&searchText=lori%20merish",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-3f3f47fd",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-3f3f47fd",
+        "name": "Jessica Batychenko",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH000008FwblYAC/jessica-batychenko?searchType=Contact-Info&searchText=jessica%20batychenko",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-414f6f7a",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-414f6f7a",
+        "name": "Duncan Wu",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rr5BAAS/duncan-wu?searchType=Contact-Info&searchText=duncan%20wu",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-42b9eeaa",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-42b9eeaa",
+        "name": "M. Lindsay Kaplan (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RePLAA0/m-lindsay-kaplan?searchType=Contact-Info&searchText=lindsay%20kaplan",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-4cc038ec",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-4cc038ec",
+        "name": "Mark McMorris",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RcRSAA0/mark-mcmorris?searchType=Contact-Info&searchText=mark%20mcmorris",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-5574b293",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-5574b293",
+        "name": "Christine So",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwMpAAK/christine-so?searchType=Contact-Info&searchText=christine%20so",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-598b7188",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-598b7188",
+        "name": "Phil Sandick",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gIAAQ/phil-sandick?searchType=Contact-Info&searchText=phil%20sandick",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-60a11198",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-60a11198",
+        "name": "Caetlin Benson-Allott",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWn1AAG/caetlin-bensonallott?searchType=Contact-Info&searchText=caetlin%20benson",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-66c04eaa",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": false,
+        "roster_citation_in_page": false
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-66c04eaa",
+        "name": "Angelyn L. Mitchell",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-6746abcd",
+        "name": "Randall Bass",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwokAAC/randall-bass?searchType=Contact-Info&searchText=randall%20bass",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-7aeebe3d",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-7aeebe3d",
+        "name": "J Palmeri (They/He)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jOsa6IAC/j-palmeri?searchType=Contact-Info&searchText=palmeri",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-7b76c532",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-7b76c532",
+        "name": "Jennifer Natalya Fink (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWdRAAW/jennifer-natalya-fink?searchType=Contact-Info&searchText=jennifer%20natalya%20fink",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-888650c1",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-888650c1",
+        "name": "Brian Hochman (He/Him/His)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rf5JAAS/brian-hochman?searchType=Contact-Info&searchText=brian%20hochman",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-912a5304",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-912a5304",
+        "name": "Elizabeth Catchmark (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jMw5QIAS/elizabeth-catchmark?searchType=Contact-Info&searchText=catchmark",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-95ad177a",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-95ad177a",
+        "name": "John Glavin",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgkYAAS/john-glavin?searchType=Contact-Info&searchText=john%20glavin",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-983db631",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-983db631",
+        "name": "David Lipscomb",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rjf5AAC/david-lipscomb?searchType=Contact-Info&searchText=david%20lipscomb",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-9b02f5b4",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_current": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "current_link": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-9b02f5b4",
+        "name": "Marisa Koulen",
+        "actionable": false,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "roster": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "current": "faculty-georgetown-engl-be9bd333",
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-a3879e7d",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-a3879e7d",
+        "name": "Patrick R. O’Malley",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWRFAA4/patrick-omalley?searchType=Contact-Info&searchText=patrick%20o%27malley",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-a58be95d",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-a58be95d",
+        "name": "Amanda Phillips (They/He/She)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014SM4eAAG/amanda-phillips?searchType=Contact-Info&searchText=amanda%20phillips",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-a672670d",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-a672670d",
+        "name": "Nicole Rizzuto",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfTfAAK/nicole-rizzuto?searchType=Contact-Info&searchText=nicole%20rizzuto",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-a9bfca89",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-a9bfca89",
+        "name": "Lindsey O’Neil",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cu3B2QAI/lindsey-oneil?searchType=Contact-Info&searchText=o%27neil",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-a9eb9b96",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-a9eb9b96",
+        "name": "Manu Samriti Chander (He/Him/His)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jN3TiIAK/manu-chander?searchType=Contact-Info&searchText=chander",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-b072d3d6",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-b072d3d6",
+        "name": "Nathan Hensley (He/Him/His)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Tw4pAAC/nathan-hensley?searchType=Contact-Info&searchText=nathan%20hensley",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-b09a1a61",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": false,
+        "frontend_release": true,
+        "personal_action": false,
+        "roster_citation_in_page": false
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-b09a1a61",
+        "name": "Amani Morrison (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-b55b14a1",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-b55b14a1",
+        "name": "David Gewanter (He/Him/His)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RfVhAAK/david-s-gewanter-phd?searchType=Contact-Info&searchText=david%20gewanter",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-b6ef30b2",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-b6ef30b2",
+        "name": "Cóilín Parsons",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfI6AAK/c%C3%B3il%C3%ADn-parsons?searchType=Contact-Info&searchText=coilin%20parsons",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-be9bd333",
+        "name": "Marisa Holmes",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-c3711a29",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-c3711a29",
+        "name": "Sherry Linkon",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TmvhAAC/sherry-linkon?searchType=Contact-Info&searchText=sherry%20linkon",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-c5c27dac",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-c5c27dac",
+        "name": "Peggy Lee (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cJxCrQAK/peggy-lee?searchType=Contact-Info&searchText=peggy%20lee",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-cbc96696",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-cbc96696",
+        "name": "Carolyn Forché",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgPhAAK/carolyn-forch%C3%A9?searchType=Contact-Info&searchText=carolyn%20forche",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-d3964c5c",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-d3964c5c",
+        "name": "Rebecca Tarsa",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gSAAQ/rebecca-tarsa?searchType=Contact-Info&searchText=rebecca%20tarsa",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-debbaefc",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_current": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-debbaefc",
+        "name": "Ricardo Ortíz",
+        "actionable": false,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RvKaAAK/ricardo-l-ortiz-phd?searchType=Contact-Info&searchText=ortiz",
+        "roster": "https://gufaculty360.georgetown.edu/s/contact/00336000014RvKaAAK/ricardo-l-ortiz-phd?searchType=Contact-Info&searchText=ortiz",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-e1e0eacd",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-e1e0eacd",
+        "name": "Margaret Debelius",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RZgNAAW/maggie-debelius?searchType=Contact-Info&searchText=margaret%20debelius",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-e6b06bba",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-e6b06bba",
+        "name": "Mecca Jamilah Sullivan",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002XGKx2QAH/mecca-sullivan?searchType=Contact-Info&searchText=mecca%20sullivan",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-e97a4daf",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-e97a4daf",
+        "name": "Fatima Jafar",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH000011D0p9YAC/fatima-jafar?searchType=Contact-Info&searchText=fatima%20jafar",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-eabebde9",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": false,
+        "frontend_release": true,
+        "personal_action": false,
+        "roster_citation_in_page": false
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-eabebde9",
+        "name": "Sarah McNamer",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-f9d788e9",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-f9d788e9",
+        "name": "Alex Brostoff",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000Vw8EhYAJ/alex-brostoff",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-georgetown-engl-fbdd4dd9",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_roster": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "personal_action": true,
+        "roster_citation_in_page": true
+      },
+      "api": {
+        "id": "faculty-georgetown-engl-fbdd4dd9",
+        "name": "Kathryn Temple (She/Her/Hers)",
+        "actionable": true,
+        "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RdTbAAK/kathryn-d-temple",
+        "roster": "https://english.georgetown.edu/people/full-time-faculty-2/",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-indiana-ds-ea99afa1",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "current_link": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-indiana-ds-ea99afa1",
+        "name": "Jeff Prince",
+        "actionable": false,
+        "profile": "https://luddy.iu.edu/people/prince-jeff.html",
+        "roster": "https://luddy.iu.edu/people/prince-jeff.html",
+        "current": "faculty-indiana-kelley-ff454afe",
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-indiana-ds-f5498657",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "current_link": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-indiana-ds-f5498657",
+        "name": "Alan Dennis",
+        "actionable": false,
+        "profile": "https://luddy.iu.edu/people/dennis-alan.html",
+        "roster": "https://luddy.iu.edu/people/dennis-alan.html",
+        "current": "faculty-indiana-kelley-11743f42",
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-081bbbd6",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-081bbbd6",
+        "name": "Jorge Mejia",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JMMEJIA",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JMMEJIA",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-11743f42",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-11743f42",
+        "name": "Alan Dennis",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=ARDENNIS",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=ARDENNIS",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-1e116337",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-1e116337",
+        "name": "Diane L. Sturek",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=DLSTUREK",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=DLSTUREK",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-22c1e898",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-22c1e898",
+        "name": "Gerry A Hays",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=GAHAYS",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=GAHAYS",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-296262cf",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-296262cf",
+        "name": "Cynthia Stone",
+        "actionable": false,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=STONEC",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=STONEC",
+        "current": null,
+        "contact_status": "unavailable"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-57a2b5d5",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-57a2b5d5",
+        "name": "Rainie Tian",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=RMTIAN",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=RMTIAN",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-607b7a2d",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-607b7a2d",
+        "name": "Christopher England",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHENGLAN",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHENGLAN",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-8bfcd281",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-8bfcd281",
+        "name": "Kathie Nussbaum",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=KNUSSBAU",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=KNUSSBAU",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-9c403bb8",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-9c403bb8",
+        "name": "M.K. Chin",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHINMK",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHINMK",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-bc4f96e0",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-bc4f96e0",
+        "name": "Marynancy Mwakalindile",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=MSMWAKAL",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=MSMWAKAL",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-bcec98fc",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-bcec98fc",
+        "name": "Nancy E. Paton",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=NPATON",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=NPATON",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-f87d53c6",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-f87d53c6",
+        "name": "Erik Benrud, CFA, CAIA, FRM, CFP®",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=EBENRUD",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=EBENRUD",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-f89fcdfc",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-f89fcdfc",
+        "name": "Linette M. Rousseau",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=LMROUSSE",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=LMROUSSE",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-kelley-ff454afe",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true
+      },
+      "api": {
+        "id": "faculty-indiana-kelley-ff454afe",
+        "name": "Jeff Prince",
+        "actionable": true,
+        "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JEFFPRIN",
+        "roster": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JEFFPRIN",
+        "current": null,
+        "contact_status": "sign_in_required"
+      }
+    },
+    {
+      "id": "faculty-indiana-msch-a9928298",
+      "status": 200,
+      "checks": {
+        "public_api": true,
+        "api_id": true,
+        "api_name": true,
+        "api_actionable": true,
+        "api_profile": true,
+        "api_current": true,
+        "api_contact_status": true,
+        "visible_details": true,
+        "frontend_release": true,
+        "current_link": true,
+        "inactive_banner": true,
+        "no_email_draft": true,
+        "no_apply_link": true
+      },
+      "api": {
+        "id": "faculty-indiana-msch-a9928298",
+        "name": "Nancy Paton",
+        "actionable": false,
+        "profile": "https://mediaschool.indiana.edu/people/profile.html?p=npaton",
+        "roster": "https://mediaschool.indiana.edu/people/profile.html?p=npaton",
+        "current": "faculty-indiana-kelley-bcec98fc",
+        "contact_status": "unavailable"
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "mergeCommit": {
+    "oid": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "mergedAt": "2026-11-26T21:06:31Z",
+  "state": "MERGED",
+  "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1451",
+  "parents": [
+    "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "29544f32cd6ba9bb45f921677fe63125e8167b36"
+  ],
+  "release_tree": "5f7b6353c77c70f8be6f186f92d6879cc0adc92e",
+  "native_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45892447223",
+  "security": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45892447280",
+  "first_dual_observation_utc": "2026-11-26T21:11:02.991619+00:00",
+  "public_site": "https://joinalab.com",
+  "frontend_sha_source": "https://joinalab.com/about",
+  "backend_sha_source": "https://joinalab.com/api/health",
+  "frontend_deployment": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8095895291/statuses",
+  "render_webhook": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45895804818",
+  "campus_shards": {
+    "Georgia Tech": {
+      "before": 1373,
+      "after": 1419,
+      "added": 46,
+      "lost": 0
+    },
+    "Georgetown": {
+      "before": 892,
+      "after": 892,
+      "added": 0,
+      "lost": 0
+    },
+    "Indiana": {
+      "before": 1694,
+      "after": 1697,
+      "added": 3,
+      "lost": 0
+    },
+    "Maryland": {
+      "before": 1455,
+      "after": 1455,
+      "added": 0,
+      "lost": 0
+    }
+  }
+}

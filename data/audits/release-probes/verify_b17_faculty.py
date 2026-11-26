@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlencode
 
-from playwright.async_api import async_playwright
+from playwright.async_api import TimeoutError as BrowserTimeout, async_playwright
 
 SITE = "https://joinalab.com"
 QUERY = urlencode({"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
@@ -38,7 +38,15 @@ async def inspect(context, page, case, expected):
         if key in case:
             checks["api_" + key] = observed[key] == case[key]
     response = await page.goto(SITE + path, wait_until="domcontentloaded")
-    checks["visible_details"] = bool(response and response.ok and await page.get_by_role("heading", level=1).first.is_visible())
+    result["html_status"] = response.status if response else None
+    heading = page.get_by_role("heading", level=1).filter(has_text=case["name"]).first
+    try:
+        await heading.wait_for(state="visible", timeout=15000)
+    except BrowserTimeout:
+        pass
+    observed_headings = await page.get_by_role("heading", level=1).all_text_contents()
+    result["page_headings"] = observed_headings[:3]
+    checks["visible_details"] = bool(response and response.ok and await heading.is_visible())
     checks["frontend_release"] = await page.locator("html").get_attribute("data-release-sha") == expected
     if case.get("current"):
         target = "/opportunities/" + case["current"]
@@ -51,6 +59,11 @@ async def inspect(context, page, case, expected):
         checks["no_apply_link"] = not await page.get_by_role("link", name="Apply now", exact=True).first.is_visible()
     if case.get("roster"):
         action = page.get_by_role("link", name="View faculty profile", exact=True).first
+        try:
+            await action.wait_for(state="visible", timeout=8000)
+        except BrowserTimeout:
+            pass
+        result["observed_action_href"] = await action.get_attribute("href") if await action.is_visible() else None
         checks["personal_action"] = await action.is_visible() and await action.get_attribute("href") == case["profile"]
         source_links = await page.locator("main a[href]").evaluate_all("(els) => els.map(el => el.href)")
         checks["roster_citation_in_page"] = case["roster"] in source_links

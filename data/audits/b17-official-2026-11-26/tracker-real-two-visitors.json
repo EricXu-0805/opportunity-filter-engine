@@ -1,0 +1,81 @@
+{
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45896558379/job/140171781116",
+  "data": {
+    "site": "https://joinalab.com",
+    "release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "cases": [
+      {
+        "locale": "en",
+        "native_200": {
+          "width": 700,
+          "client": 692,
+          "document": 692,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "new_guest_link_label": "Open your profile",
+        "new_guest_href": "/",
+        "empty_tracker_destination": "profile form",
+        "empty_link_focus": {
+          "scroll_y": 27,
+          "top": 365,
+          "bottom": 401,
+          "viewport_h": 400,
+          "doc_h": 790,
+          "cover_tag": "A",
+          "cover_id": "",
+          "tag": "A",
+          "id": "",
+          "role": null,
+          "name": "Open your profile",
+          "focused": true,
+          "outline": true,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "existing_guest_href": "/results",
+        "existing_profile_revision": 1,
+        "existing_guest_landed_on_own_results": true,
+        "external_messages": 0,
+        "production_interaction_writes": 0
+      },
+      {
+        "locale": "zh",
+        "native_200": {
+          "width": 390,
+          "client": 382,
+          "document": 382,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "new_guest_link_label": "打开个人资料",
+        "new_guest_href": "/",
+        "empty_tracker_destination": "profile form",
+        "empty_link_focus": {
+          "scroll_y": 27,
+          "top": 365,
+          "bottom": 401,
+          "viewport_h": 400,
+          "doc_h": 830,
+          "cover_tag": "A",
+          "cover_id": "",
+          "tag": "A",
+          "id": "",
+          "role": null,
+          "name": "打开个人资料",
+          "focused": true,
+          "outline": true,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "existing_guest_href": "/results",
+        "existing_profile_revision": 1,
+        "existing_guest_landed_on_own_results": true,
+        "external_messages": 0,
+        "production_interaction_writes": 0
+      }
+    ]
+  }
+}

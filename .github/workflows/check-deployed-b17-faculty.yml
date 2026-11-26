@@ -21,7 +21,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install --quiet playwright==1.55.0
       - run: python -m playwright install chromium --with-deps >"$RUNNER_TEMP/browser-install.log"
-      - run: python data/audits/release-probes/verify_b17_faculty.py --sha "$EXPECTED_RELEASE" --out release-receipt.json
+      - run: python data/audits/release-probes/verify_b17_faculty.py --sha "$EXPECTED_RELEASE" --out release-receipt.json --id faculty-georgetown-engl-0b30af59 --id faculty-georgetown-engl-eabebde9 --id faculty-georgetown-engl-66c04eaa --id faculty-georgetown-engl-b09a1a61
       - uses: actions/upload-artifact@v6
         if: always()
         with:
