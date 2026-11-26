@@ -269,7 +269,9 @@ SCHOOL: dict = {
         # ---- Agricultural Sciences & Natural Resources ---------------------
         _teaser("AGRO", "Department of Agronomy and Horticulture",
                 ["Agronomy", "Horticulture", "Plant Science", "Soil Science"],
-                "https://agronomy.unl.edu/our-people/faculty-directories/faculty/"),
+                "https://agronomy.unl.edu/our-people/faculty-directories/faculty/") | {
+            "profile_id_names": {"agronomy.unl.edu/mcmillan": ("Nic McMillan", "Nicholas McMillan")},
+        },
         _teaser("ANSC", "Department of Animal Science",
                 ["Animal Science", "Veterinary Science"],
                 "https://animalscience.unl.edu/faculty/"),
