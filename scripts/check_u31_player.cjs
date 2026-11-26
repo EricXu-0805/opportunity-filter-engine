@@ -4,8 +4,15 @@ const {chromium,expect}=require(path.join(frontend,'node_modules/@playwright/tes
 (async()=>{
  const browser=await chromium.launch({channel:'chrome',args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
  try{
-  for(const [lang,width,height] of [['en',1280,800],['zh',390,844]]){
+  for(const [lang,width,height] of [['en',1280,800],['zh',1280,800],['en',390,844],['zh',390,844]]){
    const ctx=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
+   if(site==='https://joinalab.com'){
+    await ctx.route('**/*',route=>{
+     const req=route.request();
+     if(new URL(req.url()).origin===site && ['GET','HEAD','OPTIONS'].includes(req.method()))return route.continue();
+     return route.abort();
+    });
+   }
    await ctx.addCookies([{name:'ofe_lang',value:lang,url:site}]);
    await ctx.addInitScript(l=>{localStorage.setItem('ofe_lang',l);localStorage.setItem('ofe_onboarding_seen','1')},lang);
    const p=await ctx.newPage();

@@ -1,0 +1,41 @@
+name: Verify the deployed About player in English and Chinese
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-public-u31-player.yml']
+permissions:
+  contents: read
+jobs:
+  official:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Check public release and media bytes
+        env:
+          EXPECTED_SHA: 1b2c5b397c4ddd374d7e2cb4115e7066185fd75d
+          EXPECTED_VIDEO: ce0540974ddfadf526df1602c9b9b0c2e4f5b05b513114f87e722bf349371f3b
+        run: |
+          python - <<'PY'
+          from urllib.request import urlopen
+          import hashlib, json, os, re
+          host='https://joinalab.com'
+          with urlopen(host+'/about',timeout=25) as r: html=r.read()
+          sha=re.search(rb'data-release-sha="([a-f0-9]{40})"',html).group(1).decode()
+          assert sha==os.environ['EXPECTED_SHA']
+          with urlopen(host+'/api/health',timeout=25) as r: backend=json.load(r)['release_sha']
+          assert backend==sha, (backend,sha)
+          assert b'/demo/student-match.mp4' in html
+          with urlopen(host+'/demo/student-match.mp4',timeout=25) as r: digest=hashlib.sha256(r.read()).hexdigest()
+          assert digest==os.environ['EXPECTED_VIDEO']
+          print('Official /about',sha,'video SHA256',digest)
+          PY
+      - name: Play and pause both public language versions
+        run: |
+          npm --prefix "$RUNNER_TEMP/u31" install --no-audit --no-fund @playwright/test@1.60.0
+          node scripts/check_u31_player.cjs "$RUNNER_TEMP/u31" https://joinalab.com
