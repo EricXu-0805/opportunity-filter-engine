@@ -1972,16 +1972,13 @@ export interface FeedbackSubmission {
 /**
  * Outcome of one submit attempt.
  *
- * `duplicate` is a SUCCESS: the unique violation on (device_id, client_token)
- * proves the ticket from an earlier attempt exists, so reporting a failure
- * would push the user into a third attempt over a ticket we already hold.
- * Its `id` is null only when the follow-up read of the existing row fails
- * (the ticket still exists; we just can't quote its reference).
+ * A duplicate receipt confirms the submitted fields as well as the token.
+ * An earlier version keeps the user's edited draft available to send separately.
  */
 export type FeedbackResult =
   | { ok: true; reason: 'created'; id: string }
   | { ok: true; reason: 'duplicate'; id: string | null }
-  | { ok: false; reason: 'no-session' | 'error' };
+  | { ok: false; reason: 'no-session' | 'error' | 'earlier-version' };
 
 /**
  * In-app feedback: a free-text comment / bug report / suggestion the user
@@ -1995,16 +1992,9 @@ export type FeedbackResult =
  * ticket UUID, which the widget shows the user as their reference — a claim
  * we can only make because the insert was confirmed.
  *
- * Retry semantics: on 23505 (the `feedback_client_token_uniq` partial index)
- * the ticket ALREADY EXISTS from a previous attempt whose response was lost.
- * We re-select it and return its id with reason 'duplicate' — success, not
- * failure. Mirrors the toggleFavorite / followProfessor 23505 contract.
- *
- * Residual: against a database where 026 has NOT been applied there is no
- * SELECT policy, so a committed insert's RETURNING clause comes back empty
- * (PGRST116) and is reported as 'error'. The retry then collides on the
- * token and resolves to 'duplicate', so the user converges on the truth
- * after one more tap rather than filing a second ticket.
+ * A retry reads the original submission under the same owner. Compare only
+ * user-entered fields: the page path can change when a saved draft is reopened.
+ * If the read fails, retain the token so the next retry can recover the receipt.
  *
  * Never throws; the widget branches on the discriminated result.
  * See supabase/migrations/016_feedback.sql + 026_feedback_tickets.sql.
@@ -2019,14 +2009,17 @@ export async function submitFeedback(
   if (!deviceId) return { ok: false, reason: 'no-session' };
 
   const clientToken = input.clientToken || null;
+  const fields = {
+    message: input.message,
+    email: input.email || null,
+    category: input.category || null,
+    subject: input.subject || null,
+  };
   const { data, error } = await supabase
     .from('feedback')
     .insert({
       device_id: deviceId,
-      message: input.message,
-      email: input.email || null,
-      category: input.category || null,
-      subject: input.subject || null,
+      ...fields,
       client_token: clientToken,
       props: input.props ?? {},
     })
@@ -2039,7 +2032,7 @@ export async function submitFeedback(
   if (error?.code === '23505' && clientToken) {
     const { data: existing, error: readError } = await supabase
       .from('feedback')
-      .select('id')
+      .select('id,message,email,category,subject')
       .eq('device_id', deviceId)
       .eq('client_token', clientToken)
       .maybeSingle();
@@ -2047,8 +2040,12 @@ export async function submitFeedback(
     if (readError) {
       console.warn('[ofe] feedback duplicate re-read failed:', readError.message);
     }
-    // Either way the ticket exists — only the reference may be missing.
-    return { ok: true, reason: 'duplicate', id: (existing?.id as string) ?? null };
+    if (readError || !existing?.id) return { ok: false, reason: 'error' };
+    if (existing.message !== fields.message || existing.email !== fields.email
+        || existing.category !== fields.category || existing.subject !== fields.subject) {
+      return { ok: false, reason: 'earlier-version' };
+    }
+    return { ok: true, reason: 'duplicate', id: existing.id as string };
   }
 
   console.warn('[ofe] feedback insert failed:', error?.message ?? 'no row returned');
