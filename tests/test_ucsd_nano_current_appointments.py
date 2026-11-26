@@ -55,12 +55,18 @@ def collect(monkeypatch, roster, named_page, *, also_on_legacy=False):
 def test_verified_current_appointment_preserves_both_sources_and_stable_id(monkeypatch):
     for title in ("Associate Professor", "Professor"):
         (row,), _ = collect(monkeypatch, grid(title=title), biography(title=title + ", NENG"))
-        assert row["source_url"] == GRID and row["url"] == PERSON
+        assert row["source_url"] == row["url"] == PERSON
+        observation = row["metadata"]["faculty_title_observation"]
+        assert observation == {
+            "name": "Zeinab Jahed", "title": title, "source": PERSON, "profile": PERSON,
+            "roster_url": GRID, "checked_on": row["metadata"]["last_verified"][:10],
+        }
         assert row["pi_name"] == "Zeinab Jahed" and row["metadata"]["faculty_title"] == title
         assert row["metadata"]["verification_scope"] == "directory"
     rows, _ = collect(monkeypatch, grid(), biography(), also_on_legacy=True)
     assert len(rows) == 1 and rows[0]["url"] == PERSON
-    assert rows[0]["source_url"] == GRID and rows[0]["metadata"]["faculty_title"] == "Associate Professor"
+    assert rows[0]["source_url"] == PERSON and rows[0]["metadata"]["faculty_title"] == "Associate Professor"
+    assert rows[0]["metadata"]["faculty_title_observation"]["roster_url"] == GRID
 
 
 @pytest.mark.parametrize(("listing", "personal"), [

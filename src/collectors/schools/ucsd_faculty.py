@@ -327,7 +327,7 @@ SCHOOL: dict = {
                         "unit_filter": {"selector": "h4 a", "include": r"^Zeinab Jahed$"},
                         "section_filter": None,
                         "ladder_filter": {**_LADDER, "require_present": True},
-                        "cite_directory": True,
+                        "cite_profile_rank": True,
                     }],
                 },
             ),
