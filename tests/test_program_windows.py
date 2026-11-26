@@ -537,3 +537,22 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
         source_row(directory + "-0", "https://example.edu/unrelated"),
     ):
         assert reviewed_window(other) is None and public_opening(other) is None
+
+
+def test_ligo_surf_keeps_its_two_application_routes_separate():
+    emitted = _row("caltech", "ligo_surf")
+    assert emitted["id"] == "caltech-acdbfe29c21d"
+    assert emitted["source_url"] == "https://ligosurf.caltech.edu/apply"
+    assert emitted["application"]["application_url"] == emitted["source_url"]
+    assert emitted["deadline"] is None
+    assert emitted["is_rolling"] is False
+    terms = emitted["metadata"]["deadline_note"]
+    assert "NSF ETAP close January 15, 2027" in terms
+    assert "applications close January 5, 2027" in terms
+    assert "reference letters are due January 10, 2027" in terms
+    eligibility = emitted["eligibility"]
+    assert eligibility["citizenship_required"] is None
+    assert eligibility["international_friendly"] == "unknown"
+    assert "U.S. national status" in eligibility["work_auth_notes"]
+    assert "institutions in India" in eligibility["work_auth_notes"]
+    assert evidence.configured_note_last_date(emitted) == date(2027, 1, 15)

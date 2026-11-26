@@ -472,6 +472,11 @@ class TestEveryConfiguredNoteTheRuleReads:
 
     # A configured note that newly reads here fails this test until a person adds it to this list.
     _READ = {
+        "caltech/ligo_surf": (
+            "Summer 2027: U.S. applications through NSF ETAP close January 15, 2027. "
+            "For students at institutions in India, applications close January 5, "
+            "2027 and reference letters are due January 10, 2027."
+        ),
         "caltech/surf_exchange_iceland": "Application due by March 1, 2027, 5:00 pm",
         "duke/goldwater_scholarship": "Requires campus nomination; 2026 cycle deadline Nov 6, 2026",
         "gatech/petit_scholars":

@@ -262,7 +262,7 @@ SCHOOL: dict = {
                 "https://sfp.caltech.edu/undergraduate-research/programs/surf",
                 "https://sfp.caltech.edu/undergraduate-research/programs/wavefellows",
                 "https://sfp.caltech.edu/undergraduate-research/programs/amgen_scholars",
-                "https://labcit.ligo.caltech.edu/LIGO_web/students/SURF/",
+                "https://ligosurf.caltech.edu/apply",
                 "https://www.jpl.nasa.gov/edu/internships/",
             ],
             "crawl": STATIC,
@@ -370,16 +370,16 @@ SCHOOL: dict = {
                 program(
                     "ligo_surf",
                     "LIGO SURF (NSF REU site) — Caltech",
-                    "https://labcit.ligo.caltech.edu/LIGO_web/students/SURF/",
+                    "https://ligosurf.caltech.edu/apply",
                     "Intensive summer program in gravitational-wave astronomy run by "
                     "the LIGO Laboratory (Caltech/MIT) and funded in part as an NSF "
                     "REU. Projects span detector development, modeling and data "
                     "analysis, metrology, optics, lasers, controls, electronics, "
                     "machine learning, and signal processing, at the Caltech campus and "
-                    "the LIGO Hanford and Livingston observatories. Applications go "
-                    "directly to LIGO via NSF ETAP rather than the SURF application; "
-                    "fellows may live with the Caltech SURF community. Notably open to "
-                    "students at US and foreign institutions.",
+                    "the LIGO Hanford and Livingston observatories. For summer 2027, "
+                    "continuing undergraduates use one of two application routes. "
+                    "U.S. applicants use NSF ETAP. Students at institutions in India "
+                    "apply through LIGO India. Caltech links both applications.",
                     organization="LIGO Laboratory (Caltech/MIT)",
                     department="LIGO Laboratory",
                     lab_or_program="LIGO SURF",
@@ -387,9 +387,20 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="Summer stipend plus some travel funding",
                     eligibility_majors=["physics", "astronomy", "engineering", "computer science"],
-                    preferred_year=["sophomore", "junior"],
-                    international_friendly="yes",
-                    deadline_note="Applications via NSF ETAP, November through early January",
+                    international_friendly="unknown",
+                    work_auth_notes=(
+                        "The U.S. route requires U.S. citizenship, permanent residency or "
+                        "U.S. national status, a 2.5 GPA and a full year of undergraduate "
+                        "study including a year of physics. Students at institutions in "
+                        "India apply separately through LIGO India. Both routes require "
+                        "continuing undergraduate status."
+                    ),
+                    is_rolling=False,
+                    deadline_note=(
+                        "Summer 2027: U.S. applications through NSF ETAP close January 15, 2027. "
+                        "For students at institutions in India, applications close January 5, "
+                        "2027 and reference letters are due January 10, 2027."
+                    ),
                     keywords=["LIGO", "gravitational waves", "NSF REU", "physics", "astronomy"],
                 ),
                 program(
