@@ -1,0 +1,80 @@
+{
+  "release_before": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "id": "faculty-ucb-stat-5558a1b1",
+  "official_source_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45808285458",
+  "source_read": {
+    "id": "faculty-ucb-stat-5558a1b1",
+    "release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "calls": [
+      {
+        "url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+        "outcome": "read",
+        "bytes": 72540
+      },
+      {
+        "url": "https://nielsen-lab.github.io/",
+        "outcome": "read",
+        "bytes": 9207
+      },
+      {
+        "url": "https://nielsen-lab.github.io/team/",
+        "outcome": "read",
+        "bytes": 19140
+      },
+      {
+        "url": "https://nielsen-lab.github.io/research/",
+        "outcome": "read",
+        "bytes": 22602
+      }
+    ],
+    "refresh": {
+      "checked_at": "2026-11-26T11:12:15.707410Z",
+      "status": "success",
+      "reason": null
+    }
+  },
+  "old_production": {
+    "site": "https://joinalab.com/opportunities/faculty-ucb-stat-5558a1b1",
+    "http": 200,
+    "api_http": 200,
+    "title": "Rasmus Nielsen",
+    "lab_context_status": "unavailable"
+  },
+  "candidate_result": {
+    "original_ids": 3332,
+    "changed_ids": [
+      "faculty-ucb-stat-5558a1b1"
+    ],
+    "other_fields_identical": true,
+    "expected_public_status": "available",
+    "pages": [
+      {
+        "kind": "faculty_profile",
+        "url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+        "sections": [
+          "Research Expertise and Interests",
+          "Research Areas",
+          ""
+        ]
+      },
+      {
+        "kind": "lab_research",
+        "url": "https://nielsen-lab.github.io/research/",
+        "sections": [
+          "Methods for Inference of Demography and Selection",
+          "Bioinformatics for Next Generation Sequencing Data",
+          "Human Genetic Diversity and Disease",
+          "Analyses of Ancient DNA",
+          "Viral Evolution",
+          "Herpetogenomics",
+          "Phylogenetics and Comparative Analyses",
+          "Methods for Environmental DNA Analyses",
+          "Evolutionary Genomics of Domesticated Plants and Animals",
+          "Cancer Evolution and Cell Lineage Trees"
+        ]
+      }
+    ],
+    "retained_after_failed_read": true,
+    "observation_time_preserved_after_failed_read": true
+  }
+}
