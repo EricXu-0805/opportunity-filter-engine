@@ -1,0 +1,47 @@
+{
+  "resume-layouts.pdf": {
+    "sha256": "97c13d8ca8f282e0e051dacdeb372faa887b268e07048a92b42c9c31e1cd6b22",
+    "courses": [
+      "Biomedical Imaging",
+      "Differential Equations",
+      "Fluid Mechanics",
+      "Signals and Systems"
+    ],
+    "chars": 1621,
+    "skills": [
+      "Python",
+      "MATLAB",
+      "NumPy",
+      "Git"
+    ]
+  },
+  "resume-boundaries.pdf": {
+    "sha256": "be5612059a2edde10438366812006b8c43e73e9a0774cc2dc0c09a7c51938847",
+    "courses": [
+      "Algorithms",
+      "Computer Vision",
+      "Database Systems",
+      "Linear Algebra",
+      "Operating Systems"
+    ],
+    "chars": 5877,
+    "skills": [
+      "Python",
+      "C++",
+      "TypeScript",
+      "MATLAB",
+      "SQL",
+      "machine learning",
+      "Git",
+      "Docker",
+      "Kubernetes",
+      "React",
+      "Flask",
+      "Node.js",
+      "AWS",
+      "Excel",
+      "gel electrophoresis",
+      "ImageJ"
+    ]
+  }
+}

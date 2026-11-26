@@ -78,7 +78,7 @@ def confirm_school(page):
     expect(page.get_by_role('dialog', name='Choose your university')).to_have_count(0)
 
 
-with sync_playwright() as pw:
+if __name__ == '__main__' and (pw := sync_playwright().start()):
     browser = pw.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
     page = home(browser)
     for _ in range(80):
