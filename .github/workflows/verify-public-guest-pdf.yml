@@ -8,7 +8,7 @@ on:
       scenario:
         type: choice
         required: true
-        options: [courses, publication, layouts, unreadable]
+        options: [courses, publication, layouts, unreadable, positions]
       expectation:
         type: choice
         required: true

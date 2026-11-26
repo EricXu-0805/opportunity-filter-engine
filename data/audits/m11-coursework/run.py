@@ -9,7 +9,7 @@ directory = Path(__file__).parent
 selection = {'scenario':os.environ.get('INPUT_SCENARIO'), 'expectation':os.environ.get('INPUT_EXPECTATION')}
 if not selection['scenario']:
     selection=json.loads((directory/'next.json').read_text())
-script={'courses':'check.py','publication':'publication.py','layouts':'layouts.py','unreadable':'unreadable.py'}[selection['scenario']]
+script={'positions':'positions.py','courses':'check.py','publication':'publication.py','layouts':'layouts.py','unreadable':'unreadable.py'}[selection['scenario']]
 expected=selection['expectation']
 if expected not in ('baseline','fixed'):
     raise ValueError('Expected baseline or fixed.')
