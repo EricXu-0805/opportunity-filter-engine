@@ -369,6 +369,9 @@ def fetch_and_normalize(status: str = "Open") -> list[dict]:
             fetched_detail = True
             soup = _fetch(f"{BASE_URL}/detail.php", {"id": row["id"]})
             detail = parse_project_notice(soup, row["title"], row["url"], datetime.now(UTC))
+            if detail is None:
+                logger.warning("URAP project %s: %s", row["id"],
+                               "detail fetch failed" if soup is None else "application notice could not be verified")
             row = {**row, "detail": detail}
         records.append(normalize_project(row, past=past))
     return records

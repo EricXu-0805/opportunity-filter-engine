@@ -408,3 +408,46 @@ def test_match_universe_and_snapshot_expire_with_a_still_cached_record(monkeypat
     moment[0] = cutoff
     assert matches._ranked_with(None) != before
     assert matches._release_universe(corpus) == []
+
+
+@pytest.mark.parametrize(("deadline", "hour", "minute"), [
+    ("The deadline to apply is Monday, August 31st, 4 p.m.", 16, 0),
+    ("The deadline to apply is Monday, August 31st, 4 p.m..", 16, 0),
+    ("The deadline to apply is Monday, August 31st, 4:00 PM.", 16, 0),
+    ("The deadline to apply is Monday, August 31st, noon.", 12, 0),
+    ("The deadline to apply is Monday, August 31st, 12 noon.", 12, 0),
+    ("The deadline to apply is Monday, August 31st, 11:59pm PT.", 23, 59),
+    ("The deadline to apply is Monday, Aug. 31st by 4pm.", 16, 0),
+    ("The deadline to apply is 4pm on Monday, August 31st.", 16, 0),
+    ("Applications are due Monday, Aug. 31st at 4pm.", 16, 0),
+])
+def test_published_clock_and_date_forms(deadline, hour, minute):
+    notice = FALL[:FALL.index("The deadline")] + deadline
+    detail = detail_raw(detail_soup(notice), datetime(2026, 8, 18, tzinfo=UTC))["detail"]
+    assert detail["opens_on"] == "2026-08-21"
+    assert detail["deadline_at"] == f"2026-08-31T{hour:02}:{minute:02}:00-07:00"
+    assert detail["deadline_quote"] == deadline
+
+
+@pytest.mark.parametrize("clock", ["", ", 4pm ET", ", 4pm PST", ", 0pm", ", 12:65pm",
+                                   ", 4pm noon", ", noon or midnight"])
+def test_uncertain_cutoff_does_not_grant_application_access(clock):
+    at = datetime(2026, 8, 24, tzinfo=UTC)
+    raw = detail_raw(detail_soup(FALL.replace(", 4pm", clock)), at)
+    assert raw["detail"] is None
+    assert up.normalize_project(raw, now=at)["metadata"]["urap_status"] == "unknown"
+
+
+def test_contradictory_or_duplicate_deadline_never_opens():
+    notice = FALL + " Applications are due on another date."
+    assert detail_raw(detail_soup(notice), datetime(2026, 8, 24, tzinfo=UTC))["detail"] is None
+
+
+def test_previous_calendar_year_for_spring_requires_corroboration():
+    notice = ("Open. Enter your application online beginning December 1st. "
+              "The deadline to apply is Monday, December 14th, 4pm.")
+    now = datetime(2026, 12, 2, tzinfo=UTC)
+    detail = detail_raw(detail_soup(notice, "Spring 2027"), now)["detail"]
+    assert detail["opens_on"] == "2026-12-01"
+    assert detail["deadline_at"] == "2026-12-14T16:00:00-08:00"
+    assert detail_raw(detail_soup(notice.replace("Monday, ", ""), "Spring 2027"), now)["detail"] is None

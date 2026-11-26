@@ -1481,6 +1481,9 @@ def refresh_all(
                 added, updated = merge_ucb_urap_projects(urap_proj)
                 summary["sources"]["ucb_urap_projects"] = {
                     "fetched": len(urap_proj),
+                    "normalization_failed": sum(
+                        row["metadata"]["urap_status"] == "unknown" for row in urap_proj
+                    ),
                     "new": added,
                     "updated": updated,
                     "status": "ok",
