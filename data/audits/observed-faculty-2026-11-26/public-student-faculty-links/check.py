@@ -56,8 +56,21 @@ def onboarding(page):
     tour = page.get_by_test_id('onboarding-intro')
     tour.get_by_test_id('onboarding-skip').click(timeout=45000)
     tour.get_by_test_id('onboarding-school-msu').click()
-    tour.get_by_test_id('onboarding-primary').click()
-    tour.wait_for(state='hidden',timeout=45000)
+    assert tour.get_by_test_id('onboarding-school-msu').get_attribute('aria-pressed') == 'true'
+    account['onboarding_attempts'] = []
+    for _ in range(3):
+        tour.get_by_test_id('onboarding-primary').click()
+        try:
+            tour.wait_for(state='hidden', timeout=10000)
+            account['onboarding_attempts'].append('closed')
+            break
+        except Exception:
+            error = tour.get_by_test_id('onboarding-error')
+            account['onboarding_attempts'].append(error.inner_text() if error.is_visible() else 'school confirmation still open')
+            page.screenshot(path=OUT/'campus-confirmation-retry.png')
+            save()
+            page.wait_for_timeout(3500)
+    tour.wait_for(state='hidden', timeout=20000)
     page.locator('#student_name').wait_for()
     page.get_by_test_id('hydration-note').wait_for(state='hidden',timeout=45000)
     page.get_by_test_id('profile-refresh-status').wait_for(state='hidden',timeout=45000)
@@ -124,6 +137,10 @@ def run():
             path = urlsplit(response.url).path
             if path == '/auth/v1/signup':
                 receipt['account']['signup'] = response.status
+            if path.startswith('/rest/v1/') and ('profile' in path or 'favorite' in path):
+                short = path.split('/')[-1]
+                if short in ('user_profiles', 'commit_profile_patch_cas', 'user_favorites'):
+                    receipt['account'].setdefault('responses', []).append({'endpoint':short,'status':response.status,'method':response.request.method})
             if path.endswith('/rpc/commit_profile_patch_cas') and response.ok:
                 try:
                     result = response.json()
@@ -176,6 +193,11 @@ def run():
                     search.wait_for(timeout=45000)
                     if search.input_value() != item['query']:
                         search.fill(item['query'])
+                    if item['id'].startswith('faculty-ucb-') and tab == 'all':
+                        cross = page.get_by_role('button', name="Include other schools' opportunities", exact=True)
+                        if cross.is_visible() and cross.get_attribute('aria-pressed') == 'false':
+                            cross.click(timeout=35000)
+                            item['used_product_cross_school'] = cross.get_attribute('aria-pressed')
                     card = page.locator('#match-card-' + item['id'])
                     card.wait_for(timeout=55000)
                     click_external(page,card.get_by_role('link',name='Faculty page',exact=True),item,'matches_' + tab)
