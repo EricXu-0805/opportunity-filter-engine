@@ -1,0 +1,1132 @@
+{
+  "observed_at": "2026-11-26T12:09:02.474906+00:00",
+  "deployment": {
+    "sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+    "frontend": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8084529813/statuses",
+    "backend": "https://joinalab.com/api/health",
+    "merged_pr": 1346
+  },
+  "waymo": {
+    "sources": [
+      "https://boards-api.greenhouse.io/v1/boards/waymo/jobs",
+      "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1335"
+    ],
+    "method": "Compare the 46 employer-verified active Waymo rows in the released national shard to the employer job board by gh_jid, public /api/opportunities/{id}, and the visible text and links in server-rendered /opportunities/{id}. No account, application or application-link click. First responses and targeted retries are distinguished.",
+    "checks": {
+      "board": 45,
+      "title": 43,
+      "original_id": 46,
+      "term": 43,
+      "degree": 46,
+      "application": 43,
+      "apply": 43,
+      "board_title_after_trimming": 46
+    },
+    "per_id": [
+      {
+        "id": "simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61",
+        "job": "8197899",
+        "title": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+        "board_title": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009",
+        "job": "8210138",
+        "title": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+        "board_title": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-f42adf96-f242-4f29-8953-d237b9a04ad2",
+        "job": "8203191",
+        "title": "2027 Summer Intern, PhD, Learning-Based Behavior for Special Vehicles",
+        "board_title": "2027 Summer Intern, PhD, Learning-Based Behavior for Special Vehicles",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-e764c6d5-8016-405f-9cf4-3ab1d55828be",
+        "job": "8221851",
+        "title": "2027 Summer Intern, MS/PhD, Software/ML Engineer, Simulation",
+        "board_title": "2027 Summer Intern, MS/PhD, Software/ML Engineer, Simulation",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-e88effb2-7748-41ae-9be2-407af5870c56",
+        "job": "8221795",
+        "title": "2027 Summer Intern, MS/PhD, Software Engineer, Simulation Evaluation ML Model",
+        "board_title": "2027 Summer Intern, MS/PhD, Software Engineer, Simulation Evaluation ML Model",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-e9282391-e76d-43c0-99fe-824b03704b2c",
+        "job": "8223735",
+        "title": "2027 Summer Intern, MS/PhD, Machine Learning Engineer",
+        "board_title": "2027 Summer Intern, MS/PhD, Machine Learning Engineer",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-6b159730-9852-401d-b64d-e07e1b5e80ba",
+        "job": "8221956",
+        "title": "2027 Summer Intern, PhD, Data Science",
+        "board_title": "2027 Summer Intern, PhD, Data Science",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-9f31b43a-95ad-41c8-aef4-c59287ea5477",
+        "job": "8224729",
+        "title": "2027 Summer Intern, MS/PhD, Software Engineer",
+        "board_title": "2027 Summer Intern, MS/PhD, Software Engineer",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-a27b01fe-9ba5-4ec8-894b-61cfd1f1fdf6",
+        "job": "8227640",
+        "title": "2027 Summer Intern, PhD, Research Scientist, Foundation Models",
+        "board_title": "2027 Summer Intern, PhD, Research Scientist, Foundation Models",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-865a11a8-4b8f-4167-99a1-2b819a80bdf2",
+        "job": "8231711",
+        "title": "2027 Summer Intern, MS/PhD, Systems Engineer, Autonomous Vehicle Networks & Diagnostics",
+        "board_title": "2027 Summer Intern, MS/PhD, Systems Engineer, Autonomous Vehicle Networks & Diagnostics",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-dcfc9399-37e0-42cc-965a-fd425dfbb1ce",
+        "job": "8234161",
+        "title": "2027 Summer Intern, MS/PhD, Software Engineering, Onboard Software Integrity",
+        "board_title": "2027 Summer Intern, MS/PhD, Software Engineering, Onboard Software Integrity",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-3548b466-2e50-4b00-9af5-beccc61fd77d",
+        "job": "8233746",
+        "title": "2027 Summer Intern, MS/PhD, Software Engineer, Sys Intel & Machine Learning",
+        "board_title": "2027 Summer Intern, MS/PhD, Software Engineer, Sys Intel & Machine Learning",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-557e1909-4373-42e8-847b-ee26942d838b",
+        "job": "8227411",
+        "title": "2027 Summer Intern, MS/PhD, Perception, Machine Learning",
+        "board_title": "2027 Summer Intern, MS/PhD, Perception, Machine Learning",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-6acc24ca-3ff2-4d56-a40c-e531d2a57522",
+        "job": "8237997",
+        "title": "2027 Summer Intern, PhD, Machine Learning Research, Planning/Prediction",
+        "board_title": "2027 Summer Intern, PhD, Machine Learning Research, Planning/Prediction",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-cdebfd0a-6bc1-4ec9-904b-67106dabdb42",
+        "job": "8234876",
+        "title": "2027 Summer Intern, PhD, Planner Machine Learning",
+        "board_title": "2027 Summer Intern, PhD, Planner Machine Learning",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-d275435a-21ef-455d-80a8-3d9afd93c8a9",
+        "job": "8240198",
+        "title": "2027 Summer Intern, MS/PhD, Software Engineer, Onboard Developer Platform",
+        "board_title": "2027 Summer Intern, MS/PhD, Software Engineer, Onboard Developer Platform",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-a6dbbd93-025c-446e-9591-2e57776b8c43",
+        "job": "8243556",
+        "title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+        "board_title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-5cd416b9-4e14-4c94-ba8f-96c9143bd4dc",
+        "job": "8243732",
+        "title": "2027 Summer Intern, PhD, Research, World Action Model",
+        "board_title": "2027 Summer Intern, PhD, Research, World Action Model",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1",
+        "job": "8198582",
+        "title": "2027 Summer Intern, MBA, Salesforce Product Owner",
+        "board_title": "2027 Summer Intern, MBA, Salesforce Product Owner",
+        "degrees": [
+          "masters"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841",
+        "job": "8257205",
+        "title": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+        "board_title": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+        "degrees": [
+          "undergraduate",
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-87566803-f6c9-48c3-a131-43c4bfe824ee",
+        "job": "8257159",
+        "title": "2027 Summer Intern, MS/PhD, ML Systems & Behavior Discovery",
+        "board_title": "2027 Summer Intern, MS/PhD, ML Systems & Behavior Discovery",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-a6a5ed46-6265-445b-abcd-f0a3316ee4ec",
+        "job": "8257801",
+        "title": "2027 Summer Intern, MS/PhD,  Research, Perception Foundation Models",
+        "board_title": "2027 Summer Intern, MS/PhD,  Research, Perception Foundation Models",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-c8f21f2d-6090-47e0-9b3c-d232b71af4e6",
+        "job": "8227633",
+        "title": "2027 Summer Intern, MS/PhD, Perception, Robotics",
+        "board_title": "2027 Summer Intern, MS/PhD, Perception, Robotics",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+        "job": "8265173",
+        "title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+        "board_title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": false,
+          "original_id": true,
+          "term": false,
+          "degree": true,
+          "application": false,
+          "apply": false,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754",
+        "job": "8262154",
+        "title": "2027 Summer Intern, PhD, Machine Learning, Planning/Prediction",
+        "board_title": "2027 Summer Intern, PhD, Machine Learning, Planning/Prediction",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": false,
+          "original_id": true,
+          "term": false,
+          "degree": true,
+          "application": false,
+          "apply": false,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": false
+      },
+      {
+        "id": "simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011",
+        "job": "8257006",
+        "title": "2027 Summer Intern, PhD, Research, Post Training",
+        "board_title": "2027 Summer Intern, PhD, Research, Post Training",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-90fc898a-0084-4663-aec5-a815133f8492",
+        "job": "8258070",
+        "title": "2027 Summer Intern, PhD, Research, AV Planning",
+        "board_title": "2027 Summer Intern, PhD, Research, AV Planning",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-e80ebee1-3fe9-4a36-ad51-08f17f3179c8",
+        "job": "8265868",
+        "title": "2027 Summer Intern, PhD, Machine Learning, Simulation Realism",
+        "board_title": "2027 Summer Intern, PhD, Machine Learning, Simulation Realism",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-342edb51-b682-4daa-80fd-21c355143f3e",
+        "job": "8279620",
+        "title": "2027 Summer Intern, MS/PhD, Machine Learning, Planning/Prediction",
+        "board_title": "2027 Summer Intern, MS/PhD, Machine Learning, Planning/Prediction",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91",
+        "job": "8244128",
+        "title": "2027 Summer Intern, MS/PhD, Semantics",
+        "board_title": "2027 Summer Intern, MS/PhD, Semantics",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-e5fc4725-7c7e-4f70-8b44-393f041df42f",
+        "job": "8301854",
+        "title": "2027 Summer Intern, PhD, Research, VLM Harnesses for AV Planning",
+        "board_title": "2027 Summer Intern, PhD, Research, VLM Harnesses for AV Planning",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-d6b3c17b-06b4-4829-928b-91ee1bba4851",
+        "job": "8289816",
+        "title": "2027 Summer Intern, PhD, Research, Behavior Post-training",
+        "board_title": "2027 Summer Intern, PhD, Research, Behavior Post-training",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-64a04930-5ef0-4b6e-a89b-0ef7d8a6cf17",
+        "job": "8283558",
+        "title": "2027 Summer Intern, PhD, Machine Learning - Simulation & Closed-Loop Training",
+        "board_title": "2027 Summer Intern, PhD, Machine Learning - Simulation & Closed-Loop Training",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf",
+        "job": "8292367",
+        "title": "2027 Summer Intern, PhD, Research Scientist, Visual Reasoning",
+        "board_title": "2027 Summer Intern, PhD, Research Scientist, Visual Reasoning",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-f20248ee-cb81-4a5b-8c0c-1af93286831e",
+        "job": "8306841",
+        "title": "2027 Summer Intern, PhD, AI Foundations - Recipes",
+        "board_title": "2027 Summer Intern, PhD, AI Foundations - Recipes",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-a1081a4b-fb8c-4479-9220-d7baabef2872",
+        "job": "8306779",
+        "title": "2027 Summer Intern, PhD, Research, RSI for Autonomous Driving",
+        "board_title": "2027 Summer Intern, PhD, Research, RSI for Autonomous Driving",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-87448ebb-0faa-4adb-8da5-961c6675e99c",
+        "job": "8306867",
+        "title": "2027 Summer Intern, PhD, Research, Multimodal Foundation Models",
+        "board_title": "2027 Summer Intern, PhD, Research, Multimodal Foundation Models",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444",
+        "job": "8287385",
+        "title": "2027 Summer Intern, MS/PhD, Software Engineer, ML Frameworks and Efficiency",
+        "board_title": "2027 Summer Intern, MS/PhD, Software Engineer, ML Frameworks and Efficiency",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a",
+        "job": "8304574",
+        "title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+        "board_title": "2027 Summer Intern, MS/PhD, Machine Learning, Driver Refinement Foundations",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-2925b61d-685b-4e5f-9dfd-2135a9e1f5eb",
+        "job": "8319171",
+        "title": "2027 Summer Intern, MS/PhD, Sensor Performance Engineer Intern",
+        "board_title": "2027 Summer Intern, MS/PhD, Sensor Performance Engineer Intern",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-5ff8900e-61d6-4596-aada-70ac75491c47",
+        "job": "8337719",
+        "title": "2027 Summer Intern, PhD, Research Scientist Intern",
+        "board_title": "2027 Summer Intern, PhD, Research Scientist Intern",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-6bd2bc4c-a45f-43fc-85b7-a95cc3796271",
+        "job": "8350687",
+        "title": "2027 Summer Intern, MS/PhD, Depot Automation",
+        "board_title": "2027 Summer Intern, MS/PhD, Depot Automation",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085",
+        "job": "8350832",
+        "title": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+        "board_title": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+        "degrees": [
+          "undergraduate",
+          "masters"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-a37b7658-0363-49fa-878d-5f9db8bfb47b",
+        "job": "8351210",
+        "title": "2027 Summer Intern, PhD, Machine Learning - Generative World Models & Controllable Simulation",
+        "board_title": "2027 Summer Intern, PhD, Machine Learning - Generative World Models & Controllable Simulation",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-983f493f-336e-4200-b72e-8c62140cf351",
+        "job": "8358262",
+        "title": "2027 Summer Intern, Machine Learning, MS/PhD, Simulation Realism (World Model)",
+        "board_title": "2027 Summer Intern, Machine Learning, MS/PhD, Simulation Realism (World Model) ",
+        "degrees": [
+          "masters",
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": false,
+          "title": false,
+          "original_id": true,
+          "term": false,
+          "degree": true,
+          "application": false,
+          "apply": false,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      },
+      {
+        "id": "simplify-intern-62a276ae-a9d7-4971-91d6-af6673585530",
+        "job": "8401116",
+        "title": "2027 Summer Intern, PhD, Agentic AI",
+        "board_title": "2027 Summer Intern, PhD, Agentic AI",
+        "degrees": [
+          "phd"
+        ],
+        "term": "Summer 2027",
+        "html_sha": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "checks": {
+          "board": true,
+          "title": true,
+          "original_id": true,
+          "term": true,
+          "degree": true,
+          "application": true,
+          "apply": true,
+          "board_title_after_trimming": true
+        },
+        "first_response_had_expected_title": true
+      }
+    ],
+    "second_pass_remaining_html_checks": [
+      {
+        "id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+        "title": true,
+        "term": true,
+        "apply": true,
+        "link": true,
+        "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "status_text": [],
+        "last": [
+          "Observed 2026-11-25",
+          "Contact instructions",
+          "No applicable contact instructions were confirmed. Check the official page before contacting.",
+          "Contact",
+          "No email address from an official public source is available for this opportunity.",
+          "Source: Simplify Internships",
+          "Last verified: 2026-11-25",
+          "Back to matches"
+        ]
+      },
+      {
+        "id": "simplify-intern-a88c4837-dfcb-4510-8be0-2b25c43d5754",
+        "title": true,
+        "term": true,
+        "apply": true,
+        "link": true,
+        "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "status_text": [],
+        "last": [
+          "Observed 2026-11-25",
+          "Contact instructions",
+          "No applicable contact instructions were confirmed. Check the official page before contacting.",
+          "Contact",
+          "No email address from an official public source is available for this opportunity.",
+          "Source: Simplify Internships",
+          "Last verified: 2026-11-25",
+          "Back to matches"
+        ]
+      },
+      {
+        "id": "simplify-intern-983f493f-336e-4200-b72e-8c62140cf351",
+        "title": true,
+        "term": true,
+        "apply": true,
+        "link": true,
+        "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+        "status_text": [],
+        "last": [
+          "Observed 2026-11-25",
+          "Contact instructions",
+          "No applicable contact instructions were confirmed. Check the official page before contacting.",
+          "Contact",
+          "No email address from an official public source is available for this opportunity.",
+          "Source: Simplify Internships",
+          "Last verified: 2026-11-25",
+          "Back to matches"
+        ]
+      }
+    ],
+    "verified_detail_ids_across_reads": 46
+  },
+  "source_label": {
+    "id": "ext-usc-ict",
+    "en": "Source: UIUC Labs",
+    "zh": "来源：UIUC 实验室",
+    "fix": 1357,
+    "integration": 1372,
+    "state": "Confirmed present on production at this SHA"
+  }
+}
