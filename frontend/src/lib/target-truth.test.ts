@@ -500,6 +500,16 @@ it('expires a cached URAP application at its project deadline', () => {
   }
 });
 
+it('keeps a Miami Biology roster as a source even on a compact card with only a URL', () => {
+  const directory = 'https://biology.as.miami.edu/people/index.html';
+  for (const suffix of ['', '/', '?tab=all', '#:~:text=DeAngelis']) {
+    const row = { source: 'miami_faculty', source_type: 'faculty_research', url: directory + suffix };
+    expect(opportunityCitationUrl(row)).toBe(row.url);
+    expect(facultyProfileUrl(row)).toBeUndefined();
+    expect(opportunitySourceUrl(row)).toBeUndefined();
+  }
+});
+
 describe('Michigan State Natural Science faculty destinations', () => {
   const source = 'https://directory.natsci.msu.edu/Directory/Directory/Department/6';
   const person = 'https://directory.natsci.msu.edu/directory/Profiles/Person/100493';
