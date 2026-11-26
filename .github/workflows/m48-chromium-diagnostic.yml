@@ -7,18 +7,45 @@ permissions:
 jobs:
   worker:
     runs-on: ubuntu-24.04
-    timeout-minutes: 7
-    defaults:
-      run:
-        working-directory: frontend
+    timeout-minutes: 17
     steps:
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: frontend
+          ref: 420bea95b0f2337386887f52b5c1492812936f63
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          path: diagnostic
+          sparse-checkout: frontend/e2e
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
-      - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test -c m48-fixture.config.ts --repeat-each 3
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Install the application dependencies and Chromium
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium >"$RUNNER_TEMP/browser-install.log" 2>&1
+      - name: Start the same isolated Supabase stack as the attachment fixture
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/ofe-m48"
+          mkdir "$fixture"
+          cd "$fixture"
+          supabase init
+          mkdir -p supabase/migrations
+          cp "$GITHUB_WORKSPACE/supabase/migrations/007_push_subscriptions.sql" supabase/migrations/
+          sed -n '/^-- push_subscriptions (007)/,/^-- interaction_status_changes (009)/p' "$GITHUB_WORKSPACE/supabase/migrations/014_advisor_hardening.sql" > supabase/migrations/014_push_row_policies.sql
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -E 'Error|ERROR|failed|FATAL|denied' "$fixture/start.log" | tail -6 | cut -c1-220 || true
+            exit 1
+          fi
+          umask 077
+          supabase status -o json > "$fixture/status.json"
+      - name: Verify the shipped dashboard with two isolated sessions and real row reads
+        run: |
+          cp diagnostic/frontend/e2e/m48-dashboard.mjs frontend/e2e/
+          node frontend/e2e/m48-dashboard.mjs "$RUNNER_TEMP/ofe-m48/status.json"
