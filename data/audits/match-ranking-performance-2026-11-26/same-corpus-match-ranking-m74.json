@@ -1,0 +1,485 @@
+{
+  "head": "a6036fe20a08139f2848dbe405cab4933e5a6cfe",
+  "baseline": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "shards": 117,
+  "input_rows": 149774,
+  "order_of_runs": [
+    "candidate",
+    "baseline",
+    "baseline",
+    "candidate",
+    "candidate",
+    "baseline"
+  ],
+  "profiles": {
+    "uiuc_cs_cross_all3": {
+      "visible_rows": 82749,
+      "ordered_full_matchresult_file_digest": "67379fae4a5eb9ff31c67489b925183a623e875c33ae77f0f246d5f10ad9dadc",
+      "latency_milliseconds": {
+        "first": {
+          "baseline_run_medians": [
+            8236.22,
+            17198.95,
+            7873.26
+          ],
+          "candidate_run_medians": [
+            7278.69,
+            7024.44,
+            7380.28
+          ],
+          "baseline_median": 8236.22,
+          "candidate_median": 7278.69,
+          "output_hashes": [
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4"
+          ]
+        },
+        "repeat": {
+          "baseline_run_medians": [
+            17.78,
+            35.26,
+            18.43
+          ],
+          "candidate_run_medians": [
+            18.43,
+            16.74,
+            18.7
+          ],
+          "baseline_median": 18.43,
+          "candidate_median": 18.43,
+          "output_hashes": [
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4"
+          ]
+        },
+        "pages": {
+          "baseline_run_medians": [
+            28.89,
+            48.47,
+            29.24
+          ],
+          "candidate_run_medians": [
+            29.15,
+            26.99,
+            28.9
+          ],
+          "baseline_median": 29.24,
+          "candidate_median": 28.9,
+          "output_hashes": [
+            "1f31af455b20237e16fdb6196285e03dd4ba8f8bb2f6df4d12e37b61f4d91d97",
+            "daf336241e9d65b54bb6487734c239f8d6b1568cbd344fabaae944c8fbd1c99f",
+            "dad001eca8d98ba777905744a12fd9abde28e7044b150a5c0a0243a213c236ba",
+            "c627e2094204a7ed892e2f962f2ba00685e21bca1c070065a7dd032ccf7212be",
+            "ff88b69726b65f02d329e7649df5b872c05f8706da94c5a4f403093a17862e4d",
+            "993cd0e3dda47a2db4c8746d54975f1b744be8ba30c6e1dd1f7a6a6f9b6f46c8",
+            "e6d5854309f066f017791dceee184aada92cf6e2789565c1f5219dae54e850b2"
+          ]
+        },
+        "searched": {
+          "baseline_run_medians": [
+            268.81,
+            478.0,
+            272.19
+          ],
+          "candidate_run_medians": [
+            294.11,
+            255.45,
+            268.0
+          ],
+          "baseline_median": 272.19,
+          "candidate_median": 268.0,
+          "output_hashes": [
+            "ec0d9f523e79dbc83142f1ab8358de3ec0bc23d37e6dd14e884ec5786d155458",
+            "ec0d9f523e79dbc83142f1ab8358de3ec0bc23d37e6dd14e884ec5786d155458"
+          ]
+        },
+        "dismiss": {
+          "baseline_run_medians": [
+            73.47,
+            97.74,
+            72.88
+          ],
+          "candidate_run_medians": [
+            77.29,
+            64.93,
+            72.12
+          ],
+          "baseline_median": 73.47,
+          "candidate_median": 72.12,
+          "output_hashes": [
+            "ccdeefddc0af692452d418ad15fcb6f20181a4e025467d2cfea9112334d7ec73"
+          ]
+        },
+        "restore": {
+          "baseline_run_medians": [
+            47.48,
+            65.44,
+            45.98
+          ],
+          "candidate_run_medians": [
+            47.02,
+            40.03,
+            46.46
+          ],
+          "baseline_median": 47.48,
+          "candidate_median": 46.46,
+          "output_hashes": [
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4",
+            "32d7e45b884b895385f293cedb4af3a3a96175e38becfd6b4d2046006bd884f4"
+          ]
+        }
+      }
+    },
+    "ucb_eecs": {
+      "visible_rows": 2552,
+      "ordered_full_matchresult_file_digest": "6ff75f0b9b8f7e3427d7101e88b23bf0bc20c24696660573ac4ef092ba9b395c",
+      "latency_milliseconds": {
+        "first": {
+          "baseline_run_medians": [
+            307.04,
+            398.91,
+            311.36
+          ],
+          "candidate_run_medians": [
+            358.19,
+            269.52,
+            288.12
+          ],
+          "baseline_median": 311.36,
+          "candidate_median": 288.12,
+          "output_hashes": [
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60"
+          ]
+        },
+        "repeat": {
+          "baseline_run_medians": [
+            22.76,
+            37.16,
+            23.2
+          ],
+          "candidate_run_medians": [
+            23.8,
+            21.12,
+            22.44
+          ],
+          "baseline_median": 23.2,
+          "candidate_median": 22.44,
+          "output_hashes": [
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60"
+          ]
+        },
+        "pages": {
+          "baseline_run_medians": [
+            38.59,
+            58.03,
+            39.43
+          ],
+          "candidate_run_medians": [
+            43.15,
+            36.42,
+            38.52
+          ],
+          "baseline_median": 39.43,
+          "candidate_median": 38.52,
+          "output_hashes": [
+            "5e39aad356927689e5d38c735bd73112949ba4174ce217fd8c726685186f57af",
+            "8120b267b6472e062cee5f00da6b5a843c6e24221068e73e79a3b5130aae86d2",
+            "ae468053895091a251fcf84db848a42178f287f272c8041773ae289f304bee6d",
+            "7217c04f495a5818d3a23ec7f5a6704d0036aff86a56d1e9168060eea8d017f1",
+            "f81f29319b09bf31329137a1ad9e487dca9e84612d82ea5fe01e14a865f04caf",
+            "b375ccd62648715fb24c1069711bc0a8415ab838ba91ad80bd64ec104fa5e7a1",
+            "8eda9a303f1eaa4c7232a8ba4bc6f7d21bbb8e5cd6d744d9ae481749233e0aa6"
+          ]
+        },
+        "searched": {
+          "baseline_run_medians": [
+            49.79,
+            69.54,
+            49.64
+          ],
+          "candidate_run_medians": [
+            54.21,
+            46.35,
+            48.98
+          ],
+          "baseline_median": 49.79,
+          "candidate_median": 48.98,
+          "output_hashes": [
+            "e92b52698729e86014517500f7c3d2a15fced699bcc2b8dd508d99a1500e061e",
+            "e92b52698729e86014517500f7c3d2a15fced699bcc2b8dd508d99a1500e061e"
+          ]
+        },
+        "dismiss": {
+          "baseline_run_medians": [
+            23.51,
+            38.18,
+            24.69
+          ],
+          "candidate_run_medians": [
+            26.45,
+            22.24,
+            24.59
+          ],
+          "baseline_median": 24.69,
+          "candidate_median": 24.59,
+          "output_hashes": [
+            "60033eebaac27600b08cb8ae8001854871e1190434298d0cbf49b187babcfbe1"
+          ]
+        },
+        "restore": {
+          "baseline_run_medians": [
+            23.12,
+            37.16,
+            23.77
+          ],
+          "candidate_run_medians": [
+            23.75,
+            21.5,
+            22.98
+          ],
+          "baseline_median": 23.77,
+          "candidate_median": 22.98,
+          "output_hashes": [
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60",
+            "3d59c37e86a44a6e46a5cb30cdda69c4f632eeab699564608a113853e743db60"
+          ]
+        }
+      }
+    }
+  },
+  "method": "Each process loaded every committed shard through the production canonicalizer, fit TF-IDF and prepared Match views. Each of two synthetic profiles ran 21 ordinary FastAPI TestClient requests (rule-only, with no paid/remote services) through the full HTTP serialization path. First requests had no saved ranking. Each ordered MatchResult was serialized to a stable representation, including all IDs, scores, bands, reasons and unknowns. Three matched runs per revision. Local wall time includes OS contention and is not production latency.",
+  "baseline_peak_process_RSS_MiB": [
+    1380.1,
+    1434.8,
+    1666.4
+  ],
+  "candidate_peak_process_RSS_MiB": [
+    1348.4,
+    1462.8,
+    1659.2
+  ],
+  "normalized_API_responses_compared_per_revision": 126,
+  "complete_API_responses_including_cursors_compared_final_pair": 42,
+  "cProfile_baseline": {
+    "rows": 16696,
+    "visible": 9296,
+    "total_s": 2.623,
+    "compute_record_static_s": 0.573,
+    "two_sorts_s": 0.176,
+    "target_truth_s": 0.143
+  },
+  "process_CPU_control": {
+    "method": "One canonical 149774-row generation per executable. Three rounds: clear ranking snapshots, bounded record statics and new label memoization before each round; force collection before the measured request. Full request process CPU is measured in addition to elapsed time to limit host contention bias. Boot initialization is separate.",
+    "observations": {
+      "current": [
+        {
+          "round": 0,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "first",
+          "cpu_ms": 7163.12,
+          "wall_ms": 7173.5,
+          "total": 82749
+        },
+        {
+          "round": 0,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "repeat",
+          "cpu_ms": 18.14,
+          "wall_ms": 18.46,
+          "total": 82749
+        },
+        {
+          "round": 0,
+          "profile": "ucb_eecs",
+          "phase": "first",
+          "cpu_ms": 297.97,
+          "wall_ms": 298.72,
+          "total": 2552
+        },
+        {
+          "round": 0,
+          "profile": "ucb_eecs",
+          "phase": "repeat",
+          "cpu_ms": 22.58,
+          "wall_ms": 22.87,
+          "total": 2552
+        },
+        {
+          "round": 1,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "first",
+          "cpu_ms": 7118.92,
+          "wall_ms": 7128.72,
+          "total": 82749
+        },
+        {
+          "round": 1,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "repeat",
+          "cpu_ms": 17.14,
+          "wall_ms": 17.44,
+          "total": 82749
+        },
+        {
+          "round": 1,
+          "profile": "ucb_eecs",
+          "phase": "first",
+          "cpu_ms": 277.53,
+          "wall_ms": 278.13,
+          "total": 2552
+        },
+        {
+          "round": 1,
+          "profile": "ucb_eecs",
+          "phase": "repeat",
+          "cpu_ms": 21.57,
+          "wall_ms": 21.89,
+          "total": 2552
+        },
+        {
+          "round": 2,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "first",
+          "cpu_ms": 7102.15,
+          "wall_ms": 7110.5,
+          "total": 82749
+        },
+        {
+          "round": 2,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "repeat",
+          "cpu_ms": 16.26,
+          "wall_ms": 16.58,
+          "total": 82749
+        },
+        {
+          "round": 2,
+          "profile": "ucb_eecs",
+          "phase": "first",
+          "cpu_ms": 269.55,
+          "wall_ms": 269.97,
+          "total": 2552
+        },
+        {
+          "round": 2,
+          "profile": "ucb_eecs",
+          "phase": "repeat",
+          "cpu_ms": 20.91,
+          "wall_ms": 21.23,
+          "total": 2552
+        }
+      ],
+      "baseline": [
+        {
+          "round": 0,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "first",
+          "cpu_ms": 7365.58,
+          "wall_ms": 7374.63,
+          "total": 82749
+        },
+        {
+          "round": 0,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "repeat",
+          "cpu_ms": 16.72,
+          "wall_ms": 17.0,
+          "total": 82749
+        },
+        {
+          "round": 0,
+          "profile": "ucb_eecs",
+          "phase": "first",
+          "cpu_ms": 288.36,
+          "wall_ms": 288.75,
+          "total": 2552
+        },
+        {
+          "round": 0,
+          "profile": "ucb_eecs",
+          "phase": "repeat",
+          "cpu_ms": 20.86,
+          "wall_ms": 21.16,
+          "total": 2552
+        },
+        {
+          "round": 1,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "first",
+          "cpu_ms": 7287.03,
+          "wall_ms": 7293.99,
+          "total": 82749
+        },
+        {
+          "round": 1,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "repeat",
+          "cpu_ms": 17.1,
+          "wall_ms": 17.39,
+          "total": 82749
+        },
+        {
+          "round": 1,
+          "profile": "ucb_eecs",
+          "phase": "first",
+          "cpu_ms": 279.61,
+          "wall_ms": 280.02,
+          "total": 2552
+        },
+        {
+          "round": 1,
+          "profile": "ucb_eecs",
+          "phase": "repeat",
+          "cpu_ms": 21.25,
+          "wall_ms": 21.54,
+          "total": 2552
+        },
+        {
+          "round": 2,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "first",
+          "cpu_ms": 7266.47,
+          "wall_ms": 7273.18,
+          "total": 82749
+        },
+        {
+          "round": 2,
+          "profile": "uiuc_cs_cross_all3",
+          "phase": "repeat",
+          "cpu_ms": 17.76,
+          "wall_ms": 18.07,
+          "total": 82749
+        },
+        {
+          "round": 2,
+          "profile": "ucb_eecs",
+          "phase": "first",
+          "cpu_ms": 292.37,
+          "wall_ms": 293.17,
+          "total": 2552
+        },
+        {
+          "round": 2,
+          "profile": "ucb_eecs",
+          "phase": "repeat",
+          "cpu_ms": 21.37,
+          "wall_ms": 21.69,
+          "total": 2552
+        }
+      ]
+    }
+  },
+  "recorded_at": "2026-11-26T11:20:33.910276+00:00"
+}
