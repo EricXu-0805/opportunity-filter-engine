@@ -1,0 +1,192 @@
+{
+  "assessed_utc": "2026-11-26T18:58:29+00:00",
+  "compare_base": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "b19": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "fresh_main": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+  "refresh_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1464",
+  "note": "Preliminary comparison of the actual published Thursday refresh against the B18 base used for isolated B19 CI. A later merge must check its own current parent. New records, current sightings and refreshed source metadata require retention.",
+  "shards": {
+    "utexas": {
+      "b18_row_count": 2328,
+      "b19_row_count": 2328,
+      "published_row_count": 2329,
+      "fresh_ids_absent_from_stacked_b19": 1,
+      "stacked_ids_absent_from_current_main": 0,
+      "b19_modified_originals": {
+        "faculty-utexas-mpdd-5850399f": {
+          "touched": {
+            "metadata.publication_attribution_status": "published_equals_b18",
+            "metadata.publication_author_id": "published_equals_b18",
+            "metadata.recent_works": "published_equals_b18",
+            "metadata.works_gate": "published_equals_b18"
+          },
+          "other_changed_current_paths": [
+            "metadata.last_seen_at",
+            "metadata.last_verified"
+          ]
+        }
+      }
+    },
+    "national": {
+      "b18_row_count": 14139,
+      "b19_row_count": 14139,
+      "published_row_count": 14198,
+      "fresh_ids_absent_from_stacked_b19": 59,
+      "stacked_ids_absent_from_current_main": 0,
+      "b19_modified_originals": {
+        "sro-3ec4ea4e": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.majors": "published_equals_b18",
+            "metadata.inferred_fields.eligibility.majors": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "sro-44f176cd": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.majors": "published_equals_b18",
+            "metadata.inferred_fields.eligibility.majors": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "sro-595e912d": {
+          "touched": {
+            "compensation_details": "published_equals_b18",
+            "description_clean": "published_equals_b18",
+            "duration": "published_equals_b18",
+            "eligibility.preferred_year": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "nsf-reu-2447670": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.majors": "published_equals_b18",
+            "metadata.inferred_fields.eligibility.majors": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "wisc-86cba49b83d7": {
+          "touched": {
+            "compensation_details": "published_equals_b18",
+            "description": "published_equals_b18",
+            "description_clean": "published_equals_b18",
+            "duration": "published_equals_b18",
+            "eligibility.preferred_year": "published_equals_b18",
+            "paid": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "sro-3c378261": {
+          "touched": {
+            "compensation_details": "published_equals_b18",
+            "description_clean": "published_equals_b18",
+            "duration": "published_equals_b18",
+            "eligibility.preferred_year": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        }
+      }
+    },
+    "ucsd": {
+      "b18_row_count": 1508,
+      "b19_row_count": 1508,
+      "published_row_count": 1508,
+      "fresh_ids_absent_from_stacked_b19": 0,
+      "stacked_ids_absent_from_current_main": 0,
+      "b19_modified_originals": {
+        "faculty-ucsd-nano-2aa92754": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.eligibility_text_raw": "published_equals_b18",
+            "metadata.deactivated_at": "published_equals_b18",
+            "metadata.deactivation_reason": "published_equals_b18",
+            "metadata.faculty_profile_review": "published_equals_b18",
+            "metadata.faculty_title": "published_equals_b18",
+            "metadata.is_active": "published_equals_b18",
+            "source_url": "published_equals_b18",
+            "url": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "faculty-ucsd-nano-04ac1d79": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.eligibility_text_raw": "published_equals_b18",
+            "metadata.deactivated_at": "published_equals_b18",
+            "metadata.deactivation_reason": "published_equals_b18",
+            "metadata.faculty_profile_review": "published_equals_b18",
+            "metadata.faculty_title": "published_equals_b18",
+            "metadata.is_active": "published_equals_b18",
+            "pi_name": "published_equals_b18",
+            "source_url": "published_equals_b18",
+            "title": "published_equals_b18",
+            "url": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "faculty-ucsd-nano-27240933": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.eligibility_text_raw": "published_equals_b18",
+            "metadata.deactivated_at": "published_equals_b18",
+            "metadata.deactivation_reason": "published_equals_b18",
+            "metadata.faculty_profile_review": "published_equals_b18",
+            "metadata.faculty_title": "published_equals_b18",
+            "metadata.is_active": "published_equals_b18",
+            "source_url": "published_equals_b18",
+            "url": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "faculty-ucsd-nano-25a6d469": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.eligibility_text_raw": "published_equals_b18",
+            "metadata.deactivated_at": "published_equals_b18",
+            "metadata.deactivation_reason": "published_equals_b18",
+            "metadata.faculty_profile_review": "published_equals_b18",
+            "metadata.faculty_title": "published_equals_b18",
+            "metadata.is_active": "published_equals_b18",
+            "pi_name": "published_equals_b18",
+            "source_url": "published_equals_b18",
+            "title": "published_equals_b18",
+            "url": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        },
+        "faculty-ucsd-nano-dc9e3de3": {
+          "touched": {
+            "description_clean": "published_equals_b18",
+            "eligibility.eligibility_text_raw": "published_equals_b18",
+            "metadata.deactivated_at": "published_equals_b18",
+            "metadata.deactivation_reason": "published_equals_b18",
+            "metadata.faculty_profile_review": "published_equals_b18",
+            "metadata.faculty_title": "published_equals_b18",
+            "metadata.is_active": "published_equals_b18",
+            "pi_name": "published_equals_b18",
+            "source_url": "published_equals_b18",
+            "title": "published_equals_b18",
+            "url": "published_equals_b18"
+          },
+          "other_changed_current_paths": []
+        }
+      }
+    }
+  },
+  "published_refresh_head": "28ae60442b0ccece7811446be0f4477aa882052a",
+  "merged_main_shard_blob_ids": {
+    "national": "b32b8982750573ccb57b71f5849a563e923ac4a4",
+    "utexas": "7217ffb01b2d20139d483817e66b6bf9e0f3a37b",
+    "ucsd": "005319306fc46c5bfd0590d8eb27b2792c7f15d9"
+  },
+  "published_head_matches_merged_blob": true,
+  "scheduled_workflow": {
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861578824",
+    "overall_result": "failure",
+    "data_pr_merged": true,
+    "event": "schedule"
+  },
+  "ut_cui_merge_requirement": "Keep the newer published last_seen_at and last_verified, plus the added UT record, when carrying the four reviewed publication fields to the eventual main. Keep all 59 national IDs added after the stacked base."
+}
