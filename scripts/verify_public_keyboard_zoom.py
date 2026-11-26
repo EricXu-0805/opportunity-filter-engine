@@ -14,6 +14,17 @@ def focus(page, locator, reverse=False):
         page.keyboard.press('Shift+Tab' if reverse else 'Tab')
     raise AssertionError('Keyboard never reached '+str(locator))
 
+def open_menu(p,toggle):
+    # An SSR header is visible before React first attaches its menu handler.
+    for _ in range(8):
+        if toggle.get_attribute('aria-expanded')=='true':return
+        focus(p,toggle);p.keyboard.press('Enter')
+        try:
+            expect(toggle).to_have_attribute('aria-expanded','true',timeout=1150)
+            return
+        except AssertionError:pass
+    raise AssertionError(('menu did not open with Enter',active(p)))
+
 def active(p):
     return p.evaluate("""() => {const e=document.activeElement, cs=getComputedStyle(e), r=e.getBoundingClientRect();
       const x=Math.max(0,Math.min(innerWidth-1,r.x+r.width/2)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height/2));
@@ -82,16 +93,17 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         expect(area).to_have_value('Synthetic keyboard input kept on this device')
         case['textarea_focus']=active(p)
         case['import_geometry']=metric(p)
+        print('KEYBOARD IMPORT',json.dumps(case,ensure_ascii=False),flush=True)
         p.goto(SITE+'/about',wait_until='domcontentloaded')
         toggle=p.locator('button[aria-controls="mobile-nav-panel"]')
         if toggle.is_visible():
             focus(p,toggle);case['nav_toggle_focus']=active(p)
-            p.keyboard.press('Enter');expect(toggle).to_have_attribute('aria-expanded','true')
+            open_menu(p,toggle)
             dest=p.locator('#mobile-nav-panel a[href="/favorites"]')
             focus(p,dest);case['nav_link_focus']=active(p)
             p.keyboard.press('Escape');expect(toggle).to_have_attribute('aria-expanded','false')
             case['escape_restores_menu_toggle']=toggle.evaluate('e=>e===document.activeElement');case['after_menu_escape']=active(p)
-            focus(p,toggle);p.keyboard.press('Enter');focus(p,dest);p.keyboard.press('Enter')
+            open_menu(p,toggle);focus(p,dest);p.keyboard.press('Enter')
         else:
             dest=p.locator('header a[href="/favorites"]:visible').first
             focus(p,dest);case['nav_link_focus']=active(p);p.keyboard.press('Enter')
