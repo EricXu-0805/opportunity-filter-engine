@@ -1,0 +1,173 @@
+{
+  "at": "2026-11-26T12:15:05.571351+00:00",
+  "before_source_commit": "c48699ce8bd7ce27a217d9878cb66ab4d339dd30",
+  "source_issues": "Previous ME hostname redirects to me.umd.edu. Canonical current roster requests now supply direct same-host fetch proof. No public mailboxes are disclosed in this receipt.",
+  "faculty": [
+    {
+      "id": "faculty-umd-ece-e6ccf284",
+      "name": "Alireza Khaligh",
+      "verified": true,
+      "source_url": "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=1",
+      "verified_at": "2026-11-26T12:11:37.118786+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-cs-ec45fae9",
+      "name": "Michelle Mazurek",
+      "verified": true,
+      "source_url": "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=1",
+      "verified_at": "2026-11-26T12:11:37.118786+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ece-ddfd861f",
+      "name": "Patrick G. O'Shea",
+      "verified": true,
+      "source_url": "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:11:41.069718+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ece-bdf563fd",
+      "name": "Ankur Srivastava",
+      "verified": true,
+      "source_url": "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:11:41.069718+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ece-52eda433",
+      "name": "Ichiro Takeuchi",
+      "verified": true,
+      "source_url": "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:11:41.069718+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ece-a4499b8f",
+      "name": "Sennur Ulukus",
+      "verified": true,
+      "source_url": "https://ece.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:11:41.069718+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-me-3814f66d",
+      "name": "Samuel Graham Jr.",
+      "verified": false,
+      "reason": "Named card lists no address. Preserve the individual faculty website."
+    },
+    {
+      "id": "faculty-umd-me-a2f74a77",
+      "name": "F. Patrick McCluskey",
+      "verified": true,
+      "source_url": "https://me.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:12:09.198204+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-me-fbacae93",
+      "name": "Ryan D. Sochol",
+      "verified": true,
+      "source_url": "https://me.umd.edu/clark/facultydir?drfilter=-1&page=3",
+      "verified_at": "2026-11-26T12:12:14.574611+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-bioe-7d3a7d0a",
+      "name": "Alisa Morss Clyne",
+      "verified": true,
+      "source_url": "https://bioe.umd.edu/clark/facultydir?drfilter=-1",
+      "verified_at": "2026-11-26T12:12:31.217913+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-bioe-8a3e5f2a",
+      "name": "Kimberly Stroka",
+      "verified": true,
+      "source_url": "https://bioe.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:12:39.242966+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ae-5041d999",
+      "name": "Alison B. Flatau",
+      "verified": true,
+      "source_url": "https://aero.umd.edu/clark/facultydir?drfilter=-1",
+      "verified_at": "2026-11-26T12:12:51.034284+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ae-7a7fab6a",
+      "name": "Pino Martin",
+      "verified": true,
+      "source_url": "https://aero.umd.edu/clark/facultydir?drfilter=-1&page=1",
+      "verified_at": "2026-11-26T12:12:56.054335+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-ae-5d6fa086",
+      "name": "Darryll J. Pines",
+      "verified": true,
+      "source_url": "https://aero.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:13:00.392243+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-cee-09c3398d",
+      "name": "Natasha Andrade",
+      "verified": true,
+      "source_url": "https://cee.umd.edu/clark/facultydir?drfilter=-1",
+      "verified_at": "2026-11-26T12:13:14.510399+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-cee-7bfc6dd8",
+      "name": "Kaye L. Brubaker",
+      "verified": true,
+      "source_url": "https://cee.umd.edu/clark/facultydir?drfilter=-1",
+      "verified_at": "2026-11-26T12:13:14.510399+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-cee-e78daa70",
+      "name": "Allen P. Davis",
+      "verified": true,
+      "source_url": "https://cee.umd.edu/clark/facultydir?drfilter=-1",
+      "verified_at": "2026-11-26T12:13:14.510399+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-cee-7272ff63",
+      "name": "Alba Torrents",
+      "verified": true,
+      "source_url": "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:13:22.600384+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-cee-53d4c71d",
+      "name": "Xianfeng (Terry) Yang",
+      "verified": true,
+      "source_url": "https://cee.umd.edu/clark/facultydir?drfilter=-1&page=3",
+      "verified_at": "2026-11-26T12:13:26.404415+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-mse-fdd307eb",
+      "name": "Sudarsanam (Suresh) Babu",
+      "verified": true,
+      "source_url": "https://mse.umd.edu/clark/facultydir?drfilter=-1",
+      "verified_at": "2026-11-26T12:13:56.978614+00:00",
+      "method": "bound_directory_card"
+    },
+    {
+      "id": "faculty-umd-mse-2121a633",
+      "name": "Kasra Sardashti",
+      "verified": true,
+      "source_url": "https://mse.umd.edu/clark/facultydir?drfilter=-1&page=2",
+      "verified_at": "2026-11-26T12:14:04.544457+00:00",
+      "method": "bound_directory_card"
+    }
+  ]
+}
