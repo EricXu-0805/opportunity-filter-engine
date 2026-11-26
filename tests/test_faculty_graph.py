@@ -5269,3 +5269,30 @@ def test_ucsc_cs_supplement_scopes_people_and_withholds_unread_roster(monkeypatc
         expected = ["Common Professor", "Ian Lane"] if html.startswith(primary) else ["Common Professor"]
         assert [person["name"] for person in people] == expected
         assert bool(cov["partial_render_rows"] or cov["unparsed_rows"]) == blocked
+
+
+@pytest.mark.parametrize(("subject", "degree", "expected"), [
+    ("Judicial Behavior, American Politics", "Ph.D. Emory University", "Judicial Behavior, American Politics"),
+    ("American Politics, Legislative Studies, and Political Economy", "Ph.D. University of Texas at Austin",
+     "American Politics, Legislative Studies, and Political Economy"),
+    ('<span style="color:#333">Comparative Politics, Political Economy, Energy and Environmental Politics</span>',
+     "Ph.D. University of Texas at Austin", "Comparative Politics, Political Economy, Energy and Environmental Politics"),
+    ("Director of Graduate Studies", "Ph.D. University of Connecticut", ""),
+    ("Selected Publications", "Ph.D. University of Connecticut", ""),
+    ("American Politics", "Fall semester, room 112", ""),
+])
+def test_uconn_political_science_subjects_precede_the_persons_doctoral_credential(monkeypatch, subject, degree, expected):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.uconn_faculty import SCHOOL
+
+    html = (f"<article><h1>Avery Sample</h1><p><strong>{subject}</strong></p>"
+            f"<p><em>{degree}</em></p><p><strong>Selected Publications</strong></p></article>")
+    soup = BeautifulSoup(html, "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: soup)
+    school_dept = next(d for d in SCHOOL["departments"] if d["short"] == "POLS")
+    config = school_dept["scrape"]["profile_enrich"]
+    _position, research, _items, _email, fetched = fg._enrich_profile(
+        "https://polisci.uconn.edu/person/avery-sample/", config, expected_name="Avery Sample")
+    assert fetched and research == expected
