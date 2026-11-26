@@ -1,0 +1,211 @@
+{
+  "base": "8d713fb619fba71f57b799b8436c6d5c1057ca1f",
+  "candidate": "3903eed9020b4e39b10206ab7e366a5117dcff6b",
+  "shards": {
+    "data/manual_entries/seed_v1.json": {
+      "before_rows": 13,
+      "after_rows": 13,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "reufinder-freshmen"
+      ]
+    },
+    "data/processed/shards/national.json": {
+      "before_rows": 14139,
+      "after_rows": 14139,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "reufinder-freshmen"
+      ]
+    },
+    "data/processed/shards/umd.json": {
+      "before_rows": 1437,
+      "after_rows": 1455,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "faculty-umd-cs-ec45fae9",
+        "faculty-umd-ece-f49e3f74",
+        "faculty-umd-ece-52eda433",
+        "faculty-umd-bioe-7d3a7d0a",
+        "faculty-umd-bioe-7f9ec70b",
+        "faculty-umd-ae-db9936f9",
+        "faculty-umd-ece-e6ccf284",
+        "faculty-umd-ece-ddfd861f",
+        "faculty-umd-ece-bdf563fd",
+        "faculty-umd-ece-a4499b8f",
+        "faculty-umd-me-3814f66d",
+        "faculty-umd-me-a2f74a77",
+        "faculty-umd-me-fbacae93",
+        "faculty-umd-bioe-8a3e5f2a",
+        "faculty-umd-ae-5041d999",
+        "faculty-umd-ae-7a7fab6a",
+        "faculty-umd-ae-5d6fa086",
+        "faculty-umd-cee-09c3398d",
+        "faculty-umd-cee-7bfc6dd8",
+        "faculty-umd-cee-e78daa70",
+        "faculty-umd-cee-7272ff63",
+        "faculty-umd-cee-53d4c71d",
+        "faculty-umd-mse-fdd307eb",
+        "faculty-umd-mse-2121a633"
+      ]
+    },
+    "data/processed/shards/uva.json": {
+      "before_rows": 1668,
+      "after_rows": 1668,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "faculty-uva-biol-a48e21fc",
+        "faculty-uva-biol-5fc15cf5",
+        "faculty-uva-biol-89dc118e",
+        "faculty-uva-biol-1f0a4c91",
+        "faculty-uva-biol-526db3a0",
+        "faculty-uva-biol-b454b1df",
+        "faculty-uva-biol-ab090983",
+        "faculty-uva-biol-9024f795",
+        "faculty-uva-biol-7c3476ce",
+        "faculty-uva-biol-3fd2c621",
+        "faculty-uva-biol-38e7c217",
+        "faculty-uva-biol-c23ca139",
+        "faculty-uva-biol-72b09948",
+        "faculty-uva-biol-f63980a7",
+        "faculty-uva-biol-f26345b2"
+      ]
+    },
+    "data/processed/shards/ncsu.json": {
+      "before_rows": 2334,
+      "after_rows": 2334,
+      "prior_ids_removed": [],
+      "changed_existing_or_new": [
+        "faculty-ncsu-chass-dcb028fb",
+        "faculty-ncsu-chass-ff4905cc",
+        "faculty-ncsu-chass-38b191e6",
+        "faculty-ncsu-chass-98436171",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-acb2eb75"
+      ]
+    }
+  },
+  "verified_at": "2026-11-26T13:06:54.276596+00:00",
+  "ci_sources": [
+    {
+      "pr": 1345,
+      "source": {
+        "baseRefName": "fix/host-reviewed-sample-windows",
+        "headRefOid": "86f778d2c25ffc811fdd17e51083de2ccf0e3d4c",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1345"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "86f778d2c25ffc811fdd17e51083de2ccf0e3d4c",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820134740"
+      }
+    },
+    {
+      "pr": 1347,
+      "source": {
+        "baseRefName": "fix/retry-missing-profile-research",
+        "headRefOid": "4fe28866e6bb42c39e285664c35a3021640ccb0c",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1347"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "4fe28866e6bb42c39e285664c35a3021640ccb0c",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45815288029"
+      }
+    },
+    {
+      "pr": 1368,
+      "source": {
+        "baseRefName": "main",
+        "headRefOid": "8b8453623fd3e9045f2be6cdfbac246edf49a475",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1368"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "8b8453623fd3e9045f2be6cdfbac246edf49a475",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820163709"
+      }
+    },
+    {
+      "pr": 1373,
+      "source": {
+        "baseRefName": "fix/ncsu-chass-braden-retirement",
+        "headRefOid": "cd7d1efc9cd2fa74a576353782d0d06202dd1405",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1373"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "cd7d1efc9cd2fa74a576353782d0d06202dd1405",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820167587"
+      }
+    },
+    {
+      "pr": 1374,
+      "source": {
+        "baseRefName": "fix/m196-maryland-physics-directory",
+        "headRefOid": "361e49ffbc4343a598bb86624789982f6a3ae760",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1374"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "361e49ffbc4343a598bb86624789982f6a3ae760",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820140728"
+      }
+    },
+    {
+      "pr": 1375,
+      "source": {
+        "baseRefName": "fix/m196-maryland-clark-appointments",
+        "headRefOid": "d5022af6d3e170ed5956915c1d84741cb0b0fb82",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1375"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "d5022af6d3e170ed5956915c1d84741cb0b0fb82",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45820143669"
+      }
+    },
+    {
+      "pr": 1379,
+      "source": {
+        "baseRefName": "main",
+        "headRefOid": "665f6d46b3df0bf7a5953ba6e624a33a85c140ae",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1379"
+      },
+      "ci": {
+        "conclusion": "success",
+        "headSha": "665f6d46b3df0bf7a5953ba6e624a33a85c140ae",
+        "status": "completed",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45818841917"
+      }
+    }
+  ],
+  "candidate_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45825683152"
+}
