@@ -25,6 +25,8 @@ VT_APPOINTMENTS = {
 NANO_ADJUNCTS = {"faculty-ucsd-nano-2aa92754", "faculty-ucsd-nano-04ac1d79", "faculty-ucsd-nano-27240933"}
 NANO_EMERITI = {"faculty-ucsd-nano-25a6d469", "faculty-ucsd-nano-dc9e3de3"}
 PREVIOUS_TITLES = {
+    "faculty-msu-mgi-6af109e0": "Executive Assistant to the Chair",
+    "faculty-msu-bmb-350c8c60": "Barnett Rosenberg Chair",
     "faculty-gatech-arch-3a9c2373": "Assistant Professor",
     "faculty-gatech-arch-e98bc4d9": "Professor; Director, MS in Urban Design Program",
     "faculty-gatech-arch-196687bf": "Associate Professor",
@@ -43,6 +45,8 @@ PREVIOUS_TITLES = {
     "faculty-ucsc-lit-f8043691": "Professor of Literature",
 }
 ARCHIVED = {
+    "faculty-msu-mgi-6af109e0": ("Executive Assistant to the Chair and Communications Manager", "outside_unit_ladder"),
+    "faculty-msu-bmb-350c8c60": ("Professor Emeritus", "retired_title"),
     "faculty-gatech-arch-e98bc4d9": ("Professor Emeritus", "retired_title"),
     "faculty-gatech-arch-196687bf": ("Associate Professor Emeritus", "retired_title"),
     "faculty-gatech-itm-21b8dd50": ("Professor Emeritus", "retired_title"),

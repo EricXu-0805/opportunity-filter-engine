@@ -73,6 +73,8 @@ def _gatech_arch_emeritus(name: str, slug: str, previous_title: str, title: str)
     )
 
 
+_MSU_WALTON = "https://directory.natsci.msu.edu/directory/Profiles/Person/104350"
+_MSU_WILSON = "https://directory.natsci.msu.edu/directory/Profiles/Person/103481"
 _MSU_MGI_DIRECTORY = "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
 
 def _ucsd_nano(name: str, previous_name: str, jacobs_id: int) -> ProfileReview:
@@ -113,6 +115,22 @@ REVIEWS = {
         "https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
         "https://www.scheller.gatech.edu/directory/index.json", datetime(2026, 11, 26, 15, 26, tzinfo=UTC),
         title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management"),
+    "faculty-msu-mgi-6af109e0": ProfileReview(
+        "msu", "Department of Microbiology, Genetics and Immunology", "Debbie Walton",
+        _MSU_WALTON, _MSU_WALTON, _MSU_WALTON, datetime(2026, 11, 26, 20, 42, tzinfo=UTC),
+        title="Executive Assistant to the Chair and Communications Manager",
+        previous_title="Executive Assistant to the Chair", outside_unit_ladder=True,
+        appointment_summary="Michigan State lists Debbie Walton as Executive Assistant to the Chair and "
+                            "Communications Manager for the Department of Microbiology, Genetics and Immunology.",
+    ),
+    "faculty-msu-bmb-350c8c60": ProfileReview(
+        "msu", "Department of Biochemistry and Molecular Biology", "John E. Wilson",
+        _MSU_WILSON, _MSU_WILSON, "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf",
+        datetime(2026, 11, 26, 20, 43, tzinfo=UTC), title="Professor Emeritus",
+        previous_title="Barnett Rosenberg Chair",
+        appointment_summary="Michigan State lists John E. Wilson as Professor Emeritus in Biochemistry "
+                            "and Molecular Biology.",
+    ),
     "faculty-msu-mgi-5ca9b09b": ProfileReview(
         "msu", "Department of Microbiology, Genetics and Immunology", "Kathleen A Hoag",
         _MSU_MGI_DIRECTORY, _MSU_MGI_DIRECTORY,
