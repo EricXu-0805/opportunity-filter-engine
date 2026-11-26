@@ -1,0 +1,422 @@
+{
+  "observed_utc": "2026-11-26T12:53:15.987263+00:00",
+  "release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "historical_audit": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1334",
+  "observations": [
+    {
+      "sample_id": "deadline-001",
+      "id": "sro-3c378261",
+      "official_source": "https://researchops.web.illinois.edu/?page=9",
+      "product_url": "https://joinalab.com/opportunities/sro-3c378261",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "source_url": "https://researchops.web.illinois.edu/?page=9",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-11-22T14:42:22.579824+00:00",
+        "expires_at": null
+      },
+      "apply_hrefs": [
+        "https://wiscience.wisc.edu/research/srp/"
+      ],
+      "rendered_h1": [
+        "Cellular and Molecular Biology of Stress Summer Research Program"
+      ],
+      "source_recheck": {
+        "url": "https://wiscience.wisc.edu/research/summer_research_program/",
+        "http": 200,
+        "expected_source_fragments": [
+          "February 10, 2027"
+        ],
+        "fragments_found": [
+          true
+        ]
+      },
+      "deadline": "2027-02-10",
+      "estimated": false,
+      "rolling": false,
+      "deadline_note": null,
+      "disposition": "corrected_on_observed_release",
+      "review": "The original Wisconsin ID now displays the announced February 10, 2027 date without an estimate. Two separate Wisconsin IDs disagree; follow #1378 and #1382."
+    },
+    {
+      "sample_id": "deadline-002",
+      "id": "nsf-reu-2447669",
+      "official_source": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669",
+      "product_url": "https://joinalab.com/opportunities/nsf-reu-2447669",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "REU: Genes & the Environment",
+      "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669",
+      "target_truth": {
+        "listing_state": "closed",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "listing_closed",
+        "verified_at": "2026-08-23T06:22:38.147251",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "REU: Genes & the Environment"
+      ],
+      "source_recheck": {
+        "url": "https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
+        "http": 200,
+        "expected_source_fragments": [
+          "March 15, 2026"
+        ],
+        "fragments_found": [
+          true
+        ]
+      },
+      "deadline": "2026-03-15",
+      "estimated": false,
+      "rolling": false,
+      "deadline_note": null,
+      "disposition": "corrected_on_observed_release",
+      "review": "The UND original has the confirmed March 15, 2026 cutoff and is closed. Its browser detail shows a closed notice and no application. The archived layout omits the date."
+    },
+    {
+      "sample_id": "deadline-003",
+      "id": "caltech-a7fedb84058b",
+      "official_source": "https://neuroscience.caltech.edu/",
+      "product_url": "https://joinalab.com/opportunities/caltech-a7fedb84058b",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "Tianqiao and Chrissy Chen Institute for Neuroscience \u2014 Caltech",
+      "source_url": "https://neuroscience.caltech.edu/",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": true,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "reference_only",
+        "verified_at": "2026-11-21T14:36:49.587308",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "Tianqiao and Chrissy Chen Institute for Neuroscience \u2014 Caltech"
+      ],
+      "source_recheck": {
+        "url": "https://sfp.caltech.edu/undergraduate-research/programs/wavefellows/application_information",
+        "http": 200,
+        "expected_source_fragments": [
+          "January 8"
+        ],
+        "fragments_found": [
+          true
+        ]
+      },
+      "deadline": null,
+      "estimated": null,
+      "rolling": false,
+      "deadline_note": "",
+      "second_program": {
+        "url": "https://sfp.caltech.edu/undergraduate-research/programs/surf/application_information",
+        "http": 200,
+        "mentions_February_22": true
+      },
+      "disposition": "corrected_on_observed_release",
+      "review": "The Chen Institute has no common deadline, rolling flag or application control. WAVE and SURF maintain their own terms on the two checked host pages."
+    },
+    {
+      "sample_id": "position-003",
+      "id": "faculty-ncsu-chass-141f03e6",
+      "official_source": "https://chass.ncsu.edu/people/msdarrah/",
+      "product_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-141f03e6",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "Michele Darrah",
+      "source_url": "https://chass.ncsu.edu/people/msdarrah/",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "inactive",
+        "verified_at": "2026-11-23T20:06:04.392743",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "Michele Darrah"
+      ],
+      "source_recheck": {
+        "url": "https://chass.ncsu.edu/people/msdarrah/",
+        "http": 200,
+        "expected_source_fragments": [
+          "Emerita Senior Lecturer"
+        ],
+        "fragments_found": [
+          true
+        ]
+      },
+      "faculty_title": "Emerita Senior Lecturer",
+      "disposition": "corrected_on_observed_release",
+      "review": "The original faculty detail retains the exact emerita title and the real browser shows the inactive banner without a contact or application action."
+    },
+    {
+      "sample_id": "program-002",
+      "id": "ucsb-urca-proj-67fca359b647",
+      "official_source": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj",
+      "product_url": "https://joinalab.com/opportunities/ucsb-urca-proj-67fca359b647",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "Test From Aj",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "inactive",
+        "verified_at": "2026-11-26T10:22:13.651912+00:00",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "Test From Aj"
+      ],
+      "disposition": "corrected_on_observed_release",
+      "browser": {
+        "id": "ucsb-urca-proj-67fca359b647",
+        "product_url": "https://joinalab.com/opportunities/ucsb-urca-proj-67fca359b647",
+        "title": "Test From Aj",
+        "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj",
+        "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+        "page_http": 200,
+        "detail_http": 200,
+        "actionable": false,
+        "reason": "inactive",
+        "listing_state": "unknown",
+        "apply_controls": 0,
+        "view_source_controls": 1,
+        "rendered_link": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj",
+        "deadline": null,
+        "is_rolling": null
+      },
+      "review": "Test project archived. The source-only link replaced Apply now."
+    },
+    {
+      "sample_id": "program-003",
+      "id": "ucsb-urca-proj-e5cbe0e218a7",
+      "official_source": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+      "product_url": "https://joinalab.com/opportunities/ucsb-urca-proj-e5cbe0e218a7",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "2022 Academic Worker Strike Conflict Research Project",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": true,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "reference_only",
+        "verified_at": "2026-11-26T10:22:13.651912+00:00",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "2022 Academic Worker Strike Conflict Research Project"
+      ],
+      "disposition": "corrected_on_observed_release",
+      "browser": {
+        "id": "ucsb-urca-proj-e5cbe0e218a7",
+        "product_url": "https://joinalab.com/opportunities/ucsb-urca-proj-e5cbe0e218a7",
+        "title": "2022 Academic Worker Strike Conflict Research Project",
+        "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+        "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+        "page_http": 200,
+        "detail_http": 200,
+        "actionable": false,
+        "reason": "reference_only",
+        "listing_state": "unknown",
+        "apply_controls": 0,
+        "view_source_controls": 1,
+        "rendered_link": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+        "deadline": null,
+        "is_rolling": null
+      },
+      "review": "Historical project retained as reference-only. The source-only link replaced Apply now."
+    },
+    {
+      "sample_id": "program-006",
+      "id": "wlu-88e9e20591ba",
+      "official_source": "https://columns.wlu.edu/wls-dart-internship-program-places-students-in-cutting-edge-research-labs/",
+      "product_url": "https://joinalab.com/opportunities/wlu-88e9e20591ba",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "DART Research Fellowship \u2014 Summer 2026 (Washington and Lee)",
+      "source_url": "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web",
+      "target_truth": {
+        "listing_state": "closed",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "listing_closed",
+        "verified_at": "2026-11-26T10:23:15.587180",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "DART Research Fellowship \u2014 Summer 2026 (Washington and Lee)"
+      ],
+      "source_recheck": {
+        "url": "https://columns.wlu.edu/wls-dart-internship-program-places-students-in-cutting-edge-research-labs/",
+        "http": 200,
+        "expected_source_fragments": [
+          "Niemann-Pick",
+          "DART"
+        ],
+        "fragments_found": [
+          true,
+          true
+        ]
+      },
+      "description": "Washington and Lee's Neuroscience Program recruited students for summer research on Niemann-Pick disease type C, supported by Dana\u2019s Angels Research Trust. The 2026 host labs were at the University of Illinois Chicago, the University of Florida and the University of Michigan.",
+      "disposition": "corrected_on_observed_release",
+      "review": "The original W&L DART record now identifies the neuroscience program, sponsor and medical research subject. It is archived. The structured placement location remains in #1349."
+    },
+    {
+      "sample_id": "publication-002",
+      "id": "faculty-utk-mabe-e496c152",
+      "official_source": "https://tickle.utk.edu/mae/faculty/manikandan-palanisamy/",
+      "product_url": "https://joinalab.com/opportunities/faculty-utk-mabe-e496c152",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "Manikandan Palanisamy",
+      "source_url": "https://tickle.utk.edu/mae/faculty/manikandan-palanisamy/",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-11-21T15:16:55.767933",
+        "expires_at": null
+      },
+      "apply_hrefs": [],
+      "rendered_h1": [
+        "Manikandan Palanisamy"
+      ],
+      "source_recheck": {
+        "url": "https://api.crossref.org/works/10.1109/ICICCS65191.2025.10984683",
+        "http": 200,
+        "expected_source_fragments": [
+          "Lithium Ion Battery Pack Robust State of Charge and Charging Method Estimation using Fuzzy Logic"
+        ],
+        "fragments_found": [
+          true
+        ]
+      },
+      "recent_work_titles": [
+        "Electrochemical and Thermal Stability Investigations of Primary Nanoparticles with Surface Coating-Networking Architecture for High-Voltage Li-Ion Batteries",
+        "Lithium Ion Battery Pack Robust State of Charge and Charging Method Estimation using Fuzzy Logic",
+        "In Situ High\u2010Temperature Phase Elucidation of Secondary Particles and Segregating Nanoparticles with Surface Coating\u2010Networking Architecture for High\u2010Voltage Cathode Life at High Rate"
+      ],
+      "attribution": "verified_author_id",
+      "disposition": "still_reproduced",
+      "review": "The K.S.R. namesake paper still appears among the three works attributed as verified."
+    },
+    {
+      "sample_id": "school-009",
+      "id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "official_source": "https://careers.withwaymo.com/jobs?gh_jid=8265173",
+      "product_url": "https://joinalab.com/opportunities/simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "http": [
+        200,
+        200
+      ],
+      "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+      "title": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8265173",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": "2026-11-25T19:03:19.704312+00:00",
+        "expires_at": null
+      },
+      "apply_hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8265173"
+      ],
+      "rendered_h1": [
+        "2027 Summer Intern, PhD, Research, World Modeling Evaluation"
+      ],
+      "source_recheck": {
+        "url": "https://boards-api.greenhouse.io/v1/boards/waymo/jobs/8265173",
+        "http": 200,
+        "expected_source_fragments": [
+          "2027 Summer Intern, PhD, Research, World Modeling Evaluation"
+        ],
+        "fragments_found": [
+          true
+        ]
+      },
+      "degrees": [
+        "phd"
+      ],
+      "disposition": "corrected_on_observed_release",
+      "review": "The employer, exact requisition, 2027 cycle and PhD-only eligibility agree. The real detail links to that employer requisition."
+    }
+  ],
+  "disposition_counts": {
+    "corrected_on_observed_release": 8,
+    "still_reproduced": 1
+  },
+  "recruiting_source_review": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1341",
+  "previous_release_review": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/c4d37b8e09c10045a5bf238279f48dc7dcb3709f/data/audits/maintenance-2026-11-26/nine-original-criticals-fourth-production.json",
+  "browser_artifact": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822497671",
+  "browser_scope": "Both UCSB original detail assertions and the real recruiting control passed. The overall first browser run later stopped on a separate expectation that archived DART displays its historical placement. That aggregate run was not successful.",
+  "new_program_draw": {
+    "seed": 20261126,
+    "rows": 149775,
+    "sample_ids": [
+      "ucsb-45d0bef1a207",
+      "ucsb-urca-proj-681ebabdc123",
+      "ucsb-urca-proj-e5cbe0e218a7",
+      "utexas-c2697224a1fb",
+      "ucsb-urca-proj-6ca5999e1b43",
+      "umd-f4b44a508494",
+      "wlu-bfc69813f43a",
+      "uf-1a511c830724",
+      "cmu-uro-cb844caeb633",
+      "duke-0c247c572e3e"
+    ],
+    "scope": "Redraw only; the historical verdicts retain their distinct original IDs."
+  }
+}
