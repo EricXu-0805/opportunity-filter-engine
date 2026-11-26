@@ -1,0 +1,86 @@
+{
+  "time_utc": "2026-11-26T20:48:07.265019+00:00",
+  "production_dual_release": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "role_assertions_source": "Official Michigan State College of Natural Science public individual and department-scoped directory.",
+  "rows": [
+    {
+      "id": "faculty-msu-mgi-6af109e0",
+      "name": "Debbie Walton",
+      "official_profile": "https://directory.natsci.msu.edu/directory/Profiles/Person/104350",
+      "department_json": "https://directory.natsci.msu.edu/Directory/Directory/Department/26",
+      "campus_person_id": 104350,
+      "published_profile": "https://joinalab.com/opportunities/faculty-msu-mgi-6af109e0",
+      "public_rank": "Executive Assistant to the Chair",
+      "public_actionable": true,
+      "public_faculty_outreach_invitation": true,
+      "published_description": "Faculty research profile for Debbie Walton in Department of Microbiology, Genetics and Immunology at Michigan State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "public_person_link_label": "View faculty profile",
+      "official_unit_title": [
+        "Executive Assistant to the Chair"
+      ],
+      "separately_read_campus_page": {
+        "personal_page": "Her identified university biography gives her two administrative roles, Executive Assistant to the Chair and Communications Manager for MGI.",
+        "verified_extra": "https://mmg.natsci.msu.edu/about/contact.aspx"
+      }
+    },
+    {
+      "id": "faculty-msu-bmb-939e5db8",
+      "name": "Olorunseun O Ogunwobi",
+      "official_profile": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+      "department_json": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "campus_person_id": 104253,
+      "published_profile": "https://joinalab.com/opportunities/faculty-msu-bmb-939e5db8",
+      "public_rank": "Chairperson",
+      "public_actionable": true,
+      "public_faculty_outreach_invitation": true,
+      "published_description": "Faculty research profile for Olorunseun O Ogunwobi in Department of Biochemistry and Molecular Biology at Michigan State University. Research areas: Molecular Mechanisms of Progression of Solid Organ Cancers Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "public_person_link_label": "View faculty profile",
+      "official_unit_title": [
+        "Chairperson"
+      ],
+      "separately_read_campus_page": {
+        "personal_page": "The campus person page identifies two chairperson roles, including the Biochemistry and Molecular Biology department."
+      }
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "name": "John E. Wilson",
+      "official_profile": "https://directory.natsci.msu.edu/directory/Profiles/Person/103481",
+      "department_json": "https://directory.natsci.msu.edu/Directory/Directory/Department/6",
+      "campus_person_id": 103481,
+      "published_profile": "https://joinalab.com/opportunities/faculty-msu-bmb-350c8c60",
+      "public_rank": "Barnett Rosenberg Chair",
+      "public_actionable": true,
+      "public_faculty_outreach_invitation": true,
+      "published_description": "Faculty research profile for John E. Wilson in Department of Biochemistry and Molecular Biology at Michigan State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "public_person_link_label": "View faculty profile",
+      "official_unit_title": [
+        "Barnett Rosenberg Chair"
+      ],
+      "separately_read_campus_page": {
+        "personal_page": "The person page retains its named chair heading; the Titles section in the biography identifies Professor Emeritus.",
+        "verified_extra": "https://bmb.natsci.msu.edu/_assets/files/alumni-and-friends/bmbmag04.pdf#page=21",
+        "independent_department_publication": "The department published his retirement in the 2004 Biochemistry and Molecular Biology magazine, printed page 21."
+      }
+    },
+    {
+      "id": "faculty-msu-ees-211ade4b",
+      "name": "Jeffrey Freymueller",
+      "official_profile": "https://directory.natsci.msu.edu/directory/Profiles/Person/101198",
+      "department_json": "https://directory.natsci.msu.edu/Directory/Directory/Department/20",
+      "campus_person_id": 101198,
+      "published_profile": "https://joinalab.com/opportunities/faculty-msu-ees-211ade4b",
+      "public_rank": "Chairperson, Faculty",
+      "public_actionable": true,
+      "public_faculty_outreach_invitation": true,
+      "published_description": "Faculty research profile for Jeffrey Freymueller in Department of Earth and Environmental Sciences at Michigan State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "public_person_link_label": "View faculty profile",
+      "official_unit_title": [
+        "Chairperson, Faculty"
+      ],
+      "separately_read_campus_page": {
+        "personal_page": "The campus person page identifies Chairperson and Faculty in Earth and Environmental Sciences."
+      }
+    }
+  ]
+}
