@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from src.evidence import INFERRED_FIELDS_KEY
+from src.normalizers import bu_stars
 
 VALID_AUDIENCES = frozenset({"campus", "open", "unknown"})
 
@@ -574,6 +575,9 @@ _UNL_DOMESTIC = DomesticOnly(
 # Read 2026-11-05. Keyed by (collector school, collector key); the rest of the
 # school's bucket keeps its source's audience.
 REVIEWED_PROGRAM_AUDIENCES: dict[tuple[str, str], ProgramAudience] = {
+    ("bu", "stars"): ProgramAudience(
+        "bu_research_programs", bu_stars.STARS_HOST, "open", bu_stars.FAQ, "two-year college",
+    ),
     ("northwestern", "nu_tgs_srop"): ProgramAudience(
         "northwestern_research_programs", _SROP, "open", _SROP,
         "The Summer Research Opportunity Program (SROP) is an eight-week competitive research experience "
@@ -609,7 +613,10 @@ def reviewed_program_audience(opp: dict) -> ProgramAudience | None:
     metadata = opp.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("discovered"):
         return None
-    reviewed = REVIEWED_PROGRAM_AUDIENCES.get((metadata.get("collector_school"), metadata.get("collector_key")))
+    key = (metadata.get("collector_school"), metadata.get("collector_key"))
+    if key == ("bu", "stars") and not bu_stars.checked_window(opp):
+        return None
+    reviewed = REVIEWED_PROGRAM_AUDIENCES.get(key)
     if (
         reviewed is not None
         and opp.get("source") == reviewed.source

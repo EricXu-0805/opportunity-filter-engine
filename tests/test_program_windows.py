@@ -662,6 +662,9 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
 def test_boston_stars_student_deadline_and_current_application_destination(tmp_path):
     from src.collectors.base import RawOpportunity
     from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+    from src.matcher.ranker import _filter_context, hard_exclusion
+    from src.normalizers import bu_stars
+    from src.normalizers.school_audience import apply_school_audience
     from src.program_windows import STARS_HOST, STARS_OLD_HOST
 
     prefix = "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars"
@@ -683,8 +686,42 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
         assert row["deadline_is_estimate"] is False and row["application"]["application_url"] == STARS_HOST
         quote = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]["quotes"]["deadline"]
         assert quote["source_url"] == STARS_HOST and "11:59pm" in quote["text"]
+        assert row["eligibility"]["preferred_year"] == ["sophomore", "junior"]
+        assert row["eligibility"]["majors"] == [] and row["eligibility"]["min_gpa"] == 3.0
+        assert row["application"]["requires_recommendation"] == "yes"
+        apply_school_audience([row])
+        assert row["audience"] == "open" and row["opportunity_type"] == "summer_program"
+        loaded = data_loader._sanitize_opportunity(copy.deepcopy(row))
+        # A domestic two-year student outside BU and from a differently named
+        # STEM major can still discover the host record. The funding bar is real.
+        student = {"home_school": "uiuc", "year": "sophomore", "major": "Geoscience", "gpa": 2.9}
+        assert hard_exclusion(loaded, _filter_context(student)) is None
+        assert hard_exclusion(loaded, _filter_context({**student, "international_student": True})) == "citizenship_restricted"
+        card = project_public_opportunity_payload(loaded, loaded)
+        assert "preferred_year_attribution" not in card and "international_attribution" not in card
+        fields = build_detail_fields(card, loaded)["fields"]
+        eligibility, materials = fields["eligibility"], fields["application_method"]
+        assert eligibility["explicit"]["min_gpa"] == 3.0
+        assert eligibility["explicit"]["class_year"] == ["sophomore", "junior"]
+        assert eligibility["explicit"]["citizenship"] == "required"
+        assert "STEM" in eligibility["explicit"]["degree_path"] and "2028" in eligibility["explicit"]["degree_path"]
+        assert "interest" in eligibility["explicit"]["research_background"]
+        assert "optional" in eligibility["explicit"]["research_background"]
+        assert "explain" in eligibility["explicit"]["gpa_context"]
+        assert "admitted" in eligibility["explicit"]["transfer_students"]
+        assert "first year at Boston University" in eligibility["explicit"]["medical_students"]
+        assert eligibility["explicit"]["majors"] == "STEM" and "majors" not in eligibility["inferred"]
+        assert materials["explicit"]["requirements"] == ["three_recommendations"]
+        assert "February 1" in materials["explicit"]["recommendation_deadline"]
+        assert "2027" not in materials["explicit"]["recommendation_deadline"]
+        for key in ("min_gpa", "degree_path", "class_year", "citizenship", "research_background"):
+            assert eligibility["quotes"][key]["source_url"] == STARS_HOST
+        for key in ("transfer_students", "medical_students", "gpa_context"):
+            assert eligibility["quotes"][key]["source_url"] == bu_stars.FAQ
+        assert materials["quotes"]["recommendation_deadline"]["source_url"] == bu_stars.FAQ
         first = copy.deepcopy(row)
         apply_program_window(row)
+        bu_stars.apply_terms(row)
         assert row == first
     for row, anticipated in ((current, False), (alias, True)):
         assert row["metadata"]["superseded_directory_deadline"] == {
@@ -697,6 +734,8 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
     merge_into_processed([changed], str(stored))
     [new] = json.loads(stored.read_text())
     assert new["deadline"] == "2028-02-01" and reviewed_window(new) is None
+    assert new["eligibility"]["min_gpa"] is None and new["application"]["requires_recommendation"] == "unknown"
+    assert not list(bu_stars.detail_facts(new, "eligibility"))
     for unmatched in (
         directory("-program", "2/1/27", STARS_OLD_HOST),
         directory("-stars-program", "2/1/27", "https://www.example.edu/other"),
@@ -704,7 +743,11 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
         {**campus, "deadline": "2028-01-10"},
     ):
         assert reviewed_window(unmatched) is None
-
+        assert not list(bu_stars.detail_facts(unmatched, "eligibility"))
+    archived = copy.deepcopy(alias)
+    archived["id"] = "sro-51c40e5b"
+    archived["metadata"]["is_active"] = False
+    assert not list(bu_stars.detail_facts(archived, "application_method"))
 
     stored.write_text(json.dumps([current]))
     changed_host = directory("-stars-program", "2/1/27", "https://www.example.edu/another-program")
@@ -712,3 +755,10 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
     [new] = json.loads(stored.read_text())
     assert reviewed_window(new) is None and new["deadline"] == "2027-02-01"
     assert new["application"]["application_url"] == "https://www.example.edu/another-program"
+    assert new["eligibility"]["min_gpa"] is None and new["application"]["requires_recommendation"] == "unknown"
+    stored.write_text(json.dumps([current]))
+    changed_school = directory("-stars-program", "", STARS_HOST, university="Another school")
+    merge_into_processed([changed_school], str(stored))
+    [new] = json.loads(stored.read_text())
+    assert new["organization"] == "Another school" and reviewed_window(new) is None
+    assert new["eligibility"]["min_gpa"] is None and new["application"]["requires_recommendation"] == "unknown"

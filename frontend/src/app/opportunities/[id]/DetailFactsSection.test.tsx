@@ -22,6 +22,27 @@ function row(field: string, facet: string, state?: string) {
 }
 
 describe('DetailFactsSection', () => {
+  it.each(['en', 'zh'] as const)('keeps recommender and student dates under their own facts (%s)', (locale) => {
+    const faq = 'https://example.edu/program/faq';
+    const fields = readDetailFields({ detail_fields: {
+      version: DETAIL_FIELDS_VERSION,
+      fields: {
+        timing: { explicit: { deadline: '2027-01-15' } },
+        eligibility: { explicit: { degree_path: 'Part-time or full-time STEM studies' } },
+        application_method: {
+          explicit: { requirements: ['three_recommendations'], recommendation_deadline: 'Received by February 1' },
+          quotes: { recommendation_deadline: { text: 'February 1', source_url: faq, observed_at: '2026-11-26' } },
+        },
+      },
+    } });
+    render(<DetailFactsSection fields={fields!} isFaculty={false} t={(key, values) => translate(locale, key, values)} />);
+    expect(row('timing', 'deadline')).toHaveTextContent('2027-01-15');
+    expect(row('eligibility', 'degree_path')).toHaveTextContent('STEM');
+    expect(row('application_method', 'requirements')).toHaveTextContent(locale === 'zh' ? '三封推荐信' : 'Three recommendation letters');
+    expect(within(row('application_method', 'recommendation_deadline')).getByRole('link')).toHaveAttribute('href', faq);
+    expect(screen.queryByTestId('fact-eligibility-transfer_students')).toBeNull();
+  });
+
   it.each(['en', 'zh'] as const)('keeps profile evidence under stated research only (%s)', (locale) => {
     const c = contract.cases.find((x) => x.name === 'faculty_profile')!;
     const fields = readDetailFields({ detail_fields: c.detail_fields })!;
