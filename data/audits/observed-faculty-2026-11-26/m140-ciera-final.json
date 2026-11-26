@@ -1,0 +1,100 @@
+{
+  "observed_utc": "2026-11-26T09:15:08.457261+00:00",
+  "input_main": "0741df3b",
+  "source_url": "https://ciera.northwestern.edu/directory/",
+  "original_northwestern_rows": 2857,
+  "raw_page_cards": 272,
+  "old_unique_urls": 44,
+  "corrected_unique_urls": 39,
+  "filtered_urls": [
+    "https://ciera.northwestern.edu/directory/adriano-baldeschi/",
+    "https://ciera.northwestern.edu/directory/gokul-srinivasaragavanq/",
+    "https://ciera.northwestern.edu/directory/juan-gabriel-serra-perez/",
+    "https://ciera.northwestern.edu/directory/rocco-coppejans/",
+    "https://ciera.northwestern.edu/directory/samantha-wu/"
+  ],
+  "actual_refresh_replay": {
+    "fetched": 39,
+    "new": 24,
+    "updated": 15,
+    "status": "ok"
+  },
+  "unit": {
+    "retirement_authorized": true,
+    "failure_reason": null,
+    "missed_present_identities": []
+  },
+  "after_replay": [
+    {
+      "id": "faculty-northwestern-ciera-aad82d04",
+      "actionable_row": false,
+      "deactivation_reason": "not_on_current_faculty_roster",
+      "last_seen_at": "2026-11-20T17:18:14.117881"
+    },
+    {
+      "id": "faculty-northwestern-ciera-1868059f",
+      "actionable_row": false,
+      "deactivation_reason": "not_on_current_faculty_roster",
+      "last_seen_at": "2026-11-20T17:18:14.117924"
+    },
+    {
+      "id": "faculty-northwestern-ciera-f419fea7",
+      "actionable_row": false,
+      "deactivation_reason": "not_on_current_faculty_roster",
+      "last_seen_at": "2026-11-20T17:18:14.117972"
+    },
+    {
+      "id": "faculty-northwestern-ciera-9b57ab7e",
+      "actionable_row": false,
+      "deactivation_reason": "not_on_current_faculty_roster",
+      "last_seen_at": "2026-09-11T07:23:13.867997"
+    },
+    {
+      "id": "faculty-northwestern-ciera-bb043c26",
+      "actionable_row": false,
+      "deactivation_reason": "not_on_current_faculty_roster",
+      "last_seen_at": "2026-11-20T17:18:14.117527"
+    }
+  ],
+  "scope": "Local replay only of the saved university roster, current main Northwestern shard, real collection/merge and archival path, with unrelated units isolated.",
+  "local_detail_after_normal_refresh": [
+    {
+      "id": "faculty-northwestern-ciera-1868059f",
+      "name": "Rocco Coppejans",
+      "actionable": false,
+      "reason": "not_on_current_faculty_roster"
+    },
+    {
+      "id": "faculty-northwestern-ciera-9b57ab7e",
+      "name": "Gokul Srinivasaragavanq",
+      "actionable": false,
+      "reason": "not_on_current_faculty_roster"
+    },
+    {
+      "id": "faculty-northwestern-ciera-aad82d04",
+      "name": "Adriano Baldeschi",
+      "actionable": false,
+      "reason": "not_on_current_faculty_roster"
+    },
+    {
+      "id": "faculty-northwestern-ciera-bb043c26",
+      "name": "Samantha Wu",
+      "actionable": false,
+      "reason": "not_on_current_faculty_roster"
+    },
+    {
+      "id": "faculty-northwestern-ciera-f419fea7",
+      "name": "Juan Gabriel Serra Perez",
+      "actionable": false,
+      "reason": "not_on_current_faculty_roster"
+    }
+  ],
+  "repeat_refresh_unchanged": true,
+  "hypothetical_current_faculty_section_for_Samantha": {
+    "id": "faculty-northwestern-ciera-bb043c26",
+    "name": "Samantha Wu",
+    "actionable": true,
+    "reason": null
+  },
+  "checked_source_rows": 2857
+}
