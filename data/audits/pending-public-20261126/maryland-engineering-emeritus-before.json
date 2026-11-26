@@ -1,0 +1,119 @@
+{
+  "observed_utc": "2026-11-26T12:10:24.586173+00:00",
+  "production_backend": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "persons": {
+    "faculty-umd-bioe-7f9ec70b": {
+      "name": "John Fisher",
+      "id": "faculty-umd-bioe-7f9ec70b",
+      "old_rank": "Distinguished University Professor & Department Chair",
+      "old_last_seen_at": "2026-08-19T06:23:52.086820",
+      "official_heading": "Fisher, John",
+      "official_title": "Distinguished University Professor Emeritus",
+      "official_profile": "https://bioe.umd.edu/clark/faculty/127/John-Fisher",
+      "official_http": 200,
+      "rosters": [
+        {
+          "unit": "BIOE",
+          "url": "https://bioe.umd.edu/clark/facultydir?drfilter=-1",
+          "profile": "https://bioe.umd.edu/clark/faculty/127/John-Fisher",
+          "initial_titles": [
+            "Distinguished University Professor Emeritus"
+          ]
+        },
+        {
+          "unit": "CHBE",
+          "url": "https://chbe.umd.edu/clark/facultydir?drfilter=-1",
+          "profile": "https://chbe.umd.edu/clark/faculty/127/John-Fisher",
+          "initial_titles": [
+            "Distinguished University Professor Emeritus"
+          ]
+        },
+        {
+          "unit": "MSE",
+          "url": "https://mse.umd.edu/clark/facultydir?drfilter=-1",
+          "profile": "https://mse.umd.edu/clark/faculty/127/John-Fisher",
+          "initial_titles": [
+            "Distinguished University Professor Emeritus"
+          ]
+        }
+      ],
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-bioe-7f9ec70b",
+      "before_http": 200,
+      "before_normal_status": null,
+      "before_rank": "Distinguished University Professor & Department Chair",
+      "before_contact_present": false,
+      "positive_current_research": false,
+      "after_active": false,
+      "after_reason": "retired_title",
+      "after_last_seen_at": "2026-08-19T06:23:52.086820",
+      "current_notre_dame_appointment": {
+        "profile": "https://ame.nd.edu/faculty/john-p-fisher/",
+        "source_http": 200,
+        "official_description": "https://strategicframework.nd.edu/people/john-fisher/",
+        "existing_public_id": "faculty-nd-ame-31e19dac",
+        "public_detail": "https://joinalab.com/opportunities/faculty-nd-ame-31e19dac",
+        "production_http": 200
+      }
+    },
+    "faculty-umd-ece-f49e3f74": {
+      "name": "Adrian Papamarcou",
+      "id": "faculty-umd-ece-f49e3f74",
+      "old_rank": "Associate Professor",
+      "old_last_seen_at": "2026-07-22T07:03:47.281575",
+      "official_heading": "Papamarcou, Adrian",
+      "official_title": "Associate Professor Emeritus",
+      "official_profile": "https://ece.umd.edu/clark/faculty/455/Adrian-Papamarcou",
+      "official_http": 200,
+      "rosters": [
+        {
+          "unit": "ECE",
+          "url": "https://ece.umd.edu/clark/facultydir?drfilter=-1",
+          "profile": "https://ece.umd.edu/clark/faculty/455/Adrian-Papamarcou",
+          "initial_titles": [
+            "Associate Professor Emeritus"
+          ]
+        }
+      ],
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-f49e3f74",
+      "before_http": 200,
+      "before_normal_status": null,
+      "before_rank": "Associate Professor",
+      "before_contact_present": false,
+      "positive_current_research": false,
+      "after_active": false,
+      "after_reason": "retired_title",
+      "after_last_seen_at": "2026-07-22T07:03:47.281575"
+    },
+    "faculty-umd-ae-db9936f9": {
+      "name": "Roberto Celi",
+      "id": "faculty-umd-ae-db9936f9",
+      "old_rank": "Research Professor",
+      "old_last_seen_at": "2026-09-09T06:23:33.248330",
+      "official_heading": "Celi, Roberto",
+      "official_title": "Professor Emeritus, Research Professor",
+      "official_profile": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi",
+      "official_http": 200,
+      "rosters": [
+        {
+          "unit": "AE",
+          "url": "https://aero.umd.edu/clark/facultydir?drfilter=-1",
+          "profile": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi",
+          "initial_titles": [
+            "Professor Emeritus, Research Professor"
+          ]
+        }
+      ],
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ae-db9936f9",
+      "before_http": 200,
+      "before_normal_status": null,
+      "before_rank": "Research Professor",
+      "before_contact_present": false,
+      "positive_current_research": true,
+      "after_active": true,
+      "after_rank": "Research Professor",
+      "refetched_same_original_id": "faculty-umd-ae-db9936f9"
+    }
+  },
+  "campus_candidate_rows": 1455,
+  "scope": "Read original university directory, individual profiles and production API. No production mutations. Retire only a fully stated emeritus appointment without an accompanying current one; retain original source and last live sighting."
+}
