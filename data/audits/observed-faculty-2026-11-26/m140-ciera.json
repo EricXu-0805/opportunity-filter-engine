@@ -1,0 +1,415 @@
+{
+  "observed_utc": "2026-11-26T09:08:02.412940+00:00",
+  "production_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "source": "https://ciera.northwestern.edu/directory/",
+  "postdoc_institutional_announcement": "https://ciera.northwestern.edu/2026/03/30/ciera-welcomes-six-new-ciera-postdoctoral-fellows/",
+  "original_ciera_ids": 21,
+  "roster_distinct_profile_urls": 239,
+  "records": [
+    {
+      "id": "faculty-northwestern-ciera-7dacd0ad",
+      "name": "Emma Alexander",
+      "stored_title": "Assistant Professor",
+      "groups": [
+        {
+          "name": "Emma Alexander",
+          "group": "nu-gm-directory-group-core-faculty",
+          "card_title": "Assistant Professor"
+        },
+        {
+          "name": "Emma Alexander",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Assistant Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/emma-alexander/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-3fdd0a6d",
+      "name": "Aggelos Katsaggelos",
+      "stored_title": "Joseph Cummings Professor",
+      "groups": [
+        {
+          "name": "Aggelos Katsaggelos",
+          "group": "nu-gm-directory-group-core-faculty",
+          "card_title": "Joseph Cummings Professor"
+        },
+        {
+          "name": "Aggelos Katsaggelos",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Joseph Cummings Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/aggelos-katsaggelos/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-fd72df51",
+      "name": "Hooman Mohseni",
+      "stored_title": "AT&T Professor of Information Technology",
+      "groups": [
+        {
+          "name": "Hooman Mohseni",
+          "group": "nu-gm-directory-group-core-faculty",
+          "card_title": "AT&T Professor of Information Technology"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/hooman-mohseni/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-a6cd0983",
+      "name": "Daniel Lecoanet",
+      "stored_title": "Assistant Professor",
+      "groups": [],
+      "url": "https://ciera.northwestern.edu/directory/daniel-lecoanet/",
+      "stored_active": false
+    },
+    {
+      "id": "faculty-northwestern-ciera-34c3d147",
+      "name": "Selim Shahriar",
+      "stored_title": "Professor",
+      "groups": [
+        {
+          "name": "Selim Shahriar",
+          "group": "nu-gm-directory-group-associate-faculty",
+          "card_title": "Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/selim-shahriar/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-bf166572",
+      "name": "Jian Cao",
+      "stored_title": "Cardiss Collins Professor, Director of NIMSI",
+      "groups": [
+        {
+          "name": "Jian Cao",
+          "group": "nu-gm-directory-group-associate-faculty",
+          "card_title": "Cardiss Collins Professor, Director of NIMSI"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/jian-cao/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-03441ee4",
+      "name": "Lois Trautvetter",
+      "stored_title": "Professor",
+      "groups": [
+        {
+          "name": "Lois Trautvetter",
+          "group": "nu-gm-directory-group-associate-faculty",
+          "card_title": "Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/lois-trautvetter/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-6c290615",
+      "name": "Kate Smith",
+      "stored_title": "Assistant Professor",
+      "groups": [
+        {
+          "name": "Kate Smith",
+          "group": "nu-gm-directory-group-affiliate-faculty",
+          "card_title": "Assistant Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/kate-smith/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-371fa63c",
+      "name": "Noelle Samia",
+      "stored_title": "Associate Professor",
+      "groups": [
+        {
+          "name": "Noelle Samia",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Associate Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/noelle-samia/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-7aeaec1c",
+      "name": "Jessica Hullman",
+      "stored_title": "Associate Professor",
+      "groups": [
+        {
+          "name": "Jessica Hullman",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Associate Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/jessica-hullman/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-6fa0f78f",
+      "name": "Han Liu",
+      "stored_title": "Professor",
+      "groups": [
+        {
+          "name": "Han Liu",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/han-liu/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-2bf9bc40",
+      "name": "Aravindan Vijayaraghavan",
+      "stored_title": "Associate Professor",
+      "groups": [
+        {
+          "name": "Aravindan Vijayaraghavan",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Associate Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/aravindan-vijayaraghavan/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-60ac3ed8",
+      "name": "Maria Kokkori",
+      "stored_title": "Research Associate Professor",
+      "groups": [
+        {
+          "name": "Maria Kokkori",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Research Associate Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/maria-kokkori/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-9433da33",
+      "name": "Ermin Wei",
+      "stored_title": "Associate Professor",
+      "groups": [
+        {
+          "name": "Ermin Wei",
+          "group": "nu-gm-directory-group-nu-skai-personnel",
+          "card_title": "Associate Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/ermin-wei/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-aad82d04",
+      "name": "Adriano Baldeschi",
+      "stored_title": "",
+      "groups": [
+        {
+          "name": "Adriano Baldeschi",
+          "group": "nu-gm-directory-group-alumnus",
+          "card_title": ""
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/adriano-baldeschi/",
+      "stored_active": true,
+      "api": {
+        "http": 200,
+        "name": "Adriano Baldeschi",
+        "id": "faculty-northwestern-ciera-aad82d04",
+        "source_url": "https://ciera.northwestern.edu/directory/adriano-baldeschi/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-20",
+        "detail": "https://joinalab.com/opportunities/faculty-northwestern-ciera-aad82d04"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Adriano Baldeschi",
+        "action_labels": []
+      },
+      "source_status": 200,
+      "source_headings": [
+        "Adriano Baldeschi",
+        "Baldeschi , Adriano",
+        "Related News",
+        "First Discoveries by the Young Supernova Experiment",
+        "Eight New Postdoctoral Researchers Join CIERA"
+      ]
+    },
+    {
+      "id": "faculty-northwestern-ciera-1868059f",
+      "name": "Rocco Coppejans",
+      "stored_title": "",
+      "groups": [
+        {
+          "name": "Rocco Coppejans",
+          "group": "nu-gm-directory-group-alumnus",
+          "card_title": ""
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/rocco-coppejans/",
+      "stored_active": true,
+      "api": {
+        "http": 200,
+        "name": "Rocco Coppejans",
+        "id": "faculty-northwestern-ciera-1868059f",
+        "source_url": "https://ciera.northwestern.edu/directory/rocco-coppejans/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-20",
+        "detail": "https://joinalab.com/opportunities/faculty-northwestern-ciera-1868059f"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Rocco Coppejans",
+        "action_labels": []
+      },
+      "source_status": 200,
+      "source_headings": [
+        "Rocco Coppejans",
+        "Coppejans , Rocco",
+        "Related Programs",
+        "CIERA Astronomer Evenings",
+        "Related News",
+        "Northwestern Hosts Regional Conference for Women in Physics"
+      ]
+    },
+    {
+      "id": "faculty-northwestern-ciera-f419fea7",
+      "name": "Juan Gabriel Serra Perez",
+      "stored_title": "",
+      "groups": [
+        {
+          "name": "Juan Gabriel Serra Perez",
+          "group": "nu-gm-directory-group-alumnus",
+          "card_title": ""
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/juan-gabriel-serra-perez/",
+      "stored_active": true,
+      "api": {
+        "http": 200,
+        "name": "Juan Gabriel Serra Perez",
+        "id": "faculty-northwestern-ciera-f419fea7",
+        "source_url": "https://ciera.northwestern.edu/directory/juan-gabriel-serra-perez/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-20",
+        "detail": "https://joinalab.com/opportunities/faculty-northwestern-ciera-f419fea7"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Juan Gabriel Serra Perez",
+        "action_labels": []
+      },
+      "source_status": 200,
+      "source_headings": [
+        "Juan Gabriel Serra Perez",
+        "Serra Perez , Juan Gabriel"
+      ]
+    },
+    {
+      "id": "faculty-northwestern-ciera-9b57ab7e",
+      "name": "Gokul Srinivasaragavanq",
+      "stored_title": "",
+      "groups": [
+        {
+          "name": "Gokul Srinivasaragavan",
+          "group": "nu-gm-directory-group-postdoc",
+          "card_title": ""
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/gokul-srinivasaragavanq/",
+      "stored_active": true,
+      "api": {
+        "http": 200,
+        "name": "Gokul Srinivasaragavanq",
+        "id": "faculty-northwestern-ciera-9b57ab7e",
+        "source_url": "https://ciera.northwestern.edu/directory/gokul-srinivasaragavanq/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-09-11",
+        "detail": "https://joinalab.com/opportunities/faculty-northwestern-ciera-9b57ab7e"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Gokul Srinivasaragavanq",
+        "action_labels": []
+      },
+      "source_status": 200,
+      "source_headings": [
+        "Gokul Srinivasaragavan",
+        "Srinivasaragavanq , Gokul"
+      ]
+    },
+    {
+      "id": "faculty-northwestern-ciera-bb043c26",
+      "name": "Samantha Wu",
+      "stored_title": "",
+      "groups": [
+        {
+          "name": "Samantha Wu",
+          "group": "nu-gm-directory-group-postdoc",
+          "card_title": ""
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/samantha-wu/",
+      "stored_active": true,
+      "api": {
+        "http": 200,
+        "name": "Samantha Wu",
+        "id": "faculty-northwestern-ciera-bb043c26",
+        "source_url": "https://ciera.northwestern.edu/directory/samantha-wu/",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-20",
+        "detail": "https://joinalab.com/opportunities/faculty-northwestern-ciera-bb043c26"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Samantha Wu",
+        "action_labels": []
+      },
+      "source_status": 200,
+      "source_headings": [
+        "Samantha Wu",
+        "Wu , Samantha"
+      ]
+    },
+    {
+      "id": "faculty-northwestern-ciera-545643ef",
+      "name": "Mahdi Hosseini",
+      "stored_title": "Associate Professor",
+      "groups": [
+        {
+          "name": "Mahdi Hosseini",
+          "group": "nu-gm-directory-group-core-faculty",
+          "card_title": "Associate Professor"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/mahdi-hosseini/",
+      "stored_active": true
+    },
+    {
+      "id": "faculty-northwestern-ciera-6d7ca366",
+      "name": "Neal Blair",
+      "stored_title": "Professor, Joint Appointment in Civil & Environmental Engineering",
+      "groups": [
+        {
+          "name": "Neal Blair",
+          "group": "nu-gm-directory-group-affiliate-faculty",
+          "card_title": "Professor, Joint Appointment in Civil & Environmental Engineering"
+        }
+      ],
+      "url": "https://ciera.northwestern.edu/directory/neal-blair/",
+      "stored_active": true
+    }
+  ]
+}
