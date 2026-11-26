@@ -1,0 +1,336 @@
+{
+  "at": "2026-11-26T13:22:02.740170+00:00",
+  "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "release_after": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "public_rows": [
+    {
+      "id": "faculty-ucb-cdss-118019dd",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-118019dd",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-118019dd",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://eric-kim.net/eric-kim-net/index.html",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://eric-kim.net/eric-kim-net/index.html",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://eric-kim.net/eric-kim-net/index.html"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Eric Kim",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://eric-kim.net/eric-kim-net/index.html",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-768987a3",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-768987a3",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-768987a3",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Jordan Thomas Mursinna",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-cbe1719c",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-cbe1719c",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-cbe1719c",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [],
+      "visible_source_primary_buttons": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Ramesh Sridharan",
+        "primary_action_label": "View source",
+        "primary_action_href": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-0ac5b942",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-0ac5b942",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-0ac5b942",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://ccb.berkeley.edu/people/michael-boots",
+      "record_source_directory": "https://ccb.berkeley.edu/people/core-faculty",
+      "public_api_url": "https://ccb.berkeley.edu/people/michael-boots",
+      "public_api_source_url": "https://ccb.berkeley.edu/people/core-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://ccb.berkeley.edu/people/michael-boots"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://ccb.berkeley.edu/people/core-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Michael Boots",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://ccb.berkeley.edu/people/michael-boots",
+        "four_rendered_source_page_hrefs": [
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-adcdda66",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-adcdda66",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-adcdda66",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://ccb.berkeley.edu/people/sung-hou-kim-0",
+      "record_source_directory": "https://ccb.berkeley.edu/people/core-faculty",
+      "public_api_url": "https://ccb.berkeley.edu/people/sung-hou-kim-0",
+      "public_api_source_url": "https://ccb.berkeley.edu/people/core-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://ccb.berkeley.edu/people/sung-hou-kim-0"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://ccb.berkeley.edu/people/core-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Sung-Hou Kim",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://ccb.berkeley.edu/people/sung-hou-kim-0",
+        "four_rendered_source_page_hrefs": [
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-2b37be00",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-2b37be00",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-2b37be00",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://ccb.berkeley.edu/people/friedrich-sommer",
+      "record_source_directory": "https://ccb.berkeley.edu/people/core-faculty",
+      "public_api_url": "https://ccb.berkeley.edu/people/friedrich-sommer",
+      "public_api_source_url": "https://ccb.berkeley.edu/people/core-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://ccb.berkeley.edu/people/friedrich-sommer"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://ccb.berkeley.edu/people/core-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Friedrich Sommer",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://ccb.berkeley.edu/people/friedrich-sommer",
+        "four_rendered_source_page_hrefs": [
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty",
+          "https://ccb.berkeley.edu/people/core-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-c0576a7c",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-c0576a7c",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-c0576a7c",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://dennisfeehan.org/",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://dennisfeehan.org/",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://dennisfeehan.org/"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Dennis Feehan",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://dennisfeehan.org/",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-a4440777",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-a4440777",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-a4440777",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://statistics.berkeley.edu/people/giles-hooker",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://statistics.berkeley.edu/people/giles-hooker",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://statistics.berkeley.edu/people/giles-hooker"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Giles Hooker",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://statistics.berkeley.edu/people/giles-hooker",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-2bb51126",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-2bb51126",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-2bb51126",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Daniel Roddy",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    },
+    {
+      "id": "faculty-ucb-cdss-61b4cd4b",
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucb-cdss-61b4cd4b",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-61b4cd4b",
+      "html_release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "expected_name_link": "https://cdss.berkeley.edu/people/eric-van-dusen",
+      "record_source_directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "public_api_url": "https://cdss.berkeley.edu/people/eric-van-dusen",
+      "public_api_source_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "visible_faculty_profile_buttons": [
+        "https://cdss.berkeley.edu/people/eric-van-dusen"
+      ],
+      "visible_source_primary_buttons": [],
+      "visible_source_links": [
+        "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+      ],
+      "primary_button_matches": true,
+      "roster_source_visible": true,
+      "correct_data": true,
+      "live_chrome": {
+        "visible_heading": "Eric Van Dusen",
+        "primary_action_label": "View faculty profile",
+        "primary_action_href": "https://cdss.berkeley.edu/people/eric-van-dusen",
+        "four_rendered_source_page_hrefs": [
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+          "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+        ],
+        "retried": false
+      }
+    }
+  ],
+  "all_10_details_and_api_release_match": true,
+  "public_data_matches": 10,
+  "expected_faculty_button_matches": 10,
+  "observed_faculty_button_mismatches": 0,
+  "browser_observed_at": "2026-11-26T13:25:30.489794+00:00",
+  "change": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1356",
+  "merged_release": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1364",
+  "original_live_chrome": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/471d7066f8b831213b6ca1ca9c30a316f27d2cfe/data/audits/observed-faculty-2026-11-26/batch1327-35-faculty-production.json",
+  "scope": "Public detail CTA verification on ten stored original IDs. Separately, the natural scheduled campus roster refresh remains to be observed."
+}
