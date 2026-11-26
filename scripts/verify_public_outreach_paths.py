@@ -166,7 +166,8 @@ def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_p
             page.goto(SITE + '/opportunities/' + oid, wait_until='domcontentloaded')
             expect(page.get_by_role('heading',level=1)).to_contain_text('Data Engineer Intern')
             text = ' '.join(page.locator('main').inner_text().split())
-            assert 'Class year Not provided' in text and 'Majors System inference' in text, text
+            assert 'class year not provided' in text.casefold() and 'majors system inference' in text.casefold(), text
+            assert 'application materials not provided' in text.casefold(), text
             print('PASS listing evidence', eligibility_phase, oid, page.locator('html').get_attribute('data-release-sha'),
                   'gaps', row['reasons_gap'], 'verify',labels,'next steps',row['next_steps'],flush=True)
             browser.close()
