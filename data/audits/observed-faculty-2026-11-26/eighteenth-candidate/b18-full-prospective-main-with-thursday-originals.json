@@ -1,0 +1,43 @@
+{
+  "checked_at": "2026-11-26T20:34:43.941844+00:00",
+  "stage": "Full tree preview against the prospective B17 parents; both must be checked again after real merges.",
+  "prospective_b17_tree": "5f7b6353c77c70f8be6f186f92d6879cc0adc92e",
+  "source_pr": 1453,
+  "source_head": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+  "source_base": "1d6b6ce706a22a5e29883913801413d3eb943125",
+  "complete_b18_prospective_tree": "996af9265084f8b5eaff9efddadd56f308b4a6f3",
+  "officially_recalculated_data_reference": "20bab4a96a628792d6064f11c5fa91c478b1baed",
+  "manually_resolved_by_stable_id": [
+    "data/processed/shards/vanderbilt.json",
+    "data/processed/shards/vt.json"
+  ],
+  "all_117_shards_match_previously_verified_projection": true,
+  "public_school_counts_match_canonical_loader": true,
+  "changed_paths": [
+    "data/processed/shards/msu.json",
+    "data/processed/shards/princeton.json",
+    "data/processed/shards/tamu.json",
+    "data/processed/shards/ucsd.json",
+    "data/processed/shards/vanderbilt.json",
+    "data/processed/shards/vt.json",
+    "frontend/src/components/EmailTargetConditionsPanel.test.tsx",
+    "frontend/src/components/EmailTargetConditionsPanel.tsx",
+    "frontend/src/lib/school-stats.json",
+    "src/collectors/faculty_graph.py",
+    "src/collectors/schools/princeton_faculty.py",
+    "src/collectors/schools/tamu_faculty.py",
+    "src/collectors/schools/ucsd_faculty.py",
+    "src/collectors/schools/vanderbilt_faculty.py",
+    "src/collectors/schools/vt_faculty.py",
+    "src/evidence.py",
+    "src/normalizers/reviewed_faculty_profiles.py",
+    "tests/test_collapse_liveness.py",
+    "tests/test_princeton_faculty.py",
+    "tests/test_reviewed_faculty_profiles.py",
+    "tests/test_truthfulness.py",
+    "tests/test_ucsd_nano_profile.py",
+    "tests/test_vanderbilt_chemistry_directories.py",
+    "tests/test_vt_chemical_redirects.py"
+  ],
+  "remaining_product_files_exact_frozen_blobs": 17
+}
