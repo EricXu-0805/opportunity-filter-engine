@@ -1,0 +1,205 @@
+{
+  "observed_utc": "2026-11-26T20:07:08.765478+00:00",
+  "description": "Independent field-by-field comparison of the published Pitt Linguistics records on the first parent and the actual Nov 5 merge. This verifies the historical loss of updates only.",
+  "parent": "f5dbc0d610ccdac18e4e54f3310089494603b1b9",
+  "merge": "b1d224a6970900a2330d60484b2963d334e499cb",
+  "shard": "data/processed/shards/pitt.json",
+  "rows": [
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "name": "Natasha Tokowicz",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257594",
+      "after": "2026-11-05T16:29:29.478958"
+    },
+    {
+      "id": "faculty-pitt-ling-00c04191",
+      "name": "Amanda Huensch",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.255760",
+      "after": "2026-10-29T13:22:18.255760"
+    },
+    {
+      "id": "faculty-pitt-ling-0c3d32be",
+      "name": "Janet Liu",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.255963",
+      "after": "2026-10-29T13:22:18.255963"
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "name": "Amanda Godley",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257197",
+      "after": "2026-11-05T16:29:29.478661"
+    },
+    {
+      "id": "faculty-pitt-ling-11fb1b87",
+      "name": "Claude E. Mauk",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256764",
+      "after": "2026-10-29T13:22:18.256764"
+    },
+    {
+      "id": "faculty-pitt-ling-12753a63",
+      "name": "Jevon Heath",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256605",
+      "after": "2026-10-29T13:22:18.256605"
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257345",
+      "after": "2026-11-05T16:29:29.478769"
+    },
+    {
+      "id": "faculty-pitt-ling-27850b9e",
+      "name": "Dan Villarreal",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256165",
+      "after": "2026-10-29T13:22:18.256165"
+    },
+    {
+      "id": "faculty-pitt-ling-2cb085e3",
+      "name": "Phillip Rogers",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256970",
+      "after": "2026-10-29T13:22:18.256970"
+    },
+    {
+      "id": "faculty-pitt-ling-2da8fc2a",
+      "name": "Amani Attia",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256344",
+      "after": "2026-10-29T13:22:18.256344"
+    },
+    {
+      "id": "faculty-pitt-ling-32eedf1c",
+      "name": "Marta Ortega-Llebaria",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256096",
+      "after": "2026-10-29T13:22:18.256096"
+    },
+    {
+      "id": "faculty-pitt-ling-3352f935",
+      "name": "Dawn E. McCormick",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256831",
+      "after": "2026-10-29T13:22:18.256831"
+    },
+    {
+      "id": "faculty-pitt-ling-5862284a",
+      "name": "Na-Rae Han",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256443",
+      "after": "2026-10-29T13:22:18.256443"
+    },
+    {
+      "id": "faculty-pitt-ling-5aaea2df",
+      "name": "Filipo Lubua",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256692",
+      "after": "2026-10-29T13:22:18.256692"
+    },
+    {
+      "id": "faculty-pitt-ling-63c0ff2f",
+      "name": "Gregory Mizera",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256900",
+      "after": "2026-10-29T13:22:18.256900"
+    },
+    {
+      "id": "faculty-pitt-ling-74160f43",
+      "name": "Kevin McManus",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256027",
+      "after": "2026-10-29T13:22:18.256027"
+    },
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "name": "Richard Donato",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257121",
+      "after": "2026-11-05T16:29:29.478604"
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "name": "Mandy Simons",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257441",
+      "after": "2026-11-05T16:29:29.478825"
+    },
+    {
+      "id": "faculty-pitt-ling-a12887dd",
+      "name": "Gretchen Aiyangar",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256235",
+      "after": "2026-10-29T13:22:18.256235"
+    },
+    {
+      "id": "faculty-pitt-ling-b0bb8257",
+      "name": "Shelome Gooden",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.255687",
+      "after": "2026-10-29T13:22:18.255687"
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257269",
+      "after": "2026-11-05T16:29:29.478714"
+    },
+    {
+      "id": "faculty-pitt-ling-beac652e",
+      "name": "Matthew Kanwit",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.255827",
+      "after": "2026-10-29T13:22:18.255827"
+    },
+    {
+      "id": "faculty-pitt-ling-bfcf8516",
+      "name": "Abdesalam Soudi",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.257045",
+      "after": "2026-10-29T13:22:18.257045"
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "name": "Tessa Warren",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257671",
+      "after": "2026-11-05T16:29:29.479015"
+    },
+    {
+      "id": "faculty-pitt-ling-d0ebdf0a",
+      "name": "Debra L. Hast",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.256531",
+      "after": "2026-10-29T13:22:18.256531"
+    },
+    {
+      "id": "faculty-pitt-ling-de044035",
+      "name": "Melinda Fricke",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.255583",
+      "after": "2026-11-05T16:29:29.477299"
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "name": "Kate Stanton",
+      "changed": true,
+      "before": "2026-10-29T13:22:18.257518",
+      "after": "2026-11-05T16:29:29.478895"
+    },
+    {
+      "id": "faculty-pitt-ling-f90b0dfa",
+      "name": "Scott F. Kiesling",
+      "changed": false,
+      "before": "2026-10-29T13:22:18.255894",
+      "after": "2026-10-29T13:22:18.255894"
+    }
+  ]
+}
