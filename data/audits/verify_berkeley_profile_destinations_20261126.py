@@ -53,7 +53,8 @@ with sync_playwright() as pw:
                 with context.expect_page(timeout=20000) as popup:action.click()
                 target=popup.value
             else:action.click();target=page
-            target.wait_for_load_state('domcontentloaded',timeout=35000)
+            target.wait_for_url(lambda url:homepage(url)==homepage(x['final_url']),wait_until='domcontentloaded',timeout=45000)
+            target.locator('body').wait_for(state='visible',timeout=25000)
             text=norm((target.title() or '')+' '+target.locator('body').inner_text(timeout=20000))
             tokens=norm(x['name']).split();name_found=tokens[0] in text.split() and tokens[-1] in text.split()
             row.update(primary_action=label,href=x['destination_url'],landing=target.url,official_title=target.title(),name_on_landing=name_found)
