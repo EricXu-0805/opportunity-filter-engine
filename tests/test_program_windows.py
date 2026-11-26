@@ -204,13 +204,16 @@ def _read_open(school_slug: str, key: str, read_at: str | None) -> dict:
     (None, False),
     ("yesterday", False),
 ])
-def test_an_open_status_read_before_the_stated_opening_does_not_title_the_row(read_at, kept):
+def test_an_open_status_read_before_the_stated_opening_does_not_title_the_row(monkeypatch, read_at, kept):
+    # A suffix survives only while the program is still open: SROP closes 2027-02-10.
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _read_open("northwestern", "nu_tgs_srop", read_at)
 
     assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)") is kept
 
 
-def test_the_card_drops_a_suffix_read_before_the_opening():
+def test_the_card_drops_a_suffix_read_before_the_opening(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _read_open("unl", "unl_summer_research_program", "2026-11-14T12:00:00")
 
     card = project_public_opportunity_payload({"title": row["title"]}, row)
@@ -219,13 +222,15 @@ def test_the_card_drops_a_suffix_read_before_the_opening():
     assert card["target_truth"]["actionable"] is True
 
 
-def test_a_window_that_states_no_opening_leaves_the_suffix_alone():
+def test_a_window_that_states_no_opening_leaves_the_suffix_alone(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _read_open("caltech", "wave_fellows", "2026-07-18T06:41:25")
 
     assert neutralize_lifecycle_title(row["title"], row).endswith(" (applications open)")
 
 
-def test_the_public_payload_carries_the_pages_stated_opening():
+def test_the_public_payload_carries_the_pages_stated_opening(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 25))
     row = _row("unl", "unl_summer_research_program")
 
     out = project_public_opportunity_payload({"title": row["title"]}, row)
