@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
@@ -8,7 +9,6 @@ import type { ProfileData, ResumeFact } from '../src/lib/types';
 // These are same-browser/same-account cases, not cross-device refresh coverage.
 // The gated second-tab read guards the reported user journey; it does not assert
 // that the historical CI flake had one uniquely proved auth-event ordering.
-const TARGET = 'uiuc-siebel-ugresearch';
 const PROFILE_URL = '**/rest/v1/profiles?**';
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
 const NAME = 'Baseline Student 王';

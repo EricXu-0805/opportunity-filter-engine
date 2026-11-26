@@ -14,6 +14,7 @@ import {
 } from '@/lib/experience-evidence';
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
+import { LinkedInExperienceImport } from './LinkedInExperienceImport';
 
 type EditBase = { resumeText: string; entriesJson: string; githubUrl?: string };
 type ChangeEntries = (entries: ExperienceEntry[], expected: EditBase) => boolean;
@@ -34,7 +35,7 @@ function EntryEditor({ entry, sourceCurrent, disabled, onReplace, onRemove, t }:
       <summary className="cursor-pointer text-sm break-words">
         <span className="font-medium">{entry.text.slice(0, 100)}{entry.text.length > 100 ? '…' : ''}</span>
         <span className="block mt-1 text-xs text-gray-500">
-          {t(`home.experience.status.${entry.status}`)} · {t(`home.experience.source.${entry.source.kind}`)}
+          {t(`home.experience.status.${entry.status}`)} · {entry.source.kind === 'manual' && /^li:[a-f0-9]{64}$/.test(entry.id) && 'LinkedIn · '}{t(`home.experience.source.${entry.source.kind}`)}
           {!sourceCurrent && entry.source.kind === 'resume' && ` · ${t('home.experience.sourceChanged')}`}
         </span>
       </summary>
@@ -190,6 +191,7 @@ export function ExperienceLibraryCard({ profile, ready, onChange, t }: {
                   onRemove={() => apply(entries.filter((item) => item.id !== entry.id))} />
               ))}
             </div>
+            {ready && <LinkedInExperienceImport entries={entries} raw={raw} disabled={busy} onSave={apply} />}
             <details className="mt-4">
               <summary className="cursor-pointer text-sm font-medium text-indigo-700">{t('home.experience.githubImport')}</summary>
               <label className="mt-2 block text-sm">{t('home.experience.githubLink')}

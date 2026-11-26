@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { ProfileData } from '../src/lib/types';
@@ -5,7 +6,6 @@ import type { ProfileData } from '../src/lib/types';
 // Real production UI/auth/profile reads + loopback CAS. Only model/status and
 // the changed public target response are controlled; no hosted/model calls.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const BULLET = 'I compared sensor readings with the team; I did not lead. 王';
 const MANUAL = 'My retained manual wording: I reviewed the readings, not led the team. 王';
 const UNKNOWN = 'Check that these bullets are accurate before tailoring.';

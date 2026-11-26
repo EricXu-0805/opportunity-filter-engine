@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
@@ -11,7 +12,6 @@ import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 // external-device changes use a separate HTTP context, never storage events.
 // Every generation endpoint is intercepted; no model or hosted project runs.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const OLD_NAME = 'Writing entry student 王';
 const NEW_NAME = 'Updated writing student 王';
 const OLD_BULLET = 'Compared earlier instrument readings; I assisted and did not lead.';

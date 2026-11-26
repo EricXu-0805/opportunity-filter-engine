@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as ID } from './actionable-listing.cjs';
 import { createHash } from 'node:crypto';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request, type Route, type TestInfo } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -8,7 +9,6 @@ import { contactReceiptForRequest } from './email-contact-receipt';
 // generation. No provider, mail, tracking mutation or external navigation runs.
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
 const FRONTEND = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
-const ID = 'uiuc-siebel-ugresearch';
 const VERSION = `wt1:${'d'.repeat(64)}`;
 const REPEATED = '我负责测试 🧪，团队负责系统。';
 const BODY = `Dear Professor,\n\n${REPEATED}\n\n两段之间的文字保持不变。\n\n${REPEATED}\n\nThank you,\nRevision student 王`;

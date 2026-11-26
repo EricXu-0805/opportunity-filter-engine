@@ -140,3 +140,13 @@ it('imports an authored GitHub PR for review, preserves the source on correction
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('duplicate_id'));
   expect(stored()).toEqual([accepted]);
 });
+
+it('mounts the local work-history picker only after the owner profile is ready', () => {
+  const props = { profile: DEFAULT_PROFILE, t, onChange: vi.fn() };
+  const view = render(<ExperienceLibraryCard {...props} ready={false} />);
+  expect(view.container.querySelector('input[type=file]')).toBeNull();
+  view.rerender(<ExperienceLibraryCard {...props} ready />);
+  expect(view.container.querySelector('input[type=file]')).not.toBeNull();
+  view.rerender(<ExperienceLibraryCard {...props} ready={false} />);
+  expect(view.container.querySelector('input[type=file]')).toBeNull();
+});

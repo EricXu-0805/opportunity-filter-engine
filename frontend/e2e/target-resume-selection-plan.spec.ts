@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type Page, type TestInfo } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
@@ -11,7 +12,6 @@ import type { TargetResumeExportRequest } from '../src/lib/target-resume-export-
 // Browser acceptance of already-checked receipts, followed by real local file
 // rendering. Server semantic rejection is covered separately by route tests;
 // this fixture must never be described as an end-to-end real-model evaluation.
-const TARGET = 'uiuc-siebel-ugresearch';
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
 const FRONTEND = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8100);

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as KNOWN_ID } from './actionable-listing.cjs';
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '../src/lib/release-scope';
@@ -20,7 +21,6 @@ import type { TargetResumeAiEvidence, TargetResumeAiRequest, TargetResumeAiRespo
  * code: the release gate, the real /api/tailor/structure, the modal, the
  * variant chain, and the rollback pointer.
  */
-const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 const OWN_WORDS = 'Built a Python script that parsed 3,000 rows of lab sensor data';
 // A rewrite that keeps the line's facts: it adds no claim the student did not write.

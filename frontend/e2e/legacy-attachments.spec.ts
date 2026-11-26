@@ -1,10 +1,10 @@
 import { test, expect, type Page, type Request, type Route } from '@playwright/test';
 import { account, seed, PDF, TARGET, type Owner } from './contact-materials-fixture';
+import { RELATED_LISTING_ID as OTHER } from './actionable-listing.cjs';
 import { en, zh } from '../src/i18n/dictionaries';
 
 // Real production UI/SDK, scoped loopback Storage responses. Real Storage is
 // exercised separately by verify_material_archive_local.py --legacy-tracker.
-const OTHER = 'purdue-74a073b99827';
 const listing = '**/storage/v1/object/list/tracker-attachments';
 const panel = (page: Page) => page.getByTestId('tracker-attachments');
 const dict = (locale: 'en' | 'zh' = 'en') => (locale === 'zh' ? zh : en).detail.attachments;

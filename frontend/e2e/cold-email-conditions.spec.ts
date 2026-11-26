@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as ID } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
@@ -9,7 +10,6 @@ import type { EmailTargetConditions } from '../src/lib/email-target-conditions';
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
 const FRONT = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
 const BACK = `http://127.0.0.1:${Number(process.env.E2E_BACKEND_PORT ?? 8100)}`;
-const ID = 'uiuc-siebel-ugresearch';
 const VERSION = 'wt1:' + 'd'.repeat(64);
 const BODY = 'Dear Professor,\n\nI am interested in the sensor project. Could we discuss the current application requirements?\n\nBest,\nTest student 王';
 const source = { quote: 'Applicants must have a GPA of at least 3.0. A CV is required. The posted date does not establish the application deadline. Complete source ending 🧪.', source_url: 'https://example.edu/program/apply', checked_at: '2026-09-28T12:00:00Z' };

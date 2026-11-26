@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request } from '@playwright/test';
 import type { ExperienceEntry, ProfileData, ProfileRequest } from '../src/lib/types';
@@ -9,7 +10,6 @@ import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 // clock advances the shipped foreground timer, never a replacement constant.
 // All writing responses are synthetic at the HTTP boundary; no provider runs.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const NAME = 'Foreground student 王';
 const NEXT_NAME = 'Updated foreground student 王';
 const FACT = 'Compared instrument readings; I assisted and did not lead the project.';

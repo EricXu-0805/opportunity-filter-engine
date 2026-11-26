@@ -349,77 +349,62 @@
     "source": "manual",
     "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
     "source_type": "uiuc_research",
-    "title": "Siebel School — Undergraduate Research with CS Faculty",
+    "title": "Siebel School — Undergraduate Research Opportunities",
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
-    "lab_or_program": "Various CS labs",
+    "lab_or_program": "",
     "pi_name": null,
     "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "hybrid",
+    "location": "",
+    "on_campus": null,
+    "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
-    "compensation_details": "Varies by lab — credit, hourly, or stipend",
+    "compensation_details": "",
     "deadline": null,
     "posted_date": "2026-01-01",
     "start_date": null,
-    "duration": "Ongoing",
+    "duration": null,
     "eligibility": {
-      "preferred_year": [
-        "freshman",
-        "sophomore",
-        "junior",
-        "senior"
-      ],
+      "preferred_year": [],
       "min_gpa": null,
-      "majors": [
-        "CS",
-        "Data Science",
-        "ECE",
-        "IS",
-        "STAT"
-      ],
-      "skills_required": [
-        "Python"
-      ],
-      "skills_preferred": [
-        "Git",
-        "Linux"
-      ],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus, open to all UIUC students",
-      "eligibility_text_raw": "Siebel School encourages undergraduates to pursue research with faculty. Contact professors directly."
+      "majors": [],
+      "skills_required": [],
+      "skills_preferred": [],
+      "citizenship_required": null,
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
+      "eligibility_text_raw": ""
     },
     "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
+      "contact_method": "unknown",
+      "requires_resume": "unknown",
+      "requires_cover_letter": "unknown",
+      "requires_transcript": "unknown",
+      "requires_recommendation": "unknown",
+      "application_effort": "unknown",
       "application_url": null
     },
-    "description_raw": "The Siebel School encourages undergraduates to participate in research with faculty. Research areas include AI, systems, security, databases, HCI, and more.",
-    "description_clean": "Undergrad research with CS faculty. AI, systems, security, databases, HCI. Contact professors directly.",
+    "description_raw": "The Siebel School links to semester, year-long and summer undergraduate research programs in computing. Its listings include a job portal, reading groups and individual research programs with separate requirements and application steps.",
+    "description_clean": "The Siebel School links to semester, year-long and summer undergraduate research programs in computing. Its listings include a job portal, reading groups and individual research programs with separate requirements and application steps.",
     "keywords": [
-      "CS",
-      "research",
-      "undergraduate",
-      "Siebel School",
-      "AI",
-      "systems"
+      "computing",
+      "undergraduate research",
+      "research programs"
     ],
     "metadata": {
       "confidence_score": 0.85,
-      "last_verified": "2026-03-16",
+      "last_verified": "2026-11-26T10:33:46+00:00",
       "first_seen_at": "2026-01-01",
-      "last_seen_at": "2026-03-16",
+      "last_seen_at": "2026-11-26T10:33:46+00:00",
       "is_active": true,
       "manually_reviewed": true,
-      "notes": "Umbrella listing — cold email individual faculty"
-    }
+      "notes": "Siebel School indexes independent academic and employment opportunities here. Select an individual program to check its requirements.",
+      "reference_only": true
+    },
+    "is_rolling": false,
+    "school": "uiuc",
+    "audience": "campus"
   },
   {
     "id": "caltech-surf-2026",
@@ -646,37 +631,32 @@
     "source": "manual",
     "source_url": "https://undergradresearch.illinois.edu/",
     "source_type": "uiuc_research",
-    "title": "UIUC Office of Undergraduate Research — Open Positions Portal",
+    "title": "UIUC Office of Undergraduate Research",
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Office of Undergraduate Research",
     "lab_or_program": "OUR",
     "pi_name": null,
     "url": "https://undergradresearch.illinois.edu/",
-    "location": "Champaign, IL",
-    "on_campus": true,
+    "location": "",
+    "on_campus": null,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
-    "compensation_details": "Varies by position",
+    "compensation_details": "",
     "deadline": null,
     "posted_date": "2026-01-01",
     "start_date": null,
-    "duration": "Varies",
+    "duration": null,
     "eligibility": {
-      "preferred_year": [
-        "freshman",
-        "sophomore",
-        "junior",
-        "senior"
-      ],
+      "preferred_year": [],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus positions generally available to international students",
-      "eligibility_text_raw": "Open to all UIUC undergraduates."
+      "citizenship_required": null,
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
+      "eligibility_text_raw": ""
     },
     "application": {
       "contact_method": "unknown",
@@ -684,26 +664,30 @@
       "requires_cover_letter": "unknown",
       "requires_transcript": "unknown",
       "requires_recommendation": "unknown",
-      "application_effort": "medium",
-      "application_url": "https://undergradresearch.illinois.edu/"
+      "application_effort": "unknown",
+      "application_url": null
     },
-    "description_raw": "The Office of Undergraduate Research maintains a portal of available research positions posted by UIUC faculty. Browse by department and field.",
-    "description_clean": "UIUC OUR portal. Browse faculty-posted research positions across all departments.",
+    "description_raw": "The Office of Undergraduate Research lists campus programs, funding, workshops and research events. Follow the separate links to find opportunities and their application instructions.",
+    "description_clean": "The Office of Undergraduate Research lists campus programs, funding, workshops and research events. Follow the separate links to find opportunities and their application instructions.",
     "keywords": [
       "undergraduate research",
-      "UIUC",
-      "OUR",
-      "portal"
+      "funding",
+      "workshops",
+      "Illinois"
     ],
     "metadata": {
       "confidence_score": 0.85,
-      "last_verified": "2026-03-16",
+      "last_verified": "2026-11-26T10:24:47+00:00",
       "first_seen_at": "2026-01-01",
-      "last_seen_at": "2026-03-16",
+      "last_seen_at": "2026-11-26T10:24:47+00:00",
       "is_active": true,
       "manually_reviewed": true,
-      "notes": "Hub page — individual positions should be added separately from RSS feed"
-    }
+      "notes": "Illinois publishes guidance and links to individual opportunities on this page. The source link stays with the original record.",
+      "reference_only": true
+    },
+    "school": "uiuc",
+    "audience": "campus",
+    "is_rolling": false
   },
   {
     "id": "uiuc-sro-database",
@@ -779,8 +763,8 @@
     "lab_or_program": "",
     "pi_name": null,
     "url": "https://www.careercenter.illinois.edu/undergraduateresearch",
-    "location": "Champaign, IL",
-    "on_campus": true,
+    "location": "",
+    "on_campus": null,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -788,22 +772,17 @@
     "deadline": null,
     "posted_date": "2026-01-01",
     "start_date": null,
-    "duration": "Varies",
+    "duration": null,
     "eligibility": {
-      "preferred_year": [
-        "freshman",
-        "sophomore",
-        "junior",
-        "senior"
-      ],
+      "preferred_year": [],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "yes",
+      "citizenship_required": null,
+      "international_friendly": "unknown",
       "work_auth_notes": "",
-      "eligibility_text_raw": "Career Center resources for finding undergraduate research."
+      "eligibility_text_raw": ""
     },
     "application": {
       "contact_method": "unknown",
@@ -811,26 +790,29 @@
       "requires_cover_letter": "unknown",
       "requires_transcript": "unknown",
       "requires_recommendation": "unknown",
-      "application_effort": "low",
-      "application_url": "https://www.careercenter.illinois.edu/undergraduateresearch"
+      "application_effort": "unknown",
+      "application_url": null
     },
-    "description_raw": "The UIUC Career Center provides resources and guidance for finding undergraduate research opportunities. Includes tips on approaching faculty and writing emails.",
-    "description_clean": "Career Center resource page. Tips on finding research, approaching faculty, cold emailing.",
+    "description_raw": "The Career Center explains the benefits of undergraduate research, describes the undergraduate research certificate and links to resources for finding research on and off campus.",
+    "description_clean": "The Career Center explains the benefits of undergraduate research, describes the undergraduate research certificate and links to resources for finding research on and off campus.",
     "keywords": [
-      "career center",
       "undergraduate research",
-      "cold email",
-      "faculty"
+      "Career Center",
+      "Illinois"
     ],
     "metadata": {
       "confidence_score": 0.75,
-      "last_verified": "2026-03-16",
+      "last_verified": "2026-11-26T10:24:47+00:00",
       "first_seen_at": "2026-01-01",
-      "last_seen_at": "2026-03-16",
+      "last_seen_at": "2026-11-26T10:24:47+00:00",
       "is_active": true,
       "manually_reviewed": true,
-      "notes": "Resource page, not a specific position"
-    }
+      "notes": "Illinois publishes guidance and links to individual opportunities on this page. The source link stays with the original record.",
+      "reference_only": true
+    },
+    "school": "uiuc",
+    "audience": "campus",
+    "is_rolling": false
   },
   {
     "id": "reufinder-freshmen",

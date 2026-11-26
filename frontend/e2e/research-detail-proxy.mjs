@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 /** Loopback-only browser fixture. Never rewrites corpus or calls a provider.
  * Playwright webServer owns its lifecycle; Next's runtime BACKEND_URL uses it.
  * Browser
@@ -8,7 +9,6 @@ import { pipeline } from 'node:stream/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
-const TARGET = 'uiuc-siebel-ugresearch';
 const canonical = value => Array.isArray(value) ? `[${value.map(canonical).join(',')}]`
   : value !== null && typeof value === 'object' ? `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}` : JSON.stringify(value);
 function loopback(value) {

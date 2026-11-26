@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -8,7 +9,6 @@ import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 // are deliberately silent: no focus/online/storage event prompts a refresh.
 // Writing/Match responses are synthetic and never reach a model/provider.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const OLD_NAME = 'Earlier profile student 王';
 const NEW_NAME = 'Current profile student 王';
 const OLD_FACT = 'Earlier confirmed instrumentation work, now withdrawn.';

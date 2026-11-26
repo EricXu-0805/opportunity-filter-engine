@@ -1,11 +1,7 @@
+import { ACTIONABLE_LISTING_ID as KNOWN_ID } from './actionable-listing.cjs';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '../src/lib/release-scope';
 
-// uiuc-siebel-ugresearch: hand-curated umbrella seed — survives refreshes, unlike
-// scraped ids (hash of name/url) or the fabricated prototype record this replaced.
-// Pinned by test_e2e_detail_fixture_present (backend DQ) so a data PR that drops
-// it fails fast there, not with a 404-cascade here. Update both if this changes.
-const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 // Corpus ids a URL path has to escape. On 2026-10-02, 217 of 140,840 ids had
 // a space, 81 of them an '&' too ('faculty-carle medicine-…' 90, 'faculty-art
@@ -45,6 +41,15 @@ function escapeRegExp(s: string): string {
 }
 
 test.describe('Opportunity detail page', () => {
+  test('the original Siebel directory opens as a reference with its school source', async ({ page }) => {
+    const response = await page.goto('/opportunities/uiuc-siebel-ugresearch');
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: 'Siebel School — Undergraduate Research Opportunities' })).toBeVisible();
+    await expect(page.locator('a[href="https://siebelschool.illinois.edu/research/undergraduate-research"]').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Draft email', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Apply now', exact: true })).toHaveCount(0);
+  });
+
   test('renders full page SSR with title and meta', async ({ page }) => {
     const response = await page.goto(`/opportunities/${KNOWN_ID}`);
     expect(response?.status()).toBe(200);

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { ProfileData, ResumeSectionInput } from '../src/lib/types';
@@ -6,7 +7,6 @@ import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 // Real browser SDK and loopback profile/renovation RPCs. Only public-target
 // GET and model response boundaries are controlled; no provider is contacted.
 const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
-const TARGET = 'uiuc-siebel-ugresearch';
 const ORIGINAL = 'Compared instrument readings with the team; I did not lead.';
 const SECOND = 'Recorded measurement uncertainty in a shared notebook.';
 const MANUAL = 'Keep my complete unsaved wording 王; I assisted, never led.';

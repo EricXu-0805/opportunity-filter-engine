@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { test, expect, request as apiRequest, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { createEmptyResumeMaster } from '../src/lib/resume-master';
@@ -5,7 +6,6 @@ import type { ProfileData, ResumeFact } from '../src/lib/types';
 import type { TargetResumeAiRequest, TargetResumeAiResponse } from '../src/lib/target-resume-ai-protocol';
 import type { TargetResumeV1 } from '../src/lib/target-resume';
 const STUB=`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT??54321)}`,FRONT=`http://127.0.0.1:${Number(process.env.E2E_PORT??3100)}`,BACK=`http://127.0.0.1:${Number(process.env.E2E_BACKEND_PORT??8100)}`;
-const TARGET='uiuc-siebel-ugresearch';
 const ORIGINAL='Measured robot trials; I did not lead the team.',SUPPORT='I wrote Python scripts to compare the recorded trials. I did not design the experiment.',UNBOUND='I checked the robot trial logs in Spring 2026.';
 const PROPOSED='Measured robot trials; wrote Python scripts to compare the recorded trials. I did not lead the team. I did not design the experiment.';
 const INTEREST='I want to explore reliable robot perception. 我希望研究鲁棒感知。';

@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID as TARGET } from './actionable-listing.cjs';
 import { expect, request as apiRequest, type APIRequestContext, type Page, type Request, type Route } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -9,7 +10,7 @@ export const audits = new WeakMap<Page, { pageErrors: string[]; responses: { pat
 function fault(route: Route, status: number, label: string, body: unknown) { injected.set(route.request(), label); return route.fulfill({ status, json: body }); }
 
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-export const TARGET = 'uiuc-siebel-ugresearch';
+export { TARGET };
 export const EVENT = '22222222-2222-4222-8222-222222222222';
 export const SUBMITTED = '2026-08-01T15:30:00.000Z';
 export const CONFIRMED = '2026-09-25T11:00:00.000Z';

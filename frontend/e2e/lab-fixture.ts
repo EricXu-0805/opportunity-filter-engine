@@ -1,3 +1,4 @@
+import { ACTIONABLE_LISTING_ID } from './actionable-listing.cjs';
 import { createHash } from 'node:crypto';
 import type { LabContext, LabSnapshotV2 } from '../src/lib/lab-context';
 // Synthetic historical/public snapshot for UI acceptance only. This does not
@@ -8,7 +9,7 @@ const canonical = (value: unknown): string => Array.isArray(value) ? `[${value.m
   : value && typeof value === 'object' ? `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonical((value as Record<string,unknown>)[k])}`).join(',')}}` : JSON.stringify(value);
 export function labFixture(status: 'available' | 'stale' = 'available', suffix = ''): LabContext {
   const url = 'https://example.edu/synthetic-researcher';
-  const snapshot = { version: 1 as const, source: 'official_website' as const, record_id: 'uiuc-siebel-ugresearch', record_source_url: url,
+  const snapshot = { version: 1 as const, source: 'official_website' as const, record_id: ACTIONABLE_LISTING_ID, record_source_url: url,
     school: 'uiuc', department: 'Synthetic Department', identity_name: 'Synthetic Researcher', policy_version: 1 as const,
     checked_at: new Date(Date.now() - (status === 'stale' ? 40 * 86400000 : 60000)).toISOString().replace(/\.\d{3}Z$/, 'Z'),
     pages: [{ kind: 'faculty_profile' as const, requested_url: url, source_url: url, page_title: LAB_TITLE,
