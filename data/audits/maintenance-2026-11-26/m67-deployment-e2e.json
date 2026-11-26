@@ -1,0 +1,179 @@
+{
+  "observed_utc": "2026-11-26T09:06:06.298138+00:00",
+  "release_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "cors": {
+    "https://joinalab.com": {
+      "allow_origin": "https://joinalab.com",
+      "allow_credentials": "true"
+    },
+    "https://www.joinalab.com": {
+      "allow_origin": "https://www.joinalab.com",
+      "allow_credentials": "true"
+    },
+    "http://localhost:3000": {
+      "allow_origin": null,
+      "allow_credentials": "true"
+    }
+  },
+  "images": {
+    "og:image": {
+      "url": "https://joinalab.com/opengraph-image?7d3f03549f69c02c",
+      "size": [
+        1200,
+        630
+      ],
+      "type": "PNG"
+    },
+    "twitter:image": {
+      "url": "https://joinalab.com/opengraph-image?7d3f03549f69c02c",
+      "size": [
+        1200,
+        630
+      ],
+      "type": "PNG"
+    }
+  },
+  "woff2": [
+    "https://joinalab.com/_next/static/immutable/media/07c7676b89ed2778-s.p.45535valc9rzk.woff2",
+    "https://joinalab.com/_next/static/immutable/media/2fb76073e23fd9e4-s.2o7ko1d-5m1xu.woff2",
+    "https://joinalab.com/_next/static/immutable/media/45462fd7b7c12654-s.1way2z9fj6cig.woff2",
+    "https://joinalab.com/_next/static/immutable/media/46a9e2f250689b4a-s.03ez25a9g3i0n.woff2",
+    "https://joinalab.com/_next/static/immutable/media/6131cbbf5549afa2-s.1ee5w62fj497l.woff2",
+    "https://joinalab.com/_next/static/immutable/media/76b70a1dbe058eb5-s.3i9rha7jpxn0q.woff2",
+    "https://joinalab.com/_next/static/immutable/media/ba63f6a0e436df8e-s.0szrwpqb9mkwe.woff2"
+  ],
+  "ci_report": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45769730123/artifacts/15094318413",
+  "stats": {
+    "total": 459,
+    "expected": 454,
+    "unexpected": 0,
+    "flaky": 0,
+    "skipped": 5,
+    "ok": true
+  },
+  "onboarding": {
+    "file": "onboarding-tour.spec.ts",
+    "title": "a first-time visitor can reach the end and get out",
+    "outcome": "expected",
+    "attempts": [
+      {
+        "status": null,
+        "retry": null
+      }
+    ],
+    "annotations": []
+  },
+  "exceptional_cases": [
+    {
+      "file": "admin.spec.ts",
+      "title": "valid token via the login form loads the dashboard widgets",
+      "outcome": "skipped",
+      "attempts": [
+        {
+          "status": null,
+          "retry": null
+        }
+      ],
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "ADMIN_TOKEN not set in webServer env — skip authenticated dashboard checks",
+          "location": {
+            "file": "/home/runner/work/opportunity-filter-engine/opportunity-filter-engine/frontend/e2e/admin.spec.ts",
+            "line": 103,
+            "column": 10
+          }
+        }
+      ]
+    },
+    {
+      "file": "admin.spec.ts",
+      "title": "Lock after a valid login clears state and returns to the login form",
+      "outcome": "skipped",
+      "attempts": [
+        {
+          "status": null,
+          "retry": null
+        }
+      ],
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "ADMIN_TOKEN not set in webServer env — skip authenticated dashboard checks",
+          "location": {
+            "file": "/home/runner/work/opportunity-filter-engine/opportunity-filter-engine/frontend/e2e/admin.spec.ts",
+            "line": 103,
+            "column": 10
+          }
+        }
+      ]
+    },
+    {
+      "file": "concierge-request.spec.ts",
+      "title": "asking is remembered across a reload, not just on the screen",
+      "outcome": "skipped",
+      "attempts": [
+        {
+          "status": null,
+          "retry": null
+        }
+      ],
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "the request section is hidden while RELEASE_SCOPE.conciergeRequests is off",
+          "location": {
+            "file": "/home/runner/work/opportunity-filter-engine/opportunity-filter-engine/frontend/e2e/concierge-request.spec.ts",
+            "line": 41,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "file": "concierge-request.spec.ts",
+      "title": "asking about one professor does not answer for another",
+      "outcome": "skipped",
+      "attempts": [
+        {
+          "status": null,
+          "retry": null
+        }
+      ],
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "the request section is hidden while RELEASE_SCOPE.conciergeRequests is off",
+          "location": {
+            "file": "/home/runner/work/opportunity-filter-engine/opportunity-filter-engine/frontend/e2e/concierge-request.spec.ts",
+            "line": 41,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "file": "saved-searches.spec.ts",
+      "title": "save current filters via /results button and see them on /favorites",
+      "outcome": "skipped",
+      "attempts": [
+        {
+          "status": null,
+          "retry": null
+        }
+      ],
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Supabase anonymous session not established (no NEXT_PUBLIC_SUPABASE_* in this env) — skip the save flow; it requires real supabase to round-trip the row into /favorites.",
+          "location": {
+            "file": "/home/runner/work/opportunity-filter-engine/opportunity-filter-engine/frontend/e2e/saved-searches.spec.ts",
+            "line": 32,
+            "column": 10
+          }
+        }
+      ]
+    }
+  ],
+  "scope": "Public deployment, report for the integrated production tree, and clean-state tour. CI uses its isolated account service; separate official guest sessions have their own evidence."
+}
