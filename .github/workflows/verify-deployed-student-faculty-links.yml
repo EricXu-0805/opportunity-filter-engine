@@ -1,0 +1,35 @@
+name: Verify both faculty cards after the actual public deployment
+on:
+  push:
+    branches: [audit/pitt-duke-affiliates-20261126]
+    paths:
+      - 'data/audits/observed-faculty-2026-11-26/public-student-faculty-links/release-request.json'
+permissions:
+  contents: read
+jobs:
+  deployed-cards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: data/audits/observed-faculty-2026-11-26/public-student-faculty-links
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install --quiet playwright==1.55.0
+          python -m playwright install --with-deps chromium > "$RUNNER_TEMP/chromium-install.log"
+      - run: |
+          for campus in msu ucb; do
+            LINK_PATH_CAMPUS="$campus" python data/audits/observed-faculty-2026-11-26/public-student-faculty-links/check_release.py "public-faculty-links/$campus" || failed=1
+          done
+          exit "${failed:-0}"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: shipped-public-faculty-links
+          path: public-faculty-links
