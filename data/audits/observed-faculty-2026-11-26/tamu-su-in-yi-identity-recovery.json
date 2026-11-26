@@ -1,0 +1,145 @@
+{
+  "candidate": "dd9788759db71960f20cfb48c7ff2b6bad4979aa",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1448",
+  "real_campus_baseline": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/c3315af2075c18df998d38f4f5d4b0811bc21e1d/data/audits/observed-faculty-2026-11-26/tamu-su-in-yi-original-detail.json",
+  "source_population": {
+    "engineering_directory": 1578,
+    "electrical_faculty": 77,
+    "electrical_cards_with_individual_links_and_contacts": 77,
+    "confirmed_current_personal_contact_frequency": 1,
+    "all_numeric_person_ids_equal_array_position": true
+  },
+  "independent_refresh_control_scope": "The real school feed was replayed with individual cards altered to exercise spelling, source outages, namesakes and recent profile moves. These are local controlled replays, not campus observations of duplicate people.",
+  "name_controls": {
+    "current": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 77,
+      "independently_emitted_homonym_ids": []
+    },
+    "moved unhyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 77,
+      "independently_emitted_homonym_ids": []
+    },
+    "moved hyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 77,
+      "independently_emitted_homonym_ids": []
+    },
+    "no independent contact or person page unhyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 76,
+      "independently_emitted_homonym_ids": []
+    },
+    "no independent contact or person page hyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 76,
+      "independently_emitted_homonym_ids": []
+    },
+    "homonym before unhyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 78,
+      "independently_emitted_homonym_ids": [
+        "faculty-tamu-ece-984c7dae"
+      ]
+    },
+    "homonym after unhyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 78,
+      "independently_emitted_homonym_ids": [
+        "faculty-tamu-ece-984c7dae"
+      ]
+    },
+    "homonym alone unhyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 77,
+      "independently_emitted_homonym_ids": [
+        "faculty-tamu-ece-984c7dae"
+      ]
+    },
+    "homonym before hyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 78,
+      "independently_emitted_homonym_ids": [
+        "faculty-tamu-ece-984c7dae"
+      ]
+    },
+    "homonym after hyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 78,
+      "independently_emitted_homonym_ids": [
+        "faculty-tamu-ece-984c7dae"
+      ]
+    },
+    "homonym alone hyphenated": {
+      "historical_kept": true,
+      "current_kept_or_moved": true,
+      "no_unconfirmed_sighting": true,
+      "source_fetched": 77,
+      "independently_emitted_homonym_ids": [
+        "faculty-tamu-ece-984c7dae"
+      ]
+    }
+  },
+  "consecutive_profile_move_and_recovery": [
+    {
+      "source_supplied_link": true,
+      "historical_kept": true,
+      "kept_expected_current_personal_page": true,
+      "fetched": 77
+    },
+    {
+      "source_supplied_link": false,
+      "historical_kept": true,
+      "kept_expected_current_personal_page": true,
+      "fetched": 77
+    },
+    {
+      "source_supplied_link": false,
+      "historical_kept": true,
+      "kept_expected_current_personal_page": true,
+      "fetched": 77
+    },
+    {
+      "source_supplied_link": true,
+      "historical_kept": true,
+      "kept_expected_current_personal_page": true,
+      "fetched": 77
+    }
+  ],
+  "directory_url_controls": [
+    "trailing slash",
+    "fragment",
+    "query parameter"
+  ],
+  "independent_directory_url_controls_passed": 3,
+  "local_selected_regressions_passed": 932,
+  "exact_current_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45861266219",
+  "pending": [
+    "current hosted CI",
+    "merge",
+    "deployment",
+    "actual saved detail and faculty link",
+    "scheduled campus refresh"
+  ]
+}
