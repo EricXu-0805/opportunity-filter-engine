@@ -7,7 +7,8 @@ from check import SITE, confirm_school, expect, home, reads, sessions, sync_play
 
 marker='An invented archive note, Fictional Journal (2024).'
 title='An invented archive note'
-guidance='Review source lines without a matching field'
+adjacent='Prepared synthetic field diagrams.'
+guidance='Review source text without a matching field'
 fixed=os.environ['PDF_ACCEPTANCE_MODE']=='fixed'
 with sync_playwright() as pw:
     browser=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
@@ -22,13 +23,14 @@ with sync_playwright() as pw:
     page.locator('#major').select_option(label='Computer Science')
     page.locator('#grade').select_option(label='Sophomore')
     doc=browser.new_page()
-    doc.set_content(''.join('<p>'+s+'</p>' for s in ['Synthetic Unmapped Example','scholar@example.com','Publications',marker]))
+    doc.set_content(''.join('<p>'+s+'</p>' for s in ['Synthetic Unmapped Example','scholar@example.com | '+adjacent,'Publications',marker]))
     pdf=doc.pdf();doc.close()
     page.locator('input[type=file][accept*="pdf"]').first.set_input_files({'name':'fictional-citation.pdf','mimeType':'application/pdf','buffer':pdf})
     expect(page.get_by_role('button',name='Remove file')).to_be_visible(timeout=55000)
     master=page.locator('#resume-master')
     master.get_by_text('View complete current résumé source',exact=True).click()
     expect(master.locator('pre').first).to_contain_text(marker)
+    expect(master.locator('pre').first).to_contain_text('scholar@example.com | '+adjacent)
     master.get_by_text('Open full résumé editor',exact=True).click()
     master.get_by_role('button',name='Add candidates from my résumé').click()
     status=master.get_by_role('status').filter(has_text='quoted from your résumé')
@@ -40,6 +42,8 @@ with sync_playwright() as pw:
         expect(prompt).to_be_visible()
         prompt.click()
         expect(prompt.locator('..')).to_contain_text(marker)
+        expect(prompt.locator('..')).to_contain_text(adjacent)
+        expect(prompt.locator('..')).not_to_contain_text('scholar@example.com')
         expect(prompt.locator('..')).to_contain_text('Add any missing details in their section')
     else:
         expect(prompt).to_have_count(0)
@@ -57,7 +61,7 @@ with sync_playwright() as pw:
     assert pub['title']['value']==title and pub['title']['status']=='confirmed' and pub['title']['source']=={'kind':'manual'}
     assert marker in stored['profile_data']['resume_text']
     receipt={'site':SITE,'time':datetime.now(timezone.utc).isoformat(),'frontend_sha':fresh.locator('html').get_attribute('data-release-sha'),
-             'backend_sha':fresh.request.get(SITE+'/api/health').json()['release_sha'],'unlabelled_line':marker,
+             'backend_sha':fresh.request.get(SITE+'/api/health').json()['release_sha'],'unlabelled_line':marker,'unmatched_text_next_to_extracted_email':adjacent,
              'automatic_publication_record_count':0,'notice_identifies_missing_line':fixed,'review_status_before_manual_add':status.inner_text(),
              'manual_title_survived_first_party_read':pub['title']['value'],'first_party_read_revision':stored['revision']}
     out=Path('m11-results');out.mkdir(exist_ok=True);(out/'receipt.json').write_text(json.dumps(receipt,indent=2))
