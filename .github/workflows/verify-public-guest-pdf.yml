@@ -8,10 +8,35 @@ permissions:
 jobs:
   public:
     runs-on: ubuntu-24.04
-    timeout-minutes: 7
+    timeout-minutes: 30
+    env:
+      OFE_EXPECTED_SITE_SHA: db3e8229b64e781b4dc74cddfe2c4acaa13d5896
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - run: python -m pip install --quiet playwright==1.55.0
-      - run: python -u scripts/verify_public_guest_pdf_390.py --independent-github-skill --verify-match-input
+      - name: Wait for the official frontend and backend to serve the requested release
+        run: |
+          python -u - <<'PYWAIT'
+          import json,os,re,time
+          from urllib.request import urlopen
+          from urllib.error import URLError
+          wanted=os.environ['OFE_EXPECTED_SITE_SHA']
+          previous=None
+          for _ in range(27):
+              try:
+                  with urlopen('https://joinalab.com/',timeout=20) as response:
+                      html=response.read().decode()
+                  with urlopen('https://joinalab.com/api/health',timeout=20) as response:
+                      backend=json.load(response).get('release_sha')
+                  match=re.search(r'data-release-sha="([0-9a-f]{40})"',html)
+                  current=(match.group(1) if match else None,backend)
+                  if current!=previous:print('Public release',current,flush=True)
+                  previous=current
+                  if current==(wanted,wanted):break
+              except (URLError,TimeoutError,ValueError) as err:print(type(err).__name__,flush=True)
+              time.sleep(45)
+          else:raise SystemExit('Public release not converged; no test account was created')
+          PYWAIT
+      - run: python -u scripts/verify_public_guest_pdf_390.py --independent-github-skill --verify-match-input --expect-retained --confirm-independent-level --historical-tailor --historical-email

@@ -1,6 +1,6 @@
 """Normal first-party anonymous profile upload and fresh 390px read. Synthetic data only."""
 from datetime import datetime, timezone
-import json, time, sys
+import json, os, re, time, sys
 from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
 
@@ -15,6 +15,8 @@ listing_id = 'simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95'
 match_case = '--verify-match-input' in sys.argv
 if skill_case: marker += ' PyTorch'
 if match_case: marker += ' MATLAB'
+confirm_case = '--confirm-independent-level' in sys.argv
+if confirm_case: marker += ' SPSS'
 match_reads = []
 receipt = {'site':site,'only_synthetic_guest':True,'viewports':[],'started':datetime.now(timezone.utc).isoformat()}
 records = []
@@ -101,6 +103,14 @@ with sync_playwright() as pw:
     p=ctx.new_page();p.set_default_timeout(30000)
     try:
         go(p)
+        release = p.locator('html').get_attribute('data-release-sha')
+        assert release and re.fullmatch('[a-f0-9]{40}', release)
+        if os.environ.get('OFE_EXPECTED_SITE_SHA'):
+            assert release == os.environ['OFE_EXPECTED_SITE_SHA'], 'Unexpected release on the live host'
+        health = p.request.get(site+'/api/health')
+        assert health.ok and health.json().get('release_sha') == release, 'Wait for the backend and frontend to serve the verified revision'
+        receipt['release_sha'] = release
+        receipt['backend_release_sha'] = health.json()['release_sha']
         for _ in range(80):
             p.wait_for_timeout(200)
             if auth_sessions and not p.get_by_test_id('hydration-note').is_visible(): break
@@ -169,6 +179,14 @@ with sync_playwright() as pw:
                     def by_name(d,n):return next((x for x in d.get('skills',[]) if x['name']==n),None)
                     before=read_owned()['profile_data']
                     assert by_name(before,'PyTorch')['source']=='resume' and before['name']=='Synthetic PDF check' and marker in before['resume_text']
+                    if confirm_case:
+                        assert by_name(before,'SPSS')['source']=='resume' and not by_name(before,'SPSS').get('confirmed')
+                        pg.get_by_role('button',name=re.compile('保持 SPSS 的当前水平')).click()
+                        for _ in range(100):
+                            pg.wait_for_timeout(200)
+                            affirmed=by_name(read_owned()['profile_data'],'SPSS')
+                            if affirmed.get('confirmed'):break
+                        assert affirmed['confirmed'] is True
                     github=pg.locator('#github_url')
                     github.fill('https://github.com/pytorch')
                     github.locator('..').get_by_role('button').click()
@@ -234,6 +252,10 @@ with sync_playwright() as pw:
                     expect(fresh.get_by_role('button',name='移除文件',exact=True)).to_have_count(0)
                     raw=read_owned()
                     assert raw==final
+                    if confirm_case:
+                        confirmed=by_name(raw['profile_data'],'SPSS')
+                        assert confirmed and confirmed['confirmed'] and not confirmed.get('evidence') and not confirmed.get('github_receipt')
+                        receipt['student_confirmed_skill']={'name':'SPSS','user_action':'keep suggested level in the form','level_after_removal':confirmed['level'],'old_pdf_evidence_removed':True}
                     surviving=by_name(raw['profile_data'],'PyTorch')
                     if '--expect-retained' in sys.argv:
                         assert surviving and surviving['source']=='github' and repo_evidence[0]['repo'] in surviving['evidence'] and not surviving.get('confirmed'),surviving
@@ -253,6 +275,9 @@ with sync_playwright() as pw:
                         assert match_reads and len(repo_evidence)==prior_imports,'fresh matches must use the already saved skills'
                         skills={s['name']:s for s in match_reads[-1]['skills']}
                         assert 'MATLAB' not in skills and 'Python' in skills
+                        if confirm_case:
+                            assert skills['SPSS'].get('confirmed') is True and not skills['SPSS'].get('evidenced')
+                            receipt['student_confirmed_skill']['in_fresh_match']=True
                         if '--expect-retained' in sys.argv:
                             assert skills['PyTorch']['source']=='github' and skills['PyTorch']['evidenced'] is True and not skills['PyTorch'].get('confirmed')
                         else: assert 'PyTorch' not in skills
