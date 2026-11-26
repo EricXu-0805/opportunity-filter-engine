@@ -598,6 +598,9 @@ def majors_basis(canonical: dict) -> tuple[str | None, dict | None]:
     facts' majors row cannot disagree. An inference stamp wins; a program
     spec's unstamped list is `configured` unless its page text states it.
     """
+    host_quote = host_program_terms.quote(canonical, "majors")
+    if host_quote:
+        return None, host_quote
     basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
     if basis is not None or quote is not None:
         return basis, quote

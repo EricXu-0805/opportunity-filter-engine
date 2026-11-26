@@ -14,6 +14,17 @@ _SMU_PAGE = (
 _SMU_STIPEND = "$5,600 stipend"
 _SMU_YEARS = ("sophomore", "junior")
 _SMU_CITIZENSHIP = "U.S. citizen or permanent resident"
+_CRISP_MAJORS = ("Biomedical science", "Behavioral science")
+_SMU_MAJORS = ("Mathematics", "Statistics", "Computer Science", "Social science")
+_CRISP_STUDY = (
+    "CRISP accepts incoming first-year students and current undergraduates majoring in biomedical or "
+    "behavioral science. Applicants must still be working toward their undergraduate degree when the "
+    "program begins. Medical students and residents are ineligible."
+)
+_SMU_STUDY = (
+    "SMU has two academic routes. Students majoring in mathematics, statistics or computer science "
+    "must also be interested in social science. Social science majors can apply if they are interested in data science."
+)
 _CRISP_LOCATION_PAGE = "https://cancer.iu.edu/education/summer/index.html"
 _CRISP_LOCATION_QUOTE = "The program will be held in-person at the cancer center in Indianapolis."
 # The application portal and the campus program page describe the same award.
@@ -24,9 +35,11 @@ _SMU_QUOTES = {
     "paid": (_SMU_PAGE, "$5600 stipend"),
     "compensation": (_SMU_PAGE, "$5600 stipend"),
     "duration": (SMU_WINDOW.page, "The REU runs each summer for eight weeks"),
+    "majors": (_SMU_PAGE, "major in social science and interest in data science"),
     "class_year": (_SMU_PAGE, "Completed second or third year of college or university with a strong academic record"),
 }
 _CRISP_QUOTES = {
+    "majors": (_CRISP_PAGE, "a biomedical or behavioral science major"),
     "location": (_CRISP_LOCATION_PAGE, _CRISP_LOCATION_QUOTE),
     "remote_option": (_CRISP_LOCATION_PAGE, _CRISP_LOCATION_QUOTE),
     "paid": (_CRISP_PAGE, "Receive a stipend (payment)"),
@@ -60,10 +73,19 @@ def apply_terms(record: dict) -> None:
     if not isinstance(eligibility, dict):
         return
     inferred = record["metadata"].get("inferred_fields")
+    crisp = record["id"] == CRISP_ID
+    eligibility["majors"] = list(_CRISP_MAJORS if crisp else _SMU_MAJORS)
+    # The flat list feeds matching. Preserve the host's paired interests and
+    # student stage for readers, alongside the original source's description.
+    requirement = _CRISP_STUDY if crisp else _SMU_STUDY
+    clean = record.get("description_clean") or ""
+    if not clean.startswith(requirement):
+        record["description_clean"] = (requirement + "\n\n" + clean).rstrip()
     record["paid"] = "yes"
     if isinstance(inferred, dict):
         inferred.pop("paid", None)
-    if record["id"] == CRISP_ID:
+        inferred.pop("eligibility.majors", None)
+    if crisp:
         eligibility["min_gpa"] = 3.2
         if record.get("location") == "Bloomington, IN":
             record["metadata"]["superseded_directory_location"] = {
@@ -109,6 +131,7 @@ def quote(record: dict, field: str) -> dict | None:
     if not isinstance(eligibility, dict):
         eligibility = {}
     observed = {
+        "majors": (eligibility.get("majors"), list(_CRISP_MAJORS if record["id"] == CRISP_ID else _SMU_MAJORS)),
         "paid": (record.get("paid"), "yes"),
         "compensation": (record.get("compensation_details"), _SMU_STIPEND),
         "duration": (record.get("duration"), "8 weeks"),

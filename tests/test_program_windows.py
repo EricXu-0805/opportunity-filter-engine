@@ -619,6 +619,22 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert public_opening(row)["on"] == opening
         timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
         assert timing["explicit"]["deadline"] == close and timing["quotes"]["deadline"]["source_url"] == page
+        majors = ["Biomedical science", "Behavioral science"] if row is crisp else [
+            "Mathematics", "Statistics", "Computer Science", "Social science",
+        ]
+        assert row["eligibility"]["majors"] == majors
+        loaded = data_loader._sanitize_opportunity(copy.deepcopy(row))
+        card = project_public_opportunity_payload(loaded, loaded)
+        assert "majors_attribution" not in card
+        detail = build_detail_fields(card, loaded)["fields"]["eligibility"]
+        assert detail["explicit"]["majors"] == majors
+        host = crisp_host if row is crisp else smu_host.lower()
+        assert detail["quotes"]["majors"]["source_url"] == host
+        text = card["description_clean"]
+        if row is crisp:
+            assert text.count("incoming first-year students") == 1 and "behavioral science" in text
+        else:
+            assert text.count("two academic routes") == 1 and "Social science majors can apply" in text
         first = copy.deepcopy(row)
         apply_program_window(row)
         assert row == first
@@ -663,6 +679,9 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
         assert changed["deadline"].startswith("2028") and changed["deadline_is_estimate"]
         assert changed["eligibility"]["min_gpa"] is None and changed["paid"] == new["paid"] != "yes"
         assert changed["compensation_details"] != "$5,600 stipend" and host_program_terms.checked_window(changed) is None
+        assert host_program_terms.quote(changed, "majors") is None
+        assert "two academic routes" not in changed["description_clean"]
+        assert "incoming first-year students" not in changed["description_clean"]
         assert changed["location"] != "Indianapolis, IN" and changed["eligibility"]["work_auth_notes"] != "U.S. citizen or permanent resident"
     for item in (directory(crisp_url, "2/1/27", smu_host), directory(SMU.directory_url, "2/15/27", crisp_host),
                  normalize_award({**award, "awardeeName": "Another university"}),
