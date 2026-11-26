@@ -1,0 +1,97 @@
+{
+  "checked_utc": "2026-11-26T13:34:47.681317+00:00",
+  "verified_main": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "closed_after_source_owner_confirmation": [
+    {
+      "number": 1342,
+      "head": "5bf3312ac45fd5ac513853ff55e7cda91818c328",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "state": "closed",
+      "comment": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1342#issuecomment-7193487989",
+      "branch_preserved": true
+    },
+    {
+      "number": 1348,
+      "head": "b7c5a2ad63825dedc2c6fe196725e758d3253f22",
+      "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+      "state": "closed",
+      "comment": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1348#issuecomment-7193470697",
+      "branch_preserved": true
+    }
+  ],
+  "open_for_scheduled_source_acceptance": {
+    "1336": {
+      "state": "OPEN",
+      "head": "73a045fb51298f4d90b45aa43b4057e0d5b2d1c5",
+      "source_commit_is_ancestor_of_main": true,
+      "observed_release_evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45816084039",
+      "remaining": [
+        "2026-11-28 Caltech",
+        "2026-11-29 national Wisconsin/UND"
+      ]
+    },
+    "1349": {
+      "state": "OPEN",
+      "head": "8c73c9b25ddc40503e08d5945c40dbbf2baf80b4",
+      "source_commit_is_ancestor_of_main": true,
+      "observed_release_evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/e6c8ca1d697f9b3ee23e49bf3eb0e2f3b08174e6/data/audits/maintenance-2026-11-26/dart-closed-public-detail.json",
+      "remaining": [
+        "2026-12-02 W&L original DART ID"
+      ]
+    },
+    "1351": {
+      "state": "OPEN",
+      "head": "a2339fd37ec0a748cec59483e2a12f7b723cdca2",
+      "source_commit_is_ancestor_of_main": true,
+      "observed_release_evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/29a398dd56ef40d922d5e4b1945de626cf4e6f8f/data/audits/pending-public-20261126/maryland-physics-production-after-743e6fa6.json",
+      "remaining": [
+        "2026-12-02 Maryland Physics: 60 active appointments, retained IDs, two archived records"
+      ]
+    },
+    "1352": {
+      "state": "OPEN",
+      "head": "76a85762f63daeff05c9ddc830affe06925a575b",
+      "source_commit_is_ancestor_of_main": true,
+      "observed_release_evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/6fedd41ed1418129bfb203bc9e0ccf814d83bda4/data/audits/maintenance-2026-11-26/public-program-controls-final.json",
+      "remaining": [
+        "2026-11-30 UCR and Boston College",
+        "2026-12-02 Maryland Honors and Duke FOCUS",
+        "2026-12-03 Delaware"
+      ]
+    }
+  },
+  "previously_merged_via_main": {
+    "1341": {
+      "github_state": "MERGED",
+      "head": "0046891306c551e524ef1130eee02b68de0dbeb1",
+      "remaining_or_separate_evidence": "UCSB next actual collector on November 28; live disclosures already rechecked."
+    },
+    "1343": {
+      "github_state": "MERGED",
+      "head": "1e1f637ac0ab2ebf2aa2ef67997ad672671379d9",
+      "remaining_or_separate_evidence": "Maryland Mathematics 61 production detail IDs rechecked; December 2 collector outstanding."
+    },
+    "1344": {
+      "github_state": "MERGED",
+      "head": "84154883f5f4da209b766c06d7b9d6d68e4951ad",
+      "remaining_or_separate_evidence": "Colby November 28 and Haverford December 2 real source runs must exercise refusal/recovery behavior."
+    },
+    "1353": {
+      "github_state": "MERGED",
+      "head": "836499d534736e97804076cd2c6e623cd6a0c5f0",
+      "remaining_or_separate_evidence": "About media passed four production desktop/mobile language scenarios; owner-approved human observation remains pending."
+    },
+    "1354": {
+      "github_state": "MERGED",
+      "head": "996a630ed93b1f1e8a0d2884287edbfb663a89cc",
+      "remaining_or_separate_evidence": "Real old guest persistence and separately confirmed browser recovery are tracked in the profile acceptance record, with cross-deployment end-to-end evidence separately pending."
+    },
+    "1356": {
+      "github_state": "MERGED",
+      "head": "c6bfad343a3b2e7efeea7eed1d306f06b264ab13",
+      "remaining_or_separate_evidence": "Berkeley owner is independently reconciling all 10 public detail destinations on the sixth release."
+    }
+  },
+  "rotation": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/1b2c5b397c4ddd374d7e2cb4115e7066185fd75d/scripts/refresh_rotation.py",
+  "schedule_utc": "06:07, actual workflow completion and materialized source results required"
+}
