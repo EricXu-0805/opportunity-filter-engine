@@ -1,0 +1,40 @@
+{
+  "production_site": "https://joinalab.com/dashboard",
+  "merged_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1298",
+  "deployment_statuses": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8078795070/statuses",
+  "production_deployment": 8078795070,
+  "vercel": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/6gg4kojm9aM339t14Uvm8yKpPtop",
+  "deployment_success_utc": "2026-11-26T07:08:13Z",
+  "browser_workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773340001",
+  "scope": "Two newly created, isolated production guest contexts. The site signed them in through real Supabase Auth and loaded Favorites from the live account service. Only the current guest’s empty browser import key was replaced with malformed synthetic text. The evidence captures the status message and clicks its distinct recovery link. No existing account sessions, production import rows, or personal content were accessed.",
+  "source": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/5e0170785b69222bb04a6bac58e50804e8193862/data/audits/check_public_dashboard_20261126.py",
+  "en": {
+    "expected_frontend_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "language": "en",
+    "site": "https://joinalab.com",
+    "signup": true,
+    "real_favorites_read": true,
+    "message": "Could not check deadlines saved in this browser.",
+    "link_label": "Review browser imports in Favorites",
+    "destination": "/favorites",
+    "observed_utc": "2026-11-26T07:10:46.7127711Z",
+    "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773340001/job/139750971816",
+    "image_path": "dashboard-en.png",
+    "screenshot_sha256": "7e55267e122f31aad20f0362f14a8d02e7b0a6e829933d7e3a257a868f523958"
+  },
+  "zh": {
+    "expected_frontend_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "language": "zh",
+    "site": "https://joinalab.com",
+    "signup": true,
+    "real_favorites_read": true,
+    "message": "未能读取此浏览器中保存的截止日期。",
+    "link_label": "前往收藏页查看本机导入的机会",
+    "destination": "/favorites",
+    "observed_utc": "2026-11-26T07:10:49.7530445Z",
+    "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45773340001/job/139750971496",
+    "image_path": "dashboard-zh.png",
+    "screenshot_sha256": "3ddc2bfe45d6dad0cd1d5043b195abbf23486aa01a155fb809e9d0182ab6a164"
+  }
+}
