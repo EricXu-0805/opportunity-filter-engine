@@ -93,7 +93,7 @@ const CHINESE_LIST_LABEL = /(?:^|(?<=[\t|•]))[ ]*(?:主修|相关|相關|核�
 // Any other label ("Completed:", "Skills:"): where a list stops. Its last
 // word is enough to stop at, and more could take in the course before it.
 const ANY_LABEL = /(?<![\p{L}\p{N}])(?:\p{Lu}[\p{L}'’]*|\p{Script=Han}{1,12})[ \t]*[:：]/gu;
-const FIELD_BREAK = /[\t|。！？]/gu;
+const FIELD_BREAK = /[\t|•。！？]/gu;
 
 /** The course lists on one line of résumé text. Each starts after a label
  *  ("Coursework:", "Relevant Courses -", "Current courses:") and runs to the

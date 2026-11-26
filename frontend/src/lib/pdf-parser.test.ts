@@ -20,7 +20,7 @@ vi.mock('pdfjs-dist', () => ({
 
 import { parseResumePDF } from './pdf-parser';
 import { MAX_RESUME_TEXT_CHARACTERS, weakWrapEvidence, wrapEvidence } from './resume-input';
-import { courseRows } from './course-status';
+import { courseLists, courseRows, listedCourses } from './course-status';
 
 type MockPdf = {
   numPages: number;
@@ -30,6 +30,13 @@ type MockPdf = {
     getTextContent: () => Promise<{ items: Array<{ str: string; hasEOL?: boolean } | { type: string }> }>;
   }>;
 };
+
+it('ends a coursework field at the bullet that opens the next résumé field', () => {
+  const names = (line: string) => courseLists(line).flatMap(({ start, end }) =>
+    listedCourses(line.slice(start, end)).map((course) => course.name));
+  expect(names('主修课程：统计 • 核心课程：算法')).toEqual(['统计', '算法']);
+  expect(names('主修课程：数据结构 • 推荐教材')).toEqual(['数据结构']);
+});
 
 function fakePdf(pages: string[]): MockPdf {
   return {
