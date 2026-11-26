@@ -1,0 +1,561 @@
+{
+  "last_verified_at": "2026-11-26T19:01:07+00:00",
+  "reviewed_sha": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "tree": "8d4445193195672efa10db763b90db4ba51d3741",
+  "current_remote_main": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+  "predecessor": {
+    "number": 1453,
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1453",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "integrate/verified-maintenance-20261126-b17",
+    "headRefName": "integrate/verified-maintenance-20261126-b18",
+    "headRefOid": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+    "mergeable": "MERGEABLE",
+    "mergedAt": null
+  },
+  "source_and_integration_runs": {
+    "#1423": {
+      "pr": {
+        "number": 1423,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1423",
+        "state": "OPEN",
+        "isDraft": true,
+        "baseRefName": "fix/decode-faculty-research-html",
+        "headRefName": "fix/utexas-cui-reviewed-paper-ownership",
+        "headRefOid": "481e2b1a5321dd3bdb69625e40d6292aee0526d4",
+        "mergeable": "MERGEABLE",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45840995643,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45840995643",
+        "sha": "481e2b1a5321dd3bdb69625e40d6292aee0526d4",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 139982287397
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 139982424989
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 139982425006
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 139982425039
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 139982425063
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140004224116
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45871422080,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45871422080",
+        "sha": "481e2b1a5321dd3bdb69625e40d6292aee0526d4",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140087529266
+          }
+        ]
+      }
+    },
+    "#1454": {
+      "pr": {
+        "number": 1454,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1454",
+        "state": "OPEN",
+        "isDraft": false,
+        "baseRefName": "fix/ucsd-nano-verified-jacobs-profile",
+        "headRefName": "fix/ucsd-nano-emeritus-appointments",
+        "headRefOid": "cf6d47b5956337d37663fbbab578fd3d2e326339",
+        "mergeable": "MERGEABLE",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45874067009,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874067009",
+        "sha": "cf6d47b5956337d37663fbbab578fd3d2e326339",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096573002
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096657769
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096657780
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096657826
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096657877
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140109864839
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45874108408,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874108408",
+        "sha": "cf6d47b5956337d37663fbbab578fd3d2e326339",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096721490
+          }
+        ]
+      }
+    },
+    "#1455": {
+      "pr": {
+        "number": 1455,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1455",
+        "state": "OPEN",
+        "isDraft": false,
+        "baseRefName": "main",
+        "headRefName": "fix/m180-archived-faculty-summary",
+        "headRefOid": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+        "mergeable": "UNKNOWN",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45869271141,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45869271141",
+        "sha": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140080121617
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140080218724
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140080218779
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140080218800
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140080218879
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140094707050
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45869271091,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45869271091",
+        "sha": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140080120978
+          }
+        ]
+      }
+    },
+    "#1456": {
+      "pr": {
+        "number": 1456,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1456",
+        "state": "OPEN",
+        "isDraft": true,
+        "baseRefName": "integrate/verified-maintenance-20261126-b17",
+        "headRefName": "fix/wisc-biological-interactions-eligibility",
+        "headRefOid": "4ea77371662ff9ce7998cf650dc0bb4d1914b7b6",
+        "mergeable": "MERGEABLE",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45874982221,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874982221",
+        "sha": "4ea77371662ff9ce7998cf650dc0bb4d1914b7b6",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101634256
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101697199
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101697250
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101697274
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101697297
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140113029636
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45875858608,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875858608",
+        "sha": "4ea77371662ff9ce7998cf650dc0bb4d1914b7b6",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140102632742
+          }
+        ]
+      }
+    },
+    "#1457": {
+      "pr": {
+        "number": 1457,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1457",
+        "state": "OPEN",
+        "isDraft": false,
+        "baseRefName": "fix/ucsd-nano-emeritus-appointments",
+        "headRefName": "fix/ucsd-nano-reviewed-adjunct-appointments",
+        "headRefOid": "b25e51c9527feb28aabaee7fddabe873c6ec57be",
+        "mergeable": "MERGEABLE",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45874151501,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874151501",
+        "sha": "b25e51c9527feb28aabaee7fddabe873c6ec57be",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096866340
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096951023
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096951120
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096951124
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096951284
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140108562684
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45874151799,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874151799",
+        "sha": "b25e51c9527feb28aabaee7fddabe873c6ec57be",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140096868482
+          }
+        ]
+      }
+    },
+    "#1458": {
+      "pr": {
+        "number": 1458,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1458",
+        "state": "OPEN",
+        "isDraft": true,
+        "baseRefName": "fix/wisc-biological-interactions-eligibility",
+        "headRefName": "fix/smu-crisp-host-academic-routes",
+        "headRefOid": "a0d2847795ca196039c2a89724ec4c34654bf828",
+        "mergeable": "MERGEABLE",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45875354418,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875354418",
+        "sha": "a0d2847795ca196039c2a89724ec4c34654bf828",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140100927331
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101018866
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101018932
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101018965
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101019748
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140117536216
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45875858219,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875858219",
+        "sha": "a0d2847795ca196039c2a89724ec4c34654bf828",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140102629392
+          }
+        ]
+      }
+    },
+    "B19": {
+      "pr": {
+        "number": 1459,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1459",
+        "state": "OPEN",
+        "isDraft": true,
+        "baseRefName": "integrate/verified-maintenance-20261126-b18",
+        "headRefName": "integrate/verified-maintenance-20261126-b19",
+        "headRefOid": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+        "mergeable": "MERGEABLE",
+        "mergedAt": null
+      },
+      "exact_standard_run": {
+        "run": 45875551275,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875551275",
+        "sha": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Decide (run or skip the suite)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140103673371
+          },
+          {
+            "name": "Frontend (typecheck + build)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140103772587
+          },
+          {
+            "name": "E2E (Playwright)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140103772592
+          },
+          {
+            "name": "Migrations (Flow B merge + CLI replay)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140103772607
+          },
+          {
+            "name": "Backend (lint + pytest)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140103772638
+          },
+          {
+            "name": "Deploy backend (Render hook)",
+            "conclusion": "skipped",
+            "status": "completed",
+            "databaseId": 140115604088
+          }
+        ]
+      },
+      "exact_security_run": {
+        "run": 45875554123,
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875554123",
+        "sha": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Security advisory (non-blocking)",
+            "conclusion": "success",
+            "status": "completed",
+            "databaseId": 140101608330
+          }
+        ]
+      }
+    },
+    "B19 Chromium": {
+      "run": 45875556151,
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875556151",
+      "sha": "c351751f85229127d5d33251fadbacc78014adeb",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "details",
+          "conclusion": "success",
+          "status": "completed",
+          "databaseId": 140101609440
+        }
+      ]
+    }
+  },
+  "open_gates": "Separate native pull_request protection against actual main after B18 deploys, merge reconciliation with current production data, release SHA checks and scheduled source reads."
+}
