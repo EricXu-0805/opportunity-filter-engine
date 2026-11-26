@@ -327,3 +327,68 @@ def test_berkeley_lab_suli_keeps_its_id_and_uses_the_doe_application():
     assert row["eligibility"]["min_gpa"] == 3.0
     assert row["eligibility"]["citizenship_required"] is True
     assert row["eligibility"]["preferred_year"] == []
+
+
+def test_two_aggregated_estimates_use_the_reviewed_host_date_only_for_the_same_cohort():
+    from src.collectors.base import RawOpportunity
+    from src.collectors.nsf_reu import normalize_award
+    from src.collectors.uiuc_sro import raw_to_normalized
+
+    award = {"id": "2447669", "title": "REU Site: Genes & the Environment", "startDate": "11/01/2025"}
+    directory = "https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program"
+    raw = RawOpportunity("uiuc_sro", "https://researchops.web.illinois.edu/?page=9", "Stress", "", directory,
+                         extra_fields={"deadline_raw": "Anticipated 2/15/27"})
+    funded = normalize_award(award)
+    listed = raw_to_normalized(raw)
+    for row, date_text, host in (
+        (funded, "2026-03-15", "https://med.und.edu/education-training/biomedical-sciences/reu/index.html"),
+        (listed, "2027-02-10", "https://wiscience.wisc.edu/research/summer_research_program/"),
+    ):
+        assert (row["deadline"], row["is_rolling"], row["deadline_is_estimate"]) == (date_text, False, False)
+        timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
+        assert timing["explicit"]["deadline"] == date_text
+        assert timing["quotes"]["deadline"]["source_url"] == host
+        assert "deadline" not in row["metadata"].get("inferred_fields", {})
+        assert not row["metadata"].get("deadline_note")
+        for change in ({"id": "different"}, {"url": host}, {"source_url": host},
+                       {"deadline": "2028-02-15", "deadline_is_estimate": True}):
+            moved = {**row, **change}
+            assert reviewed_window(moved) is None
+            before = copy.deepcopy(moved)
+            apply_program_window(moved)
+            assert moved == before
+
+    assert normalize_award({**award, "id": "2447670"})["deadline"] == "2026-02-15"
+    assert normalize_award({**award, "startDate": "11/01/2026"})["deadline"] == "2027-02-15"
+    raw.extra_fields = {"deadline_raw": "2/15/27", "deadline_anticipated": "No"}
+    assert raw_to_normalized(raw)["deadline"] == "2027-02-15"
+    raw.extra_fields = {"deadline_raw": "Anticipated 2/15/27", "program_url": "https://other.example.edu/"}
+    assert raw_to_normalized(raw)["deadline_is_estimate"] is True
+
+
+def test_chen_institute_remains_a_reference_while_the_two_fellowships_have_separate_windows():
+    institute = _row("caltech", "chen_institute")
+    assert institute["metadata"]["reference_only"] is True
+    assert institute["is_rolling"] is False
+    assert not institute["metadata"]["deadline_note"]
+    assert not institute["application"]["application_url"]
+    assert not evidence.target_truth(institute).actionable
+    timing = build_detail_fields(copy.deepcopy(institute), institute)["fields"]["timing"]
+    assert not timing["explicit"].get("rolling")
+    assert not timing["explicit"].get("application_window")
+    assert _row("caltech", "wave_fellows")["deadline"] == "2027-01-08"
+    assert _row("caltech", "surf")["deadline"] == "2027-02-22"
+
+
+def test_wlu_dart_keeps_its_identity_and_closes_the_2026_neuroscience_fellowship(monkeypatch):
+    row = _row("wlu", "wlu_dart")
+    assert row["id"] == "wlu-88e9e20591ba"
+    assert row["department"] == "Neuroscience Program"
+    assert row["eligibility"]["preferred_year"] == []
+    assert row["paid"] == "stipend"
+    assert (row["deadline"], row["is_rolling"]) == ("2026-02-08", False)
+    assert "business research" not in row["keywords"]
+    assert "University of Florida" in row["description"]
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
+    truth = evidence.target_truth(data_loader._sanitize_opportunity(row))
+    assert (truth.actionable, truth.reason_code) == (False, "listing_closed")

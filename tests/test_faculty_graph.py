@@ -1151,6 +1151,37 @@ class TestScrapeLayer:
         assert "Astrophysics / Cosmology & Gravitation" in kws
         assert "Faculty" not in kws and "All Faculty" not in kws
 
+    def test_emory_rollins_research_list_keeps_long_areas_and_excludes_neighboring_lists(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+        from src.collectors.schools.emory_faculty import SCHOOL
+
+        school_dept = next(dept for dept in SCHOOL["departments"] if dept["short"] == "RSPH")
+        profile_url = "https://sph.emory.edu/profile/faculty/avery-sample"
+        # This free-text profile uses a bold paragraph label instead of the
+        # standard taxonomy heading. Its first complete area exceeds the chip limit.
+        interests = ["Access to care and outcomes for adults in rural and remote communities",
+                     "Research ethics"]
+        html = (f"<article><h1>Avery Sample</h1><p><strong>Professional experience</strong></p>"
+                f"<ul><li>Board member</li></ul><p><strong>Students’ Research Interests</strong></p>"
+                f"<ul><li>Someone else’s project</li></ul><p><strong>Research Interests</strong></p>"
+                f"<ul><li><p>{interests[0]}</p></li><li>{interests[1]}</li></ul>"
+                "<p><strong>Courses taught</strong></p><ul><li>Introduction to policy</li></ul></article>")
+        soup = BeautifulSoup(html, "html.parser")
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: soup)
+        config = school_dept["scrape"]["profile_enrich"]
+        _position, research, items, _email, fetched = fg._enrich_profile(profile_url, config, expected_name="Avery Sample")
+        assert fetched and items == ["Research ethics"]
+        assert research == "; ".join(interests)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        [person] = fg._apply_profile_enrich([fg.faculty("Avery Sample", title="Professor", url=profile_url)], config)
+        marked = fg._normalize(SCHOOL, school_dept, person)
+        assert marked["metadata"]["research_areas_raw"] == research
+        assert marked["keywords"] == ["Research ethics"]
+        assert fg._clean_keywords({"keywords": [], "_profile_list_keywords": True,
+                                   "research_areas": "A complete lengthy area, with a geographical qualifier"}) == []
+
     def test_clean_selector_items_dedupes_filters_junk_and_caps(self):
         """The selector harvest is defended even when a selector slightly
         over-captures: dedupe (case-insensitive), drop DQ-junk terms and prose
@@ -4493,6 +4524,52 @@ class TestTheMonthlyPassSkipsACapturedPage:
         stored["metadata"]["research_areas_raw"], stored["keywords"] = raw, keywords
         assert self._fetches(monkeypatch, [stored]) == fetched
 
+    def test_monthly_pass_replaces_inferred_only_topics_then_skips_the_sourced_result(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+        from src.collectors.uiuc_faculty import _carry_forward_enrichment
+        from src.evidence import inferred_method, stamp_inferred
+
+        stored = self._lacking(monkeypatch, "research")
+        stored["keywords"] = ["signal processing", "speech recognition", "statistical learning", "related topic"]
+        stamp_inferred(stored["metadata"], "keywords", "derived:openalex_topics")
+        html = (f"<body><h1>{self._NAME}</h1><h2>Research interests</h2><ul>"
+                "<li>1) Video temporal segmentation, video chaptering, video scene detection</li>"
+                "<li>2) Key-frame extraction</li><li>3) Dense caption generation</li></ul></body>")
+        soup = BeautifulSoup(html, "html.parser")
+        ucb_common._mark_fetched_soup_observation(soup, requested_url=self._URL, final_url=self._URL,
+                                                  observed_at="2026-11-26T09:00:00+00:00")
+        reads = []
+
+        def read(url, **kwargs):
+            reads.append(url)
+            return soup
+
+        monkeypatch.setattr(ucb_common, "fetch_soup", read)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        config = {"research_label_re": fg.RESEARCH_LABEL_RE}
+        listed = fg.faculty(self._NAME, title="Professor", url=self._URL)
+        with fg.run_start_profiles(fg.captured_profile_pages([stored])):
+            [person] = fg._apply_profile_enrich([dict(listed)], config)
+        assert reads == [self._URL]
+        fresh = fg._normalize(self._SCHOOL, self._DEPT, person)
+        _carry_forward_enrichment(stored, fresh)
+        assert fresh["id"] == stored["id"]
+        assert fresh["keywords"] == [
+            "Video temporal segmentation / video chaptering / video scene detection",
+            "Key-frame extraction", "Dense caption generation",
+        ]
+        assert inferred_method(fresh, "keywords") is None
+        assert self._fetches(monkeypatch, [fresh], enrich=config) == []
+
+    def test_stated_research_text_still_counts_beside_inferred_keywords(self, monkeypatch):
+        from src.evidence import stamp_inferred
+
+        stored = self._stored(monkeypatch, "captured")
+        stamp_inferred(stored["metadata"], "keywords", "derived:openalex_topics")
+        assert self._fetches(monkeypatch, [stored]) == []
+
     @pytest.mark.parametrize("key", ["research_selector", "research_items_selector", "research_label_re",
                                      "research_html_re", "research_re", "cap_keywords", "digitalmeasures"])
     def test_every_research_key_reads_research(self, monkeypatch, key):
@@ -5192,3 +5269,30 @@ def test_ucsc_cs_supplement_scopes_people_and_withholds_unread_roster(monkeypatc
         expected = ["Common Professor", "Ian Lane"] if html.startswith(primary) else ["Common Professor"]
         assert [person["name"] for person in people] == expected
         assert bool(cov["partial_render_rows"] or cov["unparsed_rows"]) == blocked
+
+
+@pytest.mark.parametrize(("subject", "degree", "expected"), [
+    ("Judicial Behavior, American Politics", "Ph.D. Emory University", "Judicial Behavior, American Politics"),
+    ("American Politics, Legislative Studies, and Political Economy", "Ph.D. University of Texas at Austin",
+     "American Politics, Legislative Studies, and Political Economy"),
+    ('<span style="color:#333">Comparative Politics, Political Economy, Energy and Environmental Politics</span>',
+     "Ph.D. University of Texas at Austin", "Comparative Politics, Political Economy, Energy and Environmental Politics"),
+    ("Director of Graduate Studies", "Ph.D. University of Connecticut", ""),
+    ("Selected Publications", "Ph.D. University of Connecticut", ""),
+    ("American Politics", "Fall semester, room 112", ""),
+])
+def test_uconn_political_science_subjects_precede_the_persons_doctoral_credential(monkeypatch, subject, degree, expected):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.uconn_faculty import SCHOOL
+
+    html = (f"<article><h1>Avery Sample</h1><p><strong>{subject}</strong></p>"
+            f"<p><em>{degree}</em></p><p><strong>Selected Publications</strong></p></article>")
+    soup = BeautifulSoup(html, "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: soup)
+    school_dept = next(d for d in SCHOOL["departments"] if d["short"] == "POLS")
+    config = school_dept["scrape"]["profile_enrich"]
+    _position, research, _items, _email, fetched = fg._enrich_profile(
+        "https://polisci.uconn.edu/person/avery-sample/", config, expected_name="Avery Sample")
+    assert fetched and research == expected

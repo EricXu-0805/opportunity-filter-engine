@@ -4,7 +4,7 @@ Curated seed records of W&L's undergraduate-research landscape, centered on the
 Provost's Office funding programs (the Summer Research Scholars program and the
 Lenfest summer grants that pair students with faculty mentors), the Student
 Summer Independent Research grants, the Johnson Opportunity Grants for
-independent projects worldwide, the Williams School DART research-internship
+independent projects worldwide, the DART rare-disease research internship
 program, and W&L's student-research showcase portal, plus two research-active
 academic centers (Mudd Center for Ethics, DeLaney Center). URLs curl-verified
 live (HTTP 200) on 2026-07-23.
@@ -112,21 +112,19 @@ SCHOOL: dict = {
                 ),
                 program(
                     "wlu_dart",
-                    "DART Research Internship Program (Williams School, Washington and Lee)",
-                    "https://columns.wlu.edu/wls-dart-internship-program-"
-                    "places-students-in-cutting-edge-research-labs/",
-                    "A Williams School program that places students in "
-                    "cutting-edge research labs, pairing data-analytics and "
-                    "business-research training with hands-on placements in "
-                    "faculty and industry research settings.",
-                    lab_or_program="DART Internship Program",
+                    "DART Research Fellowship — Summer 2026 (Washington and Lee)",
+                    "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web",
+                    "Washington and Lee's Neuroscience Program recruited students for "
+                    "summer research on Niemann-Pick disease type C, supported by Dana’s "
+                    "Angels Research Trust. The 2026 host labs were at the University of "
+                    "Illinois Chicago, the University of Florida and the University of Michigan.",
+                    department="Neuroscience Program",
+                    lab_or_program="DART Fellowship",
                     opportunity_type="internship",
-                    paid="unknown",
-                    preferred_year=["sophomore", "junior", "senior"],
-                    international_friendly="unknown",
-                    keywords=["research internship", "data analytics",
-                              "business research", "labs"],
-                ),
+                    paid="stipend",
+                    compensation="$6,600 fellowship for up to 10 weeks (summer 2026).",
+                    keywords=["neuroscience", "Niemann-Pick disease type C"],
+                ) | {"preferred_year": []},
                 program(
                     "wlu_student_research_portal",
                     "W&L Student Research Showcase Portal",

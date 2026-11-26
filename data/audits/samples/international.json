@@ -1,219 +1,254 @@
 {
- "category": "international",
- "generated_at": "2026-07-31T02:03:44.370517+00:00",
- "seed": 20260731,
- "corpus_records": 131952,
- "risk_pool_gaps": [],
- "samples": [
-  {
-   "sample_id": "international-001",
-   "entity_type": "international",
-   "entity_id": "nsf-reu-2546334",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "no",
-    "citizenship_required": true
-   },
-   "verification_status": "unverified",
-   "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2546334",
-   "source_evidence": "NSF REU solicitation (NSF 22-601 §V) limits REU participation to US citizens/nationals/permanent residents; award page shows no contradicting welcome",
-   "manual_expected_value": "no / citizenship_required true (program-family policy)",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Policy-derived, now stamped policy:nsf_reu_solicitation and cited in work_auth_notes (W11).",
-   "risk_case": "policy_no_nsf_reu"
+  "category": "international",
+  "generated_at": "2026-11-26T09:58:20.998198+00:00",
+  "seed": 20261126,
+  "corpus_records": 149774,
+  "risk_pool_gaps": [],
+  "coverage": {
+    "pool": 137125,
+    "strata": {
+      "policy_no_nsf_reu": 160,
+      "explicit_yes_claim": 543,
+      "citizenship_required": 505,
+      "stays_unknown": 136066
+    }
   },
-  {
-   "sample_id": "international-002",
-   "entity_type": "international",
-   "entity_id": "faculty-architecture-557222c2",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "yes",
-    "citizenship_required": false
-   },
-   "verification_status": "unverified",
-   "source_url": "https://arch.illinois.edu/people/profiles/nmadili-okwumabua/",
-   "source_evidence": "TLS handshake failure to arch.illinois.edu from review vantage (curl + requests)",
-   "manual_expected_value": null,
-   "review_result": "blocked",
-   "error_type": "tls_handshake_failure",
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "The drawn explicit-'yes' risk case could not be verified this round — flagged for the next sampling pass.",
-   "risk_case": "explicit_yes_claim"
-  },
-  {
-   "sample_id": "international-003",
-   "entity_type": "international",
-   "entity_id": "sro-d2f19790",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "no",
-    "citizenship_required": true
-   },
-   "verification_status": "unverified",
-   "source_url": "https://researchops.web.illinois.edu/?page=4",
-   "source_evidence": "TLS handshake failure to researchops.web.illinois.edu from review vantage",
-   "manual_expected_value": null,
-   "review_result": "blocked",
-   "error_type": "tls_handshake_failure",
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": "citizenship_required"
-  },
-  {
-   "sample_id": "international-004",
-   "entity_type": "international",
-   "entity_id": "faculty-bu-clas-92c3e6a0",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://www.bu.edu/classics/faculty-profiles/leah-kronenberg/",
-   "source_evidence": "BU Classical Studies profile has no citizenship/international statement",
-   "manual_expected_value": "unknown",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "No-mention correctly stays unknown; faculty citizenship_required=False is the documented product-policy claim.",
-   "risk_case": "stays_unknown"
-  },
-  {
-   "sample_id": "international-005",
-   "entity_type": "international",
-   "entity_id": "faculty-vt-cee-c9641f9c",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://www.webapps.cee.vt.edu/index.php?category=people&pagetype=bio&do=getprofile&user=rakha.html",
-   "source_evidence": "VT CEE bio page has no citizenship/international statement",
-   "manual_expected_value": "unknown",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "international-006",
-   "entity_type": "international",
-   "entity_id": "faculty-jhu-chem-e4568b88",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://krieger.jhu.edu/people/faculty-directory/",
-   "source_evidence": "Cloudflare challenge on krieger.jhu.edu",
-   "manual_expected_value": null,
-   "review_result": "blocked",
-   "error_type": "waf_challenge",
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "international-007",
-   "entity_type": "international",
-   "entity_id": "faculty-osu-mae-321fe92a",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://mae.osu.edu/people/bons.2",
-   "source_evidence": "OSU MAE profile has no citizenship/international statement",
-   "manual_expected_value": "unknown",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "international-008",
-   "entity_type": "international",
-   "entity_id": "faculty-clemson-biosci-64454373",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://www.clemson.edu/science/academics/departments/biosci/about/profiles/dmoulto",
-   "source_evidence": "Clemson Biological Sciences profile has no citizenship/international statement",
-   "manual_expected_value": "unknown",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "international-009",
-   "entity_type": "international",
-   "entity_id": "faculty-uga-hist-230496e3",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://history.uga.edu/directory/people/stephen-berry",
-   "source_evidence": "UGA History profile has no citizenship/international statement (only nav-chrome matches)",
-   "manual_expected_value": "unknown",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "international-010",
-   "entity_type": "international",
-   "entity_id": "faculty-bu-met-6593c8a5",
-   "field_name": "eligibility.international_friendly",
-   "system_value": {
-    "international_friendly": "unknown",
-    "citizenship_required": false
-   },
-   "verification_status": "unknown",
-   "source_url": "https://www.bu.edu/met/profile/marcus-goncalves/",
-   "source_evidence": "BU MET profile has no citizenship/international statement (only admissions-nav matches)",
-   "manual_expected_value": "unknown",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  }
- ]
+  "samples": [
+    {
+      "sample_id": "international-001",
+      "entity_type": "international",
+      "entity_id": "nsf-reu-2548087",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "no",
+        "citizenship_required": true
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2548087",
+      "source_evidence": "Undergraduate student participants must be citizens or permanent residents of the United States or its possessions.",
+      "manual_expected_value": {
+        "international_friendly": "no",
+        "citizenship_required": true
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The rendered NSF award 2548087 names Mathematical Analysis and Applications and the University of Michigan–Dearborn. The program application explicitly states its U.S. citizen/permanent-resident restriction. The boolean represents this citizenship/residency requirement, including eligible permanent residents. Source: https://sites.google.com/a/umich.edu/math-reu/",
+      "risk_case": "policy_no_nsf_reu"
+    },
+    {
+      "sample_id": "international-002",
+      "entity_type": "international",
+      "entity_id": "faculty-ansc-9168887b",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "yes",
+        "citizenship_required": false
+      },
+      "verification_status": "unverified",
+      "source_url": "https://ansc.illinois.edu/directory/carr1",
+      "source_evidence": "Animal Sciences Laboratory",
+      "manual_expected_value": null,
+      "review_result": "blocked",
+      "error_type": "empty_personal_profile",
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The exact Illinois URL returned HTTP 200, but the hydrated browser page had an empty name heading and empty main content. Only the departmental navigation/footer was visible, so current identity and this person’s eligibility terms could not be verified. The sampled raw yes/false has no cited support here. The production detail serves international_friendly=unknown and citizenship_required=null. Retry when the named profile or a current institutional equivalent is available.",
+      "risk_case": "explicit_yes_claim"
+    },
+    {
+      "sample_id": "international-003",
+      "entity_type": "international",
+      "entity_id": "sro-19316aff",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "no",
+        "citizenship_required": true
+      },
+      "verification_status": "unverified",
+      "source_url": "https://researchops.web.illinois.edu/?page=8",
+      "source_evidence": "Participants in NSF REU programs must be US Citizens, US nationals, or US permanent residents.",
+      "manual_expected_value": {
+        "international_friendly": "no",
+        "citizenship_required": true
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The selected Illinois directory page lists the MSU program. Its linked detail specifies the citizenship condition, confirmed on the program application page. The boolean denotes the requirement with national/permanent-resident alternatives. Sources: https://researchops.web.illinois.edu/opportunity/early-engagement-semiconductor-materials-and-technologies-reu and https://semitechreu.com/apply/",
+      "risk_case": "citizenship_required"
+    },
+    {
+      "sample_id": "international-004",
+      "entity_type": "international",
+      "entity_id": "faculty-upenn-vet-patho-353c2d83",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.vet.upenn.edu/directory/nicolamason/",
+      "source_evidence": "Just a moment...",
+      "manual_expected_value": null,
+      "review_result": "blocked",
+      "error_type": "source_waf_403",
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The sampled Penn Vet URL returned an HTTP 403 challenge. No identity or eligibility conclusion was inferred from the page or the product. Retry the official profile when ordinarily available.",
+      "risk_case": "stays_unknown"
+    },
+    {
+      "sample_id": "international-005",
+      "entity_type": "international",
+      "entity_id": "faculty-umd-sph-d52ec52e",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": false
+      },
+      "verification_status": "unknown",
+      "source_url": "https://sph.umd.edu/people/dushanka-v-kleinman",
+      "source_evidence": "Dushanka V. Kleinman DDS, MScD leads the School of Public Health’s research development and public health and community engagement activities.",
+      "manual_expected_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "review_result": "unsupported_value",
+      "error_type": "raw_citizenship_false_without_source",
+      "severity": "minor",
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "UMD identifies the professor but publishes no citizenship conditions for students. The raw international_friendly=unknown is supported; citizenship_required=false is an unstated assertion. The public detail API serves unknown/null.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "international-006",
+      "entity_type": "international",
+      "entity_id": "faculty-emory-rsph-ce83d2f9",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://sph.emory.edu/profile/faculty/weihua",
+      "source_evidence": "Associate Professor",
+      "manual_expected_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Emory Rollins bio identifies Weihua An, his department and his research. It states no student citizenship or international-eligibility terms.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "international-007",
+      "entity_type": "international",
+      "entity_id": "faculty-umass-communication-b1d0971c",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.umass.edu/communication/about/directory/seth-k-goldman",
+      "source_evidence": "Honors Associate Professor",
+      "manual_expected_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The UMass communication profile identifies Seth K. Goldman and describes roles, research and publications. International in journal names supplies no student eligibility condition.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "international-008",
+      "entity_type": "international",
+      "entity_id": "faculty-northwestern-phys-ee1a88f8",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://physics.northwestern.edu/people/faculty/core-faculty/john-marko.html",
+      "source_evidence": "Professor / Joint with Molecular Biosciences",
+      "manual_expected_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Northwestern physics profile identifies John Marko and lists research areas. It states no citizenship or international-student eligibility condition.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "international-009",
+      "entity_type": "international",
+      "entity_id": "faculty-gatech-cs-7274d12e",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.cc.gatech.edu/people/will-perkins",
+      "source_evidence": "Will Perkins is an Associate Professor in the School of Computer Science.",
+      "manual_expected_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Georgia Tech College of Computing profile identifies Will Perkins and describes his research and career. It does not state a student-eligibility rule.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "international-010",
+      "entity_type": "international",
+      "entity_id": "faculty-macalester-phil-fc1f02b5",
+      "field_name": "eligibility.international_friendly",
+      "system_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.macalester.edu/philosophy/facultystaff/dianemichelfelder/",
+      "source_evidence": "Professor of Philosophy",
+      "manual_expected_value": {
+        "international_friendly": "unknown",
+        "citizenship_required": null
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Macalester philosophy page identifies Diane Michelfelder and lists research, teaching and publications. No student citizenship or international-eligibility condition is given.",
+      "risk_case": null
+    }
+  ],
+  "audited_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "shards_tree": "4d5f3754e1374373f2555174078046822d0ba07d"
 }

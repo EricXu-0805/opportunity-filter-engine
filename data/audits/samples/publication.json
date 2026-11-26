@@ -1,239 +1,259 @@
 {
- "category": "publication",
- "generated_at": "2026-07-31T02:03:46.064392+00:00",
- "seed": 20260731,
- "corpus_records": 131952,
- "risk_pool_gaps": [
-  "verified_author_id"
- ],
- "samples": [
-  {
-   "sample_id": "publication-001",
-   "entity_type": "publication",
-   "entity_id": "faculty-wisc-eps-45cdabd8",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 3,
-    "recent_work_titles": [
-     "Holocaust education in transition from live to virtual survivor testimony: pedagogical and ethical dilemmas",
-     "What We Can Learn about Learning from Holocaust Education",
-     "Curricular Imprints or the Presence of Curricular Pasts: A Study of One Third Grader’s Holocaust Education 12 Years Later"
-    ]
-   },
-   "verification_status": "unverified",
-   "source_url": "https://eps.education.wisc.edu/staff/schweber-simone/",
-   "source_evidence": "Staff page lists no publications; stored works are name-matched Holocaust-education papers, topically consistent with her field; no attribution stamp",
-   "manual_expected_value": "internal candidates only — not product facts",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Product-dark by the fail-closed gate (#699): unstamped works never serve. Awaiting verified OpenAlex re-harvest.",
-   "risk_case": "works_without_status"
+  "category": "publication",
+  "generated_at": "2026-11-26T09:58:22.326614+00:00",
+  "seed": 20261126,
+  "corpus_records": 149774,
+  "risk_pool_gaps": [],
+  "coverage": {
+    "pool": 129826,
+    "strata": {
+      "works_without_status": 13159,
+      "verified_author_id": 16146,
+      "initials_only_name": 1355
+    }
   },
-  {
-   "sample_id": "publication-002",
-   "entity_type": "publication",
-   "entity_id": "faculty-tufts-cee-7b0718fa",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://engineering.tufts.edu/cee/node/3146",
-   "source_evidence": "No works stored for this initials-name record; page lists none extractable",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Initials-ambiguity risk case: system stores nothing — nothing to misattribute.",
-   "risk_case": "initials_only_name"
-  },
-  {
-   "sample_id": "publication-003",
-   "entity_type": "publication",
-   "entity_id": "faculty-northwestern-anth-e8ddb062",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 3,
-    "recent_work_titles": [
-     "Recovering a substantive landscape of mobility",
-     "Water in the Caribbean in the Colonial Period",
-     "A Tale of Two Maps: Archaeological Consideration of Two Danish Colonial Enclaves During the Long Eighteenth Century"
-    ]
-   },
-   "verification_status": "unverified",
-   "source_url": "https://anthropology.northwestern.edu/people/faculty/hauser.html",
-   "source_evidence": "2 of 3 stored titles appear on Mark Hauser's own Northwestern page ('Recovering a substantive landscape of mobility'; 'A Tale of Two Maps…')",
-   "manual_expected_value": "works are his (per own profile)",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Attribution supported by his own page, yet still correctly product-dark (no verified_author_id stamp) — the gate fails closed as designed.",
-   "risk_case": "works_without_status"
-  },
-  {
-   "sample_id": "publication-004",
-   "entity_type": "publication",
-   "entity_id": "faculty-economics-bbea148b",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://economics.illinois.edu/profile/billw",
-   "source_evidence": "TLS handshake failure to economics.illinois.edu from review vantage",
-   "manual_expected_value": null,
-   "review_result": "blocked",
-   "error_type": "tls_handshake_failure",
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": "initials_only_name"
-  },
-  {
-   "sample_id": "publication-005",
-   "entity_type": "publication",
-   "entity_id": "faculty-tufts-ilcs-58717950",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://as.tufts.edu/ilcs/node/811",
-   "source_evidence": "No works stored; nothing asserted",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "publication-006",
-   "entity_type": "publication",
-   "entity_id": "faculty-uw-amath-c0d64c22",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://amath.washington.edu/people/eli-shlizerman",
-   "source_evidence": "No works stored; nothing asserted",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "publication-007",
-   "entity_type": "publication",
-   "entity_id": "faculty-emory-gbs-c22ee0ff",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://goizueta.emory.edu/faculty/profiles/marat-ibragimov",
-   "source_evidence": "No works stored; nothing asserted",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "publication-008",
-   "entity_type": "publication",
-   "entity_id": "faculty-vanderbilt-math-62ebf5a9",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://as.vanderbilt.edu/math/bio/dan-margalit",
-   "source_evidence": "No works stored; nothing asserted (page confirms Dan Margalit, Stevenson Professor)",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "publication-009",
-   "entity_type": "publication",
-   "entity_id": "faculty-osu-hist-7d27feef",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://history.osu.edu/people/frank.152",
-   "source_evidence": "No works stored; nothing asserted",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "publication-010",
-   "entity_type": "publication",
-   "entity_id": "faculty-dartmouth-cs-e2da5658",
-   "field_name": "metadata.recent_works",
-   "system_value": {
-    "publication_attribution_status": null,
-    "recent_works_count": 0,
-    "recent_work_titles": []
-   },
-   "verification_status": "unverified",
-   "source_url": "https://web.cs.dartmouth.edu/people/sean-w-smith",
-   "source_evidence": "No works stored; nothing asserted",
-   "manual_expected_value": "(none)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  }
- ]
+  "samples": [
+    {
+      "sample_id": "publication-001",
+      "entity_type": "publication",
+      "entity_id": "faculty-purdue-me-832f7008",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 3,
+        "recent_work_titles": [
+          "Thermally Elongated Thermoplastic Nozzles Unlock Micro-Scale Multimaterial Direct Ink Writing",
+          "3D-Printed Hasel Actuators with Integrated Fluidic Piezoresistive Pressure Sensor for Cardiac Assist Applications",
+          "Hybrid 3D printing of bio-inspired artificial slowly adapting type II afferents"
+        ]
+      },
+      "verification_status": "unverified",
+      "source_url": "https://engineering.purdue.edu/ME/People/ptProfile?resource_id=243743",
+      "source_evidence": "Alex Chortos* School of Mechanical Engineering Purdue University",
+      "manual_expected_value": "All three sampled works have Alex Chortos on their bylines.",
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "Publisher, institutional copy, and publisher respectively confirm all three. The sampled unverified legacy works remain absent in the live API. https://www.nature.com/articles/s44334-026-00092-x https://engineering.purdue.edu/ME/News/2026/high-school-student-visits-purdue-to-create-heartpumping-soft-robot/ICMSR_2025.pdf https://www.nature.com/articles/s41467-025-63470-7",
+      "risk_case": "works_without_status"
+    },
+    {
+      "sample_id": "publication-002",
+      "entity_type": "publication",
+      "entity_id": "faculty-utk-mabe-e496c152",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": "verified_author_id",
+        "recent_works_count": 3,
+        "recent_work_titles": [
+          "Electrochemical and Thermal Stability Investigations of Primary Nanoparticles with Surface Coating-Networking Architecture for High-Voltage Li-Ion Batteries",
+          "Lithium Ion Battery Pack Robust State of Charge and Charging Method Estimation using Fuzzy Logic",
+          "In Situ High‐Temperature Phase Elucidation of Secondary Particles and Segregating Nanoparticles with Surface Coating‐Networking Architecture for High‐Voltage Cathode Life at High Rate"
+        ]
+      },
+      "verification_status": "verified",
+      "source_url": "https://tickle.utk.edu/mae/faculty/manikandan-palanisamy/",
+      "source_evidence": "Manikandan P, Jeyabharath R,Dhinagaran A, Mareeswaran P, Kishore C, Mugilmuthu R",
+      "manual_expected_value": "Keep the electrochemical stability abstract (10.1149/MA2025-023385mtgabs) and the In Situ paper (10.1002/aenm.202404368). Remove the K.S.R. fuzzy-logic paper, 10.1109/ICICCS65191.2025.10984683.",
+      "review_result": "incorrect_value",
+      "error_type": "wrong same-name author attributed as verified",
+      "severity": "critical",
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "The original and live public record mark all three as verified and expose the fuzzy-logic work. Its actual author’s K.S.R. faculty CV claims this exact conference paper; K.S.R.’s institutional publication list agrees. That electrical engineering lecturer’s credentials differ from the UT Knoxville chemist. https://ksrce.sriss.co.in/CAMPS/profile/staff_profile.jsp?staff_id=1275 https://ksrce.ac.in/admin/file_manager/source/New/Research/Publication/Conference/CPCY2025.pdf https://doi.org/10.1002/aenm.202404368 IEEE deposited the K.S.R. electrical-engineering affiliation on that exact DOI. ECS credits Manikandan Palanisamy with UT colleagues Douglas S. Aaron and Matthew M. Mench for the first work. https://api.crossref.org/works/10.1109/ICICCS65191.2025.10984683 https://doi.org/10.1149/MA2025-023385mtgabs",
+      "risk_case": "verified_author_id"
+    },
+    {
+      "sample_id": "publication-003",
+      "entity_type": "publication",
+      "entity_id": "faculty-rochester-chm-56814c11",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 0,
+        "recent_work_titles": []
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.sas.rochester.edu/chm/people/faculty/kennedy-c.rose/index.html",
+      "source_evidence": "Department of Chemistry, University of Rochester",
+      "manual_expected_value": "C. Rose Kennedy coauthored a 2026 publication (PMID 42329052).",
+      "review_result": "incorrect_value",
+      "error_type": "recent verifiable publication missing",
+      "severity": "minor",
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "The official Rochester profile names this chemist and carries her selected publications. PubMed links the actual 2026 byline and Rochester affiliation; the published detail has no works. No wrong author was shown. https://pubmed.ncbi.nlm.nih.gov/42329052/",
+      "risk_case": "initials_only_name"
+    },
+    {
+      "sample_id": "publication-004",
+      "entity_type": "publication",
+      "entity_id": "faculty-utexas-mpdd-5850399f",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 3,
+        "recent_work_titles": [
+          "SedNet: A physics-informed operator-learning framework for rapid sedimentation velocity analytical ultracentrifugation analysis",
+          "Mechanistic modeling of primary drying of frozen particulates",
+          "Additional file 1 of Mechanistic modeling of primary drying of frozen particulates"
+        ]
+      },
+      "verification_status": "unverified",
+      "source_url": "https://pharmacy.utexas.edu/directory/zhengrong-cui",
+      "source_evidence": "Supplementary Material 1. Figure S1.",
+      "manual_expected_value": "Two unique papers are supported; the third record is an additional file for the second paper.",
+      "review_result": "incorrect_value",
+      "error_type": "supplement counted as independent publication",
+      "severity": "minor",
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "NIH verifies Cui’s UT Austin affiliation on SedNet. The publisher credits Cui on the other paper and identifies the first attachment as supplementary material. The unverified legacy list remains hidden in the public detail. https://pubmed.ncbi.nlm.nih.gov/42119681/ https://doi.org/10.1186/s41120-026-00152-8",
+      "risk_case": "works_without_status"
+    },
+    {
+      "sample_id": "publication-005",
+      "entity_type": "publication",
+      "entity_id": "faculty-uconn-cee-5374953b",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 0,
+        "recent_work_titles": []
+      },
+      "verification_status": "unverified",
+      "source_url": "https://engineering.uconn.edu/person/malaquias-pena/",
+      "source_evidence": "Mitsopoulos, Panagiotis, Malaquias Peña, Stylianos Flampouris, and Manuel Pondeca.",
+      "manual_expected_value": "One verified 2026 remote-sensing paper by the UConn researcher.",
+      "review_result": "incorrect_value",
+      "error_type": "recent verifiable publication missing",
+      "severity": "minor",
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "Engineering faculty profile identifies Peña and links his scholarly publications. NOAA confirms the 2026 byline; the public field returns no works. https://repository.library.noaa.gov/view/noaa/77382 https://orcid.org/0000-0002-3400-5075",
+      "risk_case": null
+    },
+    {
+      "sample_id": "publication-006",
+      "entity_type": "publication",
+      "entity_id": "faculty-ucr-bmsc-e3769358",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 0,
+        "recent_work_titles": []
+      },
+      "verification_status": "unverified",
+      "source_url": "https://profiles.ucr.edu/app/home/profile/adamg",
+      "source_evidence": "Division of Biomedical Sciences, School of Medicine, University of California Riverside",
+      "manual_expected_value": "At least one recent work with an attributable UCR byline.",
+      "review_result": "incorrect_value",
+      "error_type": "recent verifiable publication missing",
+      "severity": "minor",
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "The UCR profile is a JavaScript shell. The UCR faculty roster verifies the personal profile; PubMed verifies a UCR-affiliated Adam Godzik cancer-research review (PMID 38540759, 2024) and a 2026 faculty byline (PMID 42439547). No titles were published in the live opportunity. https://apro.ucr.edu/2026-faculty-research-list https://pubmed.ncbi.nlm.nih.gov/38540759/ https://pubmed.ncbi.nlm.nih.gov/42439547/",
+      "risk_case": null
+    },
+    {
+      "sample_id": "publication-007",
+      "entity_type": "publication",
+      "entity_id": "faculty-osu-comm-ce1474a5",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 0,
+        "recent_work_titles": []
+      },
+      "verification_status": "unverified",
+      "source_url": "https://comm.osu.edu/people/sigler.35",
+      "source_evidence": "Kristie Sigler is a scholar-practitioner",
+      "manual_expected_value": "No recent peer-reviewed publication verified from this source.",
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "OSU’s communication faculty profile describes teaching, curriculum development and public writing and provides no recent scholarly bibliography. The empty field is not presented to visitors as evidence that she has never published.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "publication-008",
+      "entity_type": "publication",
+      "entity_id": "faculty-grinnell-rcee-c3bc1ef6",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 0,
+        "recent_work_titles": []
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.grinnell.edu/user/38",
+      "source_evidence": "Department chair of Russian, Central European, and Eurasian Studies",
+      "manual_expected_value": "No recent independent research publication established from the faculty profile.",
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "Grinnell confirms Todd P. Armstrong and a 2025 conference-presentation credit. No recent journal paper was established for this professor from those sources; no work is presented as his. https://www.grinnell.edu/sites/default/files/docs/2026-02/2026_Grinnell_Lecture_Booklet.pdf",
+      "risk_case": null
+    },
+    {
+      "sample_id": "publication-009",
+      "entity_type": "publication",
+      "entity_id": "faculty-ece-c966bf23",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": "verified_author_id",
+        "recent_works_count": 3,
+        "recent_work_titles": [
+          "Regulating Attention in Digital Platforms via Dynamic Taxation and Strategic Learning",
+          "Fractional Budget Allocation for Influence Maximization",
+          "Simple is Better and Large is Not Enough: Towards Ensembling of Foundational Language Models"
+        ]
+      },
+      "verification_status": "verified",
+      "source_url": "https://ece.illinois.edu/about/directory/faculty/aumrawal",
+      "source_evidence": "Fractional Budget Allocation for Influence Maximization",
+      "manual_expected_value": "The three sampled works all have Abhishek (Kumar) Umrawal on the byline.",
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "Illinois faculty page lists the allocation paper. The regulation preprint names Umrawal of Illinois; the language-model preprint’s author list names Abhishek Kumar Umrawal. All three are present in the public record. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6921899 https://arxiv.org/abs/2308.12272",
+      "risk_case": null
+    },
+    {
+      "sample_id": "publication-010",
+      "entity_type": "publication",
+      "entity_id": "faculty-princeton-math-508a2fbf",
+      "field_name": "metadata.recent_works",
+      "system_value": {
+        "publication_attribution_status": null,
+        "recent_works_count": 3,
+        "recent_work_titles": [
+          "Quasilinear wave equations on asymptotically flat spacetimes with applications to Kerr black holes",
+          "The interior of dynamical vacuum black holes I: The $C^0$-stability of the Kerr Cauchy horizon",
+          "Yvonne Choquet-Bruhat obituary: mathematician who established that Einstein’s equations mirror the real world"
+        ]
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.math.princeton.edu/people/mihalis-dafermos",
+      "source_evidence": "by Mihalis Dafermos, Jonathan Luk",
+      "manual_expected_value": "All three authorships supported. The third item is a Nature obituary, as its title indicates.",
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex – source and public detail review",
+      "reviewed_at": "2026-11-26T10:05:09.317565+00:00",
+      "notes": "Princeton identifies him; the corresponding arXiv, Annals and Nature records identify Dafermos by name on all three. The unverified legacy titles are absent in the public detail. https://arxiv.org/abs/2212.14093 https://annals.math.princeton.edu/2025/202-2/p01 https://www.nature.com/articles/d41586-025-01763-z",
+      "risk_case": null
+    }
+  ],
+  "audited_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "shards_tree": "4d5f3754e1374373f2555174078046822d0ba07d"
 }

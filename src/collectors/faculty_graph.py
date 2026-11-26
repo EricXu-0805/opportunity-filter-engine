@@ -98,6 +98,7 @@ from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
     is_deceased_listing,
     is_directory_discipline,
+    is_inferred,
     is_professor_rank,
     is_research_clause_fragment,
     is_retired_title,
@@ -207,7 +208,9 @@ def captured_profile_pages(rows: list[dict]) -> dict[tuple[str | None, str], fro
     for o in rows:
         if o.get("source_type") != "faculty_research":
             continue
-        research = str((o.get("metadata") or {}).get("research_areas_raw") or "").strip() or o.get("keywords")
+        research = str((o.get("metadata") or {}).get("research_areas_raw") or "").strip()
+        if not research and not is_inferred(o, "keywords"):
+            research = o.get("keywords")
         held = frozenset(f for f, value in (("email", o.get("contact_email")), ("research", research)) if value)
         for page in contact_instruction_pages(o):
             if page["receipt"] and page["receipt"]["status"] != "failed":
@@ -456,7 +459,7 @@ def _clean_keywords(person: dict) -> list[str]:
     that only fills research_areas yields something the title can show.
     """
     kws = [k.strip() for k in person.get("keywords", []) if k and k.strip()]
-    if kws:
+    if kws or person.get("_profile_list_keywords"):
         # Even a curated list can carry a bare nav-junk word ("Research",
         # "People") that scraped in alongside real areas — zero-signal noise as
         # a tag chip. Drop only these unambiguous non-areas; a broad-but-real
@@ -2037,6 +2040,8 @@ def _clean_selector_items(soup, selector: str) -> list[str]:
     seen: set[str] = set()
     for el in soup.select(selector):
         t = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip(" .,:;•·*–—-\t")
+        if el.name == "li":
+            t = re.sub(r"^\d{1,2}[.)]\s+", "", t)
         if not (t and 2 <= len(t) <= 70 and len(t.split()) <= 8):
             continue
         if _is_junk_keyword(t):
@@ -2569,8 +2574,12 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             p["_verification_scope"] = "profile"
         if items and want_research:
             p["keywords"] = list(items)
-        elif research and want_research:
+        if research and want_research:
             p["research_areas"] = research
+            if enr.get("research_selector_label"):
+                # Keep only complete list items as chips, including an empty
+                # set when every statement is too long for a chip.
+                p["_profile_list_keywords"] = True
         if email and enr.get("email_drop") and re.search(enr["email_drop"], email, re.I):
             # A profile whose first mailto is a shared departmental inbox
             # (info@english.upenn.edu) must not become anyone's personal
@@ -2692,9 +2701,23 @@ def _enrich_profile(
         # Profiles that keep research areas as a prose block in a stable
         # element (Caltech's div.field__research_summary) — a CSS selector
         # beats a serialized-HTML regex, which nested markup can truncate.
-        r_el = soup.select_one(enrich["research_selector"])
+        selector = enrich["research_selector"]
+        label = enrich.get("research_selector_label")
+        if label:
+            r_el = next((el for el in soup.select(selector)
+                         if (heading := el.find_previous_sibling()) is not None
+                         and heading.get_text(" ", strip=True).rstrip(":").casefold() == label.casefold()), None)
+        else:
+            r_el = soup.select_one(selector)
         if r_el is not None:
-            kw = re.sub(r"\s+", " ", r_el.get_text(" ", strip=True)).strip()
+            if label and r_el.name in ("ul", "ol"):
+                # Each bullet is a separate source statement, even when an
+                # individual sentence is too long to use as a keyword chip.
+                text = "; ".join(li.get_text(" ", strip=True) for li in r_el.find_all("li", recursive=False))
+                items = _clean_selector_items(r_el, ":scope > li")
+            else:
+                text = r_el.get_text(" ", strip=True)
+            kw = re.sub(r"\s+", " ", text).strip()
             # The block often embeds its own heading ("Research Summary
             # Geochemical investigations…") — strip the label, keep the prose.
             kw = re.sub(r"^research\s+(summary|interests?|areas?)\s*:?\s*", "", kw, flags=re.I)
@@ -2849,6 +2872,9 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         records.extend(data)
         if len(data) < 100:
             break
+
+    if cfg.get("filter_records"):
+        records = cfg["filter_records"](records)
 
     specs: list[dict] = []
     for rec in records:

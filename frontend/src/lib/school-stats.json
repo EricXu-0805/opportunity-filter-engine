@@ -74,10 +74,10 @@
       "total_count": 844
     },
     "caltech": {
-      "listing_count": 14,
+      "listing_count": 13,
       "faculty_contact_count": 432,
       "unreviewed_count": 0,
-      "total_count": 446
+      "total_count": 445
     },
     "carleton": {
       "listing_count": 5,
@@ -297,9 +297,9 @@
     },
     "ncsu": {
       "listing_count": 5,
-      "faculty_contact_count": 2322,
+      "faculty_contact_count": 2221,
       "unreviewed_count": 0,
-      "total_count": 2327
+      "total_count": 2226
     },
     "nd": {
       "listing_count": 7,
@@ -669,15 +669,15 @@
     },
     "wisc": {
       "listing_count": 20,
-      "faculty_contact_count": 1935,
+      "faculty_contact_count": 1934,
       "unreviewed_count": 0,
-      "total_count": 1955
+      "total_count": 1954
     },
     "wlu": {
-      "listing_count": 6,
+      "listing_count": 5,
       "faculty_contact_count": 233,
       "unreviewed_count": 0,
-      "total_count": 239
+      "total_count": 238
     },
     "wpi": {
       "listing_count": 4,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5601
+  "national_count": 5599
 }

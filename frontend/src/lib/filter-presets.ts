@@ -6,6 +6,7 @@ import type { DeadlineFilterValue } from './types';
 
 export interface FilterPresetFilters {
   opportunityType?: SeekingType;
+  researchTopic?: string;
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   source: string;

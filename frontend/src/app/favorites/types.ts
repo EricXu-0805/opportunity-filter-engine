@@ -99,6 +99,7 @@ export function customImportToOpp(c: CustomImport): Opp {
 
 export function summarizeSavedSearchFilters(search: SavedSearch, t: TFunc): string {
   const parts: string[] = [];
+  if (search.filters.researchTopic) parts.push(search.filters.researchTopic);
   if (search.filters.opportunityType) parts.push(typeLabel(search.filters.opportunityType, t));
   if (search.query) parts.push(`"${search.query}"`);
   if (search.filters.paid === 'yes') parts.push('paid');

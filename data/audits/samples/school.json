@@ -1,219 +1,252 @@
 {
- "category": "school",
- "generated_at": "2026-07-31T02:03:41.572199+00:00",
- "seed": 20260731,
- "corpus_records": 131952,
- "risk_pool_gaps": [],
- "samples": [
-  {
-   "sample_id": "school-001",
-   "entity_type": "school",
-   "entity_id": "faculty-purdue-vcs-deacffb8",
-   "field_name": "school",
-   "system_value": {
-    "school": "purdue",
-    "organization": "Purdue University"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://vet.purdue.edu/directory/ilya-slizovskiy",
-   "source_evidence": "Ilya Slizovskiy | Purdue Veterinary Medicine — Department of Veterinary Clinical Sciences, Purdue University College of Veterinary Medicine, 625 Harrison Street West Lafayette, IN",
-   "manual_expected_value": "purdue / Purdue University (West Lafayette)",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Multi-campus risk case: page confirms main West Lafayette campus.",
-   "risk_case": "multi_campus_org"
+  "category": "school",
+  "generated_at": "2026-11-26T09:58:18.690685+00:00",
+  "seed": 20261126,
+  "corpus_records": 149774,
+  "risk_pool_gaps": [],
+  "coverage": {
+    "pool": 137125,
+    "strata": {
+      "multi_campus_org": 2245,
+      "similar_org_name": 114722
+    }
   },
-  {
-   "sample_id": "school-002",
-   "entity_type": "school",
-   "entity_id": "faculty-psu-cse-5f48eed5",
-   "field_name": "school",
-   "system_value": {
-    "school": "psu",
-    "organization": "Penn State University Park"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx?q=mps6990",
-   "source_evidence": "EECS Directory | Penn State Engineering (eecs.psu.edu)",
-   "manual_expected_value": "psu / Penn State University Park",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Similar-name risk case: domain + branding confirm Penn State Engineering (University Park).",
-   "risk_case": "similar_org_name"
-  },
-  {
-   "sample_id": "school-003",
-   "entity_type": "school",
-   "entity_id": "faculty-purdue-chem-1e61ad21",
-   "field_name": "school",
-   "system_value": {
-    "school": "purdue",
-    "organization": "Purdue University"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://www.chem.purdue.edu/people/profile/lipton.html",
-   "source_evidence": "James Tarpo Jr. and Margaret Tarpo Department of Chemistry - Purdue University; © 2026 Purdue University",
-   "manual_expected_value": "purdue / Purdue University",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": "multi_campus_org"
-  },
-  {
-   "sample_id": "school-004",
-   "entity_type": "school",
-   "entity_id": "faculty-washu-gen-56da132d",
-   "field_name": "school",
-   "system_value": {
-    "school": "washu",
-    "organization": "Washington University in St. Louis"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://genetics.wustl.edu/people/tim-schedl-phd/",
-   "source_evidence": "Tim Schedl, PhD - Genetics; ©2026 Washington University in St. Louis (genetics.wustl.edu)",
-   "manual_expected_value": "washu / Washington University in St. Louis",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Similar-name risk (WashU vs UW): wustl.edu domain + branding confirm.",
-   "risk_case": "similar_org_name"
-  },
-  {
-   "sample_id": "school-005",
-   "entity_type": "school",
-   "entity_id": "faculty-uw-bioe-537b7e8c",
-   "field_name": "school",
-   "system_value": {
-    "school": "uw",
-    "organization": "University of Washington"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://bioe.uw.edu/portfolio-items/amy-orsborn/",
-   "source_evidence": "Amy Orsborn – UW Bioengineering; Copyright 2026 University of Washington – Seattle (bioe.uw.edu)",
-   "manual_expected_value": "uw / University of Washington",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Counterpart similar-name risk confirmed on uw.edu domain.",
-   "risk_case": null
-  },
-  {
-   "sample_id": "school-006",
-   "entity_type": "school",
-   "entity_id": "faculty-lehigh-bioe-b9d0f37f",
-   "field_name": "school",
-   "system_value": {
-    "school": "lehigh",
-    "organization": "Lehigh University"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://engineering.lehigh.edu/bioe/faculty/172989",
-   "source_evidence": "Juan Aceros is an Associate Professor in the Department of Bioengineering at Lehigh University",
-   "manual_expected_value": "lehigh / Lehigh University",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "school-007",
-   "entity_type": "school",
-   "entity_id": "faculty-coloradocollege-span-9ff4f1cf",
-   "field_name": "school",
-   "system_value": {
-    "school": "coloradocollege",
-    "organization": "Colorado College"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://www.coloradocollege.edu/basics/contact/directory/people/wood_naomi_pueo-backson.html",
-   "source_evidence": "Naomi Wood · Colorado College (coloradocollege.edu campus directory)",
-   "manual_expected_value": "coloradocollege / Colorado College",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "school-008",
-   "entity_type": "school",
-   "entity_id": "faculty-uchicago-oba-e79a25a2",
-   "field_name": "school",
-   "system_value": {
-    "school": "uchicago",
-    "organization": "University of Chicago"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://profiles.uchicago.edu/profiles/profile/2119198",
-   "source_evidence": "Nipam Patel — Title Professor, Institution University of Chicago, Department Organismal Biology and Anatomy",
-   "manual_expected_value": "uchicago / University of Chicago",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "school-009",
-   "entity_type": "school",
-   "entity_id": "faculty-osu-anth-37b42db7",
-   "field_name": "school",
-   "system_value": {
-    "school": "osu",
-    "organization": "Ohio State University"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://anthropology.osu.edu/people/moore.4540",
-   "source_evidence": "Erin Moore | Department of Anthropology — The Ohio State University (anthropology.osu.edu)",
-   "manual_expected_value": "osu / Ohio State University",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "school-010",
-   "entity_type": "school",
-   "entity_id": "faculty-tamu-inta-be825726",
-   "field_name": "school",
-   "system_value": {
-    "school": "tamu",
-    "organization": "Texas A&M University"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://bush.tamu.edu/inta/faculty/",
-   "source_evidence": "Faculty | The Bush School of Government & Public Service · Texas A&M University (bush.tamu.edu)",
-   "manual_expected_value": "tamu / Texas A&M University",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Source is the school's faculty listing page (listing-level evidence).",
-   "risk_case": null
-  }
- ]
+  "samples": [
+    {
+      "sample_id": "school-001",
+      "entity_type": "school",
+      "entity_id": "faculty-purdue-satt-4d4d7f01",
+      "field_name": "school",
+      "system_value": {
+        "school": "purdue",
+        "organization": "Purdue University"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://polytechnic.purdue.edu/profile/msuckow",
+      "source_evidence": "Michael W. Suckow is a Professor of Practice - Professional Flight in the School of Aviation and Transportation Technology at Purdue University.",
+      "manual_expected_value": {
+        "school": "purdue",
+        "organization": "Purdue University"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "The named faculty member and university appear together in the biography. Source read 2026-11-26: https://polytechnic.purdue.edu/profile/msuckow",
+      "risk_case": "multi_campus_org"
+    },
+    {
+      "sample_id": "school-002",
+      "entity_type": "school",
+      "entity_id": "faculty-northwestern-phys-a558963d",
+      "field_name": "school",
+      "system_value": {
+        "school": "northwestern",
+        "organization": "Northwestern University"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://physics.northwestern.edu/people/faculty/core-faculty/brian-odom.html",
+      "source_evidence": "Brian Odom: Department of Physics and Astronomy - Northwestern University",
+      "manual_expected_value": {
+        "school": "northwestern",
+        "organization": "Northwestern University"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "Named faculty biography and Evanston departmental address. Source read 2026-11-26: https://physics.northwestern.edu/people/faculty/core-faculty/brian-odom.html",
+      "risk_case": "similar_org_name"
+    },
+    {
+      "sample_id": "school-003",
+      "entity_type": "school",
+      "entity_id": "faculty-purdue-phil-2afdd1e7",
+      "field_name": "school",
+      "system_value": {
+        "school": "purdue",
+        "organization": "Purdue University"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.cla.purdue.edu/directory/profiles/james-mollison.html",
+      "source_evidence": "James Mollison - College of Liberal Arts - Purdue University",
+      "manual_expected_value": {
+        "school": "purdue",
+        "organization": "Purdue University"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "The page title and faculty heading identify James Mollison at this Purdue college. Source read 2026-11-26: https://www.cla.purdue.edu/directory/profiles/james-mollison.html",
+      "risk_case": "multi_campus_org"
+    },
+    {
+      "sample_id": "school-004",
+      "entity_type": "school",
+      "entity_id": "simplify-intern-382357f2-104c-4cb0-a43a-4a11f0f6e6ab",
+      "field_name": "school",
+      "system_value": {
+        "school": null,
+        "organization": "Clearwater Analytics"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://clearwateranalytics.wd1.myworkdayjobs.com/Clearwater_Analytics_Careers/job/Office---New-York/Product-Management-Intern_R12287",
+      "source_evidence": "Security Check",
+      "manual_expected_value": null,
+      "review_result": "blocked",
+      "error_type": "source_security_check",
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "The employer posting returned a JavaScript shell on the first read and an HTTP 429 security check on the later read. The employer named in the imported record cannot be independently verified from the job content. Source read 2026-11-26: https://clearwateranalytics.wd1.myworkdayjobs.com/Clearwater_Analytics_Careers/job/Office---New-York/Product-Management-Intern_R12287",
+      "risk_case": "similar_org_name"
+    },
+    {
+      "sample_id": "school-005",
+      "entity_type": "school",
+      "entity_id": "faculty-math-7c574f8f",
+      "field_name": "school",
+      "system_value": {
+        "school": "uiuc",
+        "organization": "University of Illinois Urbana-Champaign"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://math.illinois.edu/directory/profile/vzh",
+      "source_evidence": "Vadim Zharnitsky | Department of Mathematics | Illinois",
+      "manual_expected_value": {
+        "school": "uiuc",
+        "organization": "University of Illinois Urbana-Champaign"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "Named mathematics profile shows an Urbana, IL 61801 office. Source read 2026-11-26: https://math.illinois.edu/directory/profile/vzh",
+      "risk_case": null
+    },
+    {
+      "sample_id": "school-006",
+      "entity_type": "school",
+      "entity_id": "faculty-swarthmore-engr-e9834629",
+      "field_name": "school",
+      "system_value": {
+        "school": "swarthmore",
+        "organization": "Swarthmore College"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.swarthmore.edu/engineering/faculty-staff",
+      "source_evidence": "Joseph Towles",
+      "manual_expected_value": {
+        "school": "swarthmore",
+        "organization": "Swarthmore College"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "Swarthmore College Engineering faculty directory lists this exact person as Associate Professor; the list page is the sampled source. Source read 2026-11-26: https://www.swarthmore.edu/engineering/faculty-staff",
+      "risk_case": null
+    },
+    {
+      "sample_id": "school-007",
+      "entity_type": "school",
+      "entity_id": "faculty-umd-phys-dbeb09eb",
+      "field_name": "school",
+      "system_value": {
+        "school": "umd",
+        "organization": "University of Maryland, College Park"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://umdphysics.umd.edu/people/faculty/current/item/472-pshawhan.html",
+      "source_evidence": "Shawhan, Peter - Department of Physics - University of Maryland",
+      "manual_expected_value": {
+        "school": "umd",
+        "organization": "University of Maryland, College Park"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "Personal physics profile and College Park, MD 20742 departmental address; the supplied URL redirected to the current faculty profile. Source read 2026-11-26: https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html",
+      "risk_case": null
+    },
+    {
+      "sample_id": "school-008",
+      "entity_type": "school",
+      "entity_id": "faculty-umd-math-5460f4ec",
+      "field_name": "school",
+      "system_value": {
+        "school": "umd",
+        "organization": "University of Maryland, College Park"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www-math.umd.edu/people/faculty/item/1816-alawrie.html",
+      "source_evidence": "404 Page not found",
+      "manual_expected_value": null,
+      "review_result": "blocked",
+      "error_type": "source_http_404",
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "The sampled Andrew Lawrie faculty URL returned HTTP 404. The department footer does not verify the person. Source read 2026-11-26: https://www-math.umd.edu/people/faculty/item/1816-alawrie.html",
+      "risk_case": null
+    },
+    {
+      "sample_id": "school-009",
+      "entity_type": "school",
+      "entity_id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "field_name": "school",
+      "system_value": {
+        "school": null,
+        "organization": "Waymo"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://careers.withwaymo.com/jobs?gh_jid=8265173",
+      "source_evidence": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "manual_expected_value": {
+        "school": null,
+        "organization": "Waymo"
+      },
+      "review_result": "entity_mismatch",
+      "error_type": "different_program_cycle_and_degree",
+      "severity": "critical",
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "Employer matches, but Waymo job 8265173 opens a specific 2027 PhD program. This active record advertises Summer 2026, multiple teams, and sophomore/junior/senior students. The audit requires entity identity before grading the employer field. Source read 2026-11-26: https://careers.withwaymo.com/jobs/2027-summer-intern-phd-research-world-modeling-evaluation-mountain-view-california-united-states?gh_jid=8265173",
+      "risk_case": null
+    },
+    {
+      "sample_id": "school-010",
+      "entity_type": "school",
+      "entity_id": "faculty-wesleyan-govt-28e10a59",
+      "field_name": "school",
+      "system_value": {
+        "school": "wesleyan",
+        "organization": "Wesleyan University"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.wesleyan.edu/about/directory/profile.html?id=imatesan",
+      "source_evidence": "Associate Professor of Government",
+      "manual_expected_value": {
+        "school": "wesleyan",
+        "organization": "Wesleyan University"
+      },
+      "review_result": "verified_correct",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "Codex (live official source review)",
+      "reviewed_at": "2026-11-26T10:04:54.917101+00:00",
+      "notes": "The official Wesleyan profile page loads its public profile from the data-source URL with the original id. That response identifies Ioana Emy Matesan and her appointment. Source read 2026-11-26: https://www.wesleyan.edu/about/directory/profile.php?id=imatesan",
+      "risk_case": null
+    }
+  ],
+  "audited_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "shards_tree": "4d5f3754e1374373f2555174078046822d0ba07d"
 }

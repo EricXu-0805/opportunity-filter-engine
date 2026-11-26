@@ -136,12 +136,32 @@ _RESEARCH_ENRICH = {
 }
 
 
+# The political science biography template places the person's subjects in
+# bold directly before their italic doctoral credential. It has no label, so
+# accept only the roster's reviewed subject vocabulary in that exact shape.
+_POLS_SUBJECT = (
+    r"(?:African American Politics|American Political Thought|American Politics|Comparative Politics|"
+    r"Congress and Representation|Energy and Environmental Politics|Environmental Politics|Inequality|"
+    r"International Organizations|International Relations|Judicial Behavior|Law and Society|"
+    r"Legislative Studies|Political Behavior|Political Economy|Political Theory|Politics and Popular Culture|"
+    r"Public Opinion and Political Behavior|Public Opinion|Research Methods|Social Policy)"
+)
+_POLS_SUBJECTS_BEFORE_DEGREE = (
+    r"<p(?:\s[^<>]*)?>\s*<(?:strong|b)>\s*(?:<span(?:\s[^<>]*)?>\s*)?"
+    rf"({_POLS_SUBJECT}(?:,\s*(?:and\s+)?{_POLS_SUBJECT})*)"
+    r"\s*(?:</span>\s*)?</(?:strong|b)>\s*</p>\s*<p>\s*<(?:em|i)>\s*Ph\.D\."
+)
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared person-card component, email at listing."""
+    enrich = _RESEARCH_ENRICH
+    if short == "POLS":
+        enrich = {**enrich, "research_html_re": _POLS_SUBJECTS_BEFORE_DEGREE}
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
-                   "profile_enrich": _RESEARCH_ENRICH},
+                   "profile_enrich": enrich},
     }
 
 
