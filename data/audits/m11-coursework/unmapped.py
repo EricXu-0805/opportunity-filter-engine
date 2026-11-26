@@ -3,13 +3,36 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-from check import SITE, confirm_school, expect, home, reads, sessions, sync_playwright
+from urllib.parse import urlsplit
+from check import DATABASE, SITE, confirm_school, expect, home, reads, sessions, sync_playwright
 
 marker='An invented archive note, Fictional Journal (2024).'
 title='An invented archive note'
 adjacent='Prepared synthetic field diagrams.'
 guidance='Review source text without a matching field'
 fixed=os.environ['PDF_ACCEPTANCE_MODE']=='fixed'
+
+def read_before_confirmation(browser):
+    """Reopen the owner's real profile and inspect the fresh first-party read."""
+    reader = home(browser, sessions[0])
+    try:
+        expect(reader.get_by_role('button', name='Remove file')).to_be_visible(timeout=55000)
+        def profile_read(response):
+            address = urlsplit(response.url)
+            return (address.hostname == DATABASE and address.path == '/rest/v1/profiles'
+                    and response.request.method == 'GET' and response.status == 200)
+        with reader.expect_response(profile_read, timeout=40000) as received:
+            reader.reload(wait_until='domcontentloaded')
+        payload = received.value.json()
+        row = payload[0] if isinstance(payload, list) else payload
+        profile = row['profile_data']
+        assert marker in profile['resume_text'], 'The saved résumé was not present in the independent read'
+        publications = (profile.get('resume_master') or {}).get('publications') or []
+        assert not publications, 'A publication was saved before the student confirmed the title'
+        return {'http': received.value.status, 'revision': row['revision'], 'publication_count': len(publications)}
+    finally:
+        reader.context.close()
+
 with sync_playwright() as pw:
     browser=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
     page=home(browser)
@@ -48,8 +71,13 @@ with sync_playwright() as pw:
     else:
         expect(prompt).to_have_count(0)
         assert 'missing' not in status.inner_text().lower()
+    checks = {}
+    if fixed:
+        checks['after_scanning_before_entry'] = read_before_confirmation(browser)
     section.get_by_role('button',name='Add publication').click()
     section.locator('label').filter(has_text='Publication title').locator('textarea').fill(title)
+    if fixed:
+        checks['after_typing_before_confirmation'] = read_before_confirmation(browser)
     section.get_by_role('button',name='Confirm Publication title',exact=True).click()
     master.get_by_role('button',name='Apply changes',exact=True).click()
     page.wait_for_timeout(2500)
@@ -62,7 +90,7 @@ with sync_playwright() as pw:
     assert marker in stored['profile_data']['resume_text']
     receipt={'site':SITE,'time':datetime.now(timezone.utc).isoformat(),'frontend_sha':fresh.locator('html').get_attribute('data-release-sha'),
              'backend_sha':fresh.request.get(SITE+'/api/health').json()['release_sha'],'unlabelled_line':marker,'unmatched_text_next_to_extracted_email':adjacent,
-             'automatic_publication_record_count':0,'notice_identifies_missing_line':fixed,'review_status_before_manual_add':status.inner_text(),
+             'automatic_publication_record_count':0,'independent_reads_before_manual_confirmation':checks,'notice_identifies_missing_line':fixed,'review_status_before_manual_add':status.inner_text(),
              'manual_title_survived_first_party_read':pub['title']['value'],'first_party_read_revision':stored['revision']}
     out=Path('m11-results');out.mkdir(exist_ok=True);(out/'receipt.json').write_text(json.dumps(receipt,indent=2))
     print(json.dumps(receipt,indent=2));browser.close()
