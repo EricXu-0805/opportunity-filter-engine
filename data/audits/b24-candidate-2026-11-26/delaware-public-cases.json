@@ -1,0 +1,74 @@
+[
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-22466e16",
+    "name": "Matthew Doty",
+    "url": "https://mseg.udel.edu/people/doty/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-25082bef",
+    "name": "David C. Martin",
+    "url": "https://mseg.udel.edu/people/martin/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-58d683fd",
+    "name": "Xi Wang",
+    "url": "https://mseg.udel.edu/people/wang/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-5ade1fd3",
+    "name": "Ioanna Fampiou",
+    "url": "https://mseg.udel.edu/people/ioanna-fampiou/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-5dbd4670",
+    "name": "Sheldon Hewlett",
+    "url": "https://mseg.udel.edu/people/hewlett/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-7fa44ddf",
+    "name": "S Ismat Shah",
+    "url": "https://mseg.udel.edu/people/shah/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-a2bd5d6e",
+    "name": "Darrin Pochan",
+    "url": "https://mseg.udel.edu/people/pochan/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-c091c4cd",
+    "name": "Anderson Janotti",
+    "url": "https://mseg.udel.edu/people/janotti/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-ed9f22f8",
+    "name": "Joshua Zide",
+    "url": "https://mseg.udel.edu/people/zide/"
+  },
+  {
+    "group": "new",
+    "id": "faculty-udel-mseg-f765ff5d",
+    "name": "William Shafarman",
+    "url": "https://mseg.udel.edu/people/shafarman/"
+  },
+  {
+    "group": "retired",
+    "id": "faculty-udel-me-4b7217c7",
+    "name": "John Gillespie Jr.",
+    "url": "https://me.udel.edu/faculty/john-w-gillespie-jr/"
+  },
+  {
+    "group": "departed",
+    "id": "faculty-udel-cbe-d95f4672",
+    "name": "LaShanda T. Korley",
+    "url": "https://cbe.udel.edu/people/faculty/"
+  }
+]
