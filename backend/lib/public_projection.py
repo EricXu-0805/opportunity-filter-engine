@@ -23,7 +23,7 @@ from src.evidence import (
     target_truth,
 )
 from src.lab_context import lab_context_for
-from src.normalizers import bu_stars
+from src.normalizers import bu_stars, host_program_terms
 from src.program_windows import public_opening, read_before_opening
 from src.research_context import research_context_for
 
@@ -1079,7 +1079,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     compensation = projected.get("compensation_details")
     if isinstance(compensation, str) and compensation.strip() and configured_value_unstated(
         canonical_record, "compensation"
-    ):
+    ) and not host_program_terms.quote(canonical_record, "compensation"):
         projected["compensation_attribution"] = "inferred"
 
     # The host school's city is not where the work happens. Six collectors

@@ -62,6 +62,8 @@ def test_the_collector_still_selects_the_preferred_sro_id_and_preserves_its_alia
     assert matching_ids(active, {}, preferred_ids=[pair.directory_id]) == [pair.directory_id]
     assert matching_ids([host, {**directory, "deadline": "2028-02-10"}], {}) == list(pair.ids)
 
+    assert matching_ids([host, {**directory, "organization": "Another University"}], {}) == list(pair.ids)
+
     damaged = {**directory, "metadata": ["unreadable historical row"]}
     assert not pair.verified({pair.host_id: host, pair.directory_id: damaged})
 
@@ -116,6 +118,7 @@ def test_one_page_cursor_can_cross_both_proven_pairs(snapshot_env, monkeypatch, 
                     "url",
                     "source_url",
                     "source",
+                    "organization",
                     "metadata",
                     "application",
                     "deadline",

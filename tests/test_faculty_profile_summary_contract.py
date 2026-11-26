@@ -93,6 +93,25 @@ def test_every_public_faculty_payload_carries_the_fields_beside_the_sentence(cas
         assert payload['description_clean'] == case['server_text']
 
 
+@pytest.mark.parametrize("availability", FACULTY_PROFILE_CLOSINGS)
+def test_archived_faculty_keep_source_facts_without_suggesting_contact(availability):
+    row = {
+        'id': 'faculty-summary-archived', 'source': 'uiuc_faculty_directory', 'source_type': 'faculty_research',
+        'pi_name': 'Alex Green', 'organization': 'Example University', 'department': 'Biology',
+        'metadata': {'is_active': False, 'research_areas_raw': 'Plant ecology', 'faculty_availability_status': availability},
+    }
+    for payload in (project_public_detail(deepcopy(row)), _list_card(deepcopy(row))):
+        summary = payload['faculty_profile_summary']
+        assert payload['target_truth']['actionable'] is False and summary['archived'] is True
+        assert summary['availability'] == availability
+        text = payload['description_clean']
+        assert 'Alex Green' in text and 'Plant ecology' in text
+        assert FACULTY_PROFILE_CLOSINGS['unknown'] not in text
+        assert render_faculty_profile_summary(summary) == text
+        if availability != 'unknown':
+            assert FACULTY_PROFILE_CLOSINGS[availability] in text
+
+
 def test_a_listing_carries_no_faculty_fields():
     listing = {
         'id': 'listing-1', 'source': 'uiuc_sro', 'source_type': 'campus_program',

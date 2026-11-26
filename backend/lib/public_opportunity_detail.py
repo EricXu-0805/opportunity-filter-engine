@@ -17,6 +17,7 @@ from backend.lib.publication_attribution import works_are_verified, works_may_be
 from src.contact_instructions import contact_instructions_for
 from src.evidence import faculty_safe_public_record
 from src.lab_context import lab_context_for
+from src.normalizers import host_program_terms
 from src.publication_trust import exclude_reviewed_works
 from src.research_context import research_context_for
 
@@ -110,6 +111,10 @@ def project_public_detail(opp: dict) -> dict:
         if topics:
             projected["research_areas"] = topics
             metadata["research_areas_verified_at"] = snapshot["checked_at"]
+    # A directory's full historical text stays readable alongside the host's current terms.
+    projected.pop("reviewed_program_summary", None)
+    if summary := host_program_terms.reviewed_summary(opp):
+        projected["reviewed_program_summary"] = summary
     return projected
 
 

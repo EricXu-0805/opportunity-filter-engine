@@ -22,11 +22,14 @@ VT_APPOINTMENTS = {
     "faculty-vt-che-2b84e643": ("Postdoctoral researchers", "trainee_title"),
     "faculty-vt-che-b0225752": ("Postdoctoral researcher", "trainee_title"),
 }
+NANO_ADJUNCTS = {"faculty-ucsd-nano-2aa92754", "faculty-ucsd-nano-04ac1d79", "faculty-ucsd-nano-27240933"}
+NANO_EMERITI = {"faculty-ucsd-nano-25a6d469", "faculty-ucsd-nano-dc9e3de3"}
 PREVIOUS_TITLES = {
     "faculty-gatech-arch-3a9c2373": "Assistant Professor",
     "faculty-gatech-arch-e98bc4d9": "Professor; Director, MS in Urban Design Program",
     "faculty-gatech-arch-196687bf": "Associate Professor",
     "faculty-gatech-itm-21b8dd50": "Steven A. Denning Professor in Technology & Management",
+    **dict.fromkeys(NANO_EMERITI | NANO_ADJUNCTS, ""),
     **dict.fromkeys(VT_APPOINTMENTS, ""),
     "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
@@ -37,6 +40,8 @@ ARCHIVED = {
     "faculty-gatech-arch-196687bf": ("Associate Professor Emeritus", "retired_title"),
     "faculty-gatech-itm-21b8dd50": ("Professor Emeritus", "retired_title"),
     "faculty-msu-mgi-5ca9b09b": ("Professor Emeritum", "retired_title"),
+    **dict.fromkeys(NANO_EMERITI, ("Professor Emeritus", "retired_title")),
+    **dict.fromkeys(NANO_ADJUNCTS, ("Adjunct Professor", "outside_unit_ladder")),
     **VT_APPOINTMENTS,
     "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),

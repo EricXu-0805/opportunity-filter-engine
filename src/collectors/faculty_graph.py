@@ -1436,9 +1436,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if re.match(r"(?i)\s*(tel|mailto|javascript|fax|sms):", href or ""):
             href = ""
         href = urljoin(base_url, href) if href else base_url
-        replacement = (sel.get("reviewed_profile_links") or {}).get(href)
-        if replacement and name == replacement[0]:
-            href = replacement[1]
+        href = (sel.get("reviewed_profile_links") or {}).get((href, name), href)
         if sel.get("link_strip_query") and "?" in href:
             # Listing hrefs that append navigation state (Caltech's ?back_url=…)
             # would make the same profile a distinct URL per listing page —
@@ -1452,6 +1450,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # unreachable by a descendant selector from the card.
             title_el = card.find_next_sibling(sel["title_sibling"])
         title = title_el.get_text(" ", strip=True) if title_el else ""
+        if not title and (review_rank := sel.get("review_profile_rank")):
+            title = review_rank(card, name, href)
         # Some university directories list an administrative office before the
         # person's academic appointment. Keep the first academic/excluded rank
         # in source order so a later professorship cannot override an adjunct.
