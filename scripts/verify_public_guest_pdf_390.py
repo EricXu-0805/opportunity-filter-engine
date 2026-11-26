@@ -9,6 +9,9 @@ db_host = 'mjpirkyduibkakvlbdko.supabase.co'
 marker = 'I checked synthetic sensor measurements.'
 skill_case = '--independent-github-skill' in sys.argv
 repo_evidence = []
+email_case = '--historical-email' in sys.argv
+template_reads = 0
+listing_id = 'simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95'
 if skill_case: marker += ' PyTorch'
 receipt = {'site':site,'only_synthetic_guest':True,'viewports':[],'started':datetime.now(timezone.utc).isoformat()}
 records = []
@@ -43,7 +46,7 @@ def capture(r):
         if a.get('status')=='applied': commits.append(a['revision'])
 
 def guard(route):
-    global blocked
+    global blocked,template_reads
     r=route.request; u=urlsplit(r.url)
     if u.hostname not in ('joinalab.com',db_host): return route.abort()
     if r.method in ('GET','HEAD','OPTIONS'):return route.continue_()
@@ -60,7 +63,13 @@ def guard(route):
                 blocked+=1
                 return route.abort()
         return route.continue_()
-    if u.hostname=='joinalab.com' and r.method=='POST' and u.path=='/api/events':return route.continue_()
+    if u.hostname=='joinalab.com' and r.method=='POST':
+        if u.path=='/api/events':return route.continue_()
+        if email_case and u.path=='/api/cold-email/variants':
+            body=r.post_data_json
+            assert body['opportunity_id']==listing_id and body['profile']['name']=='Synthetic PDF check'
+            template_reads+=1
+            return route.continue_()
     return route.abort()
 
 def prepare(ctx, lang, session=None):
@@ -179,6 +188,26 @@ with sync_playwright() as pw:
                         expect(old.get_by_test_id('tailor-draft-review')).to_have_count(0)
                         expect(old.get_by_test_id('tailor-stale-draft')).to_have_count(0)
                         old.close()
+                    if email_case:
+                        subject='Synthetic historical subject'
+                        message='I wrote these three lines myself for an unsent synthetic draft.'
+                        changed='资料或目标信息已更新，主题、正文和收件人已保留。点击重新生成才会替换文稿。'
+                        def email():
+                            target=cold.new_page()
+                            target.goto(site+'/opportunities/'+listing_id,wait_until='domcontentloaded')
+                            target.get_by_role('button',name='起草邮件',exact=True).click(timeout=35000)
+                            expect(target.locator('#cold-email-body')).to_be_visible(timeout=35000)
+                            return target
+                        letter=email()
+                        letter.locator('#cold-email-subject').fill(subject)
+                        letter.locator('#cold-email-body').fill(message)
+                        letter.wait_for_function('v=>Object.values(localStorage).some(s=>s.includes(v))',arg=message,timeout=12000)
+                        letter.close()
+                        letter=email()
+                        expect(letter.locator('#cold-email-subject')).to_have_value(subject)
+                        expect(letter.locator('#cold-email-body')).to_have_value(message)
+                        expect(letter.get_by_text(changed,exact=True)).to_have_count(0)
+                        letter.close()
                     allow_synthetic_removal=True
                     pg.get_by_role('button',name='移除文件',exact=True).click()
                     expect(pg.get_by_role('button',name='移除文件',exact=True)).to_have_count(0)
@@ -202,6 +231,13 @@ with sync_playwright() as pw:
                         expect(target.get_by_test_id('tailor-stale-draft')).to_be_visible(timeout=15000)
                         receipt['historical_tailor']={'target':active_target,'author_text_unchanged':True,'before_removal_stale_badges':0,'after_removal_stale_badges':1,'ai_generations':0,'handwritten_text_entered_in_form':True}
                         target.close()
+                    if email_case:
+                        letter=email()
+                        expect(letter.locator('#cold-email-subject')).to_have_value(subject)
+                        expect(letter.locator('#cold-email-body')).to_have_value(message)
+                        expect(letter.get_by_text(changed,exact=True)).to_be_visible(timeout=20000)
+                        receipt['historical_email']={'subject_and_handwritten_body_retained':True,'revision_before_pdf_removal':mid['revision'],'revision_after_pdf_removal':raw['revision'],'newly_shown_review_notice':True,'free_template_reads':template_reads,'email_open_or_send_actions':0}
+                        letter.close()
                     receipt['independent_skill']={'legacy_source':'resume','github_import':repo_evidence[0],'detail_after_import':by_name(mid['profile_data'],'PyTorch'),'other_github_skill_retained':'Python','after_removal':surviving,'revision_after_import':mid['revision'],'revision_after_removal':raw['revision'],'fresh_read':True}
                     cold.close()
                     continue
