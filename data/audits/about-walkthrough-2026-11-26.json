@@ -44,6 +44,172 @@
     "return_to_matching_home": true
   },
   "external_email_actions": 0,
-  "production_player_evidence": null,
-  "real_user_observation": null
+  "production_player_evidence": {
+    "front_and_backend_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+    "merge": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1364",
+    "site": "https://joinalab.com/about",
+    "asset": "https://joinalab.com/demo/student-match.mp4",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45828479098/job/139938703102",
+    "verified_utc": "2026-11-26T13:22:55Z",
+    "browser": "Chromium via Chrome, read-only on the official domain",
+    "previously_recorded_video_digest_matches": true,
+    "before_play_collapsed": true,
+    "start_match_link_navigates_to_home": true,
+    "actual_sessions": [
+      {
+        "lang": "en",
+        "width": 1280,
+        "height": 800,
+        "media": [
+          [
+            "/demo/student-match.webp",
+            200
+          ],
+          [
+            "/demo/student-match.en.vtt",
+            200
+          ],
+          [
+            "/demo/student-match.mp4",
+            206
+          ]
+        ],
+        "page": {
+          "duration": 22.68,
+          "paused": true,
+          "width": 980,
+          "height": 630,
+          "captions": [
+            [
+              "en",
+              "showing",
+              5
+            ],
+            [
+              "zh",
+              "disabled",
+              0
+            ]
+          ],
+          "overflow": false
+        }
+      },
+      {
+        "lang": "zh",
+        "width": 1280,
+        "height": 800,
+        "media": [
+          [
+            "/demo/student-match.webp",
+            200
+          ],
+          [
+            "/demo/student-match.zh.vtt",
+            200
+          ],
+          [
+            "/demo/student-match.mp4",
+            206
+          ]
+        ],
+        "page": {
+          "duration": 22.68,
+          "paused": true,
+          "width": 980,
+          "height": 630,
+          "captions": [
+            [
+              "en",
+              "disabled",
+              0
+            ],
+            [
+              "zh",
+              "showing",
+              5
+            ]
+          ],
+          "overflow": false
+        }
+      },
+      {
+        "lang": "en",
+        "width": 390,
+        "height": 844,
+        "media": [
+          [
+            "/demo/student-match.en.vtt",
+            200
+          ],
+          [
+            "/demo/student-match.mp4",
+            206
+          ],
+          [
+            "/demo/student-match.webp",
+            200
+          ]
+        ],
+        "page": {
+          "duration": 22.68,
+          "paused": true,
+          "width": 980,
+          "height": 630,
+          "captions": [
+            [
+              "en",
+              "showing",
+              5
+            ],
+            [
+              "zh",
+              "disabled",
+              0
+            ]
+          ],
+          "overflow": false
+        }
+      },
+      {
+        "lang": "zh",
+        "width": 390,
+        "height": 844,
+        "media": [
+          [
+            "/demo/student-match.webp",
+            200
+          ],
+          [
+            "/demo/student-match.zh.vtt",
+            200
+          ],
+          [
+            "/demo/student-match.mp4",
+            206
+          ]
+        ],
+        "page": {
+          "duration": 22.68,
+          "paused": true,
+          "width": 980,
+          "height": 630,
+          "captions": [
+            [
+              "en",
+              "disabled",
+              0
+            ],
+            [
+              "zh",
+              "showing",
+              5
+            ]
+          ],
+          "overflow": false
+        }
+      }
+    ]
+  },
+  "real_user_observation": null,
+  "acceptance_remaining": "A consenting real user watches the page, explains the product and begins a task; the browser checks above only validate the deployed player and navigation."
 }
