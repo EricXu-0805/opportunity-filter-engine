@@ -1,0 +1,392 @@
+{
+  "recorded": "2026-11-26T22:31:55+00:00",
+  "production_main": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "prior_production_sha": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1459",
+  "pr_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45900657044",
+  "post_merge_main_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45904205123",
+  "protected_merge": {
+    "at": "2026-11-26T22:21:15+00:00",
+    "merged_pr": {
+      "mergeCommit": {
+        "oid": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+      },
+      "mergedAt": "2026-11-26T22:20:54Z",
+      "state": "MERGED",
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1459"
+    },
+    "tree": "993024a084319a01155f8f4cf08f6460b69ccca9",
+    "first_parent": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+    "reviewed_head": "8465d702d73d182be23317d37afcd500d96c13f0",
+    "remote_main_after": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "premerge": {
+      "at": "2026-11-26T22:20:33+00:00",
+      "current_main": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+      "head": "8465d702d73d182be23317d37afcd500d96c13f0",
+      "reviewed_tree": "993024a084319a01155f8f4cf08f6460b69ccca9",
+      "protected": {
+        "url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/branches/main/protection/required_status_checks",
+        "strict": true,
+        "contexts": [
+          "Backend (lint + pytest)",
+          "Frontend (typecheck + build)",
+          "E2E (Playwright)"
+        ],
+        "contexts_url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/branches/main/protection/required_status_checks/contexts",
+        "checks": [
+          {
+            "context": "Backend (lint + pytest)",
+            "app_id": 15368
+          },
+          {
+            "context": "Frontend (typecheck + build)",
+            "app_id": 15368
+          },
+          {
+            "context": "E2E (Playwright)",
+            "app_id": 15368
+          }
+        ]
+      },
+      "base": "main",
+      "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1459",
+      "native_checks": {
+        "CI": {
+          "id": 45900657044,
+          "event": "pull_request",
+          "head": "8465d702d73d182be23317d37afcd500d96c13f0",
+          "conclusion": "success",
+          "jobs": {
+            "Decide (run or skip the suite)": "success",
+            "Frontend (typecheck + build)": "success",
+            "Migrations (Flow B merge + CLI replay)": "success",
+            "Backend (lint + pytest)": "success",
+            "E2E (Playwright)": "success",
+            "Deploy backend (Render hook)": "skipped"
+          }
+        },
+        "Security advisory": {
+          "id": 45900657081,
+          "event": "pull_request",
+          "head": "8465d702d73d182be23317d37afcd500d96c13f0",
+          "conclusion": "success",
+          "jobs": {
+            "Security advisory (non-blocking)": "success"
+          }
+        }
+      },
+      "current_required_contexts": {
+        "Backend (lint + pytest)": "SUCCESS",
+        "Frontend (typecheck + build)": "SUCCESS",
+        "Migrations (Flow B merge + CLI replay)": "SUCCESS",
+        "E2E (Playwright)": "SUCCESS"
+      },
+      "verified_file_count": 28,
+      "is_draft": false,
+      "merge_state": "CLEAN"
+    }
+  },
+  "release_versions": {
+    "observed": "2026-11-26T22:25:09+00:00",
+    "target": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "sha_by_url": {
+      "https://joinalab.com/about": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+      "https://joinalab.com/api/health": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+      "https://opportunity-filter-engine-api.onrender.com/api/health": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+    }
+  },
+  "official_browser_workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45904692568",
+  "before_emeritus_check": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/566dc3a0a8b0222dfdc82b6301bb3a99b1c994c9/data/audits/maintenance-2026-11-26/b18-before-ucsd-archived-actions.json",
+  "after": {
+    "started": "2026-11-26T22:26:22+00:00",
+    "site": "https://joinalab.com",
+    "verified_frontend_and_backend_sha": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "scope": "Student signs up anonymously through the normal site. The audit selects no external application, contact, or writing action.",
+    "rows": [
+      {
+        "id": "faculty-ucsd-nano-e94320ae",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-e94320ae",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Shyue Ping Ong",
+        "actionable": true,
+        "view_faculty_profile": true,
+        "active_draft_button_visible_to_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-nano-25a6d469",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-25a6d469",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Sadik Esener",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-nano-dc9e3de3",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-dc9e3de3",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Michael Heller",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-nano-2aa92754",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-2aa92754",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Darren Lipomi",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-nano-04ac1d79",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-04ac1d79",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Ying Shirley Meng",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-nano-27240933",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-27240933",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Sheng Xu",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-ncsu-chass-089a76c8",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-089a76c8",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Jeffery Braden",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://chass.ncsu.edu/people/jpbraden/",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-umd-phys-5e8e0edd",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-umd-phys-5e8e0edd",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Elizabeth Beise",
+        "actionable": false,
+        "inactive_banner": true,
+        "source": "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
+        "generated_outreach": false,
+        "external_apply_or_draft_control": false,
+        "archived_draft_button_absent_for_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-che-8330aad7",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-che-8330aad7",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Jinhye Bae",
+        "actionable": true,
+        "view_faculty_profile": true,
+        "active_draft_button_visible_to_same_visitor": true
+      },
+      {
+        "id": "faculty-ucsd-nano-d24bdcfa",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-ucsd-nano-d24bdcfa",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Shaochen Chen",
+        "actionable": true,
+        "view_faculty_profile": true,
+        "active_draft_button_visible_to_same_visitor": true
+      },
+      {
+        "id": "faculty-utexas-mpdd-5850399f",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/faculty-utexas-mpdd-5850399f",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Zhengrong Cui",
+        "actionable": true,
+        "paper_links": [
+          {
+            "title": "Drum Filling of Thin-Film Freeze-Dried Monoclonal Antibody Powder in UniDose Powder Nasal Spray System",
+            "visible_href": "https://scholar.google.com/scholar?q=%22Drum%20Filling%20of%20Thin-Film%20Freeze-Dried%20Monoclonal%20Antibody%20Powder%20in%20UniDose%20Powder%20Nasal%20Spray%20System%22"
+          },
+          {
+            "title": "IgM has a better relative distribution in inflammation sites and tumor tissues than IgG",
+            "visible_href": "https://scholar.google.com/scholar?q=%22IgM%20has%20a%20better%20relative%20distribution%20in%20inflammation%20sites%20and%20tumor%20tissues%20than%20IgG%22"
+          }
+        ]
+      },
+      {
+        "id": "wisc-86cba49b83d7",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/wisc-86cba49b83d7",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)",
+        "actionable": true,
+        "published_stipend_visible": true,
+        "home_student_may_apply_visible": true,
+        "published_eligibility_source": "https://wiscience.wisc.edu/research/summer_research_program/"
+      },
+      {
+        "id": "sro-595e912d",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/sro-595e912d",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+        "actionable": true,
+        "original_directory_prose_and_current_host_summary_visible": true,
+        "published_stipend_visible": true,
+        "home_student_may_apply_visible": true,
+        "published_eligibility_source": "https://wiscience.wisc.edu/research/summer_research_program/"
+      },
+      {
+        "id": "sro-3c378261",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/sro-3c378261",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+        "actionable": true,
+        "original_directory_prose_and_current_host_summary_visible": true,
+        "published_stipend_visible": true,
+        "home_student_may_apply_visible": true,
+        "published_eligibility_source": "https://wiscience.wisc.edu/research/summer_research_program/"
+      },
+      {
+        "id": "nsf-reu-2447670",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/nsf-reu-2447670",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "REU: Advancing Data Science in the Public Interest",
+        "actionable": true,
+        "current_host_summary_visible": "two academic routes",
+        "original_directory_text_visible_if_provided": true,
+        "host_majors_visible": [
+          "Mathematics",
+          "Statistics",
+          "Computer Science",
+          "Social science"
+        ],
+        "published_eligibility_source": "https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu"
+      },
+      {
+        "id": "sro-44f176cd",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/sro-44f176cd",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "REU Advancing Data Science in the Public Interest",
+        "actionable": true,
+        "current_host_summary_visible": "two academic routes",
+        "original_directory_text_visible_if_provided": true,
+        "host_majors_visible": [
+          "Mathematics",
+          "Statistics",
+          "Computer Science",
+          "Social science"
+        ],
+        "published_eligibility_source": "https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu"
+      },
+      {
+        "id": "sro-3ec4ea4e",
+        "ok": true,
+        "url": "https://joinalab.com/opportunities/sro-3ec4ea4e",
+        "api_status": 200,
+        "browser_status": 200,
+        "heading": "Cancer Research Internship Summer Program (CRISP)",
+        "actionable": true,
+        "current_host_summary_visible": "incoming first-year students",
+        "original_directory_text_visible_if_provided": false,
+        "host_majors_visible": [
+          "Biomedical science",
+          "Behavioral science"
+        ],
+        "published_eligibility_source": "https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html"
+      }
+    ],
+    "normal_visitor": {
+      "anonymous_signup": true,
+      "profile_saved_by_site_ui": true,
+      "saved_revision_count": 1,
+      "home_form_restored_after_reload": true,
+      "profile_revisions_read_back": [
+        1
+      ],
+      "product_retry_used": false
+    },
+    "phase": "B19-after",
+    "observed_writing_requests": [],
+    "same_backend_at_end": true,
+    "finished": "2026-11-26T22:31:36+00:00"
+  },
+  "remaining": "The Friday November 27 UCSD natural refresh and Sunday November 29 national program refresh are separate acceptance conditions.",
+  "separate_production_match_filters": {
+    "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45905054190",
+    "verified_release": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "wisconsin": {
+      "original_details": 3,
+      "legacy_directory_descriptions_preserved": 2,
+      "application_period": "November 1 to February 10",
+      "stipend_usd": 7000,
+      "weeks": 10,
+      "paid_home_first_year_results": 2,
+      "paid_visiting_first_year_results": 2,
+      "all_host_and_directory_source_match_counts_in_order": [
+        2,
+        1,
+        2
+      ]
+    },
+    "smu": {
+      "statistics_junior_matches": 1,
+      "sociology_sophomore_matches": 1,
+      "source_specific_directory_original": true
+    },
+    "indiana_crisp": {
+      "computer_science_junior_matches": 0,
+      "psychology_first_year_matches": 1
+    },
+    "profile_updates_that_received_200": 3
+  },
+  "post_merge_main_ci_scope": "The normal push workflow recognized the tested merge tree and dispatched the Render hook; all four test suites ran on the linked pull_request commit."
+}
