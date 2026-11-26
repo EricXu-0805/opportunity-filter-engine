@@ -1,0 +1,32 @@
+{
+  "site": "https://joinalab.com",
+  "frontend_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "backend_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "before_revision": 1,
+  "only_link_saved_experiences": 0,
+  "mode": "fixed",
+  "cloud_read_before_manual_retry": {
+    "revision": 2,
+    "confirmed_import": true
+  },
+  "reviewed_fields": [
+    "company",
+    "position",
+    "start",
+    "end",
+    "responsibilities",
+    "results"
+  ],
+  "after_offline_reload_revision": 2,
+  "repeat_kept_existing": true,
+  "final_revision": 4,
+  "confirmed": [
+    "Fictional Copper Studio analyst, 2024 to 2025. Reviewed synthetic sample values and reported two examples.",
+    "Assistant — Fictional Blue Orchard\nFiled sample notes\nPrepared one synthetic report",
+    "Technician — Fictional Amber Circle\nFrom 2023 · To 2024\nMeasured synthetic samples.\nAssembled three test summaries."
+  ],
+  "original_quote_withdrawn": "Reviewed synthetic sample values at Fictional Copper Studio in 2024.",
+  "old_resume_and_saved_link_preserved": true,
+  "profiles_read_from_first_party": true,
+  "time": "2026-11-26T13:27:26.020538+00:00"
+}

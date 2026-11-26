@@ -1,0 +1,8 @@
+{
+  "observed_at": "2026-11-26T12:41:06.598907+00:00",
+  "frontend_release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "backend_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "stored_revision": 1,
+  "resume_and_owner_supplied_link_restored": true,
+  "import_present": false
+}

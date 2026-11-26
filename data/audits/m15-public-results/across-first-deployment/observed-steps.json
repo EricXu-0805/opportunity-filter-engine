@@ -1,0 +1,15 @@
+{
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45821665261",
+  "created_before_rollout": true,
+  "prior_resume_and_owner_supplied_link_restored": true,
+  "before_revision": 1,
+  "same_legacy_row_read_at_new_entry_before_editing": true,
+  "observation_source": "The across-release job reached positions.py line 155 after explicitly checking that the pre-release owner, unchanged revision and empty experience library reopened on the newly released site.",
+  "last_completed_actions": [
+    "Reopened the same older cloud revision",
+    "Previewed the CSV against the existing r\u00e9sum\u00e9",
+    "Required an explicit conflict decision",
+    "Confirmed a manual merge while offline"
+  ],
+  "unverified_on_this_specific_owner": "The runner ended without reopening the same cloud row after the offline edit; its event listener observed no newer acknowledgement. No later revision is claimed for this owner."
+}
