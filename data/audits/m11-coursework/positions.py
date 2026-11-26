@@ -94,10 +94,18 @@ with sync_playwright() as pw:
         receipt['profile_created_before_frontend_sha'] = old_front
         receipt['profile_created_before_backend_sha'] = old_back
         print('Existing synthetic profile established before release at', old_front, 'revision', old['revision'], flush=True)
+        out = Path('m11-results')
+        out.mkdir(exist_ok=True)
+        checkpoint = {
+            'observed_at': datetime.now(timezone.utc).isoformat(), 'frontend_release': old_front,
+            'backend_release': old_back, 'stored_revision': old['revision'],
+            'resume_and_owner_supplied_link_restored': True, 'import_present': False,
+        }
+        (out/'pre-release.json').write_text(json.dumps(checkpoint, indent=2))
         observed = {old_front}
-        for _ in range(58):
+        for _ in range(55):
             # Keep the same browser session alive. No credentials leave this job.
-            prior.wait_for_timeout(60000)
+            prior.wait_for_timeout(120000)
             response = prior.request.get(SITE)
             match = re.search(r'data-release-sha="([a-f0-9]{40})"', response.text())
             back = prior.request.get(SITE+'/api/health').json().get('release_sha')

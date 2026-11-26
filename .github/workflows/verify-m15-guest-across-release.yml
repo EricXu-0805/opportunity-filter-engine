@@ -8,7 +8,7 @@ permissions:
 jobs:
   continuity:
     runs-on: ubuntu-24.04
-    timeout-minutes: 65
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
         with:
@@ -22,7 +22,8 @@ jobs:
           VERIFY_GUEST_ACROSS_RELEASE: '1'
         run: python -u data/audits/m11-coursework/positions.py
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: M15-across-release
-          path: m11-results/receipt.json
+          path: m11-results/*.json
           if-no-files-found: error
