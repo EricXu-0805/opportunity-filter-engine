@@ -1,0 +1,38 @@
+{
+  "release_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "generated_at": "2026-11-26T14:26:20.992285+00:00",
+  "summary": {
+    "passed": 5,
+    "failed": 4,
+    "blocked": 7,
+    "cannot_verify": 0,
+    "unverified": 6,
+    "skipped": 4,
+    "not_run": 0,
+    "not_applicable": 2,
+    "release_blocking": 21
+  },
+  "final_decision": "NO-GO",
+  "freshness_percent": 83.91,
+  "freshness_threshold": 95.0,
+  "fully_stale_schools": [],
+  "active_records": 137000,
+  "gate_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45838639053",
+  "gates": [
+    {
+      "gate": "ledger_currency",
+      "status": "FAIL",
+      "detail": "committed ledger describes aaab34b3, candidate is 1bff5dbe (1889 commits behind): a verdict from another SHA is not evidence about this one"
+    },
+    {
+      "gate": "corpus",
+      "status": "PASS",
+      "detail": "149775 records across 117 shards"
+    },
+    {
+      "gate": "corpus_freshness",
+      "status": "FAIL",
+      "detail": "83.91% of 137,000 active records were re-observed within 14d, below the 95.0% floor; 2 school(s) with a fresh record have no faculty record re-observed within 14d: colby, haverford"
+    }
+  ]
+}
