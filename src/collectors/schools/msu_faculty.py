@@ -165,6 +165,7 @@ def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
             "records_key": "results",
             "total_key": "resultCount",
             "total_distinct_key": "id",
+            "report_page_failures": True,
             "paginate": {"param": "page", "count_key": "pageCount", "max": 8},
             "name_fields": ["name"],
             "title_from_list": {"field": "organizationTitles",
