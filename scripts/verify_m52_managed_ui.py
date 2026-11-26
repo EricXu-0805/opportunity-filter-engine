@@ -90,7 +90,10 @@ async def main():
         assert final['profile_data']['skills']==[{'name':'PyTorch','level':'experienced','source':'shared'}]
         for field in ('name','home_school','college','major','resume_text'):
             assert final['profile_data'][field]==before['profile_data'][field]
+        # Generate navigates its tab asynchronously; open the issued link in a new recipient tab.
+        recv=await recv.context.new_page()
         await recv.goto(url,wait_until='domcontentloaded')
+        await expect(recv.get_by_role('button',name='Accept selected fields')).to_be_visible()
         await expect(recv.get_by_text('Revised fields QA',exact=True)).to_be_visible()
         await issued.get_by_role('button',name='Revoke link').click()
         await expect(send.get_by_text('Link revoked.',exact=True)).to_be_visible()
