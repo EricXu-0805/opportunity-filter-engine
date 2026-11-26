@@ -1,0 +1,451 @@
+{
+  "scope": "Isolated, exact B23 candidate with compiled UI; separate from real deployment and school refresh.",
+  "sha": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "pitt_rutgers": {
+    "checked_at": "2026-11-26T21:25:58.275652+00:00",
+    "site": "http://127.0.0.1:3000",
+    "guest_account": {
+      "signup_http": 200,
+      "profile_saved": true
+    },
+    "release": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+    "rows": [
+      {
+        "id": "faculty-pitt-cs-bb6c586d",
+        "campus": "University of Pittsburgh",
+        "h1": "Xiaowei Jia",
+        "saved_status": 200,
+        "active": false,
+        "inactive_banner": true,
+        "visible_person_link": "https://www.cs.pitt.edu/people/full-time-faculty/xiaowei-jia",
+        "draft_button_visible": false,
+        "generic_invitation_visible": false,
+        "retained_archived_paper_titles": [
+          "Flow Learners for PDEs: Toward a Physics-to-Physics Paradigm for Scientific Computing",
+          "Knowledge-Guided Machine Learning: A Paradigm Shift in AI for Science",
+          "PEST: Physics-Enhanced Swin Transformer for 3D Turbulence Simulation"
+        ],
+        "release": "72a8b0027b314903c0228fcaa536769e9b7fe91e"
+      },
+      {
+        "id": "faculty-rutgers-cs-bb6c586d",
+        "campus": "Rutgers University-New Brunswick",
+        "h1": "Xiaowei Jia",
+        "saved_status": 200,
+        "active": true,
+        "inactive_banner": false,
+        "visible_person_link": "https://www.cs.rutgers.edu/people/professors/details/xiaowei-jia",
+        "draft_button_visible": true,
+        "generic_invitation_visible": true,
+        "retained_archived_paper_titles": [],
+        "release": "72a8b0027b314903c0228fcaa536769e9b7fe91e"
+      }
+    ]
+  },
+  "msu_first_run": {
+    "checked_at": "2026-11-26T21:26:50.080439+00:00",
+    "site": "http://127.0.0.1:3000",
+    "signup_and_persisted_synthetic_profile": {
+      "signup_http": 200,
+      "profile_saved": true
+    },
+    "release_start": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+    "release_end": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+    "rows": [
+      {
+        "id": "faculty-msu-mgi-6af109e0",
+        "expected_name": "Debbie Walton",
+        "api_role": "Executive Assistant to the Chair and Communications Manager",
+        "http": 200,
+        "heading": "Debbie Walton \u2014 MGI",
+        "source_label": "View source",
+        "source_target": "https://directory.natsci.msu.edu/directory/Profiles/Person/104350",
+        "inactive_banner": false,
+        "text_has_faculty_profile": false,
+        "view_faculty_profile": false,
+        "generic_contact_invitation": false,
+        "draft_button_visible": false,
+        "apply_action_visible": false,
+        "rank_visible": true,
+        "has_staff_summary": true,
+        "academic_labels": [],
+        "action_labels": [
+          "Back to matches",
+          "View source",
+          "Share",
+          "Contacted",
+          "Applied",
+          "Got reply",
+          "Interviewing",
+          "Rejected",
+          "Not interested",
+          "Record an application",
+          "Records, notes & reminders",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nDaniel Morris\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nChristopher Saffron\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nA.Pouyan Nejadhashemi\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nWei Liao\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nTruman Surbrook\n\nMichigan State University"
+        ],
+        "api_contact_status": "unavailable",
+        "zh_role": "\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406",
+        "zh_meta": {
+          "meta[name=\"description\"]": "\u9662\u7cfb\u5de5\u4f5c\u4eba\u5458\u8d44\u6599\u3002\u6821\u65b9\u540d\u5f55\u6240\u5217\u73b0\u804c\u4e3a\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406\u3002",
+          "meta[property=\"og:description\"]": "\u9662\u7cfb\u5de5\u4f5c\u4eba\u5458\u8d44\u6599\u3002\u6821\u65b9\u540d\u5f55\u6240\u5217\u73b0\u804c\u4e3a\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406\u3002",
+          "meta[name=\"twitter:description\"]": "\u9662\u7cfb\u5de5\u4f5c\u4eba\u5458\u8d44\u6599\u3002\u6821\u65b9\u540d\u5f55\u6240\u5217\u73b0\u804c\u4e3a\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406\u3002"
+        },
+        "verdict": "passed"
+      },
+      {
+        "id": "faculty-msu-bmb-350c8c60",
+        "expected_name": "John E. Wilson",
+        "api_role": "Professor Emeritus",
+        "http": 200,
+        "verdict": "requires review",
+        "failure": "Locator.wait_for: Timeout 45000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"main\").get_by_role(\"link\", name=\"Back to matches\", exact=True) to be visible\n"
+      },
+      {
+        "id": "faculty-msu-bmb-939e5db8",
+        "expected_name": "Olorunseun O Ogunwobi",
+        "verdict": "requires review",
+        "failure": "HTTP Error 429: Too Many Requests"
+      },
+      {
+        "id": "faculty-msu-ees-211ade4b",
+        "expected_name": "Jeffrey Freymueller",
+        "verdict": "requires review",
+        "failure": "HTTP Error 429: Too Many Requests"
+      }
+    ]
+  },
+  "msu_spaced": {
+    "checked_at": "2026-11-26T21:44:15.380040+00:00",
+    "site": "http://127.0.0.1:3000",
+    "signup_and_persisted_synthetic_profile": {
+      "signup_http": 200,
+      "profile_saved": true
+    },
+    "release_start": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+    "release_end": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+    "rows": [
+      {
+        "id": "faculty-msu-mgi-6af109e0",
+        "expected_name": "Debbie Walton",
+        "api_role": "Executive Assistant to the Chair and Communications Manager",
+        "http": 200,
+        "heading": "Debbie Walton \u2014 MGI",
+        "source_label": "View source",
+        "source_target": "https://directory.natsci.msu.edu/directory/Profiles/Person/104350",
+        "inactive_banner": false,
+        "text_has_faculty_profile": false,
+        "view_faculty_profile": false,
+        "generic_contact_invitation": false,
+        "draft_button_visible": false,
+        "apply_action_visible": false,
+        "rank_visible": true,
+        "has_staff_summary": true,
+        "academic_labels": [],
+        "action_labels": [
+          "Back to matches",
+          "View source",
+          "Share",
+          "Contacted",
+          "Applied",
+          "Got reply",
+          "Interviewing",
+          "Rejected",
+          "Not interested",
+          "Record an application",
+          "Records, notes & reminders",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nDaniel Morris\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nChristopher Saffron\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nA.Pouyan Nejadhashemi\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nWei Liao\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nTruman Surbrook\n\nMichigan State University"
+        ],
+        "api_contact_status": "unavailable",
+        "zh_role": "\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406",
+        "zh_meta": {
+          "meta[name=\"description\"]": "\u9662\u7cfb\u5de5\u4f5c\u4eba\u5458\u8d44\u6599\u3002\u6821\u65b9\u540d\u5f55\u6240\u5217\u73b0\u804c\u4e3a\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406\u3002",
+          "meta[property=\"og:description\"]": "\u9662\u7cfb\u5de5\u4f5c\u4eba\u5458\u8d44\u6599\u3002\u6821\u65b9\u540d\u5f55\u6240\u5217\u73b0\u804c\u4e3a\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406\u3002",
+          "meta[name=\"twitter:description\"]": "\u9662\u7cfb\u5de5\u4f5c\u4eba\u5458\u8d44\u6599\u3002\u6821\u65b9\u540d\u5f55\u6240\u5217\u73b0\u804c\u4e3a\u7cfb\u4e3b\u4efb\u884c\u653f\u52a9\u7406\u517c\u4f20\u64ad\u4e8b\u52a1\u7ecf\u7406\u3002"
+        },
+        "verdict": "passed"
+      },
+      {
+        "id": "faculty-msu-bmb-350c8c60",
+        "expected_name": "John E. Wilson",
+        "api_role": "Professor Emeritus",
+        "http": 200,
+        "heading": "John E. Wilson",
+        "source_label": "View faculty profile",
+        "source_target": "https://directory.natsci.msu.edu/directory/Profiles/Person/103481",
+        "inactive_banner": true,
+        "text_has_faculty_profile": false,
+        "view_faculty_profile": true,
+        "generic_contact_invitation": false,
+        "draft_button_visible": false,
+        "apply_action_visible": false,
+        "rank_visible": false,
+        "has_staff_summary": false,
+        "academic_labels": [],
+        "action_labels": [
+          "Back to matches",
+          "View faculty profile",
+          "Share",
+          "Contacted",
+          "Applied",
+          "Got reply",
+          "Interviewing",
+          "Rejected",
+          "Not interested",
+          "Record an application",
+          "Records, notes & reminders",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nDaniel Morris\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nChristopher Saffron\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nA.Pouyan Nejadhashemi\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nWei Liao\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nTruman Surbrook\n\nMichigan State University"
+        ],
+        "api_contact_status": "unavailable",
+        "verdict": "passed"
+      },
+      {
+        "id": "faculty-msu-bmb-939e5db8",
+        "expected_name": "Olorunseun O Ogunwobi",
+        "api_role": "Chairperson",
+        "http": 200,
+        "heading": "Olorunseun O Ogunwobi",
+        "source_label": "View faculty profile",
+        "source_target": "https://directory.natsci.msu.edu/directory/Profiles/Person/104253",
+        "inactive_banner": false,
+        "text_has_faculty_profile": true,
+        "view_faculty_profile": true,
+        "generic_contact_invitation": true,
+        "draft_button_visible": true,
+        "apply_action_visible": false,
+        "rank_visible": true,
+        "has_staff_summary": false,
+        "academic_labels": [
+          "Professor or lab",
+          "Research areas"
+        ],
+        "action_labels": [
+          "Back to matches",
+          "View faculty profile",
+          "Draft email",
+          "Tailor resume",
+          "Renovate resume",
+          "Share",
+          "Contacted",
+          "Applied",
+          "Got reply",
+          "Interviewing",
+          "Rejected",
+          "Not interested",
+          "Record an application",
+          "Records, notes & reminders",
+          "Source page",
+          "Source page",
+          "Source page",
+          "Source page",
+          "Sign in to reveal",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nDaniel Morris\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nChristopher Saffron\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nA.Pouyan Nejadhashemi\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nWei Liao\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nTruman Surbrook\n\nMichigan State University"
+        ],
+        "api_contact_status": "sign_in_required",
+        "verdict": "passed"
+      },
+      {
+        "id": "faculty-msu-ees-211ade4b",
+        "expected_name": "Jeffrey Freymueller",
+        "api_role": "Chairperson, Faculty",
+        "http": 200,
+        "heading": "Jeffrey Freymueller",
+        "source_label": "View faculty profile",
+        "source_target": "https://directory.natsci.msu.edu/directory/Profiles/Person/101198",
+        "inactive_banner": false,
+        "text_has_faculty_profile": true,
+        "view_faculty_profile": true,
+        "generic_contact_invitation": true,
+        "draft_button_visible": true,
+        "apply_action_visible": false,
+        "rank_visible": true,
+        "has_staff_summary": false,
+        "academic_labels": [
+          "Professor or lab",
+          "Research areas"
+        ],
+        "action_labels": [
+          "Back to matches",
+          "View faculty profile",
+          "Draft email",
+          "Tailor resume",
+          "Renovate resume",
+          "Share",
+          "Contacted",
+          "Applied",
+          "Got reply",
+          "Interviewing",
+          "Rejected",
+          "Not interested",
+          "Record an application",
+          "Records, notes & reminders",
+          "Source page",
+          "Source page",
+          "Source page",
+          "Sign in to reveal",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nDaniel Morris\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nChristopher Saffron\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nA.Pouyan Nejadhashemi\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nWei Liao\n\nMichigan State University",
+          "Faculty contact for inquiries \u00b7 openings not confirmed\nTruman Surbrook\n\nMichigan State University"
+        ],
+        "api_contact_status": "sign_in_required",
+        "verdict": "passed"
+      }
+    ]
+  },
+  "summer_lab": {
+    "release_sha": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+    "site": "http://127.0.0.1:39785",
+    "simulated": true,
+    "source_states": [
+      {
+        "tested_clock": "2027-01-12T05:58:59Z",
+        "rows": [
+          {
+            "id": "uchicago-8cd2def060b6",
+            "title": "DSI Summer Lab (Data Science Institute)",
+            "api_actionable": true,
+            "apply_action_links": [
+              {
+                "name": "Apply now",
+                "href": "https://datascience.uchicago.edu/education/summerlab/"
+              }
+            ],
+            "university_citations": [
+              {
+                "name": "Source page",
+                "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+              },
+              {
+                "name": "Source page",
+                "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+              }
+            ],
+            "stipend_5600": true,
+            "conditional_1800": true,
+            "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "official_deadline": "2027-01-11",
+            "cutoff": "2027-01-11T23:59:00-06:00",
+            "closed_message": false
+          },
+          {
+            "id": "sro-d6b78515",
+            "title": "Data Science Institute Summer Lab",
+            "api_actionable": true,
+            "apply_action_links": [
+              {
+                "name": "Apply now",
+                "href": "https://datascience.uchicago.edu/education/summerlab/#program-overview"
+              }
+            ],
+            "university_citations": [
+              {
+                "name": "Source page",
+                "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+              },
+              {
+                "name": "Source page",
+                "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+              },
+              {
+                "name": "Source page",
+                "href": "https://datascience.uchicago.edu/education/summerlab/program-details/"
+              }
+            ],
+            "stipend_5600": true,
+            "conditional_1800": true,
+            "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "official_deadline": "2027-01-11",
+            "cutoff": "2027-01-11T23:59:00-06:00",
+            "closed_message": false
+          }
+        ]
+      },
+      {
+        "tested_clock": "2027-01-12T05:59:00Z",
+        "rows": [
+          {
+            "id": "uchicago-8cd2def060b6",
+            "title": "DSI Summer Lab (Data Science Institute)",
+            "api_actionable": false,
+            "apply_action_links": [],
+            "university_citations": [],
+            "stipend_5600": false,
+            "conditional_1800": false,
+            "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "official_deadline": "2027-01-11",
+            "cutoff": "2027-01-11T23:59:00-06:00",
+            "closed_message": true
+          },
+          {
+            "id": "sro-d6b78515",
+            "title": "Data Science Institute Summer Lab",
+            "api_actionable": false,
+            "apply_action_links": [],
+            "university_citations": [],
+            "stipend_5600": false,
+            "conditional_1800": false,
+            "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "official_deadline": "2027-01-11",
+            "cutoff": "2027-01-11T23:59:00-06:00",
+            "closed_message": true
+          }
+        ]
+      },
+      {
+        "tested_clock": "2027-01-12T13:59:00Z",
+        "rows": [
+          {
+            "id": "uchicago-8cd2def060b6",
+            "title": "DSI Summer Lab (Data Science Institute)",
+            "api_actionable": false,
+            "apply_action_links": [],
+            "university_citations": [],
+            "stipend_5600": false,
+            "conditional_1800": false,
+            "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "official_deadline": "2027-01-11",
+            "cutoff": "2027-01-11T23:59:00-06:00",
+            "closed_message": true
+          },
+          {
+            "id": "sro-d6b78515",
+            "title": "Data Science Institute Summer Lab",
+            "api_actionable": false,
+            "apply_action_links": [],
+            "university_citations": [],
+            "stipend_5600": false,
+            "conditional_1800": false,
+            "source_funding_url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+            "official_deadline": "2027-01-11",
+            "cutoff": "2027-01-11T23:59:00-06:00",
+            "closed_message": true
+          }
+        ]
+      }
+    ],
+    "same_release_after": true,
+    "observed_utc": "2026-11-26T21:26:50.184Z"
+  },
+  "runs": {
+    "initial_pitt_msu": 45897410111,
+    "paced_msu": 45899021763,
+    "host_cutoff": 45897744139
+  }
+}
