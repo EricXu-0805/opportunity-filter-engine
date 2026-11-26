@@ -1,0 +1,174 @@
+{
+  "at": "2026-11-26T09:35:10.430581+00:00",
+  "active": 10,
+  "directory_counts": {
+    "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty": 54,
+    "https://ccb.berkeley.edu/people/core-faculty": 44
+  },
+  "rows": [
+    {
+      "id": "faculty-ucb-cdss-118019dd",
+      "name": "Eric Kim",
+      "old_url": "https://eric-kim.net/eric-kim-net/index.html",
+      "destination_url": "https://eric-kim.net/eric-kim-net/index.html",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Data Science Undergraduate Studies",
+      "live_status": 200,
+      "final_url": "https://eric-kim.net/eric-kim-net/index.html",
+      "page_title": "eric-kim.net",
+      "h1": [
+        "Eric Kim, MS eric-kim.net"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-768987a3",
+      "name": "Jordan Thomas Mursinna",
+      "old_url": "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna",
+      "destination_url": "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Department of History",
+      "live_status": 200,
+      "final_url": "https://history.berkeley.edu/people/faculty/visiting/jordan-thomas-mursinna",
+      "page_title": "Jordan Thomas Mursinna | Department of History",
+      "h1": [
+        "Jordan Thomas Mursinna"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-cbe1719c",
+      "name": "Ramesh Sridharan",
+      "old_url": "https://data.berkeley.edu/data-science-undergraduate-studies-faculty",
+      "destination_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Data Science Undergraduate Studies",
+      "live_status": 200,
+      "final_url": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "page_title": "Data Science Undergraduate Studies Faculty | CDSS at UC Berkeley",
+      "h1": [
+        "Data Science Undergraduate Studies Faculty"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-0ac5b942",
+      "name": "Michael Boots",
+      "old_url": "https://ccb.berkeley.edu/principal-investigators-by-research-fields/",
+      "destination_url": "https://ccb.berkeley.edu/people/michael-boots",
+      "directory": "https://ccb.berkeley.edu/people/core-faculty",
+      "source_title": "Professor of Integrative Biology",
+      "live_status": 200,
+      "final_url": "https://ccb.berkeley.edu/people/michael-boots",
+      "page_title": "Michael Boots | Center for Computational Biology",
+      "h1": [
+        "Michael Boots"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-adcdda66",
+      "name": "Sung-Hou Kim",
+      "old_url": "https://ccb.berkeley.edu/principal-investigators-by-research-fields/",
+      "destination_url": "https://ccb.berkeley.edu/people/sung-hou-kim-0",
+      "directory": "https://ccb.berkeley.edu/people/core-faculty",
+      "source_title": "Professor of the Graduate School",
+      "live_status": 200,
+      "final_url": "https://ccb.berkeley.edu/people/sung-hou-kim-0",
+      "page_title": "Sung-Hou Kim | Center for Computational Biology",
+      "h1": [
+        "Sung-Hou Kim"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-2b37be00",
+      "name": "Friedrich Sommer",
+      "old_url": "https://ccb.berkeley.edu/principal-investigators-by-research-fields/",
+      "destination_url": "https://ccb.berkeley.edu/people/friedrich-sommer",
+      "directory": "https://ccb.berkeley.edu/people/core-faculty",
+      "source_title": "Adjunct Professor, Redwood Center for Theoretical Neuroscience & Helen Wills Neu",
+      "live_status": 200,
+      "final_url": "https://ccb.berkeley.edu/people/friedrich-sommer",
+      "page_title": "Friedrich Sommer | Center for Computational Biology",
+      "h1": [
+        "Friedrich Sommer"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-c0576a7c",
+      "name": "Dennis Feehan",
+      "old_url": "https://data.berkeley.edu/data-science-undergraduate-studies-faculty",
+      "destination_url": "https://dennisfeehan.org/",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Demography",
+      "live_status": 200,
+      "final_url": "https://dennisfeehan.org/",
+      "page_title": "Dennis M. Feehan",
+      "h1": [],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-a4440777",
+      "name": "Giles Hooker",
+      "old_url": "https://data.berkeley.edu/data-science-undergraduate-studies-faculty",
+      "destination_url": "https://statistics.berkeley.edu/people/giles-hooker",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Department of Statistics",
+      "live_status": 200,
+      "final_url": "https://statistics.berkeley.edu/people/giles-hooker",
+      "page_title": "Giles Hooker | Department of Statistics",
+      "h1": [
+        "Giles Hooker",
+        "Giles Hooker"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-2bb51126",
+      "name": "Daniel Roddy",
+      "old_url": "https://data.berkeley.edu/data-science-undergraduate-studies-faculty",
+      "destination_url": "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Department of History; Data Science Undergraduate Studies",
+      "live_status": 200,
+      "final_url": "https://history.berkeley.edu/people/faculty/visiting/daniel-roddy",
+      "page_title": "Daniel Roddy | Department of History",
+      "h1": [
+        "Daniel Roddy"
+      ],
+      "unchanged_id": true
+    },
+    {
+      "id": "faculty-ucb-cdss-61b4cd4b",
+      "name": "Eric Van Dusen",
+      "old_url": "https://data.berkeley.edu/data-science-undergraduate-studies-faculty",
+      "destination_url": "https://cdss.berkeley.edu/people/eric-van-dusen",
+      "directory": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty",
+      "source_title": "Data Science Undergraduate Studies",
+      "live_status": 200,
+      "final_url": "https://cdss.berkeley.edu/people/eric-van-dusen",
+      "page_title": "Eric Van Dusen | CDSS at UC Berkeley",
+      "h1": [
+        "People",
+        "Eric Van Dusen"
+      ],
+      "unchanged_id": true
+    }
+  ],
+  "previous_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45448976476",
+  "previous_run_observed": {
+    "dsus_headings": 51,
+    "ccb_headings": 42,
+    "unique_dropped": 83,
+    "fetched": 0
+  },
+  "prior_dedup_fix": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1223",
+  "eecs_emeritus_control": {
+    "name": "Joseph M. Hellerstein",
+    "directory": "https://www2.eecs.berkeley.edu/Faculty/Lists/CS/emeritus.html",
+    "new_opportunity": false
+  },
+  "formal_before": "https://joinalab.com/api/opportunities/faculty-ucb-cdss-0ac5b942"
+}
