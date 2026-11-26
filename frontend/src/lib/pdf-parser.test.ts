@@ -1127,6 +1127,10 @@ describe('positioned text items', () => {
       ])) });
       return parseResumePDF(fakeFile());
     };
+    const chinese = '主修课程：数据结构、线性代数';
+    for (const next of ['教授学生学习编程', '获得优秀学生奖学金', '工作经历', '相关技能：Python']) {
+      expect((await parse(chinese, 497, next)).extracted_coursework).toEqual(['数据结构', '线性代数']);
+    }
     const line = 'Relevant coursework: Introduction to Computer Science, Data';
     const result = await parse(line, 497, 'Structures and Algorithms, Discrete Mathematics');
     expect(result.raw_text.split('\n').slice(1)).toEqual([line, 'Structures and Algorithms, Discrete Mathematics']);
