@@ -152,8 +152,11 @@ _NATSCI_LADDER = {
 }
 
 
-def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
+def _natsci(short: str, name: str, majors: list[str], org_id: int, *, foundation_rank: bool = False) -> dict:
     """A College of Natural Science department via the shared directory JSON API."""
+    ladder = _NATSCI_LADDER
+    if foundation_rank:
+        ladder = {**ladder, "require": ladder["require"] + r"|^MSU Research FDN DIST\. Prof$"}
     return {
         "short": short, "name": name, "majors": majors,
         "directory_url": f"https://directory.natsci.msu.edu/Directory/Directory/Department/{org_id}",
@@ -178,7 +181,7 @@ def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
                              _NATSCI_PROFILE + r"\1"),
             "cite_directory": True,
             "research_field": "researchInterests",
-            "ladder_filter": _NATSCI_LADDER,
+            "ladder_filter": ladder,
         },
     }
 
@@ -317,17 +320,19 @@ SCHOOL: dict = {
         # Physics & Astronomy: the whole department via the API (99 ladder) —
         # supersedes the old condensed-matter-only table (~a dozen).
         _natsci("PHYS", "Department of Physics and Astronomy",
-                ["Physics", "Astrophysics"], 34),
+                ["Physics", "Astrophysics"], 34, foundation_rank=True),
+        # Mathematics' Research Foundation entry is already published under
+        # the professor's Computational Mathematics and Engineering ID.
         _natsci("MATH", "Department of Mathematics",
                 ["Mathematics", "Applied Mathematics"], 3),
         _natsci("STAT", "Department of Statistics and Probability",
-                ["Statistics", "Data Science"], 2),
+                ["Statistics", "Data Science"], 2, foundation_rank=True),
         _natsci("BMB", "Department of Biochemistry and Molecular Biology",
-                ["Biochemistry", "Molecular Biology"], 6),
+                ["Biochemistry", "Molecular Biology"], 6, foundation_rank=True),
         _natsci("MGI", "Department of Microbiology, Genetics and Immunology",
-                ["Microbiology", "Genetics", "Immunology"], 26),
+                ["Microbiology", "Genetics", "Immunology"], 26, foundation_rank=True),
         _natsci("IBIO", "Department of Integrative Biology",
-                ["Integrative Biology", "Zoology", "Ecology"], 4),
+                ["Integrative Biology", "Zoology", "Ecology"], 4, foundation_rank=True),
         _natsci("PSL", "Department of Physiology", ["Physiology"], 35),
         _natsci("EES", "Department of Earth and Environmental Sciences",
                 ["Earth Science", "Environmental Science", "Geology"], 20),
