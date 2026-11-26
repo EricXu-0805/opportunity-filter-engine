@@ -1,0 +1,49 @@
+{
+  "started_at": "2026-11-26T21:44:45.135477+00:00",
+  "native": {
+    "conclusion": "success",
+    "databaseId": 45895983660,
+    "event": "pull_request",
+    "headSha": "88773347bdefdd14a7afd9a1ab44ea5f08a87346",
+    "jobs": {
+      "Decide (run or skip the suite)": "success",
+      "Frontend (typecheck + build)": "success",
+      "Backend (lint + pytest)": "success",
+      "E2E (Playwright)": "success",
+      "Migrations (Flow B merge + CLI replay)": "success",
+      "Deploy backend (Render hook)": "skipped"
+    },
+    "status": "completed",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45895983660"
+  },
+  "security": {
+    "conclusion": "success",
+    "databaseId": 45895983666,
+    "event": "pull_request",
+    "headSha": "88773347bdefdd14a7afd9a1ab44ea5f08a87346",
+    "jobs": {
+      "Security advisory (non-blocking)": "success"
+    },
+    "status": "completed",
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45895983666"
+  },
+  "signoff": {
+    "baseRefName": "main",
+    "baseRefOid": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "headRefOid": "88773347bdefdd14a7afd9a1ab44ea5f08a87346",
+    "isDraft": false,
+    "mergeStateStatus": "CLEAN",
+    "mergeable": "MERGEABLE",
+    "reviewDecision": "",
+    "github_merge_preview": "3e6effc54dedca132edeeda7ac61fa953d3e7096",
+    "verified_tree": "996af9265084f8b5eaff9efddadd56f308b4a6f3"
+  },
+  "merged_at": "2026-11-26T21:45:23Z",
+  "merge_sha": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "actual_tree": "996af9265084f8b5eaff9efddadd56f308b4a6f3",
+  "parents": [
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "88773347bdefdd14a7afd9a1ab44ea5f08a87346"
+  ],
+  "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1453"
+}
