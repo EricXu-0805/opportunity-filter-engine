@@ -6,10 +6,11 @@ server-renders each department's faculty into a striped HTML table. ONE
 selector set covers all of them — rows are ``table.table-striped tr``, the name
 is the ``td strong a`` link (whose href is the ``/bio/<slug>`` profile), and the
 public email is the row's ``mailto:`` — only the listing path differs per dept
-(``/people/`` vs ``/faculty/``, resolved per entry from a live probe). The rank
+(``/people/`` vs ``/faculty/``, resolved per entry from a live probe). The rank in most departments
 sits as bare ``<br>``-separated text in the same cell (no stable element), so
 records ship without a title and are recovered by the profile-enrichment pass;
-email is present inline for essentially every row.
+email is present inline for essentially every row. Mathematics exposes the full
+appointment in paragraphs beneath each name.
 
 Single source ("vanderbilt_faculty"); department rides each record's
 ``department``, ids namespaced by short-code. Audience "unknown".
@@ -26,6 +27,12 @@ future ``api`` config once the faculty taxonomy categories are mapped).
 
 from __future__ import annotations
 
+import re
+from copy import copy
+
+from bs4 import Tag
+
+from ...evidence import is_trainee_title
 from .. import faculty_graph
 
 # Shared College of Arts & Science striped-table selector (static HTML).
@@ -76,6 +83,41 @@ _CHEMISTRY_DIRECTORIES = {
     "faculty-vanderbilt-chem-b0f20085": ("Primary Faculty Directory", "primary-faculty"),
     "faculty-vanderbilt-chem-6968c3d1": ("Teaching Faculty Directory", "teaching-faculty"),
 }
+
+
+def _mathematics_rank(card: Tag) -> str:
+    paragraphs = card.select("td.biolink > p")
+    if not paragraphs:
+        return ""
+    # A primary-faculty card can also name a retired appointment. Retain the
+    # person without assigning either of two competing statuses to the record.
+    statements = [p.get_text(" ", strip=True) for p in paragraphs]
+    retired_role = re.compile(r"\bemerit|\bretired\b", re.I)
+    academic_role = re.compile(r"\b(?:professor|lecturer|instructor)\b", re.I)
+    if not any(retired_role.search(text) for text in statements):
+        if not any(academic_role.search(text) or is_trainee_title(text) for text in statements):
+            return ""
+        return " · ".join(text for text in statements if text)
+    lines = []
+    for paragraph in paragraphs:
+        block = copy(paragraph)
+        for newline in block.find_all("br"):
+            newline.replace_with("\n")
+        parts = re.split(r"\n|[;/|]|\s+(?:and|&)\s+", block.get_text(), flags=re.I)
+        lines.extend(part.strip() for part in parts if part.strip())
+    retired = [line for line in lines if retired_role.search(line)]
+    if any(academic_role.search(line) for line in lines if line not in retired):
+        return ""
+    return retired[0] if retired else ""
+
+
+def _mathematics_department() -> dict:
+    dept = _cas("MATH", "Department of Mathematics", ["Mathematics"], "math", "faculty/")
+    dept["scrape"]["selectors"] = {**_CAS_SELECTORS, "directory_rank": _mathematics_rank}
+    dept["profile_id_names"] = {
+        "as.vanderbilt.edu/math/bio/krzysztof-kapulkin": ("Chris Kapulkin", "Krzysztof Kapulkin"),
+    }
+    return dept
 
 
 def _chemistry_department() -> dict:
@@ -174,9 +216,7 @@ SCHOOL: dict = {
              ["German Studies", "Russian Studies"], "german-russian-studies", "people/"),
         _cas("HART", "Department of History of Art & Architecture",
              ["History of Art", "Architecture"], "history-art-architecture", "faculty/"),
-        _cas("MATH", "Department of Mathematics", ["Mathematics"], "math", "faculty/") | {
-            "profile_id_names": {"as.vanderbilt.edu/math/bio/krzysztof-kapulkin": ("Chris Kapulkin", "Krzysztof Kapulkin")},
-        },
+        _mathematics_department(),
         _cas("CMS", "Department of Classical & Mediterranean Studies",
              ["Classical & Mediterranean Studies"], "classical-mediterranean-studies", "people/"),
         # ---- School of Engineering (FutureVU peoplemanager JSON) ---------
