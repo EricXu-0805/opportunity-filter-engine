@@ -144,9 +144,11 @@ async def audit():
             await p.get_by_label('Where you submitted it',exact=False).fill('Disposable QA campus desk')
             await p.get_by_label('I confirm I already submitted this application.').check()
             await button('Save application record').click()
-            await expect(p.get_by_text(re.compile('^(Application record saved|Record saved)'))).to_be_visible(timeout=45000)
+            await expect(p.locator('#tracker-records').get_by_role('status').filter(has_text=re.compile(r'^(Application record saved|Record saved)')).first).to_be_visible(timeout=45000)
             await p.reload(wait_until='domcontentloaded')
             await expect(p.locator('#tracker-records')).to_contain_text('Disposable QA campus desk',timeout=45000)
+            await p.goto(site+'/tracker',wait_until='domcontentloaded')
+            await expect(p.get_by_text(TITLE,exact=True).first).to_be_visible(timeout=50000)
             stage('second real user has its own favorites and cannot see the record')
             other=account('Other Private QA','uiuc','Synthetic history')
             assert records(other)==[]
@@ -154,7 +156,7 @@ async def audit():
             await p2.goto(site+path,wait_until='domcontentloaded')
             await expect(p2.get_by_text('This import is not available in this account.',exact=True)).to_be_visible(timeout=45000)
             assert records()==[latest]
-            print('ISOLATED RECEIPT',json.dumps({'product':'1b2c5b397c4ddd374d7e2cb4115e7066185fd75d','test_users':2,'real_auth_postgrest_browser':True,'model_provider':'controlled synthetic extraction result only','source_lengths':[len(SOURCE1),len(SOURCE2)],'source_scopes':['full_source','source_excerpt'],'explicit_browser_and_account_confirmations':True,'one_failed_update_before_write':True,'account_revisions':[1,1,2],'same_browser_and_account_ids':True,'clean_browser_account_restore':True,'private_template':v['id'],'recipient_status':recipient,'private_resume_workspace_opened':True,'tracker_record_survives_reload':True,'second_user_cannot_read_owner_record':True,'messages_sent':0}),flush=True)
+            print('ISOLATED RECEIPT',json.dumps({'product':'4ca86798798947e06992538e378baffcaa7a0393','test_users':2,'real_auth_postgrest_browser':True,'model_provider':'controlled synthetic extraction result only','source_lengths':[len(SOURCE1),len(SOURCE2)],'source_scopes':['full_source','source_excerpt'],'explicit_browser_and_account_confirmations':True,'one_failed_update_before_write':True,'account_revisions':[1,1,2],'same_browser_and_account_ids':True,'clean_browser_account_restore':True,'private_template':v['id'],'recipient_status':recipient,'private_resume_workspace_opened':True,'tracker_record_survives_reload':True,'second_user_cannot_read_owner_record':True,'messages_sent':0}),flush=True)
             await c2.close()
         except Exception:
             print('Last synthetic app response statuses:',events[-16:],flush=True)

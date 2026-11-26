@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: 1b2c5b397c4ddd374d7e2cb4115e7066185fd75d
+          ref: 4ca86798798947e06992538e378baffcaa7a0393
           path: product
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -69,5 +69,5 @@ jobs:
           for attempt in {1..40}; do if curl -fsS --max-time 5 http://127.0.0.1:8100/api/health >/dev/null 2>&1; then break; fi; sleep 1; done
           (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/frontend.log" 2>&1 &
           for attempt in {1..80}; do if curl -fsS --max-time 15 http://127.0.0.1:3100/ >/dev/null 2>&1; then break; fi; sleep 1; done
-          python -u scripts/check_private_opportunity_counts.py "$cfg"
+          OFE_EXPECT_COUNT_FIX=1 python -u scripts/check_private_opportunity_counts.py "$cfg"
           python -u scripts/verify_private_opportunity_flow.py "$cfg"
