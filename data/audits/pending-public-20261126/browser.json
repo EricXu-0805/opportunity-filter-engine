@@ -1,0 +1,35 @@
+{
+  "site": "https://joinalab.com",
+  "observed_utc": "2026-11-26T08:47:25.045160+00:00",
+  "picker": {
+    "amherst": {
+      "api": {
+        "last_checked_at": "2026-11-23T21:22:13+00:00",
+        "status": "current"
+      },
+      "visible": "Last successful check: Nov 23, 2026"
+    },
+    "haverford": {
+      "api": {
+        "last_checked_at": "2026-11-04T18:22:13+00:00",
+        "status": "stale"
+      },
+      "visible": "Last successful check: Nov 4, 2026\n\nProfessor pages: no recent successful read."
+    },
+    "ucb": {
+      "api": {
+        "last_checked_at": "2026-11-24T20:15:14+00:00",
+        "status": "partly_unchecked"
+      },
+      "visible": "Last successful check: Nov 24, 2026\n\nSome pages lack a recent successful read."
+    }
+  },
+  "health_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "results": "UC Berkeley: last successful check Nov 24, 2026. Some pages lack a recent successful read.",
+  "real_request_status": {
+    "guest_signup": 200,
+    "profile_write": 200,
+    "rule_matches": 200
+  },
+  "admin": "A fresh guest sees the admin token form. An administrator view is still required."
+}

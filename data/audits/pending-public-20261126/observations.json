@@ -1,0 +1,340 @@
+{
+  "release": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "observed_utc": "2026-11-26T08:49:22.254202+00:00",
+  "M10": {
+    "response_status_and_last_success_exact_matches": 115,
+    "independent_latest_source_time_matches": 115,
+    "status_counts": {
+      "current": 3,
+      "partly_unchecked": 110,
+      "stale": 2
+    },
+    "school_samples": {
+      "amherst": {
+        "public": {
+          "last_checked_at": "2026-11-23T21:22:13+00:00",
+          "status": "current"
+        },
+        "latest_success_source": "amherst_faculty",
+        "release_ledger": {
+          "oldest_success_at": "2026-11-23T21:22:13.400204+00:00",
+          "coverage_current_count": 274,
+          "coverage_last_good_count": 274,
+          "coverage_delta": 0,
+          "last_publish_at": "2026-11-23T21:29:11.032908+00:00",
+          "state": "fully_fresh",
+          "fully_stale": false,
+          "no_fresh_faculty": false,
+          "never_succeeded_shard_count": 0
+        }
+      },
+      "ucb": {
+        "public": {
+          "last_checked_at": "2026-11-24T20:15:14+00:00",
+          "status": "partly_unchecked"
+        },
+        "latest_success_source": "ucb_anthro_faculty",
+        "release_ledger": {
+          "oldest_success_at": "2026-09-08T09:37:36.074988+00:00",
+          "coverage_current_count": 3245,
+          "coverage_last_good_count": 3264,
+          "coverage_delta": -19,
+          "last_publish_at": "2026-11-24T20:18:52.779919+00:00",
+          "state": "partially_degraded",
+          "fully_stale": false,
+          "no_fresh_faculty": false,
+          "never_succeeded_shard_count": 0
+        }
+      },
+      "haverford": {
+        "public": {
+          "last_checked_at": "2026-11-04T18:22:13+00:00",
+          "status": "stale"
+        },
+        "latest_success_source": "haverford_faculty",
+        "release_ledger": {
+          "oldest_success_at": "2026-09-30T08:15:44.639360+00:00",
+          "coverage_current_count": 9,
+          "coverage_last_good_count": 125,
+          "coverage_delta": -116,
+          "last_publish_at": "2026-11-25T20:27:30.735364+00:00",
+          "state": "fully_stale",
+          "fully_stale": true,
+          "no_fresh_faculty": true,
+          "never_succeeded_shard_count": 0
+        }
+      },
+      "georgetown": {
+        "public": {
+          "last_checked_at": "2026-11-24T20:15:14+00:00",
+          "status": "partly_unchecked"
+        },
+        "latest_success_source": "campus_graph:georgetown",
+        "release_ledger": {
+          "oldest_success_at": "2026-11-24T20:15:14.141888+00:00",
+          "coverage_current_count": 866,
+          "coverage_last_good_count": 866,
+          "coverage_delta": 0,
+          "last_publish_at": "2026-11-24T20:18:52.779919+00:00",
+          "state": "fully_fresh",
+          "fully_stale": false,
+          "no_fresh_faculty": false,
+          "never_succeeded_shard_count": 0
+        }
+      }
+    },
+    "browser_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45786117425/job/139793177585",
+    "browser_receipt": "browser.json",
+    "pending": "Administrator opens the deployed school-health dashboard with an authorized session and checks expanded source data and coverage deltas."
+  },
+  "M174": {
+    "official_feed": "https://blogs.illinois.edu/xml/6204/rss.xml",
+    "official_feed_sha256": "de4f51784bb72eabc961f37413305a1a91bab1184619c7773b68753e2ce713cf",
+    "feed_item_count": 25,
+    "newest_post": "2026-05-20",
+    "newest_post_age_days": 190,
+    "retention_days": 180,
+    "items_within_retention": 0,
+    "published_rows": 26,
+    "active_ids": [],
+    "inactive_rows_by_recorded_reason": {
+      "old_post": 17,
+      "unspecified": 9
+    },
+    "active_matched_card_remaining": "An in-scope, currently listed real source-labelled RSS opportunity must appear in the production matching results."
+  },
+  "M189": {
+    "ucb-c9e80505a0a7d1": {
+      "shard": "national",
+      "title": "SUPERB / SURE — EECS Summer Undergraduate Research (UC Berkeley)",
+      "page": "https://joinalab.com/opportunities/ucb-c9e80505a0a7d1",
+      "published_url": "https://eecs.berkeley.edu/resources/undergrads/research/sure",
+      "application_url": "https://eecs.berkeley.edu/resources/undergrads/research/sure",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://eecs.berkeley.edu/resources/undergrads/research/sure"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://eecs.berkeley.edu/resources/undergrads/research/sure"
+        }
+      ]
+    },
+    "ucb-b701ddbcd6157b": {
+      "shard": "national",
+      "title": "Haas Scholars Program — Year-Long Research (UC Berkeley)",
+      "page": "https://joinalab.com/opportunities/ucb-b701ddbcd6157b",
+      "published_url": "https://research.berkeley.edu/haas-scholars/",
+      "application_url": "https://research.berkeley.edu/haas-scholars/",
+      "actions": []
+    },
+    "ucb-507887473e4912": {
+      "shard": "national",
+      "title": "McNair Scholars Program (UC Berkeley)",
+      "page": "https://joinalab.com/opportunities/ucb-507887473e4912",
+      "published_url": "https://research.berkeley.edu/mcnair/",
+      "application_url": "https://research.berkeley.edu/mcnair/",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://research.berkeley.edu/mcnair/"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://research.berkeley.edu/mcnair/"
+        }
+      ]
+    },
+    "ucb-b923a71f6ac423": {
+      "shard": "national",
+      "title": "Berkeley Lab SULI — DOE Undergraduate Internship",
+      "page": "https://joinalab.com/opportunities/ucb-b923a71f6ac423",
+      "published_url": "https://education.lbl.gov/internships/",
+      "application_url": "https://education.lbl.gov/internships/",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://education.lbl.gov/internships/"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://education.lbl.gov/internships/"
+        }
+      ]
+    },
+    "ucb-22f3fc747b7044": {
+      "shard": "national",
+      "title": "Berkeley Lab Undergraduate Research Experiences",
+      "page": "https://joinalab.com/opportunities/ucb-22f3fc747b7044",
+      "published_url": "https://education.lbl.gov/internships/programs/",
+      "application_url": "https://education.lbl.gov/internships/programs/",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://education.lbl.gov/internships/programs/"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://education.lbl.gov/internships/programs/"
+        }
+      ]
+    },
+    "ucb-6bcca1391d1be2": {
+      "shard": "national",
+      "title": "Berkeley Mathematics REU / Summer Research",
+      "page": "https://joinalab.com/opportunities/ucb-6bcca1391d1be2",
+      "published_url": "https://math.berkeley.edu/programs/undergraduate/reu",
+      "application_url": "https://math.berkeley.edu/programs/undergraduate/reu",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://math.berkeley.edu/programs/undergraduate/reu"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://math.berkeley.edu/programs/undergraduate/reu"
+        }
+      ]
+    },
+    "ucb-66cd6464f1cccd": {
+      "shard": "national",
+      "title": "Berkeley Physics Summer Research / REU pointers",
+      "page": "https://joinalab.com/opportunities/ucb-66cd6464f1cccd",
+      "published_url": "https://physics.berkeley.edu/academics/undergraduate/summer-research",
+      "application_url": "https://physics.berkeley.edu/academics/undergraduate/summer-research",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://physics.berkeley.edu/academics/undergraduate/summer-research"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://physics.berkeley.edu/academics/undergraduate/summer-research"
+        }
+      ]
+    },
+    "duke-f26e237e381f": {
+      "shard": "national",
+      "title": "Duke University Marine Laboratory NSF REU (Beaufort, NC)",
+      "page": "https://joinalab.com/opportunities/duke-f26e237e381f",
+      "published_url": "https://nicholas.duke.edu/marinelab/research/reu",
+      "application_url": "https://nicholas.duke.edu/marinelab/research/reu",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://nicholas.duke.edu/marinelab/research/reu"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://nicholas.duke.edu/marinelab/research/reu"
+        }
+      ]
+    },
+    "miami-5172210caae3": {
+      "shard": "miami",
+      "title": "UConnect research matching (University of Miami)",
+      "page": "https://joinalab.com/opportunities/miami-5172210caae3",
+      "published_url": "https://ugr.miami.edu/programs/uconnect/index.html",
+      "application_url": "https://ugr.miami.edu/programs/uconnect/index.html",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://ugr.miami.edu/programs/uconnect/index.html"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://ugr.miami.edu/programs/uconnect/index.html"
+        }
+      ]
+    },
+    "uchicago-a034a41a2f13": {
+      "shard": "uchicago",
+      "title": "UChicago Handshake (Career Advancement)",
+      "page": "https://joinalab.com/opportunities/uchicago-a034a41a2f13",
+      "published_url": "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/",
+      "application_url": "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/",
+      "actions": [
+        {
+          "label": "Apply now",
+          "url": "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/"
+        },
+        {
+          "label": "Open application page",
+          "url": "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/"
+        }
+      ]
+    }
+  },
+  "latest_sunday": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45062329699",
+  "latest_sunday_conclusion": "failure",
+  "next_regular_sunday": "2026-11-29",
+  "M189_probe": {
+    "preflight_observed_utc": "2026-11-26T08:46:20.910976+00:00",
+    "command": "python3 scripts/check_campus_seeds.py --json",
+    "source_file": "scripts/check_campus_seeds.py",
+    "kind_counts": {
+      "seed": 596,
+      "program": 475
+    },
+    "probe_count": 1071,
+    "status_counts": {
+      "ok": 878,
+      "redirected": 82,
+      "blocked": 107,
+      "unreachable": 4,
+      "gone": 0
+    },
+    "newly_configured_and_published_targets": {
+      "duke-f26e237e381f": {
+        "previous_destination": {
+          "url": "https://nicholas.duke.edu/marinelab/research/reu",
+          "http": 404
+        },
+        "corrected_source": {
+          "url": "https://scholars.duke.edu/grant/284673",
+          "http": 200
+        }
+      },
+      "miami-5172210caae3": {
+        "previous_destination": {
+          "url": "https://ugr.miami.edu/programs/uconnect/index.html",
+          "http": 404
+        },
+        "corrected_source": {
+          "url": "https://events.miami.edu/group/uconnect_u_connect",
+          "http": 200
+        }
+      },
+      "uchicago-a034a41a2f13": {
+        "previous_destination": {
+          "url": "https://careeradvancement.uchicago.edu/career-toolkit/find-opportunities/uchicago-handshake/",
+          "http": 404
+        },
+        "corrected_source": {
+          "url": "https://uchicago.joinhandshake.com/login",
+          "http": 200
+        }
+      }
+    },
+    "scope": "One read-only run of the deployed checker on the local network. It did not dispatch Actions, send mail, change school data or substitute for the scheduled Sunday run."
+  },
+  "M81": {
+    "read_only_policy_source": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/0741df3be2d6ccd50e40789f0833f9d21dd0d041/supabase/migrations/20261011090000_tracker_attachments_require_signin.sql",
+    "read_only_policy_observed_utc": "2026-11-26T08:47:00Z",
+    "production_tracker_storage_rules": {
+      "insert": "Scoped to own folder and rejects is_anonymous=true; verified the stored pg_policies predicate.",
+      "select": "Own folder; no anonymous exclusion.",
+      "delete": "Own folder; no anonymous exclusion.",
+      "update": "Own folder; no anonymous exclusion."
+    },
+    "upload_or_delete_operations": 0,
+    "connected_android_devices": 0,
+    "pending": [
+      "Physical Android Chrome and iOS Safari keyboards",
+      "Actual anonymous HTTP upload rejection",
+      "Normal signed-in upload",
+      "Read and delete a designated existing guest attachment"
+    ]
+  }
+}
