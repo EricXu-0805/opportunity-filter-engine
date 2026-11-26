@@ -202,6 +202,7 @@ def verify(mode, score_phase=None, locale="en", export_phase=None, eligibility_p
             else:
                 assert wrong_major not in row['reasons_gap'] and wrong_resume not in row['reasons_gap'], row['reasons_gap']
                 assert {'Eligible majors','Eligible class years','Whether a resume is required'} <= set(labels), labels
+                assert 'Prepare a research-focused resume' not in row['next_steps'], row['next_steps']
             page.goto(SITE + '/opportunities/' + oid, wait_until='domcontentloaded')
             expect(page.get_by_role('heading',level=1)).to_contain_text('Data Engineer Intern')
             text = ' '.join(page.locator('main').inner_text().split())

@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   outreach:
-    if: "!startsWith(github.event.head_commit.message, 'Verify M48 saved reminder') && !startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription') && !startsWith(github.event.head_commit.message, 'Verify M25 released export') && !startsWith(github.event.head_commit.message, 'Verify M67 profile change review') && !startsWith(github.event.head_commit.message, 'Verify M25 released pay') && !startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility')"
+    if: "!startsWith(github.event.head_commit.message, 'Verify deployed November backend') && !startsWith(github.event.head_commit.message, 'Verify M48 saved reminder') && !startsWith(github.event.head_commit.message, 'Verify M51 large lists') && !startsWith(github.event.head_commit.message, 'Verify M23 released match') && !startsWith(github.event.head_commit.message, 'Verify M48 released subscription') && !startsWith(github.event.head_commit.message, 'Verify M25 released export') && !startsWith(github.event.head_commit.message, 'Verify M67 profile change review') && !startsWith(github.event.head_commit.message, 'Verify M25 released pay') && !startsWith(github.event.head_commit.message, 'Verify M23 listing eligibility')"
     name: Public match, actions and unsent template (${{ matrix.target }})
     runs-on: ubuntu-24.04
     timeout-minutes: 6
@@ -258,3 +258,40 @@ jobs:
         with:
           name: isolated-reminder-receipt
           path: frontend/test-results/**/error-context.md
+
+  backend-readiness:
+    name: Has production Render reached the merged fixes?
+    if: startsWith(github.event.head_commit.message, 'Verify deployed November backend')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      ready: ${{ steps.health.outputs.ready }}
+      release: ${{ steps.health.outputs.release }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - id: health
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -u scripts/verify_released_november_backend.py readiness
+
+  backend-acceptance:
+    needs: backend-readiness
+    if: needs.backend-readiness.outputs.ready == 'true'
+    name: Released backend / ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [eligibility-after, pay-after, score-localized-en, score-localized-zh, publications]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.55.0 beautifulsoup4
+      - env:
+          EXPECTED_RELEASE: ${{ needs.backend-readiness.outputs.release }}
+          CHECK: ${{ matrix.check }}
+        run: python -u scripts/verify_released_november_backend.py "$CHECK"
