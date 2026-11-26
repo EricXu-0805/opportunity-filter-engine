@@ -1,241 +1,283 @@
 {
- "category": "deadline",
- "generated_at": "2026-07-31T02:03:43.677936+00:00",
- "seed": 20260731,
- "corpus_records": 131952,
- "risk_pool_gaps": [
-  "past_deadline"
- ],
- "samples": [
-  {
-   "sample_id": "deadline-001",
-   "entity_type": "deadline",
-   "entity_id": "nsf-reu-2624028",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": "2027-02-15",
-    "is_rolling": null,
-    "deadline_is_estimate": true,
-    "deadline_note": null
-   },
-   "verification_status": "inferred",
-   "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2624028",
-   "source_evidence": "NSF award page (client-rendered stub) states no program deadline; system value is flagged deadline_is_estimate",
-   "manual_expected_value": "no stated deadline; estimate labeled",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Estimate is system-labeled inferred (estimate:award_start_date); W11 also stops lifecycle decisions firing on estimates. No contradicting evidence.",
-   "risk_case": "estimated_deadline"
+  "category": "deadline",
+  "generated_at": "2026-11-26T09:58:20.497788+00:00",
+  "seed": 20261126,
+  "corpus_records": 149774,
+  "risk_pool_gaps": [],
+  "coverage": {
+    "pool": 137125,
+    "strata": {
+      "estimated_deadline": 342,
+      "past_deadline": 73,
+      "rolling_with_note": 295,
+      "rolling_faculty_default": 4583
+    }
   },
-  {
-   "sample_id": "deadline-002",
-   "entity_type": "deadline",
-   "entity_id": "amherst-c8caa671d3d4",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": "By faculty nomination of graduating seniors."
-   },
-   "verification_status": "unknown",
-   "source_url": "https://www.amherst.edu/academiclife/student-faculty-research/post-baccalaureate-fellowship",
-   "source_evidence": "Amherst post-baccalaureate fellowship page shows no application deadline; nomination-based ('By faculty nomination of graduating seniors' preserved in deadline_note)",
-   "manual_expected_value": "no public deadline",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": "rolling_with_note"
-  },
-  {
-   "sample_id": "deadline-003",
-   "entity_type": "deadline",
-   "entity_id": "faculty-neu-dmsb-13045bc9",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://damore-mckim.northeastern.edu/people/nirajana-mishra/",
-   "source_evidence": "Faculty profile page (damore-mckim.northeastern.edu) carries no posting deadline; the only 'Deadlines' text is admissions site chrome",
-   "manual_expected_value": "no deadline (faculty inquiry record)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "is_rolling=true is the documented faculty-record premise; W11 renders it as 'Accepts inquiries year-round', not 'Rolling admissions'.",
-   "risk_case": "rolling_faculty_default"
-  },
-  {
-   "sample_id": "deadline-004",
-   "entity_type": "deadline",
-   "entity_id": "nsf-reu-2619699",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": "2027-02-15",
-    "is_rolling": null,
-    "deadline_is_estimate": true,
-    "deadline_note": null
-   },
-   "verification_status": "inferred",
-   "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2619699",
-   "source_evidence": "NSF award page stub; no deadline stated; system value labeled estimate",
-   "manual_expected_value": "no stated deadline; estimate labeled",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": "estimated_deadline"
-  },
-  {
-   "sample_id": "deadline-005",
-   "entity_type": "deadline",
-   "entity_id": "faculty-jhu-som-4786823a",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://profiles.hopkinsmedicine.org/provider/gregory-j-riggins/2777595",
-   "source_evidence": "Hopkins Medicine provider profile carries no application deadline",
-   "manual_expected_value": "no deadline (faculty inquiry record)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "deadline-006",
-   "entity_type": "deadline",
-   "entity_id": "faculty-utdallas-econ-63cdad8a",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://profiles.utdallas.edu/darce",
-   "source_evidence": "UT Dallas profile page carries no application deadline",
-   "manual_expected_value": "no deadline (faculty inquiry record)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "deadline-007",
-   "entity_type": "deadline",
-   "entity_id": "faculty-jhu-wse-cs-dc6e6032",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://www.cs.jhu.edu/faculty/lydia-zakynthinou/",
-   "source_evidence": "JHU CS faculty page carries no application deadline",
-   "manual_expected_value": "no deadline (faculty inquiry record)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "deadline-008",
-   "entity_type": "deadline",
-   "entity_id": "faculty-stanford-ealc-ff8f6e90",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://profiles.stanford.edu/55384",
-   "source_evidence": "Stanford Profiles page carries no application deadline",
-   "manual_expected_value": "no deadline (faculty inquiry record)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "deadline-009",
-   "entity_type": "deadline",
-   "entity_id": "faculty-northwestern-math-e383e0fd",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://www.math.northwestern.edu/people/faculty/gabor-szekelyhidi.html",
-   "source_evidence": "Northwestern Math faculty page carries no application deadline",
-   "manual_expected_value": "no deadline (faculty inquiry record)",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "deadline-010",
-   "entity_type": "deadline",
-   "entity_id": "faculty-upenn-vet-csam-47cbc806",
-   "field_name": "deadline/is_rolling",
-   "system_value": {
-    "deadline": null,
-    "is_rolling": true,
-    "deadline_is_estimate": false,
-    "deadline_note": null
-   },
-   "verification_status": "policy_default",
-   "source_url": "https://www.vet.upenn.edu/directory/kimberlyagnello/",
-   "source_evidence": "HTTP 403 Forbidden (vet.upenn.edu — known Imperva WAF)",
-   "manual_expected_value": null,
-   "review_result": "blocked",
-   "error_type": "waf_403",
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  }
- ]
+  "samples": [
+    {
+      "sample_id": "deadline-001",
+      "entity_type": "deadline",
+      "entity_id": "sro-3c378261",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": "2027-02-15",
+        "is_rolling": false,
+        "deadline_is_estimate": true,
+        "deadline_note": "2/15/27 (anticipated)"
+      },
+      "verification_status": "inferred",
+      "source_url": "https://researchops.web.illinois.edu/?page=9",
+      "source_evidence": "Apply by February 10, 2027.",
+      "manual_expected_value": {
+        "deadline": "2027-02-10",
+        "is_rolling": false,
+        "deadline_is_estimate": false
+      },
+      "review_result": "conflicting",
+      "error_type": "directory_estimate_after_announced_host_deadline",
+      "severity": "critical",
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "Illinois lists February 15 as anticipated on the named program detail. The host explicitly identifies its renamed Biological Interactions program and its announced cutoff five days earlier. The live JoinALab detail still displays 2027-02-15 with “Estimated by us”. Directory: https://researchops.web.illinois.edu/opportunity/cellular-and-molecular-biology-stress-summer-research-program . Host: https://wiscience.wisc.edu/research/summer_research_program/",
+      "risk_case": "estimated_deadline"
+    },
+    {
+      "sample_id": "deadline-002",
+      "entity_type": "deadline",
+      "entity_id": "nsf-reu-2447669",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": "2026-02-15",
+        "is_rolling": null,
+        "deadline_is_estimate": true,
+        "deadline_note": null
+      },
+      "verification_status": "inferred",
+      "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669",
+      "source_evidence": "Applications will be accepted through March 15, 2026.",
+      "manual_expected_value": {
+        "deadline": "2026-03-15",
+        "is_rolling": false,
+        "deadline_is_estimate": false
+      },
+      "review_result": "conflicting",
+      "error_type": "award_estimate_conflicts_with_host_application_window",
+      "severity": "critical",
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "Rendered NSF award 2447669 identifies Genes & the Environment at UND. The host accepted the 2026 cohort through March 15; the formal JoinALab detail displays February 15 as an estimate. The host also dates this cohort May 27–July 31. Source: https://med.und.edu/education-training/biomedical-sciences/reu/index.html",
+      "risk_case": "past_deadline"
+    },
+    {
+      "sample_id": "deadline-003",
+      "entity_type": "deadline",
+      "entity_id": "caltech-a7fedb84058b",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": true,
+        "deadline_is_estimate": false,
+        "deadline_note": "Rolling; WAVE (Jan 9) / SURF (Mar 1) for summer"
+      },
+      "verification_status": "unknown",
+      "source_url": "https://neuroscience.caltech.edu/",
+      "source_evidence": "Applications are due on or before January 8. | SURF applications are due on February 22.",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_note": "The institute has no common application window. WAVE and SURF publish separate dates."
+      },
+      "review_result": "incorrect_value",
+      "error_type": "institution_page_advertises_rolling_and_misdates_two_distinct_programs",
+      "severity": "critical",
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The institute homepage is a research institute and events page. The official JoinALab detail says “Applications reviewed on a rolling basis” and quotes Jan 9 for WAVE and Mar 1 for SURF. Caltech lists Jan 8 and Feb 22 in the respective current instructions. Sources: https://sfp.caltech.edu/undergraduate-research/programs/wavefellows/application_information and https://sfp.caltech.edu/undergraduate-research/programs/surf/application_information",
+      "risk_case": "rolling_with_note"
+    },
+    {
+      "sample_id": "deadline-004",
+      "entity_type": "deadline",
+      "entity_id": "faculty-osu-csw-8ba49b49",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": true,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "policy_default",
+      "source_url": "https://csw.osu.edu/faculty/lachaud-james/",
+      "source_evidence": "Dr. Lachaud is an Assistant Professor in the College of Social Work at The Ohio State University.",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "unsupported_value",
+      "error_type": "raw_faculty_rolling_default",
+      "severity": "minor",
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The named faculty bio describes research and qualifications and states no application window. The raw sample has is_rolling=true from policy_default. The public detail API for the same ID serves deadline=null and is_rolling=false; public acceptance of rolling applications was not observed. Source redirects to https://csw.osu.edu/people/our-faculty/lachaud-james-phd/",
+      "risk_case": "rolling_faculty_default"
+    },
+    {
+      "sample_id": "deadline-005",
+      "entity_type": "deadline",
+      "entity_id": "faculty-jhu-som-bbbdbc15",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://profiles.hopkinsmedicine.org/provider/michael-d-kornberg/2701592",
+      "source_evidence": "Neurology",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Johns Hopkins provider profile identifies Michael D. Kornberg and describes patient appointments. It gives no research application deadline or rolling intake. The production detail also has no deadline.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "deadline-006",
+      "entity_type": "deadline",
+      "entity_id": "faculty-uw-phil-73e273bd",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://phil.washington.edu/people/colin-marshall",
+      "source_evidence": "Director of Graduate Studies",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The University of Washington philosophy profile identifies Colin Marshall and lists research interests and office hours. It gives no application date for research with this professor.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "deadline-007",
+      "entity_type": "deadline",
+      "entity_id": "faculty-wisc-math-8eec10e6",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.math.wisc.edu/staff/wu-chenxi/",
+      "source_evidence": "Associate Professor",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Wisconsin mathematics profile identifies Chenxi Wu. Its office, role and personal-site link carry no research application window.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "deadline-008",
+      "entity_type": "deadline",
+      "entity_id": "faculty-uga-reli-77489901",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://religion.uga.edu/directory/people/ingie-hovland",
+      "source_evidence": "Assistant Professor, Associate Department Head, and Director of Graduate Studies",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Georgia religion profile identifies Ingie Hovland and describes her scholarly work. It states no application date or rolling intake.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "deadline-009",
+      "entity_type": "deadline",
+      "entity_id": "faculty-uci-engl-b48d90c7",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.faculty.uci.edu/profile.cfm?faculty_id=6381",
+      "source_evidence": "Professor, Literary Journalism",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The UCI faculty profile identifies Hector Tobar and lists titles, research interests and writing. It gives no research application window.",
+      "risk_case": null
+    },
+    {
+      "sample_id": "deadline-010",
+      "entity_type": "deadline",
+      "entity_id": "faculty-middlebury-clas-b1102035",
+      "field_name": "deadline/is_rolling",
+      "system_value": {
+        "deadline": null,
+        "is_rolling": false,
+        "deadline_is_estimate": false,
+        "deadline_note": null
+      },
+      "verification_status": "unknown",
+      "source_url": "https://www.middlebury.edu/college/people/christopher-star",
+      "source_evidence": "I received degrees in Classics from Bates College",
+      "manual_expected_value": {
+        "deadline": null,
+        "is_rolling": false
+      },
+      "review_result": "correctly_unknown",
+      "error_type": null,
+      "severity": null,
+      "reviewer": "OpenAI Codex, live-source review",
+      "reviewed_at": "2026-11-26T10:05:47+00:00",
+      "notes": "The Middlebury profile identifies Christopher Star and lists office hours, teaching and research. Office hours do not establish a student application deadline.",
+      "risk_case": null
+    }
+  ],
+  "audited_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "shards_tree": "4d5f3754e1374373f2555174078046822d0ba07d"
 }

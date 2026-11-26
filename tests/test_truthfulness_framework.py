@@ -302,6 +302,16 @@ def test_report_fully_reviewed_is_go_and_critical_blocks(tmp_path):
     assert report["decision"] == "NO-GO"
     assert report["critical_open"] == ["email-001"]
 
+    for note in (
+        "UNRESOLVED: waiting on the department",
+        "Previous reviewer wrote RESOLVED: but the wrong link is still live",
+    ):
+        data["samples"][0]["notes"] = note
+        email_file.write_text(json.dumps(data), encoding="utf-8")
+        report = _run_report(tmp_path, samples_dir)
+        assert report["critical_open"] == ["email-001"]
+        assert report["decision"] == "NO-GO"
+
     # same critical with a "RESOLVED:" notes prefix => approved again
     data["samples"][0] = _sample_row("email", 1, review_result="incorrect_value",
                                      severity="critical",

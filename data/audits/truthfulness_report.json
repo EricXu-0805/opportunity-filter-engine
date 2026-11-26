@@ -1,43 +1,7 @@
 {
-  "generated_at": "2026-08-23T11:16:31.000251+00:00",
+  "generated_at": "2026-11-26T10:09:37.604265+00:00",
   "categories": {
     "school": {
-      "present": true,
-      "sample_count": 10,
-      "reviewed_count": 10,
-      "complete": true,
-      "results": {
-        "verified_correct": 10,
-        "correctly_unknown": 0,
-        "incorrect_value": 0,
-        "unsupported_value": 0,
-        "source_mismatch": 0,
-        "entity_mismatch": 0,
-        "conflicting": 0,
-        "stale": 0,
-        "blocked": 0,
-        "pending": 0
-      }
-    },
-    "department": {
-      "present": true,
-      "sample_count": 10,
-      "reviewed_count": 10,
-      "complete": true,
-      "results": {
-        "verified_correct": 5,
-        "correctly_unknown": 2,
-        "incorrect_value": 0,
-        "unsupported_value": 0,
-        "source_mismatch": 1,
-        "entity_mismatch": 0,
-        "conflicting": 0,
-        "stale": 0,
-        "blocked": 2,
-        "pending": 0
-      }
-    },
-    "professor": {
       "present": true,
       "sample_count": 10,
       "reviewed_count": 10,
@@ -48,11 +12,68 @@
         "incorrect_value": 0,
         "unsupported_value": 0,
         "source_mismatch": 0,
+        "entity_mismatch": 1,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 2,
+        "pending": 0
+      },
+      "coverage": {
+        "pool": 137125,
+        "strata": {
+          "multi_campus_org": 2245,
+          "similar_org_name": 114722
+        }
+      }
+    },
+    "department": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 8,
+        "correctly_unknown": 1,
+        "incorrect_value": 1,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
         "entity_mismatch": 0,
         "conflicting": 0,
         "stale": 0,
-        "blocked": 3,
+        "blocked": 0,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 137125,
+        "strata": {
+          "unit_type_confusion": 28697,
+          "empty_department": 6582
+        }
+      }
+    },
+    "professor": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 9,
+        "correctly_unknown": 0,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 1,
+        "pending": 0
+      },
+      "coverage": {
+        "pool": 130100,
+        "strata": {
+          "same_name_multi_school": 5958,
+          "emeritus_or_visiting": 434
+        }
       }
     },
     "position": {
@@ -61,16 +82,24 @@
       "reviewed_count": 10,
       "complete": true,
       "results": {
-        "verified_correct": 5,
+        "verified_correct": 8,
         "correctly_unknown": 0,
-        "incorrect_value": 2,
+        "incorrect_value": 1,
         "unsupported_value": 0,
         "source_mismatch": 0,
         "entity_mismatch": 0,
         "conflicting": 0,
         "stale": 0,
-        "blocked": 3,
+        "blocked": 1,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 129826,
+        "strata": {
+          "non_professor_rank": 16539,
+          "default_professor": 16398,
+          "empty_title": 14192
+        }
       }
     },
     "program": {
@@ -79,16 +108,24 @@
       "reviewed_count": 10,
       "complete": true,
       "results": {
-        "verified_correct": 6,
-        "correctly_unknown": 2,
-        "incorrect_value": 0,
-        "unsupported_value": 0,
-        "source_mismatch": 1,
+        "verified_correct": 0,
+        "correctly_unknown": 0,
+        "incorrect_value": 2,
+        "unsupported_value": 6,
+        "source_mismatch": 0,
         "entity_mismatch": 0,
         "conflicting": 0,
         "stale": 0,
-        "blocked": 1,
+        "blocked": 2,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 2239,
+        "strata": {
+          "status_unknown": 1167,
+          "discovered": 413,
+          "stale_year_title": 2
+        }
       }
     },
     "deadline": {
@@ -98,15 +135,24 @@
       "complete": true,
       "results": {
         "verified_correct": 0,
-        "correctly_unknown": 9,
-        "incorrect_value": 0,
-        "unsupported_value": 0,
+        "correctly_unknown": 6,
+        "incorrect_value": 1,
+        "unsupported_value": 1,
         "source_mismatch": 0,
         "entity_mismatch": 0,
-        "conflicting": 0,
+        "conflicting": 2,
         "stale": 0,
-        "blocked": 1,
+        "blocked": 0,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 137125,
+        "strata": {
+          "estimated_deadline": 342,
+          "past_deadline": 73,
+          "rolling_with_note": 295,
+          "rolling_faculty_default": 4583
+        }
       }
     },
     "international": {
@@ -115,26 +161,8 @@
       "reviewed_count": 10,
       "complete": true,
       "results": {
-        "verified_correct": 1,
-        "correctly_unknown": 6,
-        "incorrect_value": 0,
-        "unsupported_value": 0,
-        "source_mismatch": 0,
-        "entity_mismatch": 0,
-        "conflicting": 0,
-        "stale": 0,
-        "blocked": 3,
-        "pending": 0
-      }
-    },
-    "email": {
-      "present": true,
-      "sample_count": 10,
-      "reviewed_count": 10,
-      "complete": true,
-      "results": {
-        "verified_correct": 6,
-        "correctly_unknown": 1,
+        "verified_correct": 2,
+        "correctly_unknown": 5,
         "incorrect_value": 0,
         "unsupported_value": 1,
         "source_mismatch": 0,
@@ -143,6 +171,42 @@
         "stale": 0,
         "blocked": 2,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 137125,
+        "strata": {
+          "policy_no_nsf_reu": 160,
+          "explicit_yes_claim": 543,
+          "citizenship_required": 505,
+          "stays_unknown": 136066
+        }
+      }
+    },
+    "email": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 4,
+        "correctly_unknown": 0,
+        "incorrect_value": 2,
+        "unsupported_value": 2,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 2,
+        "pending": 0
+      },
+      "coverage": {
+        "pool": 137125,
+        "strata": {
+          "constructed_email": 759,
+          "wayback_email": 116,
+          "null_email": 18969,
+          "generic_localpart": 23
+        }
       }
     },
     "research_area": {
@@ -152,8 +216,8 @@
       "complete": true,
       "results": {
         "verified_correct": 5,
-        "correctly_unknown": 5,
-        "incorrect_value": 0,
+        "correctly_unknown": 1,
+        "incorrect_value": 4,
         "unsupported_value": 0,
         "source_mismatch": 0,
         "entity_mismatch": 0,
@@ -161,6 +225,14 @@
         "stale": 0,
         "blocked": 0,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 137125,
+        "strata": {
+          "keywords_no_evidence": 47099,
+          "keywords_empty": 66738,
+          "dept_blanket_keywords": 13502
+        }
       }
     },
     "publication": {
@@ -169,20 +241,38 @@
       "reviewed_count": 10,
       "complete": true,
       "results": {
-        "verified_correct": 1,
-        "correctly_unknown": 8,
-        "incorrect_value": 0,
+        "verified_correct": 3,
+        "correctly_unknown": 2,
+        "incorrect_value": 5,
         "unsupported_value": 0,
         "source_mismatch": 0,
         "entity_mismatch": 0,
         "conflicting": 0,
         "stale": 0,
-        "blocked": 1,
+        "blocked": 0,
         "pending": 0
+      },
+      "coverage": {
+        "pool": 129826,
+        "strata": {
+          "works_without_status": 13159,
+          "verified_author_id": 16146,
+          "initials_only_name": 1355
+        }
       }
     }
   },
-  "critical_open": [],
-  "truthfulness_approved": true,
-  "decision": "GO"
+  "critical_open": [
+    "school-009",
+    "position-003",
+    "program-002",
+    "program-003",
+    "program-006",
+    "deadline-001",
+    "deadline-002",
+    "deadline-003",
+    "publication-002"
+  ],
+  "truthfulness_approved": false,
+  "decision": "NO-GO"
 }

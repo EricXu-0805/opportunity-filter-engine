@@ -629,7 +629,7 @@ def run_report(samples_dir: Path, out_path: Path) -> int:
             results[verdict] += 1
             if (s.get("severity") == "critical"
                     and s.get("review_result") in FINDING_RESULTS
-                    and "RESOLVED:" not in (s.get("notes") or "")):
+                    and not (s.get("notes") or "").startswith("RESOLVED:")):
                 critical_open.append(s.get("sample_id"))
         pending = results["pending"]
         complete = len(samples) >= MIN_REVIEWED_FOR_COMPLETE and pending == 0

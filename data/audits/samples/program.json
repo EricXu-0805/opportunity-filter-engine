@@ -1,219 +1,229 @@
 {
- "category": "program",
- "generated_at": "2026-07-31T02:03:42.607252+00:00",
- "seed": 20260731,
- "corpus_records": 131952,
- "risk_pool_gaps": [],
- "samples": [
-  {
-   "sample_id": "program-001",
-   "entity_type": "program",
-   "entity_id": "stanford-f352c27ee600",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Chappell Lougee Scholarship",
-    "status": "unknown"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://undergradresearch.stanford.edu/fund-your-project/explore-student-grants/chappell-lougee",
-   "source_evidence": "Chappell Lougee Scholarship — Application Opens: October 1, 2026; Application Deadline: December 1, 2026 (undergradresearch.stanford.edu)",
-   "manual_expected_value": "active; next cycle opens 2026-10-01, deadline 2026-12-01",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "System status 'unknown' is safe; page states the current cycle — a capture opportunity for the campus collector (deadline_note).",
-   "risk_case": "status_unknown"
+  "category": "program",
+  "generated_at": "2026-11-26T09:58:20.117041+00:00",
+  "seed": 20261126,
+  "corpus_records": 149774,
+  "risk_pool_gaps": [],
+  "coverage": {
+    "pool": 2239,
+    "strata": {
+      "status_unknown": 1167,
+      "discovered": 413,
+      "stale_year_title": 2
+    }
   },
-  {
-   "sample_id": "program-002",
-   "entity_type": "program",
-   "entity_id": "ucsb-urca-proj-0bd40809bc3e",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Infection Prevention Of Biomaterials With Extracellular Vesicles",
-    "status": null
-   },
-   "verification_status": "unverified",
-   "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000gOVH2UAO/infection-prevention-of-biomaterials-with-extracellular-vesicles",
-   "source_evidence": "Record id a0W4X00000gOVH2UAO present in official URCA sitemap (sitemap-outfunds__funding_program__c-1.xml, lastmod 2026-07-31)",
-   "manual_expected_value": "currently listed on the official URCA board",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Detail page is a client-side Salesforce app; the collector's documented official channel is the public sitemap, which lists the record as of today.",
-   "risk_case": "discovered"
-  },
-  {
-   "sample_id": "program-003",
-   "entity_type": "program",
-   "entity_id": "ucsb-urca-proj-e5cbe0e218a7",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "2022 Academic Worker Strike Conflict Research Project",
-    "status": null
-   },
-   "verification_status": "unverified",
-   "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
-   "source_evidence": "Record id a0W4X00000g8VGiUAM present in official URCA sitemap (lastmod 2026-07-31)",
-   "manual_expected_value": "currently listed on the official URCA board",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Stale-year-title risk case: '2022' names the research SUBJECT (the 2022 academic-worker strike), not the posting cycle; the official board lists the project today.",
-   "risk_case": "stale_year_title"
-  },
-  {
-   "sample_id": "program-004",
-   "entity_type": "program",
-   "entity_id": "duke-5281f147f388",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Duke Climate+ Summer Research Program",
-    "status": "unknown"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://nicholasinstitute.duke.edu/climate-plus",
-   "source_evidence": "nicholasinstitute.duke.edu/climate-plus lands on the institute homepage (1.2k chars); Climate+ program content not present server-side",
-   "manual_expected_value": "program page with Climate+ content",
-   "review_result": "source_mismatch",
-   "error_type": "evidence_page_moved_or_js",
-   "severity": "minor",
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "System status 'unknown' remains safe; the stored source link no longer evidences the program server-side.",
-   "risk_case": "status_unknown"
-  },
-  {
-   "sample_id": "program-005",
-   "entity_type": "program",
-   "entity_id": "stanford-9169a30d950a",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Research-Related National Fellowships",
-    "status": null
-   },
-   "verification_status": "unverified",
-   "source_url": "https://undergradresearch.stanford.edu/fund-your-project/research-fellowships",
-   "source_evidence": "Research Fellowships | Undergraduate Research and Independent Projects (page live; carries stale '2020-21 academic year' copy)",
-   "manual_expected_value": "resource page exists at Stanford UR",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "Record asserts existence only (no cycle claim); the stale copy is the source's own.",
-   "risk_case": null
-  },
-  {
-   "sample_id": "program-006",
-   "entity_type": "program",
-   "entity_id": "barnard-259ecc779e2f",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Beckman Scholars Program (Barnard)",
-    "status": "unknown"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://barnard.edu/beckman-scholars",
-   "source_evidence": "Beckman Scholars | Barnard College — program described; 2015–2024 scholar history; no explicit current-cycle open/closed statement extracted",
-   "manual_expected_value": "program exists; current-cycle status not stated plainly",
-   "review_result": "correctly_unknown",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "program-007",
-   "entity_type": "program",
-   "entity_id": "jhu-20d49b24fa6d",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "REAL Showcase (formerly DREAMS) — Johns Hopkins University",
-    "status": "unknown"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://hour.jhu.edu/present/real/",
-   "source_evidence": "Cloudflare challenge ('Just a moment...') on hour.jhu.edu",
-   "manual_expected_value": null,
-   "review_result": "blocked",
-   "error_type": "waf_challenge",
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "program-008",
-   "entity_type": "program",
-   "entity_id": "ucsb-urca-proj-cfd6a4611d02",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Milpa Mexican Indigenous Languages Promotion And Advocacy Project",
-    "status": null
-   },
-   "verification_status": "unverified",
-   "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000eIcHHUA0/milpa-mexican-indigenous-languages-promotion-and-advocacy-project",
-   "source_evidence": "Record id a0W4X00000eIcHHUA0 present in official URCA sitemap (lastmod 2026-07-31)",
-   "manual_expected_value": "currently listed on the official URCA board",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "program-009",
-   "entity_type": "program",
-   "entity_id": "hamilton-3b3579dcc2cc",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Kirkland Summer Associates (Hamilton)",
-    "status": "unknown"
-   },
-   "verification_status": "unverified",
-   "source_url": "https://www.hamilton.edu/academics/student-research/programs",
-   "source_evidence": "Kirkland Summer Associates listed among programs: 'Levitt Summer Research Fellowship … Kirkland Summer Associates NY6 Summer Research Fellowship' (hamilton.edu)",
-   "manual_expected_value": "program listed on Hamilton student-research programs page",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  },
-  {
-   "sample_id": "program-010",
-   "entity_type": "program",
-   "entity_id": "uchicago-509e2a6c6f27",
-   "field_name": "title+metadata.status",
-   "system_value": {
-    "title": "Macro Finance Research Program",
-    "status": null
-   },
-   "verification_status": "unverified",
-   "source_url": "https://bfi.uchicago.edu/centers-programs/macro-finance-research-program/",
-   "source_evidence": "Macro Finance Research Program | Becker Friedman Institute — upcoming: 2026 Summer Session for Young Scholars, August 4-7, 2026",
-   "manual_expected_value": "active program at UChicago BFI",
-   "review_result": "verified_correct",
-   "error_type": null,
-   "severity": null,
-   "reviewer": "claude-fable-5-audit",
-   "reviewed_at": "2026-07-31T07:16:42.552706",
-   "notes": "",
-   "risk_case": null
-  }
- ]
+  "samples": [
+    {
+      "sample_id": "program-001",
+      "entity_type": "program",
+      "entity_id": "ucr-e08f03f0945b",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "CNAS Student Research & Internship Opportunities (UC Riverside)",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://cnas.ucr.edu/student-research-and-internship-opportunities",
+      "source_evidence": "Student Research and Internship Opportunities / Opportunities for CNAS Students",
+      "manual_expected_value": "CNAS student research and internship directory; no single application or directory-wide intake status.",
+      "review_result": "unsupported_value",
+      "error_type": "application_cta_for_opportunity_directory",
+      "severity": "minor",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The school links multiple distinct programs. The production description correctly calls it a hub and the stored status is unknown, but the primary action says Apply now and leads to this directory. Source: https://cnas.ucr.edu/student-research-and-internship-opportunities Production: https://joinalab.com/opportunities/ucr-e08f03f0945b",
+      "risk_case": "status_unknown"
+    },
+    {
+      "sample_id": "program-002",
+      "entity_type": "program",
+      "entity_id": "ucsb-urca-proj-67fca359b647",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "Test From Aj",
+        "status": null
+      },
+      "verification_status": "unverified",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj",
+      "source_evidence": "Test from AJ / Requested / 11/10/2026 / 11/27/2026 / Hi Anita!",
+      "manual_expected_value": "Test from AJ; portal workflow status Requested. The source does not confirm recruitment. Keep the test entry out of active results.",
+      "review_result": "incorrect_value",
+      "error_type": "test_record_presented_as_recruiting",
+      "severity": "critical",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The anonymous rendered official detail shows the test title, duplicate test description and instructions, and test greeting. The public recruiting directory contains 88 rows (85 distinct titles); this title is absent. Production instead says Apply now, Open to matriculated UCSB undergraduates, and Browse and apply. The source dates are project dates, not application deadlines. Recruiting directory: https://ucsb.my.site.com/urca/s/urad Source: https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj Production: https://joinalab.com/opportunities/ucsb-urca-proj-67fca359b647",
+      "risk_case": "discovered"
+    },
+    {
+      "sample_id": "program-003",
+      "entity_type": "program",
+      "entity_id": "ucsb-urca-proj-e5cbe0e218a7",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "2022 Academic Worker Strike Conflict Research Project",
+        "status": null
+      },
+      "verification_status": "unverified",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+      "source_evidence": "2022 Academic Worker Strike Conflict Research Project / Undergraduate researchers will be tasked with transcribing and coding interviews.",
+      "manual_expected_value": "Actual retrospective research project; no status, start date or end date displayed. Current recruitment is unconfirmed.",
+      "review_result": "unsupported_value",
+      "error_type": "project_detail_mistaken_for_current_recruitment",
+      "severity": "critical",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The official record has the expected project, faculty contact and department, but empty status/start/end fields and no matching title in the public recruiting directory (88 rows, 85 distinct titles). Production nevertheless offers Apply now and says Open to matriculated UCSB undergraduates. 2022 is the research subject; it does not establish a closing date. Recruiting directory: https://ucsb.my.site.com/urca/s/urad Source: https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project Production: https://joinalab.com/opportunities/ucsb-urca-proj-e5cbe0e218a7",
+      "risk_case": "stale_year_title"
+    },
+    {
+      "sample_id": "program-004",
+      "entity_type": "program",
+      "entity_id": "uva-632f04ace5b5",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "University Undergraduate Award for Projects in the Arts (University of Virginia)",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://undergraduateresearch.virginia.edu/our-opportunities/grants/university-undergraduate-award-arts-projects",
+      "source_evidence": "Just a moment...",
+      "manual_expected_value": "Unverified: the official award page is unavailable to this unauthenticated review.",
+      "review_result": "blocked",
+      "error_type": "official_source_http_403",
+      "severity": null,
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The saved official-source response was HTTP 403 with a challenge. The production record is reachable. No authentication or challenge bypass attempted. Source: https://undergraduateresearch.virginia.edu/our-opportunities/grants/university-undergraduate-award-arts-projects Production: https://joinalab.com/opportunities/uva-632f04ace5b5",
+      "risk_case": "status_unknown"
+    },
+    {
+      "sample_id": "program-005",
+      "entity_type": "program",
+      "entity_id": "umd-54542deb3560",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "University of Maryland Honors College",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://honors.umd.edu/",
+      "source_evidence": "One Honors College. Eight Program Options. Infinite Possibilities. / The application to join the Honors College for Fall 2026 is now closed.",
+      "manual_expected_value": "University of Maryland Honors College; first-year admission is by invitation following the undergraduate early-action application. No independent open first-year application established.",
+      "review_result": "unsupported_value",
+      "error_type": "apply_now_without_applicable_intake",
+      "severity": "minor",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The identity is correct. The live listing's Apply now links the college home page. Official first-year guidance says applicants by November 1 are automatically considered. The current/transfer page explicitly closes Fall 2026 and does not establish another open cycle. https://honors.umd.edu/prospective-students/admissions-process/first-year/ and https://honors.umd.edu/prospective-students/admissions-process/current-and-transfer/ Source: https://honors.umd.edu/ Production: https://joinalab.com/opportunities/umd-54542deb3560",
+      "risk_case": null
+    },
+    {
+      "sample_id": "program-006",
+      "entity_type": "program",
+      "entity_id": "wlu-88e9e20591ba",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "DART Research Internship Program (Williams School, Washington and Lee)",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://columns.wlu.edu/wls-dart-internship-program-places-students-in-cutting-edge-research-labs/",
+      "source_evidence": "DART Fellowship / Dana’s Angels Research Trust (DART) / research teams studying Niemann-Pick disease type C (NPC)",
+      "manual_expected_value": "Washington and Lee DART Internship Program for research on Niemann-Pick disease type C in medical research labs; current applications unknown.",
+      "review_result": "incorrect_value",
+      "error_type": "wrong_program_affiliation_and_research_domain",
+      "severity": "critical",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The linked W&L university article describes DART fellows, a neuroscience program head as institutional liaison and a rare-disease medical research program. In production the title appends Williams School and the description asserts business/data-analytics and industry placements. The article is a January 2026 retrospective, not an open application. Source: https://columns.wlu.edu/wls-dart-internship-program-places-students-in-cutting-edge-research-labs/ Production: https://joinalab.com/opportunities/wlu-88e9e20591ba",
+      "risk_case": null
+    },
+    {
+      "sample_id": "program-007",
+      "entity_type": "program",
+      "entity_id": "udel-f6a5e4ea0f51",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "Undergraduate Research Program (University of Delaware)",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.urp.udel.edu/",
+      "source_evidence": "Undergraduate Research Program / Get Started / Summer Programs / UDRAW / Senior Thesis",
+      "manual_expected_value": "University of Delaware Undergraduate Research Program hub. Availability must be checked for each opportunity.",
+      "review_result": "unsupported_value",
+      "error_type": "application_cta_for_opportunity_directory",
+      "severity": "minor",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The identity and directory description match. The campus landing page points to separate opportunities and does not accept one umbrella application; the production primary action still says Apply now. Source: https://www.urp.udel.edu/ Production: https://joinalab.com/opportunities/udel-f6a5e4ea0f51",
+      "risk_case": null
+    },
+    {
+      "sample_id": "program-008",
+      "entity_type": "program",
+      "entity_id": "cmu-uro-cb844caeb633",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "Mobile health, ubiquitous computing, and computational hearing systems",
+        "status": null
+      },
+      "verification_status": "unverified",
+      "source_url": "https://docs.google.com/spreadsheets/d/1doUAfTmVYeswzP_yHGnWQM32RKtWp6l8OpRRneghz3k/edit",
+      "source_evidence": "You must sign in to access this content",
+      "manual_expected_value": "Unverified: the linked CMU opportunity spreadsheet requires Google sign-in.",
+      "review_result": "blocked",
+      "error_type": "official_source_requires_sign_in",
+      "severity": null,
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The source responded HTTP 401 and requested sign-in. The production listing exists, but its project identity and status cannot be confirmed from the provided public source. Source: https://docs.google.com/spreadsheets/d/1doUAfTmVYeswzP_yHGnWQM32RKtWp6l8OpRRneghz3k/edit Production: https://joinalab.com/opportunities/cmu-uro-cb844caeb633",
+      "risk_case": null
+    },
+    {
+      "sample_id": "program-009",
+      "entity_type": "program",
+      "entity_id": "duke-0ad241611979",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "Duke FOCUS Program (First-Year Interdisciplinary Clusters)",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://focus.duke.edu/",
+      "source_evidence": "The Focus Program (FOCUS) is an exciting opportunity for first-semester Duke students / All placement decisions will be released on May 26, 2026.",
+      "manual_expected_value": "Duke FOCUS first-year interdisciplinary clusters. 2026 preference cycle ended; the next intake was not established from the official pages reviewed.",
+      "review_result": "unsupported_value",
+      "error_type": "apply_now_outside_published_preference_cycle",
+      "severity": "minor",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "Production says Apply now and links the home page. Duke describes the first-year preference form, April 1 to May 13 and May 26, 2026 placements. The site's stored unknown status should not imply a currently accepting program. https://focus.duke.edu/for-students/prospective-students/entryprocess Source: https://focus.duke.edu/ Production: https://joinalab.com/opportunities/duke-0ad241611979",
+      "risk_case": null
+    },
+    {
+      "sample_id": "program-010",
+      "entity_type": "program",
+      "entity_id": "bc-ec4ea5f74178",
+      "field_name": "title+metadata.status",
+      "system_value": {
+        "title": "Undergraduate Research Opportunities (Boston College)",
+        "status": "unknown"
+      },
+      "verification_status": "unverified",
+      "source_url": "https://www.bc.edu/content/bc-web/research/undergrad-research-opps.html",
+      "source_evidence": "Undergraduate Research Opportunities / Advanced Study Grants / Thesis Research Supplemental Grants",
+      "manual_expected_value": "Boston College directory of undergraduate research and multiple grants, each with its own process; no single opening.",
+      "review_result": "unsupported_value",
+      "error_type": "application_cta_for_opportunity_directory",
+      "severity": "minor",
+      "reviewer": "Codex (official-source and production review)",
+      "reviewed_at": "2026-11-26T10:08:54+00:00",
+      "notes": "The Boston College heading and directory identity match. The source does not provide a single application or shared cycle; the production primary action says Apply now and points to the directory. Source: https://www.bc.edu/content/bc-web/research/undergrad-research-opps.html Production: https://joinalab.com/opportunities/bc-ec4ea5f74178",
+      "risk_case": null
+    }
+  ],
+  "audited_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "shards_tree": "4d5f3754e1374373f2555174078046822d0ba07d"
 }
