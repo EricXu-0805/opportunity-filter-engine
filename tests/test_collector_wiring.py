@@ -43,6 +43,7 @@ SCHOOLS_DIR = COLLECTORS_DIR / "schools"
 KNOWN_UNWIRED = {
     # -- engines / libraries / registries (consumed by wired collectors) --
     "application_status",  # shared fail-closed status parser used by campus collectors
+    "bu_questrom_research",  # BU faculty invokes this personal-site reader through its Questrom directory
     "ncsu_chass",  # faculty_graph invokes this parser through the NC State CHASS department config
     "base",  # vestigial ABC interface; real convention is fetch_and_normalize/merge_into_processed
     # -- deliberately manual / CLI / API-driven (never on the weekly refresh) --
