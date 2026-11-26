@@ -56,6 +56,16 @@ def _listing(ident: str, **overrides) -> dict:
     return base
 
 
+def test_stamp_only_deadline_stays_an_estimate_on_the_card_and_in_filters():
+    listing = _listing("source-stamped", deadline="2026-03-01",
+                       metadata={"inferred_fields": {"deadline": "estimate:award_start"}})
+    card = m_module._match_card(listing)
+    assert card["deadline"] == "2026-03-01"
+    assert card["deadline_is_estimate"] is True
+    assert m_module._view_row_from_card(card).deadline is None
+    assert m_module._match_view_row(listing).deadline is None
+
+
 def _faculty(ident: str, **overrides) -> dict:
     base = {
         "id": ident,

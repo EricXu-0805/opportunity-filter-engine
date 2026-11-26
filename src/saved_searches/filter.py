@@ -47,7 +47,7 @@ from datetime import date, datetime
 from backend.lib.opportunity_detail import pay_is_inferred
 from backend.lib.public_projection import redact_embedded_emails
 from backend.routes.matches import _in_view_scope, _match_view_row
-from src.evidence import faculty_contact_claims_unverified
+from src.evidence import faculty_contact_claims_unverified, record_kind, stated_listing_deadline
 from src.matcher.ranker import _word_re, expand_search_aliases, without_web_addresses
 
 
@@ -103,7 +103,7 @@ def _matches_on_campus(opp_on_campus: bool | None, want: str) -> bool:
 def _matches_deadline(opp: dict, want: str) -> bool:
     if not want:
         return True
-    if faculty_contact_claims_unverified(opp):
+    if record_kind(opp) != "listing":
         return False
     # 'rolling' reads a different field, so it takes the whole record. Note the
     # fallthrough below returns True for an unrecognised value: before this
@@ -111,7 +111,8 @@ def _matches_deadline(opp: dict, want: str) -> bool:
     # record instead of the rolling ones. Any future value must land here too.
     if want == "rolling":
         return opp.get("is_rolling") is True
-    d = days_until(opp.get("deadline"))
+    stated = stated_listing_deadline(opp)
+    d = (stated - date.today()).days if stated is not None else None
     if want == "passed":
         return d is not None and d < 0
     try:
@@ -119,6 +120,17 @@ def _matches_deadline(opp: dict, want: str) -> bool:
     except ValueError:
         return True
     return d is not None and 0 <= d <= cutoff
+
+
+def queued_deadline_supported(opp: dict | None, deadline_filter: str | None) -> bool:
+    """Keep a historical hit if its stated date aged out, or its shard is missing.
+
+    An estimated or unstated date could never have justified a calendar-window
+    match. This also cleans up queues built with the former raw-date filter.
+    """
+    if opp is None or deadline_filter not in ("7", "14", "30", "passed"):
+        return True
+    return stated_listing_deadline(opp) is not None
 
 
 def _matches_scope(

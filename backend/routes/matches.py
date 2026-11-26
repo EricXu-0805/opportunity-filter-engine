@@ -75,6 +75,7 @@ from src.evidence import (
     faculty_safe_eligibility,
     faculty_safe_public_record,
     record_kind,
+    stated_listing_deadline,
 )
 from src.matcher.config import (
     LLM_RERANK_BATCH,
@@ -92,7 +93,6 @@ from src.matcher.ranker import (
     _diversify_explore,
     _filter_context,
     _normalize_type_key,
-    _stated_deadline_date,
     _word_re,
     canonical_sort_key,
     citizenship_restriction_reason,
@@ -251,7 +251,7 @@ def _view_row_from_card(card: dict, record: dict | None = None) -> _MatchViewRow
         record=record,
         kind=kind,
         # The scorer's deadline evidence bar, for a confirmed listing only.
-        deadline=_stated_deadline_date(card) if kind == "listing" else None,
+        deadline=stated_listing_deadline(record if record is not None else card),
         source=card.get("source"),
         scoped="school" in card or "audience" in card,
         school=card.get("school"),
