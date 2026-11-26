@@ -342,24 +342,39 @@ export function opportunityCitationUrl(opp: SourceLinks): string | undefined {
 const MSU_NATSCI_DIRECTORY = /^https:\/\/directory\.natsci\.msu\.edu\/Directory\/Directory\/Department\/\d+\/?$/i;
 const MSU_NATSCI_PROFILE = /^https:\/\/directory\.natsci\.msu\.edu\/directory\/Profiles\/Person\/[1-9]\d*\/?$/i;
 
+// Compact and cached match cards have only the collector's display URL.
+// These are the three directory fallbacks in the Berkeley CDSS collector.
+const BERKELEY_CDSS_ROSTERS = new Set([
+  'https://cdss.berkeley.edu/about/people',
+  'https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty',
+  'https://ccb.berkeley.edu/people/core-faculty',
+]);
+
 /** A person link for a faculty action. A source citation can instead be a roster. */
 export function facultyProfileUrl(opp: SourceLinks & Pick<Opportunity, 'source'>): string | undefined {
   if (hasMisdirectedProfile(opp)) return undefined;
-  if (opp.source === 'msu_faculty' && MSU_NATSCI_DIRECTORY.test(opp.source_url || '')) {
+  const citation = opp.source_url || opp.url || '';
+  if (opp.source === 'msu_faculty' && MSU_NATSCI_DIRECTORY.test(citation)) {
     const destination = safeHttpUrl(opp.url);
     return destination && MSU_NATSCI_PROFILE.test(destination) ? destination : undefined;
   }
   const georgetownEnglishRoster = opp.source === 'georgetown_faculty'
-    && opp.source_url === 'https://english.georgetown.edu/people/full-time-faculty-2/';
+    && citation === 'https://english.georgetown.edu/people/full-time-faculty-2/';
   const tamuFacultyCatalog = opp.source === 'tamu_faculty'
-    && opp.source_url?.startsWith('https://catalog.tamu.edu/')
-    && opp.source_url.includes('/#faculty:~:text=');
+    && citation.startsWith('https://catalog.tamu.edu/')
+    && citation.includes('/#faculty:~:text=');
   if (opp.source === 'ucb_datascience_faculty' || georgetownEnglishRoster || tamuFacultyCatalog) {
     // These collectors store the person's link in url and the roster in source_url.
     // A roster-only card has no separate profile.
     const destination = safeHttpUrl(opp.url);
-    const directory = safeHttpUrl(opp.source_url);
-    return directory && destination && destination !== directory ? destination : undefined;
+    if (!destination) return undefined;
+    if (!opp.source_url && opp.source === 'ucb_datascience_faculty') {
+      const url = new URL(destination);
+      const page = url.origin + url.pathname.replace(/\/$/, '');
+      return BERKELEY_CDSS_ROSTERS.has(page) ? undefined : destination;
+    }
+    const directory = safeHttpUrl(citation);
+    return directory && destination !== directory ? destination : undefined;
   }
   const source = opportunityCitationUrl(opp);
   if (opp.source === 'pitt_faculty' && source
