@@ -1,0 +1,284 @@
+{
+  "observed_at": "2026-11-26T22:39:17.381275+00:00",
+  "requests": [
+    {
+      "at": "2026-11-26T22:39:17.381423+00:00",
+      "channel": "frontend-version",
+      "url": "https://joinalab.com/about",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:21.322588+00:00",
+      "channel": "backend-version",
+      "url": "https://joinalab.com/api/health",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:28.959592+00:00",
+      "channel": "formal-detail",
+      "url": "https://joinalab.com/opportunities/faculty-osu-bme-5874478d",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:30.964644+00:00",
+      "channel": "public-api",
+      "url": "https://joinalab.com/api/opportunities/faculty-osu-bme-5874478d?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:32.969690+00:00",
+      "channel": "formal-detail",
+      "url": "https://joinalab.com/opportunities/faculty-osu-bme-16e6344f",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:34.969849+00:00",
+      "channel": "public-api",
+      "url": "https://joinalab.com/api/opportunities/faculty-osu-bme-16e6344f?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:36.973176+00:00",
+      "channel": "formal-detail",
+      "url": "https://joinalab.com/opportunities/faculty-osu-bme-c7dcb9ef",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:38.975703+00:00",
+      "channel": "public-api",
+      "url": "https://joinalab.com/api/opportunities/faculty-osu-bme-c7dcb9ef?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:40.980609+00:00",
+      "channel": "frontend-version",
+      "url": "https://joinalab.com/about",
+      "http": 200
+    },
+    {
+      "at": "2026-11-26T22:39:42.985253+00:00",
+      "channel": "backend-version",
+      "url": "https://joinalab.com/api/health",
+      "http": 200
+    }
+  ],
+  "detail_requests": 6,
+  "originals": [
+    {
+      "id": "faculty-osu-bme-5874478d",
+      "source_card": {
+        "url": "https://bme.osu.edu/directory/department-faculty?page=1",
+        "person_url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "name": "Veeraraghavan, Rengasayee",
+        "appointments": [
+          "Adjunct Professor, Biomedical Engineering"
+        ],
+        "listed_category": "Department Faculty",
+        "institutional_personal_address_present": true
+      },
+      "formal_url": "https://joinalab.com/opportunities/faculty-osu-bme-5874478d",
+      "formal_http": 200,
+      "formal_release": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+      "h1": "Rengasayee Veeraraghavan",
+      "sections": [
+        "Description",
+        "Recent publications",
+        "Opportunity details",
+        "Contact",
+        "Similar opportunities"
+      ],
+      "faculty_profile_links": [
+        {
+          "caption": "View faculty profile",
+          "url": "https://bme.osu.edu/people/veeraraghavan.12"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/veeraraghavan.12"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/veeraraghavan.12"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/veeraraghavan.12"
+        }
+      ],
+      "api_http": 200,
+      "api_id": "faculty-osu-bme-5874478d",
+      "pi_name": "Rengasayee Veeraraghavan",
+      "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+      "rank": "Professor, Biomedical Engineering",
+      "role": null,
+      "actionable": true,
+      "reference_only": false,
+      "last_seen_listed_at": "2026-09-06"
+    },
+    {
+      "id": "faculty-osu-bme-16e6344f",
+      "source_card": {
+        "url": "https://bme.osu.edu/directory/department-faculty?page=1",
+        "person_url": "https://bme.osu.edu/people/walter.367",
+        "name": "Walter, Ben",
+        "appointments": [
+          "Associate Professor, Biomedical Engineering"
+        ],
+        "listed_category": "Department Faculty",
+        "institutional_personal_address_present": true
+      },
+      "formal_url": "https://joinalab.com/opportunities/faculty-osu-bme-16e6344f",
+      "formal_http": 200,
+      "formal_release": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+      "h1": "Benjamin Walter",
+      "sections": [
+        "Description",
+        "Recent publications",
+        "Opportunity details",
+        "Contact",
+        "Similar opportunities"
+      ],
+      "faculty_profile_links": [
+        {
+          "caption": "View faculty profile",
+          "url": "https://bme.osu.edu/people/walter.367"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/walter.367"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/walter.367"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/walter.367"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/walter.367"
+        }
+      ],
+      "api_http": 200,
+      "api_id": "faculty-osu-bme-16e6344f",
+      "pi_name": "Benjamin Walter",
+      "source_url": "https://bme.osu.edu/people/walter.367",
+      "rank": "Associate Professor, Biomedical Engineering",
+      "role": null,
+      "actionable": true,
+      "reference_only": false,
+      "last_seen_listed_at": "2026-07-18"
+    },
+    {
+      "id": "faculty-osu-bme-c7dcb9ef",
+      "source_card": {
+        "url": "https://bme.osu.edu/directory/department-faculty",
+        "person_url": "https://bme.osu.edu/people/bellamkonda.7",
+        "name": "Bellamkonda, Ravi",
+        "appointments": [
+          "Professor, Biomedical Engineering",
+          "President, Academic Affairs Administration"
+        ],
+        "listed_category": "Department Faculty",
+        "institutional_personal_address_present": true
+      },
+      "formal_url": "https://joinalab.com/opportunities/faculty-osu-bme-c7dcb9ef",
+      "formal_http": 200,
+      "formal_release": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+      "h1": "Ravi Bellamkonda",
+      "sections": [
+        "Description",
+        "Recent publications",
+        "Opportunity details",
+        "Contact",
+        "Similar opportunities"
+      ],
+      "faculty_profile_links": [
+        {
+          "caption": "View faculty profile",
+          "url": "https://bme.osu.edu/people/bellamkonda.7"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/bellamkonda.7"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/bellamkonda.7"
+        },
+        {
+          "caption": "Source page",
+          "url": "https://bme.osu.edu/people/bellamkonda.7"
+        }
+      ],
+      "api_http": 200,
+      "api_id": "faculty-osu-bme-c7dcb9ef",
+      "pi_name": "Ravi Bellamkonda",
+      "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+      "rank": "Professor, Biomedical Engineering",
+      "role": null,
+      "actionable": true,
+      "reference_only": false,
+      "last_seen_listed_at": "2026-10-17"
+    }
+  ],
+  "deployment_before": {
+    "at": "2026-11-26T22:39:21.511642+00:00",
+    "frontend": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "backend": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+  },
+  "source_pages": [
+    {
+      "url": "https://bme.osu.edu/directory/department-faculty",
+      "direct_http": 403,
+      "source": "saved earlier official November 26 directory capture",
+      "cards": 24,
+      "sha256": "1ee00c7d47a252d7531e91616c8bd18fe916b4d73f261e4da52789db52bc2413",
+      "heading": "Department Faculty"
+    },
+    {
+      "url": "https://bme.osu.edu/directory/department-faculty?page=1",
+      "direct_http": 403,
+      "source": "saved earlier official November 26 directory capture",
+      "cards": 14,
+      "sha256": "68299913ccd297355afaddc1bdce4aa5542c8e564741d90b3416c6784d28d5c1",
+      "heading": "Department Faculty"
+    }
+  ],
+  "deployment_after": {
+    "at": "2026-11-26T22:39:43.072146+00:00",
+    "frontend": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+    "backend": "b129ed3336f1203ae6097a50af9e7e4f8950ac40"
+  },
+  "all_same_release": true,
+  "university_sources": [
+    {
+      "url": "https://bme.osu.edu/people/veeraraghavan.12",
+      "claim": "Ohio State Biomedical Engineering lists his current Ohio State appointment as Adjunct Professor, Biomedical Engineering."
+    },
+    {
+      "url": "https://opticalscience.osu.edu/news/leadership-updates-welcoming-mike-chini-deputy-director-thanking-departing-committee-members",
+      "claim": "August 3, 2026 announcement of his departure and fall committee transition."
+    },
+    {
+      "url": "https://www.unr.edu/molecular-biosciences/people/rengasayee-veeraraghavan",
+      "claim": "University of Nevada, Reno names Veeraraghavan as Professor in Pharmacology."
+    },
+    {
+      "url": "https://www.bme.osu.edu/news/2025/05/two-faculty-promoted-professor",
+      "claim": "Ohio State documented promotion to Professor in 2025."
+    }
+  ],
+  "most_recent_natural_read": {
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44914388022/job/136876756532",
+    "date": "2026-11-21",
+    "school_fetched": 1815,
+    "school_added": 22,
+    "school_updated": 1793,
+    "bme_directory_http": 403,
+    "bme_outcome": "parse_zero_rows; preserving 36 records",
+    "next_scheduled_rotation_utc": "2026-11-28T06:07:00Z",
+    "successful_department_refresh_still_required": true
+  }
+}

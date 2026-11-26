@@ -1,0 +1,488 @@
+{
+  "at": "2026-11-26T22:40:25.160525+00:00",
+  "baseline": "b129ed3336f1203ae6097a50af9e7e4f8950ac40",
+  "method": "Ordinary scoped deep OSU BME refresh of official Nov 26 two-page captures into a private copy of the 2,585 original campus records. Future rank, unrelated same-name and unreadable-source cases are local controlled replays, not new observations or a scheduled run. Report includes no private user/contact data.",
+  "published_originals": 2585,
+  "changed_originals": [
+    "faculty-osu-bme-5874478d"
+  ],
+  "original_rank": "Professor, Biomedical Engineering",
+  "preserved_fields": [
+    "url",
+    "source_url",
+    "pi_name",
+    "contact_email",
+    "keywords",
+    "application",
+    "title",
+    "first_seen_at",
+    "last_seen_at",
+    "last_verified",
+    "recent_works",
+    "publication_author_id"
+  ],
+  "coverage_change": [
+    {
+      "listing_count": 6,
+      "faculty_contact_count": 2506,
+      "unreviewed_count": 0,
+      "total_count": 2512
+    },
+    {
+      "listing_count": 6,
+      "faculty_contact_count": 2505,
+      "unreviewed_count": 0,
+      "total_count": 2511
+    }
+  ],
+  "rounds": [
+    {
+      "case": "normal",
+      "collector": {
+        "fetched": 36,
+        "status": "ok",
+        "added": null,
+        "updated": 34
+      },
+      "retained_originals": 2585,
+      "new_ids_from_isolated_BME_run": [
+        "faculty-osu-bme-2109412d",
+        "faculty-osu-bme-89ddae4d"
+      ],
+      "original": {
+        "id": "faculty-osu-bme-5874478d",
+        "http": 200,
+        "title": "Adjunct Professor, Biomedical Engineering",
+        "active": null,
+        "actionable": false,
+        "reference_only": false,
+        "url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "text": "Faculty research profile for Rengasayee Veeraraghavan in Biomedical Engineering at Ohio State University.",
+        "last_seen_listed_at": "2026-09-06",
+        "works": 3,
+        "contact_email_status": "unavailable",
+        "rank_quote": {
+          "text": "Adjunct Professor, Biomedical Engineering",
+          "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "positive_controls": [
+        {
+          "id": "faculty-osu-bme-16e6344f",
+          "http": 200,
+          "title": "Associate Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/walter.367",
+          "source_url": "https://bme.osu.edu/people/walter.367",
+          "text": "Faculty research profile for Ben Walter in Biomedical Engineering at Ohio State University. Research areas: Intervertebral Disc & Spine Biomechanics, Mechanobiology / Mechanotransduction Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        },
+        {
+          "id": "faculty-osu-bme-c7dcb9ef",
+          "http": 200,
+          "title": "Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/bellamkonda.7",
+          "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+          "text": "Faculty research profile for Ravi Bellamkonda in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        }
+      ],
+      "simulated_distinct_namesake": []
+    },
+    {
+      "case": "normal",
+      "collector": {
+        "fetched": 36,
+        "status": "ok",
+        "added": null,
+        "updated": 36
+      },
+      "retained_originals": 2585,
+      "new_ids_from_isolated_BME_run": [
+        "faculty-osu-bme-2109412d",
+        "faculty-osu-bme-89ddae4d"
+      ],
+      "original": {
+        "id": "faculty-osu-bme-5874478d",
+        "http": 200,
+        "title": "Adjunct Professor, Biomedical Engineering",
+        "active": null,
+        "actionable": false,
+        "reference_only": false,
+        "url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "text": "Faculty research profile for Rengasayee Veeraraghavan in Biomedical Engineering at Ohio State University.",
+        "last_seen_listed_at": "2026-09-06",
+        "works": 3,
+        "contact_email_status": "unavailable",
+        "rank_quote": {
+          "text": "Adjunct Professor, Biomedical Engineering",
+          "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "positive_controls": [
+        {
+          "id": "faculty-osu-bme-16e6344f",
+          "http": 200,
+          "title": "Associate Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/walter.367",
+          "source_url": "https://bme.osu.edu/people/walter.367",
+          "text": "Faculty research profile for Ben Walter in Biomedical Engineering at Ohio State University. Research areas: Intervertebral Disc & Spine Biomechanics, Mechanobiology / Mechanotransduction Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        },
+        {
+          "id": "faculty-osu-bme-c7dcb9ef",
+          "http": 200,
+          "title": "Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/bellamkonda.7",
+          "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+          "text": "Faculty research profile for Ravi Bellamkonda in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        }
+      ],
+      "simulated_distinct_namesake": []
+    },
+    {
+      "case": "failure",
+      "collector": {
+        "fetched": 0,
+        "status": "suspicious_zero",
+        "added": null,
+        "updated": 0
+      },
+      "retained_originals": 2585,
+      "new_ids_from_isolated_BME_run": [
+        "faculty-osu-bme-2109412d",
+        "faculty-osu-bme-89ddae4d"
+      ],
+      "original": {
+        "id": "faculty-osu-bme-5874478d",
+        "http": 200,
+        "title": "Adjunct Professor, Biomedical Engineering",
+        "active": null,
+        "actionable": false,
+        "reference_only": false,
+        "url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "text": "Faculty research profile for Rengasayee Veeraraghavan in Biomedical Engineering at Ohio State University.",
+        "last_seen_listed_at": "2026-09-06",
+        "works": 3,
+        "contact_email_status": "unavailable",
+        "rank_quote": {
+          "text": "Adjunct Professor, Biomedical Engineering",
+          "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "positive_controls": [
+        {
+          "id": "faculty-osu-bme-16e6344f",
+          "http": 200,
+          "title": "Associate Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/walter.367",
+          "source_url": "https://bme.osu.edu/people/walter.367",
+          "text": "Faculty research profile for Ben Walter in Biomedical Engineering at Ohio State University. Research areas: Intervertebral Disc & Spine Biomechanics, Mechanobiology / Mechanotransduction Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        },
+        {
+          "id": "faculty-osu-bme-c7dcb9ef",
+          "http": 200,
+          "title": "Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/bellamkonda.7",
+          "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+          "text": "Faculty research profile for Ravi Bellamkonda in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        }
+      ],
+      "simulated_distinct_namesake": []
+    },
+    {
+      "case": "namesake",
+      "collector": {
+        "fetched": 37,
+        "status": "ok",
+        "added": null,
+        "updated": 36
+      },
+      "retained_originals": 2585,
+      "new_ids_from_isolated_BME_run": [
+        "faculty-osu-bme-2109412d",
+        "faculty-osu-bme-89ddae4d",
+        "faculty-osu-bme-eb837406"
+      ],
+      "original": {
+        "id": "faculty-osu-bme-5874478d",
+        "http": 200,
+        "title": "Adjunct Professor, Biomedical Engineering",
+        "active": null,
+        "actionable": false,
+        "reference_only": false,
+        "url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "text": "Faculty research profile for Rengasayee Veeraraghavan in Biomedical Engineering at Ohio State University.",
+        "last_seen_listed_at": "2026-09-06",
+        "works": 3,
+        "contact_email_status": "unavailable",
+        "rank_quote": {
+          "text": "Adjunct Professor, Biomedical Engineering",
+          "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+          "observed_at": "2026-11-26"
+        }
+      },
+      "positive_controls": [
+        {
+          "id": "faculty-osu-bme-16e6344f",
+          "http": 200,
+          "title": "Associate Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/walter.367",
+          "source_url": "https://bme.osu.edu/people/walter.367",
+          "text": "Faculty research profile for Ben Walter in Biomedical Engineering at Ohio State University. Research areas: Intervertebral Disc & Spine Biomechanics, Mechanobiology / Mechanotransduction Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        },
+        {
+          "id": "faculty-osu-bme-c7dcb9ef",
+          "http": 200,
+          "title": "Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/bellamkonda.7",
+          "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+          "text": "Faculty research profile for Ravi Bellamkonda in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        }
+      ],
+      "simulated_distinct_namesake": [
+        "faculty-osu-bme-eb837406"
+      ]
+    },
+    {
+      "case": "return",
+      "collector": {
+        "fetched": 37,
+        "status": "ok",
+        "added": null,
+        "updated": 37
+      },
+      "retained_originals": 2585,
+      "new_ids_from_isolated_BME_run": [
+        "faculty-osu-bme-2109412d",
+        "faculty-osu-bme-89ddae4d",
+        "faculty-osu-bme-eb837406"
+      ],
+      "original": {
+        "id": "faculty-osu-bme-5874478d",
+        "http": 200,
+        "title": "Professor, Biomedical Engineering",
+        "active": null,
+        "actionable": true,
+        "reference_only": false,
+        "url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+        "text": "Faculty research profile for Rengasayee Veeraraghavan in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+        "last_seen_listed_at": "2026-11-26",
+        "works": 3,
+        "contact_email_status": "sign_in_required",
+        "rank_quote": null
+      },
+      "positive_controls": [
+        {
+          "id": "faculty-osu-bme-16e6344f",
+          "http": 200,
+          "title": "Associate Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/walter.367",
+          "source_url": "https://bme.osu.edu/people/walter.367",
+          "text": "Faculty research profile for Ben Walter in Biomedical Engineering at Ohio State University. Research areas: Intervertebral Disc & Spine Biomechanics, Mechanobiology / Mechanotransduction Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        },
+        {
+          "id": "faculty-osu-bme-c7dcb9ef",
+          "http": 200,
+          "title": "Professor, Biomedical Engineering",
+          "active": null,
+          "actionable": true,
+          "reference_only": false,
+          "url": "https://bme.osu.edu/people/bellamkonda.7",
+          "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+          "text": "Faculty research profile for Ravi Bellamkonda in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+          "last_seen_listed_at": "2026-11-26",
+          "works": 3,
+          "contact_email_status": "sign_in_required",
+          "rank_quote": null
+        }
+      ],
+      "simulated_distinct_namesake": [
+        "faculty-osu-bme-eb837406"
+      ]
+    }
+  ],
+  "candidate_initial": [
+    {
+      "id": "faculty-osu-bme-5874478d",
+      "http": 200,
+      "title": "Adjunct Professor, Biomedical Engineering",
+      "active": null,
+      "actionable": false,
+      "reference_only": false,
+      "url": "https://bme.osu.edu/people/veeraraghavan.12",
+      "source_url": "https://bme.osu.edu/people/veeraraghavan.12",
+      "text": "Faculty research profile for Rengasayee Veeraraghavan in Biomedical Engineering at Ohio State University.",
+      "last_seen_listed_at": "2026-09-06",
+      "works": 3,
+      "contact_email_status": "unavailable",
+      "rank_quote": {
+        "text": "Adjunct Professor, Biomedical Engineering",
+        "source_url": "https://bme.osu.edu/directory/department-faculty?page=1",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-osu-bme-16e6344f",
+      "http": 200,
+      "title": "Associate Professor, Biomedical Engineering",
+      "active": null,
+      "actionable": true,
+      "reference_only": false,
+      "url": "https://bme.osu.edu/people/walter.367",
+      "source_url": "https://bme.osu.edu/people/walter.367",
+      "text": "Faculty research profile for Benjamin Walter in Biomedical Engineering at Ohio State University. Research areas: Intervertebral Disc & Spine Biomechanics, Mechanobiology / Mechanotransduction Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "last_seen_listed_at": "2026-07-18",
+      "works": 3,
+      "contact_email_status": "sign_in_required",
+      "rank_quote": null
+    },
+    {
+      "id": "faculty-osu-bme-c7dcb9ef",
+      "http": 200,
+      "title": "Professor, Biomedical Engineering",
+      "active": null,
+      "actionable": true,
+      "reference_only": false,
+      "url": "https://bme.osu.edu/people/bellamkonda.7",
+      "source_url": "https://bme.osu.edu/people/bellamkonda.7",
+      "text": "Faculty research profile for Ravi Bellamkonda in Biomedical Engineering at Ohio State University. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "last_seen_listed_at": "2026-10-17",
+      "works": 3,
+      "contact_email_status": "sign_in_required",
+      "rank_quote": null
+    }
+  ],
+  "normal_directory": {
+    "number_emitted": 36,
+    "all_original_emitted_ids_and_names_contacts_profiles_match": true,
+    "emitted_ids": [
+      "faculty-osu-bme-0d2ebde1",
+      "faculty-osu-bme-16e6344f",
+      "faculty-osu-bme-17068241",
+      "faculty-osu-bme-1bdb9f1c",
+      "faculty-osu-bme-1e1463b2",
+      "faculty-osu-bme-2109412d",
+      "faculty-osu-bme-21cdaedb",
+      "faculty-osu-bme-257166cd",
+      "faculty-osu-bme-28a37f1d",
+      "faculty-osu-bme-2d4f872d",
+      "faculty-osu-bme-337d08e5",
+      "faculty-osu-bme-3c42388c",
+      "faculty-osu-bme-4007c8ef",
+      "faculty-osu-bme-49891f30",
+      "faculty-osu-bme-4eee0ec4",
+      "faculty-osu-bme-4f842da0",
+      "faculty-osu-bme-55a028ea",
+      "faculty-osu-bme-5622384c",
+      "faculty-osu-bme-621e740c",
+      "faculty-osu-bme-7153ca3b",
+      "faculty-osu-bme-7b9672f4",
+      "faculty-osu-bme-89ddae4d",
+      "faculty-osu-bme-9db33ba1",
+      "faculty-osu-bme-a58f34ac",
+      "faculty-osu-bme-ad547d56",
+      "faculty-osu-bme-adfa623e",
+      "faculty-osu-bme-bbc42f7a",
+      "faculty-osu-bme-c7dcb9ef",
+      "faculty-osu-bme-d54654ac",
+      "faculty-osu-bme-d768f7ee",
+      "faculty-osu-bme-da4e6055",
+      "faculty-osu-bme-df6d068f",
+      "faculty-osu-bme-ea5122e5",
+      "faculty-osu-bme-ef3de9ce",
+      "faculty-osu-bme-f7eeedea",
+      "faculty-osu-bme-fcffaac3"
+    ]
+  },
+  "future_return_same_saved_original": true,
+  "two_other_cross_appointments_in_isolated_fixture": {
+    "note": "Replaying BME by itself produces two additional unit-specific IDs in both the old and candidate collector. The product shard in this change adds neither ID. The same named people already have published originals in ECE and Chemistry, respectively. Verify in the ordinary complete school run.",
+    "published_ids": [
+      "faculty-osu-ece-287b93a3",
+      "faculty-osu-chem-4a30ef58"
+    ],
+    "unit_only_ids": [
+      "faculty-osu-bme-2109412d",
+      "faculty-osu-bme-89ddae4d"
+    ]
+  },
+  "local_test_result": {
+    "passed": 1013,
+    "suites": [
+      "test_osu_bme_appointment",
+      "test_collapse_liveness",
+      "test_faculty_graph",
+      "test_target_truth",
+      "test_opportunity_detail_m03",
+      "test_school_coverage"
+    ]
+  }
+}
