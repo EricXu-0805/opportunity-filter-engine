@@ -1,0 +1,994 @@
+{
+  "recorded_at": "2026-11-26T19:41:46.535189+00:00",
+  "scope": "Read-only replay of the production monthly fetch, using real official HTTP and the archived code of each exact Git commit. Hashes identify equal addresses without publishing their values. No account or production data was changed.",
+  "directory_url": "https://www.linguistics.pitt.edu/people/core-linguistics-faculty",
+  "roster_sha256": "d134d0fd8d7b66c96e70d59d8f8bf05a7beed2c9fbc776d9130c2af9bdef2043",
+  "main_commit": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+  "candidate_commit": "57b86bcb555166852f6f7e0e70096d894343f93c",
+  "rows": [
+    {
+      "id": "faculty-pitt-ling-de044035",
+      "name": "Melinda Fricke",
+      "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+      "response_url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+      "http": 200,
+      "body_sha256": "bff38510c0aeae286ac8fc953f703f95194fe032d4be82467e52d71c1ac0ccc0",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "72071cbe0b7ee1c3"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-b0bb8257",
+      "name": "Shelome Gooden",
+      "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+      "response_url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+      "http": 200,
+      "body_sha256": "b3d99a6c025bd135be3455b6553b4217f27adbadaf4feb06153fea76aba563f4",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "2de348504434d3fe"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-00c04191",
+      "name": "Amanda Huensch",
+      "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+      "response_url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+      "http": 200,
+      "body_sha256": "26a217f5809531b669ebe974cc8fbc0046bb6c07b6266a10e09358135581ab9e",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "52ec0df6c7e2d20b"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-beac652e",
+      "name": "Matthew Kanwit",
+      "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+      "response_url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+      "http": 200,
+      "body_sha256": "a4660d841acbd1032a12604da0c4b346399545e856108c1ba5805e68be5a4459",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "bfea9356dd10f364"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-f90b0dfa",
+      "name": "Scott F. Kiesling",
+      "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+      "response_url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+      "http": 200,
+      "body_sha256": "3dca8add72261061fd60bd0ba969291ac51f18e30fe76bca8afeca1ccbf80540",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "11b4ab363ec067b1"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-0c3d32be",
+      "name": "Janet Liu",
+      "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+      "response_url": "https://www.linguistics.pitt.edu/people/janet-liu",
+      "http": 200,
+      "body_sha256": "aa97a061669efc31befdfc147299d3f84410ed699f09ccc8c163d495c7d2bcd1",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "4c4d5d2d0c24a227"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-74160f43",
+      "name": "Kevin McManus",
+      "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+      "response_url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+      "http": 200,
+      "body_sha256": "848031d2b9c565b8ad5ae38624f3470b52b56e497cbacdbfe27e9dd439ea7194",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "96fce58ae493be8f"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-32eedf1c",
+      "name": "Marta Ortega-Llebaria",
+      "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+      "response_url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+      "http": 200,
+      "body_sha256": "f03380a14357cc144b43840844bb98b956a7ac4bbac080049c8aedc425f88a6f",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "ee7ae747de45dda1"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-27850b9e",
+      "name": "Dan Villarreal",
+      "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+      "response_url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+      "http": 200,
+      "body_sha256": "07f51682ec99308908ef83ed2f65f6ad00dddd985a5c21c2b8d94a2cfdeb14f0",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "2e3f1372c24144ec"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-a12887dd",
+      "name": "Gretchen Aiyangar",
+      "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+      "response_url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+      "http": 200,
+      "body_sha256": "9f4f758cef945e2099f9b3b0c134e01941a8e043e7d4dedf404e3b57ebc2a0d3",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "cb6dff0c85b4f77d"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-2da8fc2a",
+      "name": "Amani Attia",
+      "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+      "response_url": "https://www.linguistics.pitt.edu/people/amani-attia",
+      "http": 200,
+      "body_sha256": "8a44f76f60f74b36fc9f0159da5efd407f254c64ea4f9ef0d67412f49900ed66",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "daa4c3ff69dc00bf"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-5862284a",
+      "name": "Na-Rae Han",
+      "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+      "response_url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+      "http": 200,
+      "body_sha256": "09d18428f1e1ea8c9c342d55a05e9f5dd9a864c55b1fe02536aa3e1f1ad0609e",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "51079299be0ef3f7"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-d0ebdf0a",
+      "name": "Debra L. Hast",
+      "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+      "response_url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+      "http": 200,
+      "body_sha256": "a3da1b71143fa8e60b3a4ea3f517753674a985cdaeb68863d7f0402a5fc49369",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "d00d77ca7fafe8c9"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-12753a63",
+      "name": "Jevon Heath",
+      "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+      "response_url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+      "http": 200,
+      "body_sha256": "d7f2b5fddc1f899fc0f3da21272681d7a80ed1f8a041d979716f71a2fc55a3d6",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "287a103f017e7d84"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-5aaea2df",
+      "name": "Filipo Lubua",
+      "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+      "response_url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+      "http": 200,
+      "body_sha256": "06b3a958a2b965023e1d9e090299c906261f78292dcd8f4cee1a655b641f1ebb",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "603c581aedb903b0"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-11fb1b87",
+      "name": "Claude E. Mauk",
+      "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+      "response_url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+      "http": 200,
+      "body_sha256": "96faa18b260679d13047eac0c9bb3ced43adfbe131d498d115ab4b75456dc4b2",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "85e88ee01dc90414"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-3352f935",
+      "name": "Dawn E. McCormick",
+      "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+      "response_url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+      "http": 200,
+      "body_sha256": "f0cc1babd4a5e8a5599815a58ee50ec675c054832e1a2b39332728bfc98daef0",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "e8a104da5cd402a0"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-63c0ff2f",
+      "name": "Gregory Mizera",
+      "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+      "response_url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+      "http": 200,
+      "body_sha256": "94f57538c7a28c8cbccde78abddba5374a5faa82efe1ff6176bc57d27e298f4b",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "0f03ef387069d5c9"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-2cb085e3",
+      "name": "Phillip Rogers",
+      "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+      "response_url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+      "http": 200,
+      "body_sha256": "91c6cb9dad6a5f7976fd8a5c0ea92680c1ccf4171c08636dc3612e8f61d9ea21",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "b4e409280d904a3f"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-bfcf8516",
+      "name": "Abdesalam Soudi",
+      "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+      "response_url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+      "http": 200,
+      "body_sha256": "4d88bb59e832c90af9c54d1b471baa9e3215aeed7381434690585088531f7421",
+      "heading_matches_person": true,
+      "footer_digests": [
+        "3ac2c7dfa72b5f3d",
+        "72071cbe0b7ee1c3",
+        "a9103c72b2fe92d4",
+        "aacd75b70ca45c25"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [
+        "9f8e925060fca7d3"
+      ],
+      "own_named_linguistics_page": true
+    },
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "name": "Richard Donato",
+      "url": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+      "response_url": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+      "http": 404,
+      "body_sha256": "a9d84271846630c51923ce4d26018d8a7ee0f5bb43a6aaa68b4f48f178c4dcfb",
+      "heading_matches_person": false,
+      "footer_digests": [
+        "df2d27244dbaf4a4"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "name": "Amanda Godley",
+      "url": "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+      "response_url": "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+      "http": 404,
+      "body_sha256": "8a1410d859e7ae8090425e728f1b47aefdd49d5cf3521dc326d800ba053078cd",
+      "heading_matches_person": false,
+      "footer_digests": [
+        "df2d27244dbaf4a4"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "url": "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html",
+      "response_url": "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html",
+      "http": 404,
+      "body_sha256": "6db2e4a7203e32c0d47990b3c0f8918ebd18e6eb4fff7d62584b249797515373",
+      "heading_matches_person": false,
+      "footer_digests": [],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "url": "http://www.pitt.edu/~perfetti/charles-perfetti.htm",
+      "response_url": "https://sites.pitt.edu/~perfetti/charles-perfetti.htm",
+      "http": 200,
+      "body_sha256": "c45752f5651d296e9f7ce2d4b7298b467b9afdbb7337e06d0c45699df8516fba",
+      "heading_matches_person": false,
+      "footer_digests": [],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "name": "Mandy Simons",
+      "url": "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html",
+      "response_url": "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html",
+      "http": 404,
+      "body_sha256": "6db2e4a7203e32c0d47990b3c0f8918ebd18e6eb4fff7d62584b249797515373",
+      "heading_matches_person": false,
+      "footer_digests": [],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "name": "Kate Stanton",
+      "url": "https://www.philosophy.pitt.edu/person/kate-stanton",
+      "response_url": "https://www.philosophy.pitt.edu/person/kate-stanton",
+      "http": 404,
+      "body_sha256": "a0b575e2fb2c671668af26469dded58f882af6367ebd42c2785c6eedc4249012",
+      "heading_matches_person": false,
+      "footer_digests": [
+        "3aa64466319f72fe",
+        "7c5448d8d469443b"
+      ],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "name": "Natasha Tokowicz",
+      "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "response_url": "https://www.psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "http": 200,
+      "body_sha256": "d9066a30125f3cb0aa1c67bd6926b33de08c4f0665bd2d2e480b2dfdfe06a6ac",
+      "heading_matches_person": false,
+      "footer_digests": [],
+      "person_contact_field_plain": [
+        "a077e4fef0de6b16"
+      ],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "name": "Tessa Warren",
+      "url": "http://www.pitt.edu/~tessa/",
+      "response_url": "https://sites.pitt.edu/~tessa/",
+      "http": 200,
+      "body_sha256": "f7f9d9ce08e17ff83f0f9ddc66f5b184423810b350d2fa088fcf4bc6699dc97c",
+      "heading_matches_person": false,
+      "footer_digests": [],
+      "person_contact_field_plain": [],
+      "person_contact_field_script": [],
+      "own_named_linguistics_page": false
+    }
+  ],
+  "main": [
+    {
+      "mode": "as shipped",
+      "input_ids": [
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-c7f555fa",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-f90b0dfa"
+      ],
+      "already_published": true,
+      "live": 28,
+      "observed": 9,
+      "emitted": [
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-c7f555fa"
+      ],
+      "missing": [
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-f90b0dfa"
+      ],
+      "email_digests": {
+        "faculty-pitt-ling-de044035": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-b0bb8257": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-00c04191": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-beac652e": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-f90b0dfa": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-0c3d32be": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-74160f43": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-32eedf1c": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-27850b9e": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-a12887dd": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-2da8fc2a": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-5862284a": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-d0ebdf0a": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-12753a63": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-5aaea2df": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-11fb1b87": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-3352f935": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-63c0ff2f": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-2cb085e3": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-bfcf8516": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-84276229": null,
+        "faculty-pitt-ling-0dbe04f3": null,
+        "faculty-pitt-ling-b87b919a": null,
+        "faculty-pitt-ling-14fc90c7": null,
+        "faculty-pitt-ling-84c5021c": null,
+        "faculty-pitt-ling-e0bda033": null,
+        "faculty-pitt-ling-00bb851a": null,
+        "faculty-pitt-ling-c7f555fa": null
+      },
+      "nonempty_contacts_in_emitted_rows": [
+        {
+          "id": "faculty-pitt-ling-de044035",
+          "email_digest": "a9103c72b2fe92d4",
+          "source": "profile_page",
+          "scope": "profile"
+        }
+      ]
+    },
+    {
+      "mode": "scoped selector replay",
+      "input_ids": [
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-c7f555fa",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-f90b0dfa"
+      ],
+      "already_published": true,
+      "live": 28,
+      "observed": 28,
+      "emitted": [
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-f90b0dfa",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-c7f555fa"
+      ],
+      "missing": [],
+      "email_digests": {
+        "faculty-pitt-ling-de044035": null,
+        "faculty-pitt-ling-b0bb8257": null,
+        "faculty-pitt-ling-00c04191": null,
+        "faculty-pitt-ling-beac652e": null,
+        "faculty-pitt-ling-f90b0dfa": null,
+        "faculty-pitt-ling-0c3d32be": null,
+        "faculty-pitt-ling-74160f43": null,
+        "faculty-pitt-ling-32eedf1c": null,
+        "faculty-pitt-ling-27850b9e": null,
+        "faculty-pitt-ling-a12887dd": null,
+        "faculty-pitt-ling-2da8fc2a": null,
+        "faculty-pitt-ling-5862284a": null,
+        "faculty-pitt-ling-d0ebdf0a": null,
+        "faculty-pitt-ling-12753a63": null,
+        "faculty-pitt-ling-5aaea2df": null,
+        "faculty-pitt-ling-11fb1b87": null,
+        "faculty-pitt-ling-3352f935": null,
+        "faculty-pitt-ling-63c0ff2f": null,
+        "faculty-pitt-ling-2cb085e3": null,
+        "faculty-pitt-ling-bfcf8516": null,
+        "faculty-pitt-ling-84276229": null,
+        "faculty-pitt-ling-0dbe04f3": null,
+        "faculty-pitt-ling-b87b919a": null,
+        "faculty-pitt-ling-14fc90c7": null,
+        "faculty-pitt-ling-84c5021c": null,
+        "faculty-pitt-ling-e0bda033": null,
+        "faculty-pitt-ling-00bb851a": null,
+        "faculty-pitt-ling-c7f555fa": null
+      },
+      "nonempty_contacts_in_emitted_rows": []
+    }
+  ],
+  "candidate": [
+    {
+      "mode": "as shipped",
+      "input_ids": [
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-c7f555fa",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-f90b0dfa"
+      ],
+      "already_published": true,
+      "live": 28,
+      "observed": 9,
+      "emitted": [
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-c7f555fa"
+      ],
+      "missing": [
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-f90b0dfa"
+      ],
+      "email_digests": {
+        "faculty-pitt-ling-de044035": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-b0bb8257": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-00c04191": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-beac652e": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-f90b0dfa": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-0c3d32be": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-74160f43": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-32eedf1c": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-27850b9e": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-a12887dd": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-2da8fc2a": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-5862284a": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-d0ebdf0a": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-12753a63": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-5aaea2df": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-11fb1b87": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-3352f935": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-63c0ff2f": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-2cb085e3": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-bfcf8516": "a9103c72b2fe92d4",
+        "faculty-pitt-ling-84276229": null,
+        "faculty-pitt-ling-0dbe04f3": null,
+        "faculty-pitt-ling-b87b919a": null,
+        "faculty-pitt-ling-14fc90c7": "b9a6705e0dd6e592",
+        "faculty-pitt-ling-84c5021c": null,
+        "faculty-pitt-ling-e0bda033": null,
+        "faculty-pitt-ling-00bb851a": "a077e4fef0de6b16",
+        "faculty-pitt-ling-c7f555fa": null
+      },
+      "nonempty_contacts_in_emitted_rows": [
+        {
+          "id": "faculty-pitt-ling-de044035",
+          "email_digest": "a9103c72b2fe92d4",
+          "source": "profile_page",
+          "scope": "profile"
+        },
+        {
+          "id": "faculty-pitt-ling-14fc90c7",
+          "email_digest": "b9a6705e0dd6e592",
+          "source": "profile_page",
+          "scope": "profile"
+        },
+        {
+          "id": "faculty-pitt-ling-00bb851a",
+          "email_digest": "a077e4fef0de6b16",
+          "source": "profile_page",
+          "scope": "profile"
+        }
+      ]
+    },
+    {
+      "mode": "scoped selector replay",
+      "input_ids": [
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-c7f555fa",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-f90b0dfa"
+      ],
+      "already_published": true,
+      "live": 28,
+      "observed": 28,
+      "emitted": [
+        "faculty-pitt-ling-de044035",
+        "faculty-pitt-ling-b0bb8257",
+        "faculty-pitt-ling-00c04191",
+        "faculty-pitt-ling-beac652e",
+        "faculty-pitt-ling-f90b0dfa",
+        "faculty-pitt-ling-0c3d32be",
+        "faculty-pitt-ling-74160f43",
+        "faculty-pitt-ling-32eedf1c",
+        "faculty-pitt-ling-27850b9e",
+        "faculty-pitt-ling-a12887dd",
+        "faculty-pitt-ling-2da8fc2a",
+        "faculty-pitt-ling-5862284a",
+        "faculty-pitt-ling-d0ebdf0a",
+        "faculty-pitt-ling-12753a63",
+        "faculty-pitt-ling-5aaea2df",
+        "faculty-pitt-ling-11fb1b87",
+        "faculty-pitt-ling-3352f935",
+        "faculty-pitt-ling-63c0ff2f",
+        "faculty-pitt-ling-2cb085e3",
+        "faculty-pitt-ling-bfcf8516",
+        "faculty-pitt-ling-84276229",
+        "faculty-pitt-ling-0dbe04f3",
+        "faculty-pitt-ling-b87b919a",
+        "faculty-pitt-ling-14fc90c7",
+        "faculty-pitt-ling-84c5021c",
+        "faculty-pitt-ling-e0bda033",
+        "faculty-pitt-ling-00bb851a",
+        "faculty-pitt-ling-c7f555fa"
+      ],
+      "missing": [],
+      "email_digests": {
+        "faculty-pitt-ling-de044035": null,
+        "faculty-pitt-ling-b0bb8257": null,
+        "faculty-pitt-ling-00c04191": null,
+        "faculty-pitt-ling-beac652e": null,
+        "faculty-pitt-ling-f90b0dfa": null,
+        "faculty-pitt-ling-0c3d32be": null,
+        "faculty-pitt-ling-74160f43": null,
+        "faculty-pitt-ling-32eedf1c": null,
+        "faculty-pitt-ling-27850b9e": null,
+        "faculty-pitt-ling-a12887dd": null,
+        "faculty-pitt-ling-2da8fc2a": null,
+        "faculty-pitt-ling-5862284a": null,
+        "faculty-pitt-ling-d0ebdf0a": null,
+        "faculty-pitt-ling-12753a63": null,
+        "faculty-pitt-ling-5aaea2df": null,
+        "faculty-pitt-ling-11fb1b87": null,
+        "faculty-pitt-ling-3352f935": null,
+        "faculty-pitt-ling-63c0ff2f": null,
+        "faculty-pitt-ling-2cb085e3": null,
+        "faculty-pitt-ling-bfcf8516": null,
+        "faculty-pitt-ling-84276229": null,
+        "faculty-pitt-ling-0dbe04f3": null,
+        "faculty-pitt-ling-b87b919a": null,
+        "faculty-pitt-ling-14fc90c7": null,
+        "faculty-pitt-ling-84c5021c": null,
+        "faculty-pitt-ling-e0bda033": null,
+        "faculty-pitt-ling-00bb851a": "a077e4fef0de6b16",
+        "faculty-pitt-ling-c7f555fa": null
+      },
+      "nonempty_contacts_in_emitted_rows": [
+        {
+          "id": "faculty-pitt-ling-00bb851a",
+          "email_digest": "a077e4fef0de6b16",
+          "source": "profile_page",
+          "scope": "profile"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "http_counts": {
+      "200": 23,
+      "404": 5
+    },
+    "main_candidate_same_19": true,
+    "shared_address_groups": [
+      {
+        "digest": "a9103c72b2fe92d4",
+        "ids": [
+          "faculty-pitt-ling-de044035",
+          "faculty-pitt-ling-b0bb8257",
+          "faculty-pitt-ling-00c04191",
+          "faculty-pitt-ling-beac652e",
+          "faculty-pitt-ling-f90b0dfa",
+          "faculty-pitt-ling-0c3d32be",
+          "faculty-pitt-ling-74160f43",
+          "faculty-pitt-ling-32eedf1c",
+          "faculty-pitt-ling-27850b9e",
+          "faculty-pitt-ling-a12887dd",
+          "faculty-pitt-ling-2da8fc2a",
+          "faculty-pitt-ling-5862284a",
+          "faculty-pitt-ling-d0ebdf0a",
+          "faculty-pitt-ling-12753a63",
+          "faculty-pitt-ling-5aaea2df",
+          "faculty-pitt-ling-11fb1b87",
+          "faculty-pitt-ling-3352f935",
+          "faculty-pitt-ling-63c0ff2f",
+          "faculty-pitt-ling-2cb085e3",
+          "faculty-pitt-ling-bfcf8516"
+        ],
+        "footer_on_all": true
+      }
+    ],
+    "other_singleton_email_digests": 0,
+    "named_linguistics_pages_with_person_field": 20,
+    "unique_h1_matched_person_field_digests": 20,
+    "repeated_h1_matched_person_field_digests": 0,
+    "source_interpretation": "Footer addresses are excluded. The optional named-contact counts use unique addresses present in the school’s dedicated person-email field on a matching name page. Most are encoded in the school’s script and rendered in the browser. They are candidates for public contact verification, not approved delivery addresses. HTTP 404s do not establish retirement. A one-off extracted address on an external page is not verified by uniqueness."
+  }
+}

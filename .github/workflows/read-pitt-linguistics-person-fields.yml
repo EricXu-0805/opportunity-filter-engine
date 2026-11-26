@@ -1,0 +1,24 @@
+name: Read Pitt Linguistics person contact fields
+on:
+  push:
+    branches: [audit/pitt-duke-affiliates-20261126]
+    paths: [data/audits/observed-faculty-2026-11-26/pitt-linguistics-monthly/read_person_fields.py]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: data/audits/observed-faculty-2026-11-26/pitt-linguistics-monthly
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check playwright==1.58.0
+      - run: python -m playwright install --only-shell chromium
+      - run: python data/audits/observed-faculty-2026-11-26/pitt-linguistics-monthly/read_person_fields.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pitt-person-fields
+          path: browser-results.json
+          retention-days: 30

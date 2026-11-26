@@ -1,0 +1,292 @@
+{
+  "schedule": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/42045511430/job/127307266882",
+  "data_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1182",
+  "published_merge": "b1d224a6970900a2330d60484b2963d334e499cb",
+  "source_observed": "monthly enrichment enabled; current source log held Linguistics retirement because of unparsed rows, preserving 28 records",
+  "total_before": 28,
+  "total_after": 28,
+  "counts_seen_timestamp_advanced": 9,
+  "counts_any_field_changed": 9,
+  "ids": [
+    {
+      "id": "faculty-pitt-ling-de044035",
+      "name": "Melinda Fricke",
+      "before_last_seen_at": "2026-10-29T13:22:18.255583",
+      "after_last_seen_at": "2026-11-05T16:29:29.477299",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "profile",
+      "any_field_changed": true,
+      "nonempty_address": true
+    },
+    {
+      "id": "faculty-pitt-ling-63c0ff2f",
+      "name": "Gregory Mizera",
+      "before_last_seen_at": "2026-10-29T13:22:18.256900",
+      "after_last_seen_at": "2026-10-29T13:22:18.256900",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-2cb085e3",
+      "name": "Phillip Rogers",
+      "before_last_seen_at": "2026-10-29T13:22:18.256970",
+      "after_last_seen_at": "2026-10-29T13:22:18.256970",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-bfcf8516",
+      "name": "Abdesalam Soudi",
+      "before_last_seen_at": "2026-10-29T13:22:18.257045",
+      "after_last_seen_at": "2026-10-29T13:22:18.257045",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "name": "Richard Donato",
+      "before_last_seen_at": "2026-10-29T13:22:18.257121",
+      "after_last_seen_at": "2026-11-05T16:29:29.478604",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "name": "Amanda Godley",
+      "before_last_seen_at": "2026-10-29T13:22:18.257197",
+      "after_last_seen_at": "2026-11-05T16:29:29.478661",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "before_last_seen_at": "2026-10-29T13:22:18.257269",
+      "after_last_seen_at": "2026-11-05T16:29:29.478714",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "before_last_seen_at": "2026-10-29T13:22:18.257345",
+      "after_last_seen_at": "2026-11-05T16:29:29.478769",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "name": "Mandy Simons",
+      "before_last_seen_at": "2026-10-29T13:22:18.257441",
+      "after_last_seen_at": "2026-11-05T16:29:29.478825",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "name": "Kate Stanton",
+      "before_last_seen_at": "2026-10-29T13:22:18.257518",
+      "after_last_seen_at": "2026-11-05T16:29:29.478895",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "name": "Natasha Tokowicz",
+      "before_last_seen_at": "2026-10-29T13:22:18.257594",
+      "after_last_seen_at": "2026-11-05T16:29:29.478958",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": true
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "name": "Tessa Warren",
+      "before_last_seen_at": "2026-10-29T13:22:18.257671",
+      "after_last_seen_at": "2026-11-05T16:29:29.479015",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": true,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-b0bb8257",
+      "name": "Shelome Gooden",
+      "before_last_seen_at": "2026-10-29T13:22:18.255687",
+      "after_last_seen_at": "2026-10-29T13:22:18.255687",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-00c04191",
+      "name": "Amanda Huensch",
+      "before_last_seen_at": "2026-10-29T13:22:18.255760",
+      "after_last_seen_at": "2026-10-29T13:22:18.255760",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-beac652e",
+      "name": "Matthew Kanwit",
+      "before_last_seen_at": "2026-10-29T13:22:18.255827",
+      "after_last_seen_at": "2026-10-29T13:22:18.255827",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-f90b0dfa",
+      "name": "Scott F. Kiesling",
+      "before_last_seen_at": "2026-10-29T13:22:18.255894",
+      "after_last_seen_at": "2026-10-29T13:22:18.255894",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-0c3d32be",
+      "name": "Janet Liu",
+      "before_last_seen_at": "2026-10-29T13:22:18.255963",
+      "after_last_seen_at": "2026-10-29T13:22:18.255963",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-74160f43",
+      "name": "Kevin McManus",
+      "before_last_seen_at": "2026-10-29T13:22:18.256027",
+      "after_last_seen_at": "2026-10-29T13:22:18.256027",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-32eedf1c",
+      "name": "Marta Ortega-Llebaria",
+      "before_last_seen_at": "2026-10-29T13:22:18.256096",
+      "after_last_seen_at": "2026-10-29T13:22:18.256096",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-27850b9e",
+      "name": "Dan Villarreal",
+      "before_last_seen_at": "2026-10-29T13:22:18.256165",
+      "after_last_seen_at": "2026-10-29T13:22:18.256165",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-a12887dd",
+      "name": "Gretchen Aiyangar",
+      "before_last_seen_at": "2026-10-29T13:22:18.256235",
+      "after_last_seen_at": "2026-10-29T13:22:18.256235",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-2da8fc2a",
+      "name": "Amani Attia",
+      "before_last_seen_at": "2026-10-29T13:22:18.256344",
+      "after_last_seen_at": "2026-10-29T13:22:18.256344",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-5862284a",
+      "name": "Na-Rae Han",
+      "before_last_seen_at": "2026-10-29T13:22:18.256443",
+      "after_last_seen_at": "2026-10-29T13:22:18.256443",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-d0ebdf0a",
+      "name": "Debra L. Hast",
+      "before_last_seen_at": "2026-10-29T13:22:18.256531",
+      "after_last_seen_at": "2026-10-29T13:22:18.256531",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-12753a63",
+      "name": "Jevon Heath",
+      "before_last_seen_at": "2026-10-29T13:22:18.256605",
+      "after_last_seen_at": "2026-10-29T13:22:18.256605",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-5aaea2df",
+      "name": "Filipo Lubua",
+      "before_last_seen_at": "2026-10-29T13:22:18.256692",
+      "after_last_seen_at": "2026-10-29T13:22:18.256692",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-11fb1b87",
+      "name": "Claude E. Mauk",
+      "before_last_seen_at": "2026-10-29T13:22:18.256764",
+      "after_last_seen_at": "2026-10-29T13:22:18.256764",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    },
+    {
+      "id": "faculty-pitt-ling-3352f935",
+      "name": "Dawn E. McCormick",
+      "before_last_seen_at": "2026-10-29T13:22:18.256831",
+      "after_last_seen_at": "2026-10-29T13:22:18.256831",
+      "before_verification_scope": "directory",
+      "after_verification_scope": "directory",
+      "any_field_changed": false,
+      "nonempty_address": false
+    }
+  ]
+}
