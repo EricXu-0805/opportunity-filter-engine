@@ -1,93 +1,79 @@
-"""Read both Illinois undergraduate research guidance pages on production against their live source pages."""
+"""Compare the student application and separate recommender rules at three production STaRS links."""
 import json
-from playwright.sync_api import sync_playwright, expect
-from verify_m25_results_20261126 import capture, enter_results, is_view, out, receipt, site
+from pathlib import Path
+from playwright.sync_api import expect, sync_playwright
 
-cases = [
-    ("uiuc-career-center-ugr", "Undergraduate Research Resources", "https://www.careercenter.illinois.edu/undergraduateresearch", "value of research opportunities"),
-    ("uiuc-siebel-ugresearch", "Siebel School — Undergraduate Research Opportunities", "https://siebelschool.illinois.edu/research/undergraduate-research", "undergraduate research"),
-    ("uiuc-our-general", "Office of Undergraduate Research", "https://undergradresearch.illinois.edu/", "how to get started"),
-]
-
+SITE = "https://joinalab.com"
+HOST = "https://www.bumc.bu.edu/gms/students/summer-training-as-research-scholars-program/"
+FAQ = HOST + "frequently-asked-questions/"
+SCOPE = "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+PHASE = "baseline"
+EXPECTED = None
+out = Path("evidence"); out.mkdir(exist_ok=True)
+receipt = {"phase": PHASE, "records": {}}
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox", "--disable-dev-shm-usage"])
-    ctx = browser.new_context(locale="en-US", service_workers="block", viewport={"width": 1250, "height": 950})
-    ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
+    browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+    ctx = browser.new_context(locale="en-US", service_workers="block", viewport={"width": 1260, "height": 950})
+    ctx.add_init_script("if(location.hostname==='joinalab.com')localStorage.setItem('ofe_lang','en')")
     page = ctx.new_page()
-    page.on("response", capture)
-    page.set_default_timeout(40000)
     try:
-        receipt["backend_release"] = page.request.get(site + "/api/health").json()["release_sha"]
-        assert receipt["backend_release"] == "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
-        frontend = page.request.get(site)
-        assert frontend.ok and "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d" in frontend.text()
-        receipt["frontend_release"] = "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
-        enter_results(page, "uiuc")
-        for oid, query, source, qualifier in cases:
-            entry = receipt[oid] = {"source": source}
-            official = page.request.get(source)
-            assert official.ok and qualifier in official.text().lower()
-            entry["source_http"] = official.status
-            api = page.request.get(site + "/api/opportunities/" + oid, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
-            entry["detail_http"] = api.status
-            if not api.ok:
-                raise AssertionError(f"Missing stable record: {oid}")
-            detail = api.json()
-            assert (detail["id"], detail["url"]) == (oid, source)
-            assert detail["target_truth"]["reference_only"] and not detail["target_truth"]["actionable"]
-            assert detail.get("is_rolling") is False and not detail["eligibility"].get("skills_required")
-            assert not (detail.get("application") or {}).get("application_url")
-            entry["target_truth"] = detail["target_truth"]
-            entry["detail_skills"] = detail["eligibility"]["skills_required"]
-            entry["eligibility"] = {k: detail["eligibility"].get(k) for k in ("international_friendly", "work_auth_notes", "majors")}
-            entry["rolling"] = detail.get("is_rolling")
-            entry["deadline"] = detail.get("deadline")
-            page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded")
-            heading = page.get_by_role("heading", level=1)
-            expect(heading).to_be_visible()
-            entry["detail_title"] = heading.inner_text()
-            expect(page.get_by_role("heading",level=1)).to_have_text(detail["title"],timeout=90000)
-            expect(page.locator("a[href="+json.dumps(source)+"]").first).to_be_visible(timeout=90000)
-            for role, label in [("link","Apply now"),("button","Draft email")]:
-                expect(page.get_by_role(role,name=label,exact=True)).to_have_count(0)
-            visible = page.locator("main").inner_text()
-            assert "Applications reviewed on a rolling basis" not in visible and "Missing skills: Python" not in visible
-            entry["page_excerpt"] = visible[:2500]
-            entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if any(k in s.lower() for k in ["python","c++","sql","apply","draft email","rolling","january 28","2027-01-28","basic programming","upcoming","closed"])]
-            page.screenshot(path=out / (oid + "-detail.png"))
-            from urllib.parse import quote
-            with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as network:
-                page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
-            wire = network.value.json()
-            assert network.value.ok
-            entry["search_total"] = wire["filtered_total"]
-            entry["listed"] = any(row["opportunity_id"] == oid for row in wire["results"])
-            assert not entry["listed"] and (not wire["has_more"] or wire["filtered_total"] > 50)
-            # If a broad search has multiple pages, walk all of the remaining
-            # genuine pages before treating absence on the first as evidence.
-            returned = [r["opportunity_id"] for r in wire["results"]]
-            while wire["has_more"]:
-                next_page = page.get_by_role("button", name="Next", exact=True)
-                with page.expect_response(lambda r: is_view(r) and bool((r.request.post_data_json or {}).get("cursor")),timeout=90000) as traversal:
-                    next_page.click()
-                assert traversal.value.ok
-                wire=traversal.value.json()
-                current=[r["opportunity_id"] for r in wire["results"]]
-                assert current and not set(current).intersection(returned)
-                returned.extend(current)
-            assert oid not in returned and len(returned)==wire["filtered_total"]
-            entry["checked_result_ids"]=returned
-            card = page.locator("#match-card-" + oid)
-            if entry["listed"]:
-                assert detail["target_truth"]["actionable"]
-                expect(card).to_be_visible(timeout=90000)
-                card.get_by_role("button", name="Show details", exact=True).click()
-                entry["card_text"] = card.inner_text()
-                card.screenshot(path=out / (oid + "-card.png"), animations="disabled")
+        release = ctx.request.get(SITE + "/api/health").json()["release_sha"]
+        assert release in ctx.request.get(SITE).text()
+        receipt["frontend_release"] = receipt["backend_release"] = release
+        assert not EXPECTED or release == EXPECTED
+        for kind, url, snippets in (
+            ("program", HOST, ("2028 and beyond", "STEM", "3.0", "Three letters", "January 15th, 2027")),
+            ("faq", FAQ, ("February 1st", "two-year college", "first year Boston University medical students", "issues with GPA")),
+        ):
+            resp = page.goto(url, wait_until="domcontentloaded")
+            assert resp and resp.ok
+            body = " ".join(page.locator("body").inner_text().split())
+            assert all(s.casefold() in body.casefold() for s in snippets), (url, snippets)
+            receipt[kind] = {"url": page.url, "status": resp.status, "source_terms_present": list(snippets)}
+        for oid in ("bu-bbc659c6ac92", "sro-60f60fbd", "sro-bc33bc08", "sro-51c40e5b"):
+            reply = ctx.request.get(SITE + "/api/opportunities/" + oid, params={"_release_scope": SCOPE})
+            entry = receipt["records"][oid] = {"status": reply.status}
+            if not reply.ok:
+                assert oid == "sro-51c40e5b" and reply.status == 404
+                continue
+            data = reply.json()
+            assert data["id"] == oid
+            entry.update({k: data.get(k) for k in ("deadline", "audience", "eligibility", "application")})
+            fields = data["detail_fields"]["fields"]
+            for k in ("eligibility", "application_method", "timing"):
+                entry[k + "_facts"] = fields[k]["explicit"]
+                entry[k + "_citations"] = {f: q.get("source_url") for f, q in fields[k]["quotes"].items()}
+            if oid == "sro-51c40e5b":
+                assert not fields["eligibility"]["explicit"].get("degree_path")
+                continue
+            page.goto(SITE + "/opportunities/" + oid, wait_until="domcontentloaded")
+            expect(page.get_by_role("heading", level=1)).to_have_text(data["title"], timeout=85000)
+            facts = page.get_by_test_id("fact-field-eligibility")
+            expect(facts).to_be_visible(timeout=60000)
+            entry["rendered_eligibility"] = facts.inner_text()
+            entry["rendered_materials"] = page.get_by_test_id("fact-field-application_method").inner_text()
+            if PHASE == "baseline":
+                assert entry["eligibility"]["min_gpa"] is None
+                assert entry["application"].get("requires_recommendation") == "unknown"
+                assert "degree_path" not in entry["eligibility_facts"]
             else:
-                expect(page.get_by_role("tablist")).to_be_visible(timeout=90000)
-                expect(card).to_have_count(0)
+                assert entry["deadline"] == "2027-01-15" and entry["audience"] == "open"
+                assert entry["eligibility"]["min_gpa"] == 3 and entry["eligibility"]["majors"] == []
+                assert entry["application"]["requires_recommendation"] == "yes"
+                for facet, term, url in [
+                    ("min_gpa","3",HOST), ("degree_path","2028",HOST), ("class_year","junior",HOST),
+                    ("citizenship","permanent",HOST), ("research_background","optional",HOST),
+                    ("gpa_context","explain",FAQ), ("transfer_students","admitted",FAQ), ("medical_students","first year",FAQ),
+                ]:
+                    item = page.get_by_test_id("fact-eligibility-" + facet)
+                    expect(item).to_contain_text(term)
+                    expect(item.get_by_role("link")).to_have_attribute("href",url)
+                for facet, text, url in (("requirements","Three recommendation letters",HOST),("recommendation_deadline","February 1",FAQ)):
+                    item = page.get_by_test_id("fact-application_method-" + facet)
+                    expect(item).to_contain_text(text)
+                    expect(item.get_by_role("link")).to_have_attribute("href",url)
+            page.get_by_test_id("fact-field-eligibility").screenshot(path=out / (oid + ".png"), animations="disabled")
     finally:
-        (out / "illinois-guides.json").write_text(json.dumps(receipt, indent=2) + "\n")
-        print(json.dumps(receipt), flush=True)
+        (out/"boston-stars-eligibility.json").write_text(json.dumps(receipt,indent=2)+"\n")
+        print(json.dumps(receipt,ensure_ascii=False))
         browser.close()
