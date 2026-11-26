@@ -12,7 +12,7 @@ from pypdf import PdfReader
 import verify_public_matching_experience as shared
 from verify_deployed_m39_supplement import stable_read
 
-LEFT=['Skills','Python','Languages','English','课程：统计']
+LEFT=['Skills','Python','Languages','English','Coursework: statistics']
 RIGHT=['Projects','Orchard counter exercise','I checked 18 synthetic count labels.', 'Beacon field map exercise','My team reviewed 29 synthetic map rows.']
 def normalize(t):return re.sub(r'\s+','',t).casefold()
 def main():
@@ -31,10 +31,14 @@ def main():
         boxes=pdfpage.locator('section').evaluate_all('(els)=>els.map(e=>{const b=e.getBoundingClientRect();return [b.left,b.right,b.top]})')
         assert boxes[0][1]<boxes[1][0] and boxes[0][2]==boxes[1][2]
         pdf=pdfpage.pdf(format='A4',prefer_css_page_size=True);pdfpage.close()
-        assert len(PdfReader(io.BytesIO(pdf)).pages)==1
+        reader=PdfReader(io.BytesIO(pdf))
+        assert len(reader.pages)==1
+        fixture_text=normalize(reader.pages[0].extract_text())
+        assert all(normalize(s) in fixture_text for s in LEFT+RIGHT)
         c=shared.cold(b);p=shared.home(c);p.set_viewport_size({'width':390,'height':844})
         p.locator('#student_name').fill(shared.student);p.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)')
-        p.locator('#major').select_option(label='Integrative Biology');p.locator('#grade').select_option(label='Freshman')
+        p.locator('#major').select_option(label='Integrative Biology');p.locator('#grade').select_option(label='Sophomore')
+        p.locator('#research_interests').fill('Ecology, wetlands, geospatial analysis.')
         path=Path(os.environ['OFE_M44_COLUMNS_RECEIPT'])
         receipt={'release':release,'pdf_sha256':hashlib.sha256(pdf).hexdigest(),'first_party_anonymous_signup':bool(shared.auth),'visual_columns_disjoint':True,'synthetic_input_pages':1,'first_row_statuses':[]}
         def store():path.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
@@ -46,7 +50,22 @@ def main():
         except AssertionError:
             receipt['visible_upload_status']=p.locator('main [role="alert"]').all_text_contents()
             store();raise
-        p.wait_for_timeout(4000)
+        p.get_by_text('View complete current résumé source',exact=True).click()
+        raw_visible=p.locator('#resume-master pre').first.inner_text()
+        receipt.update({'original_source_visible': True,'source_lines':raw_visible.splitlines(),'first_party_profile_commits':list(shared.revisions)})
+        store()
+        p.get_by_role('button',name='Prepare excerpts for review',exact=True).click()
+        for text in (RIGHT[2],RIGHT[4]):
+            summary=p.locator('#experience-library summary').filter(has_text=text).first
+            expect(summary).to_contain_text('Needs confirmation',ignore_case=True,timeout=35000)
+        for _ in range(100):
+            if shared.revisions: break
+            p.wait_for_timeout(250)
+        receipt['first_party_profile_commits']=list(shared.revisions)
+        store()
+        assert shared.revisions
+        p.wait_for_timeout(3200)
+        c.close()
         c2=shared.cold(b);p2,(rv,data)=stable_read(c2)
         raw=data.get('resume_text','');source_lines=[v.strip() for v in raw.splitlines() if v.strip()]
         receipt.update({'profile_revision_after_upload':rv,'source_lines':source_lines,'extracted_sha256':hashlib.sha256(raw.encode()).hexdigest()})
@@ -59,7 +78,6 @@ def main():
         assert not any(any(normalize(left) in normalize(line) for left in LEFT) and any(normalize(right) in normalize(line) for right in RIGHT) for line in source_lines)
         p2.get_by_text('View complete current résumé source',exact=True).click()
         expect(p2.locator('#resume-master pre').first).to_have_text(raw)
-        p2.get_by_role('button',name='Prepare excerpts for review').click()
         for text in (RIGHT[2],RIGHT[4]):
             summary=p2.locator('#experience-library summary').filter(has_text=text).first
             expect(summary).to_contain_text('Needs confirmation',ignore_case=True,timeout=30000)
