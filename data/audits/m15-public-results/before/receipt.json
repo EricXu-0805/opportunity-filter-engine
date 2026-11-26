@@ -1,0 +1,10 @@
+{
+  "site": "https://joinalab.com",
+  "frontend_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "backend_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "before_revision": 1,
+  "only_link_saved_experiences": 0,
+  "mode": "baseline",
+  "old_experience_library_present": true,
+  "time": "2026-11-26T11:04:03.955340+00:00"
+}
