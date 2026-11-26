@@ -42,7 +42,12 @@ with sync_playwright() as pw:
                     tour=page.get_by_test_id("onboarding-skip")
                     expect(tour).to_be_visible(timeout=15000)
                     tour.click()
-                    expect(page.get_by_test_id("onboarding-intro")).not_to_be_visible()
+                    page.get_by_test_id("onboarding-school-ucsd").click()
+                    confirm=page.get_by_test_id("onboarding-primary")
+                    expect(confirm).to_be_enabled(timeout=60000)
+                    confirm.click()
+                    expect(page.get_by_test_id("onboarding-intro")).not_to_be_visible(timeout=60000)
+                    receipt["visitor_school"]="ucsd"
                 body=page.locator("main").inner_text()
                 if current:
                     assert application==host and truth["actionable"] and data["deadline"] is None
