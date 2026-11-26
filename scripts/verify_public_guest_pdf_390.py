@@ -11,7 +11,9 @@ receipt = {'site':site,'only_synthetic_guest':True,'viewports':[],'started':date
 records = []
 auth_sessions = []
 commits = []
-retained_case = '--retain-resume' in sys.argv
+own_case = '--own-removal' in sys.argv
+conflict_case = own_case or '--retain-resume' in sys.argv
+allow_synthetic_removal = False
 protected_text = None
 protected_courses = None
 baseline_entry = 'I recorded an independent synthetic control measurement.'
@@ -47,7 +49,9 @@ def guard(route):
             d=r.post_data_json['p_patch']
             if local_outage:
                 return route.fulfill(status=503,headers={'access-control-allow-origin':site},json={'message':'temporary local outage'})
-            if protected_text is not None and (('resume_text' in d and d['resume_text'] != protected_text) or ('coursework' in d and d['coursework'] != protected_courses) or (protect_entry and 'experience_entries' in d and not any(x.get('text')==baseline_entry for x in d['experience_entries']))):
+            allowed_text = (protected_text, None, '') if allow_synthetic_removal else (protected_text,)
+            allowed_courses = (protected_courses, []) if allow_synthetic_removal else (protected_courses,)
+            if protected_text is not None and (('resume_text' in d and d['resume_text'] not in allowed_text) or ('coursework' in d and d['coursework'] not in allowed_courses) or (protect_entry and 'experience_entries' in d and not any(x.get('text')==baseline_entry for x in d['experience_entries']))):
                 blocked+=1
                 return route.abort()
         return route.continue_()
@@ -104,7 +108,7 @@ with sync_playwright() as pw:
             matched=[(rev,d) for rev,d in records if marker in (d.get('resume_text') or '') and '220' in str(d.get('coursework'))]
             assert matched,'fresh browser did not read PDF and ECE 220 from production'
             receipt['viewports'].append({'language':lang,'width':390,'profile_revision':matched[-1][0],'synthetic_pdf_text':True,'coursework_read':True,'attachment_badge':True})
-            if retained_case and lang=='zh':
+            if conflict_case and lang=='zh':
                 protected_text=matched[-1][1]['resume_text']
                 protected_courses=matched[-1][1]['coursework']
                 actual_headers={}
@@ -156,26 +160,42 @@ with sync_playwright() as pw:
                     tab.bring_to_front()
                     retry=tab.get_by_test_id('retry-sync')
                     if not tab.get_by_test_id('conflict-keep-mine').is_visible() and retry.is_visible():retry.click(timeout=2500)
-                use=pg.get_by_test_id('conflict-use-cloud');expect(use).to_be_visible(timeout=25000)
+                if own_case:
+                    use=other.get_by_test_id('conflict-keep-mine')
+                else:
+                    use=pg.get_by_test_id('conflict-use-cloud')
+                expect(use).to_be_visible(timeout=25000)
+                before=read_owned()['profile_data']
+                assert before['name']=='Synthetic PDF check' and marker in before['resume_text'] and before['resume_text']==protected_text
+                assert before['coursework']==protected_courses and auth_sessions[0]['user']['is_anonymous']
+                allow_synthetic_removal=own_case
                 use.click()
                 for tab in (pg,other):
                     expect(tab.get_by_test_id('conflict-keep-mine')).to_have_count(0,timeout=25000)
-                    expect(tab.get_by_role('button',name='移除文件',exact=True)).to_be_visible(timeout=25000)
+                    badge=tab.get_by_role('button',name='移除文件',exact=True)
+                    if own_case: expect(badge).to_have_count(0,timeout=25000)
+                    else: expect(badge).to_be_visible(timeout=25000)
                 follow='I repeated a synthetic control measurement after resolving the conflict.'
-                add_entry(other,follow)
+                add_entry(pg if own_case else other,follow)
                 for _ in range(50):
                     final=read_owned()
                     if any(e.get('text')==follow for e in final['profile_data']['experience_entries']):break
                     pg.wait_for_timeout(250)
-                assert final['profile_data']['resume_text']==protected_text
-                assert final['profile_data']['coursework']==protected_courses
+                if own_case:
+                    assert not final['profile_data'].get('resume_text') and not final['profile_data'].get('coursework')
+                else:
+                    assert final['profile_data']['resume_text']==protected_text and final['profile_data']['coursework']==protected_courses
+                assert final['profile_data']['name']=='Synthetic PDF check'
                 assert all(any(e.get('text')==n for e in final['profile_data']['experience_entries']) for n in (follow,baseline_entry))
                 for tab in (pg,other):
                     tab.reload(wait_until='domcontentloaded')
-                    expect(tab.get_by_role('button',name='移除文件',exact=True)).to_be_visible()
+                    expect(tab.locator('#student_name')).to_have_value('Synthetic PDF check')
+                    badge=tab.get_by_role('button',name='移除文件',exact=True)
+                    if own_case: expect(badge).to_have_count(0)
+                    else: expect(badge).to_be_visible()
                     expect(tab.locator('#experience-library summary').get_by_text(follow,exact=True)).to_be_visible()
                 assert read_owned()==final
-                receipt['retain_conflict']={'language':'zh','width':390,'first_choice':'use cloud','initial_revision':initial_revision,'final_revision':final['revision'],'unchanged_original_text_and_courses':True,'peer_badge_before_reload':True,'reloads':2,'blocked_online_clears':blocked}
+                receipt['own_resume_conflict' if own_case else 'retain_conflict']={'language':'zh','width':390,'first_choice':'keep my removal' if own_case else 'use cloud','initial_revision':initial_revision,'final_revision':final['revision'],'expected_text_and_courses_after_choice':True,'unrelated_prior_manual_entry_retained':True,'peer_badge_before_reload':True,'reloads':2,'blocked_online_clears':blocked}
             cold.close()
         assert len(auth_sessions)==1
         receipt['applied_revisions']=commits
