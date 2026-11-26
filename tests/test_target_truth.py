@@ -1133,7 +1133,9 @@ def test_saved_retired_appointment_requires_its_own_review_and_keeps_contact_clo
     detail = _detail(record_id, "current").json()
     assert detail["historical_faculty_appointment"] == {"title": title, "source_url": review.roster_url}
     assert detail["target_truth"]["reason_code"] == "inactive" and detail["contact_email_status"] == "unavailable"
-    for patch in ({"pi_name": "Another person"}, {"url": review.roster_url},
+    lookup[record_id] = {**row, "source_url": review.roster_url}
+    assert _detail(record_id, "current").json()["historical_faculty_appointment"] == detail["historical_faculty_appointment"]
+    for patch in ({"pi_name": "Another person"}, {"url": review.roster_url}, {"source_url": "https://other.edu"},
                   {"metadata": {**meta, "faculty_title": "Professor Emeritus"}},
                   {"metadata": {**meta, "is_active": True}},
                   {"metadata": {**meta, "faculty_profile_review": None}},
