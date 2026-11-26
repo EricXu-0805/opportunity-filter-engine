@@ -157,9 +157,14 @@ def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
     return {
         "short": short, "name": name, "majors": majors,
         "directory_url": f"https://directory.natsci.msu.edu/Directory/Directory/Department/{org_id}",
+        # The college lists unit appointments. Its absence cannot revoke a
+        # stored professor's appointment elsewhere in the university.
+        "roster_is_partial": True,
         "json_dir": {
             "url": f"{_NATSCI_BASE}/{org_id}",
             "records_key": "results",
+            "total_key": "resultCount",
+            "total_distinct_key": "id",
             "paginate": {"param": "page", "count_key": "pageCount", "max": 8},
             "name_fields": ["name"],
             "title_from_list": {"field": "organizationTitles",
