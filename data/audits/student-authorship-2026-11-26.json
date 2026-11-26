@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-26",
+  "item": "M16",
+  "scope": "Student authorship only. Synthetic public-schema examples supplied to disposable named test accounts; no claim about a real person or a production deployment.",
+  "source_schema": "https://help.openalex.org/data/authorships/",
+  "implementation": {
+    "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1365",
+    "commit": "10a24e48430f934e6c9f4820c17510e51331d03b",
+    "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45812906674"
+  },
+  "isolated_round_trip": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45812935958/job/139885180746",
+    "runner_checkout": "9c8dd1b5adbd5769436a4c7cc5f38581b450c51a",
+    "application": "10a24e48430f934e6c9f4820c17510e51331d03b",
+    "browser": "Chromium",
+    "auth": "Disposable local GoTrue, ordinary synthetic user",
+    "persistence": "Unmodified real PostgREST and PostgreSQL profile revision RPC",
+    "results": {
+      "direct_entry": "Regional Scholar URL → profile link → identity review → exported works → per-work confirmation → Apply → clean browser",
+      "offered": 5,
+      "matched": 2,
+      "skipped": {
+        "namesake": 1,
+        "ambiguous_signatures": 1,
+        "conflicting_deposited_orcid": 1
+      },
+      "preselection_writes": 0,
+      "explicitly_selected_and_persisted": 1,
+      "normal_profile_revisions": [
+        1,
+        2,
+        3
+      ],
+      "accepted_example": "Author ID A911 appears after moving institutions, under a different byline with a namesake as coauthor.",
+      "receipt_keys": [
+        "scholar_id",
+        "work_id",
+        "author_id",
+        "orcid"
+      ],
+      "restarted_with_empty_local_storage": true,
+      "reimport_duplicate_rows": 0
+    }
+  },
+  "legacy_followup": {
+    "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1369",
+    "commit": "6904fb607aa519704a18c0fd3418e550006062ef",
+    "isolated_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45813730225",
+    "status": "pending"
+  },
+  "production_acceptance": "pending"
+}
