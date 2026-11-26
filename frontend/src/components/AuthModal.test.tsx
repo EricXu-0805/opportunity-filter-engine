@@ -567,7 +567,7 @@ describe('AuthModal — signout-confirm phase', () => {
   beforeEach(() => {
     mockGetAuthState.mockResolvedValue(PERMANENT);
     modalState = { open: true, phase: 'signout-confirm' };
-    mockReleasePush.mockResolvedValue({ released: true });
+    mockReleasePush.mockResolvedValue({ outcome: 'server-row-removed' });
     mockSyncPush.mockResolvedValue(undefined);
     sessionStorage.clear();
   });
@@ -696,12 +696,22 @@ describe('AuthModal — signout-confirm phase', () => {
 
   it('restores the prepared push binding when sign-out fails', async () => {
     const restore = vi.fn(async () => {});
-    mockReleasePush.mockResolvedValue({ released: true, restore });
+    mockReleasePush.mockResolvedValue({ outcome: 'server-row-removed', restore });
     mockSignOut.mockResolvedValue(false);
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
     await waitFor(() => expect(restore).toHaveBeenCalledOnce());
     expect(closeModalMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['browser-unsubscribed', 'no-subscription', 'endpoint-changed'])('describes a physically retired browser endpoint after failed sign-out only for %s as appropriate', async outcome => {
+    mockReleasePush.mockResolvedValue({ outcome }); mockSignOut.mockResolvedValue(false);
+    render(<AuthModal />);
+    await waitFor(() => expect(mockGetAuthState).toHaveBeenCalled());
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    const alert = await screen.findByRole('alert');
+    if (outcome === 'browser-unsubscribed') expect(alert).toHaveTextContent('auth.modal.signOutConfirm.notificationsRetired');
+    else expect(alert).not.toHaveTextContent('auth.modal.signOutConfirm.notificationsRetired');
   });
 
   it('runs one sign-out at a time', async () => {
@@ -722,7 +732,7 @@ describe('AuthModal — signout-confirm phase', () => {
   // release has to run before the sign-out ends that session.
   it('releases this browser\'s push row while the account session still exists', async () => {
     const order: string[] = [];
-    mockReleasePush.mockImplementation(async () => { order.push('release'); return { released: true }; });
+    mockReleasePush.mockImplementation(async () => { order.push('release'); return { outcome: 'server-row-removed' }; });
     mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
@@ -733,7 +743,7 @@ describe('AuthModal — signout-confirm phase', () => {
 
   it('kills the browser endpoint when the row outlived the session that could delete it', async () => {
     const order: string[] = [];
-    mockReleasePush.mockImplementation(async () => { order.push('release'); return { released: false }; });
+    mockReleasePush.mockImplementation(async () => { order.push('release'); return { outcome: 'muted' }; });
     mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
     mockSyncPush.mockImplementation(async () => { order.push('drop'); });
     render(<AuthModal />);
@@ -743,7 +753,7 @@ describe('AuthModal — signout-confirm phase', () => {
   });
 
   it('leaves the endpoint working when the sign-out failed: the account still uses it', async () => {
-    mockReleasePush.mockResolvedValue({ released: false });
+    mockReleasePush.mockResolvedValue({ outcome: 'muted' });
     mockSignOut.mockResolvedValue(false);
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));

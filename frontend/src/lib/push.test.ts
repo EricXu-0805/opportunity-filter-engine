@@ -461,7 +461,7 @@ describe('releasePushForSignOut', () => {
     mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'account-uid' } } } });
 
     cached = JSON.stringify({ uid: 'account-uid', enabled: true });
-    await expect(releasePushForSignOut('account-uid')).resolves.toMatchObject({ released: true });
+    await expect(releasePushForSignOut('account-uid')).resolves.toMatchObject({ outcome: 'server-row-removed' });
 
     expect(queries).toEqual([{
       table: 'push_subscriptions',
@@ -478,12 +478,65 @@ describe('releasePushForSignOut', () => {
     installPushManager();
     installServiceWorker({ hasRegistration: true });
 
-    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ released: true });
+    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ outcome: 'no-subscription' });
     expect(queries).toEqual([]);
   });
 
+  it.each([false, true])('signs out without an endpoint even if caches and worker installation are refused (registration: %s)', async hasRegistration => {
+    installNotification('granted'); installPushManager();
+    installServiceWorker({ hasRegistration, registerThrows: true });
+    const open = vi.fn().mockRejectedValue(new Error('private storage refused'));
+    vi.stubGlobal('caches', { has: async () => true, open });
+    await expect(releasePushForSignOut('A')).resolves.toEqual({ outcome: 'no-subscription' });
+    expect(navigator.serviceWorker.register).not.toHaveBeenCalled();
+    if (!hasRegistration) expect(open).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('mutes only A’s known leftover binding when there is no physical endpoint', async () => {
+    installNotification('granted'); installPushManager(); installServiceWorker({ hasRegistration: true });
+    account('A'); cached = JSON.stringify({ uid: 'A', enabled: true });
+    await releasePushForSignOut('A');
+    expect(JSON.parse(cached!)).toEqual({ uid: 'A', enabled: false });
+    cached = JSON.stringify({ uid: 'B', enabled: true });
+    await releasePushForSignOut('A');
+    expect(JSON.parse(cached!)).toEqual({ uid: 'B', enabled: true });
+  });
+
+  it('leaves a newly attached B subscription alone during best-effort empty cleanup', async () => {
+    installNotification('granted'); installPushManager(); installServiceWorker({ hasRegistration: true });
+    const b = browserSub('https://push.example/B'); account('A');
+    cached = JSON.stringify({ uid: 'B', enabled: true });
+    vi.spyOn(caches, 'has').mockImplementationOnce(async () => { mockSubscription = b; return true; });
+    await expect(releasePushForSignOut('A')).resolves.toEqual({ outcome: 'endpoint-changed' });
+    expect(b.unsubscribe).not.toHaveBeenCalled();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'B', enabled: true });
+  });
+
+  it.each(['cache', 'worker'])('physically retires the captured old endpoint when %s preparation fails', async failure => {
+    const sub = browserSub('https://push.example/A'); subscribedBrowser(sub); account('A');
+    if (failure === 'cache') vi.stubGlobal('caches', { open: async () => { throw new Error('unavailable'); } });
+    else {
+      (mockRegistration as { active: { scriptURL: string } }).active.scriptURL = location.origin + '/sw.js';
+      vi.mocked(navigator.serviceWorker.register).mockRejectedValueOnce(new Error('offline'));
+    }
+    await expect(releasePushForSignOut('A')).resolves.toEqual({ outcome: 'browser-unsubscribed' });
+    expect(sub.unsubscribe).toHaveBeenCalledOnce(); expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('does not retire a new endpoint that appeared while the upgrade failed', async () => {
+    const a = browserSub('https://push.example/A'); const b = browserSub('https://push.example/B');
+    subscribedBrowser(a); account('A');
+    (mockRegistration as { active: { scriptURL: string } }).active.scriptURL = location.origin + '/sw.js';
+    vi.mocked(navigator.serviceWorker.register).mockImplementationOnce(async () => {
+      mockSubscription = b; throw new Error('update unavailable');
+    });
+    await expect(releasePushForSignOut('A')).resolves.toEqual({ outcome: 'endpoint-changed' });
+    expect(a.unsubscribe).not.toHaveBeenCalled(); expect(b.unsubscribe).not.toHaveBeenCalled();
+  });
+
   it('has nothing to release when the browser cannot do push', async () => {
-    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ released: true });
+    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ outcome: 'no-subscription' });
     expect(queries).toEqual([]);
   });
 
@@ -497,7 +550,7 @@ describe('releasePushForSignOut', () => {
     cached = JSON.stringify({ uid: 'device-123', enabled: true });
     arrange();
 
-    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ released: false });
+    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ outcome: 'muted' });
   });
 
   it('cannot delete B’s notification row when an old A sign-out resumes', async () => {
@@ -517,7 +570,7 @@ describe('releasePushForSignOut', () => {
     account('A');
     cached = JSON.stringify({ uid: 'A', enabled: true });
     const receipt = await releasePushForSignOut('A');
-    expect(receipt.released).toBe(true);
+    expect(receipt.outcome).toBe('server-row-removed');
     const sleeping = worker(JSON.parse(cached!));
     await sleeping.send('A');
     expect(sleeping.showNotification).not.toHaveBeenCalled();

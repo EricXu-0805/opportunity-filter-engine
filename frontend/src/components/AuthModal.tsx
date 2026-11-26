@@ -183,6 +183,7 @@ export default function AuthModal() {
   const [outcome, setOutcome] = useState<SignInOutcome | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const [retiredPushOwner, setRetiredPushOwner] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset transient state on close. Phase / email persist across same-
@@ -197,6 +198,7 @@ export default function AuthModal() {
       setSubmitting(false);
       setOutcome(null);
       setSignOutFailed(false);
+      setRetiredPushOwner(null);
     } else if (resolved === 'signin') {
       // Defer to next tick so the autofocus actually happens after the
       // backdrop fades in — focusing during the same frame causes jsdom
@@ -304,6 +306,7 @@ export default function AuthModal() {
   const confirmSignOut = useCallback(async () => {
     setSigningOut(true);
     setSignOutFailed(false);
+    setRetiredPushOwner(null);
     try {
       // A push row can only be deleted by its own account's session, so it
       // goes while that session still exists.
@@ -314,7 +317,10 @@ export default function AuthModal() {
           signedOut = await signOutOfAccount();
           return { release, signedOut };
         } finally {
-          if (!signedOut) await release.restore?.();
+          if (!signedOut) {
+            if (release.outcome === 'browser-unsubscribed') setRetiredPushOwner(authState?.user?.id ?? null);
+            await release.restore?.();
+          }
         }
       });
       if (!signedOut) {
@@ -325,7 +331,7 @@ export default function AuthModal() {
         return;
       }
       // Reconcile the live session: another tab may already have bound a new endpoint.
-      if (!release.released) {
+      if (release.outcome === 'muted') {
         await synchronizePushOwner()
           .catch((err) => console.warn('[ofe] push endpoint survived sign-out:', err));
       }
@@ -693,6 +699,9 @@ export default function AuthModal() {
                 {isSignedIn
                   ? t('auth.modal.signOutConfirm.failedStillSignedIn')
                   : t('auth.modal.signOutConfirm.failed')}
+                {isSignedIn && retiredPushOwner === authState?.user?.id && (
+                  <> {t('auth.modal.signOutConfirm.notificationsRetired')}</>
+                )}
               </p>
             )}
 

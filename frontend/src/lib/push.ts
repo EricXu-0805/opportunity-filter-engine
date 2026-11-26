@@ -106,8 +106,16 @@ async function publishSubscription(uid: string, sub: PushSubscription) {
 // auth round-trip ordered across tabs, even while the push binding lock is
 // released for Supabase callbacks and the service worker.
 export async function withPushSessionLock<T>(operation: () => Promise<T>): Promise<T> {
-  return typeof navigator.locks?.request === 'function'
-    ? await navigator.locks.request('ofe-push-session-change', operation) : operation();
+  if (typeof navigator.locks?.request !== 'function') return operation();
+  let started = false;
+  try {
+    return await navigator.locks.request('ofe-push-session-change', () => { started = true; return operation(); });
+  } catch (error) {
+    if (started) throw error;
+    // Privacy settings can expose the API but reject lock acquisition. The
+    // action still checks its own binding or captured endpoint before use.
+    return operation();
+  }
 }
 
 // Called under PUSH_LOCK. A legacy subscription has no local binding: adopt
@@ -256,55 +264,96 @@ export async function unsubscribeFromPush(token: OwnerToken): Promise<void> {
 }
 
 export interface PushSignOutRelease {
-  released: boolean;
+  outcome: 'no-subscription' | 'server-row-removed' | 'browser-unsubscribed' | 'endpoint-changed' | 'muted';
   restore?: () => Promise<void>;
+}
+
+async function retireCapturedForSignOut(reg: ServiceWorkerRegistration, sub: PushSubscription, uid: string | null): Promise<PushSignOutRelease> {
+  if (await liveUid() !== uid) throw new OwnerMismatchError();
+  if ((await reg.pushManager.getSubscription())?.endpoint !== sub.endpoint) return { outcome: 'endpoint-changed' };
+  if (await sub.unsubscribe().catch(() => false)) return { outcome: 'browser-unsubscribed' };
+  if ((await reg.pushManager.getSubscription())?.endpoint !== sub.endpoint) return { outcome: 'endpoint-changed' };
+  throw new Error('The browser kept its previous notification subscription');
 }
 
 /** Mute queued reminders before leaving A. This receipt can re-enable the
  * exact original binding if logout fails and the same session still owns it. */
 export async function releasePushForSignOut(expectedUid: string | null): Promise<PushSignOutRelease> {
-  if (!isPushSupported()) return { released: true };
-  if (!canBindPush()) {
-    if (await liveUid() !== expectedUid) throw new OwnerMismatchError();
-    await retireUnsupportedSubscription(await browserSubscription());
-    return { released: true };
-  }
-  return navigator.locks.request(PUSH_LOCK, async () => {
-    const uid = await liveUid();
-    if (uid && uid !== expectedUid) throw new OwnerMismatchError();
-    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
-    if (registration) await accountWorker(registration);
-    const sub = await registration?.pushManager.getSubscription();
-    const cache = await caches.open(PUSH_CACHE);
-    const prior = await storedBinding(cache);
-    if (await liveUid() !== uid) throw new OwnerMismatchError();
-    const signingOut = crypto.randomUUID();
-    // A queued push must stay muted even if no further auth event runs here.
-    await saveBinding(cache, uid ?? '', false, signingOut);
-    if (!sub || !uid) return { released: !sub };
-    // For a legacy row we have no local permission receipt. An unreadable
-    // row must not be deleted and later recreated on a guess.
-    const wasEnabled = prior?.uid === uid && prior.enabled || await ownsEndpoint(uid, sub.endpoint).catch(() => false);
-    const released = wasEnabled && await deletePushRow(uid, sub.endpoint);
-    if (await liveUid() !== uid) throw new OwnerMismatchError();
-    return {
-      released,
-      restore: async () => {
-        await navigator.locks.request(PUSH_LOCK, async () => {
-          const binding = await storedBinding(cache);
-          if (binding?.signingOut !== signingOut || await liveUid() !== uid) return;
-          if (!wasEnabled) { await cache.delete(PUSH_OWNER_KEY); return; }
-          const current = await browserSubscription();
-          if (!current || current.endpoint !== sub.endpoint) return;
-          const publicKey = current.toJSON().keys?.p256dh;
-          if (!publicKey) throw new Error('The browser lost its notification keys');
-          // Only the public key is kept for recovery. The next online or auth
-          // observation retries this exact subscription if the write fails.
-          await saveBinding(cache, uid, false, signingOut, publicKey);
-          await publishSubscription(uid, current);
-          await saveBinding(cache, uid, true);
+  if (!isPushSupported()) return { outcome: 'no-subscription' };
+  const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+  if (!registration) return { outcome: 'no-subscription' };
+  const sub = await registration.pushManager.getSubscription();
+  if (!sub) {
+    // No transport is attached. A previously bound worker may still have a
+    // queued message. Retire only that account's known binding when possible;
+    // do not provision or upgrade anything as a prerequisite for signing out.
+    try {
+      if (await globalThis.caches?.has(PUSH_CACHE) && typeof navigator.locks?.request === 'function') {
+        return await navigator.locks.request(PUSH_LOCK, async (): Promise<PushSignOutRelease> => {
+          if (await registration.pushManager.getSubscription()) return { outcome: 'endpoint-changed' };
+          const cache = await caches.open(PUSH_CACHE);
+          const prior = await storedBinding(cache);
+          if (prior?.uid === expectedUid && prior.enabled && await liveUid() === expectedUid) {
+            await saveBinding(cache, expectedUid, false);
+          }
+          return { outcome: 'no-subscription' };
         });
-      },
-    };
-  });
+      }
+    } catch { /* A browser without an endpoint can still sign out offline. */ }
+    return { outcome: 'no-subscription' };
+  }
+  const uid = await liveUid();
+  if (uid && uid !== expectedUid) throw new OwnerMismatchError();
+  const retire = () => retireCapturedForSignOut(registration, sub, uid);
+  if (!canBindPush()) return retire();
+  let started = false;
+  try {
+    return await navigator.locks.request(PUSH_LOCK, async (): Promise<PushSignOutRelease> => {
+      started = true;
+      if (await liveUid() !== uid) throw new OwnerMismatchError();
+      if ((await registration.pushManager.getSubscription())?.endpoint !== sub.endpoint) return { outcome: 'endpoint-changed' };
+      let cache: Cache;
+      let prior: PushBinding | null;
+      const signingOut = crypto.randomUUID();
+      try {
+        await accountWorker(registration);
+        cache = await caches.open(PUSH_CACHE);
+        prior = await storedBinding(cache);
+        if (await liveUid() !== uid) throw new OwnerMismatchError();
+        // A queued push must stay muted even if no further auth event runs here.
+        await saveBinding(cache, uid ?? '', false, signingOut);
+      } catch (error) {
+        if (error instanceof OwnerMismatchError) throw error;
+        return retire();
+      }
+      if (!uid) return { outcome: 'muted' };
+      // For a legacy row we have no local permission receipt. An unreadable
+      // row must not be deleted and later recreated on a guess.
+      const wasEnabled = prior?.uid === uid && prior.enabled || await ownsEndpoint(uid, sub.endpoint).catch(() => false);
+      const released = wasEnabled && await deletePushRow(uid, sub.endpoint);
+      if (await liveUid() !== uid) throw new OwnerMismatchError();
+      return {
+        outcome: released ? 'server-row-removed' : 'muted',
+        restore: async () => {
+          await navigator.locks.request(PUSH_LOCK, async () => {
+            const binding = await storedBinding(cache);
+            if (binding?.signingOut !== signingOut || await liveUid() !== uid) return;
+            if (!wasEnabled) { await cache.delete(PUSH_OWNER_KEY); return; }
+            const current = await browserSubscription();
+            if (!current || current.endpoint !== sub.endpoint) return;
+            const publicKey = current.toJSON().keys?.p256dh;
+            if (!publicKey) throw new Error('The browser lost its notification keys');
+            // Only the public key is kept for recovery. The next online or auth
+            // observation retries this exact subscription if the write fails.
+            await saveBinding(cache, uid, false, signingOut, publicKey);
+            await publishSubscription(uid, current);
+            await saveBinding(cache, uid, true);
+          });
+        },
+      };
+    });
+  } catch (error) {
+    if (started) throw error;
+    return retire();
+  }
 }
