@@ -1,0 +1,251 @@
+{
+  "head": "1014b98c563f182381b80ddf9c9ce869aec6fca1",
+  "parent": "3903eed9020b4e39b10206ab7e366a5117dcff6b",
+  "donor_heads": {
+    "1371": "9958885aeb5b11fdd5379b398267076bcbbde222",
+    "1381": "b26a59fabcdf8cdce970ff8d3e0e8f801ced300b",
+    "1378": "c2281644a354c5f6b4e64a61f8efa9af533f698c",
+    "1362": "5bbe4c5105d89d257a8e85044c6ab2a6a46bf542",
+    "1370": "a3833032e40eb571061fdf9965ecc3113215e61e"
+  },
+  "host_windows_combined": "9951df9b10a9f83394043e51375a719944e79174",
+  "shard_count": 117,
+  "unique_current_ids": 149803,
+  "current_ids_sha256": "38d389b497de2a9df983c8252fdd9868a5b27ea29c424971772993c164f3570a",
+  "input_file_scope_verified": [
+    "backend/data_loader.py",
+    "backend/lib/opportunity_detail.py",
+    "backend/routes/matches.py",
+    "backend/routes/saved_searches.py",
+    "data/processed/shards/haverford.json",
+    "data/processed/shards/national.json",
+    "frontend/src/lib/school-stats.json",
+    "src/collectors/schools/haverford_faculty.py",
+    "src/collectors/schools/rpi_faculty.py",
+    "src/collectors/schools/wisc.py",
+    "src/collectors/uiuc_sro.py",
+    "src/normalizers/fodommat.py",
+    "src/program_windows.py",
+    "src/saved_searches/filter.py",
+    "tests/test_fodommat_identity.py",
+    "tests/test_haverford_faculty.py",
+    "tests/test_program_windows.py",
+    "tests/test_rpi_cbe_faculty.py",
+    "tests/test_target_truth.py"
+  ],
+  "shards": {
+    "haverford": {
+      "original_ids": 137,
+      "new_ids": [
+        "faculty-haverford-pols-2973bc22",
+        "faculty-haverford-pols-5363449f",
+        "faculty-haverford-pols-d539e435",
+        "faculty-haverford-pols-bcbccb7d",
+        "faculty-haverford-pols-82b8ef8c",
+        "faculty-haverford-pols-ea121a2f",
+        "faculty-haverford-pols-6fc963c1",
+        "faculty-haverford-fren-9869b546",
+        "faculty-haverford-fren-28da6fed",
+        "faculty-haverford-fren-d3091a6d"
+      ],
+      "modified_original_ids": [],
+      "all_original_ids_order_and_first_seen_preserved": true,
+      "row_count_now": 147
+    },
+    "national": {
+      "original_ids": 14139,
+      "new_ids": [],
+      "modified_original_ids": [
+        "ext-uiuc-ncsa-reu",
+        "sro-595e912d",
+        "sro-1532726e",
+        "wisc-86cba49b83d7",
+        "sro-3c378261"
+      ],
+      "all_original_ids_order_and_first_seen_preserved": true,
+      "row_count_now": 14139
+    },
+    "rpi": {
+      "original_ids": 472,
+      "new_ids": [],
+      "modified_original_ids": [],
+      "all_original_ids_order_and_first_seen_preserved": true,
+      "row_count_now": 472
+    }
+  },
+  "reviewed_national_records": {
+    "ext-uiuc-ncsa-reu": {
+      "deadline_before": "2027-02-15",
+      "deadline_after": "2027-02-15",
+      "original_first_seen": "2026-03-24T05:50:23.427640",
+      "modified_fields": [
+        "deadline_is_estimate",
+        "eligibility"
+      ]
+    },
+    "sro-595e912d": {
+      "deadline_before": "2027-02-15",
+      "deadline_after": "2027-02-10",
+      "original_first_seen": "2026-04-06T04:52:25.673560",
+      "modified_fields": [
+        "deadline",
+        "deadline_is_estimate",
+        "metadata"
+      ]
+    },
+    "sro-1532726e": {
+      "deadline_before": "2027-03-15",
+      "deadline_after": "2027-02-15",
+      "original_first_seen": "2026-04-06T04:52:25.678128",
+      "modified_fields": [
+        "deadline",
+        "deadline_is_estimate",
+        "eligibility",
+        "metadata"
+      ]
+    },
+    "wisc-86cba49b83d7": {
+      "deadline_before": null,
+      "deadline_after": "2027-02-10",
+      "original_first_seen": "2026-06-28T17:23:02.199791",
+      "modified_fields": [
+        "deadline",
+        "deadline_is_estimate",
+        "is_rolling",
+        "lab_or_program",
+        "title"
+      ]
+    },
+    "sro-3c378261": {
+      "deadline_before": "2027-02-10",
+      "deadline_after": "2027-02-10",
+      "original_first_seen": "2026-07-12T07:07:53.312191",
+      "modified_fields": [
+        "metadata"
+      ]
+    }
+  },
+  "school_stats": {
+    "schools_checked": 115,
+    "only_changed_school": "haverford",
+    "before": {
+      "listing_count": 7,
+      "faculty_contact_count": 120,
+      "unreviewed_count": 0,
+      "total_count": 127
+    },
+    "after": {
+      "listing_count": 7,
+      "faculty_contact_count": 130,
+      "unreviewed_count": 0,
+      "total_count": 137
+    },
+    "national_unchanged": 5598
+  },
+  "acceptance_windows": {
+    "FoDOMMaT and WI": "After two-service deployment, recheck all five original details, normal student search, source-filter and saved results. Next national SRO refresh November 29; no student emails needed.",
+    "RPI": "December 2 real RPI source must observe all 17 original people and two previously absent, verify raw ID and exclusions. This PR changes only its source, so the deployed shard precedes that run.",
+    "Haverford": "After both services deploy verify ten new pages. On December 2 reconcile the two normal source units. No other campus freshness dates changed."
+  },
+  "previous_head": "92253384a271df102d22f2124f433bcbd92b3016",
+  "expected_parent_diff_equals_observed_head_diff": true,
+  "unique_updated_parent_path": "src/collectors/schools/ucsd_faculty.py",
+  "combined_tests_all_passed": 1429,
+  "public_shape_15": {
+    "method": "Anonymous read-only normal FastAPI detail endpoint with the truth-aware query and the assembled combined local corpus.",
+    "sha": "1014b98c563f182381b80ddf9c9ce869aec6fca1",
+    "detail_records": [
+      {
+        "id": "ext-uiuc-ncsa-reu",
+        "http": 200,
+        "reported_deadline": "2027-02-15",
+        "highest_authority": "https://reu.ncsa.illinois.edu/"
+      },
+      {
+        "id": "sro-1532726e",
+        "http": 200,
+        "reported_deadline": "2027-02-15",
+        "highest_authority": "https://reu.ncsa.illinois.edu/"
+      },
+      {
+        "id": "wisc-86cba49b83d7",
+        "http": 200,
+        "reported_deadline": "2027-02-10",
+        "highest_authority": "https://wiscience.wisc.edu/research/summer_research_program/"
+      },
+      {
+        "id": "sro-595e912d",
+        "http": 200,
+        "reported_deadline": "2027-02-10",
+        "highest_authority": "https://wiscience.wisc.edu/research/summer_research_program/"
+      },
+      {
+        "id": "sro-3c378261",
+        "http": 200,
+        "reported_deadline": "2027-02-10",
+        "highest_authority": "https://wiscience.wisc.edu/research/summer_research_program/"
+      },
+      {
+        "id": "faculty-haverford-pols-2973bc22",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/cborowia"
+      },
+      {
+        "id": "faculty-haverford-pols-5363449f",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/aisaacs"
+      },
+      {
+        "id": "faculty-haverford-pols-d539e435",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/smcgover"
+      },
+      {
+        "id": "faculty-haverford-pols-bcbccb7d",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/bmendels"
+      },
+      {
+        "id": "faculty-haverford-pols-82b8ef8c",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/vnaresh"
+      },
+      {
+        "id": "faculty-haverford-pols-ea121a2f",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/zoberfie"
+      },
+      {
+        "id": "faculty-haverford-pols-6fc963c1",
+        "http": 200,
+        "directory_unit": "POLS",
+        "personal_url": "https://www.haverford.edu/users/swing"
+      },
+      {
+        "id": "faculty-haverford-fren-9869b546",
+        "http": 200,
+        "directory_unit": "FREN",
+        "personal_url": "https://www.haverford.edu/users/kanyinef"
+      },
+      {
+        "id": "faculty-haverford-fren-28da6fed",
+        "http": 200,
+        "directory_unit": "FREN",
+        "personal_url": "https://www.haverford.edu/users/kacorbin"
+      },
+      {
+        "id": "faculty-haverford-fren-d3091a6d",
+        "http": 200,
+        "directory_unit": "FREN",
+        "personal_url": "https://www.haverford.edu/users/dsedley"
+      }
+    ]
+  },
+  "exact_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45825903319"
+}
