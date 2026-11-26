@@ -3470,6 +3470,8 @@ def _fetch_cola(dept: dict) -> list[dict]:
 # link and name, whatever the title gate makes of the row, so the retirement
 # pass keeps a stored person the directory still lists (see
 # ``listed_identities``).
+# ``report_page_failures`` records a terminal HTTP or payload failure separately
+# from the count-based coverage signal. Existing ledgers retain their reason codes.
 # ``id_namespaces`` (paginated feeds) lists the units that read one walk
 # together, as UF's Apollo colleges do: each unit keeps the people whose id the
 # corpus already holds under it, and a person it holds under none of them goes
@@ -3612,7 +3614,7 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
             recs_all, stated, failure = _walk_json_pages(cfg, pag, hdrs, requests)
             if shared is not None:
                 walks[shared] = (recs_all, stated, failure)
-        if failure and _ACTIVE_COVERAGE is not None:
+        if failure and cfg.get("report_page_failures") and _ACTIVE_COVERAGE is not None:
             _ACTIVE_COVERAGE["_directory_fetch_failure"] = failure
         if total_key:
             _json_roster_unread(dept, stated, len(recs_all),
@@ -3703,7 +3705,7 @@ def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, 
         if total_key:
             stated.append(_dig(data, total_key) if isinstance(data, dict) else None)
         rk = cfg.get("records_key")
-        if rk:
+        if rk and (isinstance(data, dict) or cfg.get("report_page_failures")):
             page_recs = _dig(data, rk) if isinstance(data, dict) else None
         elif isinstance(data, dict):
             page_recs = next((v for v in data.values() if isinstance(v, list)), [])
@@ -5411,7 +5413,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     if directory_failure and fetch_status == "ok":
         if parse_status == "zero_rows":
             fetch_status = "failed"
-        elif (dept.get("json_dir") or {}).get("paginate"):
+        elif (dept.get("json_dir") or {}).get("report_page_failures"):
             # An earlier page can supply real people even when the directory
             # never returned the remaining pages.
             fetch_status = "partial"
