@@ -1,0 +1,83 @@
+{
+  "scope": "B21 evidence-only Chromium branch preview incident, 2026-11-26",
+  "repository": "EricXu-0805/opportunity-filter-engine",
+  "branch": "audit/b21-original-details-chromium-1126",
+  "vercelRoot": "frontend",
+  "branchTopLevelBeforeFix": [
+    ".github",
+    "data"
+  ],
+  "deployments": [
+    {
+      "commit": "3d7cdfa451fc3d6f6f3a6428c0ce9ac184da5e94",
+      "createdUtc": "2026-11-26T20:14:15.043Z",
+      "vercelId": "dpl_Ce4mZwEGb973DXULTWMyv4ucTUb1",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/Ce4mZwEGb973DXULTWMyv4ucTUb1",
+      "diagnosis": "Configured frontend root missing"
+    },
+    {
+      "commit": "abc68a161a1d9f28ad533c244c8d768b17485822",
+      "createdUtc": "2026-11-26T20:05:50.294Z",
+      "vercelId": "dpl_9Be1RqDbdz1pM31J18EDZ6QyC9Pw",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/9Be1RqDbdz1pM31J18EDZ6QyC9Pw",
+      "diagnosis": "Configured frontend root missing"
+    },
+    {
+      "commit": "55a8854ea4d480efbe5da9fd8424f6389689565b",
+      "createdUtc": "2026-11-26T20:03:49.283Z",
+      "vercelId": "dpl_EqNMjyQkRfiFm6rpGDzkkbhgzb6o",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/EqNMjyQkRfiFm6rpGDzkkbhgzb6o",
+      "diagnosis": "Configured frontend root missing"
+    },
+    {
+      "commit": "9a82fa5ef8872bd8e45616a3511c3ee8efe7cb5c",
+      "createdUtc": "2026-11-26T20:02:44.415Z",
+      "vercelId": "dpl_BbUtFi9MSTgDQtfrsLsYtMtJeJJM",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/BbUtFi9MSTgDQtfrsLsYtMtJeJJM",
+      "diagnosis": "Configured frontend root missing"
+    },
+    {
+      "commit": "0a9d813d4f8a506b8ed65be3415df93264a5f9d2",
+      "createdUtc": "2026-11-26T20:02:01.841Z",
+      "vercelId": "dpl_EzzGCR1JzZZE6PnEiCxP46RJdh7i",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/EzzGCR1JzZZE6PnEiCxP46RJdh7i",
+      "diagnosis": "Configured frontend root missing"
+    },
+    {
+      "commit": "e0d234c27af3d79e7ff70dc365d820b36d828278",
+      "createdUtc": "2026-11-26T19:55:52.389Z",
+      "vercelId": "dpl_4utERvcSJiiiwypGjAEP4pr5Ua1L",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/4utERvcSJiiiwypGjAEP4pr5Ua1L",
+      "diagnosis": "Configured frontend root missing"
+    },
+    {
+      "commit": "51f3e06b13f7c1369d6cd9022a2792c2c162f560",
+      "createdUtc": "2026-11-26T19:53:40.683Z",
+      "vercelId": "dpl_CWTV7mz3fZQu57kp9py5LFaJQvvr",
+      "target": "preview",
+      "state": "ERROR",
+      "log": "https://vercel.com/ericxu-0805s-projects/opportunity-filter-engine/CWTV7mz3fZQu57kp9py5LFaJQvvr",
+      "diagnosis": "Configured frontend root missing"
+    }
+  ],
+  "fixCommit": "256c444bc15ed3e0ca36d007b8081b72a173c5d5",
+  "productionAtCheck": {
+    "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "home": "https://joinalab.com/",
+    "health": "https://joinalab.com/api/health",
+    "http": 200
+  },
+  "verification": "No deployment was listed for the config commit on the first check. Check subsequent pushes on this branch against project deployment history."
+}
