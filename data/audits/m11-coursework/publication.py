@@ -41,7 +41,7 @@ with sync_playwright() as pw:
     expect(master.get_by_role('status').filter(has_text='candidates quoted from your résumé')).to_be_visible(timeout=20000)
     section=master.get_by_text('Publications',exact=True).filter(visible=True).first.locator('..')
     expect(section.get_by_role('button',name='Add publication')).to_be_visible()
-    candidates=section.locator('fieldset').count()
+    candidates=section.get_by_label('Publication title', exact=True).count()
     fixed = os.environ.get('PDF_ACCEPTANCE_MODE') == 'fixed'
     assert candidates == (1 if fixed else 0), candidates
     if fixed:
