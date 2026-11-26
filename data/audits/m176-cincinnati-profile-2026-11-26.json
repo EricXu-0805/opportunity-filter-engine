@@ -1,0 +1,211 @@
+{
+  "scope": "Local collector replay against the actual university directory and faculty profile. Original record from the committed corpus. No changes to production.",
+  "before": {
+    "observed_at": "2026-11-26T09:55:05.295728+00:00",
+    "code_base": "b90f0f2d81c33bb68e295aaffde8012b3f19b8cc",
+    "source_directory": "https://www.ceas.uc.edu/academics/departments/computer-science/computer-science-people.html",
+    "source_profiles_parsed": 41,
+    "person_id": "faculty-cincinnati-cs-00772f54",
+    "official_name": "Mehdi Norouzi",
+    "profile": "https://researchdirectory.uc.edu/p/norouzmi",
+    "incoming_listing_topic_fields": [
+      [],
+      ""
+    ],
+    "old_topics": [
+      "structural health monitoring",
+      "infrastructure maintenance and monitoring",
+      "concrete corrosion and durability",
+      "structural engineering and vibration analysis",
+      "video analysis and summarization"
+    ],
+    "old_inference": "derived:openalex_topics",
+    "old_research_text": "",
+    "first_profile_reads": 0,
+    "second_profile_reads": 0,
+    "observed_requests": [],
+    "result_id": "faculty-cincinnati-cs-00772f54",
+    "result_topics": [
+      "structural health monitoring",
+      "infrastructure maintenance and monitoring",
+      "concrete corrosion and durability",
+      "structural engineering and vibration analysis",
+      "video analysis and summarization"
+    ],
+    "result_topic_inference": "derived:openalex_topics",
+    "repeat_yields_identical_source_topics": true
+  },
+  "after": {
+    "observed_at": "2026-11-26T09:54:55.981238+00:00",
+    "code_base": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+    "source_directory": "https://www.ceas.uc.edu/academics/departments/computer-science/computer-science-people.html",
+    "source_profiles_parsed": 41,
+    "person_id": "faculty-cincinnati-cs-00772f54",
+    "official_name": "Mehdi Norouzi",
+    "profile": "https://researchdirectory.uc.edu/p/norouzmi",
+    "incoming_listing_topic_fields": [
+      [],
+      ""
+    ],
+    "old_topics": [
+      "structural health monitoring",
+      "infrastructure maintenance and monitoring",
+      "concrete corrosion and durability",
+      "structural engineering and vibration analysis",
+      "video analysis and summarization"
+    ],
+    "old_inference": "derived:openalex_topics",
+    "old_research_text": "",
+    "first_profile_reads": 1,
+    "second_profile_reads": 0,
+    "observed_requests": [
+      {
+        "profile_url": "https://researchdirectory.uc.edu/p/norouzmi",
+        "expected_name": "Mehdi Norouzi",
+        "fetch_succeeded": true,
+        "extracted_topic_items": [
+          "Video Temporal segmentation, Video Chaptering, Video Scene Detection",
+          "Video Summarization, Key-frame/Key-shot extraction",
+          "Dense Caption Generation, Language-guided video summarization"
+        ]
+      }
+    ],
+    "result_id": "faculty-cincinnati-cs-00772f54",
+    "result_topics": [
+      "Video Temporal segmentation / Video Chaptering / Video Scene Detection",
+      "Video Summarization / Key-frame/Key-shot extraction",
+      "Dense Caption Generation / Language-guided video summarization"
+    ],
+    "result_topic_inference": null,
+    "repeat_yields_identical_source_topics": true
+  },
+  "input_corpus_git": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "before_faculty_graph_blob": "88c419448e74a5e741528f9e1c162f3310118584",
+  "active_capture_shape_by_school": [
+    {
+      "school": "gatech",
+      "method": "derived:openalex_topics",
+      "count": 20
+    },
+    {
+      "school": "jhu",
+      "method": "derived:openalex_topics",
+      "count": 30
+    },
+    {
+      "school": "duke",
+      "method": "derived:openalex_topics",
+      "count": 420
+    },
+    {
+      "school": "ucla",
+      "method": "derived:openalex_topics",
+      "count": 8
+    },
+    {
+      "school": "columbia",
+      "method": "derived:openalex_topics",
+      "count": 143
+    },
+    {
+      "school": "udel",
+      "method": "derived:openalex_topics",
+      "count": 202
+    },
+    {
+      "school": "yale",
+      "method": "derived:openalex_topics",
+      "count": 279
+    },
+    {
+      "school": "smith",
+      "method": "derived:openalex_topics",
+      "count": 130
+    },
+    {
+      "school": "usf",
+      "method": "derived:openalex_topics",
+      "count": 26
+    },
+    {
+      "school": "utah",
+      "method": "derived:openalex_topics",
+      "count": 3
+    },
+    {
+      "school": "stanford",
+      "method": "derived:openalex_topics",
+      "count": 8
+    },
+    {
+      "school": "coloradocollege",
+      "method": "derived:openalex_topics",
+      "count": 44
+    },
+    {
+      "school": "utexas",
+      "method": "derived:openalex_topics",
+      "count": 19
+    },
+    {
+      "school": "colostate",
+      "method": "derived:openalex_topics",
+      "count": 48
+    },
+    {
+      "school": "syracuse",
+      "method": "derived:openalex_topics",
+      "count": 165
+    },
+    {
+      "school": "ucsc",
+      "method": "derived:openalex_topics",
+      "count": 46
+    },
+    {
+      "school": "bowdoin",
+      "method": "derived:openalex_topics",
+      "count": 100
+    },
+    {
+      "school": "pitt",
+      "method": "derived:openalex_topics",
+      "count": 102
+    },
+    {
+      "school": "utk",
+      "method": "derived:openalex_topics",
+      "count": 22
+    },
+    {
+      "school": "wellesley",
+      "method": "derived:openalex_topics",
+      "count": 134
+    },
+    {
+      "school": "princeton",
+      "method": "derived:openalex_topics",
+      "count": 206
+    },
+    {
+      "school": "cincinnati",
+      "method": "derived:openalex_topics",
+      "count": 275
+    },
+    {
+      "school": "houston",
+      "method": "derived:openalex_topics",
+      "count": 1
+    },
+    {
+      "school": "uw",
+      "method": "derived:openalex_topics",
+      "count": 22
+    },
+    {
+      "school": "wisc",
+      "method": "derived:openalex_topics",
+      "count": 14
+    }
+  ]
+}
