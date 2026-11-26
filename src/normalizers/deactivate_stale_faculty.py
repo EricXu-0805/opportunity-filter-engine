@@ -694,6 +694,11 @@ def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
     if parsed + nonfac != raw:
         return False, "coverage_rows_unaccounted"
     if raw == 0:
+        # Some feeds can identify the people they returned but cannot enumerate
+        # the full roster. A positive live count rules out an empty response.
+        live = entry.get("live_roster_count")
+        if type(live) is int and live > 0:
+            return False, "count_is_not_authority"
         # An empty roster proves nothing; a unit that yielded no rows cannot
         # retire the people it used to hold.
         return False, "empty_roster"
