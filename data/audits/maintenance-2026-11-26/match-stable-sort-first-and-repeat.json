@@ -1,0 +1,66 @@
+{
+  "release": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "rows": 149775,
+  "scope": "Six separate sequential production-corpus worker processes in A1 B1 B2 A2 A3 B3 order; unchanged baseline versus three stable sorts. No production change.",
+  "response_hash_set": "c9002d312b499ab07515927174e011214f1c8447cfadd70c336dfd4d99edf92f",
+  "full_ordered_digests": [
+    "96efbbc8ba2bbf6a24134cdf114970687800fa0b35182cc9479424cdb8d439dc",
+    "d90e33ae0eb3f35b66fb756c359de33ce3593c58ac6e1e7f871e39d9f53af35d"
+  ],
+  "results_per_profile": [
+    82614,
+    2551
+  ],
+  "response_count_per_process": 42,
+  "samples": [
+    {
+      "case": "A1",
+      "first_ms": 7237.48,
+      "first_repeat_ms": 17.66,
+      "max_repeat_ms": 17.66,
+      "first_plus_8_repeats_ms": 7372.67,
+      "peak_bytes": 1666760704
+    },
+    {
+      "case": "A2",
+      "first_ms": 7035.02,
+      "first_repeat_ms": 17.49,
+      "max_repeat_ms": 17.6,
+      "first_plus_8_repeats_ms": 7172.1,
+      "peak_bytes": 1739505664
+    },
+    {
+      "case": "A3",
+      "first_ms": 7512.24,
+      "first_repeat_ms": 18.33,
+      "max_repeat_ms": 18.35,
+      "first_plus_8_repeats_ms": 7655.85,
+      "peak_bytes": 1450180608
+    },
+    {
+      "case": "B1",
+      "first_ms": 5973.76,
+      "first_repeat_ms": 18.34,
+      "max_repeat_ms": 18.34,
+      "first_plus_8_repeats_ms": 6116.23,
+      "peak_bytes": 1497006080
+    },
+    {
+      "case": "B2",
+      "first_ms": 5994.23,
+      "first_repeat_ms": 1112.55,
+      "max_repeat_ms": 1112.55,
+      "first_plus_8_repeats_ms": 7228.77,
+      "peak_bytes": 1508032512
+    },
+    {
+      "case": "B3",
+      "first_ms": 5740.76,
+      "first_repeat_ms": 1065.18,
+      "max_repeat_ms": 1065.18,
+      "first_plus_8_repeats_ms": 6921.96,
+      "peak_bytes": 1737326592
+    }
+  ],
+  "decision": "Held. The first request improved, but the next warm request took over one second in two of three trials. Preserve first, repeat and next-page targets together."
+}
