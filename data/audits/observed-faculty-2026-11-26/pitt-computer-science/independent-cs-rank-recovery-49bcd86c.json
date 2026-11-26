@@ -1,0 +1,194 @@
+{
+  "candidate_sha": "49bcd86cba4463bdc9a87d478d92c4220609b1e8",
+  "scope": "Additional focused six-stage monthly replay. Only these three people’s six individual pages and three source rosters were available. All other profilers were unavailable to this read. The two college IDs and the department original for Walker were read from the resulting full 1,147-row corpus.",
+  "official_individual_http": {
+    "https://www.cs.pitt.edu/people/full-time-faculty/stephen-lee": 200,
+    "https://www.sci.pitt.edu/people/longfei-shangguan": 200,
+    "https://www.sci.pitt.edu/people/stephen-lee": 200,
+    "https://www.sci.pitt.edu/people/erin-walker": 200,
+    "https://www.cs.pitt.edu/people/full-time-faculty/erin-walker": 200,
+    "https://www.cs.pitt.edu/people/full-time-faculty/longfei-shangguan": 200
+  },
+  "rounds": [
+    {
+      "order": [
+        "CS",
+        "SCI"
+      ],
+      "stage": "blocked",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/erin-walker",
+          "named": "Erin Walker"
+        },
+        {
+          "id": "faculty-pitt-sci-754eb010",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/stephen-lee",
+          "named": "Stephen Lee"
+        },
+        {
+          "id": "faculty-pitt-sci-1a259c98",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+          "named": "Longfei Shangguan"
+        }
+      ]
+    },
+    {
+      "order": [
+        "CS",
+        "SCI"
+      ],
+      "stage": "normal",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/erin-walker",
+          "named": "Erin Walker"
+        },
+        {
+          "id": "faculty-pitt-sci-754eb010",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/stephen-lee",
+          "named": "Stephen Lee"
+        },
+        {
+          "id": "faculty-pitt-sci-1a259c98",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+          "named": "Longfei Shangguan"
+        }
+      ]
+    },
+    {
+      "order": [
+        "CS",
+        "SCI"
+      ],
+      "stage": "blocked again",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/erin-walker",
+          "named": "Erin Walker"
+        },
+        {
+          "id": "faculty-pitt-sci-754eb010",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/stephen-lee",
+          "named": "Stephen Lee"
+        },
+        {
+          "id": "faculty-pitt-sci-1a259c98",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+          "named": "Longfei Shangguan"
+        }
+      ]
+    },
+    {
+      "order": [
+        "SCI",
+        "CS"
+      ],
+      "stage": "blocked",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/erin-walker",
+          "named": "Erin Walker"
+        },
+        {
+          "id": "faculty-pitt-sci-754eb010",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/stephen-lee",
+          "named": "Stephen Lee"
+        },
+        {
+          "id": "faculty-pitt-sci-1a259c98",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+          "named": "Longfei Shangguan"
+        }
+      ]
+    },
+    {
+      "order": [
+        "SCI",
+        "CS"
+      ],
+      "stage": "normal",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/erin-walker",
+          "named": "Erin Walker"
+        },
+        {
+          "id": "faculty-pitt-sci-754eb010",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/stephen-lee",
+          "named": "Stephen Lee"
+        },
+        {
+          "id": "faculty-pitt-sci-1a259c98",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+          "named": "Longfei Shangguan"
+        }
+      ]
+    },
+    {
+      "order": [
+        "SCI",
+        "CS"
+      ],
+      "stage": "blocked again",
+      "records": [
+        {
+          "id": "faculty-pitt-cs-0a7196f1",
+          "rank": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/erin-walker",
+          "named": "Erin Walker"
+        },
+        {
+          "id": "faculty-pitt-sci-754eb010",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/stephen-lee",
+          "named": "Stephen Lee"
+        },
+        {
+          "id": "faculty-pitt-sci-1a259c98",
+          "rank": "Associate Professor, Department of Computer Science",
+          "active": true,
+          "url": "https://www.sci.pitt.edu/people/longfei-shangguan",
+          "named": "Longfei Shangguan"
+        }
+      ]
+    }
+  ]
+}

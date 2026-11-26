@@ -1,0 +1,196 @@
+{
+  "read_on": "2026-11-26",
+  "source_sha": "ab2aba702669a18706476a6fcbbdb844f30af66e",
+  "scope": "Ordinary public GETs to every department personal URL after restoring the CS roster. The check compared each saved name to all H1 texts. It returned 31 status 200, zero identity exceptions. These are campus pages, not production app deployment evidence.",
+  "all_links": 31,
+  "http_200": 31,
+  "named_h1": 31,
+  "rows": [
+    {
+      "original_id": "faculty-pitt-cs-37b1191a",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/wonsun-ahn",
+      "http": 200,
+      "matched_person_heading": "Wonsun Ahn"
+    },
+    {
+      "original_id": "faculty-pitt-cs-56354f0d",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/amy-babay",
+      "http": 200,
+      "matched_person_heading": "Amy Babay"
+    },
+    {
+      "original_id": "faculty-pitt-cs-3f9ffe0f",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/marina-barsky",
+      "http": 200,
+      "matched_person_heading": "Marina Barsky"
+    },
+    {
+      "original_id": "faculty-pitt-cs-0c5994c8",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/jacob-biehl",
+      "http": 200,
+      "matched_person_heading": "Jacob Biehl"
+    },
+    {
+      "original_id": "faculty-pitt-cs-e47a8796",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/bruce-childers",
+      "http": 200,
+      "matched_person_heading": "Bruce Childers"
+    },
+    {
+      "original_id": "faculty-pitt-cs-c488d791",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/panos-chrysanthis",
+      "http": 200,
+      "matched_person_heading": "Panos Chrysanthis"
+    },
+    {
+      "original_id": "faculty-pitt-cs-6314125a",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/paul-cohen",
+      "http": 200,
+      "matched_person_heading": "Paul Cohen"
+    },
+    {
+      "original_id": "faculty-pitt-cs-2ba882dd",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/nicholas-farnan",
+      "http": 200,
+      "matched_person_heading": "Nicholas Farnan"
+    },
+    {
+      "original_id": "faculty-pitt-cs-af900fe5",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/william-garrison",
+      "http": 200,
+      "matched_person_heading": "William Garrison"
+    },
+    {
+      "original_id": "faculty-pitt-cs-19abea97",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/milos-hauskrecht",
+      "http": 200,
+      "matched_person_heading": "Milos Hauskrecht"
+    },
+    {
+      "original_id": "faculty-pitt-cs-fa134731",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/timothy-hoffman",
+      "http": 200,
+      "matched_person_heading": "Timothy Hoffman"
+    },
+    {
+      "original_id": "faculty-pitt-cs-904e37e9",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/sherif-khattab",
+      "http": 200,
+      "matched_person_heading": "Sherif Khattab"
+    },
+    {
+      "original_id": "faculty-pitt-cs-a2c06c2d",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/thumtongsak-kosiyatrkul",
+      "http": 200,
+      "matched_person_heading": "Thumtongsak Kosiyatrkul"
+    },
+    {
+      "original_id": "faculty-pitt-cs-4adac42c",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/adriana-kovashka",
+      "http": 200,
+      "matched_person_heading": "Adriana Kovashka"
+    },
+    {
+      "original_id": "faculty-pitt-cs-3f53f93b",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/alexandros-labrinidis",
+      "http": 200,
+      "matched_person_heading": "Alexandros Labrinidis"
+    },
+    {
+      "original_id": "faculty-pitt-cs-d11d4a3e",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/john-lange",
+      "http": 200,
+      "matched_person_heading": "John Lange"
+    },
+    {
+      "original_id": "faculty-pitt-cs-3af1e2c9",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/adam-lee",
+      "http": 200,
+      "matched_person_heading": "Adam Lee"
+    },
+    {
+      "original_id": "faculty-pitt-cs-5d973318",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/lorraine-xiang-li",
+      "http": 200,
+      "matched_person_heading": "Lorraine (Xiang) Li"
+    },
+    {
+      "original_id": "faculty-pitt-cs-4cb65ded",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/diane-litman",
+      "http": 200,
+      "matched_person_heading": "Diane Litman"
+    },
+    {
+      "original_id": "faculty-pitt-cs-484b0709",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/daniel-mosse",
+      "http": 200,
+      "matched_person_heading": "Daniel Mosse"
+    },
+    {
+      "original_id": "faculty-pitt-cs-dff77505",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/luis-oliveira",
+      "http": 200,
+      "matched_person_heading": "Luis Oliveira"
+    },
+    {
+      "original_id": "faculty-pitt-cs-74aa7171",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/kirk-pruhs",
+      "http": 200,
+      "matched_person_heading": "Kirk Pruhs"
+    },
+    {
+      "original_id": "faculty-pitt-cs-82cfa3dd",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/john-ramirez",
+      "http": 200,
+      "matched_person_heading": "John Ramirez"
+    },
+    {
+      "original_id": "faculty-pitt-cs-51874e7c",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/rob-rutenbar",
+      "http": 200,
+      "matched_person_heading": "Rob Rutenbar"
+    },
+    {
+      "original_id": "faculty-pitt-cs-e643e15e",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/ryan-shi",
+      "http": 200,
+      "matched_person_heading": "Ryan Shi"
+    },
+    {
+      "original_id": "faculty-pitt-cs-ca9eac3e",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/patrick-skeba",
+      "http": 200,
+      "matched_person_heading": "Patrick Skeba"
+    },
+    {
+      "original_id": "faculty-pitt-cs-8e9a39d1",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/xulong-tang",
+      "http": 200,
+      "matched_person_heading": "Xulong Tang"
+    },
+    {
+      "original_id": "faculty-pitt-cs-0a7196f1",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/erin-walker",
+      "http": 200,
+      "matched_person_heading": "Erin Walker"
+    },
+    {
+      "original_id": "faculty-pitt-cs-1c364170",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/michael-miller-yoder-0",
+      "http": 200,
+      "matched_person_heading": "Michael Miller Yoder"
+    },
+    {
+      "original_id": "faculty-pitt-cs-1e95f188",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/youtao-zhang",
+      "http": 200,
+      "matched_person_heading": "Youtao Zhang"
+    },
+    {
+      "original_id": "faculty-pitt-cs-a32cf06c",
+      "official_url": "https://www.cs.pitt.edu/people/full-time-faculty/emma-jordan",
+      "http": 200,
+      "matched_person_heading": "Emma Jordan"
+    }
+  ]
+}

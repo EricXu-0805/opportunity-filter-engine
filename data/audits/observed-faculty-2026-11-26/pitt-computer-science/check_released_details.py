@@ -44,6 +44,7 @@ def check(session, site, scope, pair, pid, after_refresh):
     active = pid == current
     assert api["id"] == pid and bool(api["target_truth"]["actionable"]) == active, (pid, "actionability")
     campus = None
+    role = None
     if active:
         destinations = {pair["school_url"]: pair["school_name"]}
         if after_refresh:
@@ -58,12 +59,18 @@ def check(session, site, scope, pair, pid, after_refresh):
         headings = [heading.get_text(" ", strip=True) for heading in person.select("h1")]
         assert destinations[url] in headings, (pid, "wrong campus identity", headings)
         campus = {"url": url, "final_url": official.url, "http": official.status_code, "name": destinations[url]}
+        if pid == "faculty-pitt-cs-0a7196f1":
+            evidence = Path(__file__).with_name("faculty-pitt-cs-0a7196f1-promotion.json")
+            expected_role = json.loads(evidence.read_text())["college_current_title"]
+            role = api["metadata"]["faculty_title"]
+            rendered_roles = [dd.get_text(" ", strip=True) for dd in detail.select("dd")]
+            assert role == expected_role and role in rendered_roles, (pid, "rank or appointment changed", role)
         if pid == "faculty-pitt-cs-e47a8796":
             assert api.get("contact_email_status") == "unavailable", (pid, "office address shown")
     else:
         assert api.get("current_faculty_id") == current, (pid, "saved record successor")
         assert any(link["destination"] == site + "/opportunities/" + current for link in links), (pid, "successor link", links)
-    return {"id": pid, "current_id": current, "actionable": active, "links": links, "campus_person": campus}
+    return {"id": pid, "current_id": current, "actionable": active, "links": links, "campus_person": campus, "verified_appointment": role}
 
 
 def main():

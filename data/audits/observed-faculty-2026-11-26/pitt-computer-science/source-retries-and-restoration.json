@@ -1,10 +1,11 @@
 {
-  "tested_at": "2026-11-26T20:22:50.030232+00:00",
-  "source_sha": "ab2aba702669a18706476a6fcbbdb844f30af66e",
+  "tested_at": "2026-11-26T20:36:48.065466+00:00",
+  "source_sha": "95dc2ace7617bf7d0f2dbed76375e7b7d11fcc9d",
   "runs": {
     "original-primary": [
       {
         "stage": "normal",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -247,6 +248,7 @@
       },
       {
         "stage": "reverse",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -489,6 +491,7 @@
       },
       {
         "stage": "blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 30,
         "department_parse": "ok",
@@ -731,6 +734,7 @@
       },
       {
         "stage": "all-registries-unavailable",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 0,
         "department_emitted": 0,
         "department_parse": "zero_rows",
@@ -973,6 +977,7 @@
       },
       {
         "stage": "normal",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -1217,6 +1222,7 @@
     "original-secondary": [
       {
         "stage": "blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 30,
         "department_parse": "ok",
@@ -1459,6 +1465,7 @@
       },
       {
         "stage": "blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 30,
         "department_parse": "ok",
@@ -1701,6 +1708,7 @@
       },
       {
         "stage": "both-unavailable",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 0,
         "department_emitted": 0,
         "department_parse": "zero_rows",
@@ -1943,6 +1951,7 @@
       },
       {
         "stage": "all-registries-unavailable",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 0,
         "department_emitted": 0,
         "department_parse": "zero_rows",
@@ -2185,6 +2194,7 @@
       },
       {
         "stage": "normal",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -2427,6 +2437,7 @@
       },
       {
         "stage": "reverse",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -2669,6 +2680,7 @@
       },
       {
         "stage": "reverse-blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 10,
         "department_parse": "ok",
@@ -2913,6 +2925,7 @@
     "repaired": [
       {
         "stage": "blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 30,
         "department_parse": "ok",
@@ -3155,6 +3168,7 @@
       },
       {
         "stage": "blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 30,
         "department_parse": "ok",
@@ -3397,6 +3411,7 @@
       },
       {
         "stage": "both-unavailable",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 0,
         "department_emitted": 0,
         "department_parse": "zero_rows",
@@ -3639,6 +3654,7 @@
       },
       {
         "stage": "all-registries-unavailable",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 0,
         "department_emitted": 0,
         "department_parse": "zero_rows",
@@ -3881,6 +3897,7 @@
       },
       {
         "stage": "normal",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -4123,6 +4140,7 @@
       },
       {
         "stage": "reverse",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 38,
         "department_emitted": 38,
         "department_parse": "ok",
@@ -4365,6 +4383,7 @@
       },
       {
         "stage": "reverse-blocked",
+        "erin_walker_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
         "department_count": 37,
         "department_emitted": 10,
         "department_parse": "ok",

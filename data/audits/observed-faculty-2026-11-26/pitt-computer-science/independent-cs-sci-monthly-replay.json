@@ -1,0 +1,454 @@
+{
+  "recorded_at": "2026-11-26T20:31:51.796330+00:00",
+  "candidate_sha": "ab2aba702669a18706476a6fcbbdb844f30af66e",
+  "scope": "Independent monthly replay, with _PROFILE_ENRICH=True for both real Pittsburgh CS and SCI collectors. Two iteration orders, each seeded from this exact candidate. Normal fetch_and_normalize, merge_into_processed and collapse_same_person_faculty called with the pre-existing corpus and publication IDs. Per-person HTTP was read from the public university and replayed in memory against previously captured official rosters. Not a production scheduled run.",
+  "individual_http_counts": {
+    "CS": {
+      "200": 37,
+      "403": 1,
+      "attempted": 38
+    },
+    "SCI": {
+      "200": 69,
+      "attempted": 69
+    }
+  },
+  "evidence_scope": "Only aggregated per-person HTTP status was retained for these 107 reads. The CS profile returning 403 is unidentified in this receipt. The independent 31-restored-link receipt is a separate earlier GET check.",
+  "rounds": [
+    {
+      "order": "CS/SCI",
+      "stage": "supplemental_only",
+      "CS": {
+        "listed": 37,
+        "emitted": 30
+      },
+      "SCI": {
+        "listed": 69,
+        "emitted": 39
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "CS/SCI",
+      "stage": "all_unavailable",
+      "CS": {
+        "listed": 0,
+        "emitted": 0
+      },
+      "SCI": {
+        "listed": 0,
+        "emitted": 0
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "CS/SCI",
+      "stage": "restored",
+      "CS": {
+        "listed": 38,
+        "emitted": 38
+      },
+      "SCI": {
+        "listed": 69,
+        "emitted": 69
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "CS/SCI",
+      "stage": "supplemental_only_again",
+      "CS": {
+        "listed": 37,
+        "emitted": 30
+      },
+      "SCI": {
+        "listed": 69,
+        "emitted": 39
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "SCI/CS",
+      "stage": "supplemental_only",
+      "CS": {
+        "listed": 37,
+        "emitted": 10
+      },
+      "SCI": {
+        "listed": 69,
+        "emitted": 59
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "SCI/CS",
+      "stage": "all_unavailable",
+      "CS": {
+        "listed": 0,
+        "emitted": 0
+      },
+      "SCI": {
+        "listed": 0,
+        "emitted": 0
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "SCI/CS",
+      "stage": "restored",
+      "CS": {
+        "listed": 38,
+        "emitted": 38
+      },
+      "SCI": {
+        "listed": 69,
+        "emitted": 69
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    },
+    {
+      "order": "SCI/CS",
+      "stage": "supplemental_only_again",
+      "CS": {
+        "listed": 37,
+        "emitted": 10
+      },
+      "SCI": {
+        "listed": 69,
+        "emitted": 59
+      },
+      "saved_original_ids": 1147,
+      "added_ids": 0,
+      "active_current_originals": 38,
+      "archived_originals_with_expected_current_id": 21,
+      "known_office_addresses_eligible_for_outreach": 0
+    }
+  ],
+  "expected_rows_meeting_checks_in_each_of_eight_rounds": [
+    {
+      "original_id": "faculty-pitt-cs-0a7196f1",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-0a7196f1"
+    },
+    {
+      "original_id": "faculty-pitt-cs-0c5994c8",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-0c5994c8"
+    },
+    {
+      "original_id": "faculty-pitt-cs-19abea97",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-19abea97"
+    },
+    {
+      "original_id": "faculty-pitt-cs-1c364170",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-1c364170"
+    },
+    {
+      "original_id": "faculty-pitt-cs-1e95f188",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-1e95f188"
+    },
+    {
+      "original_id": "faculty-pitt-cs-2ba882dd",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-2ba882dd"
+    },
+    {
+      "original_id": "faculty-pitt-cs-37b1191a",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-37b1191a"
+    },
+    {
+      "original_id": "faculty-pitt-cs-3af1e2c9",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-3af1e2c9"
+    },
+    {
+      "original_id": "faculty-pitt-cs-3f53f93b",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-3f53f93b"
+    },
+    {
+      "original_id": "faculty-pitt-cs-3f9ffe0f",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-3f9ffe0f"
+    },
+    {
+      "original_id": "faculty-pitt-cs-484b0709",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-484b0709"
+    },
+    {
+      "original_id": "faculty-pitt-cs-4adac42c",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-4adac42c"
+    },
+    {
+      "original_id": "faculty-pitt-cs-4cb65ded",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-4cb65ded"
+    },
+    {
+      "original_id": "faculty-pitt-cs-51874e7c",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-51874e7c"
+    },
+    {
+      "original_id": "faculty-pitt-cs-56354f0d",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-56354f0d"
+    },
+    {
+      "original_id": "faculty-pitt-cs-5d973318",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-5d973318"
+    },
+    {
+      "original_id": "faculty-pitt-cs-6314125a",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-6314125a"
+    },
+    {
+      "original_id": "faculty-pitt-cs-74aa7171",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-74aa7171"
+    },
+    {
+      "original_id": "faculty-pitt-cs-82cfa3dd",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-82cfa3dd"
+    },
+    {
+      "original_id": "faculty-pitt-cs-8e9a39d1",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-8e9a39d1"
+    },
+    {
+      "original_id": "faculty-pitt-cs-904e37e9",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-904e37e9"
+    },
+    {
+      "original_id": "faculty-pitt-cs-a2c06c2d",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-a2c06c2d"
+    },
+    {
+      "original_id": "faculty-pitt-cs-a32cf06c",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-a32cf06c"
+    },
+    {
+      "original_id": "faculty-pitt-cs-af900fe5",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-af900fe5"
+    },
+    {
+      "original_id": "faculty-pitt-cs-c488d791",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-c488d791"
+    },
+    {
+      "original_id": "faculty-pitt-cs-ca9eac3e",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-ca9eac3e"
+    },
+    {
+      "original_id": "faculty-pitt-cs-d11d4a3e",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-d11d4a3e"
+    },
+    {
+      "original_id": "faculty-pitt-cs-dff77505",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-dff77505"
+    },
+    {
+      "original_id": "faculty-pitt-cs-e47a8796",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-e47a8796"
+    },
+    {
+      "original_id": "faculty-pitt-cs-e643e15e",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-e643e15e"
+    },
+    {
+      "original_id": "faculty-pitt-cs-fa134731",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-cs-fa134731"
+    },
+    {
+      "original_id": "faculty-pitt-sci-1a259c98",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-1a259c98"
+    },
+    {
+      "original_id": "faculty-pitt-sci-68e4dc1f",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-68e4dc1f"
+    },
+    {
+      "original_id": "faculty-pitt-sci-6f929413",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-6f929413"
+    },
+    {
+      "original_id": "faculty-pitt-sci-754eb010",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-754eb010"
+    },
+    {
+      "original_id": "faculty-pitt-sci-7856039c",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-7856039c"
+    },
+    {
+      "original_id": "faculty-pitt-sci-7f74cde0",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-7f74cde0"
+    },
+    {
+      "original_id": "faculty-pitt-sci-c98f98a1",
+      "actionable_identity": true,
+      "current_original_id": "faculty-pitt-sci-c98f98a1"
+    },
+    {
+      "original_id": "faculty-pitt-sci-14a56204",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-3f9ffe0f"
+    },
+    {
+      "original_id": "faculty-pitt-sci-2572b392",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-2ba882dd"
+    },
+    {
+      "original_id": "faculty-pitt-sci-28c8e3a8",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-904e37e9"
+    },
+    {
+      "original_id": "faculty-pitt-sci-29d93956",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-51874e7c"
+    },
+    {
+      "original_id": "faculty-pitt-sci-2be4c8fe",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-56354f0d"
+    },
+    {
+      "original_id": "faculty-pitt-sci-32611613",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-82cfa3dd"
+    },
+    {
+      "original_id": "faculty-pitt-sci-4589e830",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-dff77505"
+    },
+    {
+      "original_id": "faculty-pitt-sci-4f79f9e2",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-af900fe5"
+    },
+    {
+      "original_id": "faculty-pitt-sci-59ad971d",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-74aa7171"
+    },
+    {
+      "original_id": "faculty-pitt-sci-5e1411ba",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-1c364170"
+    },
+    {
+      "original_id": "faculty-pitt-sci-69cd00cb",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-e47a8796"
+    },
+    {
+      "original_id": "faculty-pitt-sci-70eaa1ec",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-3af1e2c9"
+    },
+    {
+      "original_id": "faculty-pitt-sci-7726e23a",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-a32cf06c"
+    },
+    {
+      "original_id": "faculty-pitt-sci-7fd7738f",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-ca9eac3e"
+    },
+    {
+      "original_id": "faculty-pitt-sci-812bd33b",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-e643e15e"
+    },
+    {
+      "original_id": "faculty-pitt-sci-8fbba638",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-fa134731"
+    },
+    {
+      "original_id": "faculty-pitt-sci-a942a486",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-5d973318"
+    },
+    {
+      "original_id": "faculty-pitt-sci-b90f8e25",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-4adac42c"
+    },
+    {
+      "original_id": "faculty-pitt-sci-bb87d09b",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-a2c06c2d"
+    },
+    {
+      "original_id": "faculty-pitt-sci-e43bbb6b",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-d11d4a3e"
+    },
+    {
+      "original_id": "faculty-pitt-sci-f9905a2c",
+      "actionable_identity": false,
+      "current_original_id": "faculty-pitt-cs-0a7196f1"
+    }
+  ],
+  "outreach_check": "No known campus office mailbox passed verified_send_target during any round. No message was sent; no addresses are in this receipt.",
+  "survivor_counts": "Emitted per-unit rows count who supplied an update after cross-unit deduplication. The two campus directories overlap. Different emitted counts with source iteration order are not roster losses."
+}

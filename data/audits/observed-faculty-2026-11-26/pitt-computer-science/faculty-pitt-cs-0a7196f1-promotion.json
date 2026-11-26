@@ -1,0 +1,20 @@
+{
+  "original_id": "faculty-pitt-cs-0a7196f1",
+  "person": "Erin Walker",
+  "checked_on": "2026-11-26",
+  "previous_stored_title": "Associate Professor; Research Scientist, LRDC; Associate Dean for Research, SCI",
+  "college_current_title": "Associate Dean for Research, Professor, Department of Computer Science, Intelligent Systems Program, Research Scientist, Learning Research & Development Center",
+  "college_person": "https://www.sci.pitt.edu/people/erin-walker",
+  "college_announcement": "https://www.sci.pitt.edu/sites/default/files/inline-images/PDFs/SCI_2025_Research_Report-compressed.pdf#page=15",
+  "budget_year": 2025,
+  "printed_on_pdf_page": 15,
+  "pdf_pages": 15,
+  "reported_promotion": "Promoted to full professor in the School of Computing and Information.",
+  "original_source_implementation": "49bcd86cba4463bdc9a87d478d92c4220609b1e8",
+  "source_after_test_fixture": "95dc2ace7617bf7d0f2dbed76375e7b7d11fcc9d",
+  "controls": [
+    "faculty-pitt-sci-754eb010",
+    "faculty-pitt-sci-1a259c98"
+  ],
+  "notes": "Six monthly collection stages with the three people\u2019s six official profiles. Both other faculty retain their college-confirmed Associate Professor appointment. The nineteen full directory replays also retain Walker\u2019s verified title. A changed future observed rank, an unreviewed source URL, and a different person or unit are outside the replacement."
+}
