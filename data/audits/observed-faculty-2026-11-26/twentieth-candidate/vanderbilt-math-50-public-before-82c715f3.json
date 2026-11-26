@@ -1,0 +1,524 @@
+{
+  "scope": "Public saved-ID batch endpoint, same release bracketing, original campus source review and publication dates. Natural refresh is separate.",
+  "source_pr": 1461,
+  "stage": "before",
+  "first_version": {
+    "at": "2026-11-26T21:13:31.210606+00:00",
+    "frontend": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "backend": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "read_ids": {
+    "faculty-vanderbilt-math-003f2725": {
+      "name": "Hannah Housden",
+      "url": "https://as.vanderbilt.edu/math/bio/hannahhousden",
+      "original_id": "faculty-vanderbilt-math-003f2725",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-0f21f127": {
+      "name": "Larry G. Rolen",
+      "url": "https://as.vanderbilt.edu/math/bio/larryg-rolen",
+      "original_id": "faculty-vanderbilt-math-0f21f127",
+      "expected_campus_title": "Assistant Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-11a4831f": {
+      "name": "Amadeus Martin",
+      "url": "https://as.vanderbilt.edu/math/bio/amadeus-martin",
+      "original_id": "faculty-vanderbilt-math-11a4831f",
+      "expected_campus_title": "Senior Lecturer in Mathematics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-19be968e": {
+      "name": "Sean McAfee",
+      "url": "https://as.vanderbilt.edu/math/bio/sean-mcafee",
+      "original_id": "faculty-vanderbilt-math-19be968e",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-1b0133fd": {
+      "name": "Marcelo Disconzi",
+      "url": "https://as.vanderbilt.edu/math/bio/marcelo-disconzi",
+      "original_id": "faculty-vanderbilt-math-1b0133fd",
+      "expected_campus_title": "Associate Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-1d5fbacf": {
+      "name": "Chris Kapulkin",
+      "url": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "original_id": "faculty-vanderbilt-math-1d5fbacf",
+      "expected_campus_title": "Professor of Mathematics · Dual Appointment: Computer Science",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-233f7153": {
+      "name": "Alex Lupsasca",
+      "url": "https://as.vanderbilt.edu/math/bio/alex-lupsasca",
+      "original_id": "faculty-vanderbilt-math-233f7153",
+      "expected_campus_title": "Assistant Professor Primary appointment: Physics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-4a0b810e": {
+      "name": "Sam Sehayek",
+      "url": "https://as.vanderbilt.edu/math/bio/sam-sehayek",
+      "original_id": "faculty-vanderbilt-math-4a0b810e",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-4a34c098": {
+      "name": "Karen Butt",
+      "url": "https://as.vanderbilt.edu/math/bio/karen-butt",
+      "original_id": "faculty-vanderbilt-math-4a34c098",
+      "expected_campus_title": "Assistant Professor of Mathematics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-4b7b1cbe": {
+      "name": "Darren Creutz",
+      "url": "https://as.vanderbilt.edu/math/bio/darren-creutz",
+      "original_id": "faculty-vanderbilt-math-4b7b1cbe",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-5627cf6c": {
+      "name": "Jay Yang",
+      "url": "https://as.vanderbilt.edu/math/bio/jay-yang",
+      "original_id": "faculty-vanderbilt-math-5627cf6c",
+      "expected_campus_title": "Research Assistant Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-58d474c0": {
+      "name": "Sayan Das",
+      "url": "https://as.vanderbilt.edu/math/bio/sayan-das",
+      "original_id": "faculty-vanderbilt-math-58d474c0",
+      "expected_campus_title": "Assistant Professor of Mathematics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-62b94c8f": {
+      "name": "Bailey Heath",
+      "url": "https://as.vanderbilt.edu/math/bio/bailey-heath",
+      "original_id": "faculty-vanderbilt-math-62b94c8f",
+      "expected_campus_title": "Senior Lecturer in Mathematics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-62ebf5a9": {
+      "name": "Dan Margalit",
+      "url": "https://as.vanderbilt.edu/math/bio/dan-margalit",
+      "original_id": "faculty-vanderbilt-math-62ebf5a9",
+      "expected_campus_title": "Stevenson Professor Department Chair",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-6b9a40d2": {
+      "name": "Denis Osin",
+      "url": "https://as.vanderbilt.edu/math/bio/denis-osin",
+      "original_id": "faculty-vanderbilt-math-6b9a40d2",
+      "expected_campus_title": "Stevenson Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-727dd848": {
+      "name": "Philip Crooke",
+      "url": "https://as.vanderbilt.edu/math/bio/philip-crooke",
+      "original_id": "faculty-vanderbilt-math-727dd848",
+      "expected_campus_title": null,
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": true
+    },
+    "faculty-vanderbilt-math-748ee12b": {
+      "name": "Tekin Karadağ",
+      "url": "https://as.vanderbilt.edu/math/bio/tekin-karada",
+      "original_id": "faculty-vanderbilt-math-748ee12b",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-76afc187": {
+      "name": "Ioana Suvaina",
+      "url": "https://as.vanderbilt.edu/math/bio/ioana-suvaina",
+      "original_id": "faculty-vanderbilt-math-76afc187",
+      "expected_campus_title": "Associate Professor Director of Graduate Studies",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-76b40b18": {
+      "name": "Jila Niknejad",
+      "url": "https://as.vanderbilt.edu/math/bio/jila-niknejad",
+      "original_id": "faculty-vanderbilt-math-76b40b18",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-7db3f2fa": {
+      "name": "Anna Marie Bohmann",
+      "url": "https://as.vanderbilt.edu/math/bio/annamarie-bohmann",
+      "original_id": "faculty-vanderbilt-math-7db3f2fa",
+      "expected_campus_title": "Associate Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-86386ebd": {
+      "name": "Stephen G. Simpson",
+      "url": "https://as.vanderbilt.edu/math/bio/stephen-simpson",
+      "original_id": "faculty-vanderbilt-math-86386ebd",
+      "expected_campus_title": "Research Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-92a7243e": {
+      "name": "Dietmar Bisch",
+      "url": "https://as.vanderbilt.edu/math/bio/dietmar-bisch",
+      "original_id": "faculty-vanderbilt-math-92a7243e",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-976727e7": {
+      "name": "Blane Hollingsworth",
+      "url": "https://as.vanderbilt.edu/math/bio/blane-hollingsworth",
+      "original_id": "faculty-vanderbilt-math-976727e7",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-9ac31063": {
+      "name": "Akram Aldroubi",
+      "url": "https://as.vanderbilt.edu/math/bio/akram-aldroubi",
+      "original_id": "faculty-vanderbilt-math-9ac31063",
+      "expected_campus_title": "Stevenson Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-9d267bc4": {
+      "name": "Larry Schumaker",
+      "url": "https://as.vanderbilt.edu/math/bio/larry-schumaker",
+      "original_id": "faculty-vanderbilt-math-9d267bc4",
+      "expected_campus_title": "Stevenson Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-9fdcdcb0": {
+      "name": "Li Ying",
+      "url": "https://as.vanderbilt.edu/math/bio/li-ying",
+      "original_id": "faculty-vanderbilt-math-9fdcdcb0",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-9fec5207": {
+      "name": "Gregory Patchell",
+      "url": "https://as.vanderbilt.edu/math/bio/gregory-patchell",
+      "original_id": "faculty-vanderbilt-math-9fec5207",
+      "expected_campus_title": "Assistant Professor of Mathematics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-a72735e2": {
+      "name": "Tom Potter",
+      "url": "https://as.vanderbilt.edu/math/bio/tom-potter",
+      "original_id": "faculty-vanderbilt-math-a72735e2",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-ac3c4dec": {
+      "name": "Mark Ellingham",
+      "url": "https://as.vanderbilt.edu/math/bio/mark-ellingham",
+      "original_id": "faculty-vanderbilt-math-ac3c4dec",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-aca9b9bb": {
+      "name": "Madeline Brandt",
+      "url": "https://as.vanderbilt.edu/math/bio/madeline-brandt",
+      "original_id": "faculty-vanderbilt-math-aca9b9bb",
+      "expected_campus_title": "Assistant Professor · Cornelius Vanderbilt Dean's Faculty Fellow",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-adb2e776": {
+      "name": "Alice Mark",
+      "url": "https://as.vanderbilt.edu/math/bio/alice-mark",
+      "original_id": "faculty-vanderbilt-math-adb2e776",
+      "expected_campus_title": "Assistant Professor of the Practice Barbara Burnett Director of Undergraduate Mathematics Education",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-af44295f": {
+      "name": "Doug Hardin",
+      "url": "https://as.vanderbilt.edu/math/bio/doug-hardin",
+      "original_id": "faculty-vanderbilt-math-af44295f",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-b05184b0": {
+      "name": "Wanlin Li",
+      "url": "https://as.vanderbilt.edu/math/bio/li-wanlin",
+      "original_id": "faculty-vanderbilt-math-b05184b0",
+      "expected_campus_title": "Assistant Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-bcb6a8a9": {
+      "name": "Dechao Zheng",
+      "url": "https://as.vanderbilt.edu/math/bio/dechao-zheng",
+      "original_id": "faculty-vanderbilt-math-bcb6a8a9",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-bff54fb3": {
+      "name": "Jacob Haley",
+      "url": "https://as.vanderbilt.edu/math/bio/jacob-haley",
+      "original_id": "faculty-vanderbilt-math-bff54fb3",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-c12b0bf6": {
+      "name": "Mike Neamtu",
+      "url": "https://as.vanderbilt.edu/math/bio/mike-neamtu",
+      "original_id": "faculty-vanderbilt-math-c12b0bf6",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-cef39986": {
+      "name": "Jared Speck",
+      "url": "https://as.vanderbilt.edu/math/bio/jared-speck",
+      "original_id": "faculty-vanderbilt-math-cef39986",
+      "expected_campus_title": "Stevenson Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-cf3d26ad": {
+      "name": "Spencer Dowdall",
+      "url": "https://as.vanderbilt.edu/math/bio/spencer-dowdall",
+      "original_id": "faculty-vanderbilt-math-cf3d26ad",
+      "expected_campus_title": "Associate Professor Director of Postdoctoral Training",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-d1ba43a4": {
+      "name": "Henry Chan",
+      "url": "https://as.vanderbilt.edu/math/bio/henry-chan",
+      "original_id": "faculty-vanderbilt-math-d1ba43a4",
+      "expected_campus_title": "Assistant Dean, Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-d2f3b2f3": {
+      "name": "Glenn Webb",
+      "url": "https://as.vanderbilt.edu/math/bio/glenn-webb",
+      "original_id": "faculty-vanderbilt-math-d2f3b2f3",
+      "expected_campus_title": "Centennial Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-db08a99f": {
+      "name": "Nicholas Wawrykow",
+      "url": "https://as.vanderbilt.edu/math/bio/nicholas-wawrykow",
+      "original_id": "faculty-vanderbilt-math-db08a99f",
+      "expected_campus_title": "Research Assistant Professor in Mathematics",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-dfa1ba47": {
+      "name": "Taylor Rhoads",
+      "url": "https://as.vanderbilt.edu/math/bio/taylor-rhoads",
+      "original_id": "faculty-vanderbilt-math-dfa1ba47",
+      "expected_campus_title": "Senior Lecturer Director of Undergraduate Studies",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-e0439483": {
+      "name": "Faith Zhang",
+      "url": "https://as.vanderbilt.edu/math/bio/faith-zhang",
+      "original_id": "faculty-vanderbilt-math-e0439483",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-e5abb7b3": {
+      "name": "Shitu Fawaz Jimoh",
+      "url": "https://as.vanderbilt.edu/math/bio/shitufawaz-jimoh",
+      "original_id": "faculty-vanderbilt-math-e5abb7b3",
+      "expected_campus_title": "Senior Lecturer",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-e6bb6cd9": {
+      "name": "Jean-Francois Paquet",
+      "url": "https://as.vanderbilt.edu/math/bio/jean-francois-paquet",
+      "original_id": "faculty-vanderbilt-math-e6bb6cd9",
+      "expected_campus_title": "Assistant Professor Primary appointment: Physics Steven and Bunny Fayne Dean's Faculty Fellow",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-e6c40273": {
+      "name": "Rares Rasdeaconu",
+      "url": "https://as.vanderbilt.edu/math/bio/rares-rasdeaconu",
+      "original_id": "faculty-vanderbilt-math-e6c40273",
+      "expected_campus_title": "Research Associate Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-e9826b43": {
+      "name": "Jesse Peterson",
+      "url": "https://as.vanderbilt.edu/math/bio/jesse-peterson",
+      "original_id": "faculty-vanderbilt-math-e9826b43",
+      "expected_campus_title": "Adjoint Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-f7a0a768": {
+      "name": "Edward Saff",
+      "url": "https://as.vanderbilt.edu/math/bio/edward-saff",
+      "original_id": "faculty-vanderbilt-math-f7a0a768",
+      "expected_campus_title": null,
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": true
+    },
+    "faculty-vanderbilt-math-fd2c4247": {
+      "name": "Alexander Powell",
+      "url": "https://as.vanderbilt.edu/math/bio/alexander-powell",
+      "original_id": "faculty-vanderbilt-math-fd2c4247",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    },
+    "faculty-vanderbilt-math-fda8f56d": {
+      "name": "Gieri Simonett",
+      "url": "https://as.vanderbilt.edu/math/bio/gieri-simonett",
+      "original_id": "faculty-vanderbilt-math-fda8f56d",
+      "expected_campus_title": "Professor",
+      "published_rank": null,
+      "source_receipt": null,
+      "matches_review": false
+    }
+  },
+  "output_differences": [
+    "faculty-vanderbilt-math-003f2725",
+    "faculty-vanderbilt-math-0f21f127",
+    "faculty-vanderbilt-math-11a4831f",
+    "faculty-vanderbilt-math-19be968e",
+    "faculty-vanderbilt-math-1b0133fd",
+    "faculty-vanderbilt-math-1d5fbacf",
+    "faculty-vanderbilt-math-233f7153",
+    "faculty-vanderbilt-math-4a0b810e",
+    "faculty-vanderbilt-math-4a34c098",
+    "faculty-vanderbilt-math-4b7b1cbe",
+    "faculty-vanderbilt-math-5627cf6c",
+    "faculty-vanderbilt-math-58d474c0",
+    "faculty-vanderbilt-math-62b94c8f",
+    "faculty-vanderbilt-math-62ebf5a9",
+    "faculty-vanderbilt-math-6b9a40d2",
+    "faculty-vanderbilt-math-748ee12b",
+    "faculty-vanderbilt-math-76afc187",
+    "faculty-vanderbilt-math-76b40b18",
+    "faculty-vanderbilt-math-7db3f2fa",
+    "faculty-vanderbilt-math-86386ebd",
+    "faculty-vanderbilt-math-92a7243e",
+    "faculty-vanderbilt-math-976727e7",
+    "faculty-vanderbilt-math-9ac31063",
+    "faculty-vanderbilt-math-9d267bc4",
+    "faculty-vanderbilt-math-9fdcdcb0",
+    "faculty-vanderbilt-math-9fec5207",
+    "faculty-vanderbilt-math-a72735e2",
+    "faculty-vanderbilt-math-ac3c4dec",
+    "faculty-vanderbilt-math-aca9b9bb",
+    "faculty-vanderbilt-math-adb2e776",
+    "faculty-vanderbilt-math-af44295f",
+    "faculty-vanderbilt-math-b05184b0",
+    "faculty-vanderbilt-math-bcb6a8a9",
+    "faculty-vanderbilt-math-bff54fb3",
+    "faculty-vanderbilt-math-c12b0bf6",
+    "faculty-vanderbilt-math-cef39986",
+    "faculty-vanderbilt-math-cf3d26ad",
+    "faculty-vanderbilt-math-d1ba43a4",
+    "faculty-vanderbilt-math-d2f3b2f3",
+    "faculty-vanderbilt-math-db08a99f",
+    "faculty-vanderbilt-math-dfa1ba47",
+    "faculty-vanderbilt-math-e0439483",
+    "faculty-vanderbilt-math-e5abb7b3",
+    "faculty-vanderbilt-math-e6bb6cd9",
+    "faculty-vanderbilt-math-e6c40273",
+    "faculty-vanderbilt-math-e9826b43",
+    "faculty-vanderbilt-math-fd2c4247",
+    "faculty-vanderbilt-math-fda8f56d"
+  ],
+  "last_version": {
+    "at": "2026-11-26T21:13:40.753158+00:00",
+    "frontend": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "backend": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "known_campus_ranks": 48,
+  "two_unpublished_ranks": [
+    "faculty-vanderbilt-math-727dd848",
+    "faculty-vanderbilt-math-f7a0a768"
+  ],
+  "verified_originals": 50,
+  "rank_receipts_matched": 2
+}
