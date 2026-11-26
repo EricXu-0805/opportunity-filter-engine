@@ -71,6 +71,10 @@ s=s.replace('        enter_results(page)',
             f"        assert 'data-release-sha=\"{sha}\"' in ctx.request.get(site).text()\n"
             '        receipt["frontend_release"] = receipt["backend_release"]\n' + campus_step)
 if academic:
+    # Before the host eligibility update the generic computer-science profile
+    # could see Indiana. The released biomedical/behavioral requirement excludes it.
+    s=s.replace('assert ids==(["sro-3ec4ea4e"] if crisp else ["nsf-reu-2447670"])',
+                'assert ids==([] if crisp else ["nsf-reu-2447670"])')
     s=s.replace('                assert expected in body', '''                e = fields["eligibility"]
                 majors = (["Biomedical science","Behavioral science"] if crisp else
                           ["Mathematics","Statistics","Computer Science","Social science"])
