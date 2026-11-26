@@ -69,10 +69,10 @@ def _read(row: dict) -> str:
     return "observed"
 
 
-def observe_materials_ranks(rows: list[dict]) -> None:
+def observe_materials_ranks(rows: list[dict], *, deep: bool) -> None:
     for row in rows:
         if row["id"].startswith(_ID_PREFIX) and _PROFILE.fullmatch(row.get("url") or ""):
-            row["metadata"]["faculty_title_read_status"] = _read(row)
+            row["metadata"]["faculty_title_read_status"] = _read(row) if deep else "not_attempted"
 
 
 def preserve_unread_rank(previous: dict, incoming: dict) -> None:
@@ -80,7 +80,7 @@ def preserve_unread_rank(previous: dict, incoming: dict) -> None:
     if (not incoming["id"].startswith(_ID_PREFIX) or previous.get("id") != incoming["id"]
             or previous.get("pi_name") != incoming.get("pi_name")):
         return
-    new, old = incoming["metadata"], previous["metadata"]
+    new, old = incoming["metadata"], previous.get("metadata") or {}
     status = new.get("faculty_title_read_status")
     if (old.get("is_active") is False and new.get("is_active") is False
             and old.get("deactivation_reason") == new.get("deactivation_reason") and old.get("deactivated_at")):
@@ -91,7 +91,7 @@ def preserve_unread_rank(previous: dict, incoming: dict) -> None:
             in (RETIRED_TITLE_REASON, "profile_identity_mismatch") and new.get("is_active") is not False):
         new.update(is_active=False, deactivation_reason=old["deactivation_reason"], deactivated_at=old.get("deactivated_at"))
     receipt = old.get("faculty_title_observation")
-    if status != "unavailable" or not isinstance(receipt, dict):
+    if status not in ("unavailable", "not_attempted") or not isinstance(receipt, dict):
         return
     try:
         checked_on = date.fromisoformat(receipt["checked_on"])

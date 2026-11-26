@@ -1,10 +1,11 @@
+import json
 from copy import deepcopy
 
 import pytest
 from bs4 import BeautifulSoup
 
-from src.collectors import ucb_common
-from src.collectors.schools import udel_faculty, udel_materials_ranks
+from src.collectors import ucb_common, udel_materials_ranks
+from src.collectors.schools import udel_faculty
 
 URL = "https://mseg.udel.edu/people/doty/"
 OID = "faculty-udel-mseg-22466e16"
@@ -32,7 +33,7 @@ def page(title="Professor", name="Matthew Doty", *, final=URL, checked="2026-11-
 def read(monkeypatch, html, previous=None):
     fresh = row()
     monkeypatch.setattr(ucb_common, "fetch_soup", lambda *a, **kw: html)
-    udel_materials_ranks.observe_materials_ranks([fresh])
+    udel_materials_ranks.observe_materials_ranks([fresh], deep=True)
     if previous:
         udel_materials_ranks.preserve_unread_rank(previous, fresh)
     return fresh
@@ -94,13 +95,11 @@ def test_other_profile_undated_response_and_sibling_units_do_not_receive_a_rank(
                 dict(row(), url="https://other.edu/people/doty/")]
     expected = deepcopy(controls)
     monkeypatch.setattr(ucb_common, "fetch_soup", lambda *a, **kw: pytest.fail("unrelated URL or unit"))
-    udel_materials_ranks.observe_materials_ranks(controls)
+    udel_materials_ranks.observe_materials_ranks(controls, deep=True)
     assert controls == expected
 
 
 def test_normal_collector_wrapper_and_upsert_use_rank_observation(monkeypatch, tmp_path):
-    import json
-
     work = tmp_path / "corpus.json"
     monkeypatch.setattr(ucb_common, "PROCESSED_FILE", work)
     monkeypatch.setattr(udel_faculty.faculty_graph, "fetch_and_normalize", lambda *a, **kw: [row()])
@@ -111,3 +110,65 @@ def test_normal_collector_wrapper_and_upsert_use_rank_observation(monkeypatch, t
     monkeypatch.setattr(ucb_common, "fetch_soup", lambda *a, **kw: None)
     assert udel_faculty.merge_into_processed(udel_faculty.fetch_and_normalize()) == (0, 1)
     assert json.loads(work.read_text())[0]["metadata"]["faculty_title_observation"]["checked_on"] == "2026-11-22"
+
+
+@pytest.mark.parametrize("with_seed", [False, True])
+@pytest.mark.parametrize("initial_rank", ["Professor", "Professor Emeritus"])
+def test_normal_shallow_cycle_and_unread_deep_cycle_keep_original_dated_rank(
+        monkeypatch, tmp_path, with_seed, initial_rank):
+    school = udel_faculty.SCHOOL
+    unit = next(d for d in school["departments"] if d["short"] == "MSEG")
+    if with_seed:
+        # Scrape-only today. A retained/curated entry can also emit this same original ID on a shallow run.
+        unit = dict(unit, faculty=[{"name": "Matthew Doty", "url": URL}])
+    monkeypatch.setattr(udel_faculty, "SCHOOL", dict(school, departments=[unit]))
+    monkeypatch.delenv("OFE_ENRICH_PROFILES", raising=False)
+    directory = BeautifulSoup(
+        '<div id="faculty"><div class="et_pb_text_inner"><h4>'
+        '<a href="/people/doty/">Matthew Doty</a></h4></div></div>', "html.parser")
+    profile = page(initial_rank)
+    requests = []
+
+    def fetch(url, **kwargs):
+        requests.append(url)
+        if url == unit["directory_url"]:
+            return directory
+        assert url == URL
+        return profile
+
+    monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
+    corpus = tmp_path / "corpus.json"
+    corpus.write_text("[]")
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", corpus)
+
+    def cycle(*, deep):
+        requests.clear()
+        incoming = udel_faculty.fetch_and_normalize(deep=deep)
+        udel_faculty.merge_into_processed(incoming)
+        [saved] = json.loads(corpus.read_text())
+        assert saved["id"] == OID
+        return incoming, saved["metadata"]
+
+    _, original = cycle(deep=True)
+    receipt = original["faculty_title_observation"]
+    assert receipt["checked_on"] == "2026-11-22" and receipt["title"] == initial_rank
+    active = original["is_active"]
+    assert active == (initial_rank == "Professor")
+
+    shallow, held = cycle(deep=False)
+    assert requests == []
+    assert [r["id"] for r in shallow] == ([OID] if with_seed else [])
+    if with_seed:
+        assert held["faculty_title_read_status"] == "not_attempted"
+    assert held["faculty_title_observation"] == receipt and held["is_active"] == active
+
+    profile = None
+    _, held = cycle(deep=True)
+    assert held["faculty_title"] == initial_rank and held["faculty_title_observation"] == receipt
+    assert held["is_active"] == active and held["faculty_title_read_status"] == "unavailable"
+
+    profile = page("Research Professor", checked="2026-11-25T21:30:00+00:00")
+    _, restored = cycle(deep=True)
+    assert restored["is_active"] and restored["faculty_title_read_status"] == "observed"
+    assert restored["faculty_title"] == "Research Professor"
+    assert restored["faculty_title_observation"] == dict(receipt, title="Research Professor", checked_on="2026-11-25")
