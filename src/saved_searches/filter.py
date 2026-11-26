@@ -49,6 +49,7 @@ from backend.lib.public_projection import redact_embedded_emails
 from backend.routes.matches import _has_research_topic, _in_view_scope, _match_view_row
 from src.evidence import faculty_contact_claims_unverified, record_kind, stated_listing_deadline
 from src.matcher.ranker import _normalize_type_key, _word_re, expand_search_aliases, without_web_addresses
+from src.normalizers import fodommat
 
 
 def days_until(deadline: str | None) -> int | None:
@@ -298,6 +299,8 @@ def filter_opportunities(
     served: dict | None = None,
     home_school: str | None = "uiuc",
     view_rows: Mapping | None = None,
+    excluded_ids: set[str] | None = None,
+    preferred_id: str = fodommat.HOST_ID,
 ) -> list[dict]:
     """Return opportunities matching ``filters`` + ``query`` text search.
 
@@ -312,12 +315,16 @@ def filter_opportunities(
     """
     q = (query or "").strip().lower()
     scope = filters.get("scope") or ""
-    return [
+    selected = [
         o for o in opportunities
-        if match_filter(o, filters)
+        if (not excluded_ids or o.get("id") not in excluded_ids) and match_filter(o, filters)
         and _matches_scope(o, scope, home_school, view_rows)
         and _matches_query(o, q, served)
     ]
+    if fodommat.records_share_offering(selected):
+        hide = fodommat.HOST_ID if preferred_id == fodommat.DIRECTORY_ID else fodommat.DIRECTORY_ID
+        return [o for o in selected if o.get("id") != hide]
+    return selected
 
 
 def matching_ids(
@@ -328,6 +335,8 @@ def matching_ids(
     served: dict | None = None,
     home_school: str | None = "uiuc",
     view_rows: Mapping | None = None,
+    excluded_ids: set[str] | None = None,
+    preferred_id: str = fodommat.HOST_ID,
 ) -> list[str]:
     """Same as filter_opportunities but returns just the opportunity IDs.
 
@@ -339,6 +348,7 @@ def matching_ids(
         for o in filter_opportunities(
             opportunities, filters, query,
             served=served, home_school=home_school, view_rows=view_rows,
+            excluded_ids=excluded_ids, preferred_id=preferred_id,
         )
         if o.get("id")
     ]
