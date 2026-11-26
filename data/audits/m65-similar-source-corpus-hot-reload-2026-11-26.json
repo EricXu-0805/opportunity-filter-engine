@@ -1,0 +1,112 @@
+{
+  "scope": "Local deterministic race across the normal corpus file publication path, with a barrier after source lookup. The candidate executes its ordinary FastAPI HTTP route. The parent executes its frozen original handler. Only the original parent returns results from a different generation. The repaired candidate returns the source and peer from the same generation.",
+  "observed_utc": "2026-11-26T12:22:58.443515+00:00",
+  "parent": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "old_candidate": "e0f0eb17d362833f0162d47ed35d66161335f26e",
+  "scenarios": [
+    {
+      "implementation": "parent",
+      "original_source": "race-source",
+      "first_generation": [
+        "only-in-generation-A",
+        "race-source"
+      ],
+      "new_generation": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "returned_source_id": "race-source",
+      "returned_candidates": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "source_absent_in_new_generation": true
+    },
+    {
+      "implementation": "candidate",
+      "original_source": "race-source",
+      "first_generation": [
+        "only-in-generation-A",
+        "race-source"
+      ],
+      "new_generation": [
+        "only-in-generation-B",
+        "other-in-generation-B"
+      ],
+      "returned_source_id": "race-source",
+      "returned_candidates": [
+        "only-in-generation-A"
+      ],
+      "source_absent_in_new_generation": true
+    }
+  ],
+  "candidate": "acc2e1c106b6dab8df95f10180906850e3ac69ed",
+  "tests_passed": 700,
+  "independent_old_candidate_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/89a82090d095fe7faeb8875fc46afd2b9590fd23/data/audits/observed-faculty-2026-11-26/independent-1377-hot-reload.json",
+  "full_release_149774_parity_and_local_timings": [
+    {
+      "id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "limit": 1,
+      "total": 7241,
+      "time": {
+        "baseline": 0.46333133429288864,
+        "candidate": 0.47693712543696165
+      },
+      "sha256": "6732ecd3b53c7aa0dbd5fdeec254423f947f2cf65cda2ce71202fef2bb70aa94"
+    },
+    {
+      "id": "faculty-cs-321c7f13",
+      "limit": 5,
+      "total": 132766,
+      "time": {
+        "candidate": 0.18326604226604104,
+        "baseline": 0.5309636667370796
+      },
+      "sha256": "2a0e5677aa5469a970a9507184b51f79f6f3df01ee8e741ae91de5ebbb371dc1"
+    },
+    {
+      "id": "faculty-cincinnati-cs-00772f54",
+      "limit": 20,
+      "total": 130731,
+      "time": {
+        "baseline": 1.190985499881208,
+        "candidate": 0.18448020797222853
+      },
+      "sha256": "9aa871dd86aa1745ce307e5c6c2f30916f70117e18d5bcb38ac1327b2faa79fc"
+    },
+    {
+      "id": "faculty-emory-rsph-6e024408",
+      "limit": 5,
+      "total": 130732,
+      "time": {
+        "candidate": 0.1792308329604566,
+        "baseline": 0.5259735411964357
+      },
+      "sha256": "61d0fc7472a7dfd7731fcb881d96fc39efa5cfd6de805d57c04a03d410ae482d"
+    },
+    {
+      "id": "faculty-uconn-pols-739644c6",
+      "limit": 3,
+      "total": 130731,
+      "time": {
+        "baseline": 1.124191917013377,
+        "candidate": 0.17548095900565386
+      },
+      "sha256": "07de47cca005d803a59fef532bf41cecd2d9065712dcbee2308ee9654639692e"
+    },
+    {
+      "id": "faculty-uconn-pols-840e7c22",
+      "limit": 20,
+      "total": 130731,
+      "time": {
+        "candidate": 0.18256499990820885,
+        "baseline": 1.1774913747794926
+      },
+      "sha256": "0d499db1f8ae36576664c6266556a7510000556b13c043fd08d543b986c11aca"
+    }
+  ],
+  "warm_seconds_medians": {
+    "baseline": 1.124191917013377,
+    "candidate": 0.18256499990820885
+  }
+}
