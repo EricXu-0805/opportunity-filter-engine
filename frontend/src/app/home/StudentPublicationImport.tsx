@@ -19,7 +19,7 @@ export function StudentPublicationImport({ scholar, items, disabled, copy, onCon
   const [error, setError] = useState(false);
   const identifier = authorIdentifier(author);
   return <details className="mt-3 rounded-lg border p-3">
-    <summary className="cursor-pointer font-medium">{copy('Import my publications from OpenAlex', '从 OpenAlex 导入我的论文')}</summary>
+    <summary id="student-publication-import" className="scroll-mt-24 cursor-pointer font-medium">{copy('Import my publications from OpenAlex', '从 OpenAlex 导入我的论文')}</summary>
     {!scholar ? <p className="mt-2 text-sm"><a className="underline" href="#scholar_url">{copy('Add your Google Scholar profile in Online Profiles first.', '请先在在线资料中填写本人的 Google Scholar 主页。')}</a></p> :
       <fieldset disabled={disabled} className="mt-3 space-y-3 text-sm">
         <p>{copy('Check that both public profiles identify you.', '请核对这两个公开作者主页是否都属于你。')} <a className="underline" target="_blank" rel="noreferrer" href={'https://scholar.google.com/citations?user=' + scholar}>Google Scholar · {scholar}</a></p>
@@ -46,6 +46,7 @@ export function StudentPublicationImport({ scholar, items, disabled, copy, onCon
         </>}
         {error && <p role="alert">{copy('Use a public OpenAlex Works JSON export containing IDs and authorships, up to 200 works and 2 million characters.', '请使用包含作品 ID 与署名的公开 OpenAlex 作品 JSON，最多 200 篇、200 万字符。')}</p>}
         {result && <div aria-live="polite"><p>{copy('Matching works', '匹配作品')} · {result.works.length} / {copy('Skipped', '已略过')} · {result.skipped}</p>
+          {result.works.length > 0 && <p>{copy('Open each work and check your byline before confirming.', '请打开作品来源，核对自己的署名后再确认。')}</p>}
           <ul>{result.works.map((work) => <li className="mt-3" key={work.source.work_id}>
             <a className="font-medium underline" href={'https://openalex.org/' + work.source.work_id} target="_blank" rel="noreferrer">{work.title}</a>
             <p>{copy('Listed author', '作品署名')} · {work.authorName} · {work.source.author_id}{work.doi && <> · DOI {work.doi}</>}</p>

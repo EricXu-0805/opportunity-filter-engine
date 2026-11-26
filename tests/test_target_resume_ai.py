@@ -129,11 +129,16 @@ def test_confirmed_student_work_preserves_its_private_identity_receipt_outside_r
     master = snapshot["resume_master"]
     receipt = {"scholar_id": "StudentExample", "author_id": "A123", "work_id": "W456", "orcid": "0000-0002-1825-0097"}
     master["publications"].append({"id": "work", "details": [], "title": fact("work-title", "Example publication"),
-                                   "student_authorship": receipt})
+                                   "url": fact("work-url", "https://openalex.org/W456"), "student_authorship": receipt})
     validate_master(master)
     printed = json.dumps(confirmed_document(snapshot, master["source_signature"]))
     assert "Example publication" in printed
-    assert all(value not in printed for value in receipt.values())
+    assert all(receipt[key] not in printed for key in ("scholar_id", "author_id", "orcid"))
+    assert "https://openalex.org/W456" in printed
+    receipt["work_id"] = "W999"
+    with pytest.raises(InvalidTargetResume):
+        validate_master(master)
+    receipt["work_id"] = "W456"
     receipt["orcid"] = "0000-0002-1825-0098"
     with pytest.raises(InvalidTargetResume):
         validate_master(master)

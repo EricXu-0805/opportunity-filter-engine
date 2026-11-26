@@ -2,6 +2,7 @@
 
 import { Github, Globe, GraduationCap, Linkedin, Loader2 } from 'lucide-react';
 import Card from '@/components/Card';
+import { scholarUser } from '@/lib/student-publications';
 import type { ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
 
@@ -92,6 +93,13 @@ export function OnlineProfilesCard({
             placeholder={t('home.form.scholarPlaceholder')}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
           />
+          {scholarUser(profile.scholar_url) && <a className="mt-2 inline-block text-sm text-indigo-700 underline" href="#student-publication-import"
+            onClick={() => {
+              const target = document.getElementById('student-publication-import');
+              for (let parent = target?.parentElement; parent; parent = parent.parentElement) {
+                if (parent instanceof HTMLDetailsElement) parent.open = true;
+              }
+            }}>{t('home.form.scholarImport')}</a>}
         </div>
       </div>
     </Card>

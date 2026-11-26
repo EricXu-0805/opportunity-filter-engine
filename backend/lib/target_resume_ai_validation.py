@@ -214,6 +214,9 @@ def validate_master(master):
             shape(item, ("id", "details", "kind") if name == "activities" else ("id", "details"), optional)
             if "student_authorship" in item:
                 validate_student_authorship(item["student_authorship"])
+                work_url = item.get("url")
+                if type(work_url) is not dict or work_url.get("value") != "https://openalex.org/" + item["student_authorship"]["work_id"]:
+                    fail("invalid_source")
             unique(item["id"], True)
             if name == "activities" and item["kind"] not in {"employment", "research", "project", "volunteer", "other"}:
                 fail("invalid_master")

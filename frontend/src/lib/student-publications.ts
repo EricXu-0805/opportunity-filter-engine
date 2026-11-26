@@ -1,5 +1,8 @@
 import type { ResumeFact, ResumePublicationItem, StudentAuthorship } from './types';
 
+const scholarHosts = new Set(['scholar.google.com', 'scholar.google.com.hk', 'scholar.google.com.tw',
+  'scholar.google.co.uk', 'scholar.google.ca', 'scholar.google.de', 'scholar.google.fr', 'scholar.google.co.jp',
+  'scholar.google.co.in', 'scholar.google.com.au', 'scholar.google.co.kr', 'scholar.google.com.br']);
 const scholarId = /^[A-Za-z0-9_-]{1,40}$/;
 const authorId = /^A[1-9][0-9]{0,18}$/;
 const workId = /^W[1-9][0-9]{0,18}$/;
@@ -9,7 +12,7 @@ const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v ===
 export function scholarUser(link?: string): string | null {
   try {
     const url = new URL(link ?? '');
-    if (url.protocol !== 'https:' || url.hostname !== 'scholar.google.com' || url.port
+    if (url.protocol !== 'https:' || !scholarHosts.has(url.hostname) || url.port
       || url.username || url.password || url.pathname !== '/citations') return null;
     const users = url.searchParams.getAll('user');
     return users.length === 1 && scholarId.test(users[0]) ? users[0] : null;
@@ -97,12 +100,12 @@ export function studentWorks(json: string, scholar: string, identity: string): {
 function publicDoi(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 300) return null;
   const doi = value.trim().replace(/^https:\/\/(?:dx\.)?doi\.org\//i, '');
-  return /^10\.\d{4,9}\/\S+$/u.test(doi) && !Array.from(doi).some((char) => char.charCodeAt(0) < 32) ? doi.toLowerCase() : null;
+  return /^10\.\d{4,9}\/\S+$/u.test(doi) && !Array.from(doi).some((char) => char.charCodeAt(0) < 32) ? doi : null;
 }
 
 export function alreadyImported(items: ResumePublicationItem[], work: StudentWork): boolean {
   return items.some((item) => item.student_authorship?.work_id === work.source.work_id || openalexWork(item.url?.value) === work.source.work_id
-    || (!!work.doi && [item.doi?.value, item.url?.value].some((value) => publicDoi(value) === work.doi)));
+    || (!!work.doi && [item.doi?.value, item.url?.value].some((value) => publicDoi(value)?.toLowerCase() === work.doi?.toLowerCase())));
 }
 
 export function confirmedStudentWork(work: StudentWork): ResumePublicationItem {

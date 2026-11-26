@@ -28,6 +28,8 @@ describe('student-supplied OpenAlex Works', () => {
       expect(saved.authors).toBeUndefined();
       expect(alreadyImported([saved], result.works[1])).toBe(true);
       expect(validateResumeMaster({ ...createEmptyResumeMaster(), publications: [saved] }).ok).toBe(true);
+      const changedLink = { ...saved, url: { ...saved.url!, value: 'https://openalex.org/W99' } };
+      expect(validateResumeMaster({ ...createEmptyResumeMaster(), publications: [changedLink] }).ok).toBe(false);
     }
   });
   it('skips ambiguous or missing identifiers, duplicate work records, and absent authorships on the confirmed profile', () => {
@@ -42,11 +44,13 @@ describe('student-supplied OpenAlex Works', () => {
     const existing = confirmedStudentWork(matched);
     delete existing.student_authorship;
     delete existing.url;
-    expect(existing.doi?.value).toBe('10.1234/fiction');
+    expect(existing.doi?.value).toBe('10.1234/Fiction');
+    existing.doi!.value = '10.1234/fiction';
     expect(alreadyImported([existing], matched)).toBe(true);
   });
   it('accepts canonical public routes, validates ORCID checksums, and rejects incorrect exports and stored metadata', () => {
     expect(scholarUser('https://scholar.google.com/citations?hl=en&user=' + scholar)).toBe(scholar);
+    expect(scholarUser('https://scholar.google.com.hk/citations?user=' + scholar)).toBe(scholar);
     expect(scholarUser('https://scholar.google.com.other.test/citations?user=' + scholar)).toBeNull();
     expect(scholarUser('https://scholar.google.com/citations?user=X&user=Y')).toBeNull();
     expect(authorIdentifier('https://openalex.org/A123')).toBe('A123');

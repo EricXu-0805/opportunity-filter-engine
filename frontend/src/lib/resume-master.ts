@@ -154,7 +154,8 @@ export function validateResumeMaster(value: unknown): ResumeMasterValidation {
     }
     for (const item of list(value.publications)) {
       shape(item, ['id', 'details'], [...PUBLICATION_FIELDS, 'student_authorship']);
-      if (Object.hasOwn(item, 'student_authorship') && !validStudentAuthorship(item.student_authorship)) fail('invalid_source');
+      if (Object.hasOwn(item, 'student_authorship') && (!validStudentAuthorship(item.student_authorship)
+        || !record(item.url) || item.url.value !== 'https://openalex.org/' + item.student_authorship.work_id)) fail('invalid_source');
       addRecord(item.id); fields(item, PUBLICATION_FIELDS); references(item.details);
     }
     for (const fact of list(value.skills)) addFact(fact);
