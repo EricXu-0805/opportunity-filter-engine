@@ -4772,6 +4772,11 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
     cfg = dept.get("research_join")
     if not cfg:
         return
+    if cfg.get("bu_provost_homepage"):
+        from .bu_questrom_research import read_research
+
+        read_research(specs)
+        return
     if "lab_cards" in cfg:
         _join_lab_cards(cfg, specs)
         return

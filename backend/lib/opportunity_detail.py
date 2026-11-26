@@ -69,6 +69,7 @@ from urllib.parse import urlsplit
 # for `paid_basis`/`location_basis`/`keywords_basis`/`skills_basis`, and a name
 # import would fail on whichever side of that cycle loads second.
 from backend.lib import public_projection
+from src.collectors.bu_questrom_research import is_reviewed_home
 from src.collectors.simplify_internships import _SPONSORSHIP_MAP as _SIMPLIFY_SPONSORSHIP_MAP
 from src.evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
@@ -934,7 +935,8 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
     research_source = public_projection.safe_public_http_url(metadata.get("research_areas_source_url"))
     profile_source = base.get("source_url")
     if (research_source and profile_source and _text(metadata.get("research_areas_raw"))
-            and urlsplit(research_source).netloc == urlsplit(profile_source).netloc):
+            and (urlsplit(research_source).netloc == urlsplit(profile_source).netloc
+                 or is_reviewed_home(canonical, profile_source, research_source))):
         research_provenance["source_url"] = research_source
     fields = (
         _school(payload),
