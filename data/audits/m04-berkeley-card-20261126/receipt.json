@@ -1,0 +1,55 @@
+{
+  "production_site": "https://joinalab.com",
+  "target_id": "faculty-ucb-eecs-d683bc2c",
+  "guest": {
+    "signup_http": 200,
+    "profile_commit_http": 200,
+    "match_http": 200,
+    "rules_only": true,
+    "ai_refined": false
+  },
+  "draft_api": {
+    "opportunity_id": "faculty-ucb-eecs-d683bc2c",
+    "http": 200,
+    "variant_ids": [
+      "balanced",
+      "skills",
+      "concise"
+    ],
+    "recipient_status": "sign_in_required",
+    "pipeline_version": "w12.26"
+  },
+  "blocked_app_posts": [],
+  "started_at": "2026-11-26T06:22:55.981659+00:00",
+  "official_contact": {
+    "url": "https://www2.eecs.berkeley.edu/Faculty/Homepages/amalaa.html",
+    "http": 200,
+    "display_name": "Ahmed Alaa",
+    "published_professional_email_verified": true
+  },
+  "entry": "Normal form, Generate, public detail, Add to favorites on this new guest, Starred matches",
+  "card": {
+    "id": "match-card-faculty-ucb-eecs-d683bc2c",
+    "name": "Ahmed Alaa",
+    "href": "/opportunities/faculty-ucb-eecs-d683bc2c",
+    "displayed_fit_reasons": [
+      "This faculty member's department aligns with your major",
+      "Faculty profile from a major research university",
+      "Matches your interest in research",
+      "You're comfortable with direct outreach"
+    ],
+    "displayed_concerns": [
+      "Research area looks different from your stated interests",
+      "Faculty availability and eligibility are not confirmed — verify when you contact them"
+    ]
+  },
+  "editor": {
+    "subject": "Research inquiry",
+    "body": "Dear Professor Ahmed Alaa,\n\nMy name is Sample Student, and I am a junior studying Computer Science. I am interested in machine learning, artificial intelligence, and healthcare.\n\nCould I ask what you would suggest I learn or do first to prepare for research? May I contact you again once I have done that?\n\nBest regards,\nSample Student",
+    "recipient_input_populated": false,
+    "selected_template_matches_response": true
+  },
+  "completed_at": "2026-11-26T06:23:13.268583+00:00",
+  "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767773388/job/139732752143",
+  "scope": "Fresh synthetic production guest; unsent template. No account credential or private profile included."
+}
