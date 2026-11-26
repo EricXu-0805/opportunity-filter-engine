@@ -58,7 +58,7 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
             u=urlsplit(r.url)
             if r.ok and u.hostname==DATABASE and u.path=='/auth/v1/signup':
                 who=r.json()['user'];assert who['is_anonymous'];owner.append(who['id'])
-            if LOCAL and r.ok and u.path.endswith('/rpc/commit_profile_patch_cas') and r.json().get('status')=='applied':
+            if r.ok and u.hostname==DATABASE and u.path.endswith('/rpc/commit_profile_patch_cas') and r.json().get('status')=='applied':
                 revisions.append(r.json()['revision'])
             if LOCAL and r.ok and u.path=='/rest/v1/interactions' and r.request.method in ('POST','PATCH'):
                 history.append(r.request.method)
@@ -69,11 +69,11 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
             d=r.post_data_json or {}
             if r.method=='POST' and u.hostname==DATABASE and u.path=='/auth/v1/signup' and not requests and not d.get('email'):
                 requests.append(True);return route.continue_()
-            if LOCAL and owner and r.method=='POST':
-                if u.path.endswith('/rpc/commit_profile_patch_cas') and d.get('p_expected_device_id')==owner[0]:
+            if corrected and owner and r.method=='POST':
+                if u.hostname==DATABASE and u.path.endswith('/rpc/commit_profile_patch_cas') and d.get('p_expected_device_id')==owner[0]:
                     return route.continue_()
-                if u.path=='/api/matches/view' and 'llm=false' in u.query:return route.continue_()
-            if LOCAL and u.path=='/api/opportunities/batch' and r.method=='POST':
+                if u.hostname==HOST and u.path=='/api/matches/view' and 'llm=false' in u.query:return route.continue_()
+            if corrected and owner and u.hostname==HOST and u.path=='/api/opportunities/batch' and r.method=='POST':
                 return route.continue_()
             if LOCAL and owner and u.hostname==DATABASE and u.path=='/rest/v1/interactions':
                 if r.method=='POST' and d.get('device_id')==owner[0] and d.get('opportunity_id')==target and d.get('interaction_type') in ('applied','interviewing'):
@@ -94,7 +94,7 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         p.wait_for_url(SITE+'/',timeout=65000);expect(p.locator('#student_name')).to_be_visible(timeout=45000)
         assert owner
         case={'locale':locale,'native_200':zoom,'new_guest_link_label':empty_label,'new_guest_href':'/' if corrected else '/results','empty_tracker_destination':'profile form','empty_link_focus':empty_focus}
-        if corrected and LOCAL:
+        if corrected:
             def set_language(lang):
                 ctx.add_cookies([{'name':'ofe_lang','value':lang,'url':SITE}])
                 p.evaluate("(lang)=>localStorage.setItem('ofe_lang',lang)",lang)

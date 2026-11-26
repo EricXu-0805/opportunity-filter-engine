@@ -2,7 +2,7 @@ name: Check the empty official tracker path in English and Chinese at native zoo
 on:
   push:
     branches: [codex/verify-m212-profile-retry]
-    paths: ['.github/workflows/check-official-empty-tracker-keyboard.yml', 'scripts/verify_tracker_keyboard_journey.py']
+    paths: ['.github/workflows/check-official-empty-tracker-keyboard.yml', 'data/audits/release-probes/verify_tracker_release.py']
 permissions:
   contents: read
 jobs:
@@ -21,4 +21,4 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install --quiet playwright==1.55.0
       - run: python -m playwright install chromium --with-deps >"$RUNNER_TEMP/install.log"
-      - run: xvfb-run -a -s '-screen 0 1600x1100x24' python -u scripts/verify_tracker_keyboard_journey.py
+      - run: xvfb-run -a -s '-screen 0 1600x1100x24' python -u data/audits/release-probes/verify_tracker_release.py

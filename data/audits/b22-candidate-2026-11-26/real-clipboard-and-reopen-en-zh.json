@@ -1,0 +1,23 @@
+{
+  "mode": "real isolated GoTrue and PostgREST, synthetic guests, free drafts, native Chromium clipboard",
+  "candidate": "f81bbd400ff0c9696787bed97a6a1aa88eded309",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45895359116/job/140167782811",
+  "cases": [
+    {
+      "locale": "en",
+      "real_clipboard_equal_after_first": true,
+      "real_clipboard_equal_after_second": true,
+      "original_text_returned_on_reopen": true,
+      "new_dialog_clear_through_timer": true,
+      "contact_writes": 0
+    },
+    {
+      "locale": "zh",
+      "real_clipboard_equal_after_first": true,
+      "real_clipboard_equal_after_second": true,
+      "original_text_returned_on_reopen": true,
+      "new_dialog_clear_through_timer": true,
+      "contact_writes": 0
+    }
+  ]
+}
