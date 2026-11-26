@@ -1,0 +1,25 @@
+[
+  {
+    "id": "faculty-duke-nurs-36cb4f9e",
+    "url": "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21",
+    "checked": "2026-11-26T20:04:45.593115+00:00",
+    "http": 200,
+    "sha256": "ad567251e615f5da19879c7ad178d43ef50f6131e05193f0d85d71e7963c2c31",
+    "stored_rank": "Retired Associate Clinical Professor",
+    "pages_pdf": [
+      20,
+      21
+    ],
+    "school_retirement_spread_includes_named_person": true
+  },
+  {
+    "id": "faculty-pitt-ling-14fc90c7",
+    "url": "https://lrdc.pitt.edu/departments-and-services/communications-news-media/enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire",
+    "checked": "2026-11-26T20:04:44.923180+00:00",
+    "http": 200,
+    "sha256": "110034f0d31f10fa21c344de5e0939ed96047a34672e511e98127d321af361a2",
+    "stored_rank": "Retired Distinguished University Professor of Psychology",
+    "page_heading": "An Enduring Legacy - Distinguished University Professor and former LRDC Director Charles Perfetti to Retire",
+    "retirement_date_in_school_notice": "January 31, 2026"
+  }
+]

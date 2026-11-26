@@ -88,5 +88,20 @@
     "current_draft_button": true,
     "official_contact_unavailable_notice": true,
     "draft_opened": false
-  }
+  },
+  "ncsu_desktop_clicks": [
+    {
+      "id": "faculty-ncsu-chass-e417d225",
+      "label": "View source",
+      "clicked_destination": "https://chass.ncsu.edu/group/faculty/",
+      "personal_profile_link": false,
+      "draft_button": false
+    },
+    {
+      "id": "faculty-ncsu-chass-8026d528",
+      "label": "View faculty profile",
+      "clicked_destination": "https://chass.ncsu.edu/people/jrclayt2/",
+      "destination_page_title": "Robin Clayton | College of Humanities and Social Sciences"
+    }
+  ]
 }

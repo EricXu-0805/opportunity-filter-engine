@@ -1,0 +1,359 @@
+{
+  "candidate": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "tree": "2b93cf9e134e0c9c274bb6e0e1d463c79ca9b9c2",
+  "when_utc": "2026-11-26T20:05:08.276813+00:00",
+  "backend_health": {
+    "status": "ok",
+    "version": "2.7.0",
+    "release_sha": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+    "environment": "isolated-candidate",
+    "started_at": "2026-11-26T19:49:41.294854+00:00"
+  },
+  "backend_health_end": {
+    "status": "ok",
+    "version": "2.7.0",
+    "release_sha": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+    "environment": "isolated-candidate",
+    "started_at": "2026-11-26T19:49:41.294854+00:00"
+  },
+  "render": "Normal Next.js production build with complete streamed HTML and same-origin public FastAPI detail. Hydrated Chromium evidence is collected separately.",
+  "corpus_count": 149944,
+  "rows": [
+    {
+      "exact_role_visible": null,
+      "id": "faculty-ncsu-chass-e417d225",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Jacob Clayton",
+      "heading": [
+        "Jacob Clayton"
+      ],
+      "reading_label": "View source",
+      "reading_url": "https://chass.ncsu.edu/group/faculty/",
+      "role": "Professor",
+      "active": false,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-ncsu-chass-8026d528",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Robin Clayton",
+      "heading": [
+        "Robin Clayton"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://chass.ncsu.edu/people/jrclayt2/",
+      "role": "Lecturer",
+      "active": true,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-ling-e0bda033",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": "faculty-pitt-phil-2930bf5f",
+      "name": "Kate Stanton",
+      "heading": [
+        "Kate Stanton"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://philosophy.pitt.edu/people/kstanton",
+      "role": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+      "active": false,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-phil-2930bf5f",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Kate Stanton",
+      "heading": [
+        "Kate Stanton"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://www.philosophy.pitt.edu/people/kstanton",
+      "role": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+      "active": true,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-fsu-comm-e3519c6b",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Jessica Wendorf Muhamad",
+      "heading": [
+        "Jessica Wendorf Muhamad"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+      "role": "Associate Professor, Director PEAKS Research Laboratory",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-miami-art-604e3825",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Nathan James Timpano",
+      "heading": [
+        "Nathan James Timpano"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+      "role": "Associate Professor Graduate Director",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-miami-mll-791077cc",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Chloe Ming Hwa Summers Edmondson",
+      "heading": [
+        "Chloe Ming Hwa Summers Edmondson"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+      "role": "Asst. Professor",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": false,
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Lisa S. Lewis",
+      "heading": [
+        "Lisa S. Lewis"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "role": "Retired Associate Clinical Professor",
+      "active": false,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-ling-b87b919a",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Lori Levin",
+      "heading": [
+        "Lori Levin"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "role": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+      "active": true,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": false,
+      "id": "faculty-pitt-ling-14fc90c7",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Charles Perfetti",
+      "heading": [
+        "Charles Perfetti"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "role": "Retired Distinguished University Professor of Psychology",
+      "active": false,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-ling-84c5021c",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Mandy Simons",
+      "heading": [
+        "Mandy Simons"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "role": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+      "active": true,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-ling-00bb851a",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Natasha Tokowicz",
+      "heading": [
+        "Natasha Tokowicz"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "role": "Professor of Psychology and Linguistics",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-duke-bio-8ac60eca",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Dorothy Buck",
+      "heading": [
+        "Dorothy Buck"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://scholars.duke.edu/person/dorothy.buck",
+      "role": "Research Professor of Mathematics",
+      "active": true,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-duke-nurs-9c95f492",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Marissa Abram",
+      "heading": [
+        "Marissa Abram"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://scholars.duke.edu/person/marissa.abram",
+      "role": "Assistant Professor",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-fsu-comm-4ebdf384",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Elizabeth Ray",
+      "heading": [
+        "Elizabeth Ray"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://directory.cci.fsu.edu/elizabeth-ray/",
+      "role": "Assistant Professor",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-miami-cs-b0f4bc1f",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Vanessa Aguiar-Pulido",
+      "heading": [
+        "Vanessa Aguiar-Pulido"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://people.miami.edu/profile/0210dfb24ca8741f6344cbb45791d009",
+      "role": "Asst. Professor",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-pitt-ling-c7f555fa",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Tessa Warren",
+      "heading": [
+        "Tessa Warren"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "http://www.pitt.edu/~tessa/",
+      "role": "Associate Professor, Department of Psychology",
+      "active": true,
+      "official_contact_status": "unavailable"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-ucsd-hwsph-29c119e1",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Gregory Norman",
+      "heading": [
+        "Gregory Norman"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "http://profiles.ucsd.edu/gregory.norman",
+      "role": "Professor",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": null,
+      "id": "faculty-usc-soci-b0fa66b8",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "Jody Agius Vallejo",
+      "heading": [
+        "Jody Agius Vallejo"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+      "role": "Professor of Sociology and American Studies and Ethnicity",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-hps-b2ee9191",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "David Wallace",
+      "heading": [
+        "David Wallace"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://www.hps.pitt.edu/people/david-wallace",
+      "role": "Mellon Professor • Department Chair",
+      "active": true,
+      "official_contact_status": "sign_in_required"
+    },
+    {
+      "exact_role_visible": true,
+      "id": "faculty-pitt-phil-4e0c21eb",
+      "api_http": 200,
+      "page_http": 200,
+      "current_id": null,
+      "name": "David Wallace",
+      "heading": [
+        "David Wallace"
+      ],
+      "reading_label": "View faculty profile",
+      "reading_url": "https://www.philosophy.pitt.edu/people/dwallace",
+      "role": "Mellon Professorship",
+      "active": true,
+      "official_contact_status": "unavailable"
+    }
+  ]
+}
