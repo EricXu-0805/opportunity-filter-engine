@@ -1,0 +1,19 @@
+{
+  "match": {
+    "existing_conflicts_unchanged": [
+      "src/matcher/config.py"
+    ],
+    "upstream_signature": "6e4f1640cb96a92c3dd758aa7377900b52f41b59"
+  },
+  "freshness": {
+    "existing_conflicts_unchanged": [],
+    "upstream_signature": "469bb5e4050b7ecc2c268fe0e0f6ffa1faafc10c",
+    "jhu_combined": true
+  },
+  "programs": {
+    "existing_conflicts_unchanged": [
+      "backend/lib/opportunity_detail.py"
+    ],
+    "upstream_signature": "6c49350dd3abeac1c94fe56f2a640f2a50377f9c"
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "utc": "2026-11-26T21:46:41.320585+00:00",
+  "stage": "Combined candidate only. Real production verification follows actual B23.",
+  "head": "467a7ac87a598d4d32e3d1fc5d18f43ffed5524e",
+  "tree": "4e728c7505e4be7d6034f6473274adaa1cc4efb4",
+  "base": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "ids_before": 149944,
+  "ids_after": 149954,
+  "old_id_order_preserved": true,
+  "all_individual_source_rows_exact": true,
+  "unchanged_shard_blobs": 114,
+  "shards_in_total": 117,
+  "sources": {
+    "1487": "5f9f691b15ae120ee7ce008bb0c72df8ec337c9a",
+    "1488": "47ad3568fadbb395588e10f917f0d20e278aa603",
+    "1491": "c4d2e60b0ff5611d8ce4dc9df405a0443c9e02bc",
+    "1489": "2c2a6cc58ad105582d89f3a5b71dacc380ad8212"
+  },
+  "data_changes": {
+    "1487": {
+      "before": 4600,
+      "after": 4600,
+      "changed": [
+        "faculty-jhu-som-0571117d",
+        "faculty-jhu-som-308f9d80",
+        "faculty-jhu-som-45000a8f",
+        "faculty-jhu-som-4b65eadd",
+        "faculty-jhu-som-51253ecf",
+        "faculty-jhu-som-630567cb",
+        "faculty-jhu-som-64b89987",
+        "faculty-jhu-som-709759ad",
+        "faculty-jhu-som-ab46342e",
+        "faculty-jhu-som-ba3abad3",
+        "faculty-jhu-som-cc6cce97",
+        "faculty-jhu-som-db2d0079",
+        "faculty-jhu-som-fa1fa91f"
+      ],
+      "new": []
+    },
+    "1488": {
+      "before": 14198,
+      "after": 14198,
+      "changed": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ],
+      "new": []
+    },
+    "1491": {
+      "before": 1049,
+      "after": 1059,
+      "changed": [
+        "faculty-udel-me-4b7217c7"
+      ],
+      "new": [
+        "faculty-udel-mseg-22466e16",
+        "faculty-udel-mseg-25082bef",
+        "faculty-udel-mseg-58d683fd",
+        "faculty-udel-mseg-5ade1fd3",
+        "faculty-udel-mseg-5dbd4670",
+        "faculty-udel-mseg-7fa44ddf",
+        "faculty-udel-mseg-a2bd5d6e",
+        "faculty-udel-mseg-c091c4cd",
+        "faculty-udel-mseg-ed9f22f8",
+        "faculty-udel-mseg-f765ff5d"
+      ]
+    }
+  },
+  "schools_changed": [
+    "udel"
+  ],
+  "before_udel": {
+    "listing_count": 3,
+    "faculty_contact_count": 1018,
+    "unreviewed_count": 0,
+    "total_count": 1021
+  },
+  "after_udel": {
+    "listing_count": 3,
+    "faculty_contact_count": 1027,
+    "unreviewed_count": 0,
+    "total_count": 1030
+  },
+  "files_in_product_delta": [
+    "data/audits/jhu-neuroscience-appointments-20261126.json",
+    "data/processed/shards/jhu.json",
+    "data/processed/shards/national.json",
+    "data/processed/shards/udel.json",
+    "frontend/src/app/compare/BucketCards.tsx",
+    "frontend/src/app/favorites/FavoritesHeader.tsx",
+    "frontend/src/app/favorites/OpportunityCard.test.tsx",
+    "frontend/src/app/favorites/OpportunityCard.tsx",
+    "frontend/src/app/favorites/types.ts",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.tsx",
+    "frontend/src/app/results/ResultsHeader.tsx",
+    "frontend/src/app/tracker/TrackerCard.tsx",
+    "frontend/src/components/JhuFacultyLinks.test.tsx",
+    "frontend/src/components/MatchCard.test.tsx",
+    "frontend/src/lib/match-utils.ts",
+    "frontend/src/lib/school-stats.json",
+    "frontend/src/lib/target-truth.test.ts",
+    "frontend/src/lib/target-truth.ts",
+    "src/collectors/jhu_neuroscience.py",
+    "src/collectors/schools/jhu_faculty.py",
+    "src/collectors/schools/udel_faculty.py",
+    "src/collectors/uiuc_sro.py",
+    "src/normalizers/host_program_terms.py",
+    "src/normalizers/reviewed_faculty_profiles.py",
+    "src/program_windows.py",
+    "tests/test_dsi_program_pair.py",
+    "tests/test_jhu_neuroscience_appointments.py",
+    "tests/test_reviewed_faculty_profiles.py",
+    "tests/test_udel_materials_directory.py"
+  ]
+}
