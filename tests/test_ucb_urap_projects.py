@@ -416,6 +416,7 @@ def test_match_universe_and_snapshot_expire_with_a_still_cached_record(monkeypat
     ("The deadline to apply is Monday, August 31st, 4:00 PM.", 16, 0),
     ("The deadline to apply is Monday, August 31st, noon.", 12, 0),
     ("The deadline to apply is Monday, August 31st, 12 noon.", 12, 0),
+    ("The deadline to apply is Monday, August 31st, 12am midnight.", 0, 0),
     ("The deadline to apply is Monday, August 31st, 11:59pm PT.", 23, 59),
     ("The deadline to apply is Monday, Aug. 31st by 4pm.", 16, 0),
     ("The deadline to apply is 4pm on Monday, August 31st.", 16, 0),
@@ -430,7 +431,8 @@ def test_published_clock_and_date_forms(deadline, hour, minute):
 
 
 @pytest.mark.parametrize("clock", ["", ", 4pm ET", ", 4pm PST", ", 0pm", ", 12:65pm",
-                                   ", 4pm noon", ", noon or midnight"])
+                                   ", 4pm noon", ", 12:01am midnight", ", 12pm midnight",
+                                   ", 4 p.m. Eastern Time", ", 4 p.m. EDT", ", noon or midnight"])
 def test_uncertain_cutoff_does_not_grant_application_access(clock):
     at = datetime(2026, 8, 24, tzinfo=UTC)
     raw = detail_raw(detail_soup(FALL.replace(", 4pm", clock)), at)
@@ -451,3 +453,11 @@ def test_previous_calendar_year_for_spring_requires_corroboration():
     assert detail["opens_on"] == "2026-12-01"
     assert detail["deadline_at"] == "2026-12-14T16:00:00-08:00"
     assert detail_raw(detail_soup(notice.replace("Monday, ", ""), "Spring 2027"), now)["detail"] is None
+
+
+@pytest.mark.parametrize("clock", ["4pm.", "4 p.m.", "4:00 PM PT."])
+def test_deadline_quote_stops_at_next_sentence(clock):
+    notice = FALL.replace("4pm.", clock) + " Please include your transcript with your application."
+    detail = detail_raw(detail_soup(notice), datetime(2026, 8, 24, tzinfo=UTC))["detail"]
+    assert detail["deadline_quote"].endswith(clock)
+    assert "Please" not in detail["deadline_quote"]

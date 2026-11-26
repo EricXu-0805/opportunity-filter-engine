@@ -16,12 +16,13 @@ _DAY = r"(?P<day>\d{1,2})(?:st|nd|rd|th)?"
 _DATE = (r"(?:(?P<weekday>Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
          + _MONTH + r"\s+" + _DAY + r"(?:,\s*(?P<year>20\d{2}))?")
 _CLOCK = (r"(?:(?P<noon>(?:12\s+)?noon)|(?P<hour>\d{1,2})(?::(?P<minute>\d{2}))?\s*"
-          r"(?P<meridiem>[ap])\.?m\.?(?:\s+noon)?)"
+          r"(?P<meridiem>[ap])\.?m\.?(?:\s+(?P<qualifier>noon|midnight))?)"
           r"(?:\s+(?P<zone>PT|PST|PDT)\b)?")
 _DEADLINE_LABEL = re.compile(r"\b(?:the deadline to apply is|applications are due)\s+", re.I)
-# Require the end of the notice or a known follow-up sentence. A bare date
-# or an unfamiliar time zone must not silently acquire a Pacific cutoff.
-_END = r"\.?(?=$|\s+Late applications\b)"
+# A period can terminate a sentence or the abbreviation "p.m.". Do not
+# discard an unparsed time zone as if it began a new sentence.
+_END = (r"(?:\.?$|\.(?=\s+(?!(?:eastern|central|mountain|pacific|atlantic|alaska|hawaii|"
+        r"universal|local|greenwich|london)\b|(?-i:[A-Z]{2,6})\b)(?-i:[A-Z][a-z])))")
 _DEADLINES = (
     re.compile(_DATE + r"(?:\s*,\s*(?:(?:at|by)\s+)?|\s+(?:at|by)\s+)" + _CLOCK + _END, re.I),
     re.compile(_CLOCK + r"\s+on\s+" + _DATE + _END, re.I),
@@ -87,8 +88,10 @@ def parse_project_notice(soup, title: str, url: str, observed_at: datetime) -> d
             if not 1 <= hour <= 12:
                 return None
             hour = hour % 12 + 12 * (match["meridiem"].lower() == "p")
-            if "noon" in match[0].lower() and (hour != 12 or int(match["minute"] or 0)):
-                return None
+            if match["qualifier"]:
+                expected = 12 if match["qualifier"].lower() == "noon" else 0
+                if hour != expected or int(match["minute"] or 0):
+                    return None
         closes_at = datetime(year, month, close.day, hour, int(match["minute"] or 0), tzinfo=PACIFIC)
         if match["zone"] and match["zone"].upper() not in {"PT", closes_at.tzname()}:
             return None
