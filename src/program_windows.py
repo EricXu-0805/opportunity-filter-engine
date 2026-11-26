@@ -108,7 +108,7 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
 # Aggregator IDs can outlive the cohort their source pages described. Keep the
 # exact incoming estimate with the host window so it cannot migrate to another
 # year, a replaced program, or a newly confirmed date.
-_NCSA_DIRECTORY = (
+NCSA_DIRECTORY = (
     "https://researchops.web.illinois.edu/opportunity/"
     "future-discovery-training-students-build-and-apply-open-source-machine-learning-models"
 )
@@ -117,7 +117,7 @@ _WISCONSIN_HOST = "https://wiscience.wisc.edu/research/summer_research_program/"
 _UND_AWARD = "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447669"
 _AGGREGATOR_WINDOWS = {
     ("uiuc_sro", "sro-1532726e"): (
-        "2027-03-15", replace(WINDOWS[("manual", "ext-uiuc-ncsa-reu")], url=_NCSA_DIRECTORY),
+        "2027-03-15", replace(WINDOWS[("manual", "ext-uiuc-ncsa-reu")], url=NCSA_DIRECTORY),
     ),
     ("uiuc_sro", "sro-3c378261"): ("2027-02-15", ProgramWindow(
         _WISCONSIN_DIRECTORY, _WISCONSIN_HOST, date(2026, 11, 26), date(2027, 2, 10),
@@ -132,7 +132,7 @@ _AGGREGATOR_WINDOWS = {
 
 _SRO_APPLICATION_LINKS = {
     _WISCONSIN_DIRECTORY: {_WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
-    _NCSA_DIRECTORY: {_NCSA_DIRECTORY, _NCSA},
+    NCSA_DIRECTORY: {NCSA_DIRECTORY, _NCSA},
 }
 
 
@@ -208,7 +208,7 @@ def apply_program_window(record: dict) -> None:
         record["is_rolling"] = False
         if record.get("source") in ("nsf_reu", "uiuc_sro"):
             metadata = record["metadata"]
-            if window.url == _NCSA_DIRECTORY:
+            if window.url == NCSA_DIRECTORY:
                 # Keep the earlier, explicitly anticipated directory date as
                 # historical evidence without treating it as the active window.
                 metadata["superseded_directory_deadline"] = {

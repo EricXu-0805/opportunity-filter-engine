@@ -58,6 +58,7 @@ from backend.routes.push import (
 )
 from src.evidence import is_actionable_target
 from src.matcher.ranker import _filter_context, hard_exclusion
+from src.normalizers import fodommat
 from src.saved_searches.filter import matching_ids, out_of_scope_ids
 
 router = APIRouter()
@@ -560,6 +561,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
             else None
         )
 
+        same_program = fodommat.records_share_offering(opportunities)
         for row in rows:
             try:
                 ineligible = ineligible_by_device.get(row.get("device_id") or "", set())
@@ -590,13 +592,20 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     and opportunity_id not in out_of_scope
                 ]
 
-                current_ids = [
-                    oid for oid in matching_ids(
-                        opportunities, filters, query, served=served,
-                        home_school=home_school, view_rows=view_rows,
-                    )
-                    if oid not in ineligible
-                ]
+                preferred = fodommat.HOST_ID
+                if same_program:
+                    source = filters.get("source") or ""
+                    pending_ids = fodommat.reconcile_pending(pending_ids, source)
+                    queued_program_ids = set(pending_ids).intersection(fodommat.IDS)
+                    preferred = fodommat.preferred_source_id(source, queued_program_ids or prior_ids)
+                    # Switching which source represents the same checked cohort
+                    # must not queue a new notification for an existing result.
+                    if prior_ids.intersection(fodommat.IDS):
+                        prior_ids.update(fodommat.IDS)
+                current_ids = matching_ids(
+                    opportunities, filters, query, served=served, home_school=home_school,
+                    view_rows=view_rows, excluded_ids=ineligible, preferred_id=preferred,
+                )
                 # A search that has never run has no prior set to diff against
                 # — last_result_ids defaults to '{}' — so everything it matches
                 # looked new. The first digest went out hours after the search
@@ -702,6 +711,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         return {"status": "skipped", "reason": "no opportunities loaded"}
     opportunities = actionable_opportunities(release_visible_opportunities(corpus))
     opp_by_id = {o.get("id"): o for o in opportunities if o.get("id")}
+    same_program = fodommat.same_offering(opp_by_id.get(fodommat.HOST_ID), opp_by_id.get(fodommat.DIRECTORY_ID))
     # Ids the queue must stop carrying: hidden by release scope, or stated
     # closed / reference-only / inactive / not-accepting by the source.
     #
@@ -795,6 +805,9 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     # an id tonight's corpus could not see is untouched.
                     and opportunity_id not in ineligible
                 ]
+                if same_program:
+                    source = (row.get("filters_json") or {}).get("source") or ""
+                    new_ids = fodommat.reconcile_pending(new_ids, source)
                 if new_ids != stored_new_ids:
                     cleanup_resp = await client.patch(
                         f"{supabase_url}/rest/v1/saved_searches",
