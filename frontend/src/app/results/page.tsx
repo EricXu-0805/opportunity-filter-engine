@@ -77,6 +77,7 @@ import {
   DEFAULT_FILTERS,
   migrateProfile,
   sourceLabel,
+  deadlineFilterLabel,
   type Filters,
   type LegacyProfileShape,
   type SortKey,
@@ -458,20 +459,18 @@ function ResultsContent() {
   // found no deadline for, and now that is what it says.
   const deadlineOptions = useMemo<Array<[string, string]>>(() => {
     const facets = data?.deadline_facets ?? {};
-    const label = (value: string) =>
-      t(`results.filters.deadline${value === 'passed' ? 'Passed' : value}`);
     const options: Array<[string, string]> = [
-      ['', t('results.filters.deadlineAll')],
-      ['rolling', t('results.filters.deadlineRolling')],
+      ['', deadlineFilterLabel('', t)],
+      ['rolling', deadlineFilterLabel('rolling', t)],
       ...(['7', '14', '30', 'passed'] as const)
         .filter((value) => (facets[value] ?? 0) > 0)
-        .map((value) => [value, label(value)] as [string, string]),
+        .map((value) => [value, deadlineFilterLabel(value, t)] as [string, string]),
     ];
     // A value can outlive its rows — shared URLs and saved presets both carry
     // one. Dropping it from the list would leave the select showing a filter
     // the person cannot see or clear, and an empty page with no explanation.
     if (filters.deadline && !options.some(([value]) => value === filters.deadline)) {
-      options.push([filters.deadline, label(filters.deadline)]);
+      options.push([filters.deadline, deadlineFilterLabel(filters.deadline, t)]);
     }
     return options;
   }, [data?.deadline_facets, filters.deadline, t]);

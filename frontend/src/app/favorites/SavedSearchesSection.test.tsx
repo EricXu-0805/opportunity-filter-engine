@@ -19,6 +19,8 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
+import { translate } from '@/i18n/translate';
+import { summarizeSavedSearchFilters } from './types';
 import { SavedSearchesSection } from './SavedSearchesSection';
 import { useSavedSearches } from './use-saved-searches';
 import { getAuthState, getDeviceId, supabase } from '@/lib/supabase';
@@ -76,6 +78,42 @@ const switchButton = (email: string) =>
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+describe('saved query summaries', () => {
+  it.each(['en', 'zh'] as const)('shows the selected filter labels on a saved row in %s', (locale) => {
+    const localize = (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars);
+    const saved: SavedSearch = {
+      ...SEARCH, tab: 'good_match', sort_by: 'deadline', filters: {
+        ...SEARCH.filters, paid: 'no', intl: 'no', onCampus: 'no', deadline: 'rolling', scope: 'open',
+        opportunityType: 'research', researchTopic: 'Robotics', source: 'uiuc_sro', minScore: 40,
+      },
+    };
+    render(<SavedSearchesSection savedSearches={[saved]} digests={null} onApplyOptimisticClear={vi.fn()}
+      onRemove={vi.fn()} onDigestSave={vi.fn()} accountEmail={null} t={localize} />);
+    const row = screen.getByRole('link', { name: localize('favorites.savedSearches.applyAria', { name: saved.name }) });
+    for (const key of ['paidNo', 'intlNo', 'locNo', 'deadlineRolling', 'scopeOpen', 'sortDeadline']) {
+      expect(row).toHaveTextContent(localize('results.filters.' + key));
+    }
+    expect(row).toHaveTextContent(localize('results.tabs.goodMatch'));
+    expect(row).toHaveTextContent(localize('results.minScore.buttonActive', { value: 40 }));
+    expect(row).toHaveTextContent('Robotics');
+    expect(row).not.toHaveTextContent('≤rollingd');
+    expect(row).not.toHaveTextContent('uiuc_sro');
+  });
+
+  it('summarizes historical values as the linked results page will open them', () => {
+    const saved = {
+      ...SEARCH, query: '', filters: { ...SEARCH.filters, paid: 'old', scope: 'retired', minScore: 154 },
+    } as unknown as SavedSearch;
+    expect(summarizeSavedSearchFilters(saved, t)).toEqual(t('results.minScore.buttonActive', { value: 100 }));
+  });
+
+  it.each(['7', '14', '30', 'passed'] as const)('preserves the expiry label on an older saved search (%s)', (deadline) => {
+    const label = deadline === 'passed' ? 'Passed' : deadline;
+    const filters = { ...SEARCH.filters, deadline };
+    expect(summarizeSavedSearchFilters({ ...SEARCH, filters }, t)).toContain(t('results.filters.deadline' + label));
+  });
 });
 
 describe('SavedSearchesSection digest editor', () => {
