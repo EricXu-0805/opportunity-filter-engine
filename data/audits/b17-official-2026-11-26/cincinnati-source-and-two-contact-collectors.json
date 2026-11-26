@@ -1,0 +1,85 @@
+{
+  "stage": "Production public detail and anonymous service, original campus URL, plus exact released code. Independent natural first-week collector remains pending.",
+  "utc": "2026-11-26T21:29:51.516815+00:00",
+  "release_before": [
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  ],
+  "original": "faculty-cincinnati-cs-00772f54",
+  "person": "Mehdi Norouzi",
+  "html": {
+    "status": 200,
+    "headings": [
+      "Mehdi Norouzi"
+    ],
+    "source_link": true,
+    "research_terms_visible": {
+      "Video Temporal segmentation": true,
+      "Video Summarization": true,
+      "Dense Caption Generation": true
+    },
+    "displayed_source_date": [
+      "2026-11-20",
+      "2026-11-20",
+      "2026-11-20",
+      "2026-11-26",
+      "2026-11-20"
+    ]
+  },
+  "api": {
+    "id": "faculty-cincinnati-cs-00772f54",
+    "metadata_research_fields": {
+      "research_areas_raw": "Video Temporal segmentation, Video Chaptering, Video Scene Detection; Video Summarization, Key-frame/Key-shot extraction; Dense Caption Generation, Language-guided video summarization",
+      "research_areas_verified_at": "2026-11-26T09:54:55.981238+00:00"
+    },
+    "related_keys": [
+      "research_context",
+      "detail_fields"
+    ],
+    "research_detail": {
+      "research_content": {
+        "state": "source",
+        "explicit": {
+          "research_areas": "Video Temporal segmentation, Video Chaptering, Video Scene Detection; Video Summarization, Key-frame/Key-shot extraction; Dense Caption Generation, Language-guided video summarization"
+        },
+        "inferred": {},
+        "unknown": [],
+        "quotes": {},
+        "provenance": {
+          "source_url": "https://researchdirectory.uc.edu/p/norouzmi",
+          "observed_at": "2026-11-26T09:54:55.981238+00:00"
+        }
+      }
+    }
+  },
+  "stored": {
+    "corpus_rows": 1092,
+    "research_terms_in_target": true
+  },
+  "source_revisions": {
+    "src/collectors/pi_enricher.py": {
+      "released_blob": "5de342d1bc43d6baaf43429ac2a717afa6c02b85",
+      "source_1344_blob": "5de342d1bc43d6baaf43429ac2a717afa6c02b85"
+    },
+    "tests/test_pi_enricher.py": {
+      "released_blob": "74b2a08f1328d06002501f886bba6e27989a8f9f",
+      "source_1344_blob": "74b2a08f1328d06002501f886bba6e27989a8f9f"
+    }
+  },
+  "release_after": [
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  ],
+  "school_source": {
+    "status": 200,
+    "final_url": "https://researchdirectory.uc.edu/p/norouzmi",
+    "namesake": true,
+    "title": "Expert Profile: Mehdi Norouzi | Research Directory",
+    "three_research_terms": {
+      "Video Temporal segmentation": true,
+      "Video Summarization": true,
+      "Dense Caption Generation": true
+    },
+    "same_backend_after_check": true
+  }
+}
