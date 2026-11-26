@@ -66,7 +66,12 @@ Dropped / phase-2:
 
 from __future__ import annotations
 
-from .. import faculty_graph, udel_materials_ranks
+from urllib.parse import urljoin
+
+from src.contact_instructions import same_source_page
+
+from .. import faculty_graph, ucb_common, udel_materials_ranks
+from ..import_document import ImportDocumentError
 
 # Keep ladder + endowed-chair professors; drop the Instructors, Associate
 # Instructors, Senior Researchers, and any adjunct/emeritus/visiting the
@@ -398,11 +403,61 @@ SCHOOL: dict = {
 }
 
 
+# Both the GSS and Marine Science cards for this original link to the same
+# Marine Science faculty profile. GSS lists it outside its usual directory path.
+_OLIVER = "faculty-udel-geol-cc0d1c3c"
+_GSS = "https://www.udel.edu/academics/colleges/ceoe/departments/gss/faculty/"
+_OLIVER_PROFILE = "https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/matthew-oliver/"
+
+
+def _read_destination(url: str):
+    if faculty_graph._source_budget_spent():
+        return None
+    try:
+        page = ucb_common.fetch_soup(url, bounded=True, timeout=8, max_retries=1)
+    except ImportDocumentError:
+        return None
+    if page is None or ucb_common.profile_page_is_denial(page):
+        return None
+    observed = ucb_common._fetch_profile_contact_observation(page, requested_url=url, record_profile_url=url)
+    return page if observed and same_source_page(url, observed[0]) else None
+
+
+def _read_oliver_destination(rows: list[dict]) -> None:
+    for row in rows:
+        if (row["id"] != _OLIVER or row.get("pi_name") != "Matthew Oliver"
+                or row.get("url") != _GSS or row.get("source_url") != _GSS
+                or not row["metadata"].get("is_active") or row["metadata"].get("verification_scope") != "directory"):
+            continue
+        roster = _read_destination(_GSS)
+        if roster is None:
+            return
+        cards = [card for card in roster.select("div.media")
+                 if len(names := card.select("h4.media-heading")) == 1
+                 and names[0].get_text(" ", strip=True) == row["pi_name"]]
+        if len(cards) != 1:
+            return
+        # Scope the school's off-department full-profile link to this person's
+        # own original card. Another person's card, a CV or a shared contact
+        # cannot supply the destination.
+        links = {urljoin(_GSS, a["href"]) for a in cards[0].select("div.media-content a[href]")
+                 if " ".join(a.stripped_strings).strip(" >").casefold() == "full profile"}
+        if links != {_OLIVER_PROFILE}:
+            return
+        profile = _read_destination(_OLIVER_PROFILE)
+        names = profile.select("h1") if profile is not None else []
+        if len(names) == 1 and names[0].get_text(" ", strip=True) == row["pi_name"]:
+            row["url"] = row["source_url"] = _OLIVER_PROFILE
+        return
+
+
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
     rows = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep, unit_ledger=unit_ledger)
     udel_materials_ranks.observe_materials_ranks(rows, deep=deep)
+    if deep:
+        _read_oliver_destination(rows)
     return rows
 
 
