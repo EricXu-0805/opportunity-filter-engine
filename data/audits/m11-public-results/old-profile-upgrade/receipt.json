@@ -1,0 +1,15 @@
+{
+  "stage": "same-guest-upgrade-confirmed",
+  "site": "https://joinalab.com",
+  "start": "2026-11-26T14:11:38.288810+00:00",
+  "old_version": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "old_revision": 1,
+  "original_source_sha256": "711579a7c1a3480215ce8044441e873443cd940a5aa77399e0584af71fb6c806",
+  "old_digest_absent": true,
+  "new_version": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "new_revision": 2,
+  "legacy_profile_unchanged_before_reupload": true,
+  "same_file_reupload_attached_warning": true,
+  "warning_survived_independent_browser": true,
+  "finish": "2026-11-26T14:22:14.056922+00:00"
+}
