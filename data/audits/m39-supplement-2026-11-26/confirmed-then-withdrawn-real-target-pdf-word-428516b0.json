@@ -1,0 +1,69 @@
+{
+  "started": "2026-11-26T23:38:46.953668+00:00",
+  "release_expected": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "target": "faculty-ib-78788e71",
+  "completed": [
+    "self_created_visitor_manual_project_confirmed_and_cloud_read_back",
+    "unsubmitted_task_entered",
+    "another_tab_does_not_take_open_answers",
+    "closing_then_reopening_restores_selected_project_and_unsubmitted_answers_without_cloud_write",
+    "explicit_reconfirmation_writes_only_the_selected_answer_and_links_the_same_project",
+    "confirmed_supplement_is_in_cloud_target_resume_version_1_and_downloaded_pdf_word",
+    "original_version_retained_until_rebuilt_and_withdrawn_source_absent_from_new_draft_and_both_exports"
+  ],
+  "profile_revisions": [
+    1,
+    2
+  ],
+  "observed_target_model_calls": 0,
+  "external_messages_sent": 0,
+  "initial_release": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "exports": [
+    {
+      "format": "pdf",
+      "http": 200,
+      "included_selected_answer": true,
+      "excluded_unselected_answer": true,
+      "size": 8113,
+      "sha256": "f84ea2c1bf071d93f64ee50de1a4716eaec4bfb45e3f5bcfc4261b6cd044f730"
+    },
+    {
+      "format": "docx",
+      "http": 200,
+      "included_selected_answer": true,
+      "excluded_unselected_answer": true,
+      "size": 36819,
+      "sha256": "78f37b5de924be5af546ad824dfa25b745f8938da1473e4efdfb97a6526959de"
+    },
+    {
+      "format": "pdf",
+      "http": 200,
+      "included_selected_answer": false,
+      "excluded_unselected_answer": true,
+      "size": 7174,
+      "sha256": "12d3dd0ba7ecf708b9c3cd6fa04516323135d8d42339594862764589f2158007"
+    },
+    {
+      "format": "docx",
+      "http": 200,
+      "included_selected_answer": false,
+      "excluded_unselected_answer": true,
+      "size": 36759,
+      "sha256": "5a17bb87ef3a0ff0032599cb0437946e9ca079bd494f516c56acf6f21502f004"
+    }
+  ],
+  "saved_target_versions": [
+    1,
+    2
+  ],
+  "withdrawn_profile_revision": 3,
+  "guest_signup_returned": true,
+  "cloud_versions": [
+    1,
+    1,
+    2
+  ],
+  "final_release": "428516b07eb63bdc1bc31693a7d399f51bc6bd96",
+  "passed": true,
+  "finished": "2026-11-26T23:39:22.402430+00:00"
+}
