@@ -447,7 +447,7 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
 /** POST /api/matches — get ranked opportunities for a profile */
 export function toMatchProfileRequest(profile: ProfileData) {
   const base = toProfileRequest(profile);
-  const experiences = matchExperienceRows(profile.experience_entries);
+  const experiences = matchExperienceRows(profile.experience_entries, profile.resume_text);
   if (!experiences) throw new ApiError(422, 'PROFILE_INPUT_INVALID', 'Review the experience library before matching.', false,
     undefined, { field: 'profile.match_experiences' });
   return experiences.length ? { ...base, match_experiences: experiences } : base;

@@ -117,7 +117,7 @@ class MatchExperience(BaseModel):
     _known_keys = model_validator(mode="before")(known_keys)
     id: str = Field(min_length=1, max_length=80)
     revision: int = Field(gt=0, le=9007199254740991)
-    source: Literal["manual", "github"]
+    source: Literal["manual", "github", "resume"]
     status: Literal["candidate", "confirmed", "rejected", "withdrawn"]
     text: str = Field(min_length=1, max_length=6000)
 

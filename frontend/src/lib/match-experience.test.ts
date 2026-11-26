@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import { toMatchProfileRequest, toProfileRequest } from './api';
+import { sourceDigest } from './experience-evidence';
 import { hashProfile } from './match-utils';
 import type { ExperienceEntry } from './types';
 
@@ -23,6 +24,53 @@ describe('experiences used by the actual matching request', () => {
     expect(matched.hard_skills).toEqual([]);
     expect(toProfileRequest(profile)).not.toHaveProperty('match_experiences');
     expect(JSON.stringify(matched)).not.toContain('synthetic-user');
+  });
+  it('sends only the approved wording bound to the exact current PDF, including Unicode offsets', async () => {
+    const quote = '我使用 GIS 绘制了湿地图。';
+    const prefix = 'Private 🙂\n';
+    const raw = prefix + quote + '\nPrivate footer';
+    const start = Array.from(prefix).length;
+    const source = { kind: 'resume' as const, signature: await sourceDigest(raw), quote,
+      start, end: start + Array.from(quote).length };
+    const entry: ExperienceEntry = { id: `r:${source.signature}:${source.start}:${source.end}`, revision: 7, status: 'confirmed',
+      text: 'I mapped wetlands using GIS. 我核对了原文。', source };
+    const profile = { ...DEFAULT_PROFILE, resume_text: raw, experience_entries: [entry, project] };
+    const request = toMatchProfileRequest(profile);
+    const reference = 'pdf:' + await sourceDigest(entry.id);
+    expect(request).toMatchObject({ match_experiences: [
+      { id: reference, revision: 7, status: 'confirmed', text: entry.text, source: 'resume' },
+      { id: project.id, source: 'github' },
+    ] });
+    for (const localOnly of [quote, 'Private', source.signature]) expect(JSON.stringify(request)).not.toContain(localOnly);
+    const historicalCollision = { ...manual, id: reference };
+    expect(toMatchProfileRequest({ ...profile, experience_entries: [entry, historicalCollision] }))
+      .toMatchObject({ match_experiences: [{ id: reference + '-1' }, { id: reference }] });
+    expect(profile.experience_entries[0].id).toBe(entry.id);
+    const originalHash = hashProfile(profile);
+    for (const stale of [
+      { ...profile, resume_text: raw + 'x' },
+      { ...profile, resume_text: undefined },
+      { ...profile, resume_text: raw + '\ud800' },
+      { ...profile, experience_entries: [{ ...entry, source: { ...source, start: start+1, end: source.end+1 } }, project] },
+      { ...profile, experience_entries: [{ ...entry, source: { ...source, quote: quote.replace('图','湖') } }, project] },
+      ...(['candidate','rejected','withdrawn'] as const).map(status => ({...profile, experience_entries: [{...entry, status}, project]})),
+    ]) {
+      expect(toMatchProfileRequest(stale)).toMatchObject({ match_experiences: [{ id: project.id }] });
+      expect(hashProfile(stale)).not.toBe(originalHash);
+    }
+    expect(toMatchProfileRequest(JSON.parse(JSON.stringify(profile)))).toEqual(request);
+  });
+  it('retains complete Unicode entries at both limits and rejects over-limit material intact', () => {
+    const text = '😀'.repeat(5999) + '界';
+    const entries = Array.from({ length: 10 }, (_, i) => ({ ...manual, id: 'long-' + i, text }));
+    const profile = { ...DEFAULT_PROFILE, experience_entries: entries };
+    expect(toMatchProfileRequest(profile)).toMatchObject({ match_experiences: entries.map(e => ({ id: e.id, text })) });
+    const tooLong = [{...entries[0], text: text + '尾'}];
+    const tooManyCharacters = [...entries, {...manual, id: 'last', text: '尾'}];
+    for (const unmodified of [tooLong, tooManyCharacters]) {
+      expect(() => toMatchProfileRequest({...profile, experience_entries: unmodified})).toThrow();
+      expect(unmodified.at(-1)?.text.endsWith('尾')).toBe(true);
+    }
   });
   it('changes the cached results when confirmed work changes, and returns to the original key after withdrawal', () => {
     const base = hashProfile(DEFAULT_PROFILE);

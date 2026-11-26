@@ -2981,7 +2981,8 @@ def test_home_only_ranking_skips_evidence_reads_for_out_of_scope_records(monkeyp
     assert reads == {row["id"] for row in rows}
 
 
-def test_confirmed_external_work_changes_both_match_routes_with_its_receipt_and_withdrawal(snapshot_env):
+@pytest.mark.parametrize("work_source", ["github", "resume"])
+def test_confirmed_external_work_changes_both_match_routes_with_its_receipt_and_withdrawal(snapshot_env, work_source):
     target = _opp("work-b", source="manual", eligibility={"skills_required": ["Python"]})
     unrelated = _opp("work-a", source="manual", eligibility={"skills_required": ["JavaScript"]})
     inferred = _opp("work-c", source="test-catalog", eligibility={"skills_required": ["Python"]})
@@ -2989,7 +2990,7 @@ def test_confirmed_external_work_changes_both_match_routes_with_its_receipt_and_
     snapshot_env["by_id"].clear()
     snapshot_env["by_id"].update({o["id"]: o for o in snapshot_env["corpus"]})
     profile = _profile(experience_level="beginner", hard_skills=[])
-    entry = {"id": "work-log", "status": "confirmed", "revision": 2, "source": "github",
+    entry = {"id": "work-log", "status": "confirmed", "revision": 2, "source": work_source,
              "text": "I implemented Python data validation for a team project."}
 
     def results(profile):

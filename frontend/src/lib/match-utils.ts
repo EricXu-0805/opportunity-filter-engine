@@ -283,7 +283,7 @@ export function hashProfile(profile: {
   resume_text?: string;
   exploring?: boolean;
 }): string {
-  const confirmedWork = matchExperienceRows(profile.experience_entries);
+  const confirmedWork = matchExperienceRows(profile.experience_entries, profile.resume_text);
   const key = JSON.stringify({
     major: profile.major,
     college: profile.college,
@@ -306,8 +306,7 @@ export function hashProfile(profile: {
     // → experience_level: scored in the readiness layer.
     exp: profile.experience_level ?? 'beginner',
     ...(confirmedWork === null || confirmedWork.length ? { confirmedWork } : {}),
-    // → resume_ready (only presence matters to the matcher, so hash presence —
-    // resume text edits that keep it non-empty don't need a re-match).
+    // Raw text stays local. A change to the source affects confirmedWork above.
     resume: !!profile.resume_text,
     // → exploring: widens matching + diversity-samples the top buckets.
     exploring: profile.exploring ?? false,

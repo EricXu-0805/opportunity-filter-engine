@@ -109,19 +109,7 @@ def _nano_reviewed_rank(card, name: str, href: str) -> str:
     section = card.find_previous("strong")
     if not section or section.get_text(strip=True) not in {"Professors", "Associate Professors", "Assistant Professors"}:
         return ""
-    profile = ucb_common.fetch_soup(href)
-    heading = profile.select_one("h3.faculty_profile_name") if profile else None
-    if not heading or " ".join(heading.stripped_strings).split() != names[0].split():
-        return ""
-    roles = heading.find_next_sibling("p")
-    if not roles:
-        return ""
-    # Each line on the official Jacobs biography names a specific department.
-    nano_roles = [rank.strip() for line in roles.stripped_strings
-                  for rank, _, unit in [line.rpartition(",")] if unit.strip() in {"NENG", "CNE"}]
-    if len(nano_roles) != 1:
-        return ""
-    rank = nano_roles[0]
+    rank = _nano_biography_rank(href, names[0])
     if faculty_graph.is_retired_title(rank):
         return rank
     if href in _NANO_REVIEWED_ADJUNCTS and "adjunct" in rank.casefold():
@@ -129,6 +117,36 @@ def _nano_reviewed_rank(card, name: str, href: str) -> str:
     if "recall" in rank.casefold() or not faculty_graph._passes_ladder(rank, _LADDER):
         return ""
     if href in _NANO_REVIEWED_ADJUNCTS and not _nano_department_ladder_appointment(href, names):
+        return ""
+    return rank
+
+
+def _nano_biography_rank(href: str, name: str, *, units=("NENG", "CNE")) -> str:
+    profile = ucb_common.fetch_soup(href)
+    heading = profile.select_one("h3.faculty_profile_name") if profile else None
+    if not heading or " ".join(heading.stripped_strings).split() != name.split():
+        return ""
+    roles = heading.find_next_sibling("p")
+    if not roles:
+        return ""
+    # Each line on the official Jacobs biography names a specific department.
+    nano_roles = [rank.strip() for line in roles.stripped_strings
+                  for rank, _, unit in [line.rpartition(",")] if unit.strip() in units]
+    return nano_roles[0] if len(nano_roles) == 1 else ""
+
+
+def _nano_current_grid_rank(card, name: str, href: str) -> str:
+    # The shared CNE grid alone cannot assign someone to the historic NANO program.
+    if (name, href) != ("Zeinab Jahed", _JACOBS_PROFILE + "527"):
+        faculty_graph._cover("partial_render_rows")
+        return ""
+    role = card.select_one("h5")
+    listing_rank = role.get_text(" ", strip=True) if role else ""
+    if listing_rank and not faculty_graph._passes_ladder(listing_rank, _LADDER):
+        return listing_rank
+    rank = _nano_biography_rank(href, name, units=("NENG",))
+    if not listing_rank or not rank or listing_rank.casefold() != rank.casefold():
+        faculty_graph._cover("partial_render_rows")
         return ""
     return rank
 
@@ -302,6 +320,15 @@ SCHOOL: dict = {
                     "name_flip": True,
                     "ladder_filter": _LADDER,
                     "section_filter": {"heading": "strong", "exclude": r"\bemerit(?:us|a|i|ae)\b"},
+                    "extra_urls": [{
+                        "url": _NANO_CURRENT_DIRECTORY,
+                        "selectors": {"card": ".faculty-information", "name": "h4 a", "link": "h4 a",
+                                      "review_profile_rank": _nano_current_grid_rank},
+                        "unit_filter": {"selector": "h4 a", "include": r"^Zeinab Jahed$"},
+                        "section_filter": None,
+                        "ladder_filter": {**_LADDER, "require_present": True},
+                        "cite_profile_rank": True,
+                    }],
                 },
             ),
             # A later explicit appointment on the same biography retains the ID

@@ -35,7 +35,7 @@ def confirmed_methods(entries):
     """Index once per ranking. Preserve the first matching full record's id and revision."""
     index = {}
     for entry in entries or ():
-        if not isinstance(entry, dict) or entry.get("status") != "confirmed" or entry.get("source") not in ("manual", "github"):
+        if not isinstance(entry, dict) or entry.get("status") != "confirmed" or entry.get("source") not in ("manual", "github", "resume"):
             continue
         for clause in _OWN_CLAUSE.split(entry["text"]):
             if not _OWN_ACTION.search(clause) or _NOT_PERFORMED.search(clause) or _OTHER_ACTOR.search(clause):

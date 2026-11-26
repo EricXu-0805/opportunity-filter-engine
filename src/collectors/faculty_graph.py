@@ -767,6 +767,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "curated": True,
         FACULTY_MAJOR_LABELS_MARKER: list(dept.get("majors") or []),
     }
+    directory_rank = person.get("_directory_rank")
+    if (directory_rank and directory_rank["title"] == title and directory_rank["name"] == name
+            and directory_rank["profile"] == profile_url and directory_rank["source"] == dept.get("directory_url")):
+        metadata["faculty_title_observation"] = {**directory_rank, "checked_on": now[:10]}
     if not research_areas and keywords and all(
         is_directory_discipline(school["source"], dept_name, k) for k in keywords
     ):
@@ -796,6 +800,13 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
+    if roster_url := person.get("_corroborating_roster_url"):
+        # The reviewed person page states the rank. The current directory independently
+        # confirms it, while student-facing faculty links must open the person's page.
+        metadata["faculty_title_observation"] = {
+            "name": name, "title": title, "source": profile_url, "profile": profile_url,
+            "roster_url": roster_url, "checked_on": now[:10],
+        }
     if person.get("_checked_research_index"):
         metadata["checked_research_index"] = person["_checked_research_index"]
     if research_areas and person.get("_research_areas_source_url"):
@@ -1450,7 +1461,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # unreachable by a descendant selector from the card.
             title_el = card.find_next_sibling(sel["title_sibling"])
         title = title_el.get_text(" ", strip=True) if title_el else ""
-        if not title and (review_rank := sel.get("review_profile_rank")):
+        directory_rank = sel.get("directory_rank")
+        if directory_rank:
+            title = directory_rank(card)
+        elif not title and (review_rank := sel.get("review_profile_rank")):
             title = review_rank(card, name, href)
         # Some university directories list an administrative office before the
         # person's academic appointment. Keep the first academic/excluded rank
@@ -1544,6 +1558,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             _cover("parsed_faculty_rows")
             person = faculty(name, title=title, url=href, email=email, research_areas=research,
                              keywords=keywords, department=dept_override)
+            if directory_rank and title and href != base_url:
+                person["_directory_rank"] = {
+                    "name": name, "title": title, "source": base_url, "profile": href,
+                }
             if contact_config := sel.get("bound_contact"):
                 # Require one named person and one consistent, school-owned address
                 # in this card; a page-level or neighbouring address cannot bind.
@@ -2015,7 +2033,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                     "retires nobody this run", dept.get("short"), sorted(not_read))
         for extra in cfg.get("extra_urls", []):
             _extra_url = extra["url"] if isinstance(extra, dict) else extra
-            unit_filter = extra.get("unit_filter") if isinstance(extra, dict) else None
+            page_config = extra if isinstance(extra, dict) else {}
             # Sibling roster pages of the SAME department that share one theme —
             # rank-split med-school galleries, art-history + studio art, core +
             # teaching faculty — merged under this department's short/name (dedup
@@ -2033,10 +2051,21 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 logger.warning("faculty_graph: %s roster page %s was not read; the "
                                "unit retires nobody this run", dept.get("short"), _extra_url)
                 continue
-            _seen = {(p["name"], p["url"]) for p in people}
-            people.extend(
-                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff, unit_filter=unit_filter)
-                if (p["name"], p["url"]) not in _seen)
+            existing_people = {(p["name"], p["url"]): p for p in people}
+            extra_people = _parse_cards(
+                _es, page_config.get("selectors", sel), _extra_url, page_config.get("ladder_filter", lf),
+                flip, link_f, page_config.get("section_filter", sf), ff, unit_filter=page_config.get("unit_filter"),
+            )
+            for person in extra_people:
+                identity = person["name"], person["url"]
+                prior = existing_people.get(identity)
+                if page_config.get("cite_profile_rank") and person.get("title"):
+                    cited_person = prior if prior is not None else person
+                    cited_person["_corroborating_roster_url"] = _extra_url
+                    cited_person["title"] = person["title"]
+                if prior is None:
+                    people.append(person)
+                    existing_people[identity] = person
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)

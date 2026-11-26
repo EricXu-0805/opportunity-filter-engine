@@ -25,8 +25,8 @@ describe('experience library review', () => {
   it('names the current consumers and the external evidence that can inform matching', () => {
     // It used to say résumé rewriting ignored the library, yet every target-résumé
     // experience line, the lines AI may rewrite, is a confirmed library entry.
-    expect(dictionaries.en.home.experience.description).toBe('Review résumé excerpts or add an experience. Confirm the entries you want to use in email drafts, your résumé master and target résumés. A match can also show when a confirmed manual, LinkedIn or GitHub entry describes a method the opportunity names.');
-    expect(dictionaries.zh.home.experience.description).toBe('核对简历原文片段，也可以手动补充经历。请确认哪些经历可以用于邮件草稿、简历母版和目标简历。如果你确认的手填、LinkedIn 或 GitHub 经历描述了该机会提到的方法，匹配结果也会标出采用的经历。');
+    expect(dictionaries.en.home.experience.description).toBe('Review résumé excerpts or add an experience. Confirm the entries you want to use in email drafts, your résumé master and target résumés. A match can show which confirmed résumé, manual, LinkedIn or GitHub entry describes a method the opportunity names. Résumé excerpts must match your current source text.');
+    expect(dictionaries.zh.home.experience.description).toBe('核对简历原文片段，也可以手动补充经历。请确认哪些经历可以用于邮件草稿、简历母版和目标简历。如果你确认的简历、手填、LinkedIn 或 GitHub 经历描述了机会提到的方法，匹配结果会标出采用的经历。简历片段须与当前简历原文一致。');
   });
   it('extracts candidates, confirms a correction with original quote and preserves it on re-extraction', async () => {
     render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'Built a Python robot.\n\nMeasured 20 trials.' }} />);
