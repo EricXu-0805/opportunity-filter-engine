@@ -50,6 +50,7 @@ export default function Header() {
   const newMatchCount = useNewMatchCount();
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
 
   // R67 problem #3: "Find Matches" should take users back to /results
   // when they have a generated match set cached in sessionStorage. The
@@ -94,7 +95,11 @@ export default function Header() {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.getElementById('mobile-nav-panel')?.contains(document.activeElement)) {
+        menuToggleRef.current?.focus();
+      }
+      setOpen(false);
     };
     /* Click-outside close (R47): a mousedown anywhere outside the <header>
        element collapses the mobile panel. mousedown (not click) fires
@@ -170,7 +175,7 @@ export default function Header() {
               aria-label={open ? t('nav.menuClose') : t('nav.menuOpen')}
               aria-expanded={open}
               aria-controls="mobile-nav-panel"
-              data-testid="mobile-nav-toggle"
+              data-testid="mobile-nav-toggle" ref={menuToggleRef}
               className="inline-flex items-center justify-center w-9 h-7 rounded-full text-gray-600 hover:text-gray-900 hover:bg-black/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
             >
               {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
