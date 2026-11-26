@@ -1,0 +1,64 @@
+{
+  "time_utc": "2026-11-26T13:58:03.932524+00:00",
+  "sample": "research_area-002",
+  "original_id": "faculty-bu-qst-3cc6c010",
+  "original_public_detail": "https://joinalab.com/opportunities/faculty-bu-qst-3cc6c010",
+  "production_field_before": {
+    "state": "unknown",
+    "explicit": {},
+    "inferred": {},
+    "unknown": [
+      "research_areas"
+    ],
+    "quotes": {},
+    "provenance": {
+      "source_url": "https://www.bu.edu/questrom/profiles/camilla-schneier/",
+      "observed_at": "2026-11-25T17:31:23.012046"
+    }
+  },
+  "official_faculty_profile": "https://www.bu.edu/questrom/profiles/camilla-schneier/",
+  "official_named_link": {
+    "source": "https://www.bu.edu/provost/academic-process-policies/faculty-actions/approved-faculty-appointments-and-promotions-december-2025-april-2026/approved-faculty-appointments-and-promotions-december-2024-april-2025/",
+    "section": "Charles River Campus Appointments / Questrom School of Business",
+    "name": "Camilla Schneier",
+    "href": "https://camillaschneier.github.io/"
+  },
+  "faculty_self_description": {
+    "source": "https://camillaschneier.github.io/",
+    "displayed_heading": "Camilla Schneier",
+    "current_employer": "Boston University",
+    "quote": "My research is in industrial organization and urban economics."
+  },
+  "normal_candidate_detail_status": 200,
+  "candidate_research_field": {
+    "state": "source",
+    "explicit": {
+      "research_areas": "industrial organization and urban economics."
+    },
+    "inferred": {},
+    "unknown": [],
+    "quotes": {},
+    "provenance": {
+      "source_url": "https://camillaschneier.github.io/",
+      "observed_at": "2026-11-26T13:56:46.406527+00:00"
+    }
+  },
+  "other_fields_campus_source": "https://www.bu.edu/questrom/profiles/camilla-schneier/",
+  "campus_count_in_the_same_order": 1968,
+  "changed_record_ids": [
+    "faculty-bu-qst-3cc6c010"
+  ],
+  "changed_fields": [
+    "description_clean",
+    "keywords",
+    "metadata",
+    "title"
+  ],
+  "changed_metadata_fields": [
+    "checked_research_index",
+    "research_areas_raw",
+    "research_areas_source_url",
+    "research_areas_verified_at"
+  ],
+  "next": "Verify the original visible profile after deployment and the next Boston campus run. Failed source reads preserve the originally dated observation; a checked authority or owner mismatch withdraws the claim."
+}
