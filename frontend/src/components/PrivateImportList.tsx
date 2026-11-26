@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useT } from '@/i18n/client';
 import { useAuthModal } from '@/lib/auth-modal-context';
-import { usePrivateImportList } from '@/lib/use-private-import-list';
+import type { usePrivateImportList } from '@/lib/use-private-import-list';
 import type { PrivateImportTarget } from '@/lib/private-import-target-api';
 import { privateImportErrorKey, privateImportSourceInfo, privateImportSourceUrl } from '@/lib/private-import-ui';
 import ImportOpportunityDetails from './ImportOpportunityDetails';
 
-export default function PrivateImportList() {
+export default function PrivateImportList({ list }: { list: ReturnType<typeof usePrivateImportList> }) {
   const { t } = useT(); const { openModal } = useAuthModal();
-  const { state, refresh, loadMore, open, close, remove } = usePrivateImportList();
+  const { state, refresh, loadMore, open, close, remove } = list;
   const [deleteReview, setDeleteReview] = useState<PrivateImportTarget | null>(null);
   const detail = state.detail;
   const deleting = detail.status === 'ready' && detail.deleting;

@@ -34,6 +34,10 @@ vi.mock('@/lib/api', () => ({
 
 // Opportunities imported and saved in this browser count as saved, exactly as
 // /favorites counts them. Default: storage readable, nothing imported.
+const privateImportFeed = vi.hoisted(() => ({ items: [] as { id: string }[] }));
+vi.mock('@/lib/use-private-import-list', () => ({ usePrivateImportList: () => ({
+  state: { status: 'ready', items: privateImportFeed.items, cursor: null }, refresh: vi.fn(),
+}) }));
 const customStorageFeed = vi.hoisted(() => ({
   state: { status: 'ready', entries: [] } as import('@/lib/custom-imports').CustomImportStorageState,
 }));
@@ -157,6 +161,16 @@ describe('DashboardPage — personal metrics', () => {
     await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('0'));
     expect(screen.queryByTestId('professor-updates-section')).not.toBeInTheDocument();
     expect(screen.queryByText('dashboard.roadmapCta.title')).not.toBeInTheDocument();
+  });
+
+  it('counts an account import restored on a device without a browser copy', async () => {
+    privateImportFeed.items = [{ id: 'private-import:11111111-1111-4111-8111-111111111111' }];
+    try {
+      render(<DashboardPage />);
+      await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('1'));
+      expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).not.toBeInTheDocument();
+      expect(screen.getByText('dashboard.deadlines.accountImportsHint')).toBeInTheDocument();
+    } finally { privateImportFeed.items = []; }
   });
 
   it('shows the saved count and tracker funnel, with no whole-database stats', async () => {
