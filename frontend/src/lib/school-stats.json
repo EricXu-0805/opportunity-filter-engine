@@ -32,10 +32,10 @@
       "total_count": 183
     },
     "bc": {
-      "listing_count": 5,
+      "listing_count": 4,
       "faculty_contact_count": 841,
       "unreviewed_count": 0,
-      "total_count": 846
+      "total_count": 845
     },
     "boulder": {
       "listing_count": 9,
@@ -170,10 +170,10 @@
       "total_count": 573
     },
     "duke": {
-      "listing_count": 54,
+      "listing_count": 53,
       "faculty_contact_count": 1195,
       "unreviewed_count": 0,
-      "total_count": 1249
+      "total_count": 1248
     },
     "emory": {
       "listing_count": 5,
@@ -482,16 +482,16 @@
       "total_count": 1177
     },
     "ucr": {
-      "listing_count": 5,
+      "listing_count": 4,
       "faculty_contact_count": 1171,
       "unreviewed_count": 0,
-      "total_count": 1176
+      "total_count": 1175
     },
     "ucsb": {
-      "listing_count": 267,
+      "listing_count": 101,
       "faculty_contact_count": 848,
       "unreviewed_count": 0,
-      "total_count": 1115
+      "total_count": 949
     },
     "ucsc": {
       "listing_count": 3,
@@ -506,10 +506,10 @@
       "total_count": 1496
     },
     "udel": {
-      "listing_count": 4,
+      "listing_count": 3,
       "faculty_contact_count": 1018,
       "unreviewed_count": 0,
-      "total_count": 1022
+      "total_count": 1021
     },
     "uf": {
       "listing_count": 5,
@@ -548,10 +548,10 @@
       "total_count": 1571
     },
     "umd": {
-      "listing_count": 7,
-      "faculty_contact_count": 1346,
+      "listing_count": 6,
+      "faculty_contact_count": 1343,
       "unreviewed_count": 0,
-      "total_count": 1353
+      "total_count": 1349
     },
     "umich": {
       "listing_count": 7,

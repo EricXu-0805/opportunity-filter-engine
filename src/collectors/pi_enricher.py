@@ -13,7 +13,10 @@ import json
 import logging
 import re
 import time
+from datetime import date
+from http import HTTPStatus
 from pathlib import Path
+from typing import Literal
 
 import requests
 from bs4 import BeautifulSoup
@@ -36,6 +39,13 @@ PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 
 HEADERS = {"User-Agent": "OpportunityFilterEngine/1.0 (educational project)"}
 DELAY = 2
+
+# These two profile directories refused every read in their November refreshes.
+# A single restricted profile does not establish that the whole directory is closed.
+_REFUSAL_LIMITED_DIRECTORIES = {
+    "colby_faculty": "https://www.colby.edu/people/people-directory",
+    "haverford_faculty": "https://www.haverford.edu/users",
+}
 
 # school slug -> its institutional email/URL domains. Email recovery only ever
 # accepts an address on the record's OWN school's domain (wrong-person guard:
@@ -226,7 +236,13 @@ def _is_likely_real_email(email: str) -> bool:
     return True
 
 
-def _fetch_soup(url: str) -> BeautifulSoup | None:
+def _contact_probe_phase() -> int:
+    # Each school runs weekly. Sample a different quarter of a refused
+    # directory each week, so even a single recovered profile gets a read.
+    return ((date.today().toordinal() - 1) // 7) % 4
+
+
+def _fetch_soup(url: str) -> BeautifulSoup | Literal[HTTPStatus.FORBIDDEN] | None:
     try:
         resp = requests.get(
             url, timeout=12, headers=HEADERS, verify=_ca_bundle()
@@ -236,6 +252,8 @@ def _fetch_soup(url: str) -> BeautifulSoup | None:
     except Exception as e:
         note_rejected_certificate(url, e)
         logger.warning(f"Failed to fetch {url}: {e}")
+        if isinstance(e, requests.HTTPError) and e.response is not None and e.response.status_code == 403:
+            return HTTPStatus.FORBIDDEN
         return None
 
 
@@ -395,7 +413,10 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
              "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0,
-             "skipped_certificate": 0, "skipped_in_memoriam": 0, "skipped_inactive": 0}
+             "skipped_certificate": 0, "skipped_forbidden": 0, "skipped_in_memoriam": 0, "skipped_inactive": 0}
+    refused_profiles = {directory: set() for directory in _REFUSAL_LIMITED_DIRECTORIES.values()}
+    positions = dict.fromkeys(refused_profiles, 0)
+    probe_phase = _contact_probe_phase()
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -444,7 +465,7 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
             continue
 
         enriched = False
-        url = opp.get("url", "")
+        url = opp.get("url") or ""
         domains = _school_domains(opp)
         if opp.get("source") == "uiuc_sro" and url.startswith("https://researchops"):
             scrapeable, extract = True, _extract_contact_from_sro
@@ -452,7 +473,17 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
             scrapeable = bool(url) and (any(d in url for d in domains) or "nsf.gov" in url)
             extract = _extract_contact_from_generic_page
 
-        if scrapeable and max_scrapes is not None and stats["scraped"] >= max_scrapes:
+        directory = _REFUSAL_LIMITED_DIRECTORIES.get(opp.get("source"))
+        limited = False
+        if directory:
+            parent, _, profile = url.partition("?")[0].partition("#")[0].rstrip("/").rpartition("/")
+            limited = bool(profile and parent == directory)
+        if limited:
+            position = positions[directory]
+            positions[directory] += 1
+        if scrapeable and limited and len(refused_profiles[directory]) >= 3 and position % 4 != probe_phase:
+            stats["skipped_forbidden"] += 1
+        elif scrapeable and max_scrapes is not None and stats["scraped"] >= max_scrapes:
             stats["skipped_budget"] += 1
         elif scrapeable and deadline is not None and time.monotonic() >= deadline:
             stats["skipped_deadline"] += 1
@@ -463,7 +494,14 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         elif scrapeable:
             soup = _fetch_soup(url)
             stats["scraped"] += 1
-            if soup:
+            if limited:
+                if soup is HTTPStatus.FORBIDDEN:
+                    refused_profiles[directory].add(profile)
+                    if len(refused_profiles[directory]) == 3:
+                        logger.warning("Sampling a rotating quarter of %s after three distinct refused profiles", directory)
+                else:
+                    refused_profiles[directory].clear()
+            if isinstance(soup, BeautifulSoup):
                 info = extract(soup, domains)
                 if info.get("contact_email"):
                     opp["contact_email"] = info["contact_email"]

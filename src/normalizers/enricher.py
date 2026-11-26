@@ -396,7 +396,7 @@ def is_rolling_deadline(opp: dict) -> bool:
     "legitimately has no deadline" — the latter should not appear as a
     data-quality issue.
     """
-    if opp.get("deadline"):
+    if opp.get("deadline") or (opp.get("metadata") or {}).get("reference_only") is True:
         return False
     source = opp.get("source", "")
     if source in _ROLLING_BY_SOURCE:
@@ -414,6 +414,14 @@ def is_rolling_deadline(opp: dict) -> bool:
     return False
 
 
+def can_infer_application_fields(opp: dict) -> bool:
+    """Faculty profiles and reference pages may describe a linked opening."""
+    return (
+        opp.get("source_type") != "faculty_research"
+        and (opp.get("metadata") or {}).get("reference_only") is not True
+    )
+
+
 def enrich_opportunity(opp: dict) -> dict:
     """Backfill majors + keywords in-place when upstream is empty.
     Also flags non-opportunities (events, announcements) as inactive.
@@ -423,7 +431,8 @@ def enrich_opportunity(opp: dict) -> dict:
     non-opportunity heuristic matches (then is_active is forced False).
     """
     elig = opp.setdefault("eligibility", {})
-    if opp.get("source_type") != "faculty_research" and not elig.get("majors"):
+    infer_application = can_infer_application_fields(opp)
+    if infer_application and not elig.get("majors"):
         inferred = infer_majors(opp)
         if inferred:
             elig["majors"] = inferred
@@ -432,7 +441,7 @@ def enrich_opportunity(opp: dict) -> dict:
     # Source prose can establish a requirement only through a local explicit
     # qualifier. A tool used in the project remains a positive mention; a
     # research domain cannot fabricate a tool or an applicant requirement.
-    if opp.get("source_type") != "faculty_research":
+    if infer_application:
         skills = extract_skill_requirements(_skill_source_text(opp))
         for kind in ("required", "preferred"):
             field = f"skills_{kind}"

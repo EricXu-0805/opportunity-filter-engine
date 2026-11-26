@@ -139,14 +139,15 @@ SCHOOL: dict = {
                     "honors_college",
                     "University of Maryland Honors College",
                     "https://honors.umd.edu/",
-                    "The Honors College serves students with exceptional "
-                    "academic talents in a close-knit community committed to a "
-                    "broad and balanced education. It comprises multiple honors "
-                    "living-learning programs, several of which are "
-                    "research-focused.",
+                    "UMD considers first-year applicants for an Honors College invitation "
+                    "through the university's early-action application. The college lists "
+                    "a separate process for current and transfer students. Its Fall 2027 "
+                    "application is expected in mid-May 2027.",
                     lab_or_program="Honors College",
                     opportunity_type="research",
-                    preferred_year=["freshman"],
+                    reference_only=True,
+                    is_rolling=False,
+                    preferred_year=[],
                     keywords=["honors", "selective admission", "living-learning",
                               "research clusters"],
                 ),

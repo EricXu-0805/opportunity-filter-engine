@@ -38,15 +38,14 @@ SCHOOL: dict = {
                     "udel_undergraduate_research_program",
                     "Undergraduate Research Program (University of Delaware)",
                     "https://www.urp.udel.edu/",
-                    "The University of Delaware's Undergraduate Research Program is "
-                    "the campus hub for getting involved in research and creative "
-                    "scholarship across every college and major. It connects "
-                    "students with faculty mentors, funding awards, summer programs, "
-                    "and the annual symposium, and guides them from first exploring "
-                    "research to presenting their own work.",
+                    "Delaware's Undergraduate Research Program office links students to "
+                    "research apprenticeships, summer programs and senior theses. "
+                    "Each program sets its own eligibility and application process.",
                     lab_or_program="Undergraduate Research Program",
                     opportunity_type="research",
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
+                    reference_only=True,
+                    is_rolling=False,
+                    preferred_year=[],
                     keywords=["undergraduate research", "faculty mentorship",
                               "research funding", "any major"],
                 ),

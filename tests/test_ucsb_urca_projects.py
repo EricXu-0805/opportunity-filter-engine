@@ -240,7 +240,8 @@ class TestNormalize:
         assert o["title"] and o["url"] and o["description_clean"]
         assert len(o["description_clean"]) <= 1500
         assert o["source_type"].startswith("campus_") and "faculty" not in o["source_type"]
-        assert o["is_rolling"] is True and o["deadline"] is None
+        assert o["is_rolling"] is None and o["deadline"] is None
+        assert o["application"]["application_url"] is None
 
     def test_no_pi_or_email(self):
         """240+ project records with a blank/shared pi_name or email would trip the
@@ -445,3 +446,73 @@ class TestNormalize:
         assert result == (0, 0, 0)
         saved = json.loads(processed.read_text(encoding="utf-8"))[0]
         assert saved["metadata"]["is_active"] is True
+
+
+def test_recruiting_directory_requires_a_unique_identity_and_preserves_reference_ids():
+    from src.evidence import target_truth
+
+    def source(sid, title):
+        slug = title.lower().replace(" ", "-")
+        return {"id": sid, "title": title, "slug": slug,
+                "url": f"https://ucsb.my.site.com/urca/s/funding-program/{sid}/{slug}"}
+
+    def directory_item(title, description, tags=""):
+        return {"title": title, "description_digest": u._description_digest(description), "tags": tags}
+
+    projects = [source("clear", "Student Community Outreach"), source("new", "Metadata And History"),
+                source("old", "2022 Academic Worker Strike Conflict Research Project"),
+                source("a0WVt00000BbDUbMAN", "Test From Aj"), source("one", "Research Lab"),
+                source("two", "Research Lab"), source("three", "Research Lab"), source("four", "Research Lab")]
+    candidates = [directory_item("Student community outreach", "Seeking undergraduate assistants."),
+                  directory_item("Metadata & public history", "Compare two public archives."),
+                  directory_item("Research Lab", "Work on today's project.", "Transfer;Upper division"),
+                  directory_item("Research Lab", "An indistinguishable public entry."),
+                  directory_item("Research Lab", "An indistinguishable public entry.")]
+    details = {"new": candidates[1], "one": {**candidates[2], "tags": "Upper division;Transfer"},
+               "two": directory_item("Research Lab", "Different project."),
+               "three": candidates[3], "four": candidates[3]}
+    records, proof = u.reconcile_directory(projects, candidates, details)
+    assert proof["directory_matched_ids"] == 3
+    for original, item in zip(projects, records, strict=True):
+        normalized = u.normalize_project(item)
+        assert normalized["id"] == u.normalize_project(original)["id"]
+        assert normalized["source_url"] == original["url"]
+        assert normalized["is_rolling"] is None and normalized["eligibility"]["preferred_year"] == []
+        truth = target_truth(normalized)
+        if item["id"] in {"clear", "new", "one"}:
+            assert truth.actionable and truth.listing_state == "open"
+            assert normalized["application"]["application_url"] == original["url"]
+        else:
+            assert not truth.actionable and truth.listing_state == "unknown"
+            assert normalized["application"]["application_url"] is None
+            assert "Open to matriculated" not in normalized["description"]
+        if item["id"] == "old":
+            assert truth.reference_only and normalized["metadata"]["is_active"]
+        if item["id"] == "a0WVt00000BbDUbMAN":
+            assert normalized["metadata"]["is_active"] is False
+    # A title containing 'test' or a year is not itself evidence of closure.
+    genuine = source("future", "Testing the 2022 interview method")
+    [item], _ = u.reconcile_directory([genuine], [directory_item(genuine["title"], "Recruiting")], {})
+    assert target_truth(u.normalize_project(item)).actionable
+
+
+def test_directory_failure_does_not_downgrade_a_previous_recruiting_snapshot(monkeypatch, tmp_path):
+    def rec(sid, state):
+        raw = {"id": sid, "url": f"{u.PORTAL}/{sid}", "title": sid, "slug": sid, "urca_directory": state}
+        return u.normalize_project(raw)
+
+    path = tmp_path / "opportunities.json"
+    before = json.dumps([rec("one", "listed"), rec("two", "listed"), rec("three", "not_matched")])
+    path.write_text(before)
+    monkeypatch.setattr(u, "PROCESSED_FILE", path)
+    with pytest.raises(u.UnsafeUrcaSnapshotError, match="loss of previously matched"):
+        u.merge_snapshot_into_processed([rec("one", "listed"), rec("two", "not_matched"), rec("three", "not_matched")],
+                                        snapshot_complete=True)
+    assert path.read_text() == before
+    old_rows = json.loads(before)
+    u.merge_snapshot_into_processed([rec("one", "listed"), rec("two", "unavailable"), rec("three", "not_matched")],
+                                    snapshot_complete=True)
+    assert json.loads(path.read_text())[1] == old_rows[1]
+    monkeypatch.setattr(u, "scrape_projects_with_evidence", lambda: ([{"id": "one"}], {"sitemap_complete": False}))
+    monkeypatch.setattr(u, "_read_directory", lambda *_: pytest.fail("Partial sitemap must not be matched"))
+    assert u.fetch_and_normalize_with_evidence() == ([], {"sitemap_complete": False})

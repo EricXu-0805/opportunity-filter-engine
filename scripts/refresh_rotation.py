@@ -194,10 +194,9 @@ def normalize_publication_unit(raw: str) -> str:
     )
 
 
-# uiuc drives headless Chromium outside the faculty_graph engine
-# (uiuc_js_faculty recovers the 4 ACES departments from Drupal Views AJAX),
-# so it cannot be detected by inspecting school configs.
-_BROWSER_SCHOOLS_OUTSIDE_ENGINE = frozenset({"uiuc"})
+# The UIUC faculty collector and UCSB URCA recruiting directory use Chromium
+# outside the faculty_graph/campus_graph configuration engines.
+_BROWSER_SCHOOLS_OUTSIDE_ENGINE = frozenset({"uiuc", "ucsb"})
 
 
 def _config_needs_browser(school: dict) -> bool:

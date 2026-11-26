@@ -121,15 +121,14 @@ SCHOOL: dict = {
                     "ucr_cnas_student_research",
                     "CNAS Student Research & Internship Opportunities (UC Riverside)",
                     "https://cnas.ucr.edu/student-research-and-internship-opportunities",
-                    "The College of Natural and Agricultural Sciences' hub for "
-                    "undergraduate research and internships, listing pathways such "
-                    "as the Chancellor's Research Fellowship, UC LEADS, and the "
-                    "Summer Bridge to Research program. It points CNAS students "
-                    "toward funded, mentored research experiences in the natural "
-                    "and agricultural sciences.",
+                    "UCR's College of Natural and Agricultural Sciences lists research "
+                    "and internship opportunities for students. Each linked program "
+                    "publishes its own application and eligibility requirements.",
                     lab_or_program="College of Natural and Agricultural Sciences",
                     opportunity_type="research",
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
+                    reference_only=True,
+                    is_rolling=False,
+                    preferred_year=[],
                     keywords=["research fellowship", "UC LEADS",
                               "summer bridge to research", "natural sciences"],
                 ),
