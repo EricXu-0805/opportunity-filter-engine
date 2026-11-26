@@ -1,68 +1,85 @@
-"""Read the Caltech office index and the two separate SURF application calendars on production against their live source pages."""
+"""Check the released program periods, skills, directory and archived IDs through production."""
 import json
 import re
-from urllib.parse import urlsplit
-from playwright.sync_api import sync_playwright, expect
+from urllib.parse import quote
+
+from playwright.sync_api import expect, sync_playwright
 from verify_m25_results_20261126 import capture, enter_results, is_view, out, receipt, site
 
+
 cases = [
-    ("caltech-5ca171e19766","Student-Faculty Programs", "https://sfp.caltech.edu/undergraduate-research/programs","off-campus surf"),
-    ("caltech-a56b5e0f17fa","Off-Campus SURF","https://sfp.caltech.edu/undergraduate-research/programs/off-campus-surf","standard surf application"),
-    ("caltech-d8e1ba2c4a90","University of Iceland","https://sfp.caltech.edu/undergraduate-research/programs/exchange_programs","march 1, 2027"),
+    ("ext-cmu-reuse", "Carnegie Mellon REUSE", "https://www.cmu.edu/scs/s3d/reuse/", "criteria", "2027-01-28", [], True),
+    ("ext-umn-reu", "Computing for Social Good", "https://reu.cs.umn.edu/apply", "programming", None, ["Basic programming"], False),
+    ("ext-usc-ict", "Institute for Creative Technologies REU", "https://ict.usc.edu/reu/", "january 27, 2027", "2027-01-27", [], True),
+    ("ext-uiuc-ncsa-reu", "FoDOMMaT", "https://reu.ncsa.illinois.edu/", "python", "2027-02-15", ["Python", "machine learning"], True),
+    ("ext-utexas-tacc", "TACC REU", "https://tacc.utexas.edu/education/undergraduates-graduates/reu/", "april 1, 2027", "2027-04-01", [], True),
+    ("ext-umbc-bigdata", "UMBC Big Data REU", "https://bigdatareu.umbc.edu/2026-program-and-application/", "march 03, 2026", "2026-03-03", [], False),
+    ("uiuc-sro-database", "Summer Research Opportunities Database", "https://researchops.web.illinois.edu/", "how to use", None, [], False),
 ]
 
-def caltech_student(page, school="caltech"):
-    page.goto(site, wait_until="domcontentloaded")
-    page.locator("#student_name").wait_for(timeout=60000)
-    for _ in range(100):
-        page.wait_for_timeout(250)
-        if receipt["guest_signup"] == 200 and not page.get_by_test_id("hydration-note").is_visible() and not page.get_by_test_id("profile-refresh-status").is_visible():
-            break
-    assert receipt["guest_signup"] == 200
-    campus = page.get_by_test_id("university-card-" + school)
-    if not campus.is_visible():
-        change = page.get_by_role("button", name="Change", exact=True)
-        change.click()
-        page.wait_for_timeout(500)
-        if not campus.is_visible():
-            change.click()
-    campus.click()
-    page.get_by_test_id("switcher-confirm").click()
-    page.locator("#student_name").fill("Sample Student")
-    college = "Division of Engineering and Applied Science"
-    for selector, value in (("#college", college), ("#major", "Computer Science")):
-        field = page.locator("select" + selector)
-        expect(field).to_be_enabled(timeout=45000)
-        field.select_option(value=value)
-        expect(field).to_have_value(value)
-    page.locator("#grade").select_option(label="Junior")
-    interests = "database systems, computer science, summer research" if school == "uiuc" else "machine learning, artificial intelligence, healthcare"
-    page.locator("#research_interests").fill(interests)
-    for label in ("Research", "Summer program", "Internship"):
-        target = page.locator('fieldset[aria-describedby="seeking-types-help"]').get_by_role("button", name=label, exact=True)
-        if target.get_attribute("aria-pressed") != "true":
-            target.click()
-    generate = page.get_by_test_id("generate-matches")
+
+def check(page, ctx, oid, query, source, qualifier, deadline, skills, actionable):
+    entry = receipt[oid] = {"official": source}
+    tab = ctx.new_page()
     try:
-        expect(generate).to_be_enabled(timeout=45000)
-    except AssertionError:
-        receipt["validation"] = page.locator("#match-validation, #profile-save-status").all_inner_texts()
-        receipt["selected"] = {id: page.locator("#"+id).input_value() for id in ["college", "major", "grade", "research_interests"]}
-        page.screenshot(path=out/"caltech-form.png")
-        raise
-    generate.click()
-    for _ in range(25):
-        page.wait_for_timeout(250)
-        if urlsplit(page.url).path.startswith("/results"):
-            break
-    if urlsplit(page.url).path == "/" and generate.is_enabled():
-        generate.click()
-    page.wait_for_url(re.compile("/results"), timeout=55000)
-    cards = page.locator("[id^=match-card-]")
-    cards.first.wait_for(timeout=90000)
-    assert receipt["profile_commit"] == 200
-    if page.get_by_test_id("switcher-confirm").is_visible():
-        page.keyboard.press("Escape")
+        official = tab.goto(source, wait_until="domcontentloaded")
+        entry["official_http"] = official.status
+        body = " ".join(tab.locator("body").inner_text().lower().split())
+        entry["official_phrase_found"] = qualifier in body
+        entry["official_title"] = tab.title()
+    finally:
+        tab.close()
+    api = page.request.get(site + "/api/opportunities/" + oid, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
+    entry["detail_http"] = api.status
+    assert api.ok
+    d = api.json()
+    for key in ["id", "deadline", "is_rolling", "target_truth", "application_opens"]:
+        entry[key] = d.get(key)
+    entry["skills"] = d["eligibility"]["skills_required"]
+    entry["citizenship_required"] = d["eligibility"]["citizenship_required"]
+    assert entry["id"] == oid and entry["deadline"] == deadline
+    assert entry["is_rolling"] is False and entry["skills"] == skills
+    truth = entry["target_truth"]
+    assert truth["actionable"] is actionable
+    if oid == "ext-uiuc-ncsa-reu":
+        assert d["application_opens"]["on"] == "2026-12-15"
+    if oid == "uiuc-sro-database":
+        assert truth["reference_only"] and truth["reason_code"] == "reference_only"
+    elif not actionable:
+        assert truth["reason_code"] == "listing_closed"
+    page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded")
+    h1 = page.get_by_role("heading", level=1)
+    expect(h1).to_have_text(d["title"], timeout=45000)
+    entry["detail_title"] = h1.inner_text()
+    action_pattern = re.compile(r"^(Apply now|Draft email)$", re.I)
+    action_controls = [c for role in ["link", "button"] for c in page.get_by_role(role, name=action_pattern).all_text_contents()]
+    entry["detail_action_controls"] = action_controls
+    if not actionable:
+        assert not action_controls
+    entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if re.search("python|programming|closed|reference|december|2027|apply|deadline|citizenship|citizens", s, re.I)]
+    page.screenshot(path=out / (oid + "-detail.png"))
+    with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as resp:
+        page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
+    assert resp.value.ok
+    wire = resp.value.json()
+    entry["match_count"] = wire["filtered_total"]
+    ids = [r["opportunity_id"] for r in wire["results"]]
+    entry["listed"] = oid in ids
+    assert not wire["has_more"]
+    assert entry["listed"] is actionable
+    card = page.locator("#match-card-" + oid)
+    if actionable:
+        expect(card).to_be_visible(timeout=90000)
+        card.get_by_role("button", name="Show details", exact=True).click()
+        entry["card_text"] = card.inner_text()
+        if oid != "ext-uiuc-ncsa-reu":
+            assert not re.search(r"Missing skills:[^\n]*Python", entry["card_text"], re.I)
+        card.screenshot(path=out / (oid + "-card.png"), animations="disabled")
+    else:
+        expect(page.get_by_role("tablist")).to_be_visible(timeout=90000)
+        expect(card).to_have_count(0)
+    assert entry["official_http"] == 200 and entry["official_phrase_found"]
+
 
 with sync_playwright() as pw:
     browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox", "--disable-dev-shm-usage"])
@@ -71,57 +88,19 @@ with sync_playwright() as pw:
     page = ctx.new_page()
     page.on("response", capture)
     page.set_default_timeout(40000)
+    failures = {}
     try:
-        caltech_student(page)
-        for oid, query, source, qualifier in cases:
-            entry = receipt[oid] = {"source": source}
-            source_page = ctx.new_page()
+        health = page.request.get(site + "/api/health").json()
+        receipt["backend_release"] = health["release_sha"]
+        assert receipt["backend_release"] == "db3e8229b64e781b4dc74cddfe2c4acaa13d5896"
+        enter_results(page, "uiuc")
+        for row in cases:
             try:
-                official = source_page.goto(source, wait_until="domcontentloaded", timeout=35000)
-                entry["source_http"] = official.status if official else None
-                source_text = " ".join(source_page.locator("body").inner_text().lower().split())
-                entry["source_title"] = source_page.title()
-                entry["source_phrase_seen_on_ci"] = qualifier in source_text
-                if not entry["source_phrase_seen_on_ci"]:
-                    entry["source_response_excerpt"] = source_text[:160]
+                check(page, ctx, *row)
             except Exception as exc:
-                entry["source_read_error"] = type(exc).__name__
-            finally:
-                source_page.close()
-            api = page.request.get(site + "/api/opportunities/" + oid, params={"_release_scope": "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
-            entry["detail_http"] = api.status
-            if not api.ok:
-                raise AssertionError(f"Missing stable record: {oid}")
-            detail = api.json()
-            entry["target_truth"] = detail["target_truth"]
-            entry["detail_skills"] = detail["eligibility"]["skills_required"]
-            entry["eligibility"] = {k: detail["eligibility"].get(k) for k in ("international_friendly", "work_auth_notes", "majors")}
-            entry["rolling"] = detail.get("is_rolling")
-            entry["deadline"] = detail.get("deadline")
-            page.goto(site + "/opportunities/" + oid, wait_until="domcontentloaded")
-            heading = page.get_by_role("heading", level=1)
-            expect(heading).to_be_visible()
-            entry["detail_title"] = heading.inner_text()
-            entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if any(k in s.lower() for k in ["python","c++","sql","apply","draft email","citizenship","stipend","paid","international","citizen","march","january","february","application","rolling","january 28","2027-01-28","basic programming","upcoming","closed"])]
-            page.screenshot(path=out / (oid + "-detail.png"))
-            from urllib.parse import quote
-            with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as network:
-                page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
-            wire = network.value.json()
-            assert network.value.ok
-            entry["search_total"] = wire["filtered_total"]
-            entry["listed"] = any(row["opportunity_id"] == oid for row in wire["results"])
-            assert entry["listed"] or not wire["has_more"]
-            card = page.locator("#match-card-" + oid)
-            if entry["listed"]:
-                assert detail["target_truth"]["actionable"]
-                expect(card).to_be_visible(timeout=90000)
-                card.get_by_role("button", name="Show details", exact=True).click()
-                entry["card_text"] = card.inner_text()
-                card.screenshot(path=out / (oid + "-card.png"), animations="disabled")
-            else:
-                expect(page.get_by_role("tablist")).to_be_visible(timeout=90000)
-                expect(card).to_have_count(0)
+                failures[row[0]] = repr(exc)
+        receipt["failures"] = failures
+        assert not failures, failures
     finally:
         (out / "m23.json").write_text(json.dumps(receipt, indent=2) + "\n")
         print(json.dumps(receipt), flush=True)
