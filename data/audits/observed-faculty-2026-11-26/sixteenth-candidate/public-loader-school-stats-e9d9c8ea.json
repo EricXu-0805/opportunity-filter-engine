@@ -1,0 +1,62 @@
+{
+  "batch": 16,
+  "tested_at": "2026-11-26T20:06:39.094540+00:00",
+  "code": "65d14e6968a093c66b2273d971ffb749d796c82a",
+  "raw_stats_preview": "3da13e6d499fa820f4240ab774b9f9952a58ed39",
+  "corrected_preview_tree": "2e190a36230357f872812580a00a332ee1fc95ec",
+  "stats_blob": "71e0e507f846b12869984b75a77ad29df32ee6a2",
+  "normal_generator": "school-stats: 115 schools, 130741 campus records (listings + faculty contacts), national=5630 -> frontend/src/lib/school-stats.json",
+  "cold_generator": "school-stats: committed file matches the corpus.",
+  "assembly": "assemble: 149892 records -> opportunities.json",
+  "expected_unique_original_ids": 149892,
+  "shards": 117,
+  "school_count": 115,
+  "raw_national_count": 5631,
+  "rendered_national_count": 5630,
+  "school_differences": {
+    "sbu": {
+      "raw": {
+        "listing_count": 6,
+        "faculty_contact_count": 913,
+        "unreviewed_count": 0,
+        "total_count": 919
+      },
+      "official": {
+        "listing_count": 6,
+        "faculty_contact_count": 911,
+        "unreviewed_count": 0,
+        "total_count": 917
+      }
+    },
+    "ucb": {
+      "raw": {
+        "listing_count": 72,
+        "faculty_contact_count": 2161,
+        "unreviewed_count": 0,
+        "total_count": 2233
+      },
+      "official": {
+        "listing_count": 71,
+        "faculty_contact_count": 2161,
+        "unreviewed_count": 0,
+        "total_count": 2232
+      }
+    },
+    "ucsc": {
+      "raw": {
+        "listing_count": 3,
+        "faculty_contact_count": 747,
+        "unreviewed_count": 0,
+        "total_count": 750
+      },
+      "official": {
+        "listing_count": 3,
+        "faculty_contact_count": 744,
+        "unreviewed_count": 0,
+        "total_count": 747
+      }
+    }
+  },
+  "official_stats_sha256": "c1d7480c98b3677d683d1117b49cbc141960282bdf2fca2c55d6f3f1899aa9ec",
+  "status": "Offline production-loader projection. Actual upstream merge, protected CI, dual deployment, public school readback and natural schedules remain separately gated."
+}
