@@ -1,0 +1,170 @@
+{
+  "source_heads": {
+    "1353": "836499d534736e97804076cd2c6e623cd6a0c5f0",
+    "1354": "996a630ed93b1f1e8a0d2884287edbfb663a89cc",
+    "1342": "5bf3312ac45fd5ac513853ff55e7cda91818c328",
+    "1348": "b7c5a2ad63825dedc2c6fe196725e758d3253f22",
+    "1356": "c6bfad343a3b2e7efeea7eed1d306f06b264ab13"
+  },
+  "head": "6a0e6d3d801eb1e433209f7be8e05fdacc43d6d3",
+  "base": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "synthetic_merge": "33603df9bfd58c02aadc8bfc129db29595608277",
+  "tree": "c8434f95fd6f826c101a1fc7cadb038efb50d2b2",
+  "parents": [
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "6a0e6d3d801eb1e433209f7be8e05fdacc43d6d3"
+  ],
+  "strict": {
+    "url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/branches/main/protection/required_status_checks",
+    "strict": true,
+    "contexts": [
+      "Backend (lint + pytest)",
+      "Frontend (typecheck + build)",
+      "E2E (Playwright)"
+    ],
+    "contexts_url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/branches/main/protection/required_status_checks/contexts",
+    "checks": [
+      {
+        "context": "Backend (lint + pytest)",
+        "app_id": 15368
+      },
+      {
+        "context": "Frontend (typecheck + build)",
+        "app_id": 15368
+      },
+      {
+        "context": "E2E (Playwright)",
+        "app_id": 15368
+      }
+    ]
+  },
+  "state": "clean",
+  "standard_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029",
+  "standard_jobs": {
+    "Decide (run or skip the suite)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029/job/139917653938"
+    },
+    "Backend (lint + pytest)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029/job/139918282678"
+    },
+    "Frontend (typecheck + build)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029/job/139918282755"
+    },
+    "Migrations (Flow B merge + CLI replay)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029/job/139918282781"
+    },
+    "E2E (Playwright)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029/job/139918282808"
+    },
+    "Deploy backend (Render hook)": {
+      "status": "skipped",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45822377029/job/139935047902"
+    }
+  },
+  "preceding_release": {
+    "observed_utc": "2026-11-26T12:44:01.891925+00:00",
+    "expected_merge": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "observations": {
+      "homepage": {
+        "url": "https://joinalab.com/",
+        "status": 200,
+        "release_sha": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+      },
+      "official_site_api": {
+        "url": "https://joinalab.com/api/health",
+        "status": 200,
+        "release_sha": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+      },
+      "render_origin": {
+        "url": "https://opportunity-filter-engine-api.onrender.com/api/health",
+        "status": 200,
+        "release_sha": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+      }
+    },
+    "all_exact": true
+  },
+  "utc_checked": "2026-11-26T13:16:45Z",
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1364",
+  "actual_main": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "actual_merge": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "actual_tree": "c8434f95fd6f826c101a1fc7cadb038efb50d2b2",
+  "actual_parents": [
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "6a0e6d3d801eb1e433209f7be8e05fdacc43d6d3"
+  ],
+  "hosted_test_counts": {
+    "backend": {
+      "passed": 20599,
+      "skipped": 1,
+      "expected_failures": 45
+    },
+    "frontend": {
+      "passed": 9782,
+      "files": 377
+    },
+    "chromium": {
+      "passed": 456,
+      "skipped": 4,
+      "passed_after_retry": 0
+    }
+  },
+  "public_release": {
+    "observed_utc": "2026-11-26T13:21:50.826880+00:00",
+    "expected_merge": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+    "observations": {
+      "homepage": {
+        "url": "https://joinalab.com/",
+        "status": 200,
+        "release_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
+      },
+      "official_site_api": {
+        "url": "https://joinalab.com/api/health",
+        "status": 200,
+        "release_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
+      },
+      "render_origin": {
+        "url": "https://opportunity-filter-engine-api.onrender.com/api/health",
+        "status": 200,
+        "release_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
+      }
+    },
+    "all_exact": true
+  },
+  "vercel_hosting": {
+    "created_at": "2026-11-26T13:19:20Z",
+    "environment_url": "https://opportunity-filter-engine-5vcyendtp-ericxu-0805s-projects.vercel.app",
+    "log_url": "https://opportunity-filter-engine-5vcyendtp-ericxu-0805s-projects.vercel.app",
+    "state": "success",
+    "updated_at": "2026-11-26T13:19:20Z"
+  },
+  "render_hook": {
+    "completed_at": "2026-11-26T13:17:40Z",
+    "conclusion": "success",
+    "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827663417/job/139936038148"
+  },
+  "synthetic_test_ids_on_normal_backend": {
+    "checked_utc": "2026-11-26T13:22:20.480173+00:00",
+    "release": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+    "records": [
+      {
+        "id": "e2e-actionable-research",
+        "url": "https://joinalab.com/api/opportunities/e2e-actionable-research",
+        "http": 404
+      },
+      {
+        "id": "e2e-related-research",
+        "url": "https://joinalab.com/api/opportunities/e2e-related-research",
+        "http": 404
+      }
+    ]
+  },
+  "cross_tab_owner_evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/455fef36c76d350247a635759ea3be29fe1f7e26/data/audits/maintenance-2026-11-26/integration-b6-owner-switch.json",
+  "revised_source_fixture_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45812801121",
+  "revised_source_work_history_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45810989258",
+  "production_acceptance_scope": "Hosting and corpus exclusion are verified. Browser feature receipts for U31, M15, Berkeley and three Illinois guides are collected separately by their assigned owners. Real participants and scheduled collections retain their own acceptance requirements."
+}
