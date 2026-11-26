@@ -267,6 +267,9 @@ SCHOOL: dict = {
                 # A WordPress center directory mixing grad students / postdocs /
                 # staff and external-institution professors — strict drop keeps
                 # Northwestern ladder professors.
+                # These sections include people whose cards omit rank. A professor
+                # also listed in a faculty section still qualifies from that card.
+                "section_filter": {"heading": "h3", "exclude": r"^Postdocs$|^Postdoctoral Alumni$"},
                 "ladder_filter": {
                     "require": r"\bprofessor\b",
                     "drop": (r"\bemerit|instruction|\bvisiting|\bpostdoctoral|postdoc"
