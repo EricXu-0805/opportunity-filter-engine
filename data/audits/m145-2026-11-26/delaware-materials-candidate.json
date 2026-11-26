@@ -1,0 +1,509 @@
+{
+  "base": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "campus_coverage": {
+    "after": {
+      "faculty": 1027,
+      "listings": 3,
+      "total": 1030
+    },
+    "before": {
+      "faculty": 1018,
+      "listings": 3,
+      "total": 1021
+    }
+  },
+  "candidate_api_reads": {
+    "faculty-udel-cbe-d95f4672": {
+      "actionable": false,
+      "email_status": "unavailable",
+      "http": 200,
+      "listed": "2026-09-03",
+      "role": "Distinguished Professor of Materials Science & Engineering",
+      "truth": "inactive"
+    },
+    "faculty-udel-me-4b7217c7": {
+      "actionable": false,
+      "email_status": "unavailable",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "Professor Emeritus",
+      "truth": "inactive"
+    },
+    "faculty-udel-mseg-22466e16": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-25082bef": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-58d683fd": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-5ade1fd3": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-5dbd4670": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-7fa44ddf": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-a2bd5d6e": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-c091c4cd": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-ed9f22f8": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    },
+    "faculty-udel-mseg-f765ff5d": {
+      "actionable": true,
+      "email_status": "sign_in_required",
+      "http": 200,
+      "listed": "2026-11-26",
+      "role": "",
+      "truth": null
+    }
+  },
+  "candidate_final_unit_ledger": {
+    "baseline_active_count": 14,
+    "completeness_status": "complete",
+    "failure_reason": null,
+    "live_roster_count": 22,
+    "matched_identity_count": 14,
+    "missed_present_identities": [],
+    "observed_count": 14,
+    "retained_only_count": 0,
+    "retirement_authorized": true
+  },
+  "candidate_only": true,
+  "changed_existing_fields": {
+    "faculty-udel-me-4b7217c7": [
+      "description_clean",
+      "eligibility.eligibility_text_raw",
+      "metadata.deactivated_at",
+      "metadata.deactivation_reason",
+      "metadata.faculty_profile_review",
+      "metadata.faculty_title",
+      "metadata.is_active"
+    ]
+  },
+  "corrected_emeritus_original": "faculty-udel-me-4b7217c7",
+  "existing_rows_preserved_byte_equivalent_payload": 1048,
+  "fixed_ids": [
+    "faculty-udel-mseg-0544ab79",
+    "faculty-udel-mseg-0928b53b",
+    "faculty-udel-mseg-0abf9c4b",
+    "faculty-udel-mseg-191c5afc",
+    "faculty-udel-mseg-22466e16",
+    "faculty-udel-mseg-25082bef",
+    "faculty-udel-mseg-58d683fd",
+    "faculty-udel-mseg-5ade1fd3",
+    "faculty-udel-mseg-5dbd4670",
+    "faculty-udel-mseg-746bc5eb",
+    "faculty-udel-mseg-7fa44ddf",
+    "faculty-udel-mseg-8adc049f",
+    "faculty-udel-mseg-8f445ad2",
+    "faculty-udel-mseg-9e4dcbcc",
+    "faculty-udel-mseg-a2bd5d6e",
+    "faculty-udel-mseg-b7d4deef",
+    "faculty-udel-mseg-c091c4cd",
+    "faculty-udel-mseg-cdd5be37",
+    "faculty-udel-mseg-d4c62299",
+    "faculty-udel-mseg-d89bf70c",
+    "faculty-udel-mseg-ed9f22f8",
+    "faculty-udel-mseg-f765ff5d"
+  ],
+  "fixed_raw_parsed_excluded_unparsed": [
+    23,
+    22,
+    1,
+    0
+  ],
+  "natural_observation_evidence": "41adb823493527b2825afdd22a348c6cc72c9567",
+  "new_published_ids": [
+    "faculty-udel-mseg-22466e16",
+    "faculty-udel-mseg-25082bef",
+    "faculty-udel-mseg-58d683fd",
+    "faculty-udel-mseg-5ade1fd3",
+    "faculty-udel-mseg-5dbd4670",
+    "faculty-udel-mseg-7fa44ddf",
+    "faculty-udel-mseg-a2bd5d6e",
+    "faculty-udel-mseg-c091c4cd",
+    "faculty-udel-mseg-ed9f22f8",
+    "faculty-udel-mseg-f765ff5d"
+  ],
+  "old_ids": [
+    "faculty-udel-mseg-0544ab79",
+    "faculty-udel-mseg-191c5afc",
+    "faculty-udel-mseg-8adc049f",
+    "faculty-udel-mseg-8f445ad2",
+    "faculty-udel-mseg-b7d4deef",
+    "faculty-udel-mseg-d4c62299",
+    "faculty-udel-mseg-d89bf70c"
+  ],
+  "old_raw_parsed_excluded_unparsed": [
+    28,
+    7,
+    0,
+    21
+  ],
+  "original_rows": 1049,
+  "retained_departed_original": "faculty-udel-cbe-d95f4672",
+  "retired_section_total": 5,
+  "same_ids_in_second_replay": true,
+  "school_card_snapshot": [
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-0544ab79",
+      "directory_id": "faculty-udel-mseg-0544ab79",
+      "official_profile_html_sha256": "44c8b5af33c5c4e6f448de653d422242d6b3813b7af1f3652830f2bcd39724d9",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-mseg-0544ab79",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-191c5afc",
+      "directory_id": "faculty-udel-mseg-191c5afc",
+      "official_profile_html_sha256": "a4358ce8a3604fc8579528ece028e2346036157215c0d2af61fcbbacb3868556",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-mseg-191c5afc",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-me-1132dbdd",
+      "directory_id": "faculty-udel-mseg-d89bf70c",
+      "official_profile_html_sha256": "bcda2ef8ca3a9e93a256b0f5aa6d6337bb69059ffea07e38cf1e1f4ab044ce39",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-me-1132dbdd",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-bme-8b3e947d",
+      "directory_id": "faculty-udel-mseg-cdd5be37",
+      "official_profile_html_sha256": "f5424d689fe2866a69b3c213eaeb486bef1a1aa9ac2593ad9f6f913f2da31509",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-bme-8b3e947d",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-22466e16",
+      "directory_id": "faculty-udel-mseg-22466e16",
+      "official_profile_html_sha256": "02176efe9a453e862c69d47d360949528014e376f9dc668b1fff746a37d02bc3",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-cbe-5d23c5f1",
+      "directory_id": "faculty-udel-mseg-0928b53b",
+      "official_profile_html_sha256": "95558528149c50cd868123e53dde4126820abf1e3968e75943d9132729db4431",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-cbe-5d23c5f1",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-5ade1fd3",
+      "directory_id": "faculty-udel-mseg-5ade1fd3",
+      "official_profile_html_sha256": "8dd7f9070190545e0bff8f42d494ea87663b645ea71c1433a9d3311c6ccd9f5a",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-5dbd4670",
+      "directory_id": "faculty-udel-mseg-5dbd4670",
+      "official_profile_html_sha256": "df103194f7e120c0ba35c6b06136ed55957b85bb86c7e4508b08c78c5057587c",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-c091c4cd",
+      "directory_id": "faculty-udel-mseg-c091c4cd",
+      "official_profile_html_sha256": "7e8d831caa2a45bb396092088802248d090d20ef9634ea02df3b1d5318fe1a06",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-bme-ee8b1663",
+      "directory_id": "faculty-udel-mseg-746bc5eb",
+      "official_profile_html_sha256": "12a23fd1817d7efa68a80959a54e70a6bce5cd000b63343b889d93fa1f6409a7",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-bme-ee8b1663",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-8f445ad2",
+      "directory_id": "faculty-udel-mseg-8f445ad2",
+      "official_profile_html_sha256": "d0f1f305aaaf5a60a036f15226ba86fb7e182dc51b8986df90c06c598068abf9",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-mseg-8f445ad2",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-cbe-4d52b99a",
+      "directory_id": "faculty-udel-mseg-9e4dcbcc",
+      "official_profile_html_sha256": "c36efdc00f24634e410375be28965d1d2dd60220d8e4200322776a33f78ce86e",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-cbe-4d52b99a",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-cbe-7fcdd286",
+      "directory_id": "faculty-udel-mseg-0abf9c4b",
+      "official_profile_html_sha256": "381992a31fb6de3b18586612fcc47a445a638ffa6b4a228ffd98dd0254178573",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-cbe-7fcdd286",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": false,
+      "candidate_published_active": false,
+      "candidate_published_id": "faculty-udel-cbe-d95f4672",
+      "directory_id": "faculty-udel-mseg-2baf0b9a",
+      "official_profile_html_sha256": "7413dfdd4262f74a8160f97542dd747d10d7296a77fe4b716fad81e3aff755b1",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-cbe-d95f4672",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-25082bef",
+      "directory_id": "faculty-udel-mseg-25082bef",
+      "official_profile_html_sha256": "fb5735c6ac45bd287ebbd51194ba3d3961b361cae28975d442f5812aedaf848d",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-8adc049f",
+      "directory_id": "faculty-udel-mseg-8adc049f",
+      "official_profile_html_sha256": "6a8c99bcbd5f0760bc63ad2723abea829786fe4080d5c6d1a687fc0c8ca27d60",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-mseg-8adc049f",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-me-81c0b75f",
+      "directory_id": "faculty-udel-mseg-d4c62299",
+      "official_profile_html_sha256": "cd9bdbb87f2ced5286de81277fa43861852c9fbb294dffe5540bf7b83d594c4a",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-me-81c0b75f",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-a2bd5d6e",
+      "directory_id": "faculty-udel-mseg-a2bd5d6e",
+      "official_profile_html_sha256": "420c79ad3ae1d9ebc005cd44b6572b50314c51cfeb002252d604fd5c3bf95df1",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-cis-7a64f466",
+      "directory_id": "faculty-udel-mseg-b7d4deef",
+      "official_profile_html_sha256": "5835025aa38ef26830897619154b836f3355f4e7972ce293dfa02e993f924735",
+      "previously_parsed": true,
+      "prior_published_id": "faculty-udel-cis-7a64f466",
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-f765ff5d",
+      "directory_id": "faculty-udel-mseg-f765ff5d",
+      "official_profile_html_sha256": "75c51c76a46c96b1ca1d9abed1c859a7a997f3d3ea1db12e05e92aa66741ff39",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-7fa44ddf",
+      "directory_id": "faculty-udel-mseg-7fa44ddf",
+      "official_profile_html_sha256": "04ba2ba7422c8eb8fea505cc2388df86eb3e7f35e07ea665de57368093f3e244",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-58d683fd",
+      "directory_id": "faculty-udel-mseg-58d683fd",
+      "official_profile_html_sha256": "580e38fc9f61c567d40ca4cd3363bc2961d48358bb1658e96c272336101ce722",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": true,
+      "candidate_published_active": true,
+      "candidate_published_id": "faculty-udel-mseg-ed9f22f8",
+      "directory_id": "faculty-udel-mseg-ed9f22f8",
+      "official_profile_html_sha256": "4a5adc92516a42cba823293750959b80b1637289379d47506f0bc3da3f60a010",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "faculty"
+    },
+    {
+      "candidate_in_full_time_roster": false,
+      "candidate_published_active": false,
+      "candidate_published_id": "faculty-udel-me-4b7217c7",
+      "directory_id": "faculty-udel-mseg-277f7fa2",
+      "previously_parsed": false,
+      "prior_published_id": "faculty-udel-me-4b7217c7",
+      "section": "emeritus"
+    },
+    {
+      "candidate_in_full_time_roster": false,
+      "candidate_published_active": null,
+      "candidate_published_id": null,
+      "directory_id": "faculty-udel-mseg-928b260b",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "emeritus"
+    },
+    {
+      "candidate_in_full_time_roster": false,
+      "candidate_published_active": null,
+      "candidate_published_id": null,
+      "directory_id": "faculty-udel-mseg-36619aeb",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "emeritus"
+    },
+    {
+      "candidate_in_full_time_roster": false,
+      "candidate_published_active": null,
+      "candidate_published_id": null,
+      "directory_id": "faculty-udel-mseg-fd641e84",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "emeritus"
+    },
+    {
+      "candidate_in_full_time_roster": false,
+      "candidate_published_active": null,
+      "candidate_published_id": null,
+      "directory_id": "faculty-udel-mseg-3b223ac4",
+      "previously_parsed": false,
+      "prior_published_id": null,
+      "section": "emeritus"
+    }
+  ],
+  "scope_note": "This is a candidate replay of seven saved official engineering rosters with Soup Sieve 4.1.3. Current-status exceptions were checked against the receiving university and the named professor CV. Thursday natural results are preserved separately.",
+  "source_exceptions": {
+    "emeritus_me_cv_page_10": "https://me.udel.edu/wp-content/uploads/2022/07/3-5-2026_Current-JWG-CV.pdf",
+    "former_delaware_appointment": "https://engineering.nyu.edu/news/new-chemical-and-biomolecular-engineering-chair-lashanda-korley-bridges-polymer-science"
+  },
+  "source_page_sha256": {
+    "https://bme.udel.edu/people/": "a19742dfd3c67b6d794395b3345a4b7478a6c66fa496188a95db8451a5867c13",
+    "https://cbe.udel.edu/people/faculty/": "679677f5240cf0d6d0da2b2f043f924f9eced77597c671d30279cdf8a06d82ac",
+    "https://ccee.udel.edu/people/faculty/": "47f49134a916b9eab4b6888c92a560dc3098cf7924b65b9137bf283a0ea1dceb",
+    "https://me.udel.edu/people/faculty/": "9184b1ae5c6fee20e33d76d119c299f069a2b742423a31d7da2dad8871e0aba1",
+    "https://mseg.udel.edu/people/faculty/": "c9d4e8f17354904d3f1f02e958e2ab39592008279bbf907c4d145ee37a1575f4",
+    "https://www.cis.udel.edu/people/faculty/": "eba71f0978f683fe4e07283d1b7a6aa17d3aed27cb5e72b682a5c29c7ab2177c",
+    "https://www.ece.udel.edu/people/faculty/": "d5d1228f431fd456b080abf1a90e462f868095d1f487e193770461843f7218ee"
+  },
+  "unchanged_baseline_sibling_unit_ledgers": [
+    "bme",
+    "cbe",
+    "ccee",
+    "cis",
+    "ece",
+    "me"
+  ],
+  "whole_candidate": {
+    "after_unique_ids": 149954,
+    "before_unique_ids": 149944,
+    "changed_previous_ids": [
+      "faculty-udel-me-4b7217c7"
+    ],
+    "deleted_ids": [],
+    "shards": 117,
+    "shards_byte_identical": 116
+  }
+}
