@@ -1,0 +1,74 @@
+{
+  "observed": "2026-11-26T14:37:51.372178+00:00",
+  "sample": "publication-004",
+  "original_id": "faculty-utexas-mpdd-5850399f",
+  "baseline": "14b7212455262f6afea20d0dde7c0774158167e2",
+  "public_original": "https://joinalab.com/opportunities/faculty-utexas-mpdd-5850399f",
+  "public_before_count": 0,
+  "campus_profile": "https://pharmacy.utexas.edu/directory/zhengrong-cui",
+  "openalex_author": "https://openalex.org/A5087576156",
+  "orcid": "https://orcid.org/0000-0002-1789-910X",
+  "competing_search_results": [
+    {
+      "id": "https://openalex.org/A5087576156",
+      "name": "Zhengrong Cui",
+      "last_known_institutions": [
+        "The University of Texas at Austin"
+      ]
+    },
+    {
+      "id": "https://openalex.org/A5155076995",
+      "name": "Zhengrong Cui",
+      "last_known_institutions": [
+        "Northeastern University"
+      ]
+    }
+  ],
+  "normal_harvest_and_local_detail_count": 2,
+  "two_primary_bylines": [
+    {
+      "doi": "10.1007/s11095-025-03956-7",
+      "publisher": "https://link.springer.com/article/10.1007/s11095-025-03956-7",
+      "author_in_same_affiliation_block": true,
+      "openalex_id": "https://openalex.org/W4415828969",
+      "openalex_field": "Pharmacology, Toxicology and Pharmaceutics"
+    },
+    {
+      "doi": "10.1186/s12951-025-03213-4",
+      "publisher": "https://link.springer.com/article/10.1186/s12951-025-03213-4",
+      "author_in_same_affiliation_block": true,
+      "openalex_id": "https://openalex.org/W4408969656",
+      "openalex_field": "Immunology and Microbiology"
+    }
+  ],
+  "sampled_source_works_not_in_public_candidate": [
+    {
+      "doi": "10.1186/s41120-026-00152-8",
+      "publisher": "https://link.springer.com/article/10.1186/s41120-026-00152-8",
+      "author_in_same_affiliation_block": true,
+      "openalex_id": "https://openalex.org/W7150868350",
+      "openalex_field": "Agricultural and Biological Sciences"
+    },
+    {
+      "doi": "10.1016/j.ijpharm.2026.126972",
+      "source": "https://pubmed.ncbi.nlm.nih.gov/42119681/",
+      "author_in_same_affiliation_block": true,
+      "openalex_field": "Physics and Astronomy"
+    }
+  ],
+  "reason_for_other_works": "Both 2026 originals have a primary OpenAlex field outside the matched author’s indexed field set. They are individually corroborated but not represented as collector-verified. The source-field gate is unchanged.",
+  "publisher_numbered_supplement": "https://static-content.springer.com/esm/art%3A10.1186%2Fs41120-026-00152-8/MediaObjects/41120_2026_152_MOESM1_ESM.pdf",
+  "supporting_collection_doi": "https://doi.org/10.6084/m9.figshare.c.8404481",
+  "attachment_publicly_hidden_before": true,
+  "changed_school_rows": 1,
+  "school_originals_retained_in_order": 2328,
+  "changed_metadata_fields": [
+    "recent_works",
+    "publication_attribution_status",
+    "works_gate",
+    "publication_author_id"
+  ],
+  "normal_apply_is_idempotent": true,
+  "production_verification_after_delivery": "pending",
+  "natural_monthly_refresh": "pending"
+}
