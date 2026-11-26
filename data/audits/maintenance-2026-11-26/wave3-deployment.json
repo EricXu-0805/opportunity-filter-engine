@@ -1,0 +1,143 @@
+{
+  "observed_at": "2026-11-26T11:00:52.658994+00:00",
+  "origin": "https://joinalab.com",
+  "tree": "b807562892e8e8a1b7deedde3133ab7a12f916e4",
+  "prs": {
+    "1327": {
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1327",
+      "merged_at": "2026-11-26T10:55:15Z",
+      "head": "652b8fefe6add02fde5165b680e46c39c6d12efa",
+      "merge_commit": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896"
+    },
+    "1319": {
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1319",
+      "merged_at": "2026-11-26T10:55:17Z",
+      "head": "df08403f87607e3d2daf7f857d67c0d44bccd2b3",
+      "merge_commit": "c727ecfac337e0117f409ee987b39a06deedd18c"
+    },
+    "1310": {
+      "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1310",
+      "merged_at": "2026-11-26T10:55:18Z",
+      "head": "3d50aadbffafecb01bb8d7a27086c34538cf03b4",
+      "merge_commit": "df08403f87607e3d2daf7f857d67c0d44bccd2b3"
+    }
+  },
+  "pr_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800863307",
+  "checks": {
+    "Backend (lint + pytest)": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800863307/job/139843667648",
+    "Frontend (typecheck + build)": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800863307/job/139843667665",
+    "Migrations (Flow B merge + CLI replay)": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800863307/job/139843667682",
+    "E2E (Playwright)": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45800863307/job/139843667773"
+  },
+  "main_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45805783937",
+  "hosts": {
+    "observed_at": "2026-11-26T10:59:45.281066+00:00",
+    "backend_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "frontend_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "backend_source": "GET /api/health -> release_sha",
+    "frontend_source": "GET / -> <html data-release-sha>"
+  },
+  "vercel": {
+    "id": 8083272953,
+    "sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "status": "success",
+    "status_url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8083272953/statuses",
+    "verified_at": "2026-11-26T10:58:02Z"
+  },
+  "release_record": {
+    "gate": "release_record",
+    "status": "PASS",
+    "detail": "backend and frontend both serve db3e8229 with shard commit 075983fc and 13 flags aligned in name and value",
+    "evidence": {
+      "observed_at": "2026-11-26T10:59:45.281066+00:00",
+      "candidate": {
+        "sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "data_version": {
+          "shard_commit": "075983fc340cfabee5bd8011113b3fef2c32b826",
+          "shards_tree": "cf5dc382ab51e4657eb74b51b5a304f627ceb295"
+        },
+        "release_scope": {
+          "backend": {
+            "match_ai_refine": false,
+            "cross_school_matching": true,
+            "compare": false,
+            "fellowships": false,
+            "resume_renovate": true,
+            "roadmap": false,
+            "ask_ai": false,
+            "professor_signals": false,
+            "payments": false,
+            "microsoft_school_auth": false,
+            "concierge_pay_qr": false,
+            "course_status": true,
+            "concierge_requests": false
+          },
+          "frontend": {
+            "match_ai_refine": false,
+            "cross_school_matching": true,
+            "compare": false,
+            "resume_renovate": true,
+            "fellowships": false,
+            "roadmap": false,
+            "ask_ai": false,
+            "professor_signals": false,
+            "microsoft_school_auth": false,
+            "payments": false,
+            "concierge_pay_qr": false,
+            "course_status": true,
+            "concierge_requests": false
+          }
+        }
+      },
+      "backend": {
+        "deployed_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "in_repository": true,
+        "data_version": {
+          "shard_commit": "075983fc340cfabee5bd8011113b3fef2c32b826",
+          "shards_tree": "cf5dc382ab51e4657eb74b51b5a304f627ceb295"
+        },
+        "release_scope": {
+          "match_ai_refine": false,
+          "cross_school_matching": true,
+          "compare": false,
+          "fellowships": false,
+          "resume_renovate": true,
+          "roadmap": false,
+          "ask_ai": false,
+          "professor_signals": false,
+          "payments": false,
+          "microsoft_school_auth": false,
+          "concierge_pay_qr": false,
+          "course_status": true,
+          "concierge_requests": false
+        }
+      },
+      "frontend": {
+        "deployed_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "in_repository": true,
+        "data_version": {
+          "shard_commit": "075983fc340cfabee5bd8011113b3fef2c32b826",
+          "shards_tree": "cf5dc382ab51e4657eb74b51b5a304f627ceb295"
+        },
+        "release_scope": {
+          "match_ai_refine": false,
+          "cross_school_matching": true,
+          "compare": false,
+          "resume_renovate": true,
+          "fellowships": false,
+          "roadmap": false,
+          "ask_ai": false,
+          "professor_signals": false,
+          "microsoft_school_auth": false,
+          "payments": false,
+          "concierge_pay_qr": false,
+          "course_status": true,
+          "concierge_requests": false
+        }
+      },
+      "disagreements": []
+    },
+    "last_checked_at": "2026-11-26T10:59:51.223358+00:00"
+  },
+  "scope": "Observed frontend and backend release, tree, dataset identity, flags and CI. Each item requires its own real-user or refresh evidence."
+}
