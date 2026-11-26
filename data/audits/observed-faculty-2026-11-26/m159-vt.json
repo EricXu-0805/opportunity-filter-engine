@@ -1,0 +1,206 @@
+{
+  "observed_utc": "2026-11-26T08:41:44.821697+00:00",
+  "release_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "prior_data_commit": "b1d224a6",
+  "historical_2026_11_05": {
+    "retirement_authorized": false,
+    "failure_reason": null,
+    "completeness_status": "partial",
+    "baseline_active_count": 30,
+    "observed_count": 23,
+    "missed_present_identities": [
+      "url/che.vt.edu/people/faculty/baird.html",
+      "url/che.vt.edu/people/faculty/cox.html",
+      "url/che.vt.edu/people/faculty/lu.html",
+      "url/che.vt.edu/people/faculty/oyama.html",
+      "url/che.vt.edu/people/faculty/whiting.html",
+      "url/che.vt.edu/people/postdoctoral-researchers/fangxi-wang.html",
+      "url/che.vt.edu/people/postdoctoral-researchers/qiang-gao.html"
+    ],
+    "fetch_status": "ok",
+    "parse_status": "ok",
+    "coverage": {
+      "ambiguous_rows": 0,
+      "classified_nonfaculty_rows": 0,
+      "duplicate_rows": 0,
+      "identity_match_failures": 7,
+      "parsed_faculty_rows": 30,
+      "parser_errors": 0,
+      "partial_render_rows": 0,
+      "raw_roster_rows": 30,
+      "unparsed_rows": 0
+    },
+    "school": "vt",
+    "shared_roster_check": null
+  },
+  "people": [
+    {
+      "id": "faculty-vt-che-be391032",
+      "source": "https://che.vt.edu/People/faculty/Baird.html",
+      "source_http": 200,
+      "source_h1": "Donald Baird",
+      "source_title": [
+        "Professor Emeritus"
+      ],
+      "api": {
+        "http": 200,
+        "name": "Donald Baird",
+        "id": "faculty-vt-che-be391032",
+        "source_url": "https://che.vt.edu/People/faculty/Baird.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-be391032"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Donald Baird",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-vt-che-762a80d6",
+      "source": "https://che.vt.edu/People/faculty/Cox.html",
+      "source_http": 200,
+      "source_h1": "David Cox",
+      "source_title": [
+        "Professor Emeritus"
+      ],
+      "api": {
+        "http": 200,
+        "name": "David Cox",
+        "id": "faculty-vt-che-762a80d6",
+        "source_url": "https://che.vt.edu/People/faculty/Cox.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-762a80d6"
+      },
+      "page": {
+        "http": 200,
+        "h1": "David Cox",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-vt-che-31a343a7",
+      "source": "https://che.vt.edu/People/faculty/Lu.html",
+      "source_http": 200,
+      "source_h1": "Chang Lu",
+      "source_title": [
+        "Fred W. Bull Professor of Chemical Engineering"
+      ],
+      "api": {
+        "http": 200,
+        "name": "Chang Lu",
+        "id": "faculty-vt-che-31a343a7",
+        "source_url": "https://che.vt.edu/People/faculty/Lu.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-31a343a7"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Chang Lu",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-vt-che-8d99f667",
+      "source": "https://che.vt.edu/People/faculty/Oyama.html",
+      "source_http": 200,
+      "source_h1": "Ted Oyama",
+      "source_title": [
+        "Professor Emeritus"
+      ],
+      "api": {
+        "http": 200,
+        "name": "Ted Oyama",
+        "id": "faculty-vt-che-8d99f667",
+        "source_url": "https://che.vt.edu/People/faculty/Oyama.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-8d99f667"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Ted Oyama",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-vt-che-23e0354e",
+      "source": "https://che.vt.edu/People/faculty/Whiting.html",
+      "source_http": 200,
+      "source_h1": "Gary Whiting",
+      "source_title": [
+        "Joseph H. Collie Professor Emeritus"
+      ],
+      "api": {
+        "http": 200,
+        "name": "Gary Whiting",
+        "id": "faculty-vt-che-23e0354e",
+        "source_url": "https://che.vt.edu/People/faculty/Whiting.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-23e0354e"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Gary Whiting",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-vt-che-2b84e643",
+      "source": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+      "source_http": 200,
+      "source_h1": "Qiang Gao",
+      "source_title": [
+        "Postdoctoral researchers"
+      ],
+      "api": {
+        "http": 200,
+        "name": "Qiang Gao",
+        "id": "faculty-vt-che-2b84e643",
+        "source_url": "https://che.vt.edu/People/postdoctoral-researchers/qiang-gao.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-2b84e643"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Qiang Gao",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-vt-che-b0225752",
+      "source": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html",
+      "source_http": 200,
+      "source_h1": "Fangxi Wang",
+      "source_title": [
+        "Postdoctoral researcher"
+      ],
+      "api": {
+        "http": 200,
+        "name": "Fangxi Wang",
+        "id": "faculty-vt-che-b0225752",
+        "source_url": "https://che.vt.edu/People/postdoctoral-researchers/fangxi-wang.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-19",
+        "detail": "https://joinalab.com/opportunities/faculty-vt-che-b0225752"
+      },
+      "page": {
+        "http": 200,
+        "h1": "Fangxi Wang",
+        "action_labels": []
+      }
+    }
+  ]
+}
