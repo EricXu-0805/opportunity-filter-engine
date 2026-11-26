@@ -23,7 +23,7 @@ with sync_playwright() as pw:
     titles=table.get_by_role("row").evaluate_all("rows=>rows.map(r => r.querySelector('td')?.innerText.trim()).filter(Boolean)")
     assert len(titles)>0
     directory_cells=table.get_by_role("row").evaluate_all("rows=>rows.map(r=>Array.from(r.querySelectorAll('td')).map(c=>c.innerText.trim())).filter(c=>c.length>=2)")
-    projects=[{"title":c[0],"description_digest":digest(c[1])} for c in directory_cells]
+    projects=[{"title":c[0],"description_digest":digest(c[1]),"tags":c[2] if len(c)>2 else ""} for c in directory_cells]
     matched_details={}
     for address in URLS:
         pg=b.new_page()
@@ -35,7 +35,10 @@ with sync_playwright() as pw:
             main.get_by_text("Undergraduate Contribution",exact=True).first.wait_for(timeout=6000)
             txt=main.inner_text()
             found=re.search(r"(?:^|\n)Description\s*\n(.*?)\nUndergraduate Contribution(?:\n|$)",txt,re.S)
-            matched_details[address.split("/")[-2]]={"title":main.get_by_role("heading",level=1).inner_text().strip(),
+            title_field=re.search(r"(?:^|\n)Project Title\s*\n(.*?)\nFaculty Contact(?:\n|$)",txt,re.S)
+            tags_field=re.search(r"(?:^|\n)Program Tags\s*\n(.*?)\nWebsite(?:\n|$)",txt,re.S)
+            title=title_field[1].strip() if title_field else main.get_by_role("heading",level=1).inner_text().strip()
+            matched_details[address.split("/")[-2]]={"title":title,"tags":tags_field[1].strip() if tags_field else "",
             "description_digest":digest(found[1]) if found and found[1].strip() else None}
         except Exception as e:
             print("detail unavailable",address,type(e).__name__)
