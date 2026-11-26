@@ -1,0 +1,4455 @@
+{
+  "scope": "Local public FastAPI routes, real original North Carolina State shard, two consecutive full CHASS refreshes driven by the original official HTML and all five official WP pages. All other collection units isolated. Last two appointment cases and outage are explicit simulations. No production writes.",
+  "observed_utc": "2026-11-26T10:22:31.821799+00:00",
+  "unique_original_review_rows": 134,
+  "original_affected_ids": [
+    "faculty-ncsu-chass-0096f675",
+    "faculty-ncsu-chass-01017fff",
+    "faculty-ncsu-chass-043b7940",
+    "faculty-ncsu-chass-0533fcc5",
+    "faculty-ncsu-chass-07f045ac",
+    "faculty-ncsu-chass-0bd3e213",
+    "faculty-ncsu-chass-0d338337",
+    "faculty-ncsu-chass-0fead013",
+    "faculty-ncsu-chass-103a03af",
+    "faculty-ncsu-chass-1308dd4b",
+    "faculty-ncsu-chass-141f03e6",
+    "faculty-ncsu-chass-1a99c291",
+    "faculty-ncsu-chass-1d403578",
+    "faculty-ncsu-chass-1e045b11",
+    "faculty-ncsu-chass-2245f23c",
+    "faculty-ncsu-chass-23293f4c",
+    "faculty-ncsu-chass-26df05d8",
+    "faculty-ncsu-chass-27a2fc46",
+    "faculty-ncsu-chass-2c5ca7f5",
+    "faculty-ncsu-chass-2f83bf51",
+    "faculty-ncsu-chass-30622ea2",
+    "faculty-ncsu-chass-31aed8b9",
+    "faculty-ncsu-chass-333b7b71",
+    "faculty-ncsu-chass-34394e34",
+    "faculty-ncsu-chass-37744c16",
+    "faculty-ncsu-chass-38b8ddf0",
+    "faculty-ncsu-chass-3ada8e26",
+    "faculty-ncsu-chass-3e0037ac",
+    "faculty-ncsu-chass-4152431b",
+    "faculty-ncsu-chass-433f5e0f",
+    "faculty-ncsu-chass-43f8b3c4",
+    "faculty-ncsu-chass-4574a4b4",
+    "faculty-ncsu-chass-48f6179f",
+    "faculty-ncsu-chass-4b621e05",
+    "faculty-ncsu-chass-4c6f69c7",
+    "faculty-ncsu-chass-4efb3edd",
+    "faculty-ncsu-chass-52f21ae0",
+    "faculty-ncsu-chass-53a980d5",
+    "faculty-ncsu-chass-53cdfe9a",
+    "faculty-ncsu-chass-57f02900",
+    "faculty-ncsu-chass-595cab57",
+    "faculty-ncsu-chass-5b9403a0",
+    "faculty-ncsu-chass-5ed4f6d7",
+    "faculty-ncsu-chass-618da59b",
+    "faculty-ncsu-chass-6317da3f",
+    "faculty-ncsu-chass-6691c85c",
+    "faculty-ncsu-chass-67420b77",
+    "faculty-ncsu-chass-68e03470",
+    "faculty-ncsu-chass-6b705305",
+    "faculty-ncsu-chass-6c8352f5",
+    "faculty-ncsu-chass-6cb0c1b0",
+    "faculty-ncsu-chass-7127258e",
+    "faculty-ncsu-chass-71f33bad",
+    "faculty-ncsu-chass-720c8b8d",
+    "faculty-ncsu-chass-766b7906",
+    "faculty-ncsu-chass-77beffdf",
+    "faculty-ncsu-chass-7bd17d24",
+    "faculty-ncsu-chass-7dab7a46",
+    "faculty-ncsu-chass-7fd5e8b6",
+    "faculty-ncsu-chass-86a2f80f",
+    "faculty-ncsu-chass-89084a58",
+    "faculty-ncsu-chass-8a7b1a0e",
+    "faculty-ncsu-chass-93b95a67",
+    "faculty-ncsu-chass-96c8e0ea",
+    "faculty-ncsu-chass-982a2d82",
+    "faculty-ncsu-chass-9cd4b0a6",
+    "faculty-ncsu-chass-9e6e4815",
+    "faculty-ncsu-chass-a3b3f627",
+    "faculty-ncsu-chass-a3f975b4",
+    "faculty-ncsu-chass-a4f06c3b",
+    "faculty-ncsu-chass-a71e7ad9",
+    "faculty-ncsu-chass-a802f469",
+    "faculty-ncsu-chass-a8da80ea",
+    "faculty-ncsu-chass-abfe3ef9",
+    "faculty-ncsu-chass-af259a1c",
+    "faculty-ncsu-chass-af33539f",
+    "faculty-ncsu-chass-b1f59d0e",
+    "faculty-ncsu-chass-b48ebdaa",
+    "faculty-ncsu-chass-bb2a287f",
+    "faculty-ncsu-chass-c07541fe",
+    "faculty-ncsu-chass-c42f300a",
+    "faculty-ncsu-chass-c60e7c19",
+    "faculty-ncsu-chass-c87be0e0",
+    "faculty-ncsu-chass-c8c748bd",
+    "faculty-ncsu-chass-ca7b565e",
+    "faculty-ncsu-chass-cae62c8a",
+    "faculty-ncsu-chass-cbb0d8d9",
+    "faculty-ncsu-chass-cefc8c15",
+    "faculty-ncsu-chass-d4e39c02",
+    "faculty-ncsu-chass-da735178",
+    "faculty-ncsu-chass-dc604573",
+    "faculty-ncsu-chass-ea98ec3c",
+    "faculty-ncsu-chass-eb130a81",
+    "faculty-ncsu-chass-ebe42923",
+    "faculty-ncsu-chass-ed249065",
+    "faculty-ncsu-chass-ee4950c7",
+    "faculty-ncsu-chass-f4808c47",
+    "faculty-ncsu-chass-f600e4ac",
+    "faculty-ncsu-chass-f6c04422",
+    "faculty-ncsu-chass-f7f96c30",
+    "faculty-ncsu-chass-fee3291c"
+  ],
+  "untouched_comparison_ids": [
+    "faculty-ncsu-chass-08a6a48e",
+    "faculty-ncsu-chass-0ed45fbe",
+    "faculty-ncsu-chass-14382765",
+    "faculty-ncsu-chass-165fe06b",
+    "faculty-ncsu-chass-1894dc04",
+    "faculty-ncsu-chass-34b13b74",
+    "faculty-ncsu-chass-38b191e6",
+    "faculty-ncsu-chass-49e38fb4",
+    "faculty-ncsu-chass-5148f03d",
+    "faculty-ncsu-chass-66ccd11d",
+    "faculty-ncsu-chass-6ae5927d",
+    "faculty-ncsu-chass-74ae94c6",
+    "faculty-ncsu-chass-825124c2",
+    "faculty-ncsu-chass-8426ed71",
+    "faculty-ncsu-chass-84e6cecc",
+    "faculty-ncsu-chass-8874c982",
+    "faculty-ncsu-chass-98436171",
+    "faculty-ncsu-chass-98d2e744",
+    "faculty-ncsu-chass-9dc91fcb",
+    "faculty-ncsu-chass-acb2eb75",
+    "faculty-ncsu-chass-b1612d52",
+    "faculty-ncsu-chass-b36ff5aa",
+    "faculty-ncsu-chass-c48a2e7d",
+    "faculty-ncsu-chass-c5da53cb",
+    "faculty-ncsu-chass-d8305216",
+    "faculty-ncsu-chass-d8c4ba8d",
+    "faculty-ncsu-chass-dcb028fb",
+    "faculty-ncsu-chass-e7bd2a4f",
+    "faculty-ncsu-chass-e8200533",
+    "faculty-ncsu-chass-f1ef75b0",
+    "faculty-ncsu-chass-f779aad1",
+    "faculty-ncsu-chass-fbcc8754",
+    "faculty-ncsu-chass-ff4905cc"
+  ],
+  "stages": [
+    {
+      "stage": "candidate_shard_before_refresh",
+      "unique_originals_preserved": 2334,
+      "existing_absent_profiles_and_dates_preserved": [
+        "faculty-ncsu-chass-ecd93ff4",
+        "faculty-ncsu-chass-738edbf8",
+        "faculty-ncsu-chass-5578c8bd",
+        "faculty-ncsu-chass-4c16ee4c",
+        "faculty-ncsu-chass-9531148a",
+        "faculty-ncsu-chass-63405512",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-e0dea47b"
+      ],
+      "retired": 101,
+      "actionable_controls": 33,
+      "profiles": {
+        "faculty-ncsu-chass-6cb0c1b0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-da735178": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c8c748bd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f6c04422": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-618da59b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7127258e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-825124c2": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-01017fff": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2c5ca7f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-8874c982": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-c5da53cb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8a7b1a0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-e7bd2a4f": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-5b9403a0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-766b7906": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-53a980d5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-af259a1c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8305216": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8426ed71": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-86a2f80f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ed249065": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8c4ba8d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ca7b565e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ebe42923": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-27a2fc46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-982a2d82": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dcb028fb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ff4905cc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-77beffdf": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b36ff5aa": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-53cdfe9a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-bb2a287f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6691c85c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0d338337": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2f83bf51": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fee3291c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1d403578": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3b3f627": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4c6f69c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c42f300a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-31aed8b9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-165fe06b": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-0bd3e213": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f7f96c30": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-20",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7bd17d24": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5ed4f6d7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c60e7c19": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3f975b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3ada8e26": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f600e4ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3e0037ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a802f469": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9cd4b0a6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-49e38fb4": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-b1f59d0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-141f03e6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a4f06c3b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-26df05d8": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6c8352f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d4e39c02": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-595cab57": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7fd5e8b6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-93b95a67": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dc604573": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0096f675": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-43f8b3c4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-08a6a48e": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-38b191e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f779aad1": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-66ccd11d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-68e03470": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0fead013": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7dab7a46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-48f6179f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0533fcc5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-84e6cecc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-6317da3f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1308dd4b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-eb130a81": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b1612d52": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-720c8b8d": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1894dc04": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-98d2e744": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-cbb0d8d9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-abfe3ef9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6b705305": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-67420b77": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6ae5927d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-1e045b11": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34394e34": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c48a2e7d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-433f5e0f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34b13b74": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-e8200533": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4574a4b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-98436171": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-af33539f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c87be0e0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-71f33bad": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cae62c8a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-57f02900": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-38b8ddf0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0ed45fbe": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f1ef75b0": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ee4950c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5148f03d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-96c8e0ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-89084a58": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-52f21ae0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2245f23c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-23293f4c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1a99c291": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-103a03af": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a8da80ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-043b7940": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-333b7b71": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-14382765": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4efb3edd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9e6e4815": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cefc8c15": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4152431b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-acb2eb75": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4b621e05": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c07541fe": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fbcc8754": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a71e7ad9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-30622ea2": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-74ae94c6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-9dc91fcb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f4808c47": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-07f045ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b48ebdaa": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-37744c16": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ea98ec3c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        }
+      }
+    },
+    {
+      "stage": "first_full_refresh_from_official_responses",
+      "unique_originals_preserved": 2334,
+      "existing_absent_profiles_and_dates_preserved": [
+        "faculty-ncsu-chass-ecd93ff4",
+        "faculty-ncsu-chass-738edbf8",
+        "faculty-ncsu-chass-5578c8bd",
+        "faculty-ncsu-chass-4c16ee4c",
+        "faculty-ncsu-chass-9531148a",
+        "faculty-ncsu-chass-63405512",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-e0dea47b"
+      ],
+      "retired": 101,
+      "actionable_controls": 33,
+      "profiles": {
+        "faculty-ncsu-chass-6cb0c1b0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-da735178": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c8c748bd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f6c04422": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-618da59b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7127258e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-825124c2": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-01017fff": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2c5ca7f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-8874c982": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-c5da53cb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8a7b1a0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-e7bd2a4f": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-5b9403a0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-766b7906": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-53a980d5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-af259a1c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8305216": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8426ed71": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-86a2f80f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ed249065": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8c4ba8d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ca7b565e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ebe42923": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-27a2fc46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-982a2d82": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dcb028fb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ff4905cc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-77beffdf": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b36ff5aa": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-53cdfe9a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-bb2a287f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6691c85c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0d338337": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2f83bf51": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fee3291c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1d403578": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3b3f627": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4c6f69c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c42f300a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-31aed8b9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-165fe06b": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-0bd3e213": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f7f96c30": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-20",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7bd17d24": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5ed4f6d7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c60e7c19": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3f975b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3ada8e26": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f600e4ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3e0037ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a802f469": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9cd4b0a6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-49e38fb4": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-b1f59d0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-141f03e6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a4f06c3b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-26df05d8": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6c8352f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d4e39c02": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-595cab57": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7fd5e8b6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-93b95a67": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dc604573": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0096f675": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-43f8b3c4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-08a6a48e": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-38b191e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f779aad1": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-66ccd11d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-68e03470": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0fead013": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7dab7a46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-48f6179f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0533fcc5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-84e6cecc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-6317da3f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1308dd4b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-eb130a81": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b1612d52": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-720c8b8d": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1894dc04": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-98d2e744": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-cbb0d8d9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-abfe3ef9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6b705305": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-67420b77": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6ae5927d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-1e045b11": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34394e34": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c48a2e7d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-433f5e0f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34b13b74": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-e8200533": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4574a4b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-98436171": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-af33539f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c87be0e0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-71f33bad": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cae62c8a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-57f02900": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-38b8ddf0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0ed45fbe": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f1ef75b0": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ee4950c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5148f03d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-96c8e0ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-89084a58": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-52f21ae0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2245f23c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-23293f4c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1a99c291": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-103a03af": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a8da80ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-043b7940": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-333b7b71": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-14382765": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4efb3edd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9e6e4815": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cefc8c15": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4152431b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-acb2eb75": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4b621e05": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c07541fe": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fbcc8754": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a71e7ad9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-30622ea2": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-74ae94c6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-9dc91fcb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f4808c47": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-07f045ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b48ebdaa": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-37744c16": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ea98ec3c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        }
+      },
+      "fetched": 333,
+      "collector_status": "ok",
+      "ledger": {
+        "observed_count": 333,
+        "coverage": {
+          "raw_roster_rows": 434,
+          "parsed_faculty_rows": 333,
+          "classified_nonfaculty_rows": 101,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        },
+        "baseline_active_count": 342,
+        "completeness_status": "partial",
+        "retirement_authorized": false,
+        "failure_reason": "known_partial_roster"
+      }
+    },
+    {
+      "stage": "second_full_refresh_from_official_responses",
+      "unique_originals_preserved": 2334,
+      "existing_absent_profiles_and_dates_preserved": [
+        "faculty-ncsu-chass-ecd93ff4",
+        "faculty-ncsu-chass-738edbf8",
+        "faculty-ncsu-chass-5578c8bd",
+        "faculty-ncsu-chass-4c16ee4c",
+        "faculty-ncsu-chass-9531148a",
+        "faculty-ncsu-chass-63405512",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-e0dea47b"
+      ],
+      "retired": 101,
+      "actionable_controls": 33,
+      "profiles": {
+        "faculty-ncsu-chass-6cb0c1b0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-da735178": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c8c748bd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f6c04422": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-618da59b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7127258e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-825124c2": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-01017fff": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2c5ca7f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-8874c982": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-c5da53cb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8a7b1a0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-e7bd2a4f": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-5b9403a0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-766b7906": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-53a980d5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-af259a1c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8305216": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8426ed71": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-86a2f80f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ed249065": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8c4ba8d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ca7b565e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ebe42923": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-27a2fc46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-982a2d82": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dcb028fb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ff4905cc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-77beffdf": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b36ff5aa": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-53cdfe9a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-bb2a287f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6691c85c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0d338337": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2f83bf51": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fee3291c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1d403578": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3b3f627": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4c6f69c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c42f300a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-31aed8b9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-165fe06b": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-0bd3e213": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f7f96c30": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-20",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7bd17d24": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5ed4f6d7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c60e7c19": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3f975b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3ada8e26": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f600e4ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3e0037ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a802f469": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9cd4b0a6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-49e38fb4": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-b1f59d0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-141f03e6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a4f06c3b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-26df05d8": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6c8352f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d4e39c02": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-595cab57": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7fd5e8b6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-93b95a67": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dc604573": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0096f675": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-43f8b3c4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-08a6a48e": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-38b191e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f779aad1": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-66ccd11d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-68e03470": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0fead013": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7dab7a46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-48f6179f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0533fcc5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-84e6cecc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-6317da3f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1308dd4b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-eb130a81": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b1612d52": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-720c8b8d": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1894dc04": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-98d2e744": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-cbb0d8d9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-abfe3ef9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6b705305": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-67420b77": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6ae5927d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-1e045b11": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34394e34": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c48a2e7d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-433f5e0f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34b13b74": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-e8200533": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4574a4b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-98436171": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-af33539f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c87be0e0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-71f33bad": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cae62c8a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-57f02900": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-38b8ddf0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0ed45fbe": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f1ef75b0": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ee4950c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5148f03d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-96c8e0ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-89084a58": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-52f21ae0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2245f23c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-23293f4c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1a99c291": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-103a03af": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a8da80ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-043b7940": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-333b7b71": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-14382765": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4efb3edd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9e6e4815": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cefc8c15": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4152431b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-acb2eb75": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4b621e05": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c07541fe": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fbcc8754": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a71e7ad9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-30622ea2": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-74ae94c6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-9dc91fcb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f4808c47": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-07f045ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b48ebdaa": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-37744c16": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ea98ec3c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        }
+      },
+      "fetched": 333,
+      "collector_status": "ok",
+      "ledger": {
+        "observed_count": 333,
+        "coverage": {
+          "raw_roster_rows": 434,
+          "parsed_faculty_rows": 333,
+          "classified_nonfaculty_rows": 101,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        },
+        "baseline_active_count": 342,
+        "completeness_status": "partial",
+        "retirement_authorized": false,
+        "failure_reason": "known_partial_roster"
+      }
+    },
+    {
+      "stage": "simulated_unreadable_role_roster",
+      "unique_originals_preserved": 2334,
+      "existing_absent_profiles_and_dates_preserved": [
+        "faculty-ncsu-chass-ecd93ff4",
+        "faculty-ncsu-chass-738edbf8",
+        "faculty-ncsu-chass-5578c8bd",
+        "faculty-ncsu-chass-4c16ee4c",
+        "faculty-ncsu-chass-9531148a",
+        "faculty-ncsu-chass-63405512",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-e0dea47b"
+      ],
+      "retired": 101,
+      "actionable_controls": 33,
+      "profiles": {
+        "faculty-ncsu-chass-6cb0c1b0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-da735178": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c8c748bd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f6c04422": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-618da59b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7127258e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-825124c2": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-01017fff": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2c5ca7f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-8874c982": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-c5da53cb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8a7b1a0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-e7bd2a4f": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-5b9403a0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-766b7906": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-53a980d5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-af259a1c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8305216": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8426ed71": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-86a2f80f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ed249065": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8c4ba8d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ca7b565e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ebe42923": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-27a2fc46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-982a2d82": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dcb028fb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ff4905cc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-77beffdf": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b36ff5aa": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-53cdfe9a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-bb2a287f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6691c85c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0d338337": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2f83bf51": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fee3291c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1d403578": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3b3f627": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4c6f69c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c42f300a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-31aed8b9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-165fe06b": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-0bd3e213": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f7f96c30": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-20",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7bd17d24": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5ed4f6d7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c60e7c19": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3f975b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3ada8e26": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f600e4ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3e0037ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a802f469": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9cd4b0a6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-49e38fb4": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-b1f59d0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-141f03e6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a4f06c3b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-26df05d8": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6c8352f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d4e39c02": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-595cab57": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7fd5e8b6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-93b95a67": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dc604573": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0096f675": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-43f8b3c4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-08a6a48e": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-38b191e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f779aad1": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-66ccd11d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-68e03470": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0fead013": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7dab7a46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-48f6179f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0533fcc5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-84e6cecc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-6317da3f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1308dd4b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-eb130a81": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b1612d52": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-720c8b8d": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1894dc04": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-98d2e744": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-cbb0d8d9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-abfe3ef9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6b705305": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-67420b77": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6ae5927d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-1e045b11": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34394e34": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c48a2e7d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-433f5e0f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34b13b74": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-e8200533": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4574a4b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-98436171": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-af33539f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c87be0e0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-71f33bad": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cae62c8a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-57f02900": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-38b8ddf0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0ed45fbe": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f1ef75b0": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ee4950c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5148f03d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-96c8e0ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-89084a58": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-52f21ae0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2245f23c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-23293f4c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1a99c291": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-103a03af": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a8da80ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-043b7940": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-333b7b71": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-14382765": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4efb3edd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9e6e4815": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cefc8c15": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4152431b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-acb2eb75": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4b621e05": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c07541fe": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fbcc8754": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a71e7ad9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-30622ea2": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-74ae94c6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-9dc91fcb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f4808c47": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-07f045ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b48ebdaa": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-37744c16": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ea98ec3c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        }
+      },
+      "fetched": 333,
+      "collector_status": "ok",
+      "ledger": {
+        "observed_count": 333,
+        "coverage": {
+          "raw_roster_rows": 434,
+          "parsed_faculty_rows": 333,
+          "classified_nonfaculty_rows": 0,
+          "unparsed_rows": 101,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        },
+        "baseline_active_count": 342,
+        "completeness_status": "partial",
+        "retirement_authorized": false,
+        "failure_reason": "known_partial_roster"
+      }
+    },
+    {
+      "stage": "simulated_current_primary_appointment_on_same_profile",
+      "unique_originals_preserved": 2334,
+      "existing_absent_profiles_and_dates_preserved": [
+        "faculty-ncsu-chass-ecd93ff4",
+        "faculty-ncsu-chass-738edbf8",
+        "faculty-ncsu-chass-5578c8bd",
+        "faculty-ncsu-chass-4c16ee4c",
+        "faculty-ncsu-chass-9531148a",
+        "faculty-ncsu-chass-63405512",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-e0dea47b"
+      ],
+      "retired": 100,
+      "actionable_controls": 34,
+      "profiles": {
+        "faculty-ncsu-chass-6cb0c1b0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-da735178": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c8c748bd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f6c04422": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-618da59b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7127258e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-825124c2": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-01017fff": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2c5ca7f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-8874c982": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-c5da53cb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8a7b1a0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-e7bd2a4f": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-5b9403a0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-766b7906": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-53a980d5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-af259a1c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8305216": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8426ed71": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-86a2f80f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ed249065": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8c4ba8d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ca7b565e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ebe42923": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-27a2fc46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-982a2d82": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dcb028fb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ff4905cc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-77beffdf": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b36ff5aa": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-53cdfe9a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-bb2a287f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6691c85c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0d338337": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2f83bf51": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fee3291c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1d403578": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3b3f627": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4c6f69c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c42f300a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-31aed8b9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-165fe06b": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-0bd3e213": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f7f96c30": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-20",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7bd17d24": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5ed4f6d7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c60e7c19": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3f975b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3ada8e26": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f600e4ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3e0037ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a802f469": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9cd4b0a6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-49e38fb4": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-b1f59d0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-141f03e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a4f06c3b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-26df05d8": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6c8352f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d4e39c02": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-595cab57": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7fd5e8b6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-93b95a67": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dc604573": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0096f675": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-43f8b3c4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-08a6a48e": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-38b191e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f779aad1": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-66ccd11d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-68e03470": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0fead013": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7dab7a46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-48f6179f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0533fcc5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-84e6cecc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-6317da3f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1308dd4b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-eb130a81": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b1612d52": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-720c8b8d": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1894dc04": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-98d2e744": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-cbb0d8d9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-abfe3ef9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6b705305": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-67420b77": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6ae5927d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-1e045b11": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34394e34": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c48a2e7d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-433f5e0f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34b13b74": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-e8200533": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4574a4b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-98436171": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-af33539f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c87be0e0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-71f33bad": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cae62c8a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-57f02900": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-38b8ddf0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0ed45fbe": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f1ef75b0": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ee4950c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5148f03d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-96c8e0ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-89084a58": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-52f21ae0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2245f23c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-23293f4c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1a99c291": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-103a03af": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a8da80ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-043b7940": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-333b7b71": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-14382765": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4efb3edd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9e6e4815": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cefc8c15": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4152431b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-acb2eb75": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4b621e05": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c07541fe": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fbcc8754": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a71e7ad9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-30622ea2": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-74ae94c6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-9dc91fcb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f4808c47": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-07f045ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b48ebdaa": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-37744c16": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ea98ec3c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        }
+      },
+      "fetched": 334,
+      "collector_status": "ok",
+      "ledger": {
+        "observed_count": 334,
+        "coverage": {
+          "raw_roster_rows": 434,
+          "parsed_faculty_rows": 334,
+          "classified_nonfaculty_rows": 100,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        },
+        "baseline_active_count": 343,
+        "completeness_status": "partial",
+        "retirement_authorized": false,
+        "failure_reason": "known_partial_roster"
+      }
+    },
+    {
+      "stage": "simulated_additional_current_group",
+      "unique_originals_preserved": 2334,
+      "existing_absent_profiles_and_dates_preserved": [
+        "faculty-ncsu-chass-ecd93ff4",
+        "faculty-ncsu-chass-738edbf8",
+        "faculty-ncsu-chass-5578c8bd",
+        "faculty-ncsu-chass-4c16ee4c",
+        "faculty-ncsu-chass-9531148a",
+        "faculty-ncsu-chass-63405512",
+        "faculty-ncsu-chass-089a76c8",
+        "faculty-ncsu-chass-e0dea47b"
+      ],
+      "retired": 100,
+      "actionable_controls": 34,
+      "profiles": {
+        "faculty-ncsu-chass-6cb0c1b0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-da735178": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c8c748bd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f6c04422": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-618da59b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7127258e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-825124c2": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-01017fff": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2c5ca7f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-8874c982": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-c5da53cb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8a7b1a0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-e7bd2a4f": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-5b9403a0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-766b7906": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-53a980d5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-af259a1c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8305216": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-8426ed71": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-86a2f80f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ed249065": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d8c4ba8d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ca7b565e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ebe42923": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-27a2fc46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-982a2d82": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dcb028fb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ff4905cc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-77beffdf": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b36ff5aa": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-53cdfe9a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-bb2a287f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6691c85c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0d338337": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2f83bf51": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fee3291c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1d403578": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3b3f627": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4c6f69c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c42f300a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-31aed8b9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-165fe06b": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-0bd3e213": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f7f96c30": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-20",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7bd17d24": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5ed4f6d7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c60e7c19": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a3f975b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3ada8e26": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-f600e4ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-3e0037ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a802f469": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9cd4b0a6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-49e38fb4": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-b1f59d0e": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-141f03e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a4f06c3b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-26df05d8": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6c8352f5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-d4e39c02": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-595cab57": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7fd5e8b6": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-93b95a67": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-dc604573": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0096f675": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-43f8b3c4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-08a6a48e": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-38b191e6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f779aad1": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-66ccd11d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-68e03470": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0fead013": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-7dab7a46": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-48f6179f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0533fcc5": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-84e6cecc": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-6317da3f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1308dd4b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-eb130a81": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b1612d52": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-720c8b8d": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1894dc04": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-98d2e744": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-cbb0d8d9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-abfe3ef9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6b705305": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-67420b77": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-6ae5927d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-1e045b11": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34394e34": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c48a2e7d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-433f5e0f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-34b13b74": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-e8200533": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4574a4b4": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-98436171": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-af33539f": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c87be0e0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-71f33bad": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cae62c8a": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-57f02900": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-38b8ddf0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-0ed45fbe": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f1ef75b0": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-ee4950c7": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-5148f03d": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-96c8e0ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-89084a58": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-52f21ae0": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-2245f23c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-23293f4c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-1a99c291": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-103a03af": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-a8da80ea": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-043b7940": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-333b7b71": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-14382765": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4efb3edd": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-9e6e4815": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-cefc8c15": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-4152431b": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-acb2eb75": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-4b621e05": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-c07541fe": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-fbcc8754": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-a71e7ad9": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-30622ea2": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-74ae94c6": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-9dc91fcb": {
+          "is_actionable": true,
+          "last_seen_listed_at": "2026-11-26",
+          "reason": null
+        },
+        "faculty-ncsu-chass-f4808c47": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-07f045ac": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-b48ebdaa": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-37744c16": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        },
+        "faculty-ncsu-chass-ea98ec3c": {
+          "is_actionable": false,
+          "last_seen_listed_at": "2026-11-23",
+          "reason": "retired_title"
+        }
+      },
+      "fetched": 334,
+      "collector_status": "ok",
+      "ledger": {
+        "observed_count": 334,
+        "coverage": {
+          "raw_roster_rows": 434,
+          "parsed_faculty_rows": 334,
+          "classified_nonfaculty_rows": 100,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        },
+        "baseline_active_count": 343,
+        "completeness_status": "partial",
+        "retirement_authorized": false,
+        "failure_reason": "known_partial_roster"
+      }
+    }
+  ],
+  "eight_outside_college_tag": [
+    {
+      "id": "faculty-ncsu-chass-ecd93ff4",
+      "name": "Peter Hager",
+      "profile": "https://chass.ncsu.edu/people/pjhager/",
+      "http_effective": "404 https://chass.ncsu.edu/people/pjhager/",
+      "heading": "Page Not Found",
+      "rank": "",
+      "groups": []
+    },
+    {
+      "id": "faculty-ncsu-chass-738edbf8",
+      "name": "Isabel Rios",
+      "profile": "https://chass.ncsu.edu/people/iriosri/",
+      "http_effective": "404 https://chass.ncsu.edu/people/iriosri/",
+      "heading": "Page Not Found",
+      "rank": "",
+      "groups": []
+    },
+    {
+      "id": "faculty-ncsu-chass-5578c8bd",
+      "name": "Kevin Neiley",
+      "profile": "https://chass.ncsu.edu/people/kjneiley/",
+      "http_effective": "404 https://chass.ncsu.edu/people/kjneiley/",
+      "heading": "Page Not Found",
+      "rank": "",
+      "groups": []
+    },
+    {
+      "id": "faculty-ncsu-chass-4c16ee4c",
+      "name": "Matthew Hettche",
+      "profile": "https://chass.ncsu.edu/people/mhettch/",
+      "http_effective": "404 https://chass.ncsu.edu/people/mhettch/",
+      "heading": "Page Not Found",
+      "rank": "",
+      "groups": []
+    },
+    {
+      "id": "faculty-ncsu-chass-9531148a",
+      "name": "Jason Sturdevant",
+      "profile": "https://chass.ncsu.edu/people/jssturde/",
+      "http_effective": "404 https://chass.ncsu.edu/people/jssturde/",
+      "heading": "Page Not Found",
+      "rank": "",
+      "groups": []
+    },
+    {
+      "id": "faculty-ncsu-chass-63405512",
+      "name": "Brent S. Sirota",
+      "profile": "https://chass.ncsu.edu/people/bssirota/",
+      "http_effective": "200 https://chass.ncsu.edu/people/bssirota/",
+      "heading": "Brent Sirota",
+      "rank": "Professor",
+      "groups": [
+        "Department of History Faculty: Atlantic World",
+        "Department of History Faculty: Europe and Britain",
+        "Department of History Faculty: Religion"
+      ]
+    },
+    {
+      "id": "faculty-ncsu-chass-089a76c8",
+      "name": "Jeffery Braden",
+      "profile": "https://chass.ncsu.edu/people/jpbraden/",
+      "http_effective": "200 https://chass.ncsu.edu/people/jpbraden/",
+      "heading": "Jeff Braden",
+      "rank": "Dean and Professor Emeritus",
+      "groups": [
+        "Department of Psychology: Retired Psychology Faculty"
+      ]
+    },
+    {
+      "id": "faculty-ncsu-chass-e0dea47b",
+      "name": "Jean Goodwin",
+      "profile": "https://chass.ncsu.edu/people/jegoodwi/",
+      "http_effective": "200 https://chass.ncsu.edu/people/jegoodwi/",
+      "heading": "Jean Goodwin",
+      "rank": "SAS Institute Distinguished Professor of Rhetoric & Technical Communication",
+      "groups": [
+        "Department of Communication: Department of Communication Retired Faculty"
+      ]
+    }
+  ]
+}
