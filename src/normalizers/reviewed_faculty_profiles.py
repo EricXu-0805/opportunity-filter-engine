@@ -58,7 +58,15 @@ def _umd_math_directory_profile(name: str, profile: str) -> ProfileReview:
     )
 
 
+_MSU_MGI_DIRECTORY = "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
+
 REVIEWS = {
+    "faculty-msu-mgi-5ca9b09b": ProfileReview(
+        "msu", "Department of Microbiology, Genetics and Immunology", "Kathleen A Hoag",
+        _MSU_MGI_DIRECTORY, _MSU_MGI_DIRECTORY,
+        "https://bld.natsci.msu.edu/news/dr-kathy-hoag-retires-after-25-years-at-the-BLD-Program.aspx",
+        datetime(2026, 11, 26, 15, 48, tzinfo=UTC),
+        title="Professor Emeritum", previous_title="Professor"),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
         "faculty/Baird.html", "Professor Emeritus"),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
