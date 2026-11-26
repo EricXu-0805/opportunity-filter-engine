@@ -75,12 +75,21 @@ export type ExperienceSource =
     end: number;
   };
 
+export interface GitHubPullSource {
+  kind: 'github';
+  repository: string;
+  head_repository: string | null;
+  number: number;
+  author: string;
+  title: string;
+}
+
 export interface ExperienceEntry {
   id: string;
   revision: number;
   status: 'candidate' | 'confirmed' | 'rejected' | 'withdrawn';
   text: string;
-  source: ExperienceSource;
+  source: ExperienceSource | GitHubPullSource;
 }
 
 // ── Complete résumé master (source-preserving; independent of AI budgets) ──
@@ -619,7 +628,7 @@ export interface ExperienceUsage {
     id: string;
     revision: number;
     excerpt: string;
-    source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number };
+    source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number } | GitHubPullSource;
     context?: { master_id: string; master_revision: number; section: 'activities' | 'education' | 'publications'; id: string; kind?: string; fields: Record<string, ResumeFact> } | null;
   }>;
   excluded: Array<{

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Card from '@/components/Card';
+import { ApiError, fetchGitHubContribution } from '@/lib/api';
+import { githubProfileLogin, githubPullPath, githubPullUrl } from '@/lib/github-contribution';
 import {
   createManualCandidate,
   createResumeCandidates,
@@ -13,7 +15,7 @@ import {
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
 
-type EditBase = { resumeText: string; entriesJson: string };
+type EditBase = { resumeText: string; entriesJson: string; githubUrl?: string };
 type ChangeEntries = (entries: ExperienceEntry[], expected: EditBase) => boolean;
 
 function EntryEditor({ entry, sourceCurrent, disabled, onReplace, onRemove, t }: {
@@ -41,6 +43,17 @@ function EntryEditor({ entry, sourceCurrent, disabled, onReplace, onRemove, t }:
         <textarea value={text} onChange={(event) => setText(event.target.value)} disabled={disabled}
           rows={5} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm disabled:opacity-50" />
       </label>
+      {entry.source.kind === 'github' && (
+        <div className="mt-2 text-xs text-gray-600">
+          <a href={githubPullUrl(entry.source)} target="_blank" rel="noopener noreferrer" className="break-words text-indigo-700 underline">
+            {entry.source.repository} #{entry.source.number} · {entry.source.title}
+          </a>
+          <p>{t('home.experience.githubAuthor', { author: entry.source.author })}</p>
+          {entry.source.head_repository && entry.source.head_repository !== entry.source.repository && (
+            <p>{t('home.experience.githubFromRepo', { repo: entry.source.head_repository })}</p>
+          )}
+        </div>
+      )}
       {entry.source.kind === 'resume' && (
         <details className="mt-2 text-xs text-gray-600">
           <summary className="cursor-pointer">{t('home.experience.original')}</summary>
@@ -70,6 +83,7 @@ export function ExperienceLibraryCard({ profile, ready, onChange, t }: {
   t: TFunc;
 }) {
   const [manualText, setManualText] = useState('');
+  const [pullUrl, setPullUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [digest, setDigest] = useState<{ raw: string; value: string } | null>(null);
@@ -125,6 +139,34 @@ export function ExperienceLibraryCard({ profile, ready, onChange, t }: {
       if (mounted.current) setBusy(false);
     }
   };
+  const importPull = async () => {
+    if (!ready || busy || !checked.ok) return;
+    const githubUrl = profile.github_url ?? '';
+    const login = githubProfileLogin(githubUrl);
+    const pull = githubPullPath(pullUrl);
+    if (!login || !pull) {
+      setError(t(!login ? 'home.experience.githubNeedProfile' : 'home.experience.githubNeedPull'));
+      return;
+    }
+    const base = { ...expected, githubUrl };
+    setBusy(true);
+    setError(null);
+    try {
+      const { id, source } = await fetchGitHubContribution(login, pull);
+      if (!mounted.current) return;
+      if (entries.some(entry => entry.id === id)) throw new ExperienceEvidenceError('duplicate_id');
+      const text = t('home.experience.githubFact', { repo: source.repository, number: source.number, title: source.title });
+      if (apply([...entries, { id, revision: 1, status: 'candidate', text, source }], base)) setPullUrl('');
+    } catch (caught) {
+      if (!mounted.current) return;
+      if (caught instanceof ApiError) {
+        const key = caught.status === 422 ? 'githubWrongAuthor' : caught.status === 404 ? 'githubMissing' : 'githubUnavailable';
+        setError(t(`home.experience.${key}`));
+      } else { reportError(caught); }
+    } finally {
+      if (mounted.current) setBusy(false);
+    }
+  };
   return (
     <section id="experience-library" aria-labelledby="experience-library-title" className="scroll-mt-24">
       <Card>
@@ -148,6 +190,19 @@ export function ExperienceLibraryCard({ profile, ready, onChange, t }: {
                   onRemove={() => apply(entries.filter((item) => item.id !== entry.id))} />
               ))}
             </div>
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-medium text-indigo-700">{t('home.experience.githubImport')}</summary>
+              <label className="mt-2 block text-sm">{t('home.experience.githubLink')}
+                <input type="url" value={pullUrl} onChange={event => setPullUrl(event.target.value)}
+                  disabled={!ready || busy} placeholder="https://github.com/owner/repository/pull/123"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 p-2 text-sm" />
+              </label>
+              <p className="mt-1 text-xs text-gray-600">{t('home.experience.githubHint')}</p>
+              <button type="button" disabled={!ready || busy || !pullUrl.trim()} onClick={importPull}
+                className="mt-2 rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">
+                {t('home.experience.githubCheck')}
+              </button>
+            </details>
             <details className="mt-4">
               <summary className="cursor-pointer text-sm font-medium text-indigo-700">{t('home.experience.addManual')}</summary>
               <label className="mt-2 block text-sm">{t('home.experience.manualLabel')}
