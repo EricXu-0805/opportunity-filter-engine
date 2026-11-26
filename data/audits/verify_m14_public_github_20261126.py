@@ -78,6 +78,13 @@ def verify_free_draft(page, target, status):
         "variants_quoting_confirmed_with_source":selected,"http":result.status})
 
 
+def handle_campus_prompt(page):
+    # A fresh guest can be asked to confirm their default campus only after
+    # the first profile save. Use the ordinary defer action whenever it opens.
+    page.add_locator_handler(page.get_by_test_id("switcher-confirm"),
+                             lambda: page.keyboard.press("Escape"))
+
+
 def wait_ready(page):
     page.locator("#student_name").wait_for()
     page.get_by_test_id("hydration-note").wait_for(state="hidden",timeout=45000)
@@ -90,6 +97,7 @@ with sync_playwright() as pw:
     context.add_init_script("localStorage.setItem('ofe_lang','en');localStorage.setItem('ofe_onboarding_seen','1')")
     page = context.new_page()
     page.on("response", capture)
+    handle_campus_prompt(page)
     health = page.request.get(SITE+"/api/health").json()
     checked["backend_release"] = health["release_sha"]
     deployment = json.loads(Path("data/audits/m14-production-verify.json").read_text())
@@ -123,10 +131,6 @@ with sync_playwright() as pw:
             break
         page.wait_for_timeout(200)
     assert checked.get("guest_signup_http")==200, "Fresh anonymous site account was not observed"
-    campus = page.get_by_test_id("university-card-uiuc")
-    if campus.is_visible():
-        campus.click()
-        page.get_by_test_id("switcher-confirm").click()
     page.locator("#student_name").fill("QA GitHub contribution sample")
     for selector in ("#college", "#major"):
         field=page.locator(selector)
@@ -167,6 +171,7 @@ with sync_playwright() as pw:
     cold=browser.new_context(storage_state=fresh_state, locale="en-US")
     read=cold.new_page()
     read.on("response",capture)
+    handle_campus_prompt(read)
     read.goto(SITE+"/",wait_until="domcontentloaded")
     wait_ready(read)
     library=read.locator("#experience-library")
