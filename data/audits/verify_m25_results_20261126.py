@@ -34,7 +34,7 @@ def read_page(response, kind):
 def is_view(response):
     return urlsplit(response.url).path == "/api/matches/view" and response.request.method == "POST"
 
-def run(page):
+def enter_results(page):
     page.goto(site, wait_until="domcontentloaded")
     page.locator("#student_name").wait_for(timeout=60000)
     for _ in range(100):
@@ -79,6 +79,9 @@ def run(page):
     assert receipt["profile_commit"] == 200
     if page.get_by_test_id("switcher-confirm").is_visible():
         page.keyboard.press("Escape")
+
+def run(page):
+    enter_results(page)
     all_tab = page.get_by_role("tab", name=re.compile("^All"))
     if all_tab.get_attribute("aria-selected") != "true":
         all_tab.click()
@@ -147,16 +150,17 @@ def run(page):
     receipt["estimated_deadline"] = {"id": oid, "url": page.url, "displayed": marker.locator("..").inner_text()}
     marker.locator("..").screenshot(path=out / "estimated-date.png")
 
-with sync_playwright() as pw:
-    browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox", "--disable-dev-shm-usage"])
-    ctx = browser.new_context(locale="en-US", service_workers="block", viewport={"width": 1250, "height": 950})
-    ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
-    page = ctx.new_page()
-    page.on("response", capture)
-    page.set_default_timeout(45000)
-    try:
-        run(page)
-    finally:
-        (out / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-        print(json.dumps(receipt), flush=True)
-        browser.close()
+if __name__ == "__main__":
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox", "--disable-dev-shm-usage"])
+        ctx = browser.new_context(locale="en-US", service_workers="block", viewport={"width": 1250, "height": 950})
+        ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
+        page = ctx.new_page()
+        page.on("response", capture)
+        page.set_default_timeout(45000)
+        try:
+            run(page)
+        finally:
+            (out / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+            print(json.dumps(receipt), flush=True)
+            browser.close()
