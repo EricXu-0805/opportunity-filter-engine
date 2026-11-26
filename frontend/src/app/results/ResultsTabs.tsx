@@ -5,7 +5,7 @@ export interface ResultsTabsProps {
   activeTab: Tab;
   hasPanel?: boolean;
   onChange: (tab: Tab) => void;
-  counts: Record<Tab, number>;
+  counts: Record<Tab, number> | null;
   t: TFunc;
 }
 
@@ -60,9 +60,11 @@ export function ResultsTabs({ activeTab, onChange, counts, t, hasPanel = true }:
           >
             <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} aria-hidden="true" />
             {t(labelKey)}
-            <span className="text-[11px] font-semibold tabular-nums text-gray-600" aria-label={t('results.countResultsAria', { count: counts[key] })}>
-              {counts[key]}
-            </span>
+            {counts && (
+              <span className="text-[11px] font-semibold tabular-nums text-gray-600" aria-label={t('results.countResultsAria', { count: counts[key] })}>
+                {counts[key]}
+              </span>
+            )}
           </button>
         ))}
       </div>

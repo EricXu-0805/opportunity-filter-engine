@@ -1012,9 +1012,8 @@ function ResultsContent() {
         mobile real estate above the fold for zero new information.
       */}
 
-      {!loading && data && (
-        <ResultsTabs activeTab={activeTab} onChange={handleTabChange} counts={counts} t={t} hasPanel={!error} />
-      )}
+      <ResultsTabs activeTab={activeTab} onChange={handleTabChange}
+        counts={!loading && data ? counts : null} t={t} hasPanel={!loading && !error && !!data} />
 
       {!loading && data && profile && (
         <ProfileCompletenessHint profile={profile} onEdit={() => router.push('/')} t={t} />

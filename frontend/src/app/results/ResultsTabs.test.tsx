@@ -29,3 +29,18 @@ it('moves through categories with one tab stop, wraps arrows, and retains keyboa
   expect(tabs.at(-1)).toHaveAttribute('aria-selected', 'true');
   expect(tabs.at(-1)).toHaveAttribute('aria-controls','match-category-results');
 });
+
+it('keeps the selected control focused without displaying counts while the category is loading', () => {
+  const props = { activeTab: 'all' as Tab, onChange: () => {}, t: (key: string) => key };
+  const counts = { all: 3, high_priority: 1, good_match: 2, reach: 0, starred: 0 };
+  const view = render(<ResultsTabs {...props} counts={counts} />);
+  const selected = screen.getAllByRole('tab')[0];
+  selected.focus();
+  view.rerender(<ResultsTabs {...props} counts={null} hasPanel={false} />);
+  expect(selected).toHaveFocus();
+  expect(selected).not.toHaveTextContent('3');
+  expect(selected).not.toHaveAttribute('aria-controls');
+  view.rerender(<ResultsTabs {...props} counts={counts} />);
+  expect(selected).toHaveFocus();
+  expect(selected).toHaveTextContent('3');
+});
