@@ -339,5 +339,99 @@
       },
       "orca": "46.1"
     }
+  },
+  "isolated_candidate": {
+    "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1449",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45863061778/job/140058793594",
+    "scope": "Rendered the actual React component from the recorded product commit in each locale with no conditions and with one sourced plus one open condition. The complete panel HTML was loaded in a native Chromium instance on localhost with Orca 46.1, reached by X11 Tab, then expanded using Return. The language and synthetic condition inputs were controlled. No third-party requests or production accounts. All four collapsed headers spoke the full spaced title and the expected count or missing-source notice.",
+    "observations": {
+      "commit": "6220628d2572716132f1ab879d1b3a758eef9139",
+      "cases": {
+        "en-unreviewed": {
+          "utterances": [
+            "tab",
+            "Target conditions for this draft Application conditions need review toggle button collapsed.",
+            "Focus mode"
+          ],
+          "peak": 32768,
+          "frames": 31595,
+          "known_words_present": {
+            "target": true,
+            "conditions": true,
+            "for": true,
+            "this": true,
+            "draft": true
+          },
+          "strict_production_extractor_would_match": true,
+          "contains_full_title": true,
+          "dom_text": "Target conditions for this draft Application conditions need review",
+          "chromium_accessible_snapshot": "- text: Target conditions for this draft Application conditions need review",
+          "expanded": true
+        },
+        "en-sourced": {
+          "utterances": [
+            "tab",
+            "Target conditions for this draft 1 sourced · 1 to review toggle button collapsed.",
+            "Focus mode"
+          ],
+          "peak": 32768,
+          "frames": 31661,
+          "known_words_present": {
+            "target": true,
+            "conditions": true,
+            "for": true,
+            "this": true,
+            "draft": true
+          },
+          "strict_production_extractor_would_match": true,
+          "contains_full_title": true,
+          "dom_text": "Target conditions for this draft 1 sourced · 1 to review",
+          "chromium_accessible_snapshot": "- text: Target conditions for this draft 1 sourced · 1 to review",
+          "expanded": true
+        },
+        "zh-unreviewed": {
+          "utterances": [
+            "tab",
+            "本次参考的目标条件 申请条件尚未核对 toggle button collapsed.",
+            "Focus mode"
+          ],
+          "peak": 32768,
+          "frames": 31665,
+          "known_words_present": {
+            "target": false,
+            "conditions": false,
+            "for": false,
+            "this": false,
+            "draft": false
+          },
+          "strict_production_extractor_would_match": false,
+          "contains_full_title": false,
+          "dom_text": "本次参考的目标条件 申请条件尚未核对",
+          "chromium_accessible_snapshot": "- text: 本次参考的目标条件 申请条件尚未核对",
+          "expanded": true
+        },
+        "zh-sourced": {
+          "utterances": [
+            "tab",
+            "本次参考的目标条件 1 项有依据 · 1 项需核对 toggle button collapsed.",
+            "Focus mode"
+          ],
+          "peak": 32768,
+          "frames": 31642,
+          "known_words_present": {
+            "target": false,
+            "conditions": false,
+            "for": false,
+            "this": false,
+            "draft": false
+          },
+          "strict_production_extractor_would_match": false,
+          "contains_full_title": false,
+          "dom_text": "本次参考的目标条件 1 项有依据 · 1 项需核对",
+          "chromium_accessible_snapshot": "- text: 本次参考的目标条件 1 项有依据 · 1 项需核对",
+          "expanded": true
+        }
+      }
+    }
   }
 }
