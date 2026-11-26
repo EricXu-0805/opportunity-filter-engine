@@ -1,0 +1,773 @@
+{
+  "observed_date_utc": "2026-11-26",
+  "formal_source_run_for_33_uf_and_66_ucsd": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45605969013",
+  "description": "Prerequisite for the real November 27 school refresh. After publication compare preserved IDs and their recorded dispositions against the actual run and corpus SHA. An indexed click through can time out independently of a link present on the source roster.",
+  "ucsd_66_source_and_ids": [
+    {
+      "official_name": "Michael Holst",
+      "profile_url": "https://math.ucsd.edu/people/faculty",
+      "original_record_id": "faculty-ucsd-phys-918092da",
+      "original_department": "Department of Physics",
+      "matched_by": "same university contact, other department"
+    },
+    {
+      "official_name": "Andrej Zlatos",
+      "profile_url": "https://math.ucsd.edu/node/10833",
+      "original_record_id": "faculty-ucsd-math-335c1dcc",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daniel Rogalski",
+      "profile_url": "https://math.ucsd.edu/node/10813",
+      "original_record_id": "faculty-ucsd-math-02774783",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Dragos Oprea",
+      "profile_url": "https://math.ucsd.edu/node/10806",
+      "original_record_id": "faculty-ucsd-math-62d71c0b",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Todd Kemp",
+      "profile_url": "https://math.ucsd.edu/node/10795",
+      "original_record_id": "faculty-ucsd-math-af5e2645",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Bennett Chow",
+      "profile_url": "https://math.ucsd.edu/node/10780",
+      "original_record_id": "faculty-ucsd-math-b82df184",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ioan Bejenaru",
+      "profile_url": "https://math.ucsd.edu/node/10774",
+      "original_record_id": "faculty-ucsd-math-b3abc6ef",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ronghui Xu",
+      "profile_url": "https://math.ucsd.edu/node/10828",
+      "original_record_id": "faculty-ucsd-hdsi-80d4f8ba",
+      "original_department": "Halıcıoğlu Data Science Institute",
+      "matched_by": "same university contact, other department"
+    },
+    {
+      "official_name": "Jason Schweinsberg",
+      "profile_url": "https://math.ucsd.edu/node/10816",
+      "original_record_id": "faculty-ucsd-math-e99d2cd6",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Li-Tien Cheng",
+      "profile_url": "https://math.ucsd.edu/node/10779",
+      "original_record_id": "faculty-ucsd-math-168bf721",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Glenn Tesler",
+      "profile_url": "https://math.ucsd.edu/node/10823",
+      "original_record_id": "faculty-ucsd-math-371516d3",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Aaron Pollack",
+      "profile_url": "https://math.ucsd.edu/node/10834",
+      "original_record_id": "faculty-ucsd-math-37246f54",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "David Meyer",
+      "profile_url": "https://math.ucsd.edu/node/10801",
+      "original_record_id": "faculty-ucsd-math-8a2ddaf0",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Andrew Suk",
+      "profile_url": "https://math.ucsd.edu/node/10822",
+      "original_record_id": "faculty-ucsd-math-3523b779",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Alireza Golsefidy",
+      "profile_url": "https://math.ucsd.edu/node/10788",
+      "original_record_id": "faculty-ucsd-math-c6b0baaf",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Cristian Popescu",
+      "profile_url": "https://math.ucsd.edu/node/10808",
+      "original_record_id": "faculty-ucsd-math-71130ebb",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Claus Sorensen",
+      "profile_url": "https://math.ucsd.edu/node/10818",
+      "original_record_id": "faculty-ucsd-math-65b8a6f6",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Adrian Ioana",
+      "profile_url": "https://math.ucsd.edu/node/10791",
+      "original_record_id": "faculty-ucsd-math-07524c39",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Jonathan Novak",
+      "profile_url": "https://math.ucsd.edu/node/10805",
+      "original_record_id": "faculty-ucsd-math-92ceb1b2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Brendon Rhoades",
+      "profile_url": "https://math.ucsd.edu/node/10811",
+      "original_record_id": "faculty-ucsd-math-5d2436dc",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Steven Sam",
+      "profile_url": "https://math.ucsd.edu/node/10815",
+      "original_record_id": "faculty-ucsd-math-b7716686",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ming Xiao",
+      "profile_url": "https://math.ucsd.edu/node/10827",
+      "original_record_id": "faculty-ucsd-math-e4b08158",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Frederick Manners",
+      "profile_url": "https://math.ucsd.edu/node/10799",
+      "original_record_id": "faculty-ucsd-math-8ba529a4",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Luca Spolaor",
+      "profile_url": "https://math.ucsd.edu/node/10819",
+      "original_record_id": "faculty-ucsd-math-19500aff",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Tianyi Zheng",
+      "profile_url": "https://math.ucsd.edu/node/10831",
+      "original_record_id": "faculty-ucsd-math-c9c7e6e2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "James McKernan",
+      "profile_url": "https://math.ucsd.edu/node/10800",
+      "original_record_id": "faculty-ucsd-math-051ea6ea",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ioana Dumitriu",
+      "profile_url": "https://math.ucsd.edu/node/10783",
+      "original_record_id": "faculty-ucsd-math-e724cf18",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Alex Cloninger",
+      "profile_url": "https://math.ucsd.edu/node/10781",
+      "original_record_id": "faculty-ucsd-math-15a11102",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Guershon Harel",
+      "profile_url": "https://math.ucsd.edu/node/10789",
+      "original_record_id": "faculty-ucsd-math-a2a60c31",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Kiran Kedlaya",
+      "profile_url": "https://math.ucsd.edu/node/10794",
+      "original_record_id": "faculty-ucsd-math-5669cbd7",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Jiawang Nie",
+      "profile_url": "https://math.ucsd.edu/node/10804",
+      "original_record_id": "faculty-ucsd-math-99e9e556",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Dimitris Politis",
+      "profile_url": "https://math.ucsd.edu/node/10807",
+      "original_record_id": "faculty-ucsd-math-a26dc9e2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Peter Ebenfelt",
+      "profile_url": "https://math.ucsd.edu/node/10784",
+      "original_record_id": "faculty-ucsd-math-a2882a9c",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Lutz Warnke",
+      "profile_url": "https://math.ucsd.edu/node/17814",
+      "original_record_id": "faculty-ucsd-math-6105f57a",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Bo Li",
+      "profile_url": "https://math.ucsd.edu/node/10797",
+      "original_record_id": "faculty-ucsd-math-932ac5de",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Patrick Fitzsimmons",
+      "profile_url": "https://math.ucsd.edu/node/10786",
+      "original_record_id": "faculty-ucsd-math-ac5e912d",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Melvin Leok",
+      "profile_url": "https://math.ucsd.edu/node/10796",
+      "original_record_id": "faculty-ucsd-math-d5869ee5",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Alina Bucur",
+      "profile_url": "https://math.ucsd.edu/node/10777",
+      "original_record_id": "faculty-ucsd-math-dd5ed393",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Elham Izadi",
+      "profile_url": "https://math.ucsd.edu/node/10792",
+      "original_record_id": "faculty-ucsd-math-0fbd28d2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Jacques Verstraete",
+      "profile_url": "https://math.ucsd.edu/node/10824",
+      "original_record_id": "faculty-ucsd-math-361f8f94",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ery Arias-Castro",
+      "profile_url": "https://math.ucsd.edu/node/10773",
+      "original_record_id": "faculty-ucsd-hdsi-a668c220",
+      "original_department": "Halıcıoğlu Data Science Institute",
+      "matched_by": "same university contact, other department"
+    },
+    {
+      "official_name": "Rayan Saab",
+      "profile_url": "https://math.ucsd.edu/node/10814",
+      "original_record_id": "faculty-ucsd-math-27a447ae",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Natalia Komarova",
+      "profile_url": "https://math.ucsd.edu/node/30404",
+      "original_record_id": "faculty-ucsd-math-196d24bd",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daniel Kane",
+      "profile_url": "https://math.ucsd.edu/node/10793",
+      "original_record_id": "faculty-ucsd-math-c41097b2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Xiaochuan Tian",
+      "profile_url": "https://math.ucsd.edu/node/10835",
+      "original_record_id": "faculty-ucsd-math-01015655",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Brandon Seward",
+      "profile_url": "https://math.ucsd.edu/node/10817",
+      "original_record_id": "faculty-ucsd-math-bf90c1b4",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Danna Zhang",
+      "profile_url": "https://math.ucsd.edu/node/10830",
+      "original_record_id": "faculty-ucsd-math-ec63c3d9",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Kristin DeVleming",
+      "profile_url": "https://math.ucsd.edu/node/31786",
+      "original_record_id": "faculty-ucsd-math-35365add",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ruobing Zhang",
+      "profile_url": "https://math.ucsd.edu/node/34690",
+      "original_record_id": "faculty-ucsd-math-44c69ceb",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Joshua Frisch",
+      "profile_url": "https://math.ucsd.edu/node/31907",
+      "original_record_id": "faculty-ucsd-math-17c09f27",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Robert Webber",
+      "profile_url": "https://math.ucsd.edu/node/31910",
+      "original_record_id": "faculty-ucsd-math-920a9df1",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Morris Ang",
+      "profile_url": "https://math.ucsd.edu/node/31718",
+      "original_record_id": "faculty-ucsd-math-0e70967c",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Pearson Miller",
+      "profile_url": "https://math.ucsd.edu/node/31908",
+      "original_record_id": "faculty-ucsd-math-0e61c58d",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Lijun Ding",
+      "profile_url": "https://math.ucsd.edu/node/31909",
+      "original_record_id": "faculty-ucsd-math-b83edcc9",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Zhipeng Lou",
+      "profile_url": "https://math.ucsd.edu/node/31911",
+      "original_record_id": "faculty-ucsd-math-6a3a88a7",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Vishal Patil",
+      "profile_url": "https://math.ucsd.edu/node/31818",
+      "original_record_id": "faculty-ucsd-math-bb0d10e3",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Federico Pasqualotto",
+      "profile_url": "https://math.ucsd.edu/node/32873",
+      "original_record_id": "faculty-ucsd-math-631f4445",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daren Wang",
+      "profile_url": "https://math.ucsd.edu/node/34144",
+      "original_record_id": "faculty-ucsd-math-d850b422",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daniel Grier",
+      "profile_url": "https://math.ucsd.edu/node/27550",
+      "original_record_id": "faculty-ucsd-math-c99118a4",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "John Eggers",
+      "profile_url": "https://math.ucsd.edu/node/10785",
+      "original_record_id": "faculty-ucsd-math-1ae1f276",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Adam Bowers",
+      "profile_url": "https://math.ucsd.edu/node/10775",
+      "original_record_id": "faculty-ucsd-math-06ead742",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Laura Stevens",
+      "profile_url": "https://math.ucsd.edu/node/10821",
+      "original_record_id": "faculty-ucsd-math-0b06fd11",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "David Quarfoot",
+      "profile_url": "https://math.ucsd.edu/node/10809",
+      "original_record_id": "faculty-ucsd-math-9c24ad91",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Denise Rava",
+      "profile_url": "https://math.ucsd.edu/node/17605",
+      "original_record_id": "faculty-ucsd-math-fef67760",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Leesa Anzaldo",
+      "profile_url": "https://math.ucsd.edu/node/27554",
+      "original_record_id": "faculty-ucsd-math-e00befb6",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Frances Hammock",
+      "profile_url": "https://math.ucsd.edu/people/faculty",
+      "original_record_id": "faculty-ucsd-math-e448604b",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    }
+  ],
+  "ucsd_retired_previous_id": "faculty-ucsd-math-5a86bec6",
+  "uf_comparison_read": "Rendered university directory and all 33 See Bio destinations (indexed public copies); the local direct UF request returned HTTP 403. The previous actual GitHub source runner had HTTP 200 for the directory.",
+  "uf_count": 33,
+  "all_stored_source_urls_match": true,
+  "uf_missing_original_ids": [],
+  "uf_english_ids_and_links": [
+    {
+      "original_id": "faculty-uf-eng-0150a165",
+      "current_source_name": "Uwem Akpan",
+      "old_display_name": "Uwem Akpan",
+      "official_person_url": "https://english.ufl.edu/uwem-akpan/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.523518",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-565b1bf2",
+      "current_source_name": "Apollo Amoko",
+      "old_display_name": "Apollo Amoko",
+      "official_person_url": "https://english.ufl.edu/apollo-amoko/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.523737",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-7fc2cdac",
+      "current_source_name": "Pietro Bianchi",
+      "old_display_name": "Pietro Bianchi",
+      "official_person_url": "https://english.ufl.edu/pietro-bianchi/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.523915",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-e101948f",
+      "current_source_name": "Richard Burt",
+      "old_display_name": "Richard Burt",
+      "official_person_url": "https://english.ufl.edu/richard-burt/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.524149",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-09eb7cb4",
+      "current_source_name": "Thomas Conners",
+      "old_display_name": "Thomas Conners",
+      "official_person_url": "https://english.ufl.edu/thomas-conners/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.524328",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-48210e3d",
+      "current_source_name": "Michael Deagler",
+      "old_display_name": "Michael Deagler",
+      "official_person_url": "https://english.ufl.edu/michael-deagler/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.524462",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-4535d789",
+      "current_source_name": "Victor Del Hierro",
+      "old_display_name": "Victor Del Hierro",
+      "official_person_url": "https://english.ufl.edu/victor-del-hierro/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.524623",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-1481557a",
+      "current_source_name": "Sid Dobrin",
+      "old_display_name": "Sid Dobrin",
+      "official_person_url": "https://english.ufl.edu/sid-dobrin/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.524849",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-ca7b65ea",
+      "current_source_name": "Margaret Galvan",
+      "old_display_name": "Margaret Galvan",
+      "official_person_url": "https://english.ufl.edu/margaret-galvan/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.525140",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-45c5f0cf",
+      "current_source_name": "Laura Gonzales",
+      "old_display_name": "Laura Gonzales",
+      "official_person_url": "https://english.ufl.edu/laura-gonzales/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.525320",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-d604aace",
+      "current_source_name": "Sean Grass",
+      "old_display_name": "Sean Grass",
+      "official_person_url": "https://english.ufl.edu/sean-grass/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.525499",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-8c98073a",
+      "current_source_name": "Terry Harpold",
+      "old_display_name": "Terry Harpold",
+      "official_person_url": "https://english.ufl.edu/terry-harpold/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.525766",
+      "indexed_bio_resolution": "indexed_destination_timeout"
+    },
+    {
+      "original_id": "faculty-uf-eng-f603011e",
+      "current_source_name": "Tace Hedrick",
+      "old_display_name": "Tace Hedrick",
+      "official_person_url": "https://english.ufl.edu/tace-hedrick/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.525899",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-df8f1bea",
+      "current_source_name": "Susan Hegeman",
+      "old_display_name": "Susan Hegeman",
+      "official_person_url": "https://english.ufl.edu/susan-hegeman/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.526084",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-444ddfb2",
+      "current_source_name": "Michael Hofmann",
+      "old_display_name": "Michael Hofmann",
+      "official_person_url": "https://english.ufl.edu/michael-hofmann/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.526232",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-3f676137",
+      "current_source_name": "Kenneth Kidd",
+      "old_display_name": "Kenneth Kidd",
+      "official_person_url": "https://english.ufl.edu/kenneth-kidd/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.526463",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-936ace14",
+      "current_source_name": "David Leavitt",
+      "old_display_name": "David Leavitt",
+      "official_person_url": "https://english.ufl.edu/david-leavitt/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.526602",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-e18b0841",
+      "current_source_name": "William Logan",
+      "old_display_name": "William Logan",
+      "official_person_url": "https://english.ufl.edu/william-logan/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.526751",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-e02a8f56",
+      "current_source_name": "Roger Maioli",
+      "old_display_name": "Roger Maioli",
+      "official_person_url": "https://english.ufl.edu/roger-maioli/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.527034",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-a639d963",
+      "current_source_name": "Barbara Mennel",
+      "old_display_name": "Barbara Mennel",
+      "official_person_url": "https://english.ufl.edu/barbara-mennel/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.527224",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-9f9a7ce9",
+      "current_source_name": "Ange Mlinko",
+      "old_display_name": "Ange Mlinko",
+      "official_person_url": "https://english.ufl.edu/ange-mlinko/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.527356",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-276f5062",
+      "current_source_name": "Trevor Mowchun",
+      "old_display_name": "Trevor Mowchun",
+      "official_person_url": "https://english.ufl.edu/trevor-mowchun/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.527512",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-58dea6e3",
+      "current_source_name": "Robert B. Ray",
+      "old_display_name": "Robert B. Ray",
+      "official_person_url": "https://english.ufl.edu/robert-ray/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.527756",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-2357532e",
+      "current_source_name": "Mark A. Reid",
+      "old_display_name": "Mark A. Reid",
+      "official_person_url": "https://english.ufl.edu/mark-a-reid/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.527963",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-44c3116a",
+      "current_source_name": "Leah Rosenberg",
+      "old_display_name": "Leah Rosenberg",
+      "official_person_url": "https://english.ufl.edu/leah-rosenberg/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.528150",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-cdaeb1f0",
+      "current_source_name": "Peter L. Rudnytsky",
+      "old_display_name": "Peter L. Rudnytsky",
+      "official_person_url": "https://english.ufl.edu/peter-l-rudnytsky/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.528333",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-89ca7d81",
+      "current_source_name": "Raúl Sánchez",
+      "old_display_name": "Raúl Sánchez",
+      "official_person_url": "https://english.ufl.edu/raul-sanchez/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.528505",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-c46eff8e",
+      "current_source_name": "Catherine Saunders",
+      "old_display_name": "Catherine Saunders",
+      "official_person_url": "https://english.ufl.edu/catherine-saunders/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.528760",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-a309170e",
+      "current_source_name": "Jodi Schorb",
+      "old_display_name": "Jodi Schorb",
+      "official_person_url": "https://english.ufl.edu/jodi-schorb/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.528988",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-610fdcb3",
+      "current_source_name": "Malini Johar Schueller",
+      "old_display_name": "Malini Johar Schueller",
+      "official_person_url": "https://english.ufl.edu/malini-johar-schueller/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.529256",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-cda27571",
+      "current_source_name": "Stephanie A. Smith",
+      "old_display_name": "Stephanie A. Smith",
+      "official_person_url": "https://english.ufl.edu/stephanie-a-smith/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.529466",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-aa090c4e",
+      "current_source_name": "Anastasia Ulanowicz",
+      "old_display_name": "Anastasia Ulanowicz",
+      "official_person_url": "https://english.ufl.edu/anastasia-ulanowicz/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.529731",
+      "indexed_bio_resolution": "indexed"
+    },
+    {
+      "original_id": "faculty-uf-eng-29b562f6",
+      "current_source_name": "Phillip Wegner",
+      "old_display_name": "Phillip Wegner",
+      "official_person_url": "https://english.ufl.edu/phillip-wegner/",
+      "source_roster": "https://english.ufl.edu/faculty-listing/",
+      "previously_observed_on": "2026-11-06T16:53:10.530010",
+      "indexed_bio_resolution": "indexed"
+    }
+  ]
+}
