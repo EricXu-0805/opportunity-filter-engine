@@ -1,5 +1,6 @@
 """The shared CNE roster can establish a NANO appointment only through the department roster and the named faculty biography."""
 import pytest
+import requests
 from bs4 import BeautifulSoup
 
 from src.collectors import faculty_graph, ucb_common
@@ -31,9 +32,22 @@ def collect(monkeypatch, roster, named_page, *, also_on_legacy=False):
         raw = pages[url]
         return BeautifulSoup(raw, "html.parser") if raw else None
 
+    # NANO's optional research index uses a separate JSON transport from the roster.
+    # Keep this appointment test offline while exercising the normal enrichment path.
+    index_requests = []
+
+    def research_index(url, **kwargs):
+        index_requests.append(url)
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b'{"data":[]}'
+        return response
+
     monkeypatch.setattr(ucb_common, "fetch_soup", fetch)
+    monkeypatch.setattr(requests, "get", research_index)
     ledger = {}
     rows = faculty_graph.fetch_and_normalize({**SCHOOL, "departments": [NANO]}, deep=True, unit_ledger=ledger)
+    assert index_requests == [NANO["research_join"]["url"]]
     assert sum(row["id"] == "faculty-ucsd-nano-467aa36b" for row in rows) == 1
     return [row for row in rows if row["id"] == OID], ledger["nano"]
 
