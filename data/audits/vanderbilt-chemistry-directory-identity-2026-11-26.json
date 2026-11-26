@@ -1,0 +1,59 @@
+{
+  "version_before": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+  "official_directory": "https://as.vanderbilt.edu/chemistry/faculty/",
+  "html_sha256": "42373c6fff32dc811f85402325abee4a97e0ce15cef1afaa3f9f24140256bf79",
+  "official_rows": 42,
+  "actual_faculty": 40,
+  "classified_category_links": 2,
+  "previously_published_person_ids_resolved": 40,
+  "chemistry_ids": 38,
+  "existing_biological_science_cross_appointments": 2,
+  "original_shard_ids": 1175,
+  "candidate_rows": 1175,
+  "changed_original_ids": [
+    "faculty-vanderbilt-chem-b0f20085",
+    "faculty-vanderbilt-chem-6968c3d1"
+  ],
+  "old_and_new_id_order_sha256": "59c464ce908031be979e1b6defe4a7c182d9e8f47175b11d399f1dd4e4ddb99d",
+  "candidate_api_checks": [
+    {
+      "original_id": "faculty-vanderbilt-chem-b0f20085",
+      "reference_only": true,
+      "actionable": false,
+      "counted_as_opportunity": false
+    },
+    {
+      "original_id": "faculty-vanderbilt-chem-6968c3d1",
+      "reference_only": true,
+      "actionable": false,
+      "counted_as_opportunity": false
+    },
+    {
+      "original_id": "faculty-vanderbilt-chem-bb4f8725",
+      "reference_only": false,
+      "actionable": true,
+      "counted_as_opportunity": true
+    }
+  ],
+  "next_natural_refresh": "November 26 run 45861578824 used B10 before this fix. Earliest normal Thursday run after the candidate is December 3 at 06:07 UTC, conditional on publication.",
+  "candidate_commit": "129266290d13c325f55163c42eeb86d84d9135ed",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1450",
+  "ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45863052470",
+  "previous_production_observations": [
+    {
+      "original_id": "faculty-vanderbilt-chem-b0f20085",
+      "record_kind": "faculty_contact",
+      "actionable": true,
+      "reference_only": false
+    },
+    {
+      "original_id": "faculty-vanderbilt-chem-6968c3d1",
+      "record_kind": "faculty_contact",
+      "actionable": true,
+      "reference_only": false
+    }
+  ],
+  "previous_count": 1154,
+  "candidate_count": 1152,
+  "unaffected_listing_count": 3
+}
