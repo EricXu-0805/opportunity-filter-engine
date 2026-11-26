@@ -105,7 +105,7 @@ _CLARK_SELECTORS = {
     # source-stated academic rank establishes the appointment, not the office.
     "title": ".title-wrapper h3",
     "leadership_title_re": r"\b(?:chair|director|dean|president|leader)\b",
-    "email": ".contact-wrapper a[href^='mailto:']",
+    "bound_contact": {"allowed_email_domains": ["umd.edu"]},
 }
 
 # "IN MEMORIAM" rides the name anchor on deceased-faculty rows — drop the card
@@ -419,7 +419,7 @@ SCHOOL: dict = {
         _clark("ECE", "Department of Electrical and Computer Engineering",
                ["Electrical Engineering", "Computer Engineering"], "ece"),
         _clark("ME", "Department of Mechanical Engineering",
-               ["Mechanical Engineering"], "enme"),
+               ["Mechanical Engineering"], "me"),
         _clark("BIOE", "Fischell Department of Bioengineering",
                ["Bioengineering", "Biomedical Engineering"], "bioe"),
         _clark("AE", "Department of Aerospace Engineering",
