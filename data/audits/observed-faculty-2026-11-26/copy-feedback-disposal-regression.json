@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-11-26T19:49:35.725121+00:00",
+  "original_main": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+  "fsu_source_with_identical_modal": "6bf06d3657cafd2ab1fa89ccb980e7cd909a8c61",
+  "failed_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140127500793",
+  "original_hosted_result": {
+    "test_files_passed": 380,
+    "assertions_passed": 9806,
+    "unhandled_errors": 1,
+    "error": "ReferenceError: window is not defined",
+    "source": "Timeout callback in frontend/src/components/ColdEmailModal.tsx:2139 updated React state after teardown"
+  },
+  "candidate": "8a5f2639199f06008fe00939ab44c8c7a58390aa",
+  "regression": "Two ordinary copy actions, close the dialog. The prior timer must be canceled after the second copy, the newest timer must remain active until close, and close must cancel it. Neither copy confirms outreach.",
+  "same_regression_unchanged_main": "failed, clearTimeout did not receive the old feedback timer",
+  "same_regression_repaired": "passed",
+  "local_modal_suites": 17,
+  "local_modal_tests_passed": 463,
+  "typescript": "passed",
+  "production_stage": "No deployed confirmation of this fix yet. No email was sent in the reproduction."
+}
