@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import copy
+import json
 from datetime import date, time
 from importlib import resources
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -37,6 +39,9 @@ def _spec(school_slug: str, key: str) -> tuple[dict, dict, dict]:
 
 
 def _row(school_slug: str, key: str) -> dict:
+    if school_slug == "manual":
+        shard = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "national.json"
+        return next(record for record in json.loads(shard.read_bytes()) if record["id"] == key)
     school, source, spec = _spec(school_slug, key)
     if school_slug == "ucb":
         return ucb_campus._normalize_program(source, spec)
@@ -45,8 +50,8 @@ def _row(school_slug: str, key: str) -> dict:
 
 @pytest.mark.parametrize(("school", "key"), sorted(WINDOWS))
 def test_every_window_is_for_the_page_its_program_is_configured_at(school, key):
-    _, _, spec = _spec(school, key)
-    assert spec["url"] == WINDOWS[(school, key)].url
+    row = _row(school, key)
+    assert row["url"] == row["source_url"] == WINDOWS[(school, key)].url
 
 
 @pytest.mark.parametrize(("school", "key"), sorted(WINDOWS))

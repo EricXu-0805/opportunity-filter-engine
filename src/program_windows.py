@@ -34,6 +34,7 @@ class ProgramWindow:
 
 
 _REVIEWED = date(2026, 11, 5)
+_NCSA = "https://reu.ncsa.illinois.edu/"
 _SUPERB = "https://eecs.berkeley.edu/resources/undergrads/undergraduate-research/superb/"
 _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
 _HAAS = "https://research.berkeley.edu/haas-scholars/"
@@ -45,6 +46,12 @@ _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 # deadline.") names the cycle elsewhere on the same page ("View the 2027
 # program flyer!", "SURF 2027 application portal"); that is the year here.
 WINDOWS: dict[tuple[str, str], ProgramWindow] = {
+    ("manual", "ext-uiuc-ncsa-reu"): ProgramWindow(
+        _NCSA, _NCSA, date(2026, 11, 26), date(2027, 2, 15),
+        "Online application: December 15, 2026 – February 15, 2027",
+        date(2026, 12, 15), "Online application: December 15, 2026 – February 15, 2027",
+        "America/Chicago", "December 15, 2026",
+    ),
     ("ucb", "eecs_sure"): ProgramWindow(
         _SUPERB, _SUPERB, date(2026, 11, 25), date(2025, 1, 25),
         "Application deadline: January 25th 2025, 11:59 PM ET",
@@ -109,6 +116,10 @@ def reviewed_window(record: object) -> ProgramWindow | None:
     if not isinstance(metadata, dict) or metadata.get("discovered"):
         return None
     school, key = metadata.get("collector_school"), metadata.get("collector_key")
+    # A manual entry has a stable ID instead of collector coordinates. Its
+    # two stored source URLs must still match the reviewed page below.
+    if record.get("source") == "manual":
+        school, key = "manual", record.get("id")
     # Berkeley's dedicated registry encodes its owner in its emitted source.
     # Both the old national row and its campus replacement carry the same key.
     if school is None and record.get("source") in {"ucb_external_research", "ucb_research_programs"}:
