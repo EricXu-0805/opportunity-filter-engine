@@ -1,0 +1,20 @@
+name: View ten public Haverford profiles on the tenth release
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['scripts/verify_haverford_tenth_browser.cjs', '.github/workflows/verify-haverford-tenth-browser.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm install --prefix "$RUNNER_TEMP/haverford-browser" --no-audit --no-fund playwright@1.55.0
+      - run: NODE_PATH="$RUNNER_TEMP/haverford-browser/node_modules" node scripts/verify_haverford_tenth_browser.cjs
