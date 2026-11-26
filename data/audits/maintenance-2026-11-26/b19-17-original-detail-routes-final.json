@@ -1,0 +1,241 @@
+{
+  "group": "all",
+  "same_backend_at_end": true,
+  "time_utc": "2026-11-26T18:32:53+00:00",
+  "site": "http://127.0.0.1:3000",
+  "scope": "Read-only Chrome navigation and public GETs; no application, account, subscription or email actions.",
+  "verified_frontend_and_backend_sha": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "rows": [
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-25a6d469",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-25a6d469",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Sadik Esener",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-dc9e3de3",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-dc9e3de3",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Michael Heller",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-2aa92754",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-2aa92754",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Darren Lipomi",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-04ac1d79",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-04ac1d79",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Ying Shirley Meng",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-27240933",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-27240933",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Sheng Xu",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-ncsu-chass-089a76c8",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ncsu-chass-089a76c8",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Jeffery Braden",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://chass.ncsu.edu/people/jpbraden/",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-umd-phys-5e8e0edd",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-umd-phys-5e8e0edd",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Elizabeth Beise",
+      "actionable": false,
+      "inactive_banner": true,
+      "source": "https://umdphysics.umd.edu/directory/faculty/emeritus/beise.html",
+      "generated_outreach": false,
+      "external_apply_or_draft_control": false
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-e94320ae",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-e94320ae",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Shyue Ping Ong",
+      "actionable": true,
+      "view_faculty_profile": true
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-che-8330aad7",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-che-8330aad7",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Jinhye Bae",
+      "actionable": true,
+      "view_faculty_profile": true
+    },
+    {
+      "ok": true,
+      "id": "faculty-ucsd-nano-d24bdcfa",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-ucsd-nano-d24bdcfa",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Shaochen Chen",
+      "actionable": true,
+      "view_faculty_profile": true
+    },
+    {
+      "ok": true,
+      "id": "faculty-utexas-mpdd-5850399f",
+      "url": "http://127.0.0.1:3000/opportunities/faculty-utexas-mpdd-5850399f",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Zhengrong Cui",
+      "actionable": true,
+      "paper_links": [
+        {
+          "title": "Drum Filling of Thin-Film Freeze-Dried Monoclonal Antibody Powder in UniDose Powder Nasal Spray System",
+          "visible_href": "https://scholar.google.com/scholar?q=%22Drum%20Filling%20of%20Thin-Film%20Freeze-Dried%20Monoclonal%20Antibody%20Powder%20in%20UniDose%20Powder%20Nasal%20Spray%20System%22"
+        },
+        {
+          "title": "IgM has a better relative distribution in inflammation sites and tumor tissues than IgG",
+          "visible_href": "https://scholar.google.com/scholar?q=%22IgM%20has%20a%20better%20relative%20distribution%20in%20inflammation%20sites%20and%20tumor%20tissues%20than%20IgG%22"
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "id": "wisc-86cba49b83d7",
+      "url": "http://127.0.0.1:3000/opportunities/wisc-86cba49b83d7",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)",
+      "actionable": true,
+      "published_stipend_visible": true,
+      "home_student_may_apply_visible": true,
+      "published_eligibility_source": "https://wiscience.wisc.edu/research/summer_research_program/"
+    },
+    {
+      "ok": true,
+      "id": "sro-595e912d",
+      "url": "http://127.0.0.1:3000/opportunities/sro-595e912d",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "actionable": true,
+      "original_directory_prose_and_current_host_summary_visible": true,
+      "published_stipend_visible": true,
+      "home_student_may_apply_visible": true,
+      "published_eligibility_source": "https://wiscience.wisc.edu/research/summer_research_program/"
+    },
+    {
+      "ok": true,
+      "id": "sro-3c378261",
+      "url": "http://127.0.0.1:3000/opportunities/sro-3c378261",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Cellular and Molecular Biology of Stress Summer Research Program",
+      "actionable": true,
+      "original_directory_prose_and_current_host_summary_visible": true,
+      "published_stipend_visible": true,
+      "home_student_may_apply_visible": true,
+      "published_eligibility_source": "https://wiscience.wisc.edu/research/summer_research_program/"
+    },
+    {
+      "ok": true,
+      "id": "nsf-reu-2447670",
+      "url": "http://127.0.0.1:3000/opportunities/nsf-reu-2447670",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "REU: Advancing Data Science in the Public Interest",
+      "actionable": true,
+      "current_host_summary_visible": "two academic routes",
+      "original_directory_text_visible_if_provided": true,
+      "host_majors_visible": [
+        "Mathematics",
+        "Statistics",
+        "Computer Science",
+        "Social science"
+      ],
+      "published_eligibility_source": "https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu"
+    },
+    {
+      "ok": true,
+      "id": "sro-44f176cd",
+      "url": "http://127.0.0.1:3000/opportunities/sro-44f176cd",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "REU Advancing Data Science in the Public Interest",
+      "actionable": true,
+      "current_host_summary_visible": "two academic routes",
+      "original_directory_text_visible_if_provided": true,
+      "host_majors_visible": [
+        "Mathematics",
+        "Statistics",
+        "Computer Science",
+        "Social science"
+      ],
+      "published_eligibility_source": "https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu"
+    },
+    {
+      "ok": true,
+      "id": "sro-3ec4ea4e",
+      "url": "http://127.0.0.1:3000/opportunities/sro-3ec4ea4e",
+      "api_status": 200,
+      "browser_status": 200,
+      "heading": "Cancer Research Internship Summer Program (CRISP)",
+      "actionable": true,
+      "current_host_summary_visible": "incoming first-year students",
+      "original_directory_text_visible_if_provided": false,
+      "host_majors_visible": [
+        "Biomedical science",
+        "Behavioral science"
+      ],
+      "published_eligibility_source": "https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html"
+    }
+  ],
+  "workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875556151"
+}

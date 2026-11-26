@@ -1,0 +1,88 @@
+{
+  "checked_utc": "2026-11-26T18:27:31+00:00",
+  "combined_commit": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "combined_tree": "8d4445193195672efa10db763b90db4ba51d3741",
+  "original_sources_in_history": {
+    "b18": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+    "1423": "481e2b1a5321dd3bdb69625e40d6292aee0526d4",
+    "1454": "cf6d47b5956337d37663fbbab578fd3d2e326339",
+    "1455": "04d5bdc1aae3428e78cb5cedc70e646003d26075",
+    "1456": "4ea77371662ff9ce7998cf650dc0bb4d1914b7b6",
+    "1457": "b25e51c9527feb28aabaee7fddabe873c6ec57be",
+    "1458": "a0d2847795ca196039c2a89724ec4c34654bf828"
+  },
+  "school_counts_all_115_match_committed_and_prior_proof": true,
+  "ucsd_exact_counts": {
+    "listing_count": 30,
+    "faculty_contact_count": 1449,
+    "unreviewed_count": 0,
+    "total_count": 1479
+  },
+  "archived_original_ucsd_ids": [
+    "faculty-ucsd-nano-25a6d469",
+    "faculty-ucsd-nano-dc9e3de3",
+    "faculty-ucsd-nano-2aa92754",
+    "faculty-ucsd-nano-04ac1d79",
+    "faculty-ucsd-nano-27240933"
+  ],
+  "scope": "Local candidate HTTP with the complete 149,871-row corpus, targeted test suites and independent release-build Chromium/CI. The production deployment and scheduled source refresh remain separate.",
+  "source_correction": {
+    "previous_integrator": "feb015a69c28f5cdcd22eb776f27b2a434328af4",
+    "previous_source": "c3451d2d0bf554f5611e58d16ac7e81ae3a77a9c",
+    "current_source": "a0d2847795ca196039c2a89724ec4c34654bf828",
+    "national_count": 14139,
+    "source_original_fields": {
+      "sro-44f176cd": [
+        "description_clean"
+      ],
+      "sro-595e912d": [
+        "description_clean"
+      ],
+      "nsf-reu-2447670": [
+        "description_clean"
+      ],
+      "sro-3c378261": [
+        "description_clean"
+      ]
+    },
+    "other_integrated_records_unchanged": true
+  },
+  "local_candidate_regressions": {
+    "backend": 262,
+    "frontend_details": 121,
+    "typescript": "passed",
+    "repository_pinned_ruff": "0.7.4 passed"
+  },
+  "local_candidate_api": {
+    "wisconsin": [
+      "whole-corpus 149871",
+      "UW freshman GPA 2.8 default ['wisc-86cba49b83d7', 'sro-3c378261'] 2",
+      "UW freshman confirmed paid ['wisc-86cba49b83d7', 'sro-3c378261'] 2",
+      "UW campus source paid ['wisc-86cba49b83d7'] 1",
+      "UW directory paid ['sro-3c378261', 'sro-595e912d'] 2",
+      "UW unpaid [] 0",
+      "external freshman confirmed paid ['wisc-86cba49b83d7', 'sro-3c378261'] 2",
+      "wisc-86cba49b83d7 yes 10 weeks 2027-02-10 https://wiscience.wisc.edu/research/summer_research_program/",
+      "sro-595e912d yes 10 weeks 2027-02-10 https://wiscience.wisc.edu/research/summer_research_program/",
+      "sro-3c378261 yes 10 weeks 2027-02-10 https://wiscience.wisc.edu/research/summer_research_program/"
+    ],
+    "smu_indiana": [
+      "changed 3 of 14139 national rows; full corpus 149871",
+      "sro-3ec4ea4e ['Biomedical science', 'Behavioral science'] https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html",
+      "nsf-reu-2447670 ['Mathematics', 'Statistics', 'Computer Science', 'Social science'] https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu",
+      "sro-44f176cd ['Mathematics', 'Statistics', 'Computer Science', 'Social science'] https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates/data-science-reu",
+      "matches Statistics  ['nsf-reu-2447670']",
+      "matches Sociology nsf_reu ['nsf-reu-2447670']",
+      "matches Sociology uiuc_sro ['sro-44f176cd']",
+      "matches Behavioral science  ['sro-3ec4ea4e']",
+      "matches Biomedical science uiuc_sro ['sro-3ec4ea4e']"
+    ]
+  },
+  "same_tree_chromium": {
+    "original_ids": 17,
+    "passed": 17,
+    "frontend_and_backend_at_start_and_end": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+    "artifact": "b19-17-original-detail-routes-final.json",
+    "workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875556151"
+  }
+}
