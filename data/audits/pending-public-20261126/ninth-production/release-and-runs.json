@@ -1,0 +1,13 @@
+{
+  "deployed_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "published_tree": "4da01efc16c9121be3029e18509fa6421906e298",
+  "integration": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1393",
+  "pr_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45837862913",
+  "main_deployment_hook": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842461285",
+  "uva_fifteen_originals": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/303c36cbe5f828ba495031e4800f69f6454cf565/data/audits/m65-uva-fifteen-research-fields-ninth-production-2026-11-26.json",
+  "reufinder_before": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45801766493/attempts/1",
+  "reufinder_after": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45801766493/attempts/2",
+  "NC_State_next_regular_run_UTC": "2026-11-30 06:07",
+  "UVA_next_regular_run_UTC": "2026-12-01 06:07",
+  "Maryland_next_regular_run_UTC": "2026-12-02 06:07"
+}

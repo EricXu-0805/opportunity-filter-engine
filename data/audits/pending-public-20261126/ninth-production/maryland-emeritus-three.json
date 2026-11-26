@@ -1,0 +1,84 @@
+{
+  "at": "2026-11-26T14:51:51.693705+00:00",
+  "mode": "emeritus",
+  "source_commit_floor": "d5022af6",
+  "phase": "after",
+  "site_release_before": [
+    "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "site_release_after": [
+    "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "normal_anonymous": true,
+  "asked_for_addresses": false,
+  "count": 3,
+  "errors": {},
+  "people": [
+    {
+      "id": "faculty-umd-bioe-7f9ec70b",
+      "name": "John Fisher",
+      "active_in_release": false,
+      "official_source": "https://bioe.umd.edu/clark/faculty/127/John-Fisher",
+      "url": "https://joinalab.com/opportunities/faculty-umd-bioe-7f9ec70b",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "John Fisher",
+      "public_source": "https://bioe.umd.edu/clark/faculty/127/John-Fisher",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://bioe.umd.edu/clark/faculty/127/John-Fisher"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-f49e3f74",
+      "name": "Adrian Papamarcou",
+      "active_in_release": false,
+      "official_source": "https://ece.umd.edu/clark/faculty/455/Adrian-Papamarcou",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-f49e3f74",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Adrian Papamarcou",
+      "public_source": "https://ece.umd.edu/clark/faculty/455/Adrian-Papamarcou",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/455/Adrian-Papamarcou"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ae-db9936f9",
+      "name": "Roberto Celi",
+      "active_in_release": true,
+      "official_source": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ae-db9936f9",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Roberto Celi",
+      "public_source": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi"
+        },
+        {
+          "label": "Source page",
+          "url": "https://aero.umd.edu/clark/faculty/16/Roberto-Celi"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    }
+  ]
+}

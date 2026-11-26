@@ -1,0 +1,126 @@
+{
+  "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "production_versions": {
+    "before": [
+      "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "091c3800c9b5310fba6c591d3eaa1f588390055f"
+    ],
+    "after": [
+      "091c3800c9b5310fba6c591d3eaa1f588390055f",
+      "091c3800c9b5310fba6c591d3eaa1f588390055f"
+    ]
+  },
+  "upstream_prs": [
+    1368,
+    1373,
+    1393
+  ],
+  "observed_utc": "2026-11-26T14:54:43.310658+00:00",
+  "method": "Opened the eight original public pages in ordinary Chrome, waited for the visible detail and profile-update indicator, and counted the rendered contact and application actions. Read the public opportunity API independently. No button that starts an application or draft was used.",
+  "before": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/6be253b57d0918d16cdb2e64b22c982d607b09fb/data/audits/observed-faculty-2026-11-26/m180-six-retired-contact-buttons-before.json",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-089a76c8",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-089a76c8",
+      "visible_heading": "Jeffery Braden",
+      "visible_inactive_banner": true,
+      "visible_draft_buttons": 0,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/jpbraden/",
+      "api_actionable": false,
+      "api_reason": "retired_title",
+      "last_seen_listed_at": "2026-08-24",
+      "previous_draft_buttons": 1
+    },
+    {
+      "id": "faculty-ncsu-chass-dcb028fb",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-dcb028fb",
+      "visible_heading": "Mary E Haskett",
+      "visible_inactive_banner": true,
+      "visible_draft_buttons": 0,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/mehasket/",
+      "api_actionable": false,
+      "api_reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "previous_draft_buttons": 1
+    },
+    {
+      "id": "faculty-ncsu-chass-ff4905cc",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-ff4905cc",
+      "visible_heading": "Donald H. Mershon",
+      "visible_inactive_banner": true,
+      "visible_draft_buttons": 0,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/mershon/",
+      "api_actionable": false,
+      "api_reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "previous_draft_buttons": 1
+    },
+    {
+      "id": "faculty-ncsu-chass-38b191e6",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-38b191e6",
+      "visible_heading": "William Shaw",
+      "visible_inactive_banner": true,
+      "visible_draft_buttons": 0,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/wpshaw/",
+      "api_actionable": false,
+      "api_reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "previous_draft_buttons": 1
+    },
+    {
+      "id": "faculty-ncsu-chass-98436171",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-98436171",
+      "visible_heading": "John N Wall",
+      "visible_inactive_banner": true,
+      "visible_draft_buttons": 0,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/jnwall/",
+      "api_actionable": false,
+      "api_reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "previous_draft_buttons": 1
+    },
+    {
+      "id": "faculty-ncsu-chass-acb2eb75",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-acb2eb75",
+      "visible_heading": "Melissa A. Johnson",
+      "visible_inactive_banner": true,
+      "visible_draft_buttons": 0,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/mjohnson/",
+      "api_actionable": false,
+      "api_reason": "retired_title",
+      "last_seen_listed_at": "2026-11-23",
+      "previous_draft_buttons": 1
+    },
+    {
+      "id": "faculty-ncsu-chass-7c1bf7dc",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-7c1bf7dc",
+      "visible_heading": "Cynthia Zuckerman Hyman",
+      "visible_inactive_banner": false,
+      "visible_draft_buttons": 1,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/cezucker/",
+      "api_actionable": true,
+      "api_reason": null,
+      "last_seen_listed_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-ncsu-chass-07a537d8",
+      "original_detail": "https://joinalab.com/opportunities/faculty-ncsu-chass-07a537d8",
+      "visible_heading": "David Berube",
+      "visible_inactive_banner": false,
+      "visible_draft_buttons": 1,
+      "visible_apply_actions": 0,
+      "visible_profile_href": "https://chass.ncsu.edu/people/dmberube/",
+      "api_actionable": true,
+      "api_reason": null,
+      "last_seen_listed_at": "2026-11-23"
+    }
+  ],
+  "next_natural_nc_state_refresh_utc": "2026-11-30T06:07:00Z"
+}

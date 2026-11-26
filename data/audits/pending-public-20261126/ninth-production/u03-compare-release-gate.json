@@ -1,0 +1,31 @@
+{
+  "at": "2026-11-26T15:00:09.501647+00:00",
+  "source_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1379",
+  "release_start": [
+    "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "release_end": [
+    "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "both_real_details_were_HTTP_200": [
+    "https://joinalab.com/opportunities/faculty-umd-ece-e6ccf284",
+    "https://joinalab.com/opportunities/faculty-umd-cs-ec45fae9"
+  ],
+  "routes": {
+    "/compare": {
+      "http": 404,
+      "canonical_request": "https://joinalab.com/compare",
+      "comparison_table_count": 0,
+      "positive_record_headings_on_page": []
+    },
+    "/compare?ids=faculty-umd-ece-e6ccf284,faculty-umd-cs-ec45fae9": {
+      "http": 404,
+      "canonical_request": "https://joinalab.com/compare?ids=faculty-umd-ece-e6ccf284,faculty-umd-cs-ec45fae9",
+      "comparison_table_count": 0,
+      "positive_record_headings_on_page": []
+    }
+  },
+  "outcome": "The public compare route is release-gated. Its uncertainty factors were covered by CI, but public student comparison acceptance is still pending."
+}

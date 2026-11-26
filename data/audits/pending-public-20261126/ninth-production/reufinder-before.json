@@ -1,0 +1,45 @@
+{
+  "site": "https://joinalab.com",
+  "guest_signup": 200,
+  "profile_commit": 200,
+  "reufinder-freshmen": {
+    "source": "https://reufinder.com/2025/10/10/programs-that-accept-first-year-students/",
+    "source_http": 200,
+    "detail_http": 200,
+    "target_truth": {
+      "listing_state": "unknown",
+      "reference_only": false,
+      "actionable": true,
+      "accepting_state": "unknown",
+      "reason_code": null,
+      "verified_at": "2026-03-16",
+      "expires_at": null
+    },
+    "detail_skills": [],
+    "eligibility": {
+      "international_friendly": "no",
+      "work_auth_notes": "Most REU sites require US citizenship/PR",
+      "majors": []
+    },
+    "rolling": true,
+    "deadline": null,
+    "detail_title": "REU Finder \u2014 Programs That Accept First-Year Students (2026)",
+    "detail_excerpt": [
+      "Paid",
+      "Apply now",
+      "Draft email",
+      "INTERNATIONAL STUDENTS",
+      "Not open to international students",
+      "CITIZENSHIP",
+      "U.S. citizenship or permanent residency required",
+      "Most REU sites require US citizenship/PR",
+      "ROLLING ADMISSIONS",
+      "Paid",
+      "Most REUs offer stipend + housing",
+      "How to apply",
+      "A default we apply to this source"
+    ],
+    "search_total": 0,
+    "listed": false
+  }
+}

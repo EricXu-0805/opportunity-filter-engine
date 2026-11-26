@@ -1,0 +1,524 @@
+{
+  "at": "2026-11-26T14:52:31.326298+00:00",
+  "mode": "clark",
+  "source_commit_floor": "361e49ff",
+  "phase": "after",
+  "site_release_before": [
+    "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "site_release_after": [
+    "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "091c3800c9b5310fba6c591d3eaa1f588390055f"
+  ],
+  "normal_anonymous": true,
+  "asked_for_addresses": false,
+  "count": 21,
+  "errors": {},
+  "people": [
+    {
+      "id": "faculty-umd-ece-e6ccf284",
+      "name": "Alireza Khaligh",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/417/Alireza-Khaligh",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-e6ccf284",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alireza Khaligh",
+      "public_source": "https://ece.umd.edu/clark/faculty/417/Alireza-Khaligh",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/417/Alireza-Khaligh"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/417/Alireza-Khaligh"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-cs-ec45fae9",
+      "name": "Michelle Mazurek",
+      "active_in_release": true,
+      "official_source": "https://www.cs.umd.edu/people/mmazurek",
+      "url": "https://joinalab.com/opportunities/faculty-umd-cs-ec45fae9",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Michelle Mazurek",
+      "public_source": "https://www.cs.umd.edu/people/mmazurek",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.cs.umd.edu/people/mmazurek"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www.cs.umd.edu/people/mmazurek"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-ddfd861f",
+      "name": "Patrick G. O'Shea",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/448/Patrick-G-O%27Shea",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-ddfd861f",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Patrick G. O'Shea",
+      "public_source": "https://ece.umd.edu/clark/faculty/448/Patrick-G-O%27Shea",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/448/Patrick-G-O%27Shea"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/448/Patrick-G-O%27Shea"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-bdf563fd",
+      "name": "Ankur Srivastava",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/484/Ankur-Srivastava",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-bdf563fd",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ankur Srivastava",
+      "public_source": "https://ece.umd.edu/clark/faculty/484/Ankur-Srivastava",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/484/Ankur-Srivastava"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/484/Ankur-Srivastava"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-52eda433",
+      "name": "Ichiro Takeuchi",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-52eda433",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ichiro Takeuchi",
+      "public_source": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/722/Ichiro-Takeuchi"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-a4499b8f",
+      "name": "Sennur Ulukus",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/490/Sennur-Ulukus",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-a4499b8f",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sennur Ulukus",
+      "public_source": "https://ece.umd.edu/clark/faculty/490/Sennur-Ulukus",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/490/Sennur-Ulukus"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/490/Sennur-Ulukus"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-me-3814f66d",
+      "name": "Samuel Graham Jr.",
+      "active_in_release": true,
+      "official_source": "https://me.umd.edu/clark/faculty/1618/Samuel-GrahamJr",
+      "url": "https://joinalab.com/opportunities/faculty-umd-me-3814f66d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Samuel Graham Jr.",
+      "public_source": "https://me.umd.edu/clark/faculty/1618/Samuel-GrahamJr",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://me.umd.edu/clark/faculty/1618/Samuel-GrahamJr"
+        },
+        {
+          "label": "Source page",
+          "url": "https://me.umd.edu/clark/faculty/1618/Samuel-GrahamJr"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-me-a2f74a77",
+      "name": "F. Patrick McCluskey",
+      "active_in_release": true,
+      "official_source": "https://me.umd.edu/clark/faculty/567/F-Patrick-McCluskey",
+      "url": "https://joinalab.com/opportunities/faculty-umd-me-a2f74a77",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "F. Patrick McCluskey",
+      "public_source": "https://me.umd.edu/clark/faculty/567/F-Patrick-McCluskey",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://me.umd.edu/clark/faculty/567/F-Patrick-McCluskey"
+        },
+        {
+          "label": "Source page",
+          "url": "https://me.umd.edu/clark/faculty/567/F-Patrick-McCluskey"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-me-fbacae93",
+      "name": "Ryan D. Sochol",
+      "active_in_release": true,
+      "official_source": "https://me.umd.edu/clark/faculty/595/Ryan-D-Sochol",
+      "url": "https://joinalab.com/opportunities/faculty-umd-me-fbacae93",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ryan D. Sochol",
+      "public_source": "https://me.umd.edu/clark/faculty/595/Ryan-D-Sochol",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://me.umd.edu/clark/faculty/595/Ryan-D-Sochol"
+        },
+        {
+          "label": "Source page",
+          "url": "https://me.umd.edu/clark/faculty/595/Ryan-D-Sochol"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-bioe-7d3a7d0a",
+      "name": "Alisa Morss Clyne",
+      "active_in_release": true,
+      "official_source": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne",
+      "url": "https://joinalab.com/opportunities/faculty-umd-bioe-7d3a7d0a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alisa Morss Clyne",
+      "public_source": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne"
+        },
+        {
+          "label": "Source page",
+          "url": "https://bioe.umd.edu/clark/faculty/1011/Alisa-Morss-Clyne"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-bioe-8a3e5f2a",
+      "name": "Kimberly Stroka",
+      "active_in_release": true,
+      "official_source": "https://bioe.umd.edu/clark/faculty/219/Kimberly-Stroka",
+      "url": "https://joinalab.com/opportunities/faculty-umd-bioe-8a3e5f2a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Kimberly Stroka",
+      "public_source": "https://bioe.umd.edu/clark/faculty/219/Kimberly-Stroka",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://bioe.umd.edu/clark/faculty/219/Kimberly-Stroka"
+        },
+        {
+          "label": "Source page",
+          "url": "https://bioe.umd.edu/clark/faculty/219/Kimberly-Stroka"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ae-5041d999",
+      "name": "Alison B. Flatau",
+      "active_in_release": true,
+      "official_source": "https://aero.umd.edu/clark/faculty/21/Alison-B-Flatau",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ae-5041d999",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alison B. Flatau",
+      "public_source": "https://aero.umd.edu/clark/faculty/21/Alison-B-Flatau",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://aero.umd.edu/clark/faculty/21/Alison-B-Flatau"
+        },
+        {
+          "label": "Source page",
+          "url": "https://aero.umd.edu/clark/faculty/21/Alison-B-Flatau"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ae-7a7fab6a",
+      "name": "Pino Martin",
+      "active_in_release": true,
+      "official_source": "https://aero.umd.edu/clark/faculty/51/Pino-Martin",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ae-7a7fab6a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Pino Martin",
+      "public_source": "https://aero.umd.edu/clark/faculty/51/Pino-Martin",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://aero.umd.edu/clark/faculty/51/Pino-Martin"
+        },
+        {
+          "label": "Source page",
+          "url": "https://aero.umd.edu/clark/faculty/51/Pino-Martin"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ae-5d6fa086",
+      "name": "Darryll J. Pines",
+      "active_in_release": true,
+      "official_source": "https://aero.umd.edu/clark/faculty/61/Darryll-J-Pines",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ae-5d6fa086",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Darryll J. Pines",
+      "public_source": "https://aero.umd.edu/clark/faculty/61/Darryll-J-Pines",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://aero.umd.edu/clark/faculty/61/Darryll-J-Pines"
+        },
+        {
+          "label": "Source page",
+          "url": "https://aero.umd.edu/clark/faculty/61/Darryll-J-Pines"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-cee-09c3398d",
+      "name": "Natasha Andrade",
+      "active_in_release": true,
+      "official_source": "https://cee.umd.edu/clark/faculty/240/Natasha-Andrade",
+      "url": "https://joinalab.com/opportunities/faculty-umd-cee-09c3398d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Natasha Andrade",
+      "public_source": "https://cee.umd.edu/clark/faculty/240/Natasha-Andrade",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://cee.umd.edu/clark/faculty/240/Natasha-Andrade"
+        },
+        {
+          "label": "Source page",
+          "url": "https://cee.umd.edu/clark/faculty/240/Natasha-Andrade"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-cee-7bfc6dd8",
+      "name": "Kaye L. Brubaker",
+      "active_in_release": true,
+      "official_source": "https://cee.umd.edu/clark/faculty/249/Kaye-L-Brubaker",
+      "url": "https://joinalab.com/opportunities/faculty-umd-cee-7bfc6dd8",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Kaye L. Brubaker",
+      "public_source": "https://cee.umd.edu/clark/faculty/249/Kaye-L-Brubaker",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://cee.umd.edu/clark/faculty/249/Kaye-L-Brubaker"
+        },
+        {
+          "label": "Source page",
+          "url": "https://cee.umd.edu/clark/faculty/249/Kaye-L-Brubaker"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-cee-e78daa70",
+      "name": "Allen P. Davis",
+      "active_in_release": true,
+      "official_source": "https://cee.umd.edu/clark/faculty/256/Allen-P-Davis",
+      "url": "https://joinalab.com/opportunities/faculty-umd-cee-e78daa70",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Allen P. Davis",
+      "public_source": "https://cee.umd.edu/clark/faculty/256/Allen-P-Davis",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://cee.umd.edu/clark/faculty/256/Allen-P-Davis"
+        },
+        {
+          "label": "Source page",
+          "url": "https://cee.umd.edu/clark/faculty/256/Allen-P-Davis"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-cee-7272ff63",
+      "name": "Alba Torrents",
+      "active_in_release": true,
+      "official_source": "https://cee.umd.edu/clark/faculty/297/Alba-Torrents",
+      "url": "https://joinalab.com/opportunities/faculty-umd-cee-7272ff63",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alba Torrents",
+      "public_source": "https://cee.umd.edu/clark/faculty/297/Alba-Torrents",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://cee.umd.edu/clark/faculty/297/Alba-Torrents"
+        },
+        {
+          "label": "Source page",
+          "url": "https://cee.umd.edu/clark/faculty/297/Alba-Torrents"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-cee-53d4c71d",
+      "name": "Xianfeng (Terry) Yang",
+      "active_in_release": true,
+      "official_source": "https://cee.umd.edu/clark/faculty/1706/Xianfeng-Terry-Yang",
+      "url": "https://joinalab.com/opportunities/faculty-umd-cee-53d4c71d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Xianfeng (Terry) Yang",
+      "public_source": "https://cee.umd.edu/clark/faculty/1706/Xianfeng-Terry-Yang",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://cee.umd.edu/clark/faculty/1706/Xianfeng-Terry-Yang"
+        },
+        {
+          "label": "Source page",
+          "url": "https://cee.umd.edu/clark/faculty/1706/Xianfeng-Terry-Yang"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-mse-fdd307eb",
+      "name": "Sudarsanam (Suresh) Babu",
+      "active_in_release": true,
+      "official_source": "https://mse.umd.edu/clark/faculty/1959/Sudarsanam-Suresh-Babu",
+      "url": "https://joinalab.com/opportunities/faculty-umd-mse-fdd307eb",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sudarsanam (Suresh) Babu",
+      "public_source": "https://mse.umd.edu/clark/faculty/1959/Sudarsanam-Suresh-Babu",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://mse.umd.edu/clark/faculty/1959/Sudarsanam-Suresh-Babu"
+        },
+        {
+          "label": "Source page",
+          "url": "https://mse.umd.edu/clark/faculty/1959/Sudarsanam-Suresh-Babu"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-mse-2121a633",
+      "name": "Kasra Sardashti",
+      "active_in_release": true,
+      "official_source": "https://mse.umd.edu/clark/faculty/2039/Kasra-Sardashti",
+      "url": "https://joinalab.com/opportunities/faculty-umd-mse-2121a633",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Kasra Sardashti",
+      "public_source": "https://mse.umd.edu/clark/faculty/2039/Kasra-Sardashti",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://mse.umd.edu/clark/faculty/2039/Kasra-Sardashti"
+        },
+        {
+          "label": "Source page",
+          "url": "https://mse.umd.edu/clark/faculty/2039/Kasra-Sardashti"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    }
+  ]
+}
