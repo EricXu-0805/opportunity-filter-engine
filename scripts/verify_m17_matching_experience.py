@@ -51,9 +51,26 @@ async def main():
             return page,listing,payload
         async def letter(ctx,record,confirmed):
             p=await ctx.new_page();await p.goto(site+'/opportunities/'+TARGET,wait_until='domcontentloaded')
-            async with p.expect_response(lambda r: '/api/cold-email/variants' in r.url and r.ok,timeout=90000) as seen:
-                await p.get_by_role('button',name='Draft email',exact=True).click(timeout=60000)
-            response=await seen.value
+            generation=asyncio.get_running_loop().create_future()
+            def capture(r):
+                if '/api/cold-email/variants' in r.url and not generation.done():
+                    generation.set_result(r)
+            p.on('response',capture)
+            await p.get_by_role('button',name='Draft email',exact=True).click(timeout=60000)
+            regen=p.get_by_role('button',name='Regenerate from updated materials',exact=True)
+            if not confirmed:
+                # The normal editor deliberately restores a previous saved draft.
+                # Request a new one before assessing the new material.
+                show=asyncio.create_task(regen.wait_for(state='visible',timeout=45000))
+                done,_=await asyncio.wait([generation,show],timeout=55,return_when=asyncio.FIRST_COMPLETED)
+                if show in done and not show.exception():
+                    await regen.click()
+                elif not show.done():
+                    show.cancel()
+                if not done:
+                    raise AssertionError('Neither generation nor the normal regeneration control appeared')
+            response=await asyncio.wait_for(generation,55)
+            assert response.ok, (response.status, (await response.text())[:500])
             variants=(await response.json())['variants']
             await expect(p.locator('#cold-email-body')).not_to_have_value('',timeout=30000)
             await p.close()
