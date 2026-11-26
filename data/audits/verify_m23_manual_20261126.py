@@ -6,6 +6,9 @@ from playwright.sync_api import expect, sync_playwright
 
 site = "https://joinalab.com"
 cases = [
+    ("ucsd-d93b49abd299", "https://ugresearch.ucsd.edu/programs/urh-summer/index.html",
+     ("Each program has a cohort and a coordinator", "McNair Program", "Look through the programs")),
+
     ("ucsd-c6d547c9321a", "https://ucsd-research.academicworks.com/opportunities/2368",
      ("11/20/2026", "undergraduate students in all majors", "October 29, 2026")),
     ("ucsb-45d0bef1a207", "https://calbridge.org/undergraduate-program/",
@@ -45,6 +48,10 @@ with sync_playwright() as pw:
                                            application_url=row["application"]["application_url"],
                                            timing=timing.inner_text()))
             assert not row["deadline"] and row["is_rolling"] and row["target_truth"]["actionable"]
+            if oid=="ucsd-d93b49abd299":
+                assert row["application"]["application_url"]==host and row["eligibility"]["international_friendly"]=="yes"
+                public["programs"][-1]["eligibility_label"]="international-friendly"
+
     finally:
         (out / "two-public-programs.json").write_text(json.dumps(public, indent=2) + "\n")
         browser.close()
