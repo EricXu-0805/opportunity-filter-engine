@@ -1,0 +1,558 @@
+{
+  "original_branch_head": "039013f590b0dcc6c4af6d619ed533ab0655f691",
+  "verified_utc": "2026-11-26T12:03:46.291489+00:00",
+  "roster_url": "https://www-math.umd.edu/people/faculty.html",
+  "live_normalized_ids": 61,
+  "gate_offenders_before": 27,
+  "gate_offenders_after": 0,
+  "verified": [
+    {
+      "id": "faculty-umd-math-1c5ba4c5",
+      "name": "Arka Adhikari",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-d9167d41",
+      "name": "Stuart S. Antman",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-0f940cb3",
+      "name": "Uri Bader",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-135699cf",
+      "name": "Radu Victor Balan",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-7cb1adce",
+      "name": "Dori Bejleri",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-36800e3a",
+      "name": "Henri Berestycki",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-1516d149",
+      "name": "Shiferaw Berhanu",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-a8700233",
+      "name": "Patrick Brosnan",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-d6138cdd",
+      "name": "Maria K. Cameron",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-c507be15",
+      "name": "Sandra Cerrai",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-938d3714",
+      "name": "Artem Chernikov",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-3cd59720",
+      "name": "Dan Cristofaro-Gardiner",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-36ccdb0d",
+      "name": "Wojciech Czaja",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-a3da6155",
+      "name": "Tamás Darvas",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-738a3990",
+      "name": "Dmitry Dolgopyat",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-78581485",
+      "name": "Bassam Fayad",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-dcee82bf",
+      "name": "Giovanni Forni",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-806c9572",
+      "name": "Amin Gholampour",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-6bfb1b2f",
+      "name": "William M. Goldman",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-9cfa9129",
+      "name": "Manoussos Grillakis",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-b9c19178",
+      "name": "Yu Gu",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-cb4e770c",
+      "name": "Abba Gumel",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-893fa023",
+      "name": "Thomas Haines",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-90a4b94e",
+      "name": "David H. Hamilton",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-3d7ad323",
+      "name": "Christopher Henderson",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-9eb3e2a4",
+      "name": "Or Hershkovits",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-d477b648",
+      "name": "Kayo Ide",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-82018d8f",
+      "name": "Leonid Koralov",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-8c529fb5",
+      "name": "Partha Lahiri",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-81bbd8ec",
+      "name": "Michael C. Laskowski",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-5460f4ec",
+      "name": "Andrew Lawrie",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-d41531e2",
+      "name": "Doron Levy",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-e02031c7",
+      "name": "Lizhen Lin",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-b497d141",
+      "name": "Vince Lyzinski",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-6e3b5b3f",
+      "name": "Matei Machedon",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-c04f8168",
+      "name": "Dionisios Margetis",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-762389ab",
+      "name": "Antoine Mellet",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-53d548d5",
+      "name": "Huy Quang Nguyen",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-d44d7b51",
+      "name": "Ricardo H. Nochetto",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-63e84dad",
+      "name": "Ron Peled",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-955401c0",
+      "name": "Niranjan Ramachandran",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-54766ea9",
+      "name": "Deep Ray",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-60daca01",
+      "name": "Joan JianJian Ren",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-10e144a3",
+      "name": "Jonathan M. Rosenberg",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-56fc8ade",
+      "name": "Christian Rosendal",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-64de2a8d",
+      "name": "Takumi Saegusa",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-395976f0",
+      "name": "Andrew Senger",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-2f542ed6",
+      "name": "Eric Slud",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-314bf290",
+      "name": "Eitan Tadmor",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-a944ef2f",
+      "name": "Harry Tamvakis",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-32938979",
+      "name": "Konstantina Trivisa",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-8699d8e4",
+      "name": "Tobias Von Petersdorff",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-647c2e23",
+      "name": "Larry Washington",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-b2de4069",
+      "name": "Richard Wentworth",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-22dd1d69",
+      "name": "Haizhao Yang",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-fab275b7",
+      "name": "Yun Yang",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-0300a4bb",
+      "name": "James A. Yorke",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-93280e3c",
+      "name": "Bogdan Zavyalov",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-f7d34508",
+      "name": "Boyu Zhang",
+      "restored_from_failed_gate": false,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    },
+    {
+      "id": "faculty-umd-math-afad5e58",
+      "name": "Christian Krogager Zickert",
+      "restored_from_failed_gate": true,
+      "source_url": "https://www-math.umd.edu/people/faculty.html",
+      "source_type": "bound_directory_card",
+      "observed_at": "2026-11-26T12:03:46.170562+00:00",
+      "same_as_published_email": true
+    }
+  ],
+  "not_reverified": [
+    {
+      "id": "faculty-umd-math-d52013f6",
+      "name": "Yanir A. Rubinstein",
+      "kept_prior_valid_claim": false,
+      "has_raw_address": false
+    }
+  ]
+}
