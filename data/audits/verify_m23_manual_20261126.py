@@ -1,11 +1,10 @@
-"""Read both Illinois undergraduate research guidance pages on production against their live source pages."""
+"""Read the REU Finder summer 2026 editorial list on production against their live source pages."""
 import json
 from playwright.sync_api import sync_playwright, expect
 from verify_m25_results_20261126 import capture, enter_results, is_view, out, receipt, site
 
 cases = [
-    ("uiuc-career-center-ugr", "Undergraduate Research Resources", "https://www.careercenter.illinois.edu/undergraduateresearch", "value of research opportunities"),
-    ("uiuc-our-general", "Office of Undergraduate Research", "https://undergradresearch.illinois.edu/", "how to get started"),
+    ("reufinder-freshmen", "REU Finder", "https://reufinder.com/2025/10/10/programs-that-accept-first-year-students/", "discover summer research opportunities"),
 ]
 
 with sync_playwright() as pw:
@@ -36,7 +35,7 @@ with sync_playwright() as pw:
             heading = page.get_by_role("heading", level=1)
             expect(heading).to_be_visible()
             entry["detail_title"] = heading.inner_text()
-            entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if any(k in s.lower() for k in ["python","c++","sql","apply","draft email","rolling","january 28","2027-01-28","basic programming","upcoming","closed"])]
+            entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if any(k in s.lower() for k in ["python","c++","sql","apply","draft email","citizenship","stipend","paid","international","citizen","rolling","january 28","2027-01-28","basic programming","upcoming","closed"])]
             page.screenshot(path=out / (oid + "-detail.png"))
             from urllib.parse import quote
             with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as network:
