@@ -1,0 +1,60 @@
+{
+  "candidate": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "observed_at": "2026-11-26T12:03:18.825507+00:00",
+  "source_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45815782275",
+  "deployment_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/5f2073c6e088bbabdc4dfce460c41eb61378569d/data/audits/maintenance-2026-11-26/wave4-deployment.json",
+  "status": "NO-GO",
+  "summary": {
+    "passed": 5,
+    "failed": 4,
+    "blocked": 7,
+    "cannot_verify": 0,
+    "unverified": 6,
+    "skipped": 4,
+    "not_run": 0,
+    "not_applicable": 2,
+    "release_blocking": 21
+  },
+  "fresh_percentage": 83.83,
+  "gates": [
+    {
+      "name": "ledger_currency",
+      "result": "FAIL",
+      "detail": "committed ledger describes aaab34b3, candidate is 50d4aca1 (1806 commits behind): a verdict from another SHA is not evidence about this one"
+    },
+    {
+      "name": "corpus",
+      "result": "PASS",
+      "detail": "149774 records across 117 shards"
+    },
+    {
+      "name": "corpus_freshness",
+      "result": "FAIL",
+      "detail": "83.83% of 137,015 active records were re-observed within 14d, below the 95.0% floor; 2 school(s) with a fresh record have no faculty record re-observed within 14d: colby, haverford"
+    },
+    {
+      "name": "no_fully_stale_school",
+      "result": "FAIL",
+      "detail": "2 school(s) have no fresh source at all: colby, haverford"
+    },
+    {
+      "name": "truthfulness",
+      "result": "FAIL",
+      "detail": "decision='NO-GO'"
+    },
+    {
+      "name": "flag_parity",
+      "result": "PASS",
+      "detail": "13 flags aligned in name and value"
+    },
+    {
+      "name": "release_record",
+      "result": "PASS",
+      "detail": "backend and frontend both serve 50d4aca1 with shard commit 060c2026 and 13 flags aligned in name and value"
+    }
+  ],
+  "tested_pr_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45810150011",
+  "tested_pr_tree": "f6e52f5e8a0b02689614e5f7748ee6d901025fa2",
+  "main_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45814862626",
+  "main_suite": "Same merge tree previously tested; four jobs explicitly skipped on the push, deploy hook succeeded."
+}
