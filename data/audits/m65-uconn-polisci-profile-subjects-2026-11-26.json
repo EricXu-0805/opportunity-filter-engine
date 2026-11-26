@@ -1,0 +1,606 @@
+{
+  "scope": "Source HTML for all 55 currently linked political science directory profiles. Local replay with original IDs and the normal school rule. No production write.",
+  "directory": "https://polisci.uconn.edu/faculty-directory/",
+  "links_checked": 55,
+  "eligible": 39,
+  "active_original_ids": 39,
+  "new_eligible_ids": [],
+  "missing_original_ids": [],
+  "source_topics_changed": 11,
+  "unmodified_uconn_records": 1185,
+  "profiles": [
+    {
+      "name": "Oksan Bayulgen",
+      "source": "https://polisci.uconn.edu/person/oksan-bayulgen/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-47788aa2",
+      "source_observed_at": "2026-11-26T10:17:28.761046+00:00",
+      "topics_before": "",
+      "topics_after": "Comparative Politics, Political Economy, Energy and Environmental Politics",
+      "matching_keywords": [
+        "Comparative Politics",
+        "Political Economy",
+        "Energy and Environmental Politics"
+      ]
+    },
+    {
+      "name": "Evan Perkoski",
+      "source": "https://polisci.uconn.edu/person/evan-perkoski/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-3de62e79",
+      "source_observed_at": "2026-11-26T10:17:28.820305+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Stephen Dyson",
+      "source": "https://polisci.uconn.edu/person/stephen-dyson/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-6dc33c27",
+      "source_observed_at": "2026-11-26T10:17:34.147355+00:00",
+      "topics_before": "",
+      "topics_after": "Politics and Popular Culture, International Relations",
+      "matching_keywords": [
+        "Politics and Popular Culture",
+        "International Relations"
+      ]
+    },
+    {
+      "name": "Yonatan Morse",
+      "source": "https://polisci.uconn.edu/person/yonatan-morse/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-83edbd8f",
+      "source_observed_at": "2026-11-26T10:17:34.130725+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Hind Ahmed Zaki",
+      "source": "https://polisci.uconn.edu/person/hind-ahmed-zaki/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-1af274e0",
+      "source_observed_at": "2026-11-26T10:17:34.131930+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Alexander Anievas",
+      "source": "https://polisci.uconn.edu/person/alexander-anievas/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-5edb52fb",
+      "source_observed_at": "2026-11-26T10:17:40.707463+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": [
+        "Historical Materialism: Research in Critical Marxist Theory",
+        "Historical Materialism and International Relations"
+      ]
+    },
+    {
+      "name": "Zehra Arat",
+      "source": "https://polisci.uconn.edu/person/zehra-arat/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-575aaad4",
+      "source_observed_at": "2026-11-26T10:17:41.462053+00:00",
+      "topics_before": "",
+      "topics_after": "Comparative Politics, International Relations, Political Theory",
+      "matching_keywords": [
+        "Comparative Politics",
+        "International Relations",
+        "Political Theory"
+      ]
+    },
+    {
+      "name": "Kimberly Bergendahl",
+      "source": "https://polisci.uconn.edu/person/kimberly-bergendahl/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-cf9a4ff9",
+      "source_observed_at": "2026-11-26T10:17:41.318138+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Samuel Best",
+      "source": "https://polisci.uconn.edu/person/samuel-best/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-bf0fc3c1",
+      "source_observed_at": "2026-11-26T10:17:45.748079+00:00",
+      "topics_before": "",
+      "topics_after": "Public Opinion and Political Behavior",
+      "matching_keywords": [
+        "Public Opinion and Political Behavior"
+      ]
+    },
+    {
+      "name": "Jason Byers",
+      "source": "https://polisci.uconn.edu/person/jason-buyers/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-3b746449",
+      "source_observed_at": "2026-11-26T10:17:45.819623+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Meina Cai",
+      "source": "https://polisci.uconn.edu/person/meina-cai/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-5a60a8d2",
+      "source_observed_at": "2026-11-26T10:18:40.614753+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Sercan Canbolat",
+      "source": "https://polisci.uconn.edu/person/sercan-canbolat/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-bdcbdddc",
+      "source_observed_at": "2026-11-26T10:18:40.538442+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Jeffrey Dudas",
+      "source": "https://polisci.uconn.edu/person/jeffrey-dudas/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-5848a244",
+      "source_observed_at": "2026-11-26T10:18:40.551688+00:00",
+      "topics_before": "",
+      "topics_after": "Law and Society, American Political Thought",
+      "matching_keywords": [
+        "Law and Society",
+        "American Political Thought"
+      ]
+    },
+    {
+      "name": "Miles Evers",
+      "source": "https://polisci.uconn.edu/person/miles-evers/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-b83e5b98",
+      "source_observed_at": "2026-11-26T10:18:44.401763+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Salih Emre Gercek",
+      "source": "https://polisci.uconn.edu/person/salih-emre-gercek/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-4cdfb814",
+      "source_observed_at": "2026-11-26T10:18:43.798113+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Beth Ginsberg",
+      "source": "https://polisci.uconn.edu/person/beth-ginsberg/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-a1058829",
+      "source_observed_at": "2026-11-26T10:18:44.401746+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Jane Gordon",
+      "source": "https://polisci.uconn.edu/person/jane-gordon/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-09cc4f40",
+      "source_observed_at": "2026-11-26T10:18:47.067971+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Sandy Grande",
+      "source": "https://polisci.uconn.edu/person/sandy-grande/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-2c44c6cf",
+      "source_observed_at": "2026-11-26T10:18:47.844075+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Frank Griggs",
+      "source": "https://polisci.uconn.edu/person/frank-griggs/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-e11083d1",
+      "source_observed_at": "2026-11-26T10:18:47.871847+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Thomas Hayes",
+      "source": "https://polisci.uconn.edu/person/thomas-hayes/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-93c3ed50",
+      "source_observed_at": "2026-11-26T10:18:51.234683+00:00",
+      "topics_before": "",
+      "topics_after": "American Politics, Inequality, Congress and Representation",
+      "matching_keywords": [
+        "American Politics",
+        "Inequality",
+        "Congress and Representation"
+      ]
+    },
+    {
+      "name": "Susan Herbst",
+      "source": "https://polisci.uconn.edu/person/susan-herbst/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Paul Herrnson",
+      "source": "https://polisci.uconn.edu/person/paul-herrnson/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-74efac93",
+      "source_observed_at": "2026-11-26T10:18:51.834209+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Shareen Hertel",
+      "source": "https://polisci.uconn.edu/person/shareen-hertel/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-acd0cd03",
+      "source_observed_at": "2026-11-26T10:18:55.827524+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Virginia Hettinger",
+      "source": "https://polisci.uconn.edu/person/virginia-hettinger/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-8d5dc144",
+      "source_observed_at": "2026-11-26T10:17:28.158698+00:00",
+      "topics_before": "",
+      "topics_after": "Judicial Behavior, American Politics",
+      "matching_keywords": [
+        "Judicial Behavior",
+        "American Politics"
+      ]
+    },
+    {
+      "name": "Kristin Kelly",
+      "source": "https://polisci.uconn.edu/person/kristin-kelly/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-9b18a840",
+      "source_observed_at": "2026-11-26T10:18:55.677740+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Jeffrey Ladewig",
+      "source": "https://polisci.uconn.edu/person/jeffrey-ladewig/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-ccda92a5",
+      "source_observed_at": "2026-11-26T10:18:55.714914+00:00",
+      "topics_before": "",
+      "topics_after": "American Politics, Legislative Studies, and Political Economy",
+      "matching_keywords": [
+        "American Politics",
+        "Legislative Studies",
+        "Political Economy"
+      ]
+    },
+    {
+      "name": "Fred Lee (on sabbatical 2026-2027)",
+      "source": "https://polisci.uconn.edu/person/fred-lee/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-844404cd",
+      "source_observed_at": "2026-11-26T10:18:59.014673+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Robert Lupton",
+      "source": "https://polisci.uconn.edu/person/robert-lupton/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-fd74a70f",
+      "source_observed_at": "2026-11-26T10:18:59.742369+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Michael Morrell",
+      "source": "https://polisci.uconn.edu/person/michael-morrell/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-e87112c2",
+      "source_observed_at": "2026-11-26T10:18:59.768404+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Elva Orozco Mendoza",
+      "source": "https://polisci.uconn.edu/person/elva-orozco-mendoza/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-bf337970",
+      "source_observed_at": "2026-11-26T10:19:04.261904+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Jeremy Pressman",
+      "source": "https://polisci.uconn.edu/person/jeremy-pressman/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-9529e2ee",
+      "source_observed_at": "2026-11-26T10:19:04.324058+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "David Richards",
+      "source": "https://polisci.uconn.edu/person/david-richards/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-5eb120af",
+      "source_observed_at": "2026-11-26T10:19:04.248311+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Michael Rubin",
+      "source": "https://polisci.uconn.edu/person/michael-rubin/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-15468f9b",
+      "source_observed_at": "2026-11-26T10:19:09.018911+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Lyle Scruggs",
+      "source": "https://polisci.uconn.edu/person/lyle-scruggs/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-739644c6",
+      "source_observed_at": "2026-11-26T10:19:09.003869+00:00",
+      "topics_before": "",
+      "topics_after": "Comparative Politics, Political Economy, Social Policy, Environmental Politics, Research Methods",
+      "matching_keywords": [
+        "Comparative Politics",
+        "Political Economy",
+        "Social Policy",
+        "Environmental Politics",
+        "Research Methods"
+      ]
+    },
+    {
+      "name": "Evelyn Simien",
+      "source": "https://polisci.uconn.edu/person/evelyn-simien/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-ab090aec",
+      "source_observed_at": "2026-11-26T10:19:09.341988+00:00",
+      "topics_before": "",
+      "topics_after": "African American Politics, Public Opinion, Political Behavior",
+      "matching_keywords": [
+        "African American Politics",
+        "Public Opinion",
+        "Political Behavior"
+      ]
+    },
+    {
+      "name": "Matthew Singer",
+      "source": "https://polisci.uconn.edu/person/matthew-singer/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-7c483ed5",
+      "source_observed_at": "2026-11-26T10:19:13.051577+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Jennifer Sterling-Folker",
+      "source": "https://polisci.uconn.edu/person/jennifer-sterling-folker/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-840e7c22",
+      "source_observed_at": "2026-11-26T10:19:13.151101+00:00",
+      "topics_before": "",
+      "topics_after": "International Relations, International Organizations",
+      "matching_keywords": [
+        "International Relations",
+        "International Organizations"
+      ]
+    },
+    {
+      "name": "Charles Venator Santiago",
+      "source": "https://polisci.uconn.edu/person/charles-venator-santiago/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-119bc43c",
+      "source_observed_at": "2026-11-26T10:19:13.117329+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Seth Warner",
+      "source": "https://polisci.uconn.edu/person/seth-warner/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-8b463893",
+      "source_observed_at": "2026-11-26T10:19:17.052799+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    },
+    {
+      "name": "Larry Bowman",
+      "source": "https://polisci.uconn.edu/person/larry-bowman/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Lucy Creevey",
+      "source": "https://polisci.uconn.edu/person/lucy-creevey/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Elizabeth Hanson",
+      "source": "https://polisci.uconn.edu/person/elizabeth-hanson/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Richard Hiskes",
+      "source": "https://polisci.uconn.edu/person/richard-hiskes/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Henry Krisch",
+      "source": "https://polisci.uconn.edu/person/henry-krisch/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Carol Lewis",
+      "source": "https://polisci.uconn.edu/person/carol-lewis/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "David RePass",
+      "source": "https://polisci.uconn.edu/person/david-repass/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "John Rourke",
+      "source": "https://polisci.uconn.edu/person/john-rourke/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Ronald Schurin",
+      "source": "https://polisci.uconn.edu/person/ronald-schurin/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Morton Tenzer",
+      "source": "https://polisci.uconn.edu/person/morton-tenzer/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Fred Turner",
+      "source": "https://polisci.uconn.edu/person/fred-turner/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Richard Vengroff",
+      "source": "https://polisci.uconn.edu/person/richard-vengroff/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "David Yalof",
+      "source": "https://polisci.uconn.edu/person/david-yalof/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Cyrus Zirakzadeh",
+      "source": "https://polisci.uconn.edu/person/cyrus-zirakzadeh/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Christine Sylvester",
+      "source": "https://polisci.uconn.edu/person/christine-sylvester/",
+      "eligible": false,
+      "original_id": null,
+      "source_observed_at": null,
+      "topics_before": null,
+      "topics_after": null,
+      "matching_keywords": null
+    },
+    {
+      "name": "Brian Waddell",
+      "source": "https://polisci.uconn.edu/person/brian-waddell/",
+      "eligible": true,
+      "original_id": "faculty-uconn-pols-ac33837a",
+      "source_observed_at": "2026-11-26T10:19:47.732346+00:00",
+      "topics_before": "",
+      "topics_after": "",
+      "matching_keywords": []
+    }
+  ]
+}
