@@ -1,0 +1,2588 @@
+{
+  "timestamp": "2026-11-26T20:04:30+00:00",
+  "legacy": {
+    "requested": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+    "landed": "https://phys.ufl.edu/people/faculty/",
+    "status": 200,
+    "redirects": [
+      [
+        307,
+        "https://www.phys.ufl.edu/wp/index.php/people/faculty/"
+      ],
+      [
+        302,
+        "https://phys.ufl.edu/wp/index.php/people/faculty/"
+      ]
+    ],
+    "sha256": "da6a3a99e9aa078babe870127fbe2768ff99d3d2eab62c49069195e0ab37a7fe",
+    "headings": [
+      "People"
+    ]
+  },
+  "current": {
+    "requested": "https://phys.ufl.edu/people/faculty/",
+    "landed": "https://phys.ufl.edu/people/faculty/",
+    "status": 200,
+    "redirects": [],
+    "sha256": "da6a3a99e9aa078babe870127fbe2768ff99d3d2eab62c49069195e0ab37a7fe",
+    "headings": [
+      "People"
+    ]
+  },
+  "old_and_new_return_same_ordered_cards": true,
+  "old_table_rows": 0,
+  "cards": [
+    {
+      "name": "Kathleen Amm",
+      "rank": "Research Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/kathleen-amm/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Jeff Andrews",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Thomas Angelini",
+      "rank": "Professor & Graduate Coordinator",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/thomas-angelini/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Imre Bartos",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/imre-bartos/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Gabriel Birzu",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Amlan Biswas",
+      "rank": "Professor & Chair",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Laura Blecha",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/laura-blecha/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Philip Chang",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/philip-chang/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Sudi Chen",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/sudi-chen/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Jeff Dror",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/jeff-dror/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Yohei Ema",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/yohei-ema/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Paul Fulda",
+      "rank": "Associate Professor & Graduate Recruiter",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/paul-fulda/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Ivan Furic",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/ivan-furic/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Laura Greene",
+      "rank": "Research Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/laura-greene/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Stephen Hagen",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "James Hamlin",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/james-hamlin/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Selman Hershfield",
+      "rank": "Professor & Undergraduate Coordinator",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Peter Hirschfeld",
+      "rank": "Distinguished Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Rachel Houtz",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Kevin Ingersent",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Chunjing Jia",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Sergey Klimenko",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Ravin Kodikara",
+      "rank": "Instructional Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Jacobo Konigsberg",
+      "rank": "Research Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/jacobo-konigsberg/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Andrey Korytov",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Sujata Krishna",
+      "rank": "Associate Instructional Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/sujata-krishna/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Dominique Laroche",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Yoonseok Lee",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Dmitrii Maslov",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Mark Meisel",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/mark-meisel/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Nivarthana Yapa Mudiyanselage",
+      "rank": "Assistant Instructional Professor & Director of Undergraduate Laboratories",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Guido Mueller",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/guido-mueller/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Khandker Muttalib",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Haining Pan",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/haining-pan/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Edwin Pedrozo-Peñafiel",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Saroj Pokharel",
+      "rank": "Instructional Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Heather Ray",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/heather-ray/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Tarek Saab",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/tarek-saab/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Emrah Şimşek",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Christopher Stanton",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Gregory Stewart",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Neil Sullivan",
+      "rank": "Distinguished Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Yuta Takahashi",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Yasumasa Takano",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "David Tanner",
+      "rank": "Distinguished Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/david-tanner/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Yuxuan Wang",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Shawn Weatherford",
+      "rank": "Instructional Associate Professor & Associate Chair",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Clifford M. Will",
+      "rank": "Distinguished Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Richard Woodard",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/richard-woodard/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Siyao Xu",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/siyao-xu/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "BingKan Xue",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Wei Xue",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/wei-xue/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "John Yelton",
+      "rank": "Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/john-yelton/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Jiabin Yu",
+      "rank": "Assistant Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Xiao-Xiao Zhang",
+      "rank": "Associate Professor",
+      "directory_section": "Faculty",
+      "profile": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "passes_title_gate": true
+    },
+    {
+      "name": "Rasul Gazizulin",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/rasul-gazizulin/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Benjamin Geisler",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/benjamin-geisler/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Chao Huan",
+      "rank": "Associate Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/chao-huan/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Bockjoo Kim",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/bockjoo-kim/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Jung Soo Kim",
+      "rank": "Associate Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/jung-soo-kim/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Sangyun Lee",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/sangyun-lee/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Shuyi Li",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/shuyi-li/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Angel Martin Albavera Mata",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/angel-martin-albavera-mata/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Alex Weaver",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/alex-weaver/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Zhenbin Wu",
+      "rank": "Assistant Scientist",
+      "directory_section": "Scientists",
+      "profile": "https://phys.ufl.edu/directory/zhenbin-wu/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Paul Avery",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/paul-avery/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Dimitri Bourilkov",
+      "rank": "Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/dimitri-bourilkov/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Robert DeSerio",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/robert-deserio/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "James Dufty",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/james-dufty/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Richard Field",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/richard-field/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "James Fry",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/james-fry/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Arthur Hebard",
+      "rank": "Distinguished Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/arthur-hebard/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Gary Ihas",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/gary-ihas/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "James Ipser",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/james-ipser/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Pradeep Kumar",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/pradeep-kumar/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Tom Mareci",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/tom-mareci/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "David Micha",
+      "rank": "Professor Emeritus, Chemistry & Physics",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/david-micha/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Sergei Obukhov",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/sergei-obukhov/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Yngve Ohrn",
+      "rank": "Professor Emeritus, Chemistry",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/yngve-ohrn/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Pierre Ramond",
+      "rank": "Distinguished Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/pierre-ramond/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Henri Van Rinsvelt",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/henri-van-rinsvelt/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Andrew Rinzler",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/andrew-rinzler/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "John Sabin",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/john-sabin/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Pierre Sikivie",
+      "rank": "Distinguished Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/pierre-sikivie/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Charles Thorn",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/charles-thorn/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Samuel Trickey",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/samuel-trickey/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Bernard Whiting",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/bernard-whiting/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Xiaoguang Zhang",
+      "rank": "Professor Emeritus",
+      "directory_section": "Emeritus Faculty",
+      "profile": "https://phys.ufl.edu/directory/xiaoguang-zhang/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Rodney Bartlett",
+      "rank": "Affiliate Professor",
+      "directory_section": "Affiliate Faculty",
+      "profile": "https://people.clas.ufl.edu/rodbartl/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Richard Hennig",
+      "rank": "Affiliate Professor",
+      "directory_section": "Affiliate Faculty",
+      "profile": "https://mse.ufl.edu/people/name/richard-hennig/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Adrian Roitberg",
+      "rank": "Affiliate Professor",
+      "directory_section": "Affiliate Faculty",
+      "profile": "https://roitberg.chem.ufl.edu/",
+      "passes_title_gate": false
+    },
+    {
+      "name": "Sergei Shabanov",
+      "rank": "Affiliate Professor",
+      "directory_section": "Affiliate Faculty",
+      "profile": "https://people.clas.ufl.edu/shabanov/",
+      "passes_title_gate": false
+    }
+  ],
+  "originals": [
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "name": "Jeff ANDREWS",
+      "old_profile": "https://phys.ufl.edu/people/faculty/jeff-andrews/ ",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-d18527b8",
+      "name": "Thomas ANGELINI",
+      "old_profile": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-ab4a3d3c",
+      "name": "Imre BARTOS",
+      "old_profile": "https://phys.ufl.edu/people/faculty/imre-bartos/",
+      "previous_title": "Associate Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-64c6cb1a",
+      "name": "Gabriel BIRZU",
+      "old_profile": "https://phys.ufl.edu/people/faculty/gabriel-birzu/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-2921ef78",
+      "name": "Amlan BISWAS",
+      "old_profile": "https://phys.ufl.edu/people/faculty/amlan-biswas/",
+      "previous_title": "Professor &  Chair",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-e10f51e0",
+      "name": "Laura BLECHA",
+      "old_profile": "https://phys.ufl.edu/people/faculty/laura-blecha/",
+      "previous_title": "Associate Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-d00f34b4",
+      "name": "Philip CHANG",
+      "old_profile": "https://phys.ufl.edu/people/faculty/philip-chang/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-aeb779ea",
+      "name": "Sudi CHEN",
+      "old_profile": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-22873d25",
+      "name": "Jeff DROR",
+      "old_profile": "https://phys.ufl.edu/people/faculty/jeff-dror/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-ad7cee5a",
+      "name": "Yohei EMA",
+      "old_profile": "https://phys.ufl.edu/people/faculty/yohei-ema/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-ab99e00a",
+      "name": "Paul FULDA",
+      "old_profile": "https://phys.ufl.edu/people/faculty/paul-fulda/",
+      "previous_title": "Associate Professor & Graduate Recruiter",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-6328b3f0",
+      "name": "Ivan FURIC",
+      "old_profile": "https://phys.ufl.edu/people/faculty/ivan-furic/",
+      "previous_title": "Associate Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-f9229518",
+      "name": "Stephen HAGEN",
+      "old_profile": "https://phys.ufl.edu/people/faculty/stephen-hagen/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-06628c27",
+      "name": "James HAMLIN",
+      "old_profile": "https://phys.ufl.edu/people/faculty/james-hamlin/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-4b2e1b3b",
+      "name": "Selman HERSHFIELD",
+      "old_profile": "https://phys.ufl.edu/people/faculty/selman-hershfield/",
+      "previous_title": "Professor & Undergraduate Coordinator",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-3a23df9d",
+      "name": "Peter HIRSCHFELD",
+      "old_profile": "https://phys.ufl.edu/people/faculty/peter-hirschfeld/",
+      "previous_title": "Distinguished Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-6fa25099",
+      "name": "Rachel HOUTZ",
+      "old_profile": "https://phys.ufl.edu/people/faculty/rachel-houtz/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-b911ade3",
+      "name": "Kevin INGERSENT",
+      "old_profile": "https://phys.ufl.edu/people/faculty/kevin-ingersent/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-467ccb05",
+      "name": "Chunjing JIA",
+      "old_profile": "https://phys.ufl.edu/people/faculty/chunjing-jia/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-0c3684a3",
+      "name": "Sergey KLIMENKO",
+      "old_profile": "https://phys.ufl.edu/people/faculty/sergey-klimenko/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-30f5725d",
+      "name": "Ravin KODIKARA",
+      "old_profile": "https://phys.ufl.edu/people/faculty/ravin-kodikara/",
+      "previous_title": "Instructional Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-10833868",
+      "name": "Sujata KRISHNA",
+      "old_profile": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "previous_title": "Associate Instructional Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-5f2ae599",
+      "name": "Andrey KORYTOV",
+      "old_profile": "https://phys.ufl.edu/people/faculty/andrey-korytov/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-ce907da5",
+      "name": "Dominique LAROCHE",
+      "old_profile": "https://phys.ufl.edu/people/faculty/dominique-laroche/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-c33c4d5c",
+      "name": "Yoonseok LEE",
+      "old_profile": "https://phys.ufl.edu/people/faculty/yoonseok-lee/",
+      "previous_title": "Professor & Graduate Coordinator",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-a218b06e",
+      "name": "Nivarthana Yapa MUDIYANSELAGE",
+      "old_profile": "https://phys.ufl.edu/people/faculty/nivarthana-yapa-mudiyanselage/",
+      "previous_title": "Assistant Instructional Professor & Director of Undergraduate Laboratories",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-cbd2b6c5",
+      "name": "Dmitrii MASLOV",
+      "old_profile": "https://phys.ufl.edu/people/faculty/dmitrii-maslov/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-ffe9edb0",
+      "name": "Mark MEISEL",
+      "old_profile": "https://phys.ufl.edu/people/faculty/mark-meisel/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-e60f22cc",
+      "name": "Guido MUELLER",
+      "old_profile": "https://phys.ufl.edu/people/faculty/guido-mueller/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-33177a2e",
+      "name": "Khandker MUTTALIB",
+      "old_profile": "https://phys.ufl.edu/people/faculty/khandker-muttalib/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-53e358a1",
+      "name": "Haining PAN",
+      "old_profile": "https://www.phys.ufl.edu/wp/index.php/people/faculty/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-6e4e3e7c",
+      "name": "Edwin PEDROZO-PENAFIEL",
+      "old_profile": "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-2ac3f21f",
+      "name": "Saroj POKHAREL",
+      "old_profile": "https://phys.ufl.edu/people/faculty/saroj-pokharel/",
+      "previous_title": "Instructional Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-43a48904",
+      "name": "Heather RAY",
+      "old_profile": "https://phys.ufl.edu/people/faculty/heather-ray/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-11ed18f1",
+      "name": "Tarek SAAB",
+      "old_profile": "https://phys.ufl.edu/people/faculty/tarek-saab/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-b7ed73e0",
+      "name": "Emrah ŞIMŞEK",
+      "old_profile": "https://phys.ufl.edu/people/faculty/emrah-simsek/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-9f6a790b",
+      "name": "Christopher STANTON",
+      "old_profile": "https://phys.ufl.edu/people/faculty/christopher-stanton/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-5820f3e8",
+      "name": "Gregory STEWART",
+      "old_profile": "https://phys.ufl.edu/people/faculty/gregory-stewart/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-05949a7a",
+      "name": "Neil SULLIVAN",
+      "old_profile": "https://phys.ufl.edu/people/faculty/neil-sullivan/",
+      "previous_title": "Distinguished Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-1caa0bd8",
+      "name": "Yuta TAKAHASHI",
+      "old_profile": "https://phys.ufl.edu/people/faculty/yuta-takahashi/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-c30fdf59",
+      "name": "Yasumasa TAKANO",
+      "old_profile": "https://phys.ufl.edu/people/faculty/yasumasa-takano/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-d286197c",
+      "name": "David TANNER",
+      "old_profile": "https://phys.ufl.edu/people/faculty/david-tanner/",
+      "previous_title": "Distinguished Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-4b5666cf",
+      "name": "Yuxuan WANG",
+      "old_profile": "https://phys.ufl.edu/people/faculty/yuxuan-wang/",
+      "previous_title": "Associate Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-b8acd83f",
+      "name": "Shawn WEATHERFORD",
+      "old_profile": "https://phys.ufl.edu/people/faculty/shawn-weatherford/",
+      "previous_title": "Instructional Associate Professor & Associate Chair",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-37f35608",
+      "name": "Clifford WILL",
+      "old_profile": "https://phys.ufl.edu/people/faculty/clifford-m-will/",
+      "previous_title": "Distinguished Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-80762c4e",
+      "name": "Richard WOODARD",
+      "old_profile": "https://phys.ufl.edu/people/faculty/richard-woodard/",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-7063c945",
+      "name": "Siyao XU",
+      "old_profile": "https://phys.ufl.edu/people/faculty/siyao-xu/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-ea528592",
+      "name": "BingKan XUE",
+      "old_profile": "https://phys.ufl.edu/people/faculty/BingKan-Xue",
+      "previous_title": "Associate Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-3681f22c",
+      "name": "Wei XUE",
+      "old_profile": "https://phys.ufl.edu/people/faculty/wei-xue/",
+      "previous_title": "Associate Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-f297ba9f",
+      "name": "John YELTON",
+      "old_profile": "https://phys.ufl.edu/people/faculty/john-yelton",
+      "previous_title": "Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-8d18ce79",
+      "name": "Jiabin YU",
+      "old_profile": "https://phys.ufl.edu/people/faculty/jiabin-yu/",
+      "previous_title": "Assistant Professor",
+      "active": true
+    },
+    {
+      "id": "faculty-uf-phy-f450e469",
+      "name": "Xiao-Xiao ZHANG",
+      "old_profile": "https://phys.ufl.edu/people/faculty/xiao-xiao-zhang/",
+      "previous_title": "Associate Professor",
+      "active": true
+    }
+  ],
+  "profiles": {
+    "https://phys.ufl.edu/directory/amlan-biswas/": {
+      "requested": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "landed": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "1a00ef120bfb48825c019f6ef8e587c9e32981aff69df33d19541d4caf993059",
+      "headings": [
+        "Amlan Biswas"
+      ],
+      "title_fields": [
+        "Professor & Chair"
+      ]
+    },
+    "https://phys.ufl.edu/directory/andrey-korytov/": {
+      "requested": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "landed": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "236079f4aecaaf00cce6befd699fa48c101cc91848781cb89fa97282e24e8a81",
+      "headings": [
+        "Andrey Korytov"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/bingkan-xue/": {
+      "requested": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "landed": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "295d7a9defbe904245b1c0077fa6554afd58f4e66cc78566397682a01ec93f3d",
+      "headings": [
+        "BingKan Xue"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/christopher-stanton/": {
+      "requested": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "landed": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "283b2bd16c74f74c2b4d0293b5b6c4d14e0e4dbb673a9d5954e5ce1e8375674f",
+      "headings": [
+        "Christopher Stanton"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/chunjing-jia/": {
+      "requested": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "landed": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "2324a372787ce75c1f64eb73afdcf36fb5aef85f417ac89774650cdbb926634c",
+      "headings": [
+        "Chunjing Jia"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/clifford-m-will/": {
+      "requested": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "landed": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "820e6de510495f2b23b20aee6b73782d111c1d40a7bff3de4e3bf93694cead70",
+      "headings": [
+        "Clifford M. Will"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/david-tanner/": {
+      "requested": "https://phys.ufl.edu/directory/david-tanner/",
+      "landed": "https://phys.ufl.edu/directory/david-tanner/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "5e91184e28af990ecc1ee8406ac5ee77c538f671043d0711eb3516ed42ca361b",
+      "headings": [
+        "David Tanner"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/dmitrii-maslov/": {
+      "requested": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "landed": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "7b919e2230767a1784dd4fd6a24af471ea5209238319e2b240175d5c7596fa11",
+      "headings": [
+        "Dmitrii Maslov"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/dominique-laroche/": {
+      "requested": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "landed": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "1b4bf6c428cdd16514bb79d25ee950a1c4c656f4306714861ff9d29c17a9e4e5",
+      "headings": [
+        "Dominique Laroche"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/": {
+      "requested": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "landed": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "223e5f3e64c2bcda52d9f32e9146187942fe157c9308e9b148c28a22f1005af8",
+      "headings": [
+        "Edwin Pedrozo-Peñafiel"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/emrah-simsek/": {
+      "requested": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "landed": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "e319ea856a5bed59a88524e3d56a33b6f72d92eef52b7b772c2f6cdc9de009e3",
+      "headings": [
+        "Emrah Şimşek"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/gabriel-birzu/": {
+      "requested": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "landed": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "2bf7035537842c2c0b45cf7cd353bd048a22041e5331665af4552d6b26cf79d2",
+      "headings": [
+        "Gabriel Birzu"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/gregory-stewart/": {
+      "requested": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "landed": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "a6ff35220cca0a638710974195109d78ebdf761e3298c74822bfcb5bf4609e85",
+      "headings": [
+        "Gregory Stewart"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/guido-mueller/": {
+      "requested": "https://phys.ufl.edu/directory/guido-mueller/",
+      "landed": "https://phys.ufl.edu/directory/guido-mueller/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "da9162046d082fb3a03c6d24deecef7ea9d76a486a2fdddeb8ddb5deaf7084d0",
+      "headings": [
+        "Guido Mueller"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/haining-pan/": {
+      "requested": "https://phys.ufl.edu/directory/haining-pan/",
+      "landed": "https://phys.ufl.edu/directory/haining-pan/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "5cfddbdd192755369aa19ad70c703439c198ce387e25266032577daeeac5f955",
+      "headings": [
+        "Haining Pan"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/heather-ray/": {
+      "requested": "https://phys.ufl.edu/directory/heather-ray/",
+      "landed": "https://phys.ufl.edu/directory/heather-ray/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "cd3836971707a7f7c7d93c27926963d3f5c7041dae7438c277c363eda39367f1",
+      "headings": [
+        "Heather Ray"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/imre-bartos/": {
+      "requested": "https://phys.ufl.edu/directory/imre-bartos/",
+      "landed": "https://phys.ufl.edu/directory/imre-bartos/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "68e633a82ab670b6dc7856e684210ed4c1df1686dfe5d5e9f9b2d8af0e9d007f",
+      "headings": [
+        "Imre Bartos"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/ivan-furic/": {
+      "requested": "https://phys.ufl.edu/directory/ivan-furic/",
+      "landed": "https://phys.ufl.edu/directory/ivan-furic/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "3ee3f6d3bd49b39644a0de559b175c454e80427824c11cb3887bf316203ee3dc",
+      "headings": [
+        "Ivan Furic"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/james-hamlin/": {
+      "requested": "https://phys.ufl.edu/directory/james-hamlin/",
+      "landed": "https://phys.ufl.edu/directory/james-hamlin/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "a3b0ff39aa3175a7526c97e5d63efebae0dce662a11df197b6055c8877fda56d",
+      "headings": [
+        "James Hamlin"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/jeff-andrews/": {
+      "requested": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "landed": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "3d30c5149f0ffc0171a2147f3d5fa65879c54bd4611965baf3e52e8bcd881677",
+      "headings": [
+        "Jeff Andrews"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/jeff-dror/": {
+      "requested": "https://phys.ufl.edu/directory/jeff-dror/",
+      "landed": "https://phys.ufl.edu/directory/jeff-dror/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "fe8ea3b4ca8690f6348c2651d2c3aba37f716223b4cdc153606706ccc5662cc1",
+      "headings": [
+        "Jeff Dror"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/jiabin-yu/": {
+      "requested": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "landed": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "88817320666f2fe7587e19c87e8a73461ff14c53a45b83ffdc8c2c0cd624ff7d",
+      "headings": [
+        "Jiabin Yu"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/john-yelton/": {
+      "requested": "https://phys.ufl.edu/directory/john-yelton/",
+      "landed": "https://phys.ufl.edu/directory/john-yelton/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "528e497cdeda087c3b85c66e6517caa913a1dc831cf2542a175ec8986421d86b",
+      "headings": [
+        "John Yelton"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/kevin-ingersent/": {
+      "requested": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "landed": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "7346044c467bafa34fbff57b179ad2ba3350e42382659f40da70a56e5aecb8e5",
+      "headings": [
+        "Kevin Ingersent"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/khandker-muttalib/": {
+      "requested": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "landed": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "4294e03f0011f14be3b96f2bec21498fe59fdd120dec2e2172aa4fd1afb5e20a",
+      "headings": [
+        "Khandker Muttalib"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/laura-blecha/": {
+      "requested": "https://phys.ufl.edu/directory/laura-blecha/",
+      "landed": "https://phys.ufl.edu/directory/laura-blecha/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "75e5847fef21909dcaa45c70e1bf522eb6fe99b9f4bd19f854ef72fc598460be",
+      "headings": [
+        "Laura Blecha"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/mark-meisel/": {
+      "requested": "https://phys.ufl.edu/directory/mark-meisel/",
+      "landed": "https://phys.ufl.edu/directory/mark-meisel/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "35407fdef78ef1c92d2c7ae374537363d492577583874cbb67f8d4d6e11571eb",
+      "headings": [
+        "Mark Meisel"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/neil-sullivan/": {
+      "requested": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "landed": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "145b3e9786a2b8cc5161b9811c978a31e1ba582082cbbd711f7a0603ebb51876",
+      "headings": [
+        "Neil Sullivan"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/": {
+      "requested": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "landed": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "f74129a2ff459842f321b389d9e58c37dc4e0ac1d69ca1488d77d34b4ff8f1eb",
+      "headings": [
+        "Nivarthana Yapa Mudiyanselage"
+      ],
+      "title_fields": [
+        "Assistant Instructional Professor & Director of Undergraduate Laboratories"
+      ]
+    },
+    "https://phys.ufl.edu/directory/paul-fulda/": {
+      "requested": "https://phys.ufl.edu/directory/paul-fulda/",
+      "landed": "https://phys.ufl.edu/directory/paul-fulda/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "937df5d0c9c4a7fcce8595dbaf1b56b269b9d4edf355dc84460594e9ffdd182e",
+      "headings": [
+        "Paul Fulda"
+      ],
+      "title_fields": [
+        "Associate Professor & Graduate Recruiter"
+      ]
+    },
+    "https://phys.ufl.edu/directory/peter-hirschfeld/": {
+      "requested": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "landed": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "6241d7c011fe3e2ca5635b63c3098068de4c2e1713e976bd4fd8809a3b41888a",
+      "headings": [
+        "Peter Hirschfeld"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/philip-chang/": {
+      "requested": "https://phys.ufl.edu/directory/philip-chang/",
+      "landed": "https://phys.ufl.edu/directory/philip-chang/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "4417910d090987cdfbaa38e6a347933f73004dabdd132532c18330cf8af185ec",
+      "headings": [
+        "Philip Chang"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/rachel-houtz/": {
+      "requested": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "landed": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "f6ce024eb4eb18dd8842a91becea7ee1fa098cde667596bfcc33aa8d9e87ea2e",
+      "headings": [
+        "Rachel Houtz"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/ravin-kodikara/": {
+      "requested": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "landed": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "6e41dde461d36ff0647e53933ceaf76ad45e46d1fe10e0a9568c40a85ca313bd",
+      "headings": [
+        "Ravin Kodikara"
+      ],
+      "title_fields": [
+        "Instructional Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/richard-woodard/": {
+      "requested": "https://phys.ufl.edu/directory/richard-woodard/",
+      "landed": "https://phys.ufl.edu/directory/richard-woodard/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "7b994caddf2cbc44291a06393eab55ab96a8c755db381c1c46d500643bb7228b",
+      "headings": [
+        "Richard Woodard"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/saroj-pokharel/": {
+      "requested": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "landed": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "b3f5e5fe90b146ec966b7bac1b8c9a324c0a6519e9586a0dae35c2bcbb0ef59f",
+      "headings": [
+        "Saroj Pokharel"
+      ],
+      "title_fields": [
+        "Instructional Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/selman-hershfield/": {
+      "requested": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "landed": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "27acda61c537f9c35361bde00be24d74354d8f9302390d9982048a4387014f05",
+      "headings": [
+        "Selman Hershfield"
+      ],
+      "title_fields": [
+        "Professor & Undergraduate Coordinator"
+      ]
+    },
+    "https://phys.ufl.edu/directory/sergey-klimenko/": {
+      "requested": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "landed": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "b31da2e318b202618124d35eec0075dae7e7a1df0e718dad07af27ed6b5cf13f",
+      "headings": [
+        "Sergey Klimenko"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/shawn-weatherford/": {
+      "requested": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "landed": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "aae261193fc6807f5808c091beb8b1f70d375f76a01b635511873a37e746cfeb",
+      "headings": [
+        "Shawn Weatherford"
+      ],
+      "title_fields": [
+        "Instructional Associate Professor & Associate Chair"
+      ]
+    },
+    "https://phys.ufl.edu/directory/siyao-xu/": {
+      "requested": "https://phys.ufl.edu/directory/siyao-xu/",
+      "landed": "https://phys.ufl.edu/directory/siyao-xu/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "ee948df49acb9ba1147536088b128a8bcd58d07811c22f27a2e1bb4c8a2b69f9",
+      "headings": [
+        "Siyao Xu"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/stephen-hagen/": {
+      "requested": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "landed": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "3c170f15e8dabb34d21383a150206b6099de9ad1f921d747ff03802e26dd364a",
+      "headings": [
+        "Stephen Hagen"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/sudi-chen/": {
+      "requested": "https://phys.ufl.edu/directory/sudi-chen/",
+      "landed": "https://phys.ufl.edu/directory/sudi-chen/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "37098ec1cbefb5a6f3da38fee5d54756d5b3f15eb7eaed97d4b2603e162a6218",
+      "headings": [
+        "Sudi Chen"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/sujata-krishna/": {
+      "requested": "https://phys.ufl.edu/directory/sujata-krishna/",
+      "landed": "https://phys.ufl.edu/directory/sujata-krishna/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "b61ef3711f35b2787ae5148da8daccfbed6187af547004d4a9906e18ef6a9a73",
+      "headings": [
+        "Sujata Krishna"
+      ],
+      "title_fields": [
+        "Associate Instructional Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/tarek-saab/": {
+      "requested": "https://phys.ufl.edu/directory/tarek-saab/",
+      "landed": "https://phys.ufl.edu/directory/tarek-saab/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "66d49ffb96f55ddf602d33b7aa6d7830675c43fd13cd9ec66d341c2c75a7f55a",
+      "headings": [
+        "Tarek Saab"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/thomas-angelini/": {
+      "requested": "https://phys.ufl.edu/directory/thomas-angelini/",
+      "landed": "https://phys.ufl.edu/directory/thomas-angelini/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "9f584e01c37384e1156ddc6487204d503aede515b32bebf05e275015bc05d678",
+      "headings": [
+        "Thomas Angelini"
+      ],
+      "title_fields": [
+        "Professor & Graduate Coordinator"
+      ]
+    },
+    "https://phys.ufl.edu/directory/wei-xue/": {
+      "requested": "https://phys.ufl.edu/directory/wei-xue/",
+      "landed": "https://phys.ufl.edu/directory/wei-xue/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "ea1a341668cea33bb64c620eff7f4dd3c5b0ef8bcb42d1fb353995fce4d26d74",
+      "headings": [
+        "Wei Xue"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/xiao-xiao-zhang/": {
+      "requested": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "landed": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "0026d7c6a5ebf81eafc553f8a17cf67c94dd95222557411160b37d9102827202",
+      "headings": [
+        "Xiao-Xiao Zhang"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/yasumasa-takano/": {
+      "requested": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "landed": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "d67289b2b3218064df56bd303a2bb73fd07c389a4d0fdcda8cf6ed6e42bafb10",
+      "headings": [
+        "Yasumasa Takano"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/yohei-ema/": {
+      "requested": "https://phys.ufl.edu/directory/yohei-ema/",
+      "landed": "https://phys.ufl.edu/directory/yohei-ema/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "f0fdad56630879ef8a0d1e61626ab2ffb4b30f49bec2ab120962add50d203a33",
+      "headings": [
+        "Yohei Ema"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/yoonseok-lee/": {
+      "requested": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "landed": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "72a7fde1cfefc62f9a27450209ebae2e2fec8fa9f9214514ee21711b2b58d45e",
+      "headings": [
+        "Yoonseok Lee"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/yuta-takahashi/": {
+      "requested": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "landed": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "88965fa641982e3b849efedc40955cb35a959f7a92a8e8efffa3203c7bd7bdb2",
+      "headings": [
+        "Yuta Takahashi"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/directory/yuxuan-wang/": {
+      "requested": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "landed": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "status": 200,
+      "redirects": [],
+      "sha256": "f553be94efce4d9d8410b3915888de0bc9e4957984bf0b849f5a5997238d6ee9",
+      "headings": [
+        "Yuxuan Wang"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/BingKan-Xue": {
+      "requested": "https://phys.ufl.edu/people/faculty/BingKan-Xue",
+      "landed": "https://phys.ufl.edu/directory/bingkan-xue/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/BingKan-Xue"
+        ]
+      ],
+      "sha256": "295d7a9defbe904245b1c0077fa6554afd58f4e66cc78566397682a01ec93f3d",
+      "headings": [
+        "BingKan Xue"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/amlan-biswas/": {
+      "requested": "https://phys.ufl.edu/people/faculty/amlan-biswas/",
+      "landed": "https://phys.ufl.edu/directory/amlan-biswas/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/amlan-biswas/"
+        ]
+      ],
+      "sha256": "1a00ef120bfb48825c019f6ef8e587c9e32981aff69df33d19541d4caf993059",
+      "headings": [
+        "Amlan Biswas"
+      ],
+      "title_fields": [
+        "Professor & Chair"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/andrey-korytov/": {
+      "requested": "https://phys.ufl.edu/people/faculty/andrey-korytov/",
+      "landed": "https://phys.ufl.edu/directory/andrey-korytov/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/andrey-korytov/"
+        ]
+      ],
+      "sha256": "236079f4aecaaf00cce6befd699fa48c101cc91848781cb89fa97282e24e8a81",
+      "headings": [
+        "Andrey Korytov"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/christopher-stanton/": {
+      "requested": "https://phys.ufl.edu/people/faculty/christopher-stanton/",
+      "landed": "https://phys.ufl.edu/directory/christopher-stanton/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/christopher-stanton/"
+        ]
+      ],
+      "sha256": "283b2bd16c74f74c2b4d0293b5b6c4d14e0e4dbb673a9d5954e5ce1e8375674f",
+      "headings": [
+        "Christopher Stanton"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/chunjing-jia/": {
+      "requested": "https://phys.ufl.edu/people/faculty/chunjing-jia/",
+      "landed": "https://phys.ufl.edu/directory/chunjing-jia/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/chunjing-jia/"
+        ]
+      ],
+      "sha256": "2324a372787ce75c1f64eb73afdcf36fb5aef85f417ac89774650cdbb926634c",
+      "headings": [
+        "Chunjing Jia"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/clifford-m-will/": {
+      "requested": "https://phys.ufl.edu/people/faculty/clifford-m-will/",
+      "landed": "https://phys.ufl.edu/directory/clifford-m-will/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/clifford-m-will/"
+        ]
+      ],
+      "sha256": "820e6de510495f2b23b20aee6b73782d111c1d40a7bff3de4e3bf93694cead70",
+      "headings": [
+        "Clifford M. Will"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/david-tanner/": {
+      "requested": "https://phys.ufl.edu/people/faculty/david-tanner/",
+      "landed": "https://phys.ufl.edu/directory/david-tanner/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/david-tanner/"
+        ]
+      ],
+      "sha256": "5e91184e28af990ecc1ee8406ac5ee77c538f671043d0711eb3516ed42ca361b",
+      "headings": [
+        "David Tanner"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/dmitrii-maslov/": {
+      "requested": "https://phys.ufl.edu/people/faculty/dmitrii-maslov/",
+      "landed": "https://phys.ufl.edu/directory/dmitrii-maslov/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/dmitrii-maslov/"
+        ]
+      ],
+      "sha256": "7b919e2230767a1784dd4fd6a24af471ea5209238319e2b240175d5c7596fa11",
+      "headings": [
+        "Dmitrii Maslov"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/dominique-laroche/": {
+      "requested": "https://phys.ufl.edu/people/faculty/dominique-laroche/",
+      "landed": "https://phys.ufl.edu/directory/dominique-laroche/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/dominique-laroche/"
+        ]
+      ],
+      "sha256": "1b4bf6c428cdd16514bb79d25ee950a1c4c656f4306714861ff9d29c17a9e4e5",
+      "headings": [
+        "Dominique Laroche"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/": {
+      "requested": "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/",
+      "landed": "https://phys.ufl.edu/directory/edwin-pedrozo-penafiel/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/edwin-pedrozo-penafiel/"
+        ]
+      ],
+      "sha256": "223e5f3e64c2bcda52d9f32e9146187942fe157c9308e9b148c28a22f1005af8",
+      "headings": [
+        "Edwin Pedrozo-Peñafiel"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/emrah-simsek/": {
+      "requested": "https://phys.ufl.edu/people/faculty/emrah-simsek/",
+      "landed": "https://phys.ufl.edu/directory/emrah-simsek/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/emrah-simsek/"
+        ]
+      ],
+      "sha256": "e319ea856a5bed59a88524e3d56a33b6f72d92eef52b7b772c2f6cdc9de009e3",
+      "headings": [
+        "Emrah Şimşek"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/gabriel-birzu/": {
+      "requested": "https://phys.ufl.edu/people/faculty/gabriel-birzu/",
+      "landed": "https://phys.ufl.edu/directory/gabriel-birzu/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/gabriel-birzu/"
+        ]
+      ],
+      "sha256": "2bf7035537842c2c0b45cf7cd353bd048a22041e5331665af4552d6b26cf79d2",
+      "headings": [
+        "Gabriel Birzu"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/gregory-stewart/": {
+      "requested": "https://phys.ufl.edu/people/faculty/gregory-stewart/",
+      "landed": "https://phys.ufl.edu/directory/gregory-stewart/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/gregory-stewart/"
+        ]
+      ],
+      "sha256": "a6ff35220cca0a638710974195109d78ebdf761e3298c74822bfcb5bf4609e85",
+      "headings": [
+        "Gregory Stewart"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/guido-mueller/": {
+      "requested": "https://phys.ufl.edu/people/faculty/guido-mueller/",
+      "landed": "https://phys.ufl.edu/directory/guido-mueller/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/guido-mueller/"
+        ]
+      ],
+      "sha256": "da9162046d082fb3a03c6d24deecef7ea9d76a486a2fdddeb8ddb5deaf7084d0",
+      "headings": [
+        "Guido Mueller"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/heather-ray/": {
+      "requested": "https://phys.ufl.edu/people/faculty/heather-ray/",
+      "landed": "https://phys.ufl.edu/directory/heather-ray/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/heather-ray/"
+        ]
+      ],
+      "sha256": "cd3836971707a7f7c7d93c27926963d3f5c7041dae7438c277c363eda39367f1",
+      "headings": [
+        "Heather Ray"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/imre-bartos/": {
+      "requested": "https://phys.ufl.edu/people/faculty/imre-bartos/",
+      "landed": "https://phys.ufl.edu/directory/imre-bartos/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/imre-bartos/"
+        ]
+      ],
+      "sha256": "68e633a82ab670b6dc7856e684210ed4c1df1686dfe5d5e9f9b2d8af0e9d007f",
+      "headings": [
+        "Imre Bartos"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/ivan-furic/": {
+      "requested": "https://phys.ufl.edu/people/faculty/ivan-furic/",
+      "landed": "https://phys.ufl.edu/directory/ivan-furic/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/ivan-furic/"
+        ]
+      ],
+      "sha256": "3ee3f6d3bd49b39644a0de559b175c454e80427824c11cb3887bf316203ee3dc",
+      "headings": [
+        "Ivan Furic"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/james-hamlin/": {
+      "requested": "https://phys.ufl.edu/people/faculty/james-hamlin/",
+      "landed": "https://phys.ufl.edu/directory/james-hamlin/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/james-hamlin/"
+        ]
+      ],
+      "sha256": "a3b0ff39aa3175a7526c97e5d63efebae0dce662a11df197b6055c8877fda56d",
+      "headings": [
+        "James Hamlin"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/jeff-andrews/": {
+      "requested": "https://phys.ufl.edu/people/faculty/jeff-andrews/",
+      "landed": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/jeff-andrews/"
+        ]
+      ],
+      "sha256": "3d30c5149f0ffc0171a2147f3d5fa65879c54bd4611965baf3e52e8bcd881677",
+      "headings": [
+        "Jeff Andrews"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/jeff-dror/": {
+      "requested": "https://phys.ufl.edu/people/faculty/jeff-dror/",
+      "landed": "https://phys.ufl.edu/directory/jeff-dror/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/jeff-dror/"
+        ]
+      ],
+      "sha256": "fe8ea3b4ca8690f6348c2651d2c3aba37f716223b4cdc153606706ccc5662cc1",
+      "headings": [
+        "Jeff Dror"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/jiabin-yu/": {
+      "requested": "https://phys.ufl.edu/people/faculty/jiabin-yu/",
+      "landed": "https://phys.ufl.edu/directory/jiabin-yu/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/jiabin-yu/"
+        ]
+      ],
+      "sha256": "88817320666f2fe7587e19c87e8a73461ff14c53a45b83ffdc8c2c0cd624ff7d",
+      "headings": [
+        "Jiabin Yu"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/john-yelton": {
+      "requested": "https://phys.ufl.edu/people/faculty/john-yelton",
+      "landed": "https://phys.ufl.edu/directory/john-yelton/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/john-yelton"
+        ]
+      ],
+      "sha256": "528e497cdeda087c3b85c66e6517caa913a1dc831cf2542a175ec8986421d86b",
+      "headings": [
+        "John Yelton"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/kevin-ingersent/": {
+      "requested": "https://phys.ufl.edu/people/faculty/kevin-ingersent/",
+      "landed": "https://phys.ufl.edu/directory/kevin-ingersent/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/kevin-ingersent/"
+        ]
+      ],
+      "sha256": "7346044c467bafa34fbff57b179ad2ba3350e42382659f40da70a56e5aecb8e5",
+      "headings": [
+        "Kevin Ingersent"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/khandker-muttalib/": {
+      "requested": "https://phys.ufl.edu/people/faculty/khandker-muttalib/",
+      "landed": "https://phys.ufl.edu/directory/khandker-muttalib/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/khandker-muttalib/"
+        ]
+      ],
+      "sha256": "4294e03f0011f14be3b96f2bec21498fe59fdd120dec2e2172aa4fd1afb5e20a",
+      "headings": [
+        "Khandker Muttalib"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/laura-blecha/": {
+      "requested": "https://phys.ufl.edu/people/faculty/laura-blecha/",
+      "landed": "https://phys.ufl.edu/directory/laura-blecha/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/laura-blecha/"
+        ]
+      ],
+      "sha256": "75e5847fef21909dcaa45c70e1bf522eb6fe99b9f4bd19f854ef72fc598460be",
+      "headings": [
+        "Laura Blecha"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/mark-meisel/": {
+      "requested": "https://phys.ufl.edu/people/faculty/mark-meisel/",
+      "landed": "https://phys.ufl.edu/directory/mark-meisel/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/mark-meisel/"
+        ]
+      ],
+      "sha256": "35407fdef78ef1c92d2c7ae374537363d492577583874cbb67f8d4d6e11571eb",
+      "headings": [
+        "Mark Meisel"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/neil-sullivan/": {
+      "requested": "https://phys.ufl.edu/people/faculty/neil-sullivan/",
+      "landed": "https://phys.ufl.edu/directory/neil-sullivan/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/neil-sullivan/"
+        ]
+      ],
+      "sha256": "145b3e9786a2b8cc5161b9811c978a31e1ba582082cbbd711f7a0603ebb51876",
+      "headings": [
+        "Neil Sullivan"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/nivarthana-yapa-mudiyanselage/": {
+      "requested": "https://phys.ufl.edu/people/faculty/nivarthana-yapa-mudiyanselage/",
+      "landed": "https://phys.ufl.edu/directory/nivarthana-yapa-mudiyanselage/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/nivarthana-yapa-mudiyanselage/"
+        ]
+      ],
+      "sha256": "f74129a2ff459842f321b389d9e58c37dc4e0ac1d69ca1488d77d34b4ff8f1eb",
+      "headings": [
+        "Nivarthana Yapa Mudiyanselage"
+      ],
+      "title_fields": [
+        "Assistant Instructional Professor & Director of Undergraduate Laboratories"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/paul-fulda/": {
+      "requested": "https://phys.ufl.edu/people/faculty/paul-fulda/",
+      "landed": "https://phys.ufl.edu/directory/paul-fulda/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/paul-fulda/"
+        ]
+      ],
+      "sha256": "937df5d0c9c4a7fcce8595dbaf1b56b269b9d4edf355dc84460594e9ffdd182e",
+      "headings": [
+        "Paul Fulda"
+      ],
+      "title_fields": [
+        "Associate Professor & Graduate Recruiter"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/peter-hirschfeld/": {
+      "requested": "https://phys.ufl.edu/people/faculty/peter-hirschfeld/",
+      "landed": "https://phys.ufl.edu/directory/peter-hirschfeld/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/peter-hirschfeld/"
+        ]
+      ],
+      "sha256": "6241d7c011fe3e2ca5635b63c3098068de4c2e1713e976bd4fd8809a3b41888a",
+      "headings": [
+        "Peter Hirschfeld"
+      ],
+      "title_fields": [
+        "Distinguished Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/philip-chang/": {
+      "requested": "https://phys.ufl.edu/people/faculty/philip-chang/",
+      "landed": "https://phys.ufl.edu/directory/philip-chang/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/philip-chang/"
+        ]
+      ],
+      "sha256": "4417910d090987cdfbaa38e6a347933f73004dabdd132532c18330cf8af185ec",
+      "headings": [
+        "Philip Chang"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/rachel-houtz/": {
+      "requested": "https://phys.ufl.edu/people/faculty/rachel-houtz/",
+      "landed": "https://phys.ufl.edu/directory/rachel-houtz/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/rachel-houtz/"
+        ]
+      ],
+      "sha256": "f6ce024eb4eb18dd8842a91becea7ee1fa098cde667596bfcc33aa8d9e87ea2e",
+      "headings": [
+        "Rachel Houtz"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/ravin-kodikara/": {
+      "requested": "https://phys.ufl.edu/people/faculty/ravin-kodikara/",
+      "landed": "https://phys.ufl.edu/directory/ravin-kodikara/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/ravin-kodikara/"
+        ]
+      ],
+      "sha256": "6e41dde461d36ff0647e53933ceaf76ad45e46d1fe10e0a9568c40a85ca313bd",
+      "headings": [
+        "Ravin Kodikara"
+      ],
+      "title_fields": [
+        "Instructional Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/richard-woodard/": {
+      "requested": "https://phys.ufl.edu/people/faculty/richard-woodard/",
+      "landed": "https://phys.ufl.edu/directory/richard-woodard/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/richard-woodard/"
+        ]
+      ],
+      "sha256": "7b994caddf2cbc44291a06393eab55ab96a8c755db381c1c46d500643bb7228b",
+      "headings": [
+        "Richard Woodard"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/saroj-pokharel/": {
+      "requested": "https://phys.ufl.edu/people/faculty/saroj-pokharel/",
+      "landed": "https://phys.ufl.edu/directory/saroj-pokharel/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/saroj-pokharel/"
+        ]
+      ],
+      "sha256": "b3f5e5fe90b146ec966b7bac1b8c9a324c0a6519e9586a0dae35c2bcbb0ef59f",
+      "headings": [
+        "Saroj Pokharel"
+      ],
+      "title_fields": [
+        "Instructional Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/selman-hershfield/": {
+      "requested": "https://phys.ufl.edu/people/faculty/selman-hershfield/",
+      "landed": "https://phys.ufl.edu/directory/selman-hershfield/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/selman-hershfield/"
+        ]
+      ],
+      "sha256": "27acda61c537f9c35361bde00be24d74354d8f9302390d9982048a4387014f05",
+      "headings": [
+        "Selman Hershfield"
+      ],
+      "title_fields": [
+        "Professor & Undergraduate Coordinator"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/sergey-klimenko/": {
+      "requested": "https://phys.ufl.edu/people/faculty/sergey-klimenko/",
+      "landed": "https://phys.ufl.edu/directory/sergey-klimenko/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/sergey-klimenko/"
+        ]
+      ],
+      "sha256": "b31da2e318b202618124d35eec0075dae7e7a1df0e718dad07af27ed6b5cf13f",
+      "headings": [
+        "Sergey Klimenko"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/shawn-weatherford/": {
+      "requested": "https://phys.ufl.edu/people/faculty/shawn-weatherford/",
+      "landed": "https://phys.ufl.edu/directory/shawn-weatherford/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/shawn-weatherford/"
+        ]
+      ],
+      "sha256": "aae261193fc6807f5808c091beb8b1f70d375f76a01b635511873a37e746cfeb",
+      "headings": [
+        "Shawn Weatherford"
+      ],
+      "title_fields": [
+        "Instructional Associate Professor & Associate Chair"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/siyao-xu/": {
+      "requested": "https://phys.ufl.edu/people/faculty/siyao-xu/",
+      "landed": "https://phys.ufl.edu/directory/siyao-xu/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/siyao-xu/"
+        ]
+      ],
+      "sha256": "ee948df49acb9ba1147536088b128a8bcd58d07811c22f27a2e1bb4c8a2b69f9",
+      "headings": [
+        "Siyao Xu"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/stephen-hagen/": {
+      "requested": "https://phys.ufl.edu/people/faculty/stephen-hagen/",
+      "landed": "https://phys.ufl.edu/directory/stephen-hagen/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/stephen-hagen/"
+        ]
+      ],
+      "sha256": "3c170f15e8dabb34d21383a150206b6099de9ad1f921d747ff03802e26dd364a",
+      "headings": [
+        "Stephen Hagen"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/tarek-saab/": {
+      "requested": "https://phys.ufl.edu/people/faculty/tarek-saab/",
+      "landed": "https://phys.ufl.edu/directory/tarek-saab/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/tarek-saab/"
+        ]
+      ],
+      "sha256": "66d49ffb96f55ddf602d33b7aa6d7830675c43fd13cd9ec66d341c2c75a7f55a",
+      "headings": [
+        "Tarek Saab"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/wei-xue/": {
+      "requested": "https://phys.ufl.edu/people/faculty/wei-xue/",
+      "landed": "https://phys.ufl.edu/directory/wei-xue/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/wei-xue/"
+        ]
+      ],
+      "sha256": "ea1a341668cea33bb64c620eff7f4dd3c5b0ef8bcb42d1fb353995fce4d26d74",
+      "headings": [
+        "Wei Xue"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/xiao-xiao-zhang/": {
+      "requested": "https://phys.ufl.edu/people/faculty/xiao-xiao-zhang/",
+      "landed": "https://phys.ufl.edu/directory/xiao-xiao-zhang/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/xiao-xiao-zhang/"
+        ]
+      ],
+      "sha256": "0026d7c6a5ebf81eafc553f8a17cf67c94dd95222557411160b37d9102827202",
+      "headings": [
+        "Xiao-Xiao Zhang"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/yasumasa-takano/": {
+      "requested": "https://phys.ufl.edu/people/faculty/yasumasa-takano/",
+      "landed": "https://phys.ufl.edu/directory/yasumasa-takano/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/yasumasa-takano/"
+        ]
+      ],
+      "sha256": "d67289b2b3218064df56bd303a2bb73fd07c389a4d0fdcda8cf6ed6e42bafb10",
+      "headings": [
+        "Yasumasa Takano"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/yohei-ema/": {
+      "requested": "https://phys.ufl.edu/people/faculty/yohei-ema/",
+      "landed": "https://phys.ufl.edu/directory/yohei-ema/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/yohei-ema/"
+        ]
+      ],
+      "sha256": "f0fdad56630879ef8a0d1e61626ab2ffb4b30f49bec2ab120962add50d203a33",
+      "headings": [
+        "Yohei Ema"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/yoonseok-lee/": {
+      "requested": "https://phys.ufl.edu/people/faculty/yoonseok-lee/",
+      "landed": "https://phys.ufl.edu/directory/yoonseok-lee/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/yoonseok-lee/"
+        ]
+      ],
+      "sha256": "72a7fde1cfefc62f9a27450209ebae2e2fec8fa9f9214514ee21711b2b58d45e",
+      "headings": [
+        "Yoonseok Lee"
+      ],
+      "title_fields": [
+        "Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/yuta-takahashi/": {
+      "requested": "https://phys.ufl.edu/people/faculty/yuta-takahashi/",
+      "landed": "https://phys.ufl.edu/directory/yuta-takahashi/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/yuta-takahashi/"
+        ]
+      ],
+      "sha256": "88965fa641982e3b849efedc40955cb35a959f7a92a8e8efffa3203c7bd7bdb2",
+      "headings": [
+        "Yuta Takahashi"
+      ],
+      "title_fields": [
+        "Assistant Professor"
+      ]
+    },
+    "https://phys.ufl.edu/people/faculty/yuxuan-wang/": {
+      "requested": "https://phys.ufl.edu/people/faculty/yuxuan-wang/",
+      "landed": "https://phys.ufl.edu/directory/yuxuan-wang/",
+      "status": 200,
+      "redirects": [
+        [
+          301,
+          "https://phys.ufl.edu/people/faculty/yuxuan-wang/"
+        ]
+      ],
+      "sha256": "f553be94efce4d9d8410b3915888de0bc9e4957984bf0b849f5a5997238d6ee9",
+      "headings": [
+        "Yuxuan Wang"
+      ],
+      "title_fields": [
+        "Associate Professor"
+      ]
+    }
+  }
+}
