@@ -698,19 +698,13 @@ SCHOOL: dict = {
                     "focus_program",
                     "Duke FOCUS Program (First-Year Interdisciplinary Clusters)",
                     "https://focus.duke.edu/",
-                    "A first-semester living-learning program in which Duke first-year students "
-                    "take small interdisciplinary seminar clusters closely tied to faculty "
-                    "research, dining and living alongside faculty and peers. It is a common "
-                    "early entry point into Duke's research community, connecting freshmen to "
-                    "professors who mentor undergraduate research. Open to incoming first-year "
-                    "students.",
+                    "Incoming Duke students select interdisciplinary seminars through the "
+                    "First-Year Experience Preference Form. Duke published an April 1 to "
+                    "May 13, 2026 preference window for the fall 2026 FOCUS cohort.",
                     organization="Duke University",
                     department="FOCUS Program / Trinity College of Arts & Sciences",
                     lab_or_program="FOCUS Program",
-                    paid="no",
                     preferred_year=["freshman"],
-                    international_friendly="yes",
-                    deadline_note="Enrollment during first-year onboarding (summer before matriculation)",
                     keywords=["FOCUS", "first-year", "interdisciplinary", "faculty seminars", "living-learning"],
                 ),
                 program(

@@ -40,6 +40,7 @@ _SULI = "https://science.osti.gov/wdts/suli/How-to-Apply"
 _HAAS = "https://research.berkeley.edu/haas-scholars/"
 _SROP = "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/"
 _SFP = "https://sfp.caltech.edu/undergraduate-research/programs/"
+_DUKE_FOCUS_DATES = "The form opens on April 1, 2026, and must be submitted by May 13, 2026."
 _DART = "https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web"
 _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 
@@ -47,6 +48,12 @@ _GRG = "https://undergradresearch.northwestern.edu/funding/grg/"
 # deadline.") names the cycle elsewhere on the same page ("View the 2027
 # program flyer!", "SURF 2027 application portal"); that is the year here.
 WINDOWS: dict[tuple[str, str], ProgramWindow] = {
+    ("duke", "focus_program"): ProgramWindow(
+        "https://focus.duke.edu/", "https://focus.duke.edu/for-students/prospective-students/entryprocess",
+        date(2026, 11, 26), date(2026, 5, 13), _DUKE_FOCUS_DATES,
+        date(2026, 4, 1), _DUKE_FOCUS_DATES,
+        "America/New_York", "April 1, 2026",
+    ),
     ("manual", "ext-uiuc-ncsa-reu"): ProgramWindow(
         _NCSA, _NCSA, date(2026, 11, 26), date(2027, 2, 15),
         "Online application: December 15, 2026 – February 15, 2027",

@@ -110,6 +110,7 @@ def program(
     eligibility_majors: list[str] | None = None, preferred_year: list[str] | None = None,
     international_friendly: str = "unknown", deadline_note: str = "",
     keywords: list[str] | None = None, reference_only: bool = False, is_rolling: bool = True,
+    placement_location: str = "",
 ) -> dict:
     """Build one curated opportunity spec (school-agnostic)."""
     return {
@@ -121,6 +122,7 @@ def program(
         "preferred_year": preferred_year if preferred_year is not None else ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
         "keywords": keywords or [], "reference_only": reference_only, "is_rolling": is_rolling,
+        "placement_location": placement_location,
     }
 
 
@@ -231,6 +233,7 @@ def _normalize_program(
     keywords = list(dict.fromkeys(
         [k for k in program_spec.get("keywords", []) if k] + [source["source_type"]]
     ))
+    placement = program_spec.get("placement_location")
     record = {
         "id": _hash_id(school["school_slug"], src_value, program_spec["key"]),
         "source": src_value,
@@ -244,7 +247,7 @@ def _normalize_program(
         "pi_name": None,
         "contact_email": None,
         "url": program_spec["url"],
-        "location": school["location"],
+        "location": placement or school["location"],
         # Derived from the emit bucket, not hardcoded: "open" rows are external
         # listings that merely surfaced on a campus page (school_slug None),
         # everything else is this school's own program. The blanket False dated

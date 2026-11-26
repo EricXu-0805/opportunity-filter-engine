@@ -166,6 +166,63 @@ def test_records_behind_a_rejected_certificate_skip_the_fetch_and_the_delay(monk
     assert report == {"hosts": {"www.math.ucla.edu": 4}, "skipped": 4}
 
 
+@pytest.mark.parametrize(("source", "directory"), [
+    ("colby_faculty", "https://www.colby.edu/people/people-directory"),
+    ("haverford_faculty", "https://www.haverford.edu/users"),
+])
+def test_repeated_distinct_profile_refusals_defer_only_that_directory_for_this_run(monkeypatch, source, directory):
+    from requests import Response
+
+    calls = []
+    monkeypatch.setattr(pi_enricher, "_contact_probe_phase", lambda: 0)
+    responses = iter([403, 403, 200, 403, 403, 403, 403, 200, 200])
+
+    def get(url, **kwargs):
+        calls.append(url)
+        response = Response()
+        response.url = url
+        response.status_code = next(responses)
+        response._content = b"<p>Faculty profile</p>"
+        return response
+
+    monkeypatch.setattr(pi_enricher.requests, "get", get)
+    monkeypatch.setattr(pi_enricher, "DELAY", 0)
+    urls = [f"{directory}/{name}/" for name in ("a", "b", "c", "d", "d", "e", "f", "g")]
+    other = directory.rsplit("/", 1)[0] + "/department/contact"
+    rows = [_fac(source, url) for url in [*urls, other]]
+    stats = enrich_opportunities(rows, max_scrapes=8)
+    assert calls == [*urls[:7], other]
+    assert (stats["scraped"], stats["skipped_forbidden"], stats["skipped_budget"]) == (8, 1, 0)
+    assert all("contact_email" not in row for row in rows)
+    assert enrich_opportunities([rows[-2]])["skipped_forbidden"] == 0
+    assert calls[-1] == urls[-1]
+
+
+def test_partially_recovered_directory_reaches_even_its_last_profile(monkeypatch):
+    from requests import Response
+
+    rows = [_fac("colby_faculty", f"https://www.colby.edu/people/people-directory/person-{i}/") for i in range(15)]
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append(url)
+        response = Response()
+        response.url = url
+        response.status_code = 200 if url == rows[-1]["url"] else 403
+        response._content = b"<p>example@colby.edu</p>"
+        return response
+
+    monkeypatch.setattr(pi_enricher.requests, "get", get)
+    monkeypatch.setattr(pi_enricher, "DELAY", 0)
+    for phase in range(4):
+        monkeypatch.setattr(pi_enricher, "_contact_probe_phase", lambda phase=phase: phase)
+        stats = enrich_opportunities(rows)
+        assert stats["skipped_forbidden"] > 0
+    assert set(calls) == {row["url"] for row in rows}
+    assert rows[-1]["contact_email"] == "example@colby.edu"
+    assert all(not row.get("contact_email") for row in rows[:-1])
+
+
 def test_profile_fetch_completes_the_incommon_chain(monkeypatch):
     """Georgia Tech's department sites omit their InCommon intermediate.
 
