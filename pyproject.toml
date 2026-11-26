@@ -8,7 +8,7 @@ extend-exclude = [
     ".vercel",
     "build",
     "dist",
-    "src/app/streamlit_app.py",
+    "archive/streamlit/streamlit_app.py",
 ]
 
 [tool.ruff.lint]
