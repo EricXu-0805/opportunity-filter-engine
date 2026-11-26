@@ -171,10 +171,12 @@ with sync_playwright() as pw:
                             return target,editor
                         target,editor=draft()
                         editor.fill(sample)
-                        target.wait_for_function('v=>Object.values(localStorage).some(s=>s.includes(v))',arg=sample,timeout=10000)
+                        target.wait_for_function("v=>Object.values(localStorage).filter(s=>s.includes(v)).some(s=>{try{const d=JSON.parse(s);return d.text===v && Boolean(d.origin?.binding)}catch{return false}})",arg=sample,timeout=30000)
                         target.close()
                         old,editor=draft()
                         expect(editor).to_have_value(sample)
+                        expect(old.get_by_text('正在核对草稿来源…')).to_have_count(0,timeout=30000)
+                        expect(old.get_by_test_id('tailor-draft-review')).to_have_count(0)
                         expect(old.get_by_test_id('tailor-stale-draft')).to_have_count(0)
                         old.close()
                     allow_synthetic_removal=True
@@ -196,7 +198,8 @@ with sync_playwright() as pw:
                     if historical:
                         target,editor=draft()
                         expect(editor).to_have_value(sample)
-                        expect(target.get_by_test_id('tailor-stale-draft')).to_be_visible(timeout=12000)
+                        expect(target.get_by_text('正在核对草稿来源…')).to_have_count(0,timeout=30000)
+                        expect(target.get_by_test_id('tailor-stale-draft')).to_be_visible(timeout=15000)
                         receipt['historical_tailor']={'target':active_target,'author_text_unchanged':True,'before_removal_stale_badges':0,'after_removal_stale_badges':1,'ai_generations':0,'handwritten_text_entered_in_form':True}
                         target.close()
                     receipt['independent_skill']={'legacy_source':'resume','github_import':repo_evidence[0],'detail_after_import':by_name(mid['profile_data'],'PyTorch'),'other_github_skill_retained':'Python','after_removal':surviving,'revision_after_import':mid['revision'],'revision_after_removal':raw['revision'],'fresh_read':True}
