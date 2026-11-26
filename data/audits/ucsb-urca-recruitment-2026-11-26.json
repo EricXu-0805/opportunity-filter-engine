@@ -1,0 +1,60 @@
+{
+  "observed_utc": "2026-11-26T10:31:21.367284+00:00",
+  "completed_utc": "2026-11-26T10:31:44.697731+00:00",
+  "scope": "read-only product collector, no publication or production mutation",
+  "reviewed_commit": "3c3e3cdc1baa8fbf197d963624f87c3b071fff22",
+  "sitemap": "https://ucsb.my.site.com/urca/s/sitemap.xml",
+  "directory": "https://ucsb.my.site.com/urca/s/urad",
+  "source_counts": {
+    "sitemap_complete": true,
+    "sitemap_structure_complete": true,
+    "sitemaps_expected": 1,
+    "sitemaps_loaded": 1,
+    "locations_seen": 282,
+    "recognized_locations": 282,
+    "unexpected_location_count": 0,
+    "unexpected_location_samples": [],
+    "empty_confirmed": false,
+    "directory_rows": 88,
+    "directory_distinct_titles": 85,
+    "directory_matched_ids": 86,
+    "directory_detail_unavailable": 0
+  },
+  "live_sitemap_project_ids": 252,
+  "existing_ids": 253,
+  "old_active_ids_missing": [],
+  "changed_source_links": [],
+  "added_project_ids": [],
+  "different_actionability_from_committed_shard": [],
+  "source_postures": {
+    "reference_only": 165,
+    "actionable": 86,
+    "inactive": 1
+  },
+  "control_ids": {
+    "ucsb-urca-proj-67fca359b647": {
+      "actionable": false,
+      "reason": "inactive",
+      "state": "unknown",
+      "recruiting_directory": "not_matched",
+      "title": "Test From Aj",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WVt00000BbDUbMAN/test-from-aj"
+    },
+    "ucsb-urca-proj-e5cbe0e218a7": {
+      "actionable": false,
+      "reason": "reference_only",
+      "state": "unknown",
+      "recruiting_directory": "not_matched",
+      "title": "2022 Academic Worker Strike Conflict Research Project",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project"
+    },
+    "ucsb-urca-proj-2eb2c063674e": {
+      "actionable": true,
+      "reason": null,
+      "state": "open",
+      "recruiting_directory": "listed",
+      "title": "A curious project: Community Outreach role for a student curiosity program",
+      "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0WHt00000HBwJoMAL/a-curious-project-community-outreach-role-for-a-student-curiosity-program"
+    }
+  }
+}
