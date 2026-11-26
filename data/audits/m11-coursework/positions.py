@@ -32,6 +32,7 @@ def fresh(browser, predicate):
         if len(reads) > count and any(predicate(row['profile_data']) for row in reads[count:]):
             break
     confirm_school(page)
+    expect(page.get_by_role('button',name='Remove file',exact=True)).to_be_visible(timeout=35000)
     row = next(r for r in reversed(reads[count:]) if predicate(r['profile_data']))
     return page, row
 
