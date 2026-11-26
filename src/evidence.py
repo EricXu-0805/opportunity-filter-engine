@@ -1409,6 +1409,9 @@ def faculty_profile_summary_fields(record: dict) -> dict:
         "organization": organization or None,
         "research_areas": research_areas.strip()[:300] or None,
         "availability": availability if availability in FACULTY_PROFILE_CLOSINGS else "unknown",
+        # The source may say nothing about accepting students even after this
+        # appointment was archived. Keep those two facts separate.
+        **({"archived": True} if metadata.get("is_active") is False else {}),
     }
 
 
@@ -1452,7 +1455,8 @@ def render_faculty_profile_summary(fields: dict) -> str:
     parts = [f"Faculty research profile for {fields['name'] or 'this faculty member'}{affiliation}."]
     if fields["research_areas"]:
         parts.append(f"Research areas: {fields['research_areas']}")
-    parts.append(FACULTY_PROFILE_CLOSINGS[fields["availability"]])
+    if fields["availability"] != "unknown" or fields.get("archived") is not True:
+        parts.append(FACULTY_PROFILE_CLOSINGS[fields["availability"]])
     return " ".join(parts)
 
 
