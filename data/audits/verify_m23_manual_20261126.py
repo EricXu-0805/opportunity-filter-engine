@@ -54,8 +54,17 @@ def enter_results(page, school="ucb", *, major="Computer Science", interests=Non
     if page.get_by_test_id("switcher-confirm").is_visible():
         page.keyboard.press("Escape")
 
+
+from html import unescape
+cases = [
+    ("sro-7b7d80d3","Computer Assisted Synthesis","https://ccas.nd.edu/outreach/surf-program/", ["undergraduate summer research", "immediate mentor"]),
+    ("sro-5725bf41","Summer STAR", "https://www.augusta.edu/gradschool/star/admission-requirements.php", ["undergraduate Bachelor", "September 15, 2026"]),
+    ("sro-e74d89e9","Michigan Humanities Emerging Research Scholars","https://rackham.umich.edu/prospective-students/michhers/", ["rising seniors","February 1, 2027","December 2, 2026"]),
+    ("stanford-1a20b2e045cf","Stanford Summer Research Program","https://biosciences.stanford.edu/pathways/ssrp-amgen-scholars-program/the-ssrp-amgen-scholars-program-application/", ["November 1, 2026","February 1, 2027"]),
+    ("sro-7f860ddc","Microbiology Summer Undergraduate Research", "https://med.uth.edu/mmg/summer-research-program/", ["December 1, 2026","February 1, 2027"]),
+]
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+    browser=pw.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox"])
     ctx=browser.new_context(locale="en-US",service_workers="block",viewport={"width":1250,"height":950})
     ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
     page=ctx.new_page();page.on("response",capture)
@@ -63,25 +72,40 @@ with sync_playwright() as pw:
         release=ctx.request.get(site+"/api/health").json()["release_sha"]
         assert release in ctx.request.get(site).text()
         receipt["frontend_release"]=receipt["backend_release"]=release
-        enter_results(page,"bu",major="Biology",interests="biomedical research, medicine, biology and health")
-        q="Summer Training as Research Scholars"
-        receipt["views"]={}
-        for source in ("","bu_research_programs","uiuc_sro"):
-            with page.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("view",{}).get("search_query")==q and ((r.request.post_data_json or {}).get("view",{}).get("source") or "")==source,timeout=90000) as obs:
-                if source:page.get_by_role("combobox",name="Source",exact=True).select_option(source)
-                else:page.goto(site+"/results?tab=all&ai=0&q="+quote(q),wait_until="domcontentloaded")
-            assert obs.value.ok
-            d=obs.value.json();assert not d["has_more"] and d["filtered_total"]==len(d["results"])
-            info=receipt["views"][source or "all"]={}
-            for result in d["results"]:
-                oid=result["opportunity_id"]
-                card=page.locator("#match-card-"+oid)
-                expect(card).to_be_visible(timeout=50000)
-                card.get_by_role("button",name="Show details",exact=True).click()
-                info[oid]={"card_text":card.inner_text(),"rank_gaps":result.get("reasons_gap",[]),"score":result.get("final_score")}
-            receipt["views"][source or "all"]["total"]=d["filtered_total"]
-            page.screenshot(path=out/("stars-"+(source or "all")+".png"))
+        receipt["programs"]={}
+        for oid,query,url,phrases in cases:
+            entry=receipt["programs"][oid]={"program":query,"host":url}
+            resp=page.goto(url,wait_until="domcontentloaded")
+            entry["host_http"]=resp.status if resp else None
+            text=" ".join((page.locator("body").text_content() or "").split()).lower()
+            entry["read_on_host"]={t:t.lower() in text for t in phrases}
+            api=ctx.request.get(site+"/api/opportunities/"+oid,params={"_release_scope":"mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
+            assert api.ok;data=api.json();assert data["id"]==oid
+            entry.update({k:data.get(k) for k in ("id","title","deadline","is_rolling","application_opens","source","audience")})
+            entry["eligibility"]=data["eligibility"];entry["target_truth"]=data["target_truth"]
+            page.goto(site+"/opportunities/"+oid,wait_until="domcontentloaded")
+            expect(page.get_by_role("heading",level=1)).to_have_text(data["title"],timeout=90000)
+            entry["timing_display"]=page.get_by_test_id("fact-field-timing").inner_text()
+            entry["eligibility_display"]=page.get_by_test_id("fact-field-eligibility").inner_text()
+            page.get_by_test_id("fact-field-timing").screenshot(path=out/(oid+"-timing.png"))
+        assert receipt["programs"]["sro-e74d89e9"]["deadline"]=="2027-02-10"
+        assert not receipt["programs"]["stanford-1a20b2e045cf"]["deadline"]
+        enter_results(page,"bu",major="Biology",interests="research, biological science, microbiology, medicine, history and linguistics")
+        for oid,q,url,phrases in cases:
+            with page.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("view",{}).get("search_query")==q,timeout=90000) as read:
+                page.goto(site+"/results?tab=all&ai=0&q="+quote(q),wait_until="domcontentloaded")
+            response=read.value;assert response.ok
+            d=response.json();assert not d["has_more"]
+            entry=receipt["programs"][oid];entry["results_total"]=d["filtered_total"]
+            entry["on_results"]=[r["opportunity_id"] for r in d["results"]]
+            for r in d["results"]:
+                if r["opportunity_id"]==oid:
+                    card=page.locator("#match-card-"+oid);expect(card).to_be_visible(timeout=60000)
+                    card.get_by_role("button",name="Show details",exact=True).click()
+                    entry["card_text"]=card.inner_text()
+                    entry["ranking_reason"]=r.get("reasons_gap")
+        assert all(e["host_http"]==200 and all(e["read_on_host"].values()) for e in receipt["programs"].values())
     finally:
-        (out/"stars-source-matches.json").write_text(json.dumps(receipt,indent=2)+"\n")
+        (out/"five-undergraduate-programs.json").write_text(json.dumps(receipt,indent=2)+"\n")
         print(json.dumps(receipt))
         browser.close()
