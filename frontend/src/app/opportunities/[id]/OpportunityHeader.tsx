@@ -32,7 +32,7 @@ import {
   targetStatusReason,
   type TargetStatusReason,
 } from '@/lib/target-truth';
-import { facultyOutreachLabel } from '@/lib/record-kind';
+import { facultyOutreachLabel, hasFacultyInquiryContact } from '@/lib/record-kind';
 import { reviewedStaffRole } from '@/lib/reviewed-staff-role';
 import type { Locale } from '@/i18n/translate';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -59,6 +59,9 @@ const STATUS_BANNER_KEY: Record<TargetStatusReason, string> = {
   record_kind_unverified: 'detail.kindUnverifiedBanner',
   status_unverified: 'detail.unverifiedBanner',
 };
+
+const primaryActionClass = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[14px] font-semibold hover:bg-indigo-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500';
+const secondaryActionClass = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-[14px] font-medium hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500';
 
 export function OpportunityHeader({
   opp,
@@ -135,6 +138,7 @@ export function OpportunityHeader({
   const opening = isCurrentListing ? pendingApplicationOpening(opp) : null;
   const profileUrl = isFaculty ? facultyProfileUrl(opp) : undefined;
   const readUrl = profileUrl || opportunityCitationUrl(opp);
+  const profileIsPrimary = !!profileUrl && posture === 'actionable' && !hasFacultyInquiryContact(opp);
   const effectiveIntl = facultySafeInternational(opp);
   const urgency = getDeadlineUrgency(
     opp.deadline,
@@ -298,21 +302,20 @@ export function OpportunityHeader({
             href={applyUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[14px] font-semibold hover:bg-indigo-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className={primaryActionClass}
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
             {t('detail.apply')}
           </a>
         )}
-        {/* Reading the source is always allowed — that is what "kept as a
-            reference" means. Rendered as a secondary control so it can never
-            be mistaken for the Apply action it replaces. */}
+        {/* A faculty page leads when the student has no verified way to inquire.
+            Historical records and directory citations remain readable. */}
         {!applyUrl && readUrl && (
           <a
             href={readUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-[14px] font-medium hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className={profileIsPrimary ? primaryActionClass : secondaryActionClass}
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
             {t(profileUrl ? 'detail.viewFacultyProfile' : 'detail.viewSource')}
@@ -322,7 +325,7 @@ export function OpportunityHeader({
           <button
             type="button"
             onClick={onOpenEmailModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-[14px] font-medium hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className={secondaryActionClass}
           >
             <Mail className="w-4 h-4" aria-hidden="true" />
             {t('detail.draftEmail')}
@@ -356,7 +359,7 @@ export function OpportunityHeader({
         <button
           type="button"
           onClick={onShare}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-[14px] font-medium hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className={secondaryActionClass}
         >
           {shareCopied ? <Check className="w-4 h-4 text-emerald-500" aria-hidden="true" /> : <Share2 className="w-4 h-4" aria-hidden="true" />}
           {shareCopied ? t('detail.shareCopied') : t('detail.share')}
