@@ -120,6 +120,8 @@ from __future__ import annotations
 
 from urllib.parse import urljoin
 
+from src.normalizers.deactivate_stale_faculty import canonical_profile_url
+
 from .. import faculty_graph
 
 # ---- Wertheim Engineering: Connections Business Directory grids ------------
@@ -266,10 +268,10 @@ def _physics_rank(card) -> str | None:
     name_node = card.select_one("h3.ufclas-team-grid__name")
     if not rank or not name_node:
         return None
-    name = name_node.get_text(" ", strip=True)
+    name = " ".join(name_node.get_text(" ", strip=True).split())
     link = card.select_one(_PHY_BIO_LINK)
     profile = urljoin(_PHY_DIRECTORY, link["href"]) if link else ""
-    alias = _PHY_PROFILE_ID_NAMES.get(faculty_graph.canonical_profile_url(profile))
+    alias = _PHY_PROFILE_ID_NAMES.get(canonical_profile_url(profile))
     if (alias and alias[0] != name) or (not alias and name in _PHY_CURRENT_NAMES):
         return None
     return rank.get_text(" ", strip=True) or None

@@ -24,7 +24,7 @@ def collect(monkeypatch, html):
 
 def test_current_faculty_section_uses_personal_bios_and_retains_reviewed_ids(monkeypatch):
     html = ("<main><h2>Faculty</h2>"
-            + card("Jeff Andrews", "Assistant Professor", "jeff-andrews")
+            + card("Jeff  Andrews", "Assistant Professor", "jeff-andrews")
             + card("Clifford M. Will", "Distinguished Professor", "clifford-m-will")
             + card("Edwin Pedrozo-Peñafiel", "Assistant Professor", "edwin-pedrozo-penafiel")
             + card("Taylor Example", "Research Professor", "taylor-example")
