@@ -7,7 +7,7 @@ import { STORAGE_KEYS } from '../src/lib/storage-keys';
 // context therefore can't click anything and each click-based test burns its
 // whole 30s timeout. Pre-seed the "tour seen" flag into the storageState every
 // test context starts from; specs exercising the tour itself can opt back out
-// with test.use({ storageState: undefined }).
+// with test.use({ storageState: { cookies: [], origins: [] } }).
 export default function globalSetup(): void {
   const port = Number(process.env.E2E_PORT ?? 3100);
   const state = {

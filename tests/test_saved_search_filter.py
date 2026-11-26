@@ -49,6 +49,7 @@ def _opp(**overrides) -> dict:
         "on_campus": True,
         "deadline": (date.today() + timedelta(days=5)).isoformat(),
         "source": "uiuc_faculty",
+        "source_type": "campus_program",
         "keywords": ["machine learning", "robotics"],
         "eligibility": {"international_friendly": "yes"},
     }
@@ -161,6 +162,16 @@ class TestMatchFilterDeadline:
         f = {**EMPTY_FILTERS, "deadline": "7"}
         today = date.today().isoformat()
         assert match_filter(_opp(deadline=today), f) is True
+
+    def test_estimated_dates_never_match_any_calendar_window(self):
+        today = date.today()
+        for evidence in ({"deadline_is_estimate": True},
+                         {"metadata": {"inferred_fields": {"deadline": "estimate:award"}}}):
+            for value, offset in (("passed", -10), ("7", 7), ("14", 14), ("30", 30)):
+                row = _opp(deadline=(today + timedelta(days=offset)).isoformat())
+                assert match_filter(row, {"deadline": value})
+                assert not match_filter({**row, **evidence}, {"deadline": value})
+                assert match_filter({**row, **evidence, "is_rolling": True}, {"deadline": "rolling"})
 
     def test_faculty_contact_never_matches_any_deadline_facet(self):
         soon = (date.today() + timedelta(days=3)).isoformat()
@@ -414,7 +425,7 @@ class TestTheSavedScopeIsTheMatchViews:
         """The view reads the card: a faculty profile's says audience
         'unknown', and an unreviewed record's carries none at all."""
         faculty = _opp(id="faculty", source_type="faculty_research", audience="campus")
-        unreviewed = _opp(id="unreviewed", audience="open")
+        unreviewed = _opp(id="unreviewed", source_type=None, audience="open")
         assert matching_ids(
             [faculty, unreviewed], {**EMPTY_FILTERS, "scope": "open"},
         ) == ["faculty"]

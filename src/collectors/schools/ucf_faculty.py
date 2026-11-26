@@ -218,7 +218,9 @@ SCHOOL: dict = {
         _elem_dept("CS", "Department of Computer Science",
                    ["Computer Science", "Data Science"],
                    "https://www.cs.ucf.edu/faculty-directory/",
-                   _CECS_FACULTY_CARD),
+                   _CECS_FACULTY_CARD) | {
+            "profile_id_names": {"cs.ucf.edu/person/alialkinoon": ("Ali Alkinoon", "Ali Al Kinoon")},
+        },
         _elem_dept("ECE", "Department of Electrical and Computer Engineering",
                    ["Electrical Engineering", "Computer Engineering",
                     "Photonic Science and Engineering"],

@@ -86,7 +86,7 @@ def test_every_scenario_runs_and_every_wrapper_reports(tmp_path):
     for sample in ranked:
         assert set(sample["ranking"]["phases_s"]) >= {"rank", "cards", "result_set_id", "store"}
         assert set(sample["ranking"]["calls"]) >= {"hard_exclusion", "eligibility", "score"}
-        assert set(sample["request_phases_s"]) >= {"corpus_lookup", "view_pass", "page_cards", "page_rows"}
+        assert set(sample["request_phases_s"]) >= {"corpus_lookup", "pageable_view", "page_cards", "page_rows"}
     assert any("static_builds" in sample["ranking"]["calls"] for sample in ranked)
     assert any("tfidf" in sample["ranking"]["calls"] for sample in ranked)
     # The release and actionable filters ran once, at boot, for this corpus
@@ -97,6 +97,9 @@ def test_every_scenario_runs_and_every_wrapper_reports(tmp_path):
     ]
     warm = [sample for sample in samples if sample["scenario"] in ("home_warm", "cross_warm")]
     assert warm and {sample["served_from"] for sample in warm} == {"snapshot"}
+    assert all(sample["view_rows"] == 0 and "view_pass" not in sample["request_phases_s"] for sample in warm)
+    cold = [sample for sample in samples if sample["scenario"] in ("home_cold", "cross_cold")]
+    assert cold and all(sample["view_rows"] > 0 and "view_pass" in sample["request_phases_s"] for sample in cold)
     assert all(sample["returned_count"] > 0 for sample in samples if sample["status"] == 200)
 
     ranking_scenarios = [ranking["scenario"] for ranking in document["rankings"]]

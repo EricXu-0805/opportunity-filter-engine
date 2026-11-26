@@ -1045,9 +1045,10 @@ describe('useProfileForm — imported skills are candidates until the student se
     const result = await readyForm();
     act(() => { result.current.handleResumeParsed(resumeWith({ Python: LINE })); });
     await importGitHub(result);
-    // The second source neither raises the first one nor replaces its quote.
+    // Keep both sources. The repository leaves the student’s level and the active résumé quote intact.
     expect(result.current.profile.skills).toEqual([
-      { name: 'Python', level: 'beginner', source: 'resume', evidence: LINE },
+      { name: 'Python', level: 'beginner', source: 'resume', evidence: LINE,
+        github_receipt: { account: 'octocat', evidence: 'repo engine: language Python' } },
       { name: 'Rust', level: 'beginner', source: 'github', evidence: 'repo engine: language Rust' },
     ]);
 
@@ -1086,7 +1087,8 @@ describe('useProfileForm — imported skills are candidates until the student se
       { name: 'PyTorch', level: 'beginner', source: 'github', evidence: 'repo vision: topic pytorch' },
       { name: 'pandas', level: 'beginner', source: 'github' },
       { name: 'Python', level: 'expert' },
-      { name: 'Go', level: 'beginner', source: 'resume' },
+      { name: 'Go', level: 'beginner', source: 'resume',
+        github_receipt: { account: 'octocat', evidence: 'repo cli: language Go' } },
     ]);
   });
 

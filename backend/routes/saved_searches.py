@@ -58,7 +58,7 @@ from backend.routes.push import (
 )
 from src.evidence import is_actionable_target
 from src.matcher.ranker import _filter_context, hard_exclusion
-from src.saved_searches.filter import matching_ids, out_of_scope_ids
+from src.saved_searches.filter import matching_ids, out_of_scope_ids, queued_deadline_supported
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -538,7 +538,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         now_iso = datetime.now(UTC).isoformat()
         # Every id tonight's load contains, live or not. Whatever the baseline
         # holds outside it is unknown tonight, not gone.
-        corpus_ids = {opportunity["id"] for opportunity in corpus if opportunity.get("id")}
+        corpus_by_id = {opportunity["id"]: opportunity for opportunity in corpus if opportunity.get("id")}
         # Every row searches the same records: each is read through the
         # public contact boundary once tonight, not once per saved search.
         served: dict = {}
@@ -588,6 +588,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     # simply could not see stays.
                     and opportunity_id not in ineligible
                     and opportunity_id not in out_of_scope
+                    and queued_deadline_supported(corpus_by_id.get(opportunity_id), filters.get("deadline"))
                 ]
 
                 current_ids = [
@@ -626,7 +627,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 current_set = set(current_ids)
                 baseline = current_ids + [
                     oid for oid in dict.fromkeys(prior_result_ids)
-                    if oid not in corpus_ids and oid not in current_set
+                    if oid not in corpus_by_id and oid not in current_set
                 ]
 
                 patch_body = {
@@ -786,6 +787,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     # queued ids and timestamps without dispatching mail.
                     skipped += 1
                     continue
+                deadline_filter = (row.get("filters_json") or {}).get("deadline")
                 new_ids = [
                     opportunity_id
                     for opportunity_id in stored_new_ids
@@ -794,6 +796,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     # theirs to be mailed. Positive set, like the line above:
                     # an id tonight's corpus could not see is untouched.
                     and opportunity_id not in ineligible
+                    and queued_deadline_supported(opp_by_id.get(opportunity_id), deadline_filter)
                 ]
                 if new_ids != stored_new_ids:
                     cleanup_resp = await client.patch(

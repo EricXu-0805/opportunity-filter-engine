@@ -34,6 +34,8 @@ export interface SkillWithLevel {
    *  confirm, so a spurious match — "Relevant coursework: Introduction to
    *  Python" — is visible rather than silently becoming a claim. */
   evidence?: string;
+  /** Independent repository evidence for a skill still attributed to the résumé. */
+  github_receipt?: { account: string; evidence: string };
 }
 
 // ── Courses (checklist M13) ──────────────────────────────────────────
@@ -588,6 +590,7 @@ export interface MatchesResponse {
   };
   source_facets?: Array<{ source: string; count: number }>;
   scope_available?: boolean;
+  applied_opportunity_type?: string;
   /** How many records each deadline chip would return, counted server-side
    *  over the whole snapshot against the caller's `today`. Absent from an
    *  older backend; the rail then hides the chips rather than assuming. */

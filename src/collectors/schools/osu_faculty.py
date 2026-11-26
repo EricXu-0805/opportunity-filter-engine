@@ -267,7 +267,9 @@ SCHOOL: dict = {
         _coe("MAE", "Mechanical and Aerospace Engineering",
              ["Mechanical Engineering", "Aerospace Engineering"], "mae"),
         _coe("BME", "Biomedical Engineering", ["Biomedical Engineering"], "bme",
-             path="/directory/department-faculty"),
+             path="/directory/department-faculty") | {
+            "profile_id_names": {"bme.osu.edu/people/walter.367": ("Ben Walter", "Benjamin Walter")},
+        },
         _coe("MSE", "Materials Science and Engineering",
              ["Materials Science and Engineering", "Welding Engineering"], "mse"),
         _coe("CBE", "Chemical and Biomolecular Engineering",

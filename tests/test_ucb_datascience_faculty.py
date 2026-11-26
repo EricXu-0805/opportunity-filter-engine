@@ -47,13 +47,35 @@ class TestScrapeHeadings:
     def test_captures_title_and_profile_link(self):
         rows = {r["name"]: r for r in ds._scrape_headings(_soup(HEADING_FIXTURE), "https://ccb.berkeley.edu")}
         assert rows["Dennis Feehan"]["url"] == "https://dennisfeehan.org"
-        # "Professor of X" prefix stripped from the title.
+        # Preserve the source-stated full rank.
         assert rows["Michael Boots"]["url"].endswith("/people/michael-boots")
         assert "Integrative Biology" in rows["Michael Boots"]["title"]
 
     def test_directories_expose_no_email(self):
         rows = ds._scrape_headings(_soup(HEADING_FIXTURE), "https://ccb.berkeley.edu")
         assert all(r["email"] == "" for r in rows)
+
+    def test_person_named_links_in_both_live_layouts(self):
+        html = """
+          <div class="node-openberkeley-person"><div class="content"><a href="/people/michael-boots">
+            <h2>Michael Boots</h2><div>Professor of Integrative Biology</div></a></div></div>
+          <div class="content-wrapper"><h2><a href="https://dennisfeehan.org/">Dennis Feehan</a></h2>
+            <p>Demography</p></div>
+          <div class="content-wrapper"><h2><a href="https://ccb.berkeley.edu/">Campus Person</a></h2></div>
+          <div class="content-wrapper"><h2><a href="https://github.com/example/">Other Person</a></h2></div>
+          <div class="content-wrapper"><h2><a href="https://[broken">Example Person</a></h2></div>"""
+        rows = {p["name"]: p for p in ds._scrape_headings(_soup(html), "https://ccb.berkeley.edu")}
+        assert rows["Michael Boots"]["url"] == "https://ccb.berkeley.edu/people/michael-boots"
+        assert rows["Michael Boots"]["title"] == "Professor of Integrative Biology"
+        assert rows["Dennis Feehan"]["url"] == "https://dennisfeehan.org/"
+        assert (rows["Campus Person"]["url"], rows["Campus Person"]["title"]) == ("", "")
+        assert rows["Other Person"]["url"] == ""
+        assert rows["Example Person"]["url"] == ""
+
+    def test_new_directory_destination_supersedes_a_reviewed_fallback(self):
+        html = '<div><h2><a href="https://history.berkeley.edu/new/roddy">Daniel Roddy</a></h2></div>'
+        [row] = ds._scrape_headings(_soup(html), "https://cdss.berkeley.edu", page_url=ds._DSUS)
+        assert row["url"] == "https://history.berkeley.edu/new/roddy"
 
     def test_no_headings_yields_empty(self):
         assert ds._scrape_headings(_soup("<html><body><p>x</p></body></html>"), "https://x.edu") == []
@@ -81,6 +103,8 @@ def test_refresh_keeps_cdss_faculty_until_an_active_home_department_covers_them(
     monkeypatch.setattr(ds, "fetch_soup", lambda url: _soup(HEADING_FIXTURE))
 
     previous = ds.fetch_and_normalize()
+    assert all(r["source_url"] in {url for url, _ in ds._SOURCES}
+               and r["metadata"]["verification_scope"] == "directory" for r in previous)
     assert {row["pi_name"] for row in previous} == {"Dennis Feehan", "Michael Boots"}
     home = {"source": "ucb_ib_faculty", "source_type": "faculty_research",
             "pi_name": "Michael A. Boots", "metadata": {"is_active": False}}

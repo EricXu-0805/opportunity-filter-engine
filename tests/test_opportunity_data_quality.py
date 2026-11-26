@@ -27,6 +27,8 @@ from pathlib import Path
 
 import pytest
 
+from src.evidence import is_actionable_target
+
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "processed" / "opportunities.json"
 DESCRIPTION_CAP = 1500
 ROLLING_DEFAULT_SOURCES = {"uiuc_sro", "uiuc_our_rss", "manual"}
@@ -133,10 +135,12 @@ class TestR70ADataQuality:
             f"(first 3 ids: {[o.get('id') for o in missing[:3]]})"
         )
 
-    def test_aggregator_sources_have_deadline_or_rolling(self):
+    def test_actionable_aggregator_listings_have_deadline_or_rolling(self):
         """R70-A defaulted is_rolling=True for 308 records across
         uiuc_sro/uiuc_our_rss/manual that had no deadline. New records
-        from those sources must keep that invariant."""
+        from those sources keep that fallback while actionable. A source
+        marking a cycle closed or publishing only a directory does not offer
+        ongoing admission, even when the record has no dated cutoff."""
         data = _load_data()
         offenders = [
             o
@@ -144,6 +148,7 @@ class TestR70ADataQuality:
             if o.get("source") in ROLLING_DEFAULT_SOURCES
             and not o.get("deadline")
             and o.get("is_rolling") is not True
+            and is_actionable_target(o)
         ]
         assert not offenders, (
             f"{len(offenders)} records from aggregator sources have "
@@ -1036,6 +1041,9 @@ class TestOnCampusMeansOnACampus:
             if o.get("school") is not None
             and o.get("source_type") != "faculty_research"
             and o.get("source") not in self.SELF_COMPUTED_SOURCES
+            # A school's reference directory can list programs in many
+            # places. It has no single host campus to assign to applicants.
+            and not ((o.get("metadata") or {}).get("reference_only") is True and o.get("on_campus") is None)
             and o.get("on_campus") is not True
         ]
         assert not offenders, (

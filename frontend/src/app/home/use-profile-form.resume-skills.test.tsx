@@ -33,6 +33,7 @@ vi.mock('pdfjs-dist', () => ({
 }));
 import { useProfileForm } from './use-profile-form';
 import { translate } from '@/i18n/translate';
+import { parseGitHubProfile } from '@/lib/api';
 import { parseResumePDF } from '@/lib/pdf-parser';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { resetProfileDirtyLedger } from '@/lib/profile-sync';
@@ -225,6 +226,47 @@ describe('a replacement meeting a skill list another tab changed', () => {
 });
 
 describe('a removed résumé takes the skills only it named with it', () => {
+  it('retains a later repository source through a real save conflict, reload and résumé withdrawal', async () => {
+    row = { revision: 1, profile: { ...SIGNED_UP, github_url: 'https://github.com/example' } };
+    const view = await mount();
+    await importResume('Skills: Python, MATLAB');
+    const receipt = 'repo tools: language Python';
+    vi.mocked(parseGitHubProfile).mockResolvedValue({
+      username: 'example', repo_count: 1, extracted_skills: ['Python'], topics: [], top_repos: [],
+      skill_evidence: [{ skill: 'Python', repo: 'tools', field: 'language', value: 'Python' }],
+    });
+    const edited = row!.profile.skills.map((skill) =>
+      skill.name === 'Python' ? { ...skill, level: 'expert' as const, confirmed: true } : skill);
+    previousBuildWrites({ skills: edited });
+    await act(async () => { await form().handleGitHubImport(); });
+    await tick(1600);
+    expect(form().conflicts).toHaveLength(0);
+    expect(row?.profile.skills[0]).toMatchObject({ source: 'resume', level: 'expert',
+      github_receipt: { account: 'example', evidence: receipt } });
+    await reload(view);
+    await removeResume();
+    expect(row?.profile.skills).toEqual([{ name: 'Python', source: 'github', evidence: receipt, level: 'expert', confirmed: true }]);
+    expect(await requested()).toEqual(['Python']);
+  });
+
+  it('corroborates a résumé imported in a different tab before this GitHub save arrives', async () => {
+    row = { revision: 1, profile: { ...SIGNED_UP, github_url: 'example' } };
+    await mount();
+    const old = { name: 'Python', source: 'resume' as const, level: 'experienced' as const, evidence: 'Skills: Python' };
+    previousBuildWrites({ skills: [old], resume_text: 'Skills: Python' });
+    vi.mocked(parseGitHubProfile).mockResolvedValue({
+      username: 'example', repo_count: 1, extracted_skills: ['Python', 'Java'], topics: [], top_repos: [],
+      skill_evidence: [{ skill: 'Python', repo: 'tools', field: 'language', value: 'Python' }],
+    });
+    await act(async () => { await form().handleGitHubImport(); });
+    await tick(1600);
+    expect(form().conflicts).toHaveLength(0);
+    expect(row?.profile.skills).toEqual([
+      { ...old, github_receipt: { account: 'example', evidence: 'repo tools: language Python' } },
+      { name: 'Java', source: 'github', level: 'beginner' },
+    ]);
+  });
+
   it('drops every résumé skill the student did not confirm and keeps the rest without the résumé\'s lines', async () => {
     const github = { name: 'Docker', level: 'beginner' as const, source: 'github' as const, evidence: 'repo lab-tools: language Dockerfile' };
     const typed = { name: 'Linux', level: 'beginner' as const };

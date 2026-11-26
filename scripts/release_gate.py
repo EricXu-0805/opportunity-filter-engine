@@ -1509,7 +1509,7 @@ def commit_exists(rev: str) -> bool:
 def data_version_at(rev: str) -> dict | None:
     """The corpus a build of ``rev`` carries: last shard commit + shard tree."""
     tree = _git("rev-parse", f"{rev}:{_SHARDS_PATH}")
-    if not tree:
+    if not tree or _git("cat-file", "-t", tree) != "tree":
         return None
     commit = _git("log", "-1", "--format=%H", rev, "--", _SHARDS_PATH)
     return {"shard_commit": commit or None, "shards_tree": tree}
@@ -1608,11 +1608,20 @@ def check_release_record(sha: str | None, evidence: dict | None) -> dict:
     data = {"candidate": record["candidate"]["data_version"],
             "backend": record["backend"]["data_version"],
             "frontend": record["frontend"]["data_version"]}
-    commits = {where: dv.get("shard_commit") for where, dv in data.items() if dv}
-    if len(set(commits.values())) > 1:
-        found.append(("data_mismatch", "data versions differ — shard commit "
-                      + ", ".join(f"{where} {value[:8] if value else 'unknown'}"
-                                  for where, value in commits.items())))
+    if not sha:
+        del data["candidate"]
+    missing_data = [
+        side for side, version in data.items()
+        if not version or not all(_SHA_FULL_RE.fullmatch(version.get(key) or "")
+                                  for key in ("shard_commit", "shards_tree"))
+    ]
+    versions = {(version["shard_commit"], version["shards_tree"])
+                for side, version in data.items() if side not in missing_data}
+    if len(versions) > 1:
+        found.append(("data_mismatch", "data versions differ — "
+                      + ", ".join(f"{side} commit {version['shard_commit'][:8]} "
+                                  f"tree {version['shards_tree'][:8]}"
+                                  for side, version in data.items() if side not in missing_data)))
 
     be_flags = record["backend"]["release_scope"]
     fe_flags = record["frontend"]["release_scope"]
@@ -1628,7 +1637,11 @@ def check_release_record(sha: str | None, evidence: dict | None) -> dict:
     if found:
         return _gate("release_record", FAIL, "; ".join(record["disagreements"]), record,
                      reason=found[0][0])
-    shard = (data["candidate"] or data["backend"] or {}).get("shard_commit") or "unknown"
+    if missing_data:
+        return _gate("release_record", UNVERIFIED,
+                     f"shard commit and tree could not be verified for {', '.join(missing_data)}",
+                     record, reason="evidence_incomplete")
+    shard = data["backend"]["shard_commit"]
     return _gate("release_record", PASS,
                  f"backend and frontend both serve {backend_sha[:8]} with shard commit "
                  f"{shard[:8]} and {len(be_flags or {})} flags aligned in name and value",

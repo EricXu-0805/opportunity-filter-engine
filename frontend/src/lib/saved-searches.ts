@@ -1,11 +1,13 @@
 import { getDeviceId, supabase, type AuthState } from './supabase';
 import { isOwnerTokenValid, OwnerMismatchError, type OwnerToken } from './identity-owner';
+import type { SeekingType } from '@/app/home/types';
 import type { DeadlineFilterValue } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const OPPORTUNITY_BATCH_LIMIT = 200;
 
 export interface SavedSearchFilters {
+  opportunityType?: SeekingType;
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   source: string;
@@ -390,6 +392,7 @@ export function savedSearchToUrl(
   if (s.filters.paid) params.set('paid', s.filters.paid);
   if (s.filters.intl) params.set('intl', s.filters.intl);
   if (s.filters.source) params.set('source', s.filters.source);
+  if (s.filters.opportunityType) params.set('type', s.filters.opportunityType);
   if (s.filters.onCampus) params.set('loc', s.filters.onCampus);
   if (s.filters.deadline) params.set('dl', s.filters.deadline);
   if (s.filters.minScore > 0) params.set('min', String(s.filters.minScore));

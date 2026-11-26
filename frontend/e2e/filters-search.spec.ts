@@ -22,7 +22,7 @@ async function openFiltersIfCollapsed(page: Page) {
     if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
       await toggle.click();
     }
-    await expect(page.locator('#filter-rail-chips select').first()).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Pay', exact: true })).toBeVisible();
   }
 }
 
@@ -64,7 +64,7 @@ test.describe('Filters, search, sort', () => {
   test('each filter dropdown is named by what it filters', async ({ page }) => {
     await goToResults(page);
     await openFiltersIfCollapsed(page);
-    for (const name of ['Pay', 'International students', 'Source', 'Location', 'Deadline', 'Sort order']) {
+    for (const name of ['Opportunity type', 'Pay', 'International students', 'Source', 'Location', 'Deadline', 'Sort order']) {
       await expect(page.getByRole('combobox', { name, exact: true })).toBeVisible();
     }
     await page.getByRole('combobox', { name: 'Pay', exact: true }).selectOption({ label: 'Unpaid / not disclosed' });
@@ -75,7 +75,7 @@ test.describe('Filters, search, sort', () => {
     await goToResults(page);
     await openFiltersIfCollapsed(page);
     const before = await page.locator('[id^="match-card-"]').count();
-    const paidSelect = page.locator('#filter-rail-chips select').first();
+    const paidSelect = page.getByRole('combobox', { name: 'Pay', exact: true });
     await paidSelect.selectOption({ label: 'Paid only' });
     // URL sync happens with the same state update that filters the list,
     // so it marks the moment the filtered render has been committed.
@@ -111,7 +111,7 @@ test.describe('Filters, search, sort', () => {
   test('clear filters button restores state', async ({ page }) => {
     await goToResults(page);
     await openFiltersIfCollapsed(page);
-    await page.locator('#filter-rail-chips select').first().selectOption({ label: 'Paid only' });
+    await page.getByRole('combobox', { name: 'Pay', exact: true }).selectOption({ label: 'Paid only' });
     await page.getByRole('button', { name: /^Clear \d+ filters?$/i }).click();
     await expect(page).not.toHaveURL(/paid=yes/);
   });
@@ -120,7 +120,7 @@ test.describe('Filters, search, sort', () => {
     await goToResults(page);
     await openFiltersIfCollapsed(page);
 
-    await page.locator('#filter-rail-chips select').first().selectOption({ label: 'Paid only' });
+    await page.getByRole('combobox', { name: 'Pay', exact: true }).selectOption({ label: 'Paid only' });
 
     page.on('dialog', dialog => dialog.accept('My Paid Preset'));
     await page.getByRole('button', { name: /Save preset/i }).click();

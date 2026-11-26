@@ -335,6 +335,7 @@ function ResultsContent() {
     paid: filters.paid,
     intl: filters.intl,
     source: filters.source,
+    ...(filters.opportunityType && { opportunity_type: filters.opportunityType }),
     on_campus: filters.onCampus,
     deadline: filters.deadline,
     min_score: filters.minScore,
@@ -645,6 +646,7 @@ function ResultsContent() {
     // must not light the "Filters · N" badge over an unchanged list.
     (filters.intl === 'yes' ? 1 : 0) +
     (filters.source ? 1 : 0) +
+    (filters.opportunityType ? 1 : 0) +
     (filters.onCampus ? 1 : 0) +
     (filters.deadline ? 1 : 0) +
     (filters.minScore > 0 ? 1 : 0) +

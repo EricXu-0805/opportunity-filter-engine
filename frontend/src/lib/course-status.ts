@@ -87,10 +87,13 @@ const STATUS_LABEL = new RegExp(String.raw`(?:^|(?<=[\t|•]))[ \t]*(?:${[
 // A coursework label, anywhere on a line: its list is the student's courses,
 // with no status.
 const LIST_LABEL = /\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-—]\s*/giu;
+// Chinese labels must open their field: someone who taught or recommended a
+// course has not listed it as their own coursework.
+const CHINESE_LIST_LABEL = /(?:^|(?<=[\t|•]))[ ]*(?:主修|相关|相關|核心)?[课課]程[ ]*[:：][ ]*/gu;
 // Any other label ("Completed:", "Skills:"): where a list stops. Its last
 // word is enough to stop at, and more could take in the course before it.
-const ANY_LABEL = /(?<![\p{L}\p{N}])\p{Lu}[\p{L}'’]*[ \t]*:/gu;
-const FIELD_BREAK = /[\t|]/gu;
+const ANY_LABEL = /(?<![\p{L}\p{N}])(?:\p{Lu}[\p{L}'’]*|\p{Script=Han}{1,12})[ \t]*[:：]/gu;
+const FIELD_BREAK = /[\t|•。！？]/gu;
 
 /** The course lists on one line of résumé text. Each starts after a label
  *  ("Coursework:", "Relevant Courses -", "Current courses:") and runs to the
@@ -100,7 +103,7 @@ export function courseLists(line: string): Array<{ start: number; end: number; s
   const opened: Array<{ at: number; start: number; status?: ResumeMark }> = Array.from(line.matchAll(STATUS_LABEL), (m) => ({
     at: m.index, start: m.index + m[0].length, status: m.groups?.in_progress ? 'in_progress' as const : 'planned' as const,
   }));
-  for (const m of line.matchAll(LIST_LABEL)) {
+  for (const m of [...line.matchAll(LIST_LABEL), ...line.matchAll(CHINESE_LIST_LABEL)]) {
     if (!opened.some((label) => m.index >= label.at && m.index < label.start)) opened.push({ at: m.index, start: m.index + m[0].length });
   }
   opened.sort((a, b) => a.at - b.at);
@@ -124,9 +127,13 @@ export function trimCourse(s: string): string {
  *  Systems"), each with where it starts in the list. */
 export function listedCourses(list: string): Array<{ name: string; index: number }> {
   const named: Array<{ name: string; index: number }> = [];
-  for (const item of list.matchAll(/[^;,]+/gu)) {
+  for (const item of list.matchAll(/[^;,；，、]+/gu)) {
     const name = trimCourse(item[0]);
-    if (name && /[A-Za-z]/.test(name) && name.length >= 3 && name.length <= 40) {
+    if (name.length > 40 || /^(?:暂无|暫無|无|無|无相关课程|無相關課程|待补充|待補充|不适用|不適用|n\/a)$/iu.test(name)) continue;
+    const hasTitle = /\p{Script=Han}/u.test(name)
+      ? name.length >= 2 && !/[:：]/u.test(name)
+      : name.length >= 3 && /[A-Za-z]/u.test(name);
+    if (hasTitle) {
       named.push({ name, index: item.index + item[0].indexOf(name) });
     }
   }

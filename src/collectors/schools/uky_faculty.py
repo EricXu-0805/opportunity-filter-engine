@@ -352,7 +352,9 @@ SCHOOL: dict = {
             ["Political Science"], "https://polisci.as.uky.edu/faculty"),
         # ---- Gatton College of Business & Economics (people-list View) -----
         _gatton("ACC", "Von Allmen School of Accountancy",
-                ["Accounting"], 1),
+                ["Accounting"], 1) | {
+            "profile_id_names": {"gatton.uky.edu/people/darcia-fischer": ("Darci Fischer", "Darcia Fischer")},
+        },
         _gatton("ECON", "Department of Economics",
                 ["Economics"], 9),
         _gatton("FIN", "Department of Finance and Quantitative Methods",
