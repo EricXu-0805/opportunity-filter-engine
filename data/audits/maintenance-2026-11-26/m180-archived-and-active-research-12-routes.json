@@ -1,0 +1,136 @@
+{
+  "as_of": "2026-11-26T20:27:07+00:00",
+  "site": "http://127.0.0.1:3000",
+  "expected_sha": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+  "cases": [
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "locale": "en",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "locale": "en",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-frit-4c67c442",
+      "locale": "en",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-econ-cbbe8690",
+      "locale": "en",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-wisc-me-24b38826",
+      "locale": "en",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred by our system",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "locale": "en",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": true,
+      "visible_topic_count": 5,
+      "visible_note": "Topics inferred from a matched OpenAlex record",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "locale": "zh",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "locale": "zh",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-frit-4c67c442",
+      "locale": "zh",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-duke-econ-cbbe8690",
+      "locale": "zh",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-wisc-me-24b38826",
+      "locale": "zh",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": false,
+      "visible_topic_count": 5,
+      "visible_note": "系统推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    },
+    {
+      "id": "faculty-pitt-cs-2ba882dd",
+      "locale": "zh",
+      "page_release": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+      "api_actionable": true,
+      "visible_topic_count": 5,
+      "visible_note": "根据匹配到的 OpenAlex 记录推断的研究方向",
+      "page_http": 200,
+      "detail_read_attempts": 1
+    }
+  ],
+  "scope": "Public detail reads only.",
+  "backend_before": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+  "backend_after": "9a4f51d4080028b1d8acde9645caa86743e71c2f",
+  "original_workflow": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45890656995",
+  "earlier_attempt": {
+    "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889251200",
+    "status": "failed",
+    "cause": "The first observer waited for the archive-only keywords note on the active control. Its normal current layout shows the five topics in detailed research facts and names OpenAlex as the source. The candidate code stayed at the same SHA."
+  }
+}
