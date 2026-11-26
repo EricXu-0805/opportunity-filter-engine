@@ -38,6 +38,12 @@ def check(page, args, key):
     assert data["metadata"].get("faculty_title", "") == title
     assert data["target_truth"]["actionable"]
     quote = data["detail_fields"]["fields"]["professor_or_lab"].get("quotes", {}).get("faculty_rank")
+    if key == "faculty-ucsd-nano-8a42e65d":
+        assert data["source_url"] == profile
+        assert quote["text"] == title and quote["source_url"] == profile
+        receipt = data["metadata"]["faculty_title_observation"]
+        assert receipt["source"] == receipt["profile"] == profile
+        assert receipt["roster_url"] == "https://www.nanoengineering.ucsd.edu/index.php/fac"
     if key.startswith("faculty-vanderbilt"):
         if title:
             assert quote["source_url"] == MATH + "faculty/" and quote["text"] == title
