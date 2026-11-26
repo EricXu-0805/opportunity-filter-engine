@@ -1,0 +1,55 @@
+{
+  "production_site": "https://joinalab.com",
+  "target_id": "faculty-cs-321c7f13",
+  "guest": {
+    "signup_http": 200,
+    "profile_commit_http": 200,
+    "match_http": 200,
+    "rules_only": true,
+    "ai_refined": false
+  },
+  "draft_api": {
+    "opportunity_id": "faculty-cs-321c7f13",
+    "http": 200,
+    "variant_ids": [
+      "balanced",
+      "skills",
+      "concise"
+    ],
+    "recipient_status": "sign_in_required",
+    "pipeline_version": "w12.26"
+  },
+  "blocked_app_posts": [],
+  "started_at": "2026-11-26T06:19:16.199940+00:00",
+  "official_contact": {
+    "url": "https://siebelschool.illinois.edu/about/people/faculty/girishc",
+    "http": 200,
+    "display_name": "Girish Chowdhary",
+    "published_professional_email_verified": true
+  },
+  "card": {
+    "id": "match-card-faculty-cs-321c7f13",
+    "name": "Girish Chowdhary",
+    "href": "/opportunities/faculty-cs-321c7f13",
+    "displayed_fit_reasons": [
+      "Prof. Girish Chowdhary (Siebel School of Computing and Data Science) — machine learning for machine vision, adaptive control and reinforcement learning, autonomy",
+      "This faculty member's department aligns with your major",
+      "Faculty profile from a major research university",
+      "Prof. Girish Chowdhary also works on machine learning for machine vision, adaptive control and reinforcement learning, autonomy",
+      "Matches your interest in research",
+      "You're comfortable with direct outreach"
+    ],
+    "displayed_concerns": [
+      "Faculty availability and eligibility are not confirmed — verify when you contact them"
+    ]
+  },
+  "editor": {
+    "subject": "Undergraduate Research Interest — machine learning for machine vision",
+    "body": "Dear Professor Girish Chowdhary,\n\nMy name is Sample Student, and I am a junior studying Computer Science. I am interested in robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics robotics 🧪 LATE_INTEREST. I would like to learn more about your work on machine learning for machine vision, adaptive control and reinforcement learning, and autonomy.\n\nCould I ask what you would suggest I learn or do first to prepare for research in this area? May I contact you again once I have done that?\n\nBest regards,\nSample Student",
+    "recipient_input_populated": false,
+    "selected_template_matches_response": true
+  },
+  "completed_at": "2026-11-26T06:19:24.884603+00:00",
+  "job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45767355333/job/139731358898",
+  "scope": "Fresh synthetic production guest; unsent template. No account credential or private profile included."
+}
