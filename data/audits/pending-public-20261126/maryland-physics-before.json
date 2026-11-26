@@ -1,0 +1,1415 @@
+{
+  "observed_at": "2026-11-26T10:45:48.605578+00:00",
+  "production_release": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "official_roster": "https://umdphysics.umd.edu/people/faculty.html",
+  "unit_coverage": {
+    "raw_roster_rows": 175,
+    "parsed_faculty_rows": 60,
+    "classified_nonfaculty_rows": 115,
+    "unparsed_rows": 0,
+    "ambiguous_rows": 0,
+    "duplicate_rows": 0,
+    "identity_match_failures": 0,
+    "parser_errors": 0,
+    "partial_render_rows": 0
+  },
+  "previous_active_physics_ids": [
+    "faculty-umd-phys-03469f81",
+    "faculty-umd-phys-05706e78",
+    "faculty-umd-phys-0662d840",
+    "faculty-umd-phys-0b70e59e",
+    "faculty-umd-phys-0d290abe",
+    "faculty-umd-phys-107d6250",
+    "faculty-umd-phys-15dc29b5",
+    "faculty-umd-phys-2a694261",
+    "faculty-umd-phys-37bf632e",
+    "faculty-umd-phys-3a463db2",
+    "faculty-umd-phys-3bba8c82",
+    "faculty-umd-phys-3ee64b50",
+    "faculty-umd-phys-47489f51",
+    "faculty-umd-phys-50c9e8c0",
+    "faculty-umd-phys-59488f54",
+    "faculty-umd-phys-64390071",
+    "faculty-umd-phys-6738b795",
+    "faculty-umd-phys-6d91988b",
+    "faculty-umd-phys-77c38596",
+    "faculty-umd-phys-7fdec92b",
+    "faculty-umd-phys-81c136f1",
+    "faculty-umd-phys-870137b6",
+    "faculty-umd-phys-892f2d84",
+    "faculty-umd-phys-896169e8",
+    "faculty-umd-phys-8a79246a",
+    "faculty-umd-phys-8b4e0c5c",
+    "faculty-umd-phys-90b9dbe4",
+    "faculty-umd-phys-98c23a3e",
+    "faculty-umd-phys-9e2e46c0",
+    "faculty-umd-phys-a73e2f99",
+    "faculty-umd-phys-b1bc560d",
+    "faculty-umd-phys-be25083e",
+    "faculty-umd-phys-bf150f57",
+    "faculty-umd-phys-bfa6d058",
+    "faculty-umd-phys-c20d5feb",
+    "faculty-umd-phys-c3598528",
+    "faculty-umd-phys-c7f22684",
+    "faculty-umd-phys-c87f47e1",
+    "faculty-umd-phys-ca81041d",
+    "faculty-umd-phys-caac4639",
+    "faculty-umd-phys-dbeb09eb",
+    "faculty-umd-phys-dd78eea9",
+    "faculty-umd-phys-dda63c09",
+    "faculty-umd-phys-e274a77b",
+    "faculty-umd-phys-e827a6f7",
+    "faculty-umd-phys-e8c4f78b",
+    "faculty-umd-phys-f4ab218a",
+    "faculty-umd-phys-f5476a54",
+    "faculty-umd-phys-f5a0b51d"
+  ],
+  "rows": [
+    {
+      "name": "Kaustubh Agashe",
+      "physics_observed_id": "faculty-umd-phys-37bf632e",
+      "public_id_after_replay": "faculty-umd-phys-37bf632e",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/kagashe.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-37bf632e",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/kagashe.html",
+      "faculty_heading": "Agashe, Kaustubh - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-37bf632e",
+      "old_public_name": "Kaustubh Agashe",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/716-kagashe.html"
+    },
+    {
+      "name": "Steven Anlage",
+      "physics_observed_id": "faculty-umd-phys-c423d054",
+      "public_id_after_replay": "faculty-umd-ece-169be80e",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/anlage.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-169be80e",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/anlage.html",
+      "faculty_heading": "Anlage, Steven - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-169be80e",
+      "old_public_name": "Steven Anlage",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage"
+    },
+    {
+      "name": "Thomas Antonsen",
+      "physics_observed_id": "faculty-umd-phys-21ceaa8a",
+      "public_id_after_replay": "faculty-umd-ece-1fe07ac6",
+      "observed_rank": "Distinguished University Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/antonsen.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-1fe07ac6",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/antonsen.html",
+      "faculty_heading": "Antonsen, Thomas - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-1fe07ac6",
+      "old_public_name": "Thomas M. Antonsen Jr.",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr"
+    },
+    {
+      "name": "Drew Baden",
+      "physics_observed_id": "faculty-umd-phys-98c23a3e",
+      "public_id_after_replay": "faculty-umd-phys-98c23a3e",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/drew.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-98c23a3e",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/drew.html",
+      "faculty_heading": "Baden, Drew - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-98c23a3e",
+      "old_public_name": "Drew Baden",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/25-drew.html"
+    },
+    {
+      "name": "Maissam Barkeshli",
+      "physics_observed_id": "faculty-umd-phys-870137b6",
+      "public_id_after_replay": "faculty-umd-phys-870137b6",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/maissam.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-870137b6",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/maissam.html",
+      "faculty_heading": "Barkeshli, Maissam - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-870137b6",
+      "old_public_name": "Maissam Barkeshli",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/718-maissam.html"
+    },
+    {
+      "name": "Paulo Bedaque",
+      "physics_observed_id": "faculty-umd-phys-3ee64b50",
+      "public_id_after_replay": "faculty-umd-phys-3ee64b50",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/bedaque.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-3ee64b50",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/bedaque.html",
+      "faculty_heading": "Bedaque, Paulo - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-3ee64b50",
+      "old_public_name": "Paulo Bedaque",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/41-bedaque.html"
+    },
+    {
+      "name": "Alberto Belloni",
+      "physics_observed_id": "faculty-umd-phys-bfa6d058",
+      "public_id_after_replay": "faculty-umd-phys-bfa6d058",
+      "observed_rank": "Professor & Associate Chair",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/abelloni.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-bfa6d058",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/abelloni.html",
+      "faculty_heading": "Belloni, Alberto - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-bfa6d058",
+      "old_public_name": "Alberto Belloni",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/44-abelloni.html"
+    },
+    {
+      "name": "Zackaria Chacko",
+      "physics_observed_id": "faculty-umd-phys-bf150f57",
+      "public_id_after_replay": "faculty-umd-phys-bf150f57",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/zchacko.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-bf150f57",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/zchacko.html",
+      "faculty_heading": "Chacko, Zackaria - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-bf150f57",
+      "old_public_name": "Zackaria Chacko",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/78-zchacko.html"
+    },
+    {
+      "name": "Brian Clark",
+      "physics_observed_id": "faculty-umd-phys-64390071",
+      "public_id_after_replay": "faculty-umd-phys-64390071",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/baclark.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-64390071",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/baclark.html",
+      "faculty_heading": "Clark, Brian - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-64390071",
+      "old_public_name": "Brian Clark",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/2002-baclark.html"
+    },
+    {
+      "name": "Thomas Cohen",
+      "physics_observed_id": "faculty-umd-phys-c7f22684",
+      "public_id_after_replay": "faculty-umd-phys-c7f22684",
+      "observed_rank": "Professor and Assoc Chair",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/cohen.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-c7f22684",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/cohen.html",
+      "faculty_heading": "Cohen, Thomas - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-c7f22684",
+      "old_public_name": "Thomas Cohen",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/94-cohen.html"
+    },
+    {
+      "name": "Sankar Das Sarma",
+      "physics_observed_id": "faculty-umd-phys-f5476a54",
+      "public_id_after_replay": "faculty-umd-phys-f5476a54",
+      "observed_rank": "Distinguished University Professor, Director & Richard E. Prange Chair",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/dassarma.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-f5476a54",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/dassarma.html",
+      "faculty_heading": "Das Sarma, Sankar - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-f5476a54",
+      "old_public_name": "Sankar Das Sarma",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/114-dassarma.html"
+    },
+    {
+      "name": "Zohreh Davoudi",
+      "physics_observed_id": "faculty-umd-phys-892f2d84",
+      "public_id_after_replay": "faculty-umd-phys-892f2d84",
+      "observed_rank": "Associate Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/davoudi.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-892f2d84",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/davoudi.html",
+      "faculty_heading": "Davoudi, Zohreh - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-892f2d84",
+      "old_public_name": "Zohreh Davoudi",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/927-davoudi.html"
+    },
+    {
+      "name": "James Drake",
+      "physics_observed_id": "faculty-umd-phys-9e2e46c0",
+      "public_id_after_replay": "faculty-umd-phys-9e2e46c0",
+      "observed_rank": "Distinguished University Professor & Director",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/drake.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-9e2e46c0",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/drake.html",
+      "faculty_heading": "Drake, James - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-9e2e46c0",
+      "old_public_name": "James Drake",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/126-drake.html"
+    },
+    {
+      "name": "Sarah Eno",
+      "physics_observed_id": "faculty-umd-phys-be25083e",
+      "public_id_after_replay": "faculty-umd-phys-be25083e",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/eno.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-be25083e",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/eno.html",
+      "faculty_heading": "Eno, Sarah - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-be25083e",
+      "old_public_name": "Sarah Eno",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/149-eno.html"
+    },
+    {
+      "name": "Lennard Fisk",
+      "physics_observed_id": "faculty-umd-phys-e827a6f7",
+      "public_id_after_replay": "faculty-umd-phys-e827a6f7",
+      "observed_rank": "College Park Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/lfisk.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-e827a6f7",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/lfisk.html",
+      "faculty_heading": "Fisk, Lennard - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-e827a6f7",
+      "old_public_name": "Lennard Fisk",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/740-lfisk.html"
+    },
+    {
+      "name": "Will Fox",
+      "physics_observed_id": "faculty-umd-phys-0b70e59e",
+      "public_id_after_replay": "faculty-umd-phys-0b70e59e",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/willfox.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-0b70e59e",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/willfox.html",
+      "faculty_heading": "Fox, Will - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-0b70e59e",
+      "old_public_name": "Will Fox",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/2289-willfox.html"
+    },
+    {
+      "name": "Manuel Franco Sevilla",
+      "physics_observed_id": "faculty-umd-phys-107d6250",
+      "public_id_after_replay": "faculty-umd-phys-107d6250",
+      "observed_rank": "Associate Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/manuelf.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-107d6250",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/manuelf.html",
+      "faculty_heading": "Franco Sevilla, Manuel - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-107d6250",
+      "old_public_name": "Manuel Franco Sevilla",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/1048-manuelf.html"
+    },
+    {
+      "name": "Victor Galitski",
+      "physics_observed_id": "faculty-umd-phys-50c9e8c0",
+      "public_id_after_replay": "faculty-umd-phys-50c9e8c0",
+      "observed_rank": "Professor and Chesapeake Chair",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/galitski.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-50c9e8c0",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/galitski.html",
+      "faculty_heading": "Galitski, Victor - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-50c9e8c0",
+      "old_public_name": "Victor Galitski",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/164-galitski.html"
+    },
+    {
+      "name": "Sylvester Gates",
+      "physics_observed_id": "faculty-umd-phys-dda63c09",
+      "public_id_after_replay": "faculty-umd-phys-dda63c09",
+      "observed_rank": "Clark Leadership Chair in Science, Distinguished University Professor and Regents Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/gatess.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-dda63c09",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/gatess.html",
+      "faculty_heading": "Gates, Sylvester - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-dda63c09",
+      "old_public_name": "Sylvester Gates",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/167-gatess.html"
+    },
+    {
+      "name": "Michelle Girvan",
+      "physics_observed_id": "faculty-umd-phys-90b9dbe4",
+      "public_id_after_replay": "faculty-umd-phys-90b9dbe4",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/girvan.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-90b9dbe4",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/girvan.html",
+      "faculty_heading": "Girvan, Michelle - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-90b9dbe4",
+      "old_public_name": "Michelle Girvan",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/173-girvan.html"
+    },
+    {
+      "name": "Jordan Goodman",
+      "physics_observed_id": "faculty-umd-phys-8a79246a",
+      "public_id_after_replay": "faculty-umd-phys-8a79246a",
+      "observed_rank": "Distinguished University Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/goodman.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-8a79246a",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/goodman.html",
+      "faculty_heading": "Goodman, Jordan - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-8a79246a",
+      "old_public_name": "Jordan Goodman",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/187-goodman.html"
+    },
+    {
+      "name": "Mohammad Hafezi",
+      "physics_observed_id": "faculty-umd-phys-97f856cd",
+      "public_id_after_replay": "faculty-umd-ece-e208a274",
+      "observed_rank": "Minta Martin Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/hafezi.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-e208a274",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/hafezi.html",
+      "faculty_heading": "Hafezi, Mohammad - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-e208a274",
+      "old_public_name": "Mohammad Hafezi",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi"
+    },
+    {
+      "name": "Carter Hall",
+      "physics_observed_id": "faculty-umd-phys-caac4639",
+      "public_id_after_replay": "faculty-umd-phys-caac4639",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/crhall.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-caac4639",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/crhall.html",
+      "faculty_heading": "Hall, Carter - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-caac4639",
+      "old_public_name": "Carter Hall",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/208-crhall.html"
+    },
+    {
+      "name": "Phoebe Hamilton",
+      "physics_observed_id": "faculty-umd-phys-03469f81",
+      "public_id_after_replay": "faculty-umd-phys-03469f81",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/pmham.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-03469f81",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/pmham.html",
+      "faculty_heading": "Hamilton, Phoebe - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-03469f81",
+      "old_public_name": "Phoebe Hamilton",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/2060-pmham.html"
+    },
+    {
+      "name": "Kara Hoffman",
+      "physics_observed_id": "faculty-umd-phys-81c136f1",
+      "public_id_after_replay": "faculty-umd-phys-81c136f1",
+      "observed_rank": "Professor and Chair",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/kara.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-81c136f1",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/kara.html",
+      "faculty_heading": "Hoffman, Kara - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-81c136f1",
+      "prior_attempt": "ReadTimeout",
+      "old_public_name": "Kara Hoffman",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/226-kara.html"
+    },
+    {
+      "name": "Anson Hook",
+      "physics_observed_id": "faculty-umd-phys-05706e78",
+      "public_id_after_replay": "faculty-umd-phys-05706e78",
+      "observed_rank": "Associate Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/hook.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-05706e78",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/hook.html",
+      "faculty_heading": "Hook, Anson - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-05706e78",
+      "prior_attempt": "ReadTimeout",
+      "old_public_name": "Anson Hook",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/1012-hook.html"
+    },
+    {
+      "name": "Bei Lok Hu",
+      "physics_observed_id": "faculty-umd-phys-59488f54",
+      "public_id_after_replay": "faculty-umd-phys-59488f54",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/blhu.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-59488f54",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/blhu.html",
+      "faculty_heading": "Hu, Bei Lok - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-59488f54",
+      "prior_attempt": "ReadTimeout",
+      "old_public_name": "Bei Lok Hu",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/232-blhu.html"
+    },
+    {
+      "name": "Theodore Jacobson",
+      "physics_observed_id": "faculty-umd-phys-c87f47e1",
+      "public_id_after_replay": "faculty-umd-phys-c87f47e1",
+      "observed_rank": "Distinguished University Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/jacobson.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-c87f47e1",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/jacobson.html",
+      "faculty_heading": "Jacobson, Theodore - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-c87f47e1",
+      "prior_attempt": "ReadTimeout",
+      "old_public_name": "Theodore Jacobson",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/246-jacobson.html"
+    },
+    {
+      "name": "Christopher Jarzynski",
+      "physics_observed_id": "faculty-umd-phys-299560f9",
+      "public_id_after_replay": "faculty-umd-chemj-4b4d8967",
+      "observed_rank": "Distinguished University Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/cjarzyns.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-chemj-4b4d8967",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/cjarzyns.html",
+      "faculty_heading": "Jarzynski, Christopher - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-chemj-4b4d8967",
+      "old_public_name": "Christopher Jarzynski",
+      "old_public_profile": "https://chem.umd.edu/people/christopher-jarzynski"
+    },
+    {
+      "name": "Abolhassan Jawahery",
+      "physics_observed_id": "faculty-umd-phys-15dc29b5",
+      "public_id_after_replay": "faculty-umd-phys-15dc29b5",
+      "observed_rank": "Distinguished University Professor and Gus T. Zorn Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/jawahery.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-15dc29b5",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/jawahery.html",
+      "faculty_heading": "Jawahery, Abolhassan - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-15dc29b5",
+      "old_public_name": "Abolhassan Jawahery",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/247-jawahery.html"
+    },
+    {
+      "name": "Ki-Yong Kim",
+      "physics_observed_id": "faculty-umd-phys-0662d840",
+      "public_id_after_replay": "faculty-umd-phys-0662d840",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/kykim.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-0662d840",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/kykim.html",
+      "faculty_heading": "Kim, Ki-Yong - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-0662d840",
+      "old_public_name": "Ki-Yong Kim",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/267-kykim.html"
+    },
+    {
+      "name": "Alicia Kollár",
+      "physics_observed_id": "faculty-umd-phys-39899f27",
+      "public_id_after_replay": "faculty-umd-ece-30842815",
+      "observed_rank": "Chesapeake Associate Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/akollar.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-30842815",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/akollar.html",
+      "faculty_heading": "Kollár, Alicia - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-30842815",
+      "old_public_name": "Alicia Kollár",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r"
+    },
+    {
+      "name": "Matt Landreman",
+      "physics_observed_id": "faculty-umd-phys-5da5e28c",
+      "public_id_after_replay": "faculty-umd-ece-1de15cb6",
+      "observed_rank": "Associate Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/mattland.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-1de15cb6",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/mattland.html",
+      "faculty_heading": "Landreman, Matt - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-1de15cb6",
+      "old_public_name": "Matt Landreman",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman"
+    },
+    {
+      "name": "Daniel Lathrop",
+      "physics_observed_id": "faculty-umd-phys-d385e274",
+      "public_id_after_replay": "faculty-umd-ece-119a91a4",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/lathrop.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-119a91a4",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/lathrop.html",
+      "faculty_heading": "Lathrop, Daniel - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-119a91a4",
+      "old_public_name": "Daniel Lathrop",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop"
+    },
+    {
+      "name": "Norbert Linke",
+      "physics_observed_id": "faculty-umd-phys-47489f51",
+      "public_id_after_replay": "faculty-umd-phys-47489f51",
+      "observed_rank": "IonQ Associate Professor & Director of National Quantum Lab",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/linke.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-47489f51",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/linke.html",
+      "faculty_heading": "Linke, Norbert - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-47489f51",
+      "old_public_name": "Norbert Linke",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/309-linke.html"
+    },
+    {
+      "name": "Wolfgang Losert",
+      "physics_observed_id": "faculty-umd-phys-939b415c",
+      "public_id_after_replay": "faculty-umd-bioe-c93ce78a",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/wlosert.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-bioe-c93ce78a",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/wlosert.html",
+      "faculty_heading": "Losert, Wolfgang - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-bioe-c93ce78a",
+      "old_public_name": "Wolfgang Losert",
+      "old_public_profile": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert"
+    },
+    {
+      "name": "John Mather",
+      "physics_observed_id": "faculty-umd-phys-b1bc560d",
+      "public_id_after_replay": "faculty-umd-phys-b1bc560d",
+      "observed_rank": "College Park Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/jmather1.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-b1bc560d",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/jmather1.html",
+      "faculty_heading": "Mather, John - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-b1bc560d",
+      "old_public_name": "John Mather",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/333-jmather1.html"
+    },
+    {
+      "name": "Howard Milchberg",
+      "physics_observed_id": "faculty-umd-phys-512e5696",
+      "public_id_after_replay": "faculty-umd-ece-3b1079a9",
+      "observed_rank": "Distinguished University Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/milch.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-3b1079a9",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/milch.html",
+      "faculty_heading": "Milchberg, Howard - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-3b1079a9",
+      "old_public_name": "Howard Milchberg",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg"
+    },
+    {
+      "name": "Christopher Monroe",
+      "physics_observed_id": "faculty-umd-phys-98d6b890",
+      "public_id_after_replay": "faculty-umd-ece-82cea1e0",
+      "observed_rank": "College Park Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/monroe.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-82cea1e0",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/monroe.html",
+      "faculty_heading": "Monroe, Christopher - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-82cea1e0",
+      "old_public_name": "Christopher Monroe",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe"
+    },
+    {
+      "name": "Ryo Mori",
+      "physics_observed_id": "faculty-umd-phys-8b4e0c5c",
+      "public_id_after_replay": "faculty-umd-phys-8b4e0c5c",
+      "observed_rank": "Alford L. Ward Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/rmori.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-8b4e0c5c",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/rmori.html",
+      "faculty_heading": "Mori, Ryo - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-8b4e0c5c",
+      "old_public_name": "Ryo Mori",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/2306-rmori.html"
+    },
+    {
+      "name": "Maria Mukhina",
+      "physics_observed_id": "faculty-umd-phys-6d91988b",
+      "public_id_after_replay": "faculty-umd-phys-6d91988b",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/mukhina.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-6d91988b",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/mukhina.html",
+      "faculty_heading": "Mukhina, Maria - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-6d91988b",
+      "old_public_name": "Maria Mukhina",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/2078-mukhina.html"
+    },
+    {
+      "name": "Min Ouyang",
+      "physics_observed_id": "faculty-umd-phys-e8c4f78b",
+      "public_id_after_replay": "faculty-umd-phys-e8c4f78b",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/mouyang.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-e8c4f78b",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/mouyang.html",
+      "faculty_heading": "Ouyang, Min - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-e8c4f78b",
+      "old_public_name": "Min Ouyang",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/381-mouyang.html"
+    },
+    {
+      "name": "Johnpierre Paglione",
+      "physics_observed_id": "faculty-umd-phys-3bba8c82",
+      "public_id_after_replay": "faculty-umd-phys-3bba8c82",
+      "observed_rank": "Professor & Director",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/paglione.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-3bba8c82",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/paglione.html",
+      "faculty_heading": "Paglione, Johnpierre - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-3bba8c82",
+      "old_public_name": "Johnpierre Paglione",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/383-paglione.html"
+    },
+    {
+      "name": "Christopher Palmer",
+      "physics_observed_id": "faculty-umd-phys-c20d5feb",
+      "public_id_after_replay": "faculty-umd-phys-c20d5feb",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/capalmer.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-c20d5feb",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/capalmer.html",
+      "faculty_heading": "Palmer, Christopher - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-c20d5feb",
+      "old_public_name": "Christopher Palmer",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/1751-capalmer.html"
+    },
+    {
+      "name": "William Phillips",
+      "physics_observed_id": "faculty-umd-phys-f5a0b51d",
+      "public_id_after_replay": "faculty-umd-phys-f5a0b51d",
+      "observed_rank": "Distinguished University Professor & College Park Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/wdp.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-f5a0b51d",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/wdp.html",
+      "faculty_heading": "Phillips, William - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-f5a0b51d",
+      "old_public_name": "William Phillips",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/402-wdp.html"
+    },
+    {
+      "name": "Douglas Roberts",
+      "physics_observed_id": "faculty-umd-phys-52990ca5",
+      "public_id_after_replay": "faculty-umd-phys-52990ca5",
+      "observed_rank": "Assoc Prof & Assoc Dean",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-52990ca5",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html",
+      "faculty_heading": "Roberts, Douglas - Department of Physics - University of Maryland",
+      "production_http": 404,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-52990ca5"
+    },
+    {
+      "name": "Steven Rolston",
+      "physics_observed_id": "faculty-umd-phys-e274a77b",
+      "public_id_after_replay": "faculty-umd-phys-e274a77b",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/rolston.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-e274a77b",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/rolston.html",
+      "faculty_heading": "Rolston, Steven - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-e274a77b",
+      "old_public_name": "Steven Rolston",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/437-rolston.html"
+    },
+    {
+      "name": "Jay Sau",
+      "physics_observed_id": "faculty-umd-phys-a73e2f99",
+      "public_id_after_replay": "faculty-umd-phys-a73e2f99",
+      "observed_rank": "Professor and Co-Director, JQI",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/jaydsau.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-a73e2f99",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/jaydsau.html",
+      "faculty_heading": "Sau, Jay - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-a73e2f99",
+      "old_public_name": "Jay Sau",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/454-jaydsau.html"
+    },
+    {
+      "name": "Nathan Schine",
+      "physics_observed_id": "faculty-umd-phys-dd78eea9",
+      "public_id_after_replay": "faculty-umd-phys-dd78eea9",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/nschine.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-dd78eea9",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/nschine.html",
+      "faculty_heading": "Schine, Nathan - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-dd78eea9",
+      "old_public_name": "Nathan Schine",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/1990-nschine.html"
+    },
+    {
+      "name": "Eun-Suk Seo",
+      "physics_observed_id": "faculty-umd-phys-7fdec92b",
+      "public_id_after_replay": "faculty-umd-phys-7fdec92b",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/seo.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-7fdec92b",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/seo.html",
+      "faculty_heading": "Seo, Eun-Suk - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-7fdec92b",
+      "old_public_name": "Eun-Suk Seo",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/467-seo.html"
+    },
+    {
+      "name": "Peter Shawhan",
+      "physics_observed_id": "faculty-umd-phys-dbeb09eb",
+      "public_id_after_replay": "faculty-umd-phys-dbeb09eb",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-dbeb09eb",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html",
+      "faculty_heading": "Shawhan, Peter - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-dbeb09eb",
+      "old_public_name": "Peter Shawhan",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/472-pshawhan.html"
+    },
+    {
+      "name": "Phillip Sprangle",
+      "physics_observed_id": "faculty-umd-phys-70ddbc5a",
+      "public_id_after_replay": "faculty-umd-ece-d124868c",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/sprangle.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-d124868c",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/sprangle.html",
+      "faculty_heading": "Sprangle, Phillip - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-d124868c",
+      "old_public_name": "Phillip Sprangle",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle"
+    },
+    {
+      "name": "Aaron Sternbach",
+      "physics_observed_id": "faculty-umd-phys-0d290abe",
+      "public_id_after_replay": "faculty-umd-phys-0d290abe",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/ajs01123.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-0d290abe",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/ajs01123.html",
+      "faculty_heading": "Sternbach, Aaron - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-0d290abe",
+      "old_public_name": "Aaron Sternbach",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/1965-ajs01123.html"
+    },
+    {
+      "name": "Gregory Sullivan",
+      "physics_observed_id": "faculty-umd-phys-6738b795",
+      "public_id_after_replay": "faculty-umd-phys-6738b795",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/gws.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-6738b795",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/gws.html",
+      "faculty_heading": "Sullivan, Gregory - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-6738b795",
+      "old_public_name": "Gregory Sullivan",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/516-gws.html"
+    },
+    {
+      "name": "Raman Sundrum",
+      "physics_observed_id": "faculty-umd-phys-f4ab218a",
+      "public_id_after_replay": "faculty-umd-phys-f4ab218a",
+      "observed_rank": "Distinguished University Professor & Director; John S. Toll Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/raman.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-f4ab218a",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/raman.html",
+      "faculty_heading": "Sundrum, Raman - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-f4ab218a",
+      "old_public_name": "Raman Sundrum",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/518-raman.html"
+    },
+    {
+      "name": "Arpita Upadhyaya",
+      "physics_observed_id": "faculty-umd-phys-3a463db2",
+      "public_id_after_replay": "faculty-umd-phys-3a463db2",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/arpitau.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-3a463db2",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/arpitau.html",
+      "faculty_heading": "Upadhyaya, Arpita - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-3a463db2",
+      "old_public_name": "Arpita Upadhyaya",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/544-arpitau.html"
+    },
+    {
+      "name": "Edo Waks",
+      "physics_observed_id": "faculty-umd-phys-93368bce",
+      "public_id_after_replay": "faculty-umd-ece-09b45e43",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/edowaks.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-ece-09b45e43",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/edowaks.html",
+      "faculty_heading": "Waks, Edo - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-ece-09b45e43",
+      "old_public_name": "Edo Waks",
+      "old_public_profile": "https://ece.umd.edu/clark/faculty/492/Edo-Waks"
+    },
+    {
+      "name": "Ronald Walsworth",
+      "physics_observed_id": "faculty-umd-phys-896169e8",
+      "public_id_after_replay": "faculty-umd-phys-896169e8",
+      "observed_rank": "Minta Martin Professor and Founding Director, QTC",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/rwalswor.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-896169e8",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/rwalswor.html",
+      "faculty_heading": "Walsworth, Ronald - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-896169e8",
+      "old_public_name": "Ronald Walsworth",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/1194-rwalswor.html"
+    },
+    {
+      "name": "Victor Yakovenko",
+      "physics_observed_id": "faculty-umd-phys-77c38596",
+      "public_id_after_replay": "faculty-umd-phys-77c38596",
+      "observed_rank": "Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/yakovenk.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-77c38596",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/yakovenk.html",
+      "faculty_heading": "Yakovenko, Victor - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-77c38596",
+      "old_public_name": "Victor Yakovenko",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/596-yakovenk.html"
+    },
+    {
+      "name": "Frank Zhao",
+      "physics_observed_id": "faculty-umd-phys-c3598528",
+      "public_id_after_replay": "faculty-umd-phys-c3598528",
+      "observed_rank": "Assistant Professor",
+      "official_profile": "https://umdphysics.umd.edu/directory/faculty/current/syfzhao.html",
+      "production_detail": "https://joinalab.com/opportunities/faculty-umd-phys-c3598528",
+      "faculty_http": 200,
+      "faculty_final": "https://umdphysics.umd.edu/directory/faculty/current/syfzhao.html",
+      "faculty_heading": "Zhao, Frank - Department of Physics - University of Maryland",
+      "production_http": 200,
+      "production_final": "https://joinalab.com/api/opportunities/faculty-umd-phys-c3598528",
+      "old_public_name": "Frank Zhao",
+      "old_public_profile": "https://umdphysics.umd.edu/people/faculty/current/item/2293-syfzhao.html"
+    }
+  ],
+  "four_unit_replay": [
+    {
+      "original_ids_removed": [],
+      "units": {
+        "phys": {
+          "live_roster_count": 60,
+          "observed_count": 59,
+          "retirement_authorized": true,
+          "failure_reason": null
+        },
+        "chemj": {
+          "live_roster_count": 1,
+          "observed_count": 1,
+          "retirement_authorized": true,
+          "failure_reason": null
+        },
+        "ece": {
+          "live_roster_count": 110,
+          "observed_count": 110,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures"
+        },
+        "bioe": {
+          "live_roster_count": 51,
+          "observed_count": 51,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures"
+        }
+      },
+      "cross": [
+        {
+          "official_name": "Steven Anlage",
+          "candidate": "faculty-umd-phys-c423d054",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-169be80e",
+              "pi_name": "Steven Anlage",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Thomas Antonsen",
+          "candidate": "faculty-umd-phys-21ceaa8a",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-1fe07ac6",
+              "pi_name": "Thomas M. Antonsen Jr.",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Mohammad Hafezi",
+          "candidate": "faculty-umd-phys-97f856cd",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-e208a274",
+              "pi_name": "Mohammad Hafezi",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Christopher Jarzynski",
+          "candidate": "faculty-umd-phys-299560f9",
+          "outcomes": [
+            {
+              "id": "faculty-umd-chemj-4b4d8967",
+              "pi_name": "Christopher Jarzynski",
+              "department": "Department of Chemistry and Biochemistry",
+              "url": "https://chem.umd.edu/people/christopher-jarzynski",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Alicia Kollár",
+          "candidate": "faculty-umd-phys-39899f27",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-30842815",
+              "pi_name": "Alicia Kollár",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Matt Landreman",
+          "candidate": "faculty-umd-phys-5da5e28c",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-1de15cb6",
+              "pi_name": "Matt Landreman",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Daniel Lathrop",
+          "candidate": "faculty-umd-phys-d385e274",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-119a91a4",
+              "pi_name": "Daniel Lathrop",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Wolfgang Losert",
+          "candidate": "faculty-umd-phys-939b415c",
+          "outcomes": [
+            {
+              "id": "faculty-umd-bioe-c93ce78a",
+              "pi_name": "Wolfgang Losert",
+              "department": "Fischell Department of Bioengineering",
+              "url": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Howard Milchberg",
+          "candidate": "faculty-umd-phys-512e5696",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-3b1079a9",
+              "pi_name": "Howard Milchberg",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Christopher Monroe",
+          "candidate": "faculty-umd-phys-98d6b890",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-82cea1e0",
+              "pi_name": "Christopher Monroe",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Phillip Sprangle",
+          "candidate": "faculty-umd-phys-70ddbc5a",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-d124868c",
+              "pi_name": "Phillip Sprangle",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Edo Waks",
+          "candidate": "faculty-umd-phys-93368bce",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-09b45e43",
+              "pi_name": "Edo Waks",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/492/Edo-Waks",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        }
+      ],
+      "historical": [
+        [
+          "faculty-umd-phys-2a694261",
+          "Alessandra Buonanno",
+          false,
+          "absent_from_directory_rescrape"
+        ],
+        [
+          "faculty-umd-phys-ca81041d",
+          "Sasha Philippov",
+          false,
+          "absent_from_directory_rescrape"
+        ],
+        [
+          "faculty-umd-phys-52990ca5",
+          "Douglas Roberts",
+          true,
+          null
+        ]
+      ]
+    },
+    {
+      "original_ids_removed": [],
+      "units": {
+        "phys": {
+          "live_roster_count": 60,
+          "observed_count": 59,
+          "retirement_authorized": true,
+          "failure_reason": null
+        },
+        "chemj": {
+          "live_roster_count": 1,
+          "observed_count": 1,
+          "retirement_authorized": true,
+          "failure_reason": null
+        },
+        "ece": {
+          "live_roster_count": 110,
+          "observed_count": 110,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures"
+        },
+        "bioe": {
+          "live_roster_count": 51,
+          "observed_count": 51,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures"
+        }
+      },
+      "cross": [
+        {
+          "official_name": "Steven Anlage",
+          "candidate": "faculty-umd-phys-c423d054",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-169be80e",
+              "pi_name": "Steven Anlage",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Thomas Antonsen",
+          "candidate": "faculty-umd-phys-21ceaa8a",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-1fe07ac6",
+              "pi_name": "Thomas M. Antonsen Jr.",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Mohammad Hafezi",
+          "candidate": "faculty-umd-phys-97f856cd",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-e208a274",
+              "pi_name": "Mohammad Hafezi",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Christopher Jarzynski",
+          "candidate": "faculty-umd-phys-299560f9",
+          "outcomes": [
+            {
+              "id": "faculty-umd-chemj-4b4d8967",
+              "pi_name": "Christopher Jarzynski",
+              "department": "Department of Chemistry and Biochemistry",
+              "url": "https://chem.umd.edu/people/christopher-jarzynski",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Alicia Kollár",
+          "candidate": "faculty-umd-phys-39899f27",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-30842815",
+              "pi_name": "Alicia Kollár",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Matt Landreman",
+          "candidate": "faculty-umd-phys-5da5e28c",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-1de15cb6",
+              "pi_name": "Matt Landreman",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Daniel Lathrop",
+          "candidate": "faculty-umd-phys-d385e274",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-119a91a4",
+              "pi_name": "Daniel Lathrop",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Wolfgang Losert",
+          "candidate": "faculty-umd-phys-939b415c",
+          "outcomes": [
+            {
+              "id": "faculty-umd-bioe-c93ce78a",
+              "pi_name": "Wolfgang Losert",
+              "department": "Fischell Department of Bioengineering",
+              "url": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Howard Milchberg",
+          "candidate": "faculty-umd-phys-512e5696",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-3b1079a9",
+              "pi_name": "Howard Milchberg",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Christopher Monroe",
+          "candidate": "faculty-umd-phys-98d6b890",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-82cea1e0",
+              "pi_name": "Christopher Monroe",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Phillip Sprangle",
+          "candidate": "faculty-umd-phys-70ddbc5a",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-d124868c",
+              "pi_name": "Phillip Sprangle",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        },
+        {
+          "official_name": "Edo Waks",
+          "candidate": "faculty-umd-phys-93368bce",
+          "outcomes": [
+            {
+              "id": "faculty-umd-ece-09b45e43",
+              "pi_name": "Edo Waks",
+              "department": "Department of Electrical and Computer Engineering",
+              "url": "https://ece.umd.edu/clark/faculty/492/Edo-Waks",
+              "active": true,
+              "duplicate_of": null
+            }
+          ]
+        }
+      ],
+      "historical": [
+        [
+          "faculty-umd-phys-2a694261",
+          "Alessandra Buonanno",
+          false,
+          "absent_from_directory_rescrape"
+        ],
+        [
+          "faculty-umd-phys-ca81041d",
+          "Sasha Philippov",
+          false,
+          "absent_from_directory_rescrape"
+        ],
+        [
+          "faculty-umd-phys-52990ca5",
+          "Douglas Roberts",
+          true,
+          null
+        ]
+      ]
+    }
+  ],
+  "historical_sources": {
+    "faculty-umd-phys-ca81041d": "https://physics.stanford.edu/people/sasha-philippov",
+    "faculty-umd-phys-2a694261": "https://umdphysics.umd.edu/directory/faculty/research-professors/buonanno.html"
+  }
+}
