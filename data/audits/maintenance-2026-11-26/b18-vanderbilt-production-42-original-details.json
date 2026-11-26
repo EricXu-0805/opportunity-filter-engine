@@ -1,0 +1,1069 @@
+{
+  "release": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "end_release": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "utc": "2026-11-26T22:07:37.642030+00:00",
+  "baseline": "31984a4cf65992e448a0d8838c15f8cf2c184915",
+  "roster": "https://as.vanderbilt.edu/chemistry/faculty/",
+  "scope": "Production HTML and detail API for all original IDs from the real Thursday refresh, before the first Thursday refresh with the fix.",
+  "rows": [
+    {
+      "id": "faculty-vanderbilt-chem-b0f20085",
+      "original_name": "Primary Faculty Directory",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "listing",
+      "api_id_ok": true,
+      "actionable": false,
+      "reference_only": true,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View source"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-6968c3d1",
+      "original_name": "Teaching Faculty Directory",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "listing",
+      "api_id_ok": true,
+      "actionable": false,
+      "reference_only": true,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View source"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-bb4f8725",
+      "original_name": "Brian O. Bachmann",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-6e18acf4",
+      "original_name": "Lauren E. Buchanan",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-1e8a9195",
+      "original_name": "Katie Clements",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-683bc778",
+      "original_name": "David Cliffel",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-255af39b",
+      "original_name": "James Crowe",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-626735d6",
+      "original_name": "Aaron Daniel",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-569d924e",
+      "original_name": "Timothy Hanusa",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-12b47d77",
+      "original_name": "Alissa A. Hare",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-10e72ca6",
+      "original_name": "Xiaohua Jiang",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-ebc20e34",
+      "original_name": "Jeffrey N. Johnston",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-04b072ec",
+      "original_name": "Daria Kim",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-3e8d0271",
+      "original_name": "John Kuriyan",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-c2d13621",
+      "original_name": "Gen Li",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-7554a574",
+      "original_name": "Craig Lindsley",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-e1988313",
+      "original_name": "Adam List",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-e73e038a",
+      "original_name": "Andrea Locke",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-2e1c665b",
+      "original_name": "Janet Macdonald",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-55ca379e",
+      "original_name": "Lawrence Marnett",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-042c6a30",
+      "original_name": "John McLean",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-75850bb4",
+      "original_name": "Douglas A. Mitchell",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-85c1a7de",
+      "original_name": "Chi-Li Ni",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-d28ccce2",
+      "original_name": "Shawn Phillips",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-bsci-eacec2e2",
+      "original_name": "Lars Plate",
+      "department": "Department of Biological Sciences",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": false,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-cfc7ec49",
+      "original_name": "Prasad Polavarapu",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-8298860f",
+      "original_name": "Carmelo Rizzo",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-6305e3cf",
+      "original_name": "Renã A. S. Robinson",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-8c64895b",
+      "original_name": "Sandra J. Rosenthal",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-a32a5ae4",
+      "original_name": "Nathan D. Schley",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-ce335e25",
+      "original_name": "Alex Schuppe",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-82309112",
+      "original_name": "Michael P. Stone",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-11074def",
+      "original_name": "Gary A. Sulikowski",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-07b54d09",
+      "original_name": "Craig Tainter",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-b2cbbcfc",
+      "original_name": "Keri A. Tallman",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-8c4c8810",
+      "original_name": "Tara Decuir Todd",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-502928e2",
+      "original_name": "Steven D. Townsend",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-7f2b771d",
+      "original_name": "Susan Verberne-Sutton",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-bsci-de49b50b",
+      "original_name": "Allison Walker",
+      "department": "Department of Biological Sciences",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": false,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-5b357855",
+      "original_name": "David W. Wright",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-def88822",
+      "original_name": "Zhongyue (John) Yang",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    },
+    {
+      "id": "faculty-vanderbilt-chem-ea0d5513",
+      "original_name": "Mengshan Ye",
+      "department": "Department of Chemistry",
+      "previous_kind": "faculty_contact",
+      "kind": "faculty_contact",
+      "api_id_ok": true,
+      "actionable": true,
+      "reference_only": false,
+      "url_matches_official": true,
+      "visible_original_name": true,
+      "page_sha_ok": true,
+      "actions": [
+        "View faculty profile",
+        "Source page",
+        "Source page",
+        "Source page",
+        "Source page"
+      ],
+      "directory_copy": [],
+      "attempt": 1
+    }
+  ],
+  "pre_fix_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/fca61e96175b03d89356437c49f56703f92decf7/data/audits/maintenance-2026-11-26/thursday-vanderbilt-42-production-31984a4c.json",
+  "current_official_roster": {
+    "url": "https://as.vanderbilt.edu/chemistry/faculty/",
+    "matched": 42,
+    "unmatched": []
+  },
+  "school_counts": {
+    "previous": {
+      "listing_count": 3,
+      "faculty_contact_count": 1154,
+      "unreviewed_count": 0,
+      "total_count": 1157
+    },
+    "published_static": {
+      "listing_count": 3,
+      "faculty_contact_count": 1152,
+      "unreviewed_count": 0,
+      "total_count": 1155
+    },
+    "current_public": {
+      "listing_count": 3,
+      "faculty_contact_count": 1152,
+      "unreviewed_count": 0,
+      "total_count": 1155
+    }
+  },
+  "guide_page_actions": [
+    {
+      "id": "faculty-vanderbilt-chem-b0f20085",
+      "controls": [
+        [
+          "a",
+          "Back to matches",
+          "/results"
+        ],
+        [
+          "button",
+          "",
+          null
+        ],
+        [
+          "a",
+          "View source",
+          "https://as.vanderbilt.edu/chemistry/faculty/?group=primary-faculty"
+        ],
+        [
+          "button",
+          "Share",
+          null
+        ],
+        [
+          "button",
+          "Contacted",
+          null
+        ],
+        [
+          "button",
+          "Applied",
+          null
+        ],
+        [
+          "button",
+          "Got reply",
+          null
+        ],
+        [
+          "button",
+          "Interviewing",
+          null
+        ],
+        [
+          "button",
+          "Rejected",
+          null
+        ],
+        [
+          "button",
+          "Not interested",
+          null
+        ],
+        [
+          "button",
+          "Record an application",
+          null
+        ],
+        [
+          "button",
+          "Records, notes & reminders",
+          null
+        ]
+      ]
+    },
+    {
+      "id": "faculty-vanderbilt-chem-6968c3d1",
+      "controls": [
+        [
+          "a",
+          "Back to matches",
+          "/results"
+        ],
+        [
+          "button",
+          "",
+          null
+        ],
+        [
+          "a",
+          "View source",
+          "https://as.vanderbilt.edu/chemistry/faculty/?group=teaching-faculty"
+        ],
+        [
+          "button",
+          "Share",
+          null
+        ],
+        [
+          "button",
+          "Contacted",
+          null
+        ],
+        [
+          "button",
+          "Applied",
+          null
+        ],
+        [
+          "button",
+          "Got reply",
+          null
+        ],
+        [
+          "button",
+          "Interviewing",
+          null
+        ],
+        [
+          "button",
+          "Rejected",
+          null
+        ],
+        [
+          "button",
+          "Not interested",
+          null
+        ],
+        [
+          "button",
+          "Record an application",
+          null
+        ],
+        [
+          "button",
+          "Records, notes & reminders",
+          null
+        ]
+      ]
+    }
+  ],
+  "coverage_url": "https://joinalab.com/api/opportunities/coverage",
+  "next_scheduled_source_check": "2026-12-03"
+}
