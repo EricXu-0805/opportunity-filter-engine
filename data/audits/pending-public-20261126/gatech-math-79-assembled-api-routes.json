@@ -1,0 +1,397 @@
+{
+  "faculty-gatech-math-435e086e": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-eaaf915e": {
+    "status": 200,
+    "rank": "Professor and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-a3cd5455": {
+    "status": 200,
+    "rank": "Senior Academic Professional and Director of Communications",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-f2339c24": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-8f3f01f4": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-9db5de92": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-28eefaa9": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-bbd451a1": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-ff4395bd": {
+    "status": 200,
+    "rank": "Regents' Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-07397101": {
+    "status": 200,
+    "rank": "Research Scientist",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-bb33ffda": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-81a25344": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-5c1543d9": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-69e7b88d": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-361cf335": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-72afaa9b": {
+    "status": 200,
+    "rank": "Professor and Director of Postdocs",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-dbee2d1a": {
+    "status": 200,
+    "rank": "Richard A. Duke Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-12bbf7f1": {
+    "status": 200,
+    "rank": "Professor and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-8aa6089a": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-24f0d560": {
+    "status": 200,
+    "rank": "Professor and Director of Undergraduate Studies",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-1f71619b": {
+    "status": 200,
+    "rank": "Senior Academic Professional and Director of Teaching Assistants",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-26745527": {
+    "status": 200,
+    "rank": "Lecturer",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-630186f6": {
+    "status": 200,
+    "rank": "Principal Academic Professional, Director of International Instructor Training, and ESOL Specialist",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-d4bca5aa": {
+    "status": 200,
+    "rank": "Richard A. Duke Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-3e853e94": {
+    "status": 200,
+    "rank": "Professor and Associate Chair for Faculty",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-854380b1": {
+    "status": 200,
+    "rank": "Professor and Richard A. Duke Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-45ef1c07": {
+    "status": 200,
+    "rank": "Professor and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-4bf4e929": {
+    "status": 200,
+    "rank": "Professor and Associate Chair for Research",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-9b1ca996": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-e8287a96": {
+    "status": 200,
+    "rank": "Senior Academic Professional, Director of Graduate Advising and Assessment, and Assistant Director of Teaching Effectiveness",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-146c0a94": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-89a3bbe4": {
+    "status": 200,
+    "rank": "Professor and Richard A. Duke Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-651a0fc5": {
+    "status": 200,
+    "rank": "Professor and Hubbard Chair",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-53a2011f": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-c0eb8145": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-75d81892": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-60040026": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-7fc47034": {
+    "status": 200,
+    "rank": "Professor and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-d50fb52c": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-de5f92c6": {
+    "status": 200,
+    "rank": "Academic Professional and Director of Advising",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-4e11f647": {
+    "status": 200,
+    "rank": "Academic Professional and Director of Scheduling",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-dac7d83b": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-506daaea": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-83614d1d": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-836ca4c7": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-2da6de6a": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-f7d25b40": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-bf37d739": {
+    "status": 200,
+    "rank": "Professor and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-2aa6193d": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-ca17bb74": {
+    "status": 200,
+    "rank": "Academic Professional",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-d7c24646": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-f4a6f712": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-10308435": {
+    "status": 200,
+    "rank": "Senior Academic Professional and Director of Online Learning",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-11a961a6": {
+    "status": 200,
+    "rank": "Richard A. Duke Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-6f4d2e50": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-c3009991": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-d48f5e11": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-c60ef761": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-dae906df": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-bc195cb3": {
+    "status": 200,
+    "rank": "Senior Lecturer and Director of the Math Lab",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-3137d2d6": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-2dada491": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-789f5c8c": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-68688638": {
+    "status": 200,
+    "rank": "Professor and Richard A. Duke Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-f34110d8": {
+    "status": 200,
+    "rank": "Principal Research Scientist",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-122efa83": {
+    "status": 200,
+    "rank": "Academic Professional",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-83533f4c": {
+    "status": 200,
+    "rank": "Academic Professional",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-608ac03a": {
+    "status": 200,
+    "rank": "Professor and Chair",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-cc185fe5": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-c05991d4": {
+    "status": 200,
+    "rank": "Professor, Director of Graduate Studies, and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-96a2c200": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-5b30bb62": {
+    "status": 200,
+    "rank": "Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-d98213a4": {
+    "status": 200,
+    "rank": "Associate Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-8bb2cf96": {
+    "status": 200,
+    "rank": "Professor and Elaine M. Hubbard Fellow",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-66f886ac": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-0f492786": {
+    "status": 200,
+    "rank": "Lecturer",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-gatech-math-44601965": {
+    "status": 200,
+    "rank": "Assistant Professor",
+    "contact_state": "sign_in_required"
+  },
+  "faculty-umd-math-ccd1b4b6": {
+    "status": 200,
+    "contact_state": "unavailable",
+    "archive_metadata": true
+  },
+  "faculty-umd-math-fb0e69c7": {
+    "status": 200,
+    "contact_state": "unavailable",
+    "archive_metadata": true
+  }
+}
