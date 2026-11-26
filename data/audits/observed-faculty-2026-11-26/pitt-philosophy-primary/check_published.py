@@ -58,7 +58,8 @@ def check_one(session, record, candidate, scope):
     assert links == [record["official_profile"]], (pid, "visible faculty profile action", links)
     official = get(session, links[0])
     headings = [h.get_text(" ", strip=True) for h in BeautifulSoup(official.content, "html.parser").select("h1")]
-    assert set(record["school_heading"]).intersection(headings), (pid, "university name", headings)
+    normalized = {" ".join(heading.split()) for heading in headings}
+    assert any(" ".join(name.split()) in normalized for name in record["school_heading"]), (pid, "university name", headings)
     result.update({"detail_heading": names, "profile_action": links[0], "official_final_url": official.url,
                    "university_status": official.status_code, "university_name": headings})
     return result
