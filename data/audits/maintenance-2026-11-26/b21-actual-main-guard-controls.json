@@ -1,0 +1,38 @@
+{
+  "product_data_head": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "complete_data_positive": true,
+  "expected_unchanged_same_head": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "intentionally_stale_candidate": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "stale_correctly_rejected": true,
+  "stale_unexpected_data_paths": [
+    "data/processed/collector_status.json",
+    "data/processed/collector_status_history.jsonl",
+    "data/processed/professor_tracking.json",
+    "data/processed/shards/arizona.json",
+    "data/processed/shards/boulder.json",
+    "data/processed/shards/brown.json",
+    "data/processed/shards/cornell.json",
+    "data/processed/shards/houston.json",
+    "data/processed/shards/national.json",
+    "data/processed/shards/nd.json",
+    "data/processed/shards/oregonstate.json",
+    "data/processed/shards/rice.json",
+    "data/processed/shards/syracuse.json",
+    "data/processed/shards/ucla.json",
+    "data/processed/shards/udel.json",
+    "data/processed/shards/uga.json",
+    "data/processed/shards/utexas.json",
+    "data/processed/shards/vanderbilt.json",
+    "data/processed/shards/vt.json",
+    "data/processed/source_health.json"
+  ],
+  "reviewed_rows_by_school": {
+    "duke": 90,
+    "fsu": 2,
+    "miami": 444,
+    "pitt": 29,
+    "ucsd": 1,
+    "usc": 2
+  },
+  "next_window": "Run this script against the actual post-B20 main and the proposed rebased B21 candidate, then run the official school count generator and release checks."
+}
