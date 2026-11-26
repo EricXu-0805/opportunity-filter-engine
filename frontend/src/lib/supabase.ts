@@ -1729,19 +1729,21 @@ export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
   }
 
   const first = await readCloudFavoriteIds(deviceId, token);
-  let reading = first;
-  if (first.error === null && first.pagesWithRows > 1 && isOwnerTokenValid(token, deviceId)) {
+  let remote = first.ids;
+  let readError = first.error;
+  if (readError === null && first.pagesWithRows > 1 && isOwnerTokenValid(token, deviceId)) {
     // Counts after a cursor exclude rows already read. A second ordered scan
     // also detects an earlier deletion offset by a different newly saved ID.
-    reading = await readCloudFavoriteIds(deviceId, token);
-    if (reading.error === null && (first.ids.size !== reading.ids.size || [...first.ids].some(id => !reading.ids.has(id)))) {
-      reading.error = 'The saved list changed while it was being read.';
+    const verified = await readCloudFavoriteIds(deviceId, token);
+    remote = verified.ids;
+    readError = verified.error;
+    if (readError === null && (first.ids.size !== remote.size || [...first.ids].some(id => !remote.has(id)))) {
+      readError = 'The saved list changed while it was being read.';
     }
   }
   if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
-  const remote = reading.ids;
-  if (reading.error !== null) {
-    setStorageStatus('local-only', reading.error);
+  if (readError !== null) {
+    setStorageStatus('local-only', readError);
     return { ids: new Set([...remote, ...local]), complete: false };
   }
 
