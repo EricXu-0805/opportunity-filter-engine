@@ -58,14 +58,18 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- The bucket is provisioned by an administrator. Every following storage
+-- operation and application RPC runs with the actual signed-in client role.
+INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+  VALUES ('tracker-attachment-versions','tracker-attachment-versions',false,5242880,ARRAY['application/pdf'])
+  ON CONFLICT (id) DO NOTHING;
+SET ROLE authenticated;
+SELECT set_config('test.jwt', '{"is_anonymous": false}', false);
 DO $$
 DECLARE u uuid:='3a000000-0000-4000-8000-000000000002'; a uuid:=gen_random_uuid();
  p text:=u::text||'/opp-2/revision.pdf'; op uuid; other_op uuid; initial jsonb; selected jsonb;
 BEGIN
   PERFORM set_config('test.uid',u::text,false);
-  INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-    VALUES ('tracker-attachment-versions','tracker-attachment-versions',false,5242880,ARRAY['application/pdf'])
-    ON CONFLICT (id) DO NOTHING;
   INSERT INTO storage.objects(id,bucket_id,name,metadata,version)
     VALUES (a,'tracker-attachments',p,'{"mimetype":"application/pdf","size":8}',gen_random_uuid()::text);
   initial:=public.resolve_tracker_attachment_versions(ARRAY[p])->p;
@@ -86,3 +90,4 @@ BEGIN
     OR NOT public.tracker_anchor_removable(p,a) OR public.tracker_anchor_removable(p,gen_random_uuid())
     THEN RAISE EXCEPTION 'expected deletion of one selected incarnation'; END IF;
 END $$;
+RESET ROLE;
