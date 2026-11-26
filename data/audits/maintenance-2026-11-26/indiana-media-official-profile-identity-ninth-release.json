@@ -1,0 +1,39 @@
+{
+  "source": "https://mediaschool.indiana.edu/people/faculty/index.html",
+  "sha256_of_official_html": "ce6e218f00c020e851c6cc89bca7e72bab8f675ca9001940588e185775172788",
+  "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "previous_scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+  "current_active_product_ids": 171,
+  "official_distinct_person_keys": 207,
+  "originals_listed_by_person_key": 149,
+  "originals_absent_from_list": 22,
+  "parsed_people": 146,
+  "parsed_with_original_id": 143,
+  "parsed_new_source_keys": 2,
+  "official_people_filtered_by_parser": 61,
+  "historical_ledger": {
+    "baseline_active_count": 173,
+    "baseline_identity_count": 1,
+    "observed_count": 145,
+    "matched_identity_count": 1,
+    "live_roster_count": 146,
+    "retirement_authorized": true,
+    "parse_status": "ok",
+    "fetch_status": "ok"
+  },
+  "replayed_ledger": {
+    "baseline_active_count": 171,
+    "baseline_identity_count": 1,
+    "observed_count": 146,
+    "matched_identity_count": 1,
+    "live_roster_count": 146,
+    "retirement_authorized": true,
+    "parse_status": "ok",
+    "fetch_status": "ok"
+  },
+  "assessment": "Absence from this directory alone does not establish departure. The current canonical identity comparison collapses distinct personal URLs. No retirement or production write was performed.",
+  "same_person_key_different_generated_id": 1,
+  "listed_originals_filtered_by_role": 5,
+  "public_person_key_rename_example": "https://mediaschool.indiana.edu/people/profile.html?p=krrudd",
+  "note_on_ids": "Compared per-person p= values across the official roster, stored original IDs and actual directory parser. The observed rename needs verification through normal upsert."
+}
