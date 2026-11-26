@@ -1012,9 +1012,8 @@ function ResultsContent() {
         mobile real estate above the fold for zero new information.
       */}
 
-      {!loading && data && (
-        <ResultsTabs activeTab={activeTab} onChange={handleTabChange} counts={counts} t={t} />
-      )}
+      <ResultsTabs activeTab={activeTab} onChange={handleTabChange}
+        counts={!loading && data ? counts : null} t={t} hasPanel={!loading && !error && !!data} />
 
       {!loading && data && profile && (
         <ProfileCompletenessHint profile={profile} onEdit={() => router.push('/')} t={t} />
@@ -1114,7 +1113,7 @@ function ResultsContent() {
       )}
 
       {!loading && !error && data && (
-        <div className="space-y-6">
+        <div id="match-category-results" role="tabpanel" aria-labelledby={`match-category-tab-${activeTab}`} className="space-y-6">
           {filteredTotal === 0 ? (
             <EmptyState
               hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -35,7 +35,8 @@ import CustomImportStorageNotice from '@/components/CustomImportStorageNotice';
 import { customImportFailureKey, canRetryCustomImport } from '@/lib/custom-import-feedback';
 import { importFailureKey } from '@/lib/import-source';
 
-type Mode = 'url' | 'text';
+const MODES = ['url', 'text'] as const;
+type Mode = typeof MODES[number];
 
 const TEXT_MIN_CHARS = 50;
 
@@ -74,6 +75,8 @@ type FetchState =
 export default function ImportPanel() {
   const { t } = useT();
   const [mode, setMode] = useState<Mode>('url');
+  const groupId = useId();
+  const modeButtons = useRef<Record<Mode, HTMLButtonElement | null>>({ url: null, text: null });
   const [url, setUrl] = useState('');
   const [text, setText] = useState('');
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
@@ -319,6 +322,20 @@ export default function ImportPanel() {
 
   const loading = state.kind === 'loading';
 
+  function navigateModes(event: KeyboardEvent<HTMLButtonElement>, current: Mode) {
+    let next: Mode;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowLeft': next = current === 'url' ? 'text' : 'url'; break;
+      case 'Home': next = 'url'; break;
+      case 'End': next = 'text'; break;
+      default: return;
+    }
+    event.preventDefault();
+    handleModeChange(next);
+    modeButtons.current[next]?.focus();
+  }
+
   return (
     <div className="max-w-3xl">
       <header className="mb-6">
@@ -332,83 +349,95 @@ export default function ImportPanel() {
 
       <CustomImportStorageNotice state={customStorage} />
 
-      <div role="tablist" aria-label="Import mode" className="mb-6 flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        <ModeTab active={mode === 'url'} onClick={() => handleModeChange('url')} label={t('import.modeUrl')} />
-        <ModeTab active={mode === 'text'} onClick={() => handleModeChange('text')} label={t('import.modeText')} />
+      <div role="tablist" aria-label={t('import.modeLabel')} className="mb-6 flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        {MODES.map(key => (
+          <button key={key} type="button" role="tab" ref={button => { modeButtons.current[key] = button; }}
+            id={`${groupId}-tab-${key}`} aria-controls={`${groupId}-panel-${key}`}
+            aria-selected={mode === key} tabIndex={mode === key ? 0 : -1}
+            onKeyDown={event => navigateModes(event, key)} onClick={() => handleModeChange(key)}
+            className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              mode === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >{t(key === 'url' ? 'import.modeUrl' : 'import.modeText')}</button>
+        ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="mb-8">
-        {mode === 'url' ? (
-          <label className="block">
-            <span className="text-[13px] font-medium text-gray-700">
-              {t('import.urlLabel')}
-            </span>
-            <div className="mt-2 flex gap-2">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder={t('import.urlPlaceholder')}
-                disabled={loading}
-                className="flex-1 min-w-0 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
-                autoFocus
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>{t('import.fetchPending')}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{t('import.fetchButton')}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
-            </div>
-          </label>
-        ) : (
-          <div>
-            <label className="block">
-              <span className="text-[13px] font-medium text-gray-700">
-                {t('import.textLabel')}
-              </span>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder={t('import.textPlaceholder')}
-                disabled={loading}
-                rows={10}
-                className="mt-2 block w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50 resize-y"
-                autoFocus
-              />
-            </label>
-            <p className="mt-1.5 text-[12px] text-gray-600">{t('import.textHelp')}</p>
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t('import.extractPending')}</span>
-                </>
+      {MODES.map(key => (
+        <div key={key} role="tabpanel" id={`${groupId}-panel-${key}`} aria-labelledby={`${groupId}-tab-${key}`} hidden={mode !== key}>
+          {mode === key && (
+            <form onSubmit={handleSubmit} className="mb-8">
+              {mode === 'url' ? (
+                <label className="block">
+                  <span className="text-[13px] font-medium text-gray-700">
+                    {t('import.urlLabel')}
+                  </span>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder={t('import.urlPlaceholder')}
+                      disabled={loading}
+                      className="flex-1 min-w-0 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>{t('import.fetchPending')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{t('import.fetchButton')}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </label>
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t('import.extractButton')}</span>
-                </>
+                <div>
+                  <label className="block">
+                    <span className="text-[13px] font-medium text-gray-700">
+                      {t('import.textLabel')}
+                    </span>
+                    <textarea
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      placeholder={t('import.textPlaceholder')}
+                      disabled={loading}
+                      rows={10}
+                      className="mt-2 block w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50 resize-y"
+                    />
+                  </label>
+                  <p className="mt-1.5 text-[12px] text-gray-600">{t('import.textHelp')}</p>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>{t('import.extractPending')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{t('import.extractButton')}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
-            </button>
-          </div>
-        )}
-      </form>
+            </form>
+          )}
+        </div>
+      ))}
 
       {state.kind === 'error' && (
         <div className="mb-8 flex items-start gap-2.5 p-4 rounded-xl bg-red-50 border border-red-200">
@@ -449,32 +478,6 @@ export default function ImportPanel() {
         void adoption.prepare(current, captureOwnerToken());
       }} />
     </div>
-  );
-}
-
-function ModeTab({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
-        active
-          ? 'bg-white text-gray-900 shadow-sm'
-          : 'text-gray-600 hover:text-gray-800'
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 

@@ -808,7 +808,9 @@ _PROFILE_ENRICH = {
     # fieldless). Physics: a "Research Interests:" line; Geography: an "Interests"
     # h2; Integrative Biology: a faculty-extra "Research Areas" dt/dd; Nursing: the
     # "Research focus areas" taxonomy buttons.
-    "PHYS": {"research_html_re": r'research_interests-label[^>]*>\s*Research Interests:\s*</span>\s*(.*?)</p>'},
+    "PHYS": {"research_html_re": (
+        r'(?:research_interests-label[^>]*>\s*Research Interests:\s*</span>'
+        r'|<p>\s*<b>\s*Research Interests:\s*</b>)\s*(.*?)</p>')},
     "GEOG": {"research_html_re": r'(?is)<h2[^>]*>\s*Interests\s*</h2>\s*<p>(.*?)</p>'},
     "IBIO": {"research_html_re": r'<dt[^>]*faculty-extra-label[^>]*>\s*Research Areas\s*</dt>\s*<dd[^>]*faculty-extra-value[^>]*>\s*(.*?)\s*</dd>'},
     # Nursing stays broad: only ~2/63 profiles carry the focus-area taxonomy

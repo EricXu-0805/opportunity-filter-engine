@@ -1495,8 +1495,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # A regex bounds just the research line; _clean_keywords splits it.
             m = re.search(sel["research_re"], str(card), re.I | re.S)
             if m:
-                seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
-                research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip()
+                research = _research_html_text(m.group(1))
         if not research and not keywords and sel.get("research_re_text"):
             # Same idea but over the card's rendered TEXT — for patterns whose
             # character classes ([^.]) would trip on dots inside tag attributes
@@ -2057,6 +2056,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _BR_RE = re.compile(r"(?i)<br\s*/?>")
+_NUMERIC_SUP_RE = re.compile(r"<sup>\s*([0-9+-]+)\s*</sup>", re.I)
+_SUPERSCRIPT = str.maketrans("0123456789+-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻")
 
 # A research-area taxonomy is usually short (a handful of controlled terms); cap
 # the per-profile selector harvest so an over-broad selector that accidentally
@@ -2321,6 +2322,16 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
             continue  # a later label on the same page may still be the real one
         return ([], body)
     return ([], "")
+
+
+def _research_html_text(fragment: str) -> str:
+    # The regex captured serialized markup. Keep line-break delimiters and
+    # decode once after stripping tags, just as readers see the text.
+    separated = _BR_RE.sub("; ", fragment)
+    separated = _NUMERIC_SUP_RE.sub(lambda m: m[1].translate(_SUPERSCRIPT), separated)
+    text = " ".join(html.unescape(_HTML_TAG_RE.sub(" ", separated)).split())
+    # Some campus directories clip their excerpt inside a nonbreaking space.
+    return re.sub(r",?&(?:n|nb|nbs|nbsp)\.{3}$", "...", text)
 
 
 def _wp_text(raw: str) -> str:
@@ -2775,8 +2786,7 @@ def _enrich_profile(
         # derived-keyword path cleans + splits it through the same DQ gate).
         m = re.search(enrich["research_html_re"], str(soup), re.I | re.S)
         if m:
-            seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
-            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip().rstrip(".").strip()
+            kw = _research_html_text(m.group(1)).rstrip(".").strip()
     if not kw and enrich.get("research_re"):
         m = re.search(enrich["research_re"], body, re.I)
         if m:

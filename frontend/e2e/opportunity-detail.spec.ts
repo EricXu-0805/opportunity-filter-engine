@@ -214,6 +214,9 @@ test.describe('Target-A journey: Match -> Detail -> Shortlist -> reopen -> reloa
     await goToResults(page);
     const firstCard = page.locator('[id^="match-card-"]').first();
     const titleLink = firstCard.locator('h3 a').first();
+    // The card renders before the guest's return session is saved. Capture
+    // the complete result link so the click and assertion use the same visit.
+    await expect(titleLink).toHaveAttribute('href', /[?&]returnSession=[^&#]+/);
     const hrefA = await titleLink.getAttribute('href');
     expect(hrefA).toMatch(/^\/opportunities\//);
     const titleA = await titleLink.innerText();
