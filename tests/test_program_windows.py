@@ -657,3 +657,58 @@ def test_crisp_and_smu_refresh_only_the_reviewed_opportunities_and_cohorts(monke
     assert merged["application"]["application_url"] == crisp_host
     assert merged["deadline"] == "2027-02-15" and merged["deadline_is_estimate"]
     assert merged["compensation_details"] != "$5,600 stipend" and reviewed_window(merged) is None
+
+
+def test_boston_stars_student_deadline_and_current_application_destination(tmp_path):
+    from src.collectors.base import RawOpportunity
+    from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+    from src.program_windows import STARS_HOST, STARS_OLD_HOST
+
+    prefix = "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars"
+
+    def directory(suffix, date_text, link, university="Boston University"):
+        raw = RawOpportunity(
+            "uiuc_sro", "https://researchops.web.illinois.edu/?page=4",
+            "Summer Training as Research Scholars", "", prefix + suffix,
+            organization=university, extra_fields={"deadline_raw": date_text, "program_url": link},
+        )
+        return raw_to_normalized(raw)
+
+    campus = _row("bu", "stars")
+    assert campus["id"] == "bu-bbc659c6ac92"
+    current = directory("-stars-program", "2/1/27", STARS_HOST)
+    alias = directory("-program-stars", "Anticipated 2/1/27", STARS_OLD_HOST)
+    for row in (campus, current, alias):
+        assert row["deadline"] == "2027-01-15" and row["is_rolling"] is False
+        assert row["deadline_is_estimate"] is False and row["application"]["application_url"] == STARS_HOST
+        quote = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]["quotes"]["deadline"]
+        assert quote["source_url"] == STARS_HOST and "11:59pm" in quote["text"]
+        first = copy.deepcopy(row)
+        apply_program_window(row)
+        assert row == first
+    for row, anticipated in ((current, False), (alias, True)):
+        assert row["metadata"]["superseded_directory_deadline"] == {
+            "date": "2027-02-01", "anticipated": anticipated, "source_url": row["url"],
+        }
+
+    changed = directory("-stars-program", "2/1/28", STARS_HOST)
+    stored = tmp_path / "stars.json"
+    stored.write_text(json.dumps([current]))
+    merge_into_processed([changed], str(stored))
+    [new] = json.loads(stored.read_text())
+    assert new["deadline"] == "2028-02-01" and reviewed_window(new) is None
+    for unmatched in (
+        directory("-program", "2/1/27", STARS_OLD_HOST),
+        directory("-stars-program", "2/1/27", "https://www.example.edu/other"),
+        directory("-stars-program", "2/1/27", STARS_HOST, university="Another school"),
+        {**campus, "deadline": "2028-01-10"},
+    ):
+        assert reviewed_window(unmatched) is None
+
+
+    stored.write_text(json.dumps([current]))
+    changed_host = directory("-stars-program", "2/1/27", "https://www.example.edu/another-program")
+    merge_into_processed([changed_host], str(stored))
+    [new] = json.loads(stored.read_text())
+    assert reviewed_window(new) is None and new["deadline"] == "2027-02-01"
+    assert new["application"]["application_url"] == "https://www.example.edu/another-program"
