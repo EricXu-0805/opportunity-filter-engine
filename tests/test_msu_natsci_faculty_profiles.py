@@ -32,3 +32,25 @@ def test_directory_id_links_the_person_and_keeps_the_observed_roster(person_id, 
     assert normalized["url"] == destination
     assert normalized["source_url"] == ROSTER
     assert normalized["metadata"]["faculty_title"] == "Associate Professor"
+
+
+@pytest.mark.parametrize(("title", "accepted"), [
+    ("Red Cedar Distinguished Prof", True),
+    ("Red Cedar Distinguished Asc Prof", True),
+    ("Geological Sciences Endow Prof", True),
+    ("Geological Sci Endow Assc Prof", True),
+    ("Red Cedar Distinguished Prof Emeritum", False),
+    ("Visiting Geological Sciences Endow Prof", False),
+    ("Faculty", False),
+    ("Assistant to the Prof", False),
+])
+def test_msu_named_professorship_is_a_substantive_appointment(title, accepted):
+    record = {
+        "id": 12345,
+        "name": "Avery Sample",
+        "organizationTitles": [{"organizationId": 6, "title": title}],
+    }
+    people = faculty_graph._json_dir_records(BMB, BMB["json_dir"], [record])
+    assert bool(people) is accepted
+    if accepted:
+        assert people[0]["title"] == title
