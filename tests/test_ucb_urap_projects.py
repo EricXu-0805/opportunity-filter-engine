@@ -480,6 +480,7 @@ def test_list_failure_is_distinct_from_a_supported_seasonal_zero(monkeypatch):
 
 @pytest.mark.parametrize("second_page, expected", [
     (None, "fetch failed"), (LIST_FIXTURE, "did not report a result count"),
+    ("Showing , projects out of 3 found.", "did not report a result count"),
     ("Showing 1 project out of 3 found.", "read 0 distinct new IDs"),
     ("Showing 0 projects out of 3 found.", "only 2 distinct IDs"),
 ])

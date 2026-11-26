@@ -74,7 +74,7 @@ _FACULTY_RE = re.compile(r"^\s*(.+?)\s+-\s+(.+?),\s+(.+?)\s*$")
 _HOURS_RE = re.compile(r"Weekly Hours:\s*([^\n]+?)(?:\s{2,}|\n|Location:|$)", re.IGNORECASE)
 _LOCATION_RE = re.compile(r"Location:\s*([^\n]+?)(?:\s{2,}|\n|$)", re.IGNORECASE)
 _STATUS_RE = re.compile(r"Status:\s*([^\n]+?)(?:\s{2,}|\n|Weekly Hours:|$)", re.IGNORECASE)
-_LIST_COUNT = re.compile(r"\bShowing ([0-9,]+) projects? out of ([0-9,]+) found\.", re.I)
+_LIST_COUNT = re.compile(r"\bShowing (\d+(?:,\d{3})*) projects? out of (\d+(?:,\d{3})*) found\.", re.I)
 _ID_RE = re.compile(r"id=([\w-]+)")
 
 KEYWORD_BANK = [
