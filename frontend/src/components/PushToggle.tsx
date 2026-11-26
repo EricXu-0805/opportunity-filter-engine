@@ -84,7 +84,11 @@ export default function PushToggle() {
       } else {
         const ok = await subscribeToPush(vapidKey!, token);
         if (!isTokenOwnerStillCurrent(token)) return;
-        setObservation({ epoch: token.epoch, status: ok ? 'subscribed' : 'default' });
+        if (ok) setObservation({ epoch: token.epoch, status: 'subscribed' });
+        else {
+          setObservation(null);
+          setReadAttempt(attempt => attempt + 1);
+        }
       }
     } catch (err) {
       // A refusal after a switch paints nothing.
@@ -105,7 +109,7 @@ export default function PushToggle() {
   return (
     <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
       {failedEpoch === ownerEpoch && (
-        <span role="alert" className="text-[11px] text-red-600">{t('common.error')}</span>
+        <span role="alert" className="text-[11px] text-red-600">{t(subscribed ? 'common.error' : 'dashboard.push.enableFailed')}</span>
       )}
       <button
         type="button"

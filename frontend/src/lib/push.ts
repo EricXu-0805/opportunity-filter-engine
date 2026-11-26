@@ -56,7 +56,7 @@ export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken)
   if (permission !== 'granted') return false;
 
   const deviceId = await getDeviceId();
-  if (!deviceId) return false;
+  if (!deviceId) throw new Error('No account is available to save the notification subscription');
   // The permission dialog above is a long, real window: the browser can be a
   // different account by the time it closes. Bind the endpoint to whoever clicked.
   if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
@@ -76,7 +76,7 @@ export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken)
   const { endpoint } = sub;
   const p256dh = json.keys?.p256dh ?? '';
   const auth = json.keys?.auth ?? '';
-  if (!endpoint || !p256dh || !auth) return false;
+  if (!endpoint || !p256dh || !auth) throw new Error('The browser returned an incomplete notification subscription');
   if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
 
   const { error } = await supabase
@@ -85,12 +85,7 @@ export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken)
       { device_id: deviceId, endpoint, p256dh, auth },
       { onConflict: 'device_id,endpoint' },
     );
-  if (error) {
-    if (error.message.includes('does not exist')) {
-      return false;
-    }
-    return false;
-  }
+  if (error) throw new Error(`Could not save the notification subscription: ${error.message}`);
   return true;
 }
 

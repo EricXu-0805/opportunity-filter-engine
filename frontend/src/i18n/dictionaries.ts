@@ -5135,6 +5135,7 @@ export const en = {
       unreadable: "Couldn't check notification status.",
       on: 'Notifications on',
       enable: 'Enable notifications',
+      enableFailed: "Couldn't turn on notifications. Try again.",
     },
     summary: {
       title: 'Your activity',
@@ -10537,6 +10538,7 @@ export const zh = {
     unknownTarget: '未知机会',
     push: {
       unreadable: '暂时无法读取通知状态。',
+      enableFailed: '未能开启通知，请重试。',
       on: '通知已开启',
       enable: '开启通知',
     },

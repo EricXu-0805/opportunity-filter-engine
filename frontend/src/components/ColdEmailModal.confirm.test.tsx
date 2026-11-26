@@ -54,11 +54,12 @@ vi.mock('@/lib/api', () => ({
 
 // The notification offer only appears for a device that could actually
 // receive one, so these tests drive the browser's push state directly.
+const subscribeToPush = vi.fn(async () => true);
 let pushStatus: 'default' | 'subscribed' | 'denied' | 'unsupported' = 'default';
 vi.mock('@/lib/push', () => ({
   isPushSupported: () => pushStatus !== 'unsupported',
   getPushStatus: async () => pushStatus,
-  subscribeToPush: async () => true,
+  subscribeToPush: () => subscribeToPush(),
   unsubscribeFromPush: async () => true,
 }));
 
@@ -1154,6 +1155,21 @@ describe('offering notifications once a reminder exists', () => {
 
     expect(await screen.findByText('coldEmail.reminderEnablePush')).toBeInTheDocument();
     expect(screen.getByText('coldEmail.reminderInAppOnly')).toBeInTheDocument();
+  });
+
+  it('keeps the saved reminder and lets the reader retry a failed notification registration', async () => {
+    await reachReminderStrip();
+    fireEvent.click(screen.getByText('coldEmail.remind3'));
+    await until(() => updateCalls.length === 1, 'the reminder write started');
+    await settle(updateCalls[0], () => updateCalls[0].resolve());
+    const offer = await screen.findByText('coldEmail.reminderEnablePush');
+    subscribeToPush.mockRejectedValueOnce(new Error('registration failed'));
+    fireEvent.click(offer);
+    expect(await screen.findByText('dashboard.push.enableFailed')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('coldEmail.reminderEnablePush'));
+    await waitFor(() => expect(screen.queryByText('coldEmail.reminderEnablePush')).toBeNull());
+    expect(screen.queryByText('dashboard.push.enableFailed')).toBeNull();
+    expect(updateCalls).toHaveLength(1);
   });
 
   it('stays quiet when the device is already subscribed', async () => {
