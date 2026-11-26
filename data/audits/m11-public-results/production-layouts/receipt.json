@@ -1,0 +1,48 @@
+{
+  "time": "2026-11-26T09:29:54.587546+00:00",
+  "files": [
+    {
+      "fixture": "resume-layouts.pdf",
+      "revision": 1,
+      "chars_in_reopened_profile": 1621,
+      "sha256": "97c13d8ca8f282e0e051dacdeb372faa887b268e07048a92b42c9c31e1cd6b22",
+      "courses_visible_after_reopen": [
+        "Biomedical Imaging",
+        "Differential Equations",
+        "Fluid Mechanics",
+        "Signals and Systems"
+      ],
+      "all_old_source_text_fields_matched": true,
+      "tail_publication_and_skills_after_8000": false
+    },
+    {
+      "fixture": "resume-boundaries.pdf",
+      "revision": 2,
+      "chars_in_reopened_profile": 5877,
+      "sha256": "be5612059a2edde10438366812006b8c43e73e9a0774cc2dc0c09a7c51938847",
+      "courses_visible_after_reopen": [
+        "Algorithms",
+        "Computer Vision",
+        "Database Systems",
+        "Linear Algebra",
+        "Operating Systems"
+      ],
+      "all_old_source_text_fields_matched": true,
+      "tail_publication_and_skills_after_8000": false
+    },
+    {
+      "fixture": "long-english.pdf",
+      "revision": 3,
+      "chars_in_reopened_profile": 13898,
+      "sha256": "3bb1c18eb9dca817e202522bceae24b45926679d1ce7e9304d35ba31e9fe36b3",
+      "courses_visible_after_reopen": [
+        "Discrete Mathematics",
+        "Text Mining"
+      ],
+      "all_old_source_text_fields_matched": false,
+      "tail_publication_and_skills_after_8000": true
+    }
+  ],
+  "frontend_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "anonymous_accounts": 1
+}
