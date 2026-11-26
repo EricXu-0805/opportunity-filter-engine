@@ -1,0 +1,51 @@
+{
+  "observed_utc": "2026-11-26T12:37:47.203452+00:00",
+  "browser_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45821233357",
+  "original_id": "caltech-acdbfe29c21d",
+  "production_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "observations": {
+    "product": {
+      "url": "https://joinalab.com/opportunities/caltech-acdbfe29c21d",
+      "heading": "LIGO SURF (NSF REU site) \u2014 Caltech at LIGO Laboratory (Caltech/MIT) \u00b7 JoinALab",
+      "advertised_foreign_institutions": true,
+      "rolling_detail": true,
+      "structured_deadline_missing": true
+    },
+    "official_host": {
+      "url": "https://ligosurf.caltech.edu/apply",
+      "linked_routes": [
+        "US_ETAP",
+        "India"
+      ]
+    },
+    "US_ETAP": {
+      "url": "https://etap.nsf.gov/award/8325/opportunity/12125",
+      "opens": "2026-11-04",
+      "application_deadline": "2027-01-15",
+      "eligible_status": [
+        "US citizen",
+        "US national",
+        "permanent resident"
+      ]
+    },
+    "India": {
+      "url": "https://www.gw.iucaa.in/ligo-surf-program/",
+      "application_deadline": "2027-01-05",
+      "references_deadline": "2027-01-10",
+      "scope": "undergraduates at institutions in India"
+    }
+  },
+  "replay": {
+    "corpus": 149775,
+    "national_original_ids": 14139,
+    "records_changed": 1,
+    "id_order_preserved": true,
+    "original_first_seen_preserved": true,
+    "verified_detail_returned": 200,
+    "window_has_common_deadline": false,
+    "rolling": false,
+    "separate_required_dates_shown": 3,
+    "unchanged_school_counts": 115,
+    "tests_passed": 588
+  }
+}
