@@ -1,0 +1,49 @@
+{
+  "issue": "M52",
+  "environment": "Isolated real GoTrue, PostgREST, PostgreSQL and Chromium",
+  "checked_at": "2026-11-26T10:09:05Z",
+  "product_commit": "1bc0ea0c64e29d807048b90de5cfe0abd740a1d5",
+  "product_pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1325",
+  "production_migration_applied": false,
+  "production_accepted": false,
+  "existing_v1": {
+    "url_format": "/?share=encoded-v1",
+    "sender_edit_changes_issued_link": false,
+    "decline_account_writes": 0,
+    "recipient_original_private_fields_retained": true,
+    "shared_skill_source": "shared",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45794388377/job/139821186460"
+  },
+  "managed": {
+    "url_format": "/share#opaque-token",
+    "sender_school": "uiuc",
+    "recipient_school": "purdue",
+    "selected_fields": [
+      "interests",
+      "skills"
+    ],
+    "decline_account_writes": 0,
+    "updated_version_representation": "same URL; a stale open preview requests a second acceptance",
+    "recipient_revision": 2,
+    "conflict_choices": 1,
+    "selected_skill_source": "shared",
+    "retained_recipient_fields": [
+      "name",
+      "home_school",
+      "college",
+      "major",
+      "resume_text"
+    ],
+    "revoked_open_preview_accepted": false,
+    "revoked_link_reopen_available": false,
+    "expired_open_preview_accepted": false,
+    "database_check": "saved-field projection; permanent author; cross-account row visibility; simultaneous create replay; replacement; version recheck; idempotent and final revocation; timed expiry",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45798046264/job/139833689800",
+    "migration_replay": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45797481444/job/139831979517"
+  },
+  "remaining": [
+    "production operator applies 20261126120000",
+    "deployment has managed authoring enabled",
+    "exercise two designated signed-in accounts on the deployed release"
+  ]
+}
