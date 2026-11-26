@@ -5296,3 +5296,50 @@ def test_uconn_political_science_subjects_precede_the_persons_doctoral_credentia
     _position, research, _items, _email, fetched = fg._enrich_profile(
         "https://polisci.uconn.edu/person/avery-sample/", config, expected_name="Avery Sample")
     assert fetched and research == expected
+
+
+def test_research_captured_from_serialized_html_decodes_exactly_one_layer(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.ncsu_faculty import SCHOOL
+
+    fragment = "Policy &amp; evaluation<br/>Temperatures &gt; 10<sup>10</sup>; the literal &amp;amp;"
+    expected = "Policy & evaluation; Temperatures > 10¹⁰; the literal &amp;"
+    profile = BeautifulSoup(
+        f'<main><h1>Avery Sample</h1><div class="ncst-people-person__research-description">'
+        f'<p>{fragment}</p></div></main>', "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: profile)
+    dept = next(d for d in SCHOOL["departments"] if d["short"] == "CHASS")
+    _pos, research, _items, _email, read = fg._enrich_profile(
+        "https://chass.ncsu.edu/people/avery-sample/", dept["profile_enrich"], expected_name="Avery Sample")
+    assert read and research == expected
+
+    card = BeautifulSoup(f'<div class="person"><a href="/avery">Avery Sample</a>'
+                         f'<p class="area">{fragment}</p></div>', "html.parser")
+    spec, = fg._parse_cards(card, {"card": ".person", "name": "a", "link": "a",
+                                   "research_re": r'<p class="area">(.*?)</p>'}, "https://example.edu/")
+    assert spec["research_areas"] == expected
+
+
+def test_research_excerpt_clipped_inside_a_space_keeps_the_source_ellipsis():
+    assert fg._research_html_text("Devices, &amp; input,&amp;nb...") == "Devices, & input..."
+    assert fg._research_html_text("Devices &amp;nbsp; input") == "Devices &nbsp; input"
+
+
+@pytest.mark.parametrize("label", ['<span class="research_interests-label">Research Interests:</span>',
+                                   '<b>Research Interests: </b>'])
+def test_wisconsin_physics_captures_both_observed_profile_labels(monkeypatch, label):
+    from bs4 import BeautifulSoup
+
+    from src.collectors import ucb_common
+    from src.collectors.schools.wisc_faculty import SCHOOL
+
+    profile = BeautifulSoup(f"<main><h1>Avery Sample</h1><p>{label}Software &amp; Computing.</p>"
+                            "<p><b>Website:</b>Other content</p></main>", "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: profile)
+    dept = next(d for d in SCHOOL["departments"] if d["short"] == "PHYS")
+    _, research, _, _, read = fg._enrich_profile(
+        "https://www.physics.wisc.edu/directory/avery-sample/", dept["scrape"]["profile_enrich"],
+        expected_name="Avery Sample")
+    assert read and research == "Software & Computing"
