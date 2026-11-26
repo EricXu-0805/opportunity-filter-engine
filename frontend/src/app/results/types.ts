@@ -89,6 +89,13 @@ export type TFunc = (
   vars?: Record<string, string | number>,
 ) => string;
 
+export function deadlineFilterLabel(value: DeadlineFilterValue, t: TFunc): string {
+  const suffixes: Record<DeadlineFilterValue, string> = {
+    '': 'All', rolling: 'Rolling', '7': '7', '14': '14', '30': '30', passed: 'Passed',
+  };
+  return t(`results.filters.deadline${suffixes[value]}`);
+}
+
 // Known source keys map to a translated label; anything else (newer/RSS
 // sources) is humanized from the key so it still reads cleanly in the filter.
 const SOURCE_LABEL_KEY: Record<string, string> = {

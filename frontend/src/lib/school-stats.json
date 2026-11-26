@@ -291,9 +291,9 @@
     },
     "msu": {
       "listing_count": 6,
-      "faculty_contact_count": 1033,
+      "faculty_contact_count": 1043,
       "unreviewed_count": 0,
-      "total_count": 1039
+      "total_count": 1049
     },
     "ncsu": {
       "listing_count": 5,
@@ -500,10 +500,10 @@
       "total_count": 747
     },
     "ucsd": {
-      "listing_count": 32,
+      "listing_count": 30,
       "faculty_contact_count": 1454,
       "unreviewed_count": 0,
-      "total_count": 1486
+      "total_count": 1484
     },
     "udel": {
       "listing_count": 3,
