@@ -72,7 +72,7 @@ describe('complete résumé master editor', () => {
     const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
     await waitFor(() => expect(propose).toBeEnabled());
     fireEvent.click(propose);
-    const guidance = screen.getByText('Review source lines without a matching field');
+    const guidance = screen.getByText('Review source text without a matching field');
     fireEvent.click(guidance);
     expect(within(guidance.parentElement!).getByText(citation)).toBeVisible();
     expect(within(guidance.parentElement!).getByText(/Add any missing details/)).toBeVisible();
@@ -85,7 +85,7 @@ describe('complete résumé master editor', () => {
     const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
     await waitFor(() => expect(propose).toBeEnabled());
     fireEvent.click(propose);
-    expect(screen.queryByText('Review source lines without a matching field')).toBeNull();
+    expect(screen.queryByText('Review source text without a matching field')).toBeNull();
     expect(screen.getByText('Added 1 candidate quoted from your résumé. Confirm it before it appears in the preview.'))
       .toHaveAttribute('role', 'status');
   });

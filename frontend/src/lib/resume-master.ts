@@ -422,12 +422,21 @@ export function unmatchedResumeLines(raw: string, signature: string, facts: Resu
     source.kind === 'resume' && source.signature === signature && points.slice(source.start, source.end).join('') === source.quote
       ? [source] : []).sort((a, b) => a.start - b.start);
   let span = 0;
-  return sourceLines(points).filter(line => {
-    const text = line.text.trim();
-    if (!/[\p{L}\p{N}]/u.test(text) || PUBLICATIONS_HEADING.test(text) || resumeSectionHeading(text)) return false;
-    while (span < spans.length && spans[span].end <= line.start) span++;
-    return span === spans.length || spans[span].start >= line.start + Array.from(line.text).length;
-  });
+  const missing: SourceLine[] = [];
+  for (const line of sourceLines(points)) {
+    let start = line.start;
+    // Columns and bullet-separated facts can share a physical PDF line. A
+    // matched email in one column does not cover unrecognised work in another.
+    for (const part of line.text.split(/([•|｜\t]|\s·\s)/u)) {
+      const end = start + Array.from(part).length;
+      const text = part.trim();
+      while (span < spans.length && spans[span].end <= start) span++;
+      if (/[\p{L}\p{N}]/u.test(text) && !PUBLICATIONS_HEADING.test(text) && !resumeSectionHeading(text)
+        && (span === spans.length || spans[span].start >= end)) missing.push({ start, text: part });
+      start = end;
+    }
+  }
+  return missing;
 }
 
 interface ProposedItem { fields: Partial<Record<string, ResumeFact>>; kind?: ResumeActivityItem['kind'] }

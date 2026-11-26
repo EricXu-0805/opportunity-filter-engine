@@ -234,8 +234,8 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
                 `已从简历原文添加 ${proposed} 条待确认内容，逐条确认后才会进入预览。`)
               : copy('No new candidates found in your résumé.', '简历中没有新的待确认内容。')}</p>}
           {currentReview && currentReview.lines.length > 0 && <details className="mt-3 rounded-xl border border-amber-200 p-3">
-            <summary className="cursor-pointer text-sm font-medium">{copy('Review source lines without a matching field', '核对尚未匹配字段的原文')}</summary>
-            <p className="my-2 text-sm">{copy('These lines had no quoted field in the last scan. Add any missing details in their section below.',
+            <summary className="cursor-pointer text-sm font-medium">{copy('Review source text without a matching field', '核对尚未匹配字段的原文')}</summary>
+            <p className="my-2 text-sm">{copy('This text had no quoted field in the last scan. Add any missing details in their section below.',
               '上次提取时，下列原文未对应到字段。请在下方相应章节补充遗漏的内容。')}</p>
             <pre tabIndex={0} className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{currentReview.lines.map(line => line.text).join('\n')}</pre>
           </details>}

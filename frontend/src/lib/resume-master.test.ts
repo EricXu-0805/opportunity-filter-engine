@@ -588,3 +588,13 @@ it('identifies uncovered original lines at their actual Unicode positions and ig
   for (const line of lines) expect(text.slice(line.start, line.start + Array.from(line.text).length).join('')).toBe(line.text);
   expect(unmatchedResumeLines(source, '0'.repeat(64), facts).map(line => line.text)).toContain('Title: A synthetic study 🧪');
 });
+
+it('keeps an unmatched adjacent column when the same line has a sourced email', async () => {
+  const source = 'contact@example.com | Wrote the synthetic field guide.';
+  const digest = await sourceDigest(source);
+  const email = 'contact@example.com';
+  const facts = [fact('email', email, { source: { kind: 'resume', signature: digest, quote: email, start: 0, end: email.length } })];
+  const missing = unmatchedResumeLines(source, digest, facts);
+  expect(missing.map(line => line.text.trim())).toEqual(['Wrote the synthetic field guide.']);
+  expect(source.slice(missing[0].start)).toBe(missing[0].text);
+});
