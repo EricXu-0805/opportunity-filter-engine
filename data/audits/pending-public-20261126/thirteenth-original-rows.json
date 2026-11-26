@@ -1,7 +1,7 @@
 {
   "base": "3113fde9d309091a7cc2b8050a2ccc0d7013b92d",
-  "candidate": "45cb9c13b7c0b5590a7bbc928d9b632cf28b3c35",
-  "tree": "7f18b210061b091ebc5d03cdfa4587174e8bd4d5",
+  "candidate": "71d6f51a38d0bb7d133855e066998489388c1797",
+  "tree": "78240494889d95c7c28f3718ead314a4991269fc",
   "school_rows": {
     "ucr": {
       "pull_request": 1399,
@@ -368,25 +368,31 @@
       }
     },
     "bu": {
-      "pull_request": 1403,
-      "source_head": "09c7038832235e9808a4e8fe698e6ad2d6494792",
+      "pull_request": 1407,
+      "source_head": "52bfc72ccf92409196d28286fa08740035874ad5",
       "total_original_ids": 1968,
       "removed": [],
       "added": [],
       "changed_original_ids": {
         "bu-bbc659c6ac92": {
           "changed_fields": [
+            "application",
+            "audience",
             "deadline",
             "deadline_is_estimate",
-            "is_rolling"
+            "eligibility",
+            "is_rolling",
+            "opportunity_type"
           ],
           "metadata": []
         }
-      }
+      },
+      "calendar_source_pull_request": 1403,
+      "retained_calendar_head": "09c7038832235e9808a4e8fe698e6ad2d6494792"
     },
     "national": {
-      "pull_request": 1403,
-      "source_head": "09c7038832235e9808a4e8fe698e6ad2d6494792",
+      "pull_request": 1407,
+      "source_head": "52bfc72ccf92409196d28286fa08740035874ad5",
       "total_original_ids": 14139,
       "removed": [],
       "added": [],
@@ -396,23 +402,30 @@
             "application",
             "deadline",
             "deadline_is_estimate",
+            "eligibility",
             "metadata"
           ],
           "metadata": [
             "deadline_note",
+            "inferred_fields",
             "superseded_directory_deadline"
           ]
         },
         "sro-60f60fbd": {
           "changed_fields": [
+            "application",
             "deadline",
+            "eligibility",
             "metadata"
           ],
           "metadata": [
+            "inferred_fields",
             "superseded_directory_deadline"
           ]
         }
-      }
+      },
+      "calendar_source_pull_request": 1403,
+      "retained_calendar_head": "09c7038832235e9808a4e8fe698e6ad2d6494792"
     }
   }
 }
