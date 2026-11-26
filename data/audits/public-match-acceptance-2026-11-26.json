@@ -317,6 +317,64 @@
       ],
       "ai_refined": false,
       "scope": "Production result payload; the visual card in a real Amherst freshman session and production lane saturation were not exercised."
+    },
+    {
+      "case": "M188/UIUC cohomology word boundary",
+      "request": {
+        "profile": {
+          "name": "probe",
+          "school": "UIUC",
+          "home_school": "uiuc",
+          "year": "junior",
+          "major": "Mathematics",
+          "college": "College of Liberal Arts & Sciences",
+          "secondary_interests": [],
+          "international_student": false,
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "desired_fields": [
+            "algebraic geometry",
+            "cohomology",
+            "commutative algebra"
+          ],
+          "hard_skills": [],
+          "coursework": [
+            "MATH 417"
+          ],
+          "experience_level": "beginner",
+          "resume_ready": true,
+          "can_cold_email": true,
+          "research_interests_text": "algebraic geometry, cohomology, commutative algebra",
+          "linkedin_url": "",
+          "github_url": "",
+          "scholar_url": "",
+          "search_weight": 50,
+          "exploring": false,
+          "include_cross_school": false
+        },
+        "view": {
+          "tab": "all",
+          "search_query": "",
+          "today": "2026-11-25"
+        },
+        "page_size": 50,
+        "cursor": null
+      },
+      "id": "faculty-math-39c7e9f7",
+      "position": 9,
+      "rows_on_page": 50,
+      "incorrect_homology_attributions": 0,
+      "fit_reason_keys": [
+        "research_summary",
+        "major_department_aligns",
+        "brand_faculty_university",
+        "lab_also_works",
+        "type_match",
+        "outreach_comfortable"
+      ],
+      "ai_refined": false
     }
   ],
   "public_links": {
@@ -335,5 +393,69 @@
   "prior_work": {
     "M188_berkeley_regression_script": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/124bcddf3/scripts/probe-berkeley-attribution.py",
     "note": "Only the response observations above were replayed by this receipt. Broader offline corpus comparisons and browser-cache behavior are separate evidence."
+  },
+  "georgetown": {
+    "observed_utc": "2026-11-26T05:37:43.226647+00:00",
+    "parser_commit": "f61d755b8f6312d55b9da4781a57ef5f1e5c435c",
+    "source": "https://english.georgetown.edu/people/full-time-faculty-2/",
+    "parsed_cards": 43,
+    "source_ids": 43,
+    "published_active_ids": 43,
+    "in_source_only": [],
+    "in_published_only": [],
+    "distinct_source_profile_urls": 43,
+    "published_generic_directory_ids": [
+      "faculty-georgetown-engl-0b30af59",
+      "faculty-georgetown-engl-0b965fab",
+      "faculty-georgetown-engl-14396d28",
+      "faculty-georgetown-engl-19ef3e36",
+      "faculty-georgetown-engl-1cd68f39",
+      "faculty-georgetown-engl-347f78f1",
+      "faculty-georgetown-engl-34f4f949",
+      "faculty-georgetown-engl-3628e405",
+      "faculty-georgetown-engl-3f3f47fd",
+      "faculty-georgetown-engl-414f6f7a",
+      "faculty-georgetown-engl-42b9eeaa",
+      "faculty-georgetown-engl-4cc038ec",
+      "faculty-georgetown-engl-5574b293",
+      "faculty-georgetown-engl-598b7188",
+      "faculty-georgetown-engl-60a11198",
+      "faculty-georgetown-engl-66c04eaa",
+      "faculty-georgetown-engl-6746abcd",
+      "faculty-georgetown-engl-7aeebe3d",
+      "faculty-georgetown-engl-7b76c532",
+      "faculty-georgetown-engl-888650c1",
+      "faculty-georgetown-engl-912a5304",
+      "faculty-georgetown-engl-95ad177a",
+      "faculty-georgetown-engl-983db631",
+      "faculty-georgetown-engl-a3879e7d",
+      "faculty-georgetown-engl-a58be95d",
+      "faculty-georgetown-engl-a672670d",
+      "faculty-georgetown-engl-a9bfca89",
+      "faculty-georgetown-engl-a9eb9b96",
+      "faculty-georgetown-engl-b072d3d6",
+      "faculty-georgetown-engl-b09a1a61",
+      "faculty-georgetown-engl-b55b14a1",
+      "faculty-georgetown-engl-b6ef30b2",
+      "faculty-georgetown-engl-c3711a29",
+      "faculty-georgetown-engl-c5c27dac",
+      "faculty-georgetown-engl-cbc96696",
+      "faculty-georgetown-engl-d3964c5c",
+      "faculty-georgetown-engl-e1e0eacd",
+      "faculty-georgetown-engl-e6b06bba",
+      "faculty-georgetown-engl-e97a4daf",
+      "faculty-georgetown-engl-eabebde9",
+      "faculty-georgetown-engl-f9d788e9",
+      "faculty-georgetown-engl-fbdd4dd9"
+    ],
+    "original_ids_exact_full_set": true,
+    "last_georgetown_scheduled_publication": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1222",
+    "subsequent_school_refresh": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+    "source_fix": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1249",
+    "duplicate_fix": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1257",
+    "scope": "Live public roster parsed with released rules and compared to the published main shard. Not a new scheduled refresh.",
+    "legacy_id": "faculty-georgetown-engl-9b02f5b4",
+    "current_id": "faculty-georgetown-engl-be9bd333",
+    "legacy_public_detail_observation": "Production API with release scope target-truth-v2 returns legacy ID, actionable false and duplicate_of current ID. Public current record points to its personal faculty page."
   }
 }
