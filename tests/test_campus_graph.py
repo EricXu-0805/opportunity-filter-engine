@@ -170,7 +170,7 @@ def test_splitting_a_config_by_shard_changes_no_record():
 # historical grants and invitation-only programs. A spec newly marked
 # reference_only fails TestSeedNormalization until it is listed here.
 _REFERENCE_PAGES = {
-    "caltech": {"chen_institute"},
+    "caltech": {"chen_institute", "sfp_hub"},
     "cincinnati": {"cincinnati_office_of_research", "cincinnati_undergraduate_research_guide"},
     "clemson": {"clemson_student_research", "clemson_scholar_programs"},
     "duke": {"marine_lab_reu"},
@@ -243,8 +243,12 @@ class TestSeedNormalization:
         for o in all_records:
             window = reviewed_window(o)
             assert o.get("deadline") == (window.closes_on.isoformat() if window else None)
-            chen_directory = o["metadata"]["collector_school"] == "caltech" and o["metadata"]["collector_key"] == "chen_institute"
-            assert o.get("is_rolling") is (window is None and not chen_directory)
+            metadata = o["metadata"]
+            non_rolling_reference = (
+                metadata["collector_school"] == "caltech"
+                and metadata["collector_key"] in {"chen_institute", "sfp_hub"}
+            )
+            assert o.get("is_rolling") is (window is None and not non_rolling_reference)
 
     def test_the_configured_rows_read_as_graduate_only_are_the_listed_ones(self, all_records):
         from src.matcher.ranker import _requires_graduate_standing

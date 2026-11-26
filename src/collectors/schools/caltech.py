@@ -51,21 +51,15 @@ SCHOOL: dict = {
                     "sfp_hub",
                     "Student-Faculty Programs (SFP) — Caltech",
                     "https://sfp.caltech.edu/undergraduate-research/programs",
-                    "Caltech's central office for undergraduate research, administering "
-                    "SURF, SURF@JPL, WAVE Fellows, Amgen Scholars, the visiting-student "
-                    "VURP pathway, exchange programs, and the research communication "
-                    "competitions. More than 90% of Caltech undergraduates "
-                    "do research before graduating, and SFP is the front door: it runs "
-                    "the application systems, mentor matching, seminar programming, and "
-                    "the end-of-summer SURF Seminar Days.",
+                    "Caltech's Student-Faculty Programs office links to individual programs, including "
+                    "SURF, WAVE Fellows, exchanges and academic-year research. Each program publishes "
+                    "its own eligibility, timeline and application instructions.",
                     organization="California Institute of Technology",
                     department="Student-Faculty Programs",
                     lab_or_program="SFP",
-                    compensation="Varies by program",
-                    eligibility_majors=["all"],
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    international_friendly="yes",
-                    deadline_note="Varies by program; SURF closes March 1, WAVE January 9",
+                    preferred_year=[],
+                    reference_only=True,
+                    is_rolling=False,
                     keywords=["undergraduate research", "SURF", "research hub", "summer research", "SFP"],
                 ),
                 program(
@@ -139,7 +133,9 @@ SCHOOL: dict = {
                     "Fellowship to a mentor at another university in the US or abroad. "
                     "Requires attending a fall/winter info session and securing a "
                     "Caltech faculty associate mentor in a similar research area; the "
-                    "standard SURF application, eligibility, and deliverables apply. "
+                    "standard SURF application, eligibility, and deliverables apply. Continuing Caltech "
+                    "undergraduates need at least a 2.0 cumulative GPA, must complete their third term, "
+                    "and must be eligible for fall registration before their project begins. "
                     "SFP cost-shares the award with the external mentor's institution, "
                     "which also covers research costs; students arrange visas, travel, "
                     "and housing. In-person only, excluding locations under State "
@@ -149,11 +145,11 @@ SCHOOL: dict = {
                     lab_or_program="Off-Campus SURF",
                     opportunity_type="summer_program",
                     paid="stipend",
-                    compensation="Standard SURF award ($8,110 in 2026), cost-shared with host",
+                    compensation="Award shared by SFP and the host mentor; confirm the mentor’s contribution before applying",
                     eligibility_majors=["all"],
-                    preferred_year=["sophomore", "junior", "senior"],
+                    preferred_year=[],
                     international_friendly="yes",
-                    deadline_note="SURF cycle — March 1; info session attendance required",
+                    deadline_note="The standard SURF application also covers off-campus projects. Attend an off-campus information session.",
                     keywords=["off-campus", "research abroad", "SURF", "external mentor"],
                 ),
                 program(
@@ -161,6 +157,7 @@ SCHOOL: dict = {
                     "SURF Exchange Program (University of Iceland) — Caltech",
                     "https://sfp.caltech.edu/undergraduate-research/programs/exchange_programs",
                     "SFP-administered research exchange with the University of Iceland. "
+                    "Continuing Caltech sophomores, juniors and non-graduating seniors with a cumulative GPA of at least 2.5 are eligible. "
                     "Caltech applicants submit an application, personal statement, two "
                     "faculty recommendations, and transcript, interview in March, and "
                     "file a project plan with the host mentor by mid-May; the summer "
@@ -175,7 +172,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="SURF-level support; student covers travel/visa/housing",
                     eligibility_majors=["all"],
-                    preferred_year=["sophomore", "junior"],
+                    preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="yes",
                     deadline_note="Application due by March 1, 2027, 5:00 pm",
                     keywords=["exchange", "Iceland", "international research", "SURF"],

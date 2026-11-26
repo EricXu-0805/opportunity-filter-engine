@@ -24,6 +24,7 @@ class ProgramWindow:
     opens_quote: str = ""
     zone: str = ""
     opens_text: str = ""  # the opening date as the page writes it
+    preserve_other_deadlines: bool = False
 
     @property
     def opens_at(self) -> datetime | None:
@@ -93,6 +94,14 @@ WINDOWS: dict[tuple[str, str], ProgramWindow] = {
     ("caltech", "surf"): ProgramWindow(
         _SFP + "surf", _SFP + "surf/application_information", _REVIEWED, date(2027, 2, 22),
         "SURF applications are due on February 22.",
+    ),
+    ("caltech", "off_campus_surf"): ProgramWindow(
+        _SFP + "off-campus-surf", _SFP + "surf/application_information", date(2026, 11, 26), date(2027, 2, 22),
+        "SURF applications are due on February 22.", preserve_other_deadlines=True,
+    ),
+    ("caltech", "surf_exchange_iceland"): ProgramWindow(
+        _SFP + "exchange_programs", _SFP + "exchange_programs", date(2026, 11, 26), date(2027, 3, 1),
+        "due by March 1, 2027, 5:00 pm.", preserve_other_deadlines=True,
     ),
     ("caltech", "surf_jpl"): ProgramWindow(
         _SFP + "surfjpl", _SFP + "surfjpl/application-information", _REVIEWED, date(2027, 2, 22),
@@ -177,6 +186,8 @@ def reviewed_window(record: object) -> ProgramWindow | None:
         return None
     window = WINDOWS.get((school, key))
     if window is None or record.get("url") != window.url or record.get("source_url") != window.url:
+        return None
+    if window.preserve_other_deadlines and record.get("deadline") not in (None, "", window.closes_on.isoformat()):
         return None
     return window
 

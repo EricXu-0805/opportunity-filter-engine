@@ -378,3 +378,28 @@ def test_chen_institute_remains_a_reference_while_the_two_fellowships_have_separ
     assert not timing["explicit"].get("application_window")
     assert _row("caltech", "wave_fellows")["deadline"] == "2027-01-08"
     assert _row("caltech", "surf")["deadline"] == "2027-02-22"
+
+
+@pytest.mark.parametrize("key, close", [
+    ("off_campus_surf", "2027-02-22"),
+    ("surf_exchange_iceland", "2027-03-01"),
+])
+def test_caltech_surf_options_keep_their_own_application_and_cycle(key, close):
+    program = _row("caltech", key)
+    assert program["deadline"] == close
+    assert not program["is_rolling"]
+    assert evidence.target_truth(program).actionable
+
+    for other_cycle in ("2026-02-15", "2028-03-01"):
+        program["deadline"] = other_cycle
+        assert reviewed_window(program) is None
+        apply_program_window(program)
+        assert program["deadline"] == other_cycle
+
+
+def test_caltech_sfp_index_links_to_independent_programs():
+    index = _row("caltech", "sfp_hub")
+    assert evidence.target_truth(index).reference_only
+    assert not index["is_rolling"]
+    assert not index["application"]["application_url"]
+    assert not index["eligibility"]["eligibility_text_raw"]
