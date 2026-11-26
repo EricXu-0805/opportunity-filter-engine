@@ -2,6 +2,7 @@ import { Shield, Mail, Globe, Linkedin, GraduationCap, Contact } from 'lucide-re
 import { getServerT } from '@/i18n/server';
 import { selfReferencingMetadata } from '@/lib/site';
 import { WalkthroughSection } from '@/app/home/WalkthroughSection';
+import { WalkthroughDemo } from './WalkthroughDemo';
 
 const STACK = [
   { label: 'Next.js 16', categoryKey: 'about.stackCategories.frontend' },
@@ -59,6 +60,7 @@ export default async function AboutPage() {
           "how it works" for About — the wider band gives the tour room. */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
         <WalkthroughSection />
+        <WalkthroughDemo />
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">

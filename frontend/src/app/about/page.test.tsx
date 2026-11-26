@@ -44,6 +44,17 @@ describe('About page', () => {
     expect(screen.getByText('about.author')).toBeInTheDocument();
   });
 
+  it('opens the matching demo on request with playback controls and both caption tracks', async () => {
+    const { container } = render(await AboutPage());
+    const video = container.querySelector('video');
+    expect(video).toHaveAttribute('controls');
+    expect(video).toHaveAttribute('preload', 'none');
+    expect(video?.closest('details')).not.toHaveAttribute('open');
+    expect(video?.querySelector('source')).toHaveAttribute('src', '/demo/student-match.mp4');
+    expect(Array.from(video!.querySelectorAll('track'), track => track.srclang)).toEqual(['en', 'zh']);
+    expect(screen.getByRole('link', { name: 'Start my match', hidden: true })).toHaveAttribute('href', '/');
+  });
+
   it('links the author\'s own profiles beside the email and website', async () => {
     render(await AboutPage());
     expect(screen.getByRole('link', { name: 'about.websiteLabel' })).toHaveAttribute('rel', 'author');
