@@ -1,0 +1,24 @@
+name: Record the four original research detail pages before batch 15
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/b15-four-research-before.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0 requests
+      - run: python -u scripts/verify_b15_four_research_before.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: b15-four-before
+          path: /tmp/ofe-b15-four-before.json
