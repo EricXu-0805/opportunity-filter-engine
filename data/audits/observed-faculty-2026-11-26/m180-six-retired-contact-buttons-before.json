@@ -12,7 +12,9 @@
       "visible_inactive_banner": false,
       "draft_email_buttons": 1,
       "apply_now_buttons": 0,
-      "retry_required": false
+      "retry_required": false,
+      "draft_button_visible": true,
+      "draft_button_enabled": true
     },
     {
       "original_id": "faculty-ncsu-chass-dcb028fb",
@@ -21,7 +23,9 @@
       "visible_inactive_banner": false,
       "draft_email_buttons": 1,
       "apply_now_buttons": 0,
-      "retry_required": false
+      "retry_required": false,
+      "draft_button_visible": true,
+      "draft_button_enabled": true
     },
     {
       "original_id": "faculty-ncsu-chass-ff4905cc",
@@ -30,7 +34,9 @@
       "visible_inactive_banner": false,
       "draft_email_buttons": 1,
       "apply_now_buttons": 0,
-      "retry_required": false
+      "retry_required": false,
+      "draft_button_visible": true,
+      "draft_button_enabled": true
     },
     {
       "original_id": "faculty-ncsu-chass-38b191e6",
@@ -39,7 +45,9 @@
       "visible_inactive_banner": false,
       "draft_email_buttons": 1,
       "apply_now_buttons": 0,
-      "retry_required": false
+      "retry_required": false,
+      "draft_button_visible": true,
+      "draft_button_enabled": true
     },
     {
       "original_id": "faculty-ncsu-chass-98436171",
@@ -48,7 +56,9 @@
       "visible_inactive_banner": false,
       "draft_email_buttons": 1,
       "apply_now_buttons": 0,
-      "retry_required": false
+      "retry_required": false,
+      "draft_button_visible": true,
+      "draft_button_enabled": true
     },
     {
       "original_id": "faculty-ncsu-chass-acb2eb75",
@@ -57,7 +67,10 @@
       "visible_inactive_banner": false,
       "draft_email_buttons": 1,
       "apply_now_buttons": 0,
-      "retry_required": false
+      "retry_required": false,
+      "draft_button_visible": true,
+      "draft_button_enabled": true
     }
-  ]
+  ],
+  "button_interactivity_rechecked_utc": "2026-11-26T11:48:44.405Z"
 }
