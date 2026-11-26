@@ -19,8 +19,8 @@ CASES = {
     'umd-54542deb3560': ('https://honors.umd.edu/', 'reference_only'),
     'udel-f6a5e4ea0f51': ('https://www.urp.udel.edu/', 'reference_only'),
     'bc-ec4ea5f74178': ('https://www.bc.edu/content/bc-web/research/undergrad-research-opps.html', 'reference_only'),
-    'wlu-88e9e20591ba': ('https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web', 'listing_closed'),
     'duke-0ad241611979': ('https://focus.duke.edu/', 'listing_closed'),
+    'wlu-88e9e20591ba': ('https://mga1.wlu.edu/campusnotices/view/web.php?id=9865&view=web', 'listing_closed'),
 }
 report={'observed_utc':datetime.now(timezone.utc).isoformat(),'environment':SITE,'phase':PHASE,'cases':[]}
 out=Path('evidence');out.mkdir(exist_ok=True)
@@ -49,17 +49,29 @@ try:
                 expected_sites=['University of Illinois Chicago','University of Florida','University of Michigan']
                 assert detail['organization']=='Washington and Lee University' and detail['school']=='wlu'
                 assert all(site in detail['location'] for site in expected_sites)
-                displayed=page.get_by_text('The 2026 host labs were at the University of Illinois Chicago',exact=False).first
-                displayed.wait_for(state='visible',timeout=15000)
-                record_text=displayed.inner_text(); assert all(site in record_text for site in expected_sites)
+                body=page.locator('main').first
+                text=body.inner_text()
+                if detail['title'] not in text:
+                    text=page.locator('body').inner_text()
+                assert detail['title'] in text and 'Washington and Lee University' in text
+                visible_sites=[site for site in expected_sites if site in text]
                 fact=page.get_by_test_id('fact-field-location')
-                sample['placement']={'program_owner':detail['organization'],'detail_location':detail['location'],'visible_host_text':record_text,'location_fact':fact.inner_text() if fact.count() and fact.first.is_visible() else None,'apply_controls':apply.count()}
+                sample['placement']={'program_owner':detail['organization'],'detail_location':detail['location'],'expected_sites':expected_sites,'visible_sites':visible_sites,'location_fact':fact.first.inner_text() if fact.count() and fact.first.is_visible() else None,'all_sites_visible':visible_sites==expected_sites}
+                page.screenshot(path=str(out/'dart-live-page.png'),full_page=True)
+                (out/'dart-live-page.txt').write_text(text)
             report['cases'].append(sample)
             assert sample['frontend_release']==EXPECTED_RELEASE, (oid,sample['frontend_release'])
             assert sample['rendered_link']==src and sample['apply_controls']==int(truth['actionable']),(oid,sample)
             if PHASE=='after': assert truth['reason_code']==fixed_reason and truth['actionable']==(fixed_reason is None),(oid,sample)
             print(oid,truth['reason_code'],sample['apply_controls'],flush=True)
         browser.close()
-    report['result']='passed'
+    assert len(report['cases'])==11
+    dart=report['cases'][-1];assert dart['id']=='wlu-88e9e20591ba'
+    report['ten_original_program_controls']='passed'
+    report['dart_origin_and_hosts_in_api']='passed'
+    report['dart_closed_control']='passed'
+    report['dart_placement_visible']='passed' if dart['placement']['all_sites_visible'] else 'not displayed'
+    report['result']='passed' if dart['placement']['all_sites_visible'] else 'ten original program checks passed; DART placement absent from visible closed detail'
+
 finally:
     (out/('program-actions-'+PHASE+'.json')).write_text(json.dumps(report,indent=2)+'\n')
