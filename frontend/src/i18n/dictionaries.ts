@@ -8516,7 +8516,7 @@ export const zh = {
     },
     filters: {
       paidAll: '付费 / 无酬',
-      paidYes: '仅付费',
+      paidYes: '仅显示有报酬的机会',
       // 'no' 分支同时匹配 paid='unknown'（薪酬未公开）—— 标签不能把
       // 没采集到薪酬的记录断言为"无报酬"。
       paidNo: '无报酬/未说明',

@@ -1062,10 +1062,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # `paid_basis` is the one rule the detail facts use too, so the badge and
     # the "System inference" row cannot disagree. Policy stays unhedged here.
     paid = projected.get("paid")
-    if paid in {"yes", "stipend", "no"} and (
-        is_read_off_the_page(canonical_record, "paid")
-        or opportunity_detail.paid_basis(canonical_record, paid) not in (None, "program_policy")
-    ):
+    if opportunity_detail.pay_is_inferred(canonical_record, paid):
         projected["paid_attribution"] = "inferred"
     # The compensation prose a program spec typed into the config (a "$500"
     # that turned out to be an expense grant) is our listing's too, unless its
