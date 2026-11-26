@@ -109,7 +109,24 @@ with sync_playwright() as pw:
             assert api.ok
             value = api.json()
             assert value["id"] == oid and value["deadline"] in (old,new)
-            assert value["deadline"] in body
+            from datetime import date
+            expected_date = date.fromisoformat(new)
+            expected_formats = [new, expected_date.strftime("%B %-d, %Y"), expected_date.strftime("%b %-d, %Y"), expected_date.strftime("%m/%d/%Y")]
+            receipt.setdefault("detail_check", {})[oid] = {"body": body, "title":value["title"], "expected_calendar_date":new}
+            page.screenshot(path=out/(oid+"-detail.png"))
+            show_date = any(text.casefold() in body.casefold() for text in expected_formats)
+            if oid == "sro-3c378261":
+                # A document may initially paint the global Loading heading.
+                expect(page.get_by_role("heading",level=1)).to_have_text(value["title"],timeout=45000)
+                body = page.locator("main").inner_text()
+                receipt["detail_check"][oid]["body"] = body
+                show_date = any(text.casefold() in body.casefold() for text in expected_formats)
+                receipt["detail_check"][oid]["visible_host_calendar_date"] = show_date
+            else:
+                expect(page.get_by_role("heading",level=1)).to_have_text(value["title"],timeout=45000)
+                body = page.locator("main").inner_text()
+                receipt["detail_check"][oid]["body"] = body
+                assert "closed" in body.lower() and not page.get_by_role("link",name="Apply now",exact=True).count()
             fixed = value["deadline"] == new
             assert value["deadline_is_estimate"] is (not fixed)
             if fixed:
@@ -125,6 +142,7 @@ with sync_playwright() as pw:
             assert response.value.ok and not wire["has_more"]
             ids = [r["opportunity_id"] for r in wire["results"]]
             receipt[oid]["result_ids"] = ids
+            receipt[oid]["date_shown_in_detail"] = show_date
             if oid in ids:
                 expect(page.locator("#match-card-"+oid)).to_be_visible(timeout=45000)
             if fixed and oid=="nsf-reu-2447669": assert oid not in ids
@@ -149,6 +167,7 @@ with sync_playwright() as pw:
         data=response.value.json(); ids=[r["opportunity_id"] for r in data["results"]]
         assert not data["has_more"] and chen not in ids
         receipt[chen]["result_ids"]=ids
+        assert receipt["detail_check"]["sro-3c378261"]["visible_host_calendar_date"], receipt["detail_check"]["sro-3c378261"]["body"]
         expect(page.get_by_role("tablist")).to_be_visible(timeout=90000)
         expect(page.locator("#match-card-"+chen)).to_have_count(0)
     finally:
