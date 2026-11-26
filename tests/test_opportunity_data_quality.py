@@ -1041,6 +1041,9 @@ class TestOnCampusMeansOnACampus:
             if o.get("school") is not None
             and o.get("source_type") != "faculty_research"
             and o.get("source") not in self.SELF_COMPUTED_SOURCES
+            # A school's reference directory can list programs in many
+            # places. It has no single host campus to assign to applicants.
+            and not ((o.get("metadata") or {}).get("reference_only") is True and o.get("on_campus") is None)
             and o.get("on_campus") is not True
         ]
         assert not offenders, (

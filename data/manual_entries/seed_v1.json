@@ -710,49 +710,44 @@
     "source": "manual",
     "source_url": "https://researchops.web.illinois.edu/",
     "source_type": "summer_program",
-    "title": "UIUC Summer Research Opportunities Database (279+ Programs)",
+    "title": "UIUC Summer Research Opportunities Database",
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Office of Undergraduate Research",
     "lab_or_program": "SRO Database",
     "pi_name": null,
     "url": "https://researchops.web.illinois.edu/",
-    "location": "Various",
-    "on_campus": false,
+    "location": "",
+    "on_campus": null,
     "remote_option": "unknown",
     "opportunity_type": "summer_program",
     "paid": "unknown",
-    "compensation_details": "Varies by program",
+    "compensation_details": "",
     "deadline": null,
     "posted_date": "2025-10-01",
     "start_date": null,
-    "duration": "Varies (typically 8-10 weeks)",
+    "duration": null,
     "eligibility": {
-      "preferred_year": [
-        "freshman",
-        "sophomore",
-        "junior",
-        "senior"
-      ],
+      "preferred_year": [],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
+      "citizenship_required": null,
       "international_friendly": "unknown",
-      "work_auth_notes": "Mixed — some programs US-only, some international-friendly",
-      "eligibility_text_raw": "Database of several hundred summer research opportunities. Filter by research area."
+      "work_auth_notes": "",
+      "eligibility_text_raw": ""
     },
     "application": {
-      "contact_method": "portal",
+      "contact_method": "unknown",
       "requires_resume": "unknown",
       "requires_cover_letter": "unknown",
       "requires_transcript": "unknown",
       "requires_recommendation": "unknown",
-      "application_effort": "medium",
-      "application_url": "https://researchops.web.illinois.edu/"
+      "application_effort": "unknown",
+      "application_url": null
     },
-    "description_raw": "The SRO Database includes several hundred summer research opportunities for undergraduates. Filter by research area. This is not an exhaustive list.",
-    "description_clean": "279+ summer research programs. Browse by research area. UIUC maintained.",
+    "description_raw": "The Illinois Office of Undergraduate Research maintains this searchable directory of undergraduate summer research opportunities. Browse its listings by research area or filter for opportunities open to international students. Each listed program sets its own eligibility, application process and deadline.",
+    "description_clean": "The Illinois Office of Undergraduate Research maintains this searchable directory of undergraduate summer research opportunities. Browse its listings by research area or filter for opportunities open to international students. Each listed program sets its own eligibility, application process and deadline.",
     "keywords": [
       "summer research",
       "database",
@@ -761,13 +756,17 @@
     ],
     "metadata": {
       "confidence_score": 0.9,
-      "last_verified": "2026-03-16",
+      "last_verified": "2026-11-26T09:29:12+00:00",
       "first_seen_at": "2025-10-01",
-      "last_seen_at": "2026-03-16",
+      "last_seen_at": "2026-11-26T09:29:12+00:00",
       "is_active": true,
       "manually_reviewed": true,
-      "notes": "Meta-listing. Individual programs should be scraped and added separately."
-    }
+      "notes": "Official Illinois directory of independent programs. The source URL remains available on the original record.",
+      "reference_only": true
+    },
+    "is_rolling": false,
+    "school": "uiuc",
+    "audience": "campus"
   },
   {
     "id": "uiuc-career-center-ugr",
