@@ -32,6 +32,7 @@ PREVIOUS_TITLES = {
     **dict.fromkeys(NANO_EMERITI | NANO_ADJUNCTS, ""),
     **dict.fromkeys(VT_APPOINTMENTS, ""),
     "faculty-duke-nurs-36cb4f9e": "Associate Professor",
+    "faculty-pitt-cs-0a7196f1": "Associate Professor; Research Scientist, LRDC; Associate Dean for Research, SCI",
     "faculty-pitt-ling-14fc90c7": "Professor of psychology and linguistics",
     "faculty-pitt-ling-00bb851a": "Associate Professor, Department of Psychology",
     "faculty-pitt-ling-0dbe04f3": "Associate Professor, English Education and",
