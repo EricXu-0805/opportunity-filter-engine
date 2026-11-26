@@ -119,3 +119,7 @@ def test_english_uses_the_bio_link_within_each_faculty_card(monkeypatch):
     """
     people = _read(monkeypatch, "ENGL", html)
     assert people["Ada Quill"]["url"] == "https://english.georgetown.edu/bio/quill/"
+    dept = next(d for d in SCHOOL["departments"] if d["short"] == "ENGL")
+    record = fg._normalize(SCHOOL, dept, people["Ada Quill"])
+    assert record["url"] == people["Ada Quill"]["url"]
+    assert record["source_url"] == dept["directory_url"]
