@@ -74,11 +74,37 @@ def reviewed_net(path):
     return reviewed
 
 
+def review_code_scope(published, candidate):
+    def files(ref):
+        raw = git("ls-tree", "-r", "-z", ref)
+        entries = (line.split(b"\t", 1) for line in raw.split(b"\0") if line)
+        return {path.decode(): mode_and_blob.decode() for mode_and_blob, path in entries
+                if not path.startswith(ROOT.encode()) and path != b"frontend/src/lib/school-stats.json"}
+
+    base = files("33616280a6a8eac8ea7eecf22ad080641b0c3601")
+    original = files("4e712e765834817ff6559fc0b6c69ed476cc8f7d")
+    live = files(published)
+    merged = files(candidate)
+    reviewed = {path for path in base.keys() | original.keys() if base.get(path) != original.get(path)}
+    outside = sorted(path for path in live.keys() | merged.keys()
+                     if live.get(path) != merged.get(path) and path not in reviewed)
+    concurrent, missing = [], []
+    for path in sorted(reviewed):
+        if live.get(path) not in {base.get(path), original.get(path)}:
+            concurrent.append(path)
+        elif merged.get(path) != original.get(path):
+            missing.append(path)
+    return {"reviewed_files": sorted(reviewed), "changes_outside_reviewed_files": outside,
+            "individually_review_concurrent_changes_in": concurrent, "missing_reviewed_code": missing,
+            "passed": not (outside or concurrent or missing)}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--published", required=True, help="Exact real main after B20 and any newer published data")
     parser.add_argument("--candidate", required=True, help="Exact integration commit proposed for that main")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--full-scope", action="store_true", help="Also check the 19 source and test paths and all other tracked files before merging on actual main")
     args = parser.parse_args()
     live_tree, candidate_tree = shards_tree(args.published), shards_tree(args.candidate)
     paths_changed = sorted(live_tree.keys() ^ candidate_tree.keys())
@@ -115,6 +141,10 @@ def main():
     report = {"published": args.published, "candidate": args.candidate, "scope": "All committed data/processed paths. Run the official 115-school generator separately on the exact candidate.",
               "reviewed_sources": [1467, *[n for n, _, _ in CHANGES]], "shards": checked,
               "unknown_added_or_removed_data_paths": paths_changed,"unexpected_changed_data_paths": unexpected,"passed":passed}
+    if args.full_scope:
+        report["code_and_other_files"] = review_code_scope(args.published, args.candidate)
+        passed = passed and report["code_and_other_files"]["passed"]
+        report["passed"] = passed
     args.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
     print("current main protected:", passed, "shards:", sum(p.startswith(SHARDS) for p in common))
     raise SystemExit(0 if passed else 1)

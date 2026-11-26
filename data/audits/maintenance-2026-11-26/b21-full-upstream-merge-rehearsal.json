@@ -1,0 +1,289 @@
+{
+  "as_of": "2026-11-26T20:46:55+00:00",
+  "scope": "Complete source and data merge rehearsal only. This is not the released B20 or B21 main.",
+  "full_parent_b20_tree": "4f3e4525f6ac72798dcd80b7c46ec1880caa1b0b",
+  "original_source_b21": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "original_frozen_b20": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "full_b21_projection": "4ae108d2a6814f920e1b689b4196f9d727c920e5",
+  "data_only_independent_projection": "4ae108d2a6814f920e1b689b4196f9d727c920e5",
+  "raw_merge_conflicts": [
+    "data/processed/shards/vanderbilt.json"
+  ],
+  "source_conflict_resolutions": {},
+  "actual_change_paths": [
+    "backend/lib/public_projection.py",
+    "backend/routes/opportunities.py",
+    "data/processed/shards/duke.json",
+    "data/processed/shards/fsu.json",
+    "data/processed/shards/miami.json",
+    "data/processed/shards/pitt.json",
+    "data/processed/shards/ucsd.json",
+    "data/processed/shards/usc.json",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.test.tsx",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.tsx",
+    "frontend/src/lib/school-stats.json",
+    "frontend/src/lib/target-truth.ts",
+    "frontend/src/lib/types.ts",
+    "src/collectors/faculty_graph.py",
+    "src/collectors/ncsu_chass.py",
+    "src/collectors/schools/fsu_faculty.py",
+    "src/collectors/schools/miami_faculty.py",
+    "src/collectors/schools/pitt_faculty.py",
+    "src/normalizers/reviewed_faculty_profiles.py",
+    "tests/test_collapse_liveness.py",
+    "tests/test_faculty_profile_link_padding.py",
+    "tests/test_fsu_clipped_directory_rank.py",
+    "tests/test_ncsu_chass_retirement.py",
+    "tests/test_pitt_philosophy.py",
+    "tests/test_reviewed_faculty_profiles.py",
+    "tests/test_target_truth.py"
+  ],
+  "source_files_verified": {
+    "backend/lib/public_projection.py": "exact frozen source blob",
+    "backend/routes/opportunities.py": "exact frozen source blob",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.test.tsx": "exact frozen source blob",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.tsx": "exact frozen source blob",
+    "frontend/src/lib/target-truth.ts": "exact frozen source blob",
+    "frontend/src/lib/types.ts": "exact frozen source blob",
+    "src/collectors/faculty_graph.py": "exact frozen source blob",
+    "src/collectors/ncsu_chass.py": "exact frozen source blob",
+    "src/collectors/schools/fsu_faculty.py": "exact frozen source blob",
+    "src/collectors/schools/miami_faculty.py": "exact frozen source blob",
+    "src/collectors/schools/pitt_faculty.py": "exact frozen source blob",
+    "src/normalizers/reviewed_faculty_profiles.py": "exact frozen source blob",
+    "tests/test_collapse_liveness.py": "exact frozen source blob",
+    "tests/test_faculty_profile_link_padding.py": "exact frozen source blob",
+    "tests/test_fsu_clipped_directory_rank.py": "exact frozen source blob",
+    "tests/test_ncsu_chass_retirement.py": "exact frozen source blob",
+    "tests/test_pitt_philosophy.py": "exact frozen source blob",
+    "tests/test_reviewed_faculty_profiles.py": "exact frozen source blob",
+    "tests/test_target_truth.py": "exact frozen source blob"
+  },
+  "reviewed_business_shards": [
+    "data/processed/shards/duke.json",
+    "data/processed/shards/fsu.json",
+    "data/processed/shards/miami.json",
+    "data/processed/shards/pitt.json",
+    "data/processed/shards/ucsd.json",
+    "data/processed/shards/usc.json"
+  ],
+  "official_statistics_path": "frontend/src/lib/school-stats.json",
+  "revalidation": "At actual B20 deployment, run the read-only original ID and all-field guard against that main, re-run both official statistics load paths and only then check the current PR CI.",
+  "source_data_guard": {
+    "reviewed_files": [
+      "backend/lib/public_projection.py",
+      "backend/routes/opportunities.py",
+      "frontend/src/app/opportunities/[id]/OpportunityHeader.test.tsx",
+      "frontend/src/app/opportunities/[id]/OpportunityHeader.tsx",
+      "frontend/src/lib/target-truth.ts",
+      "frontend/src/lib/types.ts",
+      "src/collectors/faculty_graph.py",
+      "src/collectors/ncsu_chass.py",
+      "src/collectors/schools/fsu_faculty.py",
+      "src/collectors/schools/miami_faculty.py",
+      "src/collectors/schools/pitt_faculty.py",
+      "src/normalizers/reviewed_faculty_profiles.py",
+      "tests/test_collapse_liveness.py",
+      "tests/test_faculty_profile_link_padding.py",
+      "tests/test_fsu_clipped_directory_rank.py",
+      "tests/test_ncsu_chass_retirement.py",
+      "tests/test_pitt_philosophy.py",
+      "tests/test_reviewed_faculty_profiles.py",
+      "tests/test_target_truth.py"
+    ],
+    "changes_outside_reviewed_files": [],
+    "individually_review_concurrent_changes_in": [],
+    "missing_reviewed_code": [],
+    "passed": true
+  },
+  "public_api_checks": [
+    {
+      "id": "faculty-ncsu-chass-e417d225",
+      "name": "Jacob Clayton",
+      "current": false,
+      "source": "https://chass.ncsu.edu/group/faculty/",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-ncsu-chass-8026d528",
+      "name": "Robin Clayton",
+      "current": true,
+      "source": "https://chass.ncsu.edu/people/jrclayt2/",
+      "checked_rank": "Lecturer"
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "name": "Kate Stanton",
+      "current": false,
+      "source": "https://philosophy.pitt.edu/people/kstanton",
+      "checked_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics"
+    },
+    {
+      "id": "faculty-pitt-phil-2930bf5f",
+      "name": "Kate Stanton",
+      "current": true,
+      "source": "https://www.philosophy.pitt.edu/people/kstanton",
+      "checked_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics"
+    },
+    {
+      "id": "faculty-fsu-comm-e3519c6b",
+      "name": "Jessica Wendorf Muhamad",
+      "current": true,
+      "source": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+      "checked_rank": "Associate Professor, Director PEAKS Research Laboratory"
+    },
+    {
+      "id": "faculty-miami-art-604e3825",
+      "name": "Nathan James Timpano",
+      "current": true,
+      "source": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+      "checked_rank": "Associate Professor Graduate Director"
+    },
+    {
+      "id": "faculty-miami-mll-791077cc",
+      "name": "Chloe Ming Hwa Summers Edmondson",
+      "current": true,
+      "source": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+      "checked_rank": "Asst. Professor"
+    },
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "name": "Lisa S. Lewis",
+      "current": false,
+      "source": "https://dukeahead.duke.edu/profile/lisa-lewis",
+      "checked_rank": "Retired Associate Clinical Professor"
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "name": "Lori Levin",
+      "current": true,
+      "source": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+      "checked_rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)"
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "name": "Charles Perfetti",
+      "current": false,
+      "source": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+      "checked_rank": "Retired Distinguished University Professor of Psychology"
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "name": "Mandy Simons",
+      "current": true,
+      "source": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+      "checked_rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)"
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "name": "Natasha Tokowicz",
+      "current": true,
+      "source": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+      "checked_rank": "Professor of Psychology and Linguistics"
+    },
+    {
+      "id": "faculty-duke-bio-8ac60eca",
+      "name": "Dorothy Buck",
+      "current": true,
+      "source": "https://scholars.duke.edu/person/dorothy.buck",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-duke-nurs-9c95f492",
+      "name": "Marissa Abram",
+      "current": true,
+      "source": "https://scholars.duke.edu/person/marissa.abram",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-fsu-comm-4ebdf384",
+      "name": "Elizabeth Ray",
+      "current": true,
+      "source": "https://directory.cci.fsu.edu/elizabeth-ray/",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-miami-cs-b0f4bc1f",
+      "name": "Vanessa Aguiar-Pulido",
+      "current": true,
+      "source": "https://people.miami.edu/profile/0210dfb24ca8741f6344cbb45791d009",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-pitt-ling-c7f555fa",
+      "name": "Tessa Warren",
+      "current": true,
+      "source": "http://www.pitt.edu/~tessa/",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-ucsd-hwsph-29c119e1",
+      "name": "Gregory Norman",
+      "current": true,
+      "source": "http://profiles.ucsd.edu/gregory.norman",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-usc-soci-b0fa66b8",
+      "name": "Jody Agius Vallejo",
+      "current": true,
+      "source": "https://dornsife.usc.edu/profile/jody-agius-vallejo/",
+      "checked_rank": null
+    },
+    {
+      "id": "faculty-pitt-hps-b2ee9191",
+      "name": "David Wallace",
+      "current": true,
+      "source": "https://www.hps.pitt.edu/people/david-wallace",
+      "checked_rank": "Mellon Professor • Department Chair"
+    },
+    {
+      "id": "faculty-pitt-phil-4e0c21eb",
+      "name": "David Wallace",
+      "current": true,
+      "source": "https://www.philosophy.pitt.edu/people/dwallace",
+      "checked_rank": "Mellon Professorship"
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "name": "Chris Kapulkin",
+      "current": true,
+      "source": "https://as.vanderbilt.edu/math/bio/krzysztof-kapulkin",
+      "checked_rank": "Professor of Mathematics · Dual Appointment: Computer Science",
+      "visible_to_public_api": {
+        "text": "Professor of Mathematics · Dual Appointment: Computer Science",
+        "source_url": "https://as.vanderbilt.edu/math/faculty/",
+        "observed_at": "2026-11-26"
+      }
+    }
+  ],
+  "omitted_source_file_control": {
+    "passed": false,
+    "tree": "7fe578998837e4a81bc807b6c6675a2f70f8d49a",
+    "specific_missing_file": [
+      "src/collectors/ncsu_chass.py"
+    ],
+    "unexpected_processed_data_changes": []
+  },
+  "same_frozen_product_code": "Relative to frozen B21 the only actual tree difference is data/processed/shards/vanderbilt.json and the two verified faculty_title_observation keys on the Chris Kapulkin ID.",
+  "positive_and_negative_all_shards": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/a3210d5c9d2b14247eada4c5a583d29deefa81f1/data/audits/maintenance-2026-11-26/b19-b21-upstream-data-projection.json",
+  "focused_pytest": {
+    "passed": 319,
+    "suites": [
+      "test_collapse_liveness",
+      "test_faculty_profile_link_padding",
+      "test_fsu_clipped_directory_rank",
+      "test_ncsu_chass_retirement",
+      "test_pitt_philosophy",
+      "test_reviewed_faculty_profiles",
+      "test_target_truth"
+    ]
+  },
+  "official_school_counts": {
+    "identical_to_committed_on_both_normal_loaders": true,
+    "assembled_records": 149944,
+    "schools": 115,
+    "campus": 130769,
+    "national": 5630
+  }
+}
