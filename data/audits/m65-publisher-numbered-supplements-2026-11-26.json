@@ -1,0 +1,499 @@
+{
+  "verified_at_utc": "2026-11-26T10:38:00Z",
+  "release_sha": "59297be5c8b1e37caefb289e9372a930edc8af1b",
+  "scope": "Strict anchored Additional file N of <title>, where N is a positive integer; excludes supplementary information, reviews, responses and independently titled publications. Stored and currently projectable counts differ. Three publicly served items independently verified against the publisher.",
+  "counts": {
+    "stored_attachments": 66,
+    "affected_active_original_ids": 56,
+    "served_by_release_projection": 34,
+    "publicly_projectable_original_ids": 28,
+    "publicly_projectable_schools": {
+      "colostate": 1,
+      "jhu": 14,
+      "middlebury": 1,
+      "ncsu": 3,
+      "northwestern": 2,
+      "osu": 4,
+      "psu": 2,
+      "syracuse": 2,
+      "tamu": 3,
+      "uiuc": 1,
+      "usf": 1
+    }
+  },
+  "actual_html_and_api_before": [
+    {
+      "id": "faculty-jhu-bsph-1397fa71",
+      "source": "https://joinalab.com/opportunities/faculty-jhu-bsph-1397fa71",
+      "status": 200,
+      "author_status": "verified_author_id",
+      "works": [
+        {
+          "title": "Governance-First Deployment of the Aims Innovations Research Management System to Accelerate Participant-Based Public Health Research.",
+          "year": 2026
+        },
+        {
+          "title": "Religion and public health: conceptualization and collaboration from a public health perspective",
+          "year": 2026
+        },
+        {
+          "title": "Additional file 1 of Religion and public health: conceptualization and collaboration from a public health perspective",
+          "year": 2026
+        }
+      ],
+      "supplementary_titles_in_page": [
+        "Additional file 1 of Religion and public health: conceptualization and collaboration from a public health perspective"
+      ],
+      "publisher_parent": "https://link.springer.com/article/10.1186/s12889-026-26411-7",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-jhu-bsph-1397fa71"
+    },
+    {
+      "id": "faculty-jhu-bsph-35e3e74a",
+      "source": "https://joinalab.com/opportunities/faculty-jhu-bsph-35e3e74a",
+      "status": 200,
+      "author_status": "verified_author_id",
+      "works": [
+        {
+          "title": "Additional file 1 of Prevalence and risk factors of low birth weight in a rural district of Bangladesh: a prospective cohort study",
+          "year": 2026
+        },
+        {
+          "title": "Evaluating the performance of a video expert panel in assessing respiratory rate from recorded videos for the diagnosis of non-severe paediatric pneumonia",
+          "year": 2025
+        },
+        {
+          "title": "Nutritional management of growth faltering in infants aged under six months in Asia and Africa: study protocol for a multicentre randomised trial (BRANCH, BReAstfeediNg Counselling and management of g",
+          "year": 2025
+        }
+      ],
+      "supplementary_titles_in_page": [
+        "Additional file 1 of Prevalence and risk factors of low birth weight in a rural district of Bangladesh: a prospective cohort study"
+      ],
+      "publisher_parent": "https://link.springer.com/article/10.1186/s12887-026-06960-x",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-jhu-bsph-35e3e74a"
+    },
+    {
+      "id": "faculty-middlebury-nsci-f7775513",
+      "source": "https://joinalab.com/opportunities/faculty-middlebury-nsci-f7775513",
+      "status": 200,
+      "author_status": "verified_author_id",
+      "works": [
+        {
+          "title": "GDE6 promotes progenitor identity in the vertebrate neural tube",
+          "year": 2023
+        },
+        {
+          "title": "The distribution and function of GDE2, a regulator of spinal motor neuron survival, are disrupted in Amyotrophic Lateral Sclerosis",
+          "year": 2022
+        },
+        {
+          "title": "Additional file 1 of The distribution and function of GDE2, a regulator of spinal motor neuron survival, are disrupted in Amyotrophic Lateral Sclerosis",
+          "year": 2022
+        }
+      ],
+      "supplementary_titles_in_page": [
+        "Additional file 1 of The distribution and function of GDE2, a regulator of spinal motor neuron survival, are disrupted in Amyotrophic Lateral Sclerosis"
+      ],
+      "publisher_parent": "https://link.springer.com/article/10.1186/s40478-022-01376-x",
+      "public_api": "https://joinalab.com/api/opportunities/faculty-middlebury-nsci-f7775513"
+    }
+  ],
+  "active_originals_and_titles": [
+    {
+      "id": "faculty-middlebury-nsci-f7775513",
+      "school": "middlebury",
+      "title": "Additional file 1 of The distribution and function of GDE2, a regulator of spinal motor neuron survival, are disrupted in Amyotrophic Lateral Sclerosis",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-purdue-cpb-35151041",
+      "school": "purdue",
+      "title": "Additional file 1 of Molecular detection of hemotropic mycoplasmas (hemoplasmas) in humans and dogs living on islands and the seashore mainland of Brazil: a One Health approach",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-jhu-bsph-35e3e74a",
+      "school": "jhu",
+      "title": "Additional file 1 of Prevalence and risk factors of low birth weight in a rural district of Bangladesh: a prospective cohort study",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-bsph-201ee6e4",
+      "school": "jhu",
+      "title": "Additional file 1 of Respiratory syncytial virus positivity among hospital admissions for acute respiratory illness in children younger than 5 years of age in low- and middle-income countries: a syste",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-jhu-bsph-5cb1daf1",
+      "school": "jhu",
+      "title": "Additional file 1 of A synthetic control study of the effects of comprehensive background check policies on non-fatal firearm crime in five states",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-bsph-1397fa71",
+      "school": "jhu",
+      "title": "Additional file 1 of Religion and public health: conceptualization and collaboration from a public health perspective",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-bsph-d58f8bd9",
+      "school": "jhu",
+      "title": "Additional file 1 of TASC: a time-aware sequence clustering framework with uncertainty quantification for electronic health record trajectories",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-99f3795c",
+      "school": "jhu",
+      "title": "Additional file 1 of Spatiotemporal transcriptomic analysis during cold ischemic injury to the murine kidney reveals compartment-specific changes",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-aef282a0",
+      "school": "jhu",
+      "title": "Additional file 2 of Proteomic profiles in inclusion body myositis and polymyositis with mitochondrial pathology",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-aef282a0",
+      "school": "jhu",
+      "title": "Additional file 1 of Proteomic profiles in inclusion body myositis and polymyositis with mitochondrial pathology",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-aef282a0",
+      "school": "jhu",
+      "title": "Additional file 3 of Proteomic profiles in inclusion body myositis and polymyositis with mitochondrial pathology",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-d47697e0",
+      "school": "jhu",
+      "title": "Additional file 1 of Spatiotemporal transcriptomic analysis during cold ischemic injury to the murine kidney reveals compartment-specific changes",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-d47697e0",
+      "school": "jhu",
+      "title": "Additional file 2 of Spatiotemporal transcriptomic analysis during cold ischemic injury to the murine kidney reveals compartment-specific changes",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-8b105b00",
+      "school": "jhu",
+      "title": "Additional file 2 of Detection of bladder cancer in patients with microscopic hematuria using Oncuria-Detect: results of a prospective, multicenter international study",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-8b105b00",
+      "school": "jhu",
+      "title": "Additional file 1 of Detection of bladder cancer in patients with microscopic hematuria using Oncuria-Detect: results of a prospective, multicenter international study",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-a2cf9ece",
+      "school": "jhu",
+      "title": "Additional file 2 of Safety of Co-Administered Cannabidiol (CBD) and alcohol: a Phase I study",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-jhu-som-c2cd954e",
+      "school": "jhu",
+      "title": "Additional file 1 of Using extreme risk protection orders to prevent violence among people experiencing homelessness in California and Colorado: a case series",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-psu-bio-85063eff",
+      "school": "psu",
+      "title": "Additional file 1 of Unexpected migration patterns in a high-latitude breeding songbird: evidence from multi-sensor geolocators and isotopes",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-psu-nurs-1109fbf8",
+      "school": "psu",
+      "title": "Additional file 1 of Efficacy of digital cognitive stimulation therapy for people with dementia: a systematic review and meta-analysis",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-duke-psyneuro-32deeee1",
+      "school": "duke",
+      "title": "Additional file 1 of The PREvention Program for Adolescent Relationship and Emotional Development (PREPARED): a proof-of-concept study",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-duke-nurs-a24cfd4e",
+      "school": "duke",
+      "title": "Additional file 1 of Qualitative beta-2-adrenoceptor signaling in the regulation of human airway epithelia mucin and cytokine production",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-duke-nurs-336ab4fc",
+      "school": "duke",
+      "title": "Additional file 1 of A degradable multi-metal-chelating stealth nanoplatform for dual ferroptosis/cuproptosis-enhanced metalloimmunotherapy in leukemia",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucla-chem-9f0541ec",
+      "school": "ucla",
+      "title": "Additional file 1 of GFAP degradation in TBI: linking novel modified products to astrocyte pathology and patient outcome",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucla-mcdb-2d4f698f",
+      "school": "ucla",
+      "title": "Additional file 2 of DNA methylation profiles at hospital admission are associated with subsequent severe COVID-19 outcomes",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucla-humgen-6656e688",
+      "school": "ucla",
+      "title": "Additional file 2 of Comparative analysis of NSG and NBSGW mice for preclinical evaluation of gene-modified human hematopoietic stem and progenitor cells",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucla-socwel-066a5ae5",
+      "school": "ucla",
+      "title": "Additional file 1 of Analysis of the kidney failure risk equation implementation in routine clinical practice and health inequalities in chronic kidney disease care: a retrospective cohort study",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-northwestern-feinberg-c2b66f94",
+      "school": "northwestern",
+      "title": "Additional file 1 of Mapping cellular vulnerability in Parkinson’s disease using retro-AAVs and preformed α-synuclein fibrils",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-northwestern-feinberg-4bd4f283",
+      "school": "northwestern",
+      "title": "Additional file 1 of Tailoring acceptance and commitment therapy for parents of children with undiagnosed conditions: a qualitative pre-implementation study",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-tamu-ento-56f416e5",
+      "school": "tamu",
+      "title": "Additional file 13 of The genome of the stable fly, Stomoxys calcitrans, reveals potential mechanisms underlying reproduction, host interactions, and novel targets for pest control",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-tamu-vtpb-941b3a56",
+      "school": "tamu",
+      "title": "Additional file 1 of Sheep erythrocyte potassium locus highlights MYADM family regulation of electroneutral potassium chloride cotransporters (KCC)",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-tamu-hort-404d89ce",
+      "school": "tamu",
+      "title": "Additional file 1 of Seasonal growth dynamics and yield potential of biomass sorghum in the Southeastern US",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-usf-coph-c0af2722",
+      "school": "usf",
+      "title": "Additional file 1 of Referral linkages to support pregnant and postpartum individuals with opioid use disorders in Florida: a social network analysis",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-ucb-sph-bc0ee664",
+      "school": "ucb",
+      "title": "Additional file 1 of Videography of pathways for enteric pathogen exposure among children in urban informal settlements in Fiji and Indonesia",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucb-sph-e0da2214",
+      "school": "ucb",
+      "title": "Additional file 2 of Assessing the effectiveness of an antiracism clinical skills curriculum for medical students: a single institution mixed methods study",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucb-sph-e0da2214",
+      "school": "ucb",
+      "title": "Additional file 1 of Assessing the effectiveness of an antiracism clinical skills curriculum for medical students: a single institution mixed methods study",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-stanford-psych-a262d1b5",
+      "school": "stanford",
+      "title": "Additional file 2 of OMG! A proteomic determinant of neurodegenerative resiliency",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-stanford-biology-c569b0a2",
+      "school": "stanford",
+      "title": "Additional file 1 of Profiling of rare immune cell populations and integrative analysis identify immune ecotypes in newly diagnosed meningiomas",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucsd-poli-599ce70e",
+      "school": "ucsd",
+      "title": "Additional file 1 of The need for protection: a cross-sectional analysis of direct exposure to firearm violence, attitudes towards firearms for protection, and firearm acquisition in California and Lo",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucsd-hwsph-1bb14435",
+      "school": "ucsd",
+      "title": "Additional file 1 of Tobacco advertising, cross-over effects, and US adolescent progression from never to current tobacco use",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ucsd-hwsph-5029328e",
+      "school": "ucsd",
+      "title": "Additional file 1 of Tobacco advertising, cross-over effects, and US adolescent progression from never to current tobacco use",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ncsu-bio-27fe1060",
+      "school": "ncsu",
+      "title": "Additional file 1 of Divergent ecological adaptation in allopatry leads to behavioral isolation through female resistance",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-ncsu-ans-3c18cc57",
+      "school": "ncsu",
+      "title": "Additional file 2 of Heat-load-dependent inbreeding depression for production traits in Italian Holstein cattle",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-ncsu-php-e83d186f",
+      "school": "ncsu",
+      "title": "Additional file 6 of Topical wound-care products and their effects on healing, inflammatory biomarkers, and growth in piglets undergoing castration",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-utexas-cs-600f9a88",
+      "school": "utexas",
+      "title": "Additional file 2 of TumorTwin: a Python framework for patient-specific digital twins in oncology",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-utexas-cs-600f9a88",
+      "school": "utexas",
+      "title": "Additional file 1 of TumorTwin: a Python framework for patient-specific digital twins in oncology",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-utexas-mpdd-5850399f",
+      "school": "utexas",
+      "title": "Additional file 1 of Mechanistic modeling of primary drying of frozen particulates",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-ib-5fbf1d55",
+      "school": "uiuc",
+      "title": "Additional file 1 of Concatenation fails to describe the anomalous radiation of giant cockroaches (Blattodea: Blaberidae) despite moderate to low discordance",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-fshn-51da8d46",
+      "school": "uiuc",
+      "title": "Additional file 1 of Host–microbiome interplay supports heat stress resilience in zebu calves",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-ahs-be404e51",
+      "school": "uiuc",
+      "title": "Additional file 1 of Body composition among 6–7 years-old children: data from the 2015 Pelotas (Brazil) Birth Cohort Study",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-colostate-bmb-7936cc2a",
+      "school": "colostate",
+      "title": "Additional file 2 of OTTR-seq profiling reveals dynamic tRNA modification landscapes across diverse archaeal species",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-syracuse-bmce-1db4405b",
+      "school": "syracuse",
+      "title": "Additional file 1 of Targeting lysosomal pH restores mitochondrial quality control in GBA1-mutant Parkinson’s disease",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-syracuse-bmce-1db4405b",
+      "school": "syracuse",
+      "title": "Additional file 4 of Targeting lysosomal pH restores mitochondrial quality control in GBA1-mutant Parkinson’s disease",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-boulder-cven-275e0960",
+      "school": "boulder",
+      "title": "Additional file 1 of Spatial and temporal patterns of public transit aerobiomes",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-uci-pubhlth-a1a40725",
+      "school": "uci",
+      "title": "Additional file 1 of Sociodemographic and behavioral determinants of Plasmodium vivax-specific antibody responses among short-term Myanmar migrants in Thailand",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-uci-pubhlth-22c71ca0",
+      "school": "uci",
+      "title": "Additional file 1 of Food pantry organizational features, nutrition environments, and partnerships: a community-engaged study in Southern California",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-uci-pubhlth-22c71ca0",
+      "school": "uci",
+      "title": "Additional file 2 of Food pantry organizational features, nutrition environments, and partnerships: a community-engaged study in Southern California",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-osu-earth-f8adbfd3",
+      "school": "osu",
+      "title": "Additional file 1 of Role of blanket bog condition in stream dissolved organic carbon export",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-osu-plpath-6567e2c6",
+      "school": "osu",
+      "title": "Additional file 1 of LL22NC03-N14H11.1 regulates the m6A modification of MYC and promotes glycolytic activity in hepatocellular carcinoma cells by inhibiting IGF2BP3 ubiquitination degradation",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-osu-cph-a6a75f2d",
+      "school": "osu",
+      "title": "Additional file 2 of Assessing healthcare experiences and barriers to care among individuals with ectodermal dysplasia",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-osu-cph-a6a75f2d",
+      "school": "osu",
+      "title": "Additional file 1 of Assessing healthcare experiences and barriers to care among individuals with ectodermal dysplasia",
+      "currently_served": true
+    },
+    {
+      "id": "faculty-uw-fish-a9e2a9e8",
+      "school": "uw",
+      "title": "Additional file 1 of Social influences complement environmental cues to stimulate migrating juvenile salmon",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-uw-socwork-cb5fe697",
+      "school": "uw",
+      "title": "Additional file 1 of CalCORVID: a dynamic RShiny dashboard approach to visualize spatiotemporal clusters for public health surveillance",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-wisc-cbe-9b4c0ebb",
+      "school": "wisc",
+      "title": "Additional file 1 of Notch signaling activation reduces vesicular endocytosis in human pluripotent stem cell-derived CNS-like endothelial cells",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-wisc-nurs-53c51e3d",
+      "school": "wisc",
+      "title": "Additional file 1 of Where we work correlates with whether we receive cardiorespiratory preventive care services: Health and Retirement Study 2003–2018",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-wisc-plpath-c292c960",
+      "school": "wisc",
+      "title": "Additional file 3 of Assembling telomere-to-telomere genomes of Fusarium oxysporum f. sp. lactucae provides a roadmap for studying genome and phenotype evolution",
+      "currently_served": false
+    },
+    {
+      "id": "faculty-wisc-plpath-c292c960",
+      "school": "wisc",
+      "title": "Additional file 1 of Assembling telomere-to-telomere genomes of Fusarium oxysporum f. sp. lactucae provides a roadmap for studying genome and phenotype evolution",
+      "currently_served": false
+    }
+  ]
+}
