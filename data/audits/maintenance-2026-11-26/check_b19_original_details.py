@@ -81,7 +81,13 @@ def check(page, site, oid, sha, scope):
             result["paper_links"].append({"title": title, "visible_href": link.get_attribute("href")})
     elif oid in WISCONSIN:
         assert result["actionable"] and api["paid"] == "yes"
-        assert "7,000" in text and "UW–Madison students may apply" in text
+        assert "7,000" in text, "The published $7,000 stipend must appear in the open detail"
+        assert "UW–Madison students may apply" in text, "The host's current eligibility must appear in the open detail"
+        if oid.startswith("sro-"):
+            assert "UW–Madison students may apply" in api["reviewed_program_summary"]
+            raw = " ".join(api["description_raw"].split())
+            assert len(raw) >= 48 and raw[:48] in " ".join(text.split()), "The alias must retain the original source text"
+            result["original_directory_prose_and_current_host_summary_visible"] = True
         assert not re.search(r"(?:current )?UW[–-]Madison students (?:are excluded|are not eligible)", text, re.I)
         result["published_stipend_visible"] = True
         result["home_student_may_apply_visible"] = True
@@ -89,6 +95,14 @@ def check(page, site, oid, sha, scope):
     else:
         assert result["actionable"]
         wanted = ["Biomedical science", "Behavioral science"] if oid == CRISP else ["Mathematics", "Statistics", "Computer Science", "Social science"]
+        summary = api["reviewed_program_summary"]
+        phrase = "incoming first-year students" if oid == CRISP else "two academic routes"
+        assert phrase in summary and summary in " ".join(text.split()), "The host's eligibility summary must be visible"
+        raw = " ".join((api.get("description_raw") or "").split())
+        if raw:
+            assert raw[:48] in " ".join(text.split()), "The detail must retain the original directory text"
+        result["current_host_summary_visible"] = phrase
+        result["original_directory_text_visible_if_provided"] = bool(raw)
         reported = api["detail_fields"]["fields"]["eligibility"]
         assert set(reported["explicit"]["majors"]) == set(wanted)
         for major in wanted:
@@ -104,6 +118,7 @@ def main():
     parser.add_argument("--sha", required=True)
     parser.add_argument("--scope", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--group", choices=["all", "faculty"], default="all")
     args = parser.parse_args()
     site = args.site.rstrip("/")
     assert urlsplit(site).hostname in {"127.0.0.1", "localhost", "joinalab.com"}
@@ -114,7 +129,10 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         context = browser.new_context(locale="en-US", viewport={"width": 1400, "height": 960})
-        for oid in [*ARCHIVES, *CONTROL, CUI, *WISCONSIN, *SMU, CRISP]:
+        original_ids = [*ARCHIVES, *CONTROL, CUI]
+        if args.group == "all":
+            original_ids.extend([*WISCONSIN, *SMU, CRISP])
+        for oid in original_ids:
             if rows:
                 time.sleep(18)
             page = context.new_page()
@@ -126,7 +144,10 @@ def main():
             print(oid, "PASS" if rows[-1]["ok"] else rows[-1], flush=True)
             page.close()
         browser.close()
-    report = {"time_utc": datetime.now(UTC).isoformat(timespec="seconds"), "site": site,
+    final_health = requests.get(site + "/api/health", timeout=40)
+    final_health.raise_for_status()
+    assert final_health.json()["release_sha"] == args.sha, "Release changed during the browser sweep"
+    report = {"group": args.group, "same_backend_at_end": True, "time_utc": datetime.now(UTC).isoformat(timespec="seconds"), "site": site,
               "scope": "Read-only Chrome navigation and public GETs; no application, account, subscription or email actions.",
               "verified_frontend_and_backend_sha": args.sha, "rows": rows}
     Path(args.out).write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
