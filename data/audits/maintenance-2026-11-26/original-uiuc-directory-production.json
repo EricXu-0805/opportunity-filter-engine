@@ -1,0 +1,54 @@
+{
+  "origin": "https://joinalab.com",
+  "observed_utc": "2026-11-26T11:32:51.831765+00:00",
+  "frontend_backend_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "pr_head": "cf686fc2e17800dbe9909eeb35f00c742618e807",
+  "already_in_production_main": true,
+  "old_id": "uiuc-sro-database",
+  "product_detail": "https://joinalab.com/opportunities/uiuc-sro-database",
+  "http": 200,
+  "eligibility": {
+    "preferred_year": [],
+    "min_gpa": null,
+    "majors": [],
+    "skills_required": [],
+    "skills_preferred": [],
+    "citizenship_required": null,
+    "international_friendly": "unknown",
+    "work_auth_notes": ""
+  },
+  "rolling": false,
+  "action": {
+    "listing_state": "unknown",
+    "reference_only": true,
+    "actionable": false,
+    "accepting_state": "unknown",
+    "reason_code": "reference_only",
+    "verified_at": "2026-11-26T09:29:12+00:00",
+    "expires_at": null
+  },
+  "observed_controls": {
+    "View source": "https://researchops.web.illinois.edu/"
+  },
+  "official_links": {
+    "old_browser": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45793252760",
+    "postrelease_guest_search": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45807121633"
+  },
+  "coverage_source": "https://joinalab.com/api/opportunities/coverage",
+  "published_coverage_schools_matching_deployed_fallback": 115,
+  "uiuc_coverage": {
+    "listing_count": 4,
+    "faculty_contact_count": 2946,
+    "unreviewed_count": 0,
+    "total_count": 2950
+  },
+  "national_in_committed_fallback": 5601,
+  "guest_verification": {
+    "signup": 200,
+    "cloud_profile_commit": 200,
+    "normal_ui_query": "Summer Research Opportunities Database",
+    "returned_ids": [],
+    "reference": true,
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45810924326"
+  }
+}
