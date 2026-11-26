@@ -1,0 +1,22 @@
+{
+  "production_release": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "source_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45873733981/job/140095430964",
+  "case": "One dedicated first-party guest uploaded a browser-generated PDF. A clean browser verified that its confirmed revision matched both the complete SHA-256 of the extracted text and the exact Unicode quote offsets. The signed-in deterministic request still omitted the individually confirmed statement.",
+  "target": "faculty-ib-78788e71",
+  "confirmation_profile_revision": 2,
+  "confirmation_entry_revision": 2,
+  "candidate": {
+    "score": 69.0,
+    "readiness": 66.0,
+    "eligibility": 73.6
+  },
+  "confirmed": {
+    "score": 69.0,
+    "readiness": 66.0,
+    "eligibility": 73.6
+  },
+  "match_sent_confirmed_row": false,
+  "full_resume_shared_with_new_provider": false,
+  "external_messages_sent": 0,
+  "accepted_after_fix": false
+}

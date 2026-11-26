@@ -2,10 +2,40 @@
 import hashlib
 import json
 import os
+import re
 from urllib.parse import urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 import verify_public_matching_experience as common
+
+
+def matching(c, expect_entry=None):
+    p=common.home(c)
+    expect(p.locator('#student_name')).to_have_value(common.student,timeout=60000)
+    p.get_by_role('button',name='Generate Matches',exact=True).click()
+    p.wait_for_url('**/results**',timeout=85000)
+    p.get_by_role('tab',name=re.compile(r'^All(?:\s|$)')).first.click()
+    def searched(r):
+        return (urlsplit(r.url).path=='/api/matches/view' and r.ok
+                and r.request.post_data_json['profile']['name']==common.student
+                and r.request.post_data_json['view'].get('search_query')==common.public_title)
+    with p.expect_response(searched,timeout=125000) as seen:
+        p.get_by_placeholder('Search by title, org, description, research area...').fill(common.public_title)
+    response=seen.value
+    req=response.request.post_data_json['profile']
+    item=next(r for r in response.json()['results'] if r['opportunity_id']==common.target)
+    assert 'resume_text' not in req and 'Independent purple clock marker' not in json.dumps(req)
+    rows=req.get('match_experiences',[])
+    if expect_entry:
+        assert rows==[{'id':expect_entry['id'],'revision':expect_entry['revision'],'text':expect_entry['text'],'source':'resume','status':'confirmed'}]
+        assert item['experience_basis']=={'entry_id':expect_entry['id'],'revision':expect_entry['revision'],'method':'GIS','target_source':'research_area'}
+        p.get_by_text('Experience used for this match · GIS').click()
+        expect(p.get_by_text(expect_entry['text'],exact=True)).to_be_visible()
+        expect(p.get_by_text('Current résumé · Confirmed by you',exact=False)).to_be_visible()
+    else:
+        assert not rows and not item.get('experience_basis')
+    p.close()
+    return [item['final_score'],item['readiness_score'],item['eligibility_score']],next(iter(rows),None)
 
 
 def main():
@@ -17,6 +47,7 @@ def main():
         b = pw.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox','--disable-dev-shm-usage'])
         probe = pw.request.new_context()
         release = probe.get(common.site + '/api/health').json()['release_sha']
+        assert release==os.environ['OFE_EXPECTED_SITE_SHA']
         assert 'data-release-sha="' + release + '"' in probe.get(common.site+'/about').text()
         def fresh():
             c = common.cold(b)
@@ -61,7 +92,7 @@ def main():
         candidate=next(e for e in profile['experience_entries'] if first in e['text'])
         source=candidate['source']
         assert source['signature']==hashlib.sha256(raw.encode()).hexdigest() and raw[source['start']:source['end']]==source['quote'] and private in raw
-        baseline,_=common.results(c,False)
+        baseline,_=matching(c)
         details=p.locator('#experience-library details').filter(has=p.locator('summary',has_text=first)).first
         details.locator('summary').first.click()
         expect(details.locator('textarea')).to_have_value(first)
@@ -73,10 +104,20 @@ def main():
         confirmed=next(e for e in profile['experience_entries'] if e['id']==candidate['id'])
         assert confirmed_revision>revision and confirmed['revision']>candidate['revision'] and confirmed['source']==source
         assert profile['resume_text']==raw
-        accepted,entry=common.results(c,expected_fixed)
+        accepted,entry=matching(c,confirmed if expected_fixed else None)
         print(json.dumps({'release_sha':release,'target':common.target,'locally_generated_pdf':True,'complete_sha256_and_exact_quote_valid':True,'confirmed_revision':confirmed_revision,'confirmed_entry_revision':confirmed['revision'],'candidate_scores':baseline,'confirmed_scores':accepted,'match_sent_confirmed_row':bool(entry),'production_pdf_source_missing':not bool(entry)}),flush=True)
         if expected_fixed:
             assert entry['source']=='resume' and entry['text']==first and accepted[0]>baseline[0] and accepted[2]==baseline[2]
+            details=p.locator('#experience-library details').filter(has=p.locator('summary',has_text=first)).first
+            details.locator('summary').first.click()
+            details.get_by_role('button',name='Do not use',exact=True).click()
+            expect(details.locator('summary').first).to_contain_text('excluded',ignore_case=True)
+            p.wait_for_timeout(3000)
+            c.close()
+            c,p,(final_revision,_)=read(lambda d:any(e['id']==candidate['id'] and e['status']=='rejected' for e in d.get('experience_entries',[])))
+            final,_=matching(c)
+            assert final==baseline and final_revision>confirmed_revision
+            print(json.dumps({'release_sha':release,'withdrawn_production_scores':final,'withdrawn_own_revision':final_revision}),flush=True)
         else:
             assert not entry and baseline==accepted
         c.close()
