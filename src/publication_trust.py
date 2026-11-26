@@ -84,6 +84,43 @@ CURRENT_WORKS_GATE = 3
 RECENT_WORKS_MAX_AGE_YEARS = 10
 
 
+# Publisher-reviewed works incorrectly attached to these individual roster IDs.
+# Keep the matching scoped to the record so coauthors and future legitimate
+# works from the same OpenAlex author entity stay eligible.
+_REVIEWED_EXCLUSIONS = {
+    "faculty-asu-ece-36055db6": {
+        "10.1177/00219983251392704": "Simulation and experimental study on laser cutting of C/C composite finger seal",
+        "10.1109/isdeiv60861.2025.11256064": (
+            "MHD Simulation of Vacuum Arcs Distribution Characteristics under Critical Short Circuit Interrupting Current"
+        ),
+    },
+    "faculty-tamu-mays-2157ba4d": {
+        "10.5370/kiee.2026.75.5.1039": (
+            "Day–Ahead Load Forecasting Using MSTL–VMD–Based Multi–Seasonal Decomposition "
+            "and LSTM–Based Component–Wise Prediction"
+        ),
+    },
+}
+
+
+def _title_words(title: str) -> str:
+    return "".join(c for c in title.casefold() if c.isalnum())
+
+
+def exclude_reviewed_works(opp: dict, works: list) -> list:
+    excluded = _REVIEWED_EXCLUSIONS.get(opp.get("id"))
+    if not excluded or not isinstance(works, list):
+        return works
+    titles = {_title_words(title) for title in excluded.values()}
+    return [
+        work for work in works
+        if not isinstance(work, dict) or (
+            str(work.get("doi") or "").casefold().removeprefix("https://doi.org/") not in excluded
+            and _title_words(str(work.get("title") or "")) not in titles
+        )
+    ]
+
+
 def attribution_status(opp: dict) -> str | None:
     """The record's stamped status, or ``None`` for legacy/unexpected values."""
     status = (opp.get("metadata") or {}).get("publication_attribution_status")
@@ -172,5 +209,5 @@ def verified_recent_works(opp: dict, *, today: date | None = None) -> list[dict]
     publications."""
     if not works_are_verified(opp):
         return []
-    works = (opp.get("metadata") or {}).get("recent_works") or []
+    works = exclude_reviewed_works(opp, (opp.get("metadata") or {}).get("recent_works") or [])
     return works if works and works_may_be_served(opp, works, today=today) else []

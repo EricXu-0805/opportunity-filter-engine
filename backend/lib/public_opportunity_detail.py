@@ -16,6 +16,7 @@ from backend.lib.publication_attribution import works_are_verified, works_may_be
 from src.contact_instructions import contact_instructions_for
 from src.evidence import faculty_safe_public_record
 from src.lab_context import lab_context_for
+from src.publication_trust import exclude_reviewed_works
 from src.research_context import research_context_for
 
 REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
@@ -60,6 +61,11 @@ def project_public_detail(opp: dict) -> dict:
             # Stale/invalid new sources cannot regain writing authority through
             # a legacy title cache. Stale snapshots remain in research_context.
             metadata.pop("recent_works", None)
+    elif metadata.get("recent_works"):
+        metadata["recent_works"] = exclude_reviewed_works(opp, metadata["recent_works"])
+        if not metadata["recent_works"]:
+            for key in _UNVERIFIED_PUBLICATION_KEYS:
+                metadata.pop(key, None)
     out["metadata"] = metadata
     # Position truthfulness (W11): strip an unsupported "Prof." honorific
     # baked into legacy titles when the record's own stated rank contradicts

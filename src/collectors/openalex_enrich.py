@@ -95,6 +95,7 @@ from ..publication_trust import (
     VERIFIED_AUTHOR_ID as ATTRIBUTION_VERIFIED,
 )
 from ..publication_trust import (
+    exclude_reviewed_works,
     is_pending_remediation,
     record_works_gate,
     works_are_current_gate,
@@ -1808,7 +1809,7 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
         author_id = entry.get("author_id") if isinstance(entry, dict) else None
         clean: list[dict] = []
         seen: set[str] = set()
-        for w in works:
+        for w in exclude_reviewed_works(o, works):
             title = str(w.get("title", ""))[:_TITLE_CAP]
             if not title or not isinstance(w.get("year"), int):
                 continue
@@ -1823,6 +1824,12 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             if len(clean) >= _MAX_WORKS:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
+        retained = exclude_reviewed_works(o, existing)
+        removed = len(retained) != len(existing)
+        if removed:
+            # Preserve the author binding for future, independently checked works.
+            o["metadata"]["recent_works"] = retained
+            existing = retained
         if not clean and _is_a_retraction(entry, o):
             # The newer gate was asked about this author and rejected every
             # paper the record holds. Keeping them because the replacement is
@@ -1851,6 +1858,8 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
                 md["publication_author_id"] = author_id
             else:
                 md.pop("publication_author_id", None)
+            n += 1
+        elif removed:
             n += 1
     n -= _strip_ambiguous_attributions(opps)
     return n

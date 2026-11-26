@@ -13,7 +13,7 @@ from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
 from urllib.parse import urlsplit, urlunsplit
 
-from src.publication_trust import works_may_be_served
+from src.publication_trust import exclude_reviewed_works, works_may_be_served
 
 # school slug -> OpenAlex institution id (resolved once via /institutions). The
 # id is matched against each candidate author's full affiliation history, so a
@@ -330,6 +330,7 @@ def validate_research_snapshot(value, opp, *, now=None):
             return None
         if _stamp(snapshot['checked_at']) > _now(now):
             return None
+        snapshot["works"] = exclude_reviewed_works(opp, snapshot["works"])
         return snapshot
     except (ValueError, TypeError, OverflowError, RecursionError):
         return None

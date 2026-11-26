@@ -194,3 +194,18 @@ def test_doi_url_limits_match_public_browser_schema(doi):
 def test_timestamp_year_matches_browser_contract(field):
     s = snapshot(); s[field] = '0001-01-01T00:00:00Z'
     assert context(s)['status'] == 'unavailable'
+
+
+def test_reviewed_namesake_doi_is_removed_before_public_snapshot_is_versioned():
+    o = record()
+    o['id'] = 'faculty-asu-ece-36055db6'
+    s = snapshot()
+    work = s['works'][0]
+    excluded = {**work, 'work_id': 'https://openalex.org/W457', 'title': 'A variant title',
+                'doi': 'https://doi.org/10.1177/00219983251392704',
+                'source_url': 'https://doi.org/10.1177/00219983251392704'}
+    s['works'].insert(0, excluded)
+    result = context(s, o)
+    assert result['snapshot']['works'] == [work]
+    assert validate_public_research_context(result)
+    assert s['works'] == [excluded, work]
