@@ -647,6 +647,27 @@ class TestReleaseRecord:
         assert data_lines and _DATA_B["shard_commit"][:8] in data_lines[0]
         assert got["evidence"]["backend"]["data_version"] == _DATA_B
 
+    def test_missing_shard_proof_cannot_pass(self, monkeypatch):
+        _repo_state(monkeypatch)
+        for version in (None, {}, {**_DATA_A, "shard_commit": None},
+                        {**_DATA_A, "shards_tree": None}):
+            monkeypatch.setattr(gate, "data_version_at", lambda rev: version)
+            got = gate.check_release_record(SHA_A, _deployment())
+            assert got["status"] == gate.UNVERIFIED
+            assert got["reason"] == "evidence_incomplete"
+
+    def test_shard_path_must_be_a_git_tree(self, monkeypatch):
+        def git(*args):
+            return {"rev-parse": _DATA_A["shards_tree"], "cat-file": "blob",
+                    "log": _DATA_A["shard_commit"]}[args[0]]
+        monkeypatch.setattr(gate, "_git", git)
+        assert gate.data_version_at(SHA_A) is None
+
+    def test_different_shard_trees_are_reported_even_if_history_matches(self, monkeypatch):
+        _repo_state(monkeypatch, data={SHA_B: {**_DATA_A, "shards_tree": _DATA_B["shards_tree"]}})
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_B))
+        assert any("data versions differ" in d for d in got["evidence"]["disagreements"])
+
     def test_same_data_is_not_reported_as_a_data_disagreement(self, monkeypatch):
         # A code-only commit between the two leaves the corpus identical; the
         # record should say the code differs, not invent a data drift.
