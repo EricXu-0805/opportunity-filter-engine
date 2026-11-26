@@ -1,0 +1,246 @@
+{
+  "runs": [
+    {
+      "report": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45769730123/artifacts/15094318413",
+      "stats": {
+        "total": 459,
+        "expected": 454,
+        "unexpected": 0,
+        "flaky": 0,
+        "skipped": 5,
+        "ok": true
+      },
+      "cases": [
+        {
+          "title": "valid token via the login form loads the dashboard widgets",
+          "file": "admin.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-26T06:44:41.628Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "ADMIN_TOKEN not set in webServer env \u2014 skip authenticated dashboard checks"
+          ]
+        },
+        {
+          "title": "Lock after a valid login clears state and returns to the login form",
+          "file": "admin.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-26T06:44:41.636Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "ADMIN_TOKEN not set in webServer env \u2014 skip authenticated dashboard checks"
+          ]
+        },
+        {
+          "title": "asking is remembered across a reload, not just on the screen",
+          "file": "concierge-request.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-26T06:51:52.949Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "the request section is hidden while RELEASE_SCOPE.conciergeRequests is off"
+          ]
+        },
+        {
+          "title": "asking about one professor does not answer for another",
+          "file": "concierge-request.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-26T06:51:52.949Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "the request section is hidden while RELEASE_SCOPE.conciergeRequests is off"
+          ]
+        },
+        {
+          "title": "a first-time visitor can reach the end and get out",
+          "file": "onboarding-tour.spec.ts",
+          "outcome": "expected",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "passed",
+              "observed_utc": "2026-11-26T06:58:52.600Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": []
+        },
+        {
+          "title": "save current filters via /results button and see them on /favorites",
+          "file": "saved-searches.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-26T07:02:20.231Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "Supabase anonymous session not established (no NEXT_PUBLIC_SUPABASE_* in this env) \u2014 skip the save flow; it requires real supabase to round-trip the row into /favorites."
+          ]
+        }
+      ]
+    },
+    {
+      "report": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45723925306/artifacts/15075180589",
+      "stats": {
+        "total": 457,
+        "expected": 451,
+        "unexpected": 0,
+        "flaky": 1,
+        "skipped": 5,
+        "ok": false
+      },
+      "cases": [
+        {
+          "title": "Favorites Tailor checks new skills and courses but sends the complete manual bullets unchanged",
+          "file": "writing-entry-checks.spec.ts",
+          "outcome": "flaky",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "failed",
+              "observed_utc": "2026-11-26T00:10:19.756Z",
+              "attachments": [
+                "screenshot",
+                "profile-read-writing-entry-page-0",
+                "video",
+                "error-context"
+              ]
+            },
+            {
+              "attempt": 2,
+              "status": "passed",
+              "observed_utc": "2026-11-26T00:10:26.454Z",
+              "attachments": [
+                "trace"
+              ]
+            }
+          ],
+          "skip_reasons": []
+        },
+        {
+          "title": "valid token via the login form loads the dashboard widgets",
+          "file": "admin.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-25T23:50:59.983Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "ADMIN_TOKEN not set in webServer env \u2014 skip authenticated dashboard checks"
+          ]
+        },
+        {
+          "title": "Lock after a valid login clears state and returns to the login form",
+          "file": "admin.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-25T23:50:59.990Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "ADMIN_TOKEN not set in webServer env \u2014 skip authenticated dashboard checks"
+          ]
+        },
+        {
+          "title": "asking is remembered across a reload, not just on the screen",
+          "file": "concierge-request.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-25T23:58:04.664Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "the request section is hidden while RELEASE_SCOPE.conciergeRequests is off"
+          ]
+        },
+        {
+          "title": "asking about one professor does not answer for another",
+          "file": "concierge-request.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-25T23:58:04.664Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "the request section is hidden while RELEASE_SCOPE.conciergeRequests is off"
+          ]
+        },
+        {
+          "title": "a first-time visitor can reach the end and get out",
+          "file": "onboarding-tour.spec.ts",
+          "outcome": "expected",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "passed",
+              "observed_utc": "2026-11-26T00:04:48.178Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": []
+        },
+        {
+          "title": "save current filters via /results button and see them on /favorites",
+          "file": "saved-searches.spec.ts",
+          "outcome": "skipped",
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "skipped",
+              "observed_utc": "2026-11-26T00:07:57.147Z",
+              "attachments": []
+            }
+          ],
+          "skip_reasons": [
+            "Supabase anonymous session not established (no NEXT_PUBLIC_SUPABASE_* in this env) \u2014 skip the save flow; it requires real supabase to round-trip the row into /favorites."
+          ]
+        }
+      ]
+    }
+  ],
+  "test_environment": "Hosted Chromium with the isolated account service. Separate from production user acceptance."
+}
