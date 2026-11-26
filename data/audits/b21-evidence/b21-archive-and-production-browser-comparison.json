@@ -1,0 +1,92 @@
+{
+  "method": "Desktop Chrome navigation through the original product links, reading visible controls and expanding the available disclosure. Same-origin public GETs recorded release identity. No draft, contact, application or tracking action was executed.",
+  "checked_at_utc": "2026-11-26T20:02:36.832958+00:00",
+  "production_before_and_after": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+  "candidate": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+  "archives": [
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "production_page_http": 200,
+      "production_api_http": 200,
+      "production_page_sha": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "production_controls": {
+        "rank_shown_in_professor_or_lab_facts": "Associate Professor",
+        "draft_email_visible_in_existing_profile": true,
+        "view_faculty_profile_visible": false,
+        "inactive_banner": false
+      },
+      "candidate_controls": {
+        "banner": "This record is no longer active.",
+        "view_faculty_profile_visible": true,
+        "candidate_link_clicked_and_named_school_page_reached": {
+          "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+          "displayed_name_or_page_title": "Lisa Lewis"
+        },
+        "draft_email_visible": false,
+        "apply_now_visible": false,
+        "opportunity_details_section_visible": false,
+        "enabled_disclosure_expanded": "Records, notes & reminders",
+        "visible_content_after_opening": "Student tracking notes, preview, reminder date and status dependency.",
+        "stored_retired_role": "Retired Associate Clinical Professor",
+        "exact_role_visible_by_default": false,
+        "exact_role_visible_when_expanded": false,
+        "unrelated_keyword_help_still_mentions_email": true,
+        "keyword_help_text": "Topics inferred by our system. Check them before using them in your email."
+      }
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "production_page_http": 200,
+      "production_api_http": 200,
+      "production_page_sha": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "production_controls": {
+        "rank_shown_in_professor_or_lab_facts": "Professor of psychology and linguistics",
+        "draft_email_visible_in_existing_profile": true,
+        "view_faculty_profile_visible": false,
+        "inactive_banner": false
+      },
+      "candidate_controls": {
+        "banner": "This record is no longer active.",
+        "view_faculty_profile_visible": true,
+        "candidate_link_clicked_and_named_school_page_reached": {
+          "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+          "displayed_name_or_page_title": "Charles Perfetti PhD"
+        },
+        "draft_email_visible": false,
+        "apply_now_visible": false,
+        "opportunity_details_section_visible": false,
+        "enabled_disclosure_expanded": "Records, notes & reminders",
+        "visible_content_after_opening": "Student tracking notes, preview, reminder date and status dependency.",
+        "stored_retired_role": "Retired Distinguished University Professor of Psychology",
+        "exact_role_visible_by_default": false,
+        "exact_role_visible_when_expanded": false,
+        "unrelated_keyword_help_still_mentions_email": true,
+        "keyword_help_text": "Topics inferred by our system. Check them before using them in your email."
+      }
+    }
+  ],
+  "fsu": {
+    "id": "faculty-fsu-comm-e3519c6b",
+    "displayed_rank": "Associate Professor, Director PEAKS Research Laboratory",
+    "actual_profile_click": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+    "destination_name": "Jessica Wendorf Muhamad",
+    "destination_title": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+    "person_specific_email_link_visible": true
+  },
+  "interpretation": "#1470 and M180 require readable historical IDs, reviewed retirement and affiliation, a named institutional link and no active contact control. A permanently visible exact retired-title string is not specified by either. The full-title UI check and its outcome are retained as a separate observation.",
+  "kate_in_same_desktop_chrome": {
+    "from": "faculty-pitt-ling-e0bda033",
+    "heading": "Kate Stanton",
+    "initial_inactive": true,
+    "secondary_appointment_visible": true,
+    "initial_draft_button": false,
+    "clicked": "View current faculty record",
+    "to": "faculty-pitt-phil-2930bf5f",
+    "department": "Department of Philosophy",
+    "shown_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) \u00b7 Secondary appointment in Linguistics",
+    "profile_link": "https://www.philosophy.pitt.edu/people/kstanton",
+    "current_draft_button": true,
+    "official_contact_unavailable_notice": true,
+    "draft_opened": false
+  }
+}
