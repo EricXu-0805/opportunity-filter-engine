@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { BellRing, StickyNote } from 'lucide-react';
 import type { InteractionRecord } from '@/lib/supabase';
 import type { SaveDetailsResult } from './use-opportunity-detail';
@@ -81,6 +81,21 @@ export function TrackerPanel({
   const [remindAt, setRemindAt] = useState(detail?.remind_at ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [notesMode, setNotesMode] = useState<'edit' | 'preview'>('edit');
+  const notesId = useId();
+  const notesTabs = useRef<Record<typeof notesMode, HTMLButtonElement | null>>({ edit: null, preview: null });
+  function navigateNotes(event: KeyboardEvent<HTMLButtonElement>) {
+    let next: typeof notesMode;
+    switch (event.key) {
+      case 'Home': next = 'edit'; break;
+      case 'End': next = 'preview'; break;
+      case 'ArrowRight':
+      case 'ArrowLeft': next = notesMode === 'edit' ? 'preview' : 'edit'; break;
+      default: return;
+    }
+    event.preventDefault();
+    setNotesMode(next);
+    notesTabs.current[next]?.focus();
+  }
 
   // Each field's own last-CONFIRMED-from-parent baseline — separate from
   // the `notes`/`remindAt` DRAFT state above. A parent detail rewrite (an
@@ -362,62 +377,58 @@ export function TrackerPanel({
           <ContactHistory opportunityId={opportunityId} refreshKey={JSON.stringify([detail?.updated_at, contactHistoryRevision])} />
           <div>
             <div role="tablist" aria-label={t('detail.tracker.notesTabsAria')} className="flex items-center gap-1 mb-1.5">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={notesMode === 'edit'}
-                onClick={() => setNotesMode('edit')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                  notesMode === 'edit'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {t('detail.tracker.editTab')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={notesMode === 'preview'}
-                onClick={() => setNotesMode('preview')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                  notesMode === 'preview'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {t('detail.tracker.previewTab')}
-              </button>
+              {(['edit', 'preview'] as const).map(mode => (
+                <button
+                  key={mode}
+                  ref={button => { notesTabs.current[mode] = button; }}
+                  type="button"
+                  role="tab"
+                  id={`${notesId}-${mode}`}
+                  aria-controls={notesId}
+                  aria-selected={notesMode === mode}
+                  tabIndex={notesMode === mode ? 0 : -1}
+                  onKeyDown={navigateNotes}
+                  onClick={() => setNotesMode(mode)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-indigo-600 ${
+                    notesMode === mode
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t(mode === 'edit' ? 'detail.tracker.editTab' : 'detail.tracker.previewTab')}
+                </button>
+              ))}
             </div>
-            {notesMode === 'edit' ? (
-              <label className="block">
-                <span className="sr-only">{t('detail.sections.description')}</span>
-                <textarea
-                  value={notes}
-                  onChange={(e) => handleNotesChange(e.target.value)}
-                  disabled={!writeReady}
-                  maxLength={2000}
-                  rows={3}
-                  placeholder={t('detail.tracker.notesPlaceholder')}
-                  className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 resize-y disabled:opacity-60 disabled:cursor-wait"
-                />
-                <div className="flex justify-between mt-1 text-[10px] text-gray-500">
-                  <span className="italic">{t('detail.tracker.markdownHint')}</span>
-                  <span>{notes.length} / 2000</span>
+            <div id={notesId} role="tabpanel" aria-labelledby={`${notesId}-${notesMode}`}>
+              {notesMode === 'edit' ? (
+                <label className="block">
+                  <span className="sr-only">{t('detail.sections.description')}</span>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => handleNotesChange(e.target.value)}
+                    disabled={!writeReady}
+                    maxLength={2000}
+                    rows={3}
+                    placeholder={t('detail.tracker.notesPlaceholder')}
+                    className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 resize-y disabled:opacity-60 disabled:cursor-wait"
+                  />
+                  <div className="flex justify-between mt-1 text-[10px] text-gray-500">
+                    <span className="italic">{t('detail.tracker.markdownHint')}</span>
+                    <span>{notes.length} / 2000</span>
+                  </div>
+                </label>
+              ) : (
+                <div
+                  className="min-h-[5rem] px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg prose prose-sm prose-gray max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0 prose-pre:my-2 prose-pre:p-2 prose-pre:text-[12px]"
+                >
+                  {notes.trim() ? (
+                    <MarkdownPreview>{notes}</MarkdownPreview>
+                  ) : (
+                    <p className="text-gray-500 italic text-[12px]">{t('detail.tracker.previewEmpty')}</p>
+                  )}
                 </div>
-              </label>
-            ) : (
-              <div
-                role="tabpanel"
-                className="min-h-[5rem] px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg prose prose-sm prose-gray max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0 prose-pre:my-2 prose-pre:p-2 prose-pre:text-[12px]"
-              >
-                {notes.trim() ? (
-                  <MarkdownPreview>{notes}</MarkdownPreview>
-                ) : (
-                  <p className="text-gray-500 italic text-[12px]">{t('detail.tracker.previewEmpty')}</p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <label className="flex items-center gap-2 text-[12px] text-gray-600">
             <BellRing className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
