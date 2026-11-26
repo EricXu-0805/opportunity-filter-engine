@@ -1,0 +1,294 @@
+{
+  "time_utc": "2026-11-26T17:44:11+00:00",
+  "live_version": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "base": "87d4d7d12d8a30dd557a6fdb799f2d3004e8d549",
+  "candidate_commit": "13061d423178121463c101fd891e40b34d13ae77",
+  "original_coverage_policy": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/390",
+  "verified_institutional_sources_and_conflicts": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/716645d9638e3c6addeb08362e0f8660f9437259/data/audits/maintenance-2026-11-26/ucsd-current-directory-adjunct-follow-up.json",
+  "school": "UC San Diego",
+  "department": "Department of NanoEngineering",
+  "scope": "Two consecutive invocations of the normal department card collector on the official roster and per-person university roles. Candidate API GETs use the real committed shard and the normal endpoint. Production scheduled refresh/after-deploy checks remain pending.",
+  "full_roster": {
+    "table": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+    "active_linked_person_rows_before_three_adjuncts": 40,
+    "active_person_rows_after": 37,
+    "unique_projected_ids_before_three_adjuncts": 39,
+    "unique_projected_ids_after": 36,
+    "active_stored_nano_before": 30,
+    "active_stored_nano_after": 27,
+    "unmatched_active_stored_ids": [],
+    "ordered_projected_original_ids": [
+      "faculty-ucsd-nano-d24bdcfa",
+      "faculty-ucsd-nano-28e08ebd",
+      "faculty-ucsd-nano-79dd203c",
+      "faculty-ucsd-nano-c8fc10d0",
+      "faculty-ucsd-nano-812f8dc1",
+      "faculty-ucsd-nano-2097ee48",
+      "faculty-ucsd-nano-0f313dcf",
+      "faculty-ucsd-nano-ef30f6e2",
+      "faculty-ucsd-nano-65b8b318",
+      "faculty-ucsd-nano-e94320ae",
+      "faculty-ucsd-nano-6e6b276c",
+      "faculty-ucsd-nano-4c95244a",
+      "faculty-ucsd-nano-ecc31f16",
+      "faculty-ucsd-nano-467aa36b",
+      "faculty-ucsd-nano-58f109dc",
+      "faculty-ucsd-nano-5443ea03",
+      "faculty-ucsd-nano-f22f5fe7",
+      "faculty-ucsd-nano-28e08ebd",
+      "faculty-ucsd-nano-4296d17b",
+      "faculty-ucsd-nano-3b436240",
+      "faculty-ucsd-nano-fd63f909",
+      "faculty-ucsd-nano-52bb1d25",
+      "faculty-ucsd-nano-571a39eb",
+      "faculty-ucsd-nano-4bcf3471",
+      "faculty-ucsd-nano-3be64dab",
+      "faculty-ucsd-nano-6efedc5d",
+      "faculty-ucsd-nano-74646bb6",
+      "faculty-ucsd-nano-5e6a268c",
+      "faculty-ucsd-nano-6f1ca843",
+      "faculty-ucsd-nano-d181f3a2",
+      "faculty-ucsd-nano-92aa2cb4",
+      "faculty-ucsd-nano-a213f336",
+      "faculty-ucsd-nano-0b8a48ba",
+      "faculty-ucsd-nano-1d03d169",
+      "faculty-ucsd-nano-a37aa155",
+      "faculty-ucsd-nano-03f450ce",
+      "faculty-ucsd-nano-7c7f22ea"
+    ],
+    "replicated_pass_identical": true,
+    "campus_shard_count": 1508,
+    "before_and_after_original_ids_sha256": "bb2fa84facb435b7db36e594fc25a34fb328b0070aee10b654be46b720b084a6"
+  },
+  "old_id_comparisons": {
+    "faculty-ucsd-nano-2aa92754": {
+      "old_id": "faculty-ucsd-nano-2aa92754",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-2aa92754?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-2aa92754",
+      "production_html_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+      "production_status": 200,
+      "production_actionable": true,
+      "original_name": "Darren Lipomi",
+      "original_source_url": "https://www.lipomigroup.org/",
+      "candidate_status": 200,
+      "candidate_name": "Darren Lipomi",
+      "candidate_source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "candidate_actionable": false,
+      "candidate_archive_reason": "outside_unit_ladder",
+      "raw_last_seen_preserved": true,
+      "appointment_title": "Adjunct Professor",
+      "departmental_appointment_source": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+      "personal_appointment_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "legacy_client_status": 409
+    },
+    "faculty-ucsd-nano-04ac1d79": {
+      "old_id": "faculty-ucsd-nano-04ac1d79",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-04ac1d79?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-04ac1d79",
+      "production_html_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+      "production_status": 200,
+      "production_actionable": true,
+      "original_name": "Shirley Meng",
+      "original_source_url": "http://smeng.ucsd.edu/",
+      "candidate_status": 200,
+      "candidate_name": "Ying Shirley Meng",
+      "candidate_source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "candidate_actionable": false,
+      "candidate_archive_reason": "outside_unit_ladder",
+      "raw_last_seen_preserved": true,
+      "appointment_title": "Adjunct Professor",
+      "departmental_appointment_source": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+      "personal_appointment_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "legacy_client_status": 409
+    },
+    "faculty-ucsd-nano-27240933": {
+      "old_id": "faculty-ucsd-nano-27240933",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-27240933?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-27240933",
+      "production_html_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+      "production_status": 200,
+      "production_actionable": true,
+      "original_name": "Sheng Xu",
+      "original_source_url": "http://xugroup.eng.ucsd.edu/",
+      "candidate_status": 200,
+      "candidate_name": "Sheng Xu",
+      "candidate_source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "candidate_actionable": false,
+      "candidate_archive_reason": "outside_unit_ladder",
+      "raw_last_seen_preserved": true,
+      "appointment_title": "Adjunct Professor",
+      "departmental_appointment_source": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+      "personal_appointment_source": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "legacy_client_status": 409
+    },
+    "faculty-ucsd-nano-e94320ae": {
+      "old_id": "faculty-ucsd-nano-e94320ae",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-e94320ae?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-e94320ae",
+      "production_html_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+      "production_status": 200,
+      "production_actionable": true,
+      "original_name": "Shyue Ping Ong",
+      "original_source_url": "http://materialsvirtuallab.org/",
+      "candidate_status": 200,
+      "candidate_name": "Shyue Ping Ong",
+      "candidate_source_url": "http://materialsvirtuallab.org/",
+      "candidate_actionable": true,
+      "candidate_archive_reason": null,
+      "raw_last_seen_preserved": true
+    },
+    "faculty-ucsd-che-8330aad7": {
+      "old_id": "faculty-ucsd-che-8330aad7",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ucsd-che-8330aad7?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_detail": "https://joinalab.com/opportunities/faculty-ucsd-che-8330aad7",
+      "production_html_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+      "production_status": 200,
+      "production_actionable": true,
+      "original_name": "Jinhye Bae",
+      "original_source_url": "https://jbae.eng.ucsd.edu/",
+      "candidate_status": 200,
+      "candidate_name": "Jinhye Bae",
+      "candidate_source_url": "https://jbae.eng.ucsd.edu/",
+      "candidate_actionable": true,
+      "candidate_archive_reason": null,
+      "raw_last_seen_preserved": true
+    },
+    "faculty-ucsd-nano-d24bdcfa": {
+      "old_id": "faculty-ucsd-nano-d24bdcfa",
+      "production_api": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-d24bdcfa?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "production_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-d24bdcfa",
+      "production_html_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+      "production_status": 200,
+      "production_actionable": true,
+      "original_name": "Shaochen Chen",
+      "original_source_url": "http://schen.ucsd.edu/lab/",
+      "candidate_status": 200,
+      "candidate_name": "Shaochen Chen",
+      "candidate_source_url": "http://schen.ucsd.edu/lab/",
+      "candidate_actionable": true,
+      "candidate_archive_reason": null,
+      "raw_last_seen_preserved": true
+    },
+    "faculty-ucsd-nano-25a6d469": {
+      "old_id": "faculty-ucsd-nano-25a6d469",
+      "previous_emeritus_batch": true,
+      "candidate_status": 200,
+      "candidate_name": "Sadik Esener",
+      "candidate_source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "candidate_actionable": false,
+      "candidate_archive_reason": "retired_title",
+      "raw_last_seen_preserved": true
+    },
+    "faculty-ucsd-nano-dc9e3de3": {
+      "old_id": "faculty-ucsd-nano-dc9e3de3",
+      "previous_emeritus_batch": true,
+      "candidate_status": 200,
+      "candidate_name": "Michael Heller",
+      "candidate_source_url": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "candidate_actionable": false,
+      "candidate_archive_reason": "retired_title",
+      "raw_last_seen_preserved": true
+    }
+  },
+  "simulated_isolated_reappointment_disk_merge": {
+    "scope": "Hypothetical future roles in local fixtures. Three consecutive writes, reloads and reclassifications through the normal file merge on each actual archived shard row; no real reappointment asserted.",
+    "original_ids": {
+      "faculty-ucsd-nano-2aa92754": [
+        {
+          "step": "failed_personal_page",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": false,
+            "appointment": "Adjunct Professor"
+          }
+        },
+        {
+          "step": "two_current_sources_agree",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": true,
+            "appointment": "Professor"
+          }
+        },
+        {
+          "step": "rankless_retry_after_reinstatement",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": true,
+            "appointment": "Professor"
+          }
+        }
+      ],
+      "faculty-ucsd-nano-04ac1d79": [
+        {
+          "step": "failed_personal_page",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": false,
+            "appointment": "Adjunct Professor"
+          }
+        },
+        {
+          "step": "two_current_sources_agree",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": true,
+            "appointment": "Professor"
+          }
+        },
+        {
+          "step": "rankless_retry_after_reinstatement",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": true,
+            "appointment": "Professor"
+          }
+        }
+      ],
+      "faculty-ucsd-nano-27240933": [
+        {
+          "step": "failed_personal_page",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": false,
+            "appointment": "Adjunct Professor"
+          }
+        },
+        {
+          "step": "two_current_sources_agree",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": true,
+            "appointment": "Professor"
+          }
+        },
+        {
+          "step": "rankless_retry_after_reinstatement",
+          "existing_rows_updated": 1,
+          "new_rows": 0,
+          "kept_original_id_and_first_sighting": true,
+          "after_persisted_readback": {
+            "active": true,
+            "appointment": "Professor"
+          }
+        }
+      ]
+    }
+  }
+}
