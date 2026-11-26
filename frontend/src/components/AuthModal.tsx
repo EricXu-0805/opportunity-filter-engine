@@ -54,7 +54,7 @@ import {
   type OAuthProvider,
   type SignInOutcome,
 } from '@/lib/supabase';
-import { synchronizePushOwner, releasePushForSignOut } from '@/lib/push';
+import { synchronizePushOwner, releasePushForSignOut, withPushSessionLock } from '@/lib/push';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -307,8 +307,17 @@ export default function AuthModal() {
     try {
       // A push row can only be deleted by its own account's session, so it
       // goes while that session still exists.
-      const pushReleased = await releasePushForSignOut(authState?.user?.id ?? null);
-      if (!(await signOutOfAccount())) {
+      const { release, signedOut } = await withPushSessionLock(async () => {
+        const release = await releasePushForSignOut(authState?.user?.id ?? null);
+        let signedOut = false;
+        try {
+          signedOut = await signOutOfAccount();
+          return { release, signedOut };
+        } finally {
+          if (!signedOut) await release.restore?.();
+        }
+      });
+      if (!signedOut) {
         // A failed logout request leaves the account session in place, but an
         // expired session whose refresh is refused is dropped and the error
         // still comes back; the message reads the live auth state for that.
@@ -316,7 +325,7 @@ export default function AuthModal() {
         return;
       }
       // Reconcile the live session: another tab may already have bound a new endpoint.
-      if (!pushReleased) {
+      if (!release.released) {
         await synchronizePushOwner()
           .catch((err) => console.warn('[ofe] push endpoint survived sign-out:', err));
       }

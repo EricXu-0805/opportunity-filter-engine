@@ -32,6 +32,7 @@ vi.mock('@/lib/supabase', () => ({
 const mockReleasePush = vi.fn();
 const mockSyncPush = vi.fn();
 vi.mock('@/lib/push', () => ({
+  withPushSessionLock: (work: () => Promise<unknown>) => work(),
   releasePushForSignOut: () => mockReleasePush(),
   synchronizePushOwner: () => mockSyncPush(),
 }));
@@ -566,7 +567,7 @@ describe('AuthModal — signout-confirm phase', () => {
   beforeEach(() => {
     mockGetAuthState.mockResolvedValue(PERMANENT);
     modalState = { open: true, phase: 'signout-confirm' };
-    mockReleasePush.mockResolvedValue(true);
+    mockReleasePush.mockResolvedValue({ released: true });
     mockSyncPush.mockResolvedValue(undefined);
     sessionStorage.clear();
   });
@@ -693,6 +694,16 @@ describe('AuthModal — signout-confirm phase', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('restores the prepared push binding when sign-out fails', async () => {
+    const restore = vi.fn(async () => {});
+    mockReleasePush.mockResolvedValue({ released: true, restore });
+    mockSignOut.mockResolvedValue(false);
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await waitFor(() => expect(restore).toHaveBeenCalledOnce());
+    expect(closeModalMock).not.toHaveBeenCalled();
+  });
+
   it('runs one sign-out at a time', async () => {
     let finish!: (ok: boolean) => void;
     mockSignOut.mockReturnValueOnce(new Promise<boolean>((resolve) => { finish = resolve; }));
@@ -711,7 +722,7 @@ describe('AuthModal — signout-confirm phase', () => {
   // release has to run before the sign-out ends that session.
   it('releases this browser\'s push row while the account session still exists', async () => {
     const order: string[] = [];
-    mockReleasePush.mockImplementation(async () => { order.push('release'); return true; });
+    mockReleasePush.mockImplementation(async () => { order.push('release'); return { released: true }; });
     mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
@@ -722,7 +733,7 @@ describe('AuthModal — signout-confirm phase', () => {
 
   it('kills the browser endpoint when the row outlived the session that could delete it', async () => {
     const order: string[] = [];
-    mockReleasePush.mockImplementation(async () => { order.push('release'); return false; });
+    mockReleasePush.mockImplementation(async () => { order.push('release'); return { released: false }; });
     mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
     mockSyncPush.mockImplementation(async () => { order.push('drop'); });
     render(<AuthModal />);
@@ -732,7 +743,7 @@ describe('AuthModal — signout-confirm phase', () => {
   });
 
   it('leaves the endpoint working when the sign-out failed: the account still uses it', async () => {
-    mockReleasePush.mockResolvedValue(false);
+    mockReleasePush.mockResolvedValue({ released: false });
     mockSignOut.mockResolvedValue(false);
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));

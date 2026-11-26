@@ -14,8 +14,9 @@ async function displayReminder(event) {
     tag: payload.tag || 'ofe-reminder', data: { url: payload.url || '/dashboard' },
   });
   const name = 'ofe-push-binding-v1';
+  if (!globalThis.caches || !navigator.locks) return;
   if (!self.location.search && !await caches.has(name)) return show();
-  if (!payload.recipient || !navigator.locks) return;
+  if (!payload.recipient) return;
   await navigator.locks.request('ofe-push-binding', async () => {
     const cache = await caches.open(name);
     const entry = await cache.match('/.ofe/push-owner');

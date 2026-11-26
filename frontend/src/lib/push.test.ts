@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { worker } from './push-worker.test-utils';
 
 const mockGetDeviceId = vi.fn<() => Promise<string | null>>();
 const mockGetSession = vi.fn<() => Promise<{ data: { session: { user: { id: string } } | null } }>>();
@@ -108,6 +109,7 @@ function installServiceWorker(opts: { hasRegistration: boolean; registerThrows?:
   });
   mockRegistration = opts.hasRegistration
     ? {
+        active: { scriptURL: new URL('/sw.js?account=1', location.origin).href, state: 'activated' },
         pushManager: {
           getSubscription: vi.fn(async () => mockSubscription),
           subscribe: subscribeFn,
@@ -120,7 +122,8 @@ function installServiceWorker(opts: { hasRegistration: boolean; registerThrows?:
       register: vi.fn(async () => {
         if (opts.registerThrows) throw new Error('register failed');
         mockRegistration = {
-          pushManager: {
+          active: { scriptURL: new URL('/sw.js?account=1', location.origin).href, state: 'activated' },
+        pushManager: {
             getSubscription: vi.fn(async () => mockSubscription),
             subscribe: subscribeFn,
           },
@@ -457,7 +460,8 @@ describe('releasePushForSignOut', () => {
     subscribedBrowser(browserSub('https://push.example/mine', browserUnsub));
     mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'account-uid' } } } });
 
-    await expect(releasePushForSignOut('account-uid')).resolves.toBe(true);
+    cached = JSON.stringify({ uid: 'account-uid', enabled: true });
+    await expect(releasePushForSignOut('account-uid')).resolves.toMatchObject({ released: true });
 
     expect(queries).toEqual([{
       table: 'push_subscriptions',
@@ -474,12 +478,12 @@ describe('releasePushForSignOut', () => {
     installPushManager();
     installServiceWorker({ hasRegistration: true });
 
-    await expect(releasePushForSignOut('device-123')).resolves.toBe(true);
+    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ released: true });
     expect(queries).toEqual([]);
   });
 
   it('has nothing to release when the browser cannot do push', async () => {
-    await expect(releasePushForSignOut('device-123')).resolves.toBe(true);
+    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ released: true });
     expect(queries).toEqual([]);
   });
 
@@ -490,9 +494,10 @@ describe('releasePushForSignOut', () => {
     ['no session is left that could delete the row', () => mockGetSession.mockResolvedValue({ data: { session: null } })],
   ])('reports false when %s', async (_name, arrange) => {
     subscribedBrowser(browserSub('https://push.example/mine'));
+    cached = JSON.stringify({ uid: 'device-123', enabled: true });
     arrange();
 
-    await expect(releasePushForSignOut('device-123')).resolves.toBe(false);
+    await expect(releasePushForSignOut('device-123')).resolves.toMatchObject({ released: false });
   });
 
   it('cannot delete B’s notification row when an old A sign-out resumes', async () => {
@@ -502,12 +507,54 @@ describe('releasePushForSignOut', () => {
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  it('reports false when the browser subscription cannot be read', async () => {
-    installNotification('granted');
-    installPushManager();
-    installUnreadableServiceWorker();
+  it('reports a safety failure if the existing worker cannot be inspected', async () => {
+    installNotification('granted'); installPushManager(); installUnreadableServiceWorker();
+    await expect(releasePushForSignOut('device-123')).rejects.toThrow('boom');
+  });
 
-    await expect(releasePushForSignOut('device-123')).resolves.toBe(false);
+  it('mutes an already queued reminder before logout, without requiring any subsequent auth event', async () => {
+    subscribedBrowser(browserSub('https://push.example/A'));
+    account('A');
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    const receipt = await releasePushForSignOut('A');
+    expect(receipt.released).toBe(true);
+    const sleeping = worker(JSON.parse(cached!));
+    await sleeping.send('A');
+    expect(sleeping.showNotification).not.toHaveBeenCalled();
+    // A second tab can still observe the old session until logout completes.
+    mockSelectResult.mockResolvedValue({ data: { endpoint: 'https://push.example/A' }, error: null });
+    await synchronizePushOwner();
+    expect(JSON.parse(cached!).enabled).toBe(false);
+    // If logout fails, A recovers the same physical subscription and reminders.
+    await receipt.restore!();
+    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'A', endpoint: 'https://push.example/A' }), expect.anything());
+    const restored = worker(JSON.parse(cached!));
+    await restored.send('A');
+    expect(restored.showNotification).toHaveBeenCalledOnce();
+  });
+
+  it('recovers the same A subscription on reconnect when the first restoration write fails', async () => {
+    subscribedBrowser(browserSub('https://push.example/A')); account('A');
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    const receipt = await releasePushForSignOut('A');
+    mockUpsert.mockRejectedValueOnce(new Error('offline'));
+    await expect(receipt.restore!()).rejects.toThrow('offline');
+    expect(JSON.parse(cached!).enabled).toBe(false);
+    await synchronizePushOwner();
+    expect(mockUpsert).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(cached!)).toEqual({ uid: 'A', enabled: true });
+  });
+
+  it('a delayed failed-logout receipt cannot rebind B’s endpoint to A', async () => {
+    subscribedBrowser(browserSub('https://push.example/A')); account('A');
+    cached = JSON.stringify({ uid: 'A', enabled: true });
+    const receipt = await releasePushForSignOut('A');
+    account('B');
+    await subscribeToPush('AAAA', TOKEN);
+    mockUpsert.mockClear();
+    await receipt.restore!();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(JSON.parse(cached!)).toEqual({ uid: 'B', enabled: true });
   });
 });
 
@@ -555,5 +602,24 @@ describe('synchronizePushOwner', () => {
     account(null);
     await synchronizePushOwner();
     expect(cached).toBeNull();
+  });
+});
+
+describe('legacy browsers without an ownership backend', () => {
+  it.each(['locks', 'caches'])('attempts physical cleanup and surfaces refusal without %s', async missing => {
+    const definition = Object.getOwnPropertyDescriptor(navigator, 'locks');
+    if (missing === 'caches') vi.stubGlobal('caches', undefined);
+    else Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined });
+    try {
+      const sub = browserSub('https://push.example/legacy', vi.fn(async () => false));
+      subscribedBrowser(sub); account('A');
+      await expect(releasePushForSignOut('A')).rejects.toThrow('kept');
+      await expect(synchronizePushOwner()).rejects.toThrow('kept');
+      await expect(unsubscribeFromPush(TOKEN)).rejects.toThrow('kept');
+      expect(sub.unsubscribe).toHaveBeenCalledTimes(3);
+      expect(mockUpsert).not.toHaveBeenCalled();
+    } finally {
+      if (missing === 'locks' && definition) Object.defineProperty(navigator, 'locks', definition);
+    }
   });
 });
