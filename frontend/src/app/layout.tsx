@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import AuthModal from '@/components/AuthModal';
+import PushOwnerSync from '@/components/PushOwnerSync';
 import BackendWaker from '@/components/BackendWaker';
 import GuestBanner from '@/components/GuestBanner';
 import FeedbackWidget from '@/components/FeedbackWidget';
@@ -95,6 +96,7 @@ export default async function RootLayout({
               consistent across surfaces. */}
           <AuthModalProvider>
             <BackendWaker />
+            <PushOwnerSync />
             <a
               href="#main-content"
               className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:border focus:border-indigo-500 focus:rounded-lg focus:text-sm focus:font-medium focus:text-indigo-700 focus:shadow-lg"

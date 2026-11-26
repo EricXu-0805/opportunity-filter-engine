@@ -1139,13 +1139,30 @@ function signOutFoundSessionGone(error: { status?: number }): boolean {
  * session whose refresh is refused is the exception: supabase-js drops it and
  * still returns the error, so false does not always mean still signed in.
  */
-export async function signOutOfAccount(): Promise<boolean> {
+export async function signOutOfAccount(expectedUid?: string | null): Promise<boolean> {
   // scope:'local' — signing out THIS device must not revoke the account's
   // sessions on every other device (the default 'global' does).
-  let error: { status?: number; message: string } | null;
+  let error: { status?: number; message: string } | null = null;
   try {
-    ({ error } = await supabase.auth.signOut({ scope: 'local' }));
+    let alreadySignedOut = false;
+    if (expectedUid !== undefined) {
+      // Push cleanup and the cross-tab action lock can outlive the original
+      // session. A late read must never authorize logging a different user out.
+      let revision = getAuthObservationRevision();
+      let observation = await supabase.auth.getSession();
+      if (getAuthObservationRevision() !== revision) {
+        revision = getAuthObservationRevision();
+        observation = await supabase.auth.getSession();
+        if (getAuthObservationRevision() !== revision) throw new OwnerMismatchError();
+      }
+      if (observation.error && !signOutFoundSessionGone(observation.error)) return false;
+      const session = observation.data.session;
+      alreadySignedOut = !session || isAnonymousUser(session);
+      if (session && !alreadySignedOut && session.user.id !== expectedUid) throw new OwnerMismatchError();
+    }
+    if (!alreadySignedOut) ({ error } = await supabase.auth.signOut({ scope: 'local' }));
   } catch (thrown) {
+    if (thrown instanceof OwnerMismatchError) throw thrown;
     // A throw (a lock timeout, say) comes before supabase-js removes anything.
     console.warn('[ofe] signOut failed:', thrown);
     return false;
