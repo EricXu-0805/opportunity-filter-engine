@@ -142,16 +142,43 @@ def _old_page_restored(row: dict, review: ProfileReview) -> bool:
     return False
 
 
+def _matches_review(row: dict, review: ProfileReview) -> bool:
+    return (
+        row.get("school") == review.school and row.get("department") == review.department
+        and row.get("source") == f"{review.school}_faculty" and row.get("source_type") == "faculty_research"
+        and row.get("pi_name") == review.name and row.get("url") in (review.previous_url, review.profile_url)
+    )
+
+
+def carry_forward_reviewed_appointment(previous: dict, incoming: dict) -> None:
+    """Keep the last verified appointment when the same roster emits a rank-less card."""
+    review = REVIEWS.get(incoming.get("id"))
+    if (not review or review.previous_title != "" or previous.get("id") != incoming.get("id")
+            or not _matches_review(previous, review) or not _matches_review(incoming, review)):
+        return
+    old = previous.get("metadata") or {}
+    new = incoming.get("metadata") or {}
+    old_title = old.get("faculty_title")
+    if not old_title or new.get("faculty_title") not in (None, "", old_title) or new.get("is_active") is False:
+        return
+    if old.get("is_active") is False:
+        prior_review = old.get("faculty_profile_review") or {}
+        if (old_title != review.title or prior_review.get("source_url") != review.roster_url
+                or prior_review.get("reviewed_on") != review.reviewed_on.isoformat()
+                or old.get("deactivation_reason") not in ("retired_title", "trainee_title")):
+            return
+        new.update(is_active=False, deactivated_at=old.get("deactivated_at"),
+                   deactivation_reason=old["deactivation_reason"], faculty_profile_review=prior_review.copy())
+    elif (old.get("last_seen_at") or "")[:10] < review.reviewed_on.isoformat():
+        return
+    new["faculty_title"] = old_title
+
+
 def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | None = None,
                                  classify_title: bool = True) -> bool:
     """Correct a known URL or appointment while a reset record still claims it."""
     review = REVIEWS.get(row.get("id"))
-    if not review or (today or date.today()) < review.reviewed_on:
-        return False
-    if (row.get("school") != review.school or row.get("department") != review.department
-            or row.get("source") != f"{review.school}_faculty"
-            or row.get("source_type") != "faculty_research" or row.get("pi_name") != review.name
-            or row.get("url") not in (review.previous_url, review.profile_url)
+    if (not review or (today or date.today()) < review.reviewed_on or not _matches_review(row, review)
             or (selected and not selected(review.school))):
         return False
     metadata = row.get("metadata")

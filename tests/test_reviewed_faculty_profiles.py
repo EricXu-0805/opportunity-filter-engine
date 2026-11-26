@@ -5,7 +5,11 @@ import pytest
 
 from backend.data_loader import _sanitize_opportunity
 from src.normalizers.deactivate_stale_faculty import deactivate_retired_title_faculty, deactivate_trainee_faculty
-from src.normalizers.reviewed_faculty_profiles import REVIEWS, apply_reviewed_faculty_profiles
+from src.normalizers.reviewed_faculty_profiles import (
+    REVIEWS,
+    apply_reviewed_faculty_profiles,
+    carry_forward_reviewed_appointment,
+)
 
 AS_OF = date(2026, 11, 26)
 BEISE = "faculty-umd-phys-5e8e0edd"
@@ -261,3 +265,37 @@ def test_vt_chemical_refresh_counts_reviewed_appointments_before_comparing_the_r
     assert deactivate_retired_title_faculty(rows, today=AS_OF)["by_school"] == {"vt": 4}
     assert deactivate_trainee_faculty(rows, today=AS_OF)["by_school"] == {"vt": 2}
     assert apply_reviewed_faculty_profiles(rows, today=AS_OF, classify_title=False) == 0
+
+
+def test_an_unranked_refresh_preserves_a_review_until_the_source_reports_a_new_appointment():
+    oid = "faculty-vt-che-2b84e643"
+    archived = _old(oid)
+    assert apply_reviewed_faculty_profiles([archived], today=AS_OF) == 1
+    archived["metadata"]["deactivated_at"] = "2026-11-27"
+    repeat = _old(oid)
+    carry_forward_reviewed_appointment(archived, repeat)
+    assert repeat["metadata"]["is_active"] is False
+    assert repeat["metadata"]["deactivated_at"] == "2026-11-27"
+    assert deactivate_trainee_faculty([repeat], today=date(2026, 12, 3))["deactivated"] == 0
+
+    confirmed = _old(oid)
+    confirmed["metadata"]["faculty_title"] = archived["metadata"]["faculty_title"]
+    carry_forward_reviewed_appointment(archived, confirmed)
+    assert confirmed["metadata"]["is_active"] is False
+    assert confirmed["metadata"]["deactivated_at"] == "2026-11-27"
+
+    promoted = _old(oid)
+    promoted["metadata"].update(faculty_title="Assistant Professor", last_seen_at="2026-12-03")
+    carry_forward_reviewed_appointment(repeat, promoted)
+    assert promoted["metadata"]["is_active"] is True
+    assert apply_reviewed_faculty_profiles([promoted], today=date(2026, 12, 3)) == 0
+    later = _old(oid)
+    carry_forward_reviewed_appointment(promoted, later)
+    assert later["metadata"]["faculty_title"] == "Assistant Professor"
+    assert later["metadata"]["is_active"] is True
+    assert apply_reviewed_faculty_profiles([later], today=date(2026, 12, 10)) == 0
+
+    for changed in ({"pi_name": "Another Person"}, {"url": "https://che.vt.edu/People/new"}):
+        other = {**_old(oid), **changed}
+        carry_forward_reviewed_appointment(archived, other)
+        assert other["metadata"]["is_active"] is True
