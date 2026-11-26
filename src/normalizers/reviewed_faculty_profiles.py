@@ -24,6 +24,7 @@ class ProfileReview:
     title: str | None = None
     previous_title: str | None = None
     previous_department_label: str | None = None
+    previous_is_directory: bool = False
 
     @property
     def reviewed_on(self) -> date:
@@ -45,6 +46,15 @@ def _vt_che(name: str, profile_path: str, title: str) -> ProfileReview:
         "vt", "Department of Chemical Engineering", name, profile, profile, profile,
         datetime(2026, 11, 26, 8, 42, tzinfo=UTC),
         title=title, previous_title="",
+    )
+
+
+def _umd_math_directory_profile(name: str, profile: str) -> ProfileReview:
+    return ProfileReview(
+        "umd", "Department of Mathematics", name, "https://www-math.umd.edu/people/faculty.html",
+        f"https://www-math.umd.edu/signage-directory-faculty/{profile}.html",
+        "https://www-math.umd.edu/signage-directory-faculty.html",
+        datetime(2026, 11, 26, 12, 51, tzinfo=UTC), previous_is_directory=True,
     )
 
 
@@ -93,6 +103,16 @@ REVIEWS = {
         "tamu", "Department of International Affairs", "John Schuessler", "https://bush.tamu.edu/faculty/jschuessler",
         "https://bush.tamu.edu/directory/john-schuessler/",
         "https://bush.tamu.edu/directory/john-schuessler/", _NOV_25),
+    "faculty-umd-math-0f940cb3": _umd_math_directory_profile("Uri Bader", "2138-bader-uri"),
+    "faculty-umd-math-36800e3a": _umd_math_directory_profile("Henri Berestycki", "2050-berestycki-henri"),
+    "faculty-umd-math-dcee82bf": _umd_math_directory_profile("Giovanni Forni", "1261-gforni"),
+    "faculty-umd-math-90a4b94e": _umd_math_directory_profile("David H. Hamilton", "1285-dhh"),
+    "faculty-umd-math-9eb3e2a4": _umd_math_directory_profile("Or Hershkovits", "2175-hershkovits-or"),
+    "faculty-umd-math-93280e3c": _umd_math_directory_profile("Bogdan Zavyalov", "2172-zavyalov"),
+    "faculty-umd-math-0300a4bb": ProfileReview(
+        "umd", "Department of Mathematics", "James A. Yorke", "http://yorke.umd.edu/",
+        "https://ipst.umd.edu/people/james-a-yorke", "https://www-math.umd.edu/people/faculty.html",
+        datetime(2026, 11, 26, 12, 46, tzinfo=UTC)),
     "faculty-umd-math-1516d149": ProfileReview(
         "umd", "Department of Mathematics", "Shiferaw Berhanu", "https://www-math.umd.edu/people/faculty/item/1694-sberhanu.html",
         "https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html",
@@ -132,6 +152,10 @@ REVIEWS = {
 
 def _old_page_restored(row: dict, review: ProfileReview) -> bool:
     """A later successful read of this person's exact old URL can restore the link."""
+    # A department roster may continue to verify contact details for a person.
+    # Its successful read cannot make it their individual profile.
+    if review.previous_is_directory:
+        return False
     for page in contact_instruction_pages(row):
         receipt = page.get("receipt") or {}
         if (receipt.get("status") in {"captured", "empty"}

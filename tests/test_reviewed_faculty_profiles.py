@@ -126,6 +126,17 @@ def _successful_profile_read(row, attempted="2026-11-25T12:03:00+00:00", **chang
     }
 
 
+def test_observed_math_roster_keeps_individual_profile_and_accepts_new_personal_site():
+    oid = "faculty-umd-math-0f940cb3"
+    row = _old(oid)
+    _successful_profile_read(row, attempted="2026-11-26T13:00:00+00:00")
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert row["url"] == REVIEWS[oid].profile_url
+    row["url"] = row["source_url"] = "https://example.edu/new-faculty-profile"
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 0
+    assert row["url"] == "https://example.edu/new-faculty-profile"
+
+
 def test_restored_link_requires_a_newer_success_for_the_same_person_and_page():
     oid = "faculty-tamu-inta-c32e8252"
     for changes in ({"status": "failed"}, {"identity_name": "Another Person"},
