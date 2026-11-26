@@ -1,0 +1,231 @@
+{
+  "checked_on": "2026-11-26",
+  "baseline_main": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "directory": "https://kelley.iu.edu/faculty-research/faculty-directory/index.html",
+  "directory_content_sha256": "6259ec016aa22c4a525bad6d1fed1d0953e29a6cac8428217cac0c524da99b32",
+  "previous_scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+  "previous_scheduled": {
+    "fetch_status": "ok",
+    "parse_status": "zero_rows",
+    "observed_count": 0,
+    "baseline_active_count": 476,
+    "baseline_identity_count": 1,
+    "matched_identity_count": 0,
+    "new_identity_count": 0,
+    "completeness_status": "unknown",
+    "failure_reason": null,
+    "retirement_authorized": false
+  },
+  "normal_directory_get_started_at": "2026-11-26T15:03:24.223435+00:00",
+  "normal_directory_get_completed_at": "2026-11-26T15:03:34.090142+00:00",
+  "all_official_cards": 511,
+  "official_person_keys": 511,
+  "old_active_ids": 476,
+  "in_official_directory": 473,
+  "not_in_official_directory": 3,
+  "active_original_ids_found_by_collector": 472,
+  "official_keys_absent_from_existing_unit": 38,
+  "of_which_outside_unit_rank_policy": 35,
+  "normal_collector_rows": 475,
+  "collector_distinct_ids": 475,
+  "single_person_bound_contacts_before_publication": 463,
+  "old_shard_against_new_parser": {
+    "fetch_status": "ok",
+    "parse_status": "ok",
+    "observed_count": 475,
+    "baseline_active_count": 476,
+    "baseline_identity_count": 476,
+    "matched_identity_count": 472,
+    "new_identity_count": 3,
+    "completeness_status": "partial",
+    "failure_reason": "blocked_identity_match_failures",
+    "retirement_authorized": false
+  },
+  "old_shard_still_listed_unmatched": [
+    "url/kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=stonec"
+  ],
+  "published_candidate_against_same_raw_observation": {
+    "fetch_status": "ok",
+    "parse_status": "ok",
+    "observed_count": 475,
+    "baseline_active_count": 478,
+    "baseline_identity_count": 478,
+    "matched_identity_count": 475,
+    "new_identity_count": 0,
+    "completeness_status": "complete",
+    "failure_reason": null,
+    "retirement_authorized": true
+  },
+  "coverage": {
+    "raw_roster_rows": 511,
+    "parsed_faculty_rows": 476,
+    "classified_nonfaculty_rows": 35,
+    "unparsed_rows": 0,
+    "ambiguous_rows": 0,
+    "duplicate_rows": 0,
+    "identity_match_failures": 0,
+    "parser_errors": 0,
+    "partial_render_rows": 0
+  },
+  "new_source_profiles": [
+    {
+      "id": "faculty-indiana-kelley-11743f42",
+      "official_name": "Alan Dennis",
+      "display_name": "Alan Dennis",
+      "old_name": null,
+      "official_role": "Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=ARDENNIS",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-ff454afe",
+      "official_name": "Jeff Prince",
+      "display_name": "Jeff Prince",
+      "old_name": null,
+      "official_role": "Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JEFFPRIN",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-bcec98fc",
+      "official_name": "Nancy E. Paton",
+      "display_name": "Nancy E. Paton",
+      "old_name": null,
+      "official_role": "Teaching Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=NPATON",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    }
+  ],
+  "renamed_originals": [
+    {
+      "id": "faculty-indiana-kelley-9c403bb8",
+      "official_name": "M.K. Chin",
+      "display_name": "M.K. Chin",
+      "old_name": "M.K. Chin (<span class='zh-hans'>진문균</span>)",
+      "official_role": "Associate Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHINMK",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-1e116337",
+      "official_name": "Diane L. Sturek, CPA",
+      "display_name": "Diane L. Sturek",
+      "old_name": "Diane L. Sturek",
+      "official_role": "Teaching Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=DLSTUREK",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-f87d53c6",
+      "official_name": "Erik Benrud, CFA, CAIA, FRM, CFP®, CLU",
+      "display_name": "Erik Benrud, CFA, CAIA, FRM, CFP®",
+      "old_name": "Erik Benrud, CFA, CAIA, FRM, CFP®",
+      "official_role": "Clinical Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=EBENRUD",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-22c1e898",
+      "official_name": "Gerry A Hays, JD",
+      "display_name": "Gerry A Hays",
+      "old_name": "Gerry A Hays",
+      "official_role": "Senior Lecturer",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=GAHAYS",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-8bfcd281",
+      "official_name": "Kathie Nussbaum",
+      "display_name": "Kathie Nussbaum",
+      "old_name": "Kathleen Nussbaum",
+      "official_role": "Lecturer",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=KNUSSBAU",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-f89fcdfc",
+      "official_name": "Linette M. Rousseau, PhD, CPA, MAcc",
+      "display_name": "Linette M. Rousseau",
+      "old_name": "Linette M. Rousseau",
+      "official_role": "Assistant Professor",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=LMROUSSE",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    },
+    {
+      "id": "faculty-indiana-kelley-57a2b5d5",
+      "official_name": "Rainie Tian",
+      "display_name": "Rainie Tian",
+      "old_name": "Rainie Mengyu Tian",
+      "official_role": "Lecturer",
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=RMTIAN",
+      "official_profile_http": 200,
+      "contact_bound_to_named_directory_card": true
+    }
+  ],
+  "retirement_source": {
+    "original_id": "faculty-indiana-kelley-296262cf",
+    "name": "Cynthia Stone",
+    "directory_title": "Senior Lecturer (retired)",
+    "official_individual_page": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=STONEC",
+    "official_individual_http": 200,
+    "profile_title": "Senior Lecturer (retired)",
+    "source_sha256": "460c861f4db371e10a3e259af012f2ae27282e83f1b170a2761b5fd8f915c159",
+    "reason": "retired_title",
+    "archive_retains_original_id": true
+  },
+  "missing_originals_preserved": [
+    {
+      "id": "faculty-indiana-kelley-607b7a2d",
+      "name": "Christopher England",
+      "url": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHENGLAN",
+      "official_status": 404,
+      "prior_last_seen": "2026-08-26T06:49:30.542812"
+    },
+    {
+      "id": "faculty-indiana-kelley-081bbbd6",
+      "name": "Jorge Mejia",
+      "url": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JMMEJIA",
+      "official_status": 404,
+      "prior_last_seen": "2026-07-29T07:59:21.022220"
+    },
+    {
+      "id": "faculty-indiana-kelley-bc4f96e0",
+      "name": "Marynancy Mwakalindile",
+      "url": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=MSMWAKAL",
+      "official_status": 404,
+      "prior_last_seen": "2026-08-19T06:45:33.386487"
+    }
+  ],
+  "grace_days": 14,
+  "current_dry_run_proposals": [
+    "faculty-indiana-kelley-607b7a2d",
+    "faculty-indiana-kelley-081bbbd6",
+    "faculty-indiana-kelley-bc4f96e0"
+  ],
+  "one_day_absence_dry_run_retires": 0,
+  "original_record_order_unchanged": true,
+  "existing_school_ids": 1694,
+  "candidate_school_ids": 1697,
+  "changed_existing_school_ids": [
+    "faculty-indiana-kelley-1e116337",
+    "faculty-indiana-kelley-22c1e898",
+    "faculty-indiana-kelley-296262cf",
+    "faculty-indiana-kelley-57a2b5d5",
+    "faculty-indiana-kelley-8bfcd281",
+    "faculty-indiana-kelley-9c403bb8",
+    "faculty-indiana-kelley-f87d53c6",
+    "faculty-indiana-kelley-f89fcdfc"
+  ],
+  "no_other_unit_changed": true,
+  "next_natural_refresh": "2026-12-02",
+  "scope": "Live institutional website and ordinary collector/upsert exercised locally. Production and next scheduled refresh require separate evidence."
+}
