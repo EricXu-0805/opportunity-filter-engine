@@ -86,6 +86,12 @@ async def run():
                 await receiver.goto(SITE+'/',wait_until='domcontentloaded')
                 await expect(receiver.locator('#student_name')).to_have_value(NAME)
                 await expect(receiver.locator('#major')).to_have_value('Computer Science')
+                for tab in (page,receiver):
+                    await tab.bring_to_front()
+                    picker=tab.get_by_test_id('university-card-uiuc')
+                    if await picker.is_visible():
+                        await picker.click();await tab.get_by_test_id('switcher-confirm').click()
+                        await expect(picker).to_be_hidden()
                 await check_answers(mode,page,receiver,outcomes,fault,owned_row,NAME)
                 print('PUBLIC RECEIPT',mode,'anonymous principal, both 390px buttons, one CAS write; school and name retained. Revision',(await owned_row())['revision'],flush=True)
                 await ctx.close()
