@@ -1,0 +1,688 @@
+{
+  "at": "2026-11-26T11:18:55.320485+00:00",
+  "ucsd_active_source": "https://math.ucsd.edu/people/faculty",
+  "ucsd_emeriti_source": "https://math.ucsd.edu/people/emeriti-faculty",
+  "emeriti_profile": "https://math.ucsd.edu/people/profiles/justin-roberts",
+  "academic_year_catalog": "https://catalog.ucsd.edu/archive/2026-27/faculty/MATH.html",
+  "catalog_rank": "Associate Professor",
+  "retirement_date": null,
+  "update_scope": "Department places Justin Roberts in Emeriti Faculty. The 2026–27 annual catalog retains his Associate Professor rank. The source does not state a retirement date. The historical rank and last active sighting are retained.",
+  "record_id": "faculty-ucsd-math-5a86bec6",
+  "historic_source_timestamp": "2026-10-09T13:22:31.902153",
+  "previous_finding": {
+    "source": "https://joinalab.com/api/opportunities/faculty-ucsd-math-5a86bec6",
+    "tested_release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+    "actionable": true,
+    "record_kind": "faculty_contact"
+  },
+  "local_historical_state": {
+    "listing_state": "unknown",
+    "reference_only": false,
+    "actionable": false,
+    "accepting_state": "unknown",
+    "reason_code": "inactive",
+    "verified_at": "2026-10-09T13:22:31.902153",
+    "expires_at": null
+  },
+  "current_roster_rows": 66,
+  "current_unique_individual_profile_urls": 64,
+  "roster_and_originals": [
+    {
+      "official_name": "Michael Holst",
+      "profile_url": "https://math.ucsd.edu/people/faculty",
+      "original_record_id": "faculty-ucsd-phys-918092da",
+      "original_department": "Department of Physics",
+      "matched_by": "same university contact, other department"
+    },
+    {
+      "official_name": "Andrej Zlatos",
+      "profile_url": "https://math.ucsd.edu/node/10833",
+      "original_record_id": "faculty-ucsd-math-335c1dcc",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daniel Rogalski",
+      "profile_url": "https://math.ucsd.edu/node/10813",
+      "original_record_id": "faculty-ucsd-math-02774783",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Dragos Oprea",
+      "profile_url": "https://math.ucsd.edu/node/10806",
+      "original_record_id": "faculty-ucsd-math-62d71c0b",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Todd Kemp",
+      "profile_url": "https://math.ucsd.edu/node/10795",
+      "original_record_id": "faculty-ucsd-math-af5e2645",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Bennett Chow",
+      "profile_url": "https://math.ucsd.edu/node/10780",
+      "original_record_id": "faculty-ucsd-math-b82df184",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ioan Bejenaru",
+      "profile_url": "https://math.ucsd.edu/node/10774",
+      "original_record_id": "faculty-ucsd-math-b3abc6ef",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ronghui Xu",
+      "profile_url": "https://math.ucsd.edu/node/10828",
+      "original_record_id": "faculty-ucsd-hdsi-80d4f8ba",
+      "original_department": "Halıcıoğlu Data Science Institute",
+      "matched_by": "same university contact, other department"
+    },
+    {
+      "official_name": "Jason Schweinsberg",
+      "profile_url": "https://math.ucsd.edu/node/10816",
+      "original_record_id": "faculty-ucsd-math-e99d2cd6",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Li-Tien Cheng",
+      "profile_url": "https://math.ucsd.edu/node/10779",
+      "original_record_id": "faculty-ucsd-math-168bf721",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Glenn Tesler",
+      "profile_url": "https://math.ucsd.edu/node/10823",
+      "original_record_id": "faculty-ucsd-math-371516d3",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Aaron Pollack",
+      "profile_url": "https://math.ucsd.edu/node/10834",
+      "original_record_id": "faculty-ucsd-math-37246f54",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "David Meyer",
+      "profile_url": "https://math.ucsd.edu/node/10801",
+      "original_record_id": "faculty-ucsd-math-8a2ddaf0",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Andrew Suk",
+      "profile_url": "https://math.ucsd.edu/node/10822",
+      "original_record_id": "faculty-ucsd-math-3523b779",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Alireza Golsefidy",
+      "profile_url": "https://math.ucsd.edu/node/10788",
+      "original_record_id": "faculty-ucsd-math-c6b0baaf",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Cristian Popescu",
+      "profile_url": "https://math.ucsd.edu/node/10808",
+      "original_record_id": "faculty-ucsd-math-71130ebb",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Claus Sorensen",
+      "profile_url": "https://math.ucsd.edu/node/10818",
+      "original_record_id": "faculty-ucsd-math-65b8a6f6",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Adrian Ioana",
+      "profile_url": "https://math.ucsd.edu/node/10791",
+      "original_record_id": "faculty-ucsd-math-07524c39",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Jonathan Novak",
+      "profile_url": "https://math.ucsd.edu/node/10805",
+      "original_record_id": "faculty-ucsd-math-92ceb1b2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Brendon Rhoades",
+      "profile_url": "https://math.ucsd.edu/node/10811",
+      "original_record_id": "faculty-ucsd-math-5d2436dc",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Steven Sam",
+      "profile_url": "https://math.ucsd.edu/node/10815",
+      "original_record_id": "faculty-ucsd-math-b7716686",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ming Xiao",
+      "profile_url": "https://math.ucsd.edu/node/10827",
+      "original_record_id": "faculty-ucsd-math-e4b08158",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Frederick Manners",
+      "profile_url": "https://math.ucsd.edu/node/10799",
+      "original_record_id": "faculty-ucsd-math-8ba529a4",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Luca Spolaor",
+      "profile_url": "https://math.ucsd.edu/node/10819",
+      "original_record_id": "faculty-ucsd-math-19500aff",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Tianyi Zheng",
+      "profile_url": "https://math.ucsd.edu/node/10831",
+      "original_record_id": "faculty-ucsd-math-c9c7e6e2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "James McKernan",
+      "profile_url": "https://math.ucsd.edu/node/10800",
+      "original_record_id": "faculty-ucsd-math-051ea6ea",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ioana Dumitriu",
+      "profile_url": "https://math.ucsd.edu/node/10783",
+      "original_record_id": "faculty-ucsd-math-e724cf18",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Alex Cloninger",
+      "profile_url": "https://math.ucsd.edu/node/10781",
+      "original_record_id": "faculty-ucsd-math-15a11102",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Guershon Harel",
+      "profile_url": "https://math.ucsd.edu/node/10789",
+      "original_record_id": "faculty-ucsd-math-a2a60c31",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Kiran Kedlaya",
+      "profile_url": "https://math.ucsd.edu/node/10794",
+      "original_record_id": "faculty-ucsd-math-5669cbd7",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Jiawang Nie",
+      "profile_url": "https://math.ucsd.edu/node/10804",
+      "original_record_id": "faculty-ucsd-math-99e9e556",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Dimitris Politis",
+      "profile_url": "https://math.ucsd.edu/node/10807",
+      "original_record_id": "faculty-ucsd-math-a26dc9e2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Peter Ebenfelt",
+      "profile_url": "https://math.ucsd.edu/node/10784",
+      "original_record_id": "faculty-ucsd-math-a2882a9c",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Lutz Warnke",
+      "profile_url": "https://math.ucsd.edu/node/17814",
+      "original_record_id": "faculty-ucsd-math-6105f57a",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Bo Li",
+      "profile_url": "https://math.ucsd.edu/node/10797",
+      "original_record_id": "faculty-ucsd-math-932ac5de",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Patrick Fitzsimmons",
+      "profile_url": "https://math.ucsd.edu/node/10786",
+      "original_record_id": "faculty-ucsd-math-ac5e912d",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Melvin Leok",
+      "profile_url": "https://math.ucsd.edu/node/10796",
+      "original_record_id": "faculty-ucsd-math-d5869ee5",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Alina Bucur",
+      "profile_url": "https://math.ucsd.edu/node/10777",
+      "original_record_id": "faculty-ucsd-math-dd5ed393",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Elham Izadi",
+      "profile_url": "https://math.ucsd.edu/node/10792",
+      "original_record_id": "faculty-ucsd-math-0fbd28d2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Jacques Verstraete",
+      "profile_url": "https://math.ucsd.edu/node/10824",
+      "original_record_id": "faculty-ucsd-math-361f8f94",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ery Arias-Castro",
+      "profile_url": "https://math.ucsd.edu/node/10773",
+      "original_record_id": "faculty-ucsd-hdsi-a668c220",
+      "original_department": "Halıcıoğlu Data Science Institute",
+      "matched_by": "same university contact, other department"
+    },
+    {
+      "official_name": "Rayan Saab",
+      "profile_url": "https://math.ucsd.edu/node/10814",
+      "original_record_id": "faculty-ucsd-math-27a447ae",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Natalia Komarova",
+      "profile_url": "https://math.ucsd.edu/node/30404",
+      "original_record_id": "faculty-ucsd-math-196d24bd",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daniel Kane",
+      "profile_url": "https://math.ucsd.edu/node/10793",
+      "original_record_id": "faculty-ucsd-math-c41097b2",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Xiaochuan Tian",
+      "profile_url": "https://math.ucsd.edu/node/10835",
+      "original_record_id": "faculty-ucsd-math-01015655",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Brandon Seward",
+      "profile_url": "https://math.ucsd.edu/node/10817",
+      "original_record_id": "faculty-ucsd-math-bf90c1b4",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Danna Zhang",
+      "profile_url": "https://math.ucsd.edu/node/10830",
+      "original_record_id": "faculty-ucsd-math-ec63c3d9",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Kristin DeVleming",
+      "profile_url": "https://math.ucsd.edu/node/31786",
+      "original_record_id": "faculty-ucsd-math-35365add",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Ruobing Zhang",
+      "profile_url": "https://math.ucsd.edu/node/34690",
+      "original_record_id": "faculty-ucsd-math-44c69ceb",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Joshua Frisch",
+      "profile_url": "https://math.ucsd.edu/node/31907",
+      "original_record_id": "faculty-ucsd-math-17c09f27",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Robert Webber",
+      "profile_url": "https://math.ucsd.edu/node/31910",
+      "original_record_id": "faculty-ucsd-math-920a9df1",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Morris Ang",
+      "profile_url": "https://math.ucsd.edu/node/31718",
+      "original_record_id": "faculty-ucsd-math-0e70967c",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Pearson Miller",
+      "profile_url": "https://math.ucsd.edu/node/31908",
+      "original_record_id": "faculty-ucsd-math-0e61c58d",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Lijun Ding",
+      "profile_url": "https://math.ucsd.edu/node/31909",
+      "original_record_id": "faculty-ucsd-math-b83edcc9",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Zhipeng Lou",
+      "profile_url": "https://math.ucsd.edu/node/31911",
+      "original_record_id": "faculty-ucsd-math-6a3a88a7",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Vishal Patil",
+      "profile_url": "https://math.ucsd.edu/node/31818",
+      "original_record_id": "faculty-ucsd-math-bb0d10e3",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Federico Pasqualotto",
+      "profile_url": "https://math.ucsd.edu/node/32873",
+      "original_record_id": "faculty-ucsd-math-631f4445",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daren Wang",
+      "profile_url": "https://math.ucsd.edu/node/34144",
+      "original_record_id": "faculty-ucsd-math-d850b422",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Daniel Grier",
+      "profile_url": "https://math.ucsd.edu/node/27550",
+      "original_record_id": "faculty-ucsd-math-c99118a4",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "John Eggers",
+      "profile_url": "https://math.ucsd.edu/node/10785",
+      "original_record_id": "faculty-ucsd-math-1ae1f276",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Adam Bowers",
+      "profile_url": "https://math.ucsd.edu/node/10775",
+      "original_record_id": "faculty-ucsd-math-06ead742",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Laura Stevens",
+      "profile_url": "https://math.ucsd.edu/node/10821",
+      "original_record_id": "faculty-ucsd-math-0b06fd11",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "David Quarfoot",
+      "profile_url": "https://math.ucsd.edu/node/10809",
+      "original_record_id": "faculty-ucsd-math-9c24ad91",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Denise Rava",
+      "profile_url": "https://math.ucsd.edu/node/17605",
+      "original_record_id": "faculty-ucsd-math-fef67760",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Leesa Anzaldo",
+      "profile_url": "https://math.ucsd.edu/node/27554",
+      "original_record_id": "faculty-ucsd-math-e00befb6",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    },
+    {
+      "official_name": "Frances Hammock",
+      "profile_url": "https://math.ucsd.edu/people/faculty",
+      "original_record_id": "faculty-ucsd-math-e448604b",
+      "original_department": "Department of Mathematics",
+      "matched_by": "same original math record"
+    }
+  ],
+  "local_replays": [
+    {
+      "attempt": 1,
+      "input_count": 127,
+      "read_school_units": {
+        "phys": {
+          "observed_count": 0,
+          "fetch_status": "ok",
+          "parse_status": "zero_rows",
+          "failure_reason": null
+        },
+        "hdsi": {
+          "observed_count": 61,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        },
+        "math": {
+          "observed_count": 66,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        }
+      },
+      "all_1508_original_ids_present": true,
+      "target": {
+        "id": "faculty-ucsd-math-5a86bec6",
+        "actionable": false,
+        "reason": "listed_as_emeritus",
+        "last_seen_at": "2026-10-09T13:22:31.902153"
+      },
+      "original_control_ids": [
+        {
+          "id": "faculty-ucsd-math-0e70967c",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-phys-918092da",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "public_actionable": true,
+          "duplicate_of": null
+        }
+      ],
+      "joint_appointment_fates": [
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-phys-918092da",
+          "unit": "Department of Physics",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ery Arias-Castro",
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hwsph-ecbb1d29",
+          "unit": "Herbert Wertheim School of Public Health and Human Longevity Science",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-hdsi-c20ac5c2",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "input_count": 127,
+      "read_school_units": {
+        "phys": {
+          "observed_count": 0,
+          "fetch_status": "ok",
+          "parse_status": "zero_rows",
+          "failure_reason": null
+        },
+        "hdsi": {
+          "observed_count": 61,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        },
+        "math": {
+          "observed_count": 66,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        }
+      },
+      "all_1508_original_ids_present": true,
+      "target": {
+        "id": "faculty-ucsd-math-5a86bec6",
+        "actionable": false,
+        "reason": "listed_as_emeritus",
+        "last_seen_at": "2026-10-09T13:22:31.902153"
+      },
+      "original_control_ids": [
+        {
+          "id": "faculty-ucsd-math-0e70967c",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-phys-918092da",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "public_actionable": true,
+          "duplicate_of": null
+        }
+      ],
+      "joint_appointment_fates": [
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-phys-918092da",
+          "unit": "Department of Physics",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ery Arias-Castro",
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hwsph-ecbb1d29",
+          "unit": "Herbert Wertheim School of Public Health and Human Longevity Science",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-hdsi-c20ac5c2",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        }
+      ]
+    }
+  ],
+  "unchanged_rows": 1507,
+  "old_and_new_ids_identical_in_order": true,
+  "coverage_change": {
+    "faculty_contacts": [
+      1464,
+      1463
+    ],
+    "all_opportunities": [
+      1496,
+      1495
+    ]
+  },
+  "real_refresh_pending": "2026-11-27 Friday scheduled UCSD collection; replay was not a deployed run."
+}
