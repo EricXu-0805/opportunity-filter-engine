@@ -131,6 +131,6 @@
   "earlier_attempt": {
     "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889251200",
     "status": "failed",
-    "cause": "The first observer waited for the archive-only keywords note on the active control. Its normal current layout shows the five topics in detailed research facts and names OpenAlex as the source. The candidate code stayed at the same SHA."
+    "cause": "The original observer timed out waiting for the archive-only keywords note. It did not record the failing ID. Independent public-page inspection confirmed that this expectation cannot hold for the active control, which displays the five topics in detailed research facts and identifies OpenAlex. The second observation used its actual layout, reported each ID and kept the candidate code at the same SHA."
   }
 }

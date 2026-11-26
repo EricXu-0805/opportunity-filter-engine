@@ -1,0 +1,563 @@
+{
+  "checked_at_utc": "2026-11-26T20:31:32+00:00",
+  "results": {
+    "1467": {
+      "source_pr": {
+        "baseRefName": "integrate/verified-maintenance-20261126-b14",
+        "headRefName": "fix/archive-mismatched-faculty-profile-link",
+        "headRefOid": "10fd7bec94479af76c1c11bc29efe02b8b620f7c",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1467"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45879941250,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "10fd7bec94479af76c1c11bc29efe02b8b620f7c",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:30:44Z",
+          "jobs": [
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250/job/140116792529"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250/job/140116886406"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250/job/140116886429"
+            },
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250/job/140116886436"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250/job/140116886510"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45879941250/job/140130644358"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45889843697,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889843697",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "10fd7bec94479af76c1c11bc29efe02b8b620f7c",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T20:18:29Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889843697/job/140149508813"
+            }
+          ]
+        }
+      }
+    },
+    "1468": {
+      "source_pr": {
+        "baseRefName": "main",
+        "headRefName": "fix/clean-faculty-profile-link-padding",
+        "headRefOid": "cca25d15d7878e94eee857bb185fe14cdae4b099",
+        "isDraft": false,
+        "mergeable": "CONFLICTING",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1468"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45880900418,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "pull_request",
+          "head_sha": "cca25d15d7878e94eee857bb185fe14cdae4b099",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:41:04Z",
+          "jobs": [
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418/job/140119695950"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418/job/140119763855"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418/job/140119763908"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418/job/140119763933"
+            },
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418/job/140119763956"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900418/job/140134932395"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45880900389,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900389",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "pull_request",
+          "head_sha": "cca25d15d7878e94eee857bb185fe14cdae4b099",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:06:56Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45880900389/job/140119695952"
+            }
+          ]
+        }
+      }
+    },
+    "1469": {
+      "source_pr": {
+        "baseRefName": "fix/clean-faculty-profile-link-padding",
+        "headRefName": "fix/miami-two-saved-profile-aliases",
+        "headRefOid": "ee4f3bb9ec74cbaa7831b4b1f6e9553c1200eb1d",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1469"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45881934950,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "ee4f3bb9ec74cbaa7831b4b1f6e9553c1200eb1d",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:38:45Z",
+          "jobs": [
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950/job/140123161363"
+            },
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950/job/140123255444"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950/job/140123255492"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950/job/140123255532"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950/job/140123255606"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45881934950/job/140133986714"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45883220158,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883220158",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "ee4f3bb9ec74cbaa7831b4b1f6e9553c1200eb1d",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:24:54Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883220158/job/140127436558"
+            }
+          ]
+        }
+      }
+    },
+    "1470": {
+      "source_pr": {
+        "baseRefName": "fix/clean-faculty-profile-link-padding",
+        "headRefName": "fix/pitt-affiliate-profiles-duke-retirement",
+        "headRefOid": "970cc272acc72aa45fae1c7b445cf6edf5013d8c",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1470"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45882500029,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "970cc272acc72aa45fae1c7b445cf6edf5013d8c",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:42:10Z",
+          "jobs": [
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029/job/140125019372"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029/job/140125083378"
+            },
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029/job/140125083392"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029/job/140125083406"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029/job/140125083504"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882500029/job/140135383090"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45882585479,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882585479",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "970cc272acc72aa45fae1c7b445cf6edf5013d8c",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:20:07Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45882585479/job/140125308876"
+            }
+          ]
+        }
+      }
+    },
+    "1471": {
+      "source_pr": {
+        "baseRefName": "fix/clean-faculty-profile-link-padding",
+        "headRefName": "fix/fsu-read-clipped-communication-ranks",
+        "headRefOid": "6bf06d3657cafd2ab1fa89ccb980e7cd909a8c61",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1471"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45883213729,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "6bf06d3657cafd2ab1fa89ccb980e7cd909a8c61",
+          "run_attempt": 2,
+          "updated_at": "2026-11-26T19:58:03Z",
+          "jobs": [
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140138577969"
+            },
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140138579646"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140138580569"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140138646077"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140138651998"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883213729/job/140141866100"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45883218606,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883218606",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "6bf06d3657cafd2ab1fa89ccb980e7cd909a8c61",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:24:46Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45883218606/job/140127432519"
+            }
+          ]
+        }
+      }
+    },
+    "1472": {
+      "source_pr": {
+        "baseRefName": "fix/pitt-affiliate-profiles-duke-retirement",
+        "headRefName": "fix/pitt-philosophy-individual-profiles",
+        "headRefOid": "57b86bcb555166852f6f7e0e70096d894343f93c",
+        "isDraft": false,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1472"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45885120846,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "57b86bcb555166852f6f7e0e70096d894343f93c",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T20:04:08Z",
+          "jobs": [
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846/job/140133801400"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846/job/140133881565"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846/job/140133881571"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846/job/140133881622"
+            },
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846/job/140133881700"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120846/job/140144353401"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45885120998,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120998",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "57b86bcb555166852f6f7e0e70096d894343f93c",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:40:12Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45885120998/job/140133803019"
+            }
+          ]
+        }
+      }
+    },
+    "1474": {
+      "source_pr": {
+        "baseRefName": "integrate/verified-maintenance-20261126-b20",
+        "headRefName": "integrate/verified-maintenance-20261126-b21",
+        "headRefOid": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+        "isDraft": true,
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1474"
+      },
+      "workflows": {
+        "CI": {
+          "id": 45886847458,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T20:29:49Z",
+          "jobs": [
+            {
+              "name": "Decide (run or skip the suite)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458/job/140139565305"
+            },
+            {
+              "name": "Frontend (typecheck + build)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458/job/140139612935"
+            },
+            {
+              "name": "Backend (lint + pytest)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458/job/140139612975"
+            },
+            {
+              "name": "E2E (Playwright)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458/job/140139612978"
+            },
+            {
+              "name": "Migrations (Flow B merge + CLI replay)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458/job/140139613017"
+            },
+            {
+              "name": "Deploy backend (Render hook)",
+              "conclusion": "skipped",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886847458/job/140154851887"
+            }
+          ]
+        },
+        "Security advisory": {
+          "id": 45886858477,
+          "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886858477",
+          "status": "completed",
+          "conclusion": "success",
+          "event": "workflow_dispatch",
+          "head_sha": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+          "run_attempt": 1,
+          "updated_at": "2026-11-26T19:54:29Z",
+          "jobs": [
+            {
+              "name": "Security advisory (non-blocking)",
+              "conclusion": "success",
+              "url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45886858477/job/140139594394"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "source_count": 6,
+  "base_b20": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "tree": "2b93cf9e134e0c9c274bb6e0e1d463c79ca9b9c2",
+  "actual_b15_preservation": {
+    "actual_main": "87b1e916c0c88c32bba327256706a2beff293346",
+    "previous_main": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+    "b21_candidate": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+    "b15_updated_records": 286,
+    "b15_fields": 412,
+    "observed_fields_lost_in_b21": 0,
+    "ids_missing_from_touched_schools": 0,
+    "published_shards": [
+      "boulder",
+      "buffalo",
+      "clemson",
+      "colostate",
+      "dartmouth",
+      "fsu",
+      "gatech",
+      "houston",
+      "indiana",
+      "lsu",
+      "ncsu",
+      "nd",
+      "neu",
+      "osu",
+      "rochester",
+      "stanford",
+      "tufts",
+      "uci",
+      "ucla",
+      "ucsd",
+      "uf",
+      "uga",
+      "usc",
+      "utah",
+      "utexas",
+      "utk",
+      "uw",
+      "vassar",
+      "vt",
+      "washu",
+      "wisc"
+    ]
+  },
+  "candidate_browser": {
+    "exact_head": "4e712e765834817ff6559fc0b6c69ed476cc8f7d",
+    "combined_e2e": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45888024958",
+    "permalink": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/3d7cdfa451fc3d6f6f3a6428c0ce9ac184da5e94/data/audits/b21-evidence/b21-final-chromium-21-of-21.json",
+    "cases_passed": 21,
+    "cases_checked": 21
+  },
+  "release_note": "Frozen draft only. The actual main and original source checks, deployment and original URL acceptance are separate gates.",
+  "upstream_thursday_release_guard": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/a3210d5c9d2b14247eada4c5a583d29deefa81f1/data/audits/maintenance-2026-11-26/b19-b21-upstream-data-projection.json"
+}
