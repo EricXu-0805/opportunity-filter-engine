@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: 4c836b0373a0b5d28095ddefb071936792238b88
+          ref: 91c262020b2fedd78deecd7052764bacaf1d3dae
           path: product
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -68,3 +68,4 @@ jobs:
           (cd product/frontend && node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3100) >"$RUNNER_TEMP/frontend.log" 2>&1 &
           for attempt in {1..80}; do if curl -fsS --max-time 15 http://127.0.0.1:3100/ >/dev/null 2>&1; then break; fi; sleep 1; done
           python -u scripts/verify_m17_current_pdf_candidate.py "$cfg"
+          python -u scripts/verify_m17_long_experience_recovery.py "$cfg"
