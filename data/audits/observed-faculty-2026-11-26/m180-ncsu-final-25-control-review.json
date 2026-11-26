@@ -1,0 +1,656 @@
+{
+  "prior_production_chrome_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/17788bde55251d9b2235c17bf6a5b94793678bb3/data/audits/observed-faculty-2026-11-26/m180-fourth-release-137-live-faculty-details.json",
+  "scope": "The 25 remaining retirement-group controls observed in Chromium on the fourth release were reviewed individually. The thirteen live public APIs were checked again on the subsequent release identified here. Thirteen warrant suppressing outreach. For all thirteen, the personal URL, college CMS post, faculty card and department retirement card match. Twelve have more than one name on their individual official page. For Edward Funkhouser, the official biography explicitly states retirement in 2017 and lists the ending dates of his later administrative roles. The other twelve include current, combined and separately categorized roles. A retirement-group tag by itself did not decide their status.",
+  "release": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "observed_from": "2026-11-26T12:44:25.995320+00:00",
+  "observed_until": "2026-11-26T12:46:24.291792+00:00",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-825124c2",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-825124c2",
+      "production_name": "Ron Czaja",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91638?_fields=id,title,link,group",
+      "wp_name": "Ron Czaja",
+      "source_groups": [
+        11847,
+        11945
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/ronczaja/",
+      "profile_heading": "Ronald Czaja",
+      "profile_document_title": "Ron Czaja",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Ronald Czaja",
+        "rank": "Emeritus Faculty",
+        "href": "https://chass.ncsu.edu/people/ronczaja/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/socant/socant-retired-faculty/",
+      "retired_card": {
+        "label": "Ronald Czaja",
+        "rank": "Emeritus Faculty",
+        "href": "https://chass.ncsu.edu/people/ronczaja/"
+      },
+      "identity_and_role_review": "The college personal page uses Ron in its document title and Ronald in its heading and publication list. His book Designing Surveys appears under Ronald on that page.",
+      "corroborating_university_source": "https://chass.ncsu.edu/people/ronczaja/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-825124c2",
+        "heading_seen": "Ron Czaja",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-8874c982",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-8874c982",
+      "production_name": "Patty McCall",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91634?_fields=id,title,link,group",
+      "wp_name": "Patty McCall",
+      "source_groups": [
+        11847,
+        11945
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/pmccall/",
+      "profile_heading": "Patricia McCall",
+      "profile_document_title": "Patty McCall",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Patricia McCall",
+        "rank": "Emeritus Faculty",
+        "href": "https://chass.ncsu.edu/people/pmccall/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/socant/socant-retired-faculty/",
+      "retired_card": {
+        "label": "Patricia McCall",
+        "rank": "Emeritus Faculty",
+        "href": "https://chass.ncsu.edu/people/pmccall/"
+      },
+      "identity_and_role_review": "The official personal page labels the photograph with the historical name Patty McCall. The retirement association also gives Patricia L. and Patty together.",
+      "corroborating_university_source": "https://arfncsu.wordpress.ncsu.edu/files/2019/08/ARF-newsletter-Spring-2019.pdf",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-8874c982",
+        "heading_seen": "Patty McCall",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-d8305216",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-d8305216",
+      "production_name": "Bob Moog",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91510?_fields=id,title,link,group",
+      "wp_name": "Bob Moog",
+      "source_groups": [
+        11847,
+        11936
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/rsmoog/",
+      "profile_heading": "Robert Moog",
+      "profile_document_title": "Bob Moog",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Robert Moog",
+        "rank": "Unpaid Emeritus",
+        "href": "https://chass.ncsu.edu/people/rsmoog/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/spia/spia-retired-faculty/",
+      "retired_card": {
+        "label": "Robert Moog",
+        "rank": "Unpaid Emeritus",
+        "href": "https://chass.ncsu.edu/people/rsmoog/"
+      },
+      "identity_and_role_review": "The same personal page uses Bob Moog in its document title and Robert Moog in the heading and publication list. The college CMS, college card and SPIA retirement card separately resolve to this exact profile.",
+      "corroborating_university_source": "https://chass.ncsu.edu/people/rsmoog/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-d8305216",
+        "heading_seen": "Bob Moog",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-49e38fb4",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-49e38fb4",
+      "production_name": "Louise Salstad",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/91041?_fields=id,title,link,group",
+      "wp_name": "Louise Salstad",
+      "source_groups": [
+        11872,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/mlsalsta/",
+      "profile_heading": "M Salstad",
+      "profile_document_title": "Louise Salstad",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "M Salstad",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/mlsalsta/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/wlc/wlc-emeritus-faculty/",
+      "retired_card": {
+        "label": "M Salstad",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/mlsalsta/"
+      },
+      "identity_and_role_review": "The Graduate School catalogue identifies M. Louise Salstad as Foreign Languages and Literatures emeritus faculty.",
+      "corroborating_university_source": "https://grad.ncsu.edu/wp-content/uploads/2017/08/Graduate-Catalog-2017-2018.pdf",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-49e38fb4",
+        "heading_seen": "Louise Salstad",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-f779aad1",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-f779aad1",
+      "production_name": "Wilton Barnhardt",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90972?_fields=id,title,link,group",
+      "wp_name": "Wilton Barnhardt",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/wwbarnha/",
+      "profile_heading": "William Barnhardt",
+      "profile_document_title": "Wilton Barnhardt",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "William Barnhardt",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/wwbarnha/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "William Barnhardt",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/wwbarnha/"
+      },
+      "identity_and_role_review": "The Graduate School lists his full English faculty name as William Wilton Barnhardt. His personal page labels his photograph Wilton.",
+      "corroborating_university_source": "https://grad.ncsu.edu/wp-content/uploads/2017/08/Graduate-Catalog-2016-2017.pdf",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-f779aad1",
+        "heading_seen": "Wilton Barnhardt",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-84e6cecc",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-84e6cecc",
+      "production_name": "RV Young",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90948?_fields=id,title,link,group",
+      "wp_name": "RV Young",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/ryoung/",
+      "profile_heading": "Robert Young Jr",
+      "profile_document_title": "RV Young",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Robert Young Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/ryoung/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Robert Young Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/ryoung/"
+      },
+      "identity_and_role_review": "The Graduate School catalogue ties the English appointment and Jr suffix to the complete name Robert Vaughan Young Jr.",
+      "corroborating_university_source": "https://grad.ncsu.edu/wp-content/uploads/2017/08/Graduate_Catalog_Spring_2007.pdf",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-84e6cecc",
+        "heading_seen": "RV Young",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-b1612d52",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-b1612d52",
+      "production_name": "Mike Carter",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90929?_fields=id,title,link,group",
+      "wp_name": "Mike Carter",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/mpc/",
+      "profile_heading": "Michael Carter",
+      "profile_document_title": "Mike Carter",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Michael Carter",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/mpc/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Michael Carter",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/mpc/"
+      },
+      "identity_and_role_review": "The individual English profile uses Mike in the document title and Michael in its heading. The Graduate School separately reported Mike giving up the associate dean role, and the university directory lists Michael as emeritus in its dean\u2019s office.",
+      "corroborating_university_source": "https://grad.ncsu.edu/news/2019/09/gremaud-appointed-to-graduate-school/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-b1612d52",
+        "heading_seen": "Mike Carter",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-98d2e744",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-98d2e744",
+      "production_name": "Nancy Penrose",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90937?_fields=id,title,link,group",
+      "wp_name": "Nancy Penrose",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/penrose/",
+      "profile_heading": "Ann Penrose",
+      "profile_document_title": "Nancy Penrose",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Ann Penrose",
+        "rank": "Emerita",
+        "href": "https://chass.ncsu.edu/people/penrose/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Ann Penrose",
+        "rank": "Emerita",
+        "href": "https://chass.ncsu.edu/people/penrose/"
+      },
+      "identity_and_role_review": "The profile heading uses Ann, the photo and biography use Nancy, and the biography dates retirement to 2019.",
+      "corroborating_university_source": "https://chass.ncsu.edu/people/penrose/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-98d2e744",
+        "heading_seen": "Nancy Penrose",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-34b13b74",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-34b13b74",
+      "production_name": "Jim Clark",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90903?_fields=id,title,link,group",
+      "wp_name": "Jim Clark",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/jwclark/",
+      "profile_heading": "James Clark Jr",
+      "profile_document_title": "Jim Clark",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "James Clark Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/jwclark/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "James Clark Jr",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/jwclark/"
+      },
+      "identity_and_role_review": "NC State Extension explicitly identifies Jim and James W. Clark Jr as the same retired English professor.",
+      "corroborating_university_source": "https://nc4h.ces.ncsu.edu/news/jim-clark-inducted-into-order-of-the-long-leaf-pine/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-34b13b74",
+        "heading_seen": "Jim Clark",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-0ed45fbe",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-0ed45fbe",
+      "production_name": "Michael Grimwood",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90875?_fields=id,title,link,group",
+      "wp_name": "Michael Grimwood",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/grimwood/",
+      "profile_heading": "James Grimwood",
+      "profile_document_title": "Michael Grimwood",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "James Grimwood",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/grimwood/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "James Grimwood",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/grimwood/"
+      },
+      "identity_and_role_review": "The Graduate School catalogue records the complete English faculty name James Michael Grimwood. His individual official profile photo is labeled Michael and the heading James.",
+      "corroborating_university_source": "https://grad.ncsu.edu/wp-content/uploads/2017/08/Graduate-Catalog-2007-2008.pdf",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-0ed45fbe",
+        "heading_seen": "Michael Grimwood",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-5148f03d",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-5148f03d",
+      "production_name": "Cat Warren",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/90855?_fields=id,title,link,group",
+      "wp_name": "Cat Warren",
+      "source_groups": [
+        11869,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/cwarren/",
+      "profile_heading": "Catherine Warren",
+      "profile_document_title": "Cat Warren",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Catherine Warren",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/cwarren/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/english/english-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Catherine Warren",
+        "rank": "Emeritus",
+        "href": "https://chass.ncsu.edu/people/cwarren/"
+      },
+      "identity_and_role_review": "The former professor\u2019s university biography describes Cat under the Catherine heading. NC State News explicitly identifies Catherine as her given name.",
+      "corroborating_university_source": "https://news.ncsu.edu/2013/10/in-praise-of-working-dogs/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-5148f03d",
+        "heading_seen": "Cat Warren",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-fbcc8754",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-fbcc8754",
+      "production_name": "Bob Larson",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/89862?_fields=id,title,link,group",
+      "wp_name": "Bob Larson",
+      "source_groups": [
+        11866,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/rblarson/",
+      "profile_heading": "Robert Larson",
+      "profile_document_title": "Bob Larson",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Robert Larson",
+        "rank": "Senior Lecturer Emeritus",
+        "href": "https://chass.ncsu.edu/people/rblarson/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Robert Larson",
+        "rank": "Senior Lecturer Emeritus",
+        "href": "https://chass.ncsu.edu/people/rblarson/"
+      },
+      "identity_and_role_review": "The individual website labels the photo Bob under a Robert heading. The Communication department program joins both names on the award honoring him.",
+      "corroborating_university_source": "https://communication.chass.ncsu.edu/wp-content/uploads/sites/519/2022/05/2022-Sp-online-program_FINAL.pdf",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-fbcc8754",
+        "heading_seen": "Bob Larson",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    },
+    {
+      "id": "faculty-ncsu-chass-74ae94c6",
+      "current_production_api": "https://joinalab.com/api/opportunities/faculty-ncsu-chass-74ae94c6",
+      "production_name": "Edward Funkhouser",
+      "production_actionable": true,
+      "last_seen_listed_at": "2026-11-23",
+      "college_cms_post": "https://chass.ncsu.edu/wp-json/wp/v2/person/89838?_fields=id,title,link,group",
+      "wp_name": "Edward Funkhouser",
+      "source_groups": [
+        11866,
+        11847
+      ],
+      "personal_profile": "https://chass.ncsu.edu/people/edwardt/",
+      "profile_heading": "Edward Funkhouser",
+      "profile_document_title": "Edward Funkhouser",
+      "college_faculty_directory": "https://chass.ncsu.edu/group/faculty/",
+      "college_card": {
+        "label": "Edward Funkhouser",
+        "rank": "Former Associate Professor & Associate Dean",
+        "href": "https://chass.ncsu.edu/people/edwardt/"
+      },
+      "department_retired_directory": "https://chass.ncsu.edu/group/communication/communication-retired-and-emeritus/",
+      "retired_card": {
+        "label": "Edward Funkhouser",
+        "rank": "Former Associate Professor & Associate Dean",
+        "href": "https://chass.ncsu.edu/people/edwardt/"
+      },
+      "identity_and_role_review": "The individual biography gives retirement in 2017 after forty years of NC State faculty service. It identifies his associate deanship as a former role.",
+      "corroborating_university_source": "https://chass.ncsu.edu/people/edwardt/",
+      "fourth_release_production_browser": {
+        "original_url": "https://joinalab.com/opportunities/faculty-ncsu-chass-74ae94c6",
+        "heading_seen": "Edward Funkhouser",
+        "draft_email_visible": true,
+        "draft_email_enabled": true,
+        "inactive_banner_visible": false
+      }
+    }
+  ],
+  "previous_chromium_release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+  "preserved_controls": [
+    {
+      "id": "faculty-ncsu-chass-c5da53cb",
+      "name": "Jeffrey Leiter",
+      "official_profile": "https://chass.ncsu.edu/people/leiter/",
+      "college_card_name": "Jeffrey Leiter",
+      "official_displayed_rank": "Emeritus Faculty",
+      "college_cms_post_id": 91623,
+      "college_taxonomy_ids": [
+        11847,
+        11945,
+        11775
+      ],
+      "reason_to_preserve_current_status": "University staff and retirement groups both list the original. Clarification of the separate staff role is still needed."
+    },
+    {
+      "id": "faculty-ncsu-chass-e7bd2a4f",
+      "name": "Risa Ellovich",
+      "official_profile": "https://chass.ncsu.edu/people/ellovich/",
+      "college_card_name": "Risa Ellovich",
+      "official_displayed_rank": "Emeritus Faculty",
+      "college_cms_post_id": 91610,
+      "college_taxonomy_ids": [
+        11847,
+        11945,
+        11775
+      ],
+      "reason_to_preserve_current_status": "Also listed as staff; the biography names a college academic standards coordination role."
+    },
+    {
+      "id": "faculty-ncsu-chass-8426ed71",
+      "name": "G Garson",
+      "official_profile": "https://chass.ncsu.edu/people/garson/",
+      "college_card_name": "G. David Garson",
+      "official_displayed_rank": "Professor",
+      "college_cms_post_id": 91479,
+      "college_taxonomy_ids": [
+        11847,
+        11936
+      ],
+      "reason_to_preserve_current_status": "Explicit Professor rank and ongoing public administration teaching in the biography, despite the retired SPIA taxonomy."
+    },
+    {
+      "id": "faculty-ncsu-chass-b36ff5aa",
+      "name": "Katharine Stewart",
+      "official_profile": "https://chass.ncsu.edu/people/kestewa4/",
+      "college_card_name": "Katharine Stewart",
+      "official_displayed_rank": "Professor and Vice Provost Emeritus",
+      "college_cms_post_id": 91410,
+      "college_taxonomy_ids": [
+        11847,
+        11927
+      ],
+      "reason_to_preserve_current_status": "The biography expressly continues the professor role in applied social psychology, while the vice provost appointment ended in 2024."
+    },
+    {
+      "id": "faculty-ncsu-chass-08a6a48e",
+      "name": "Walt Wolfram",
+      "official_profile": "https://chass.ncsu.edu/people/wolfram/",
+      "college_card_name": "Walter Wolfram",
+      "official_displayed_rank": "Unpaid Emeritus",
+      "college_cms_post_id": 90970,
+      "college_taxonomy_ids": [
+        11869,
+        11847,
+        11970
+      ],
+      "reason_to_preserve_current_status": "English retirement and the separate Linguistics Faculty roster coexist. The biography describes university professorship and research project direction."
+    },
+    {
+      "id": "faculty-ncsu-chass-66ccd11d",
+      "name": "Susan Katz",
+      "official_profile": "https://chass.ncsu.edu/people/smk/",
+      "college_card_name": "Susan Katz",
+      "official_displayed_rank": "Associate Professor Emerita",
+      "college_cms_post_id": 90956,
+      "college_taxonomy_ids": [
+        11869,
+        11847,
+        11937
+      ],
+      "reason_to_preserve_current_status": "English retirement and the separate CRDM doctoral faculty roster coexist. The biography describes teaching and internship program responsibilities."
+    },
+    {
+      "id": "faculty-ncsu-chass-6ae5927d",
+      "name": "Linda Holley",
+      "official_profile": "https://chass.ncsu.edu/people/lth/",
+      "college_card_name": "Linda Holley",
+      "official_displayed_rank": "Professor Emeritus and Director of Advising",
+      "college_cms_post_id": 90914,
+      "college_taxonomy_ids": [
+        11869,
+        11847
+      ],
+      "reason_to_preserve_current_status": "The public rank combines emeritus with director of advising. The advising appointment has no verified end date."
+    },
+    {
+      "id": "faculty-ncsu-chass-c48a2e7d",
+      "name": "Maria Rouphail",
+      "official_profile": "https://chass.ncsu.edu/people/mgr/",
+      "college_card_name": "Maria Rouphail",
+      "official_displayed_rank": "Senior Lecturer Emerita and Academic Adviser",
+      "college_cms_post_id": 90922,
+      "college_taxonomy_ids": [
+        11869,
+        11847
+      ],
+      "reason_to_preserve_current_status": "The public rank also lists academic adviser and the biography posts office hours. Advising has no verified end date."
+    },
+    {
+      "id": "faculty-ncsu-chass-e8200533",
+      "name": "John Easley",
+      "official_profile": "https://chass.ncsu.edu/people/jbeasley/",
+      "college_card_name": "John Easley",
+      "official_displayed_rank": "Emeritus",
+      "college_cms_post_id": 90884,
+      "college_taxonomy_ids": [
+        11869,
+        11847,
+        11775
+      ],
+      "reason_to_preserve_current_status": "Also listed as Staff. There is no additional confirmation that all university roles ended."
+    },
+    {
+      "id": "faculty-ncsu-chass-f1ef75b0",
+      "name": "Etta Barksdale",
+      "official_profile": "https://chass.ncsu.edu/people/hcbarksd/",
+      "college_card_name": "Etta Barksdale",
+      "official_displayed_rank": "Senior Lecturer Emerita / Sophmore Advisor",
+      "college_cms_post_id": 90876,
+      "college_taxonomy_ids": [
+        11869,
+        11847
+      ],
+      "reason_to_preserve_current_status": "The role label combines emerita lecturer with adviser and supplies office hours. The second role has no verified end date."
+    },
+    {
+      "id": "faculty-ncsu-chass-14382765",
+      "name": "Sandy Stallings",
+      "official_profile": "https://chass.ncsu.edu/people/spstalli/",
+      "college_card_name": "Sandy Stallings",
+      "official_displayed_rank": "Adviser Emerita",
+      "college_cms_post_id": 89867,
+      "college_taxonomy_ids": [
+        11866,
+        11847,
+        11775
+      ],
+      "reason_to_preserve_current_status": "Also separately listed as Staff. More role evidence is needed before changing the original contact."
+    },
+    {
+      "id": "faculty-ncsu-chass-9dc91fcb",
+      "name": "Charlotte Elleman",
+      "official_profile": "https://chass.ncsu.edu/people/aellema/",
+      "college_card_name": "Charlotte Elleman",
+      "official_displayed_rank": "Professor Emerita",
+      "college_cms_post_id": 89826,
+      "college_taxonomy_ids": [
+        11866,
+        11847,
+        11775
+      ],
+      "reason_to_preserve_current_status": "The retired communication professor is also separately listed as Staff, whose status needs verification."
+    }
+  ]
+}
