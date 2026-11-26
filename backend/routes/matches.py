@@ -35,7 +35,7 @@ from backend.lib.blocking import (
 )
 from backend.lib.build_info import release_sha
 from backend.lib.llm import _resolve, chat_completion
-from backend.lib.opportunity_detail import stated_pi_name
+from backend.lib.opportunity_detail import pay_is_inferred, stated_pi_name
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_budget import PromptInputTooLarge, check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
@@ -256,7 +256,7 @@ def _view_row_from_card(card: dict, record: dict | None = None) -> _MatchViewRow
         scoped="school" in card or "audience" in card,
         school=card.get("school"),
         audience=card.get("audience"),
-        paid=card.get("paid"),
+        paid="unknown" if card.get("paid_attribution") == "inferred" else card.get("paid") or "unknown",
         on_campus=card.get("on_campus"),
         is_rolling=card.get("is_rolling"),
         international_friendly=(
@@ -349,6 +349,8 @@ def _match_view_row(
             card.pop(key, None)
         if "eligibility" in card:
             card["eligibility"] = {}
+    if record_kind(safe) == "listing" and pay_is_inferred(opportunity, card.get("paid")):
+        card["paid_attribution"] = "inferred"
     card["title"] = neutralize_lifecycle_title(card["title"], safe)
     # A faculty description is rebuilt by faculty_safe_public_record and
     # equals the corpus's own: keep one string, not one per row.

@@ -44,6 +44,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from datetime import date, datetime
 
+from backend.lib.opportunity_detail import pay_is_inferred
 from backend.lib.public_projection import redact_embedded_emails
 from backend.routes.matches import _in_view_scope, _match_view_row
 from src.evidence import faculty_contact_claims_unverified
@@ -243,11 +244,13 @@ def match_filter(opp: dict, filters: dict) -> bool:
     eligibility = opp.get("eligibility") or {}
     if not isinstance(eligibility, dict):
         eligibility = {}
+    paid = opp.get("paid")
+    if filters.get("paid") and (
+        is_faculty_contact or opp.get("paid_attribution") == "inferred" or pay_is_inferred(opp, paid)
+    ):
+        paid = "unknown"
     return (
-        _matches_paid(
-            "unknown" if is_faculty_contact else opp.get("paid"),
-            filters.get("paid", ""),
-        )
+        _matches_paid(paid, filters.get("paid", ""))
         and _matches_intl(
             {"international_friendly": "unknown"}
             if is_faculty_contact

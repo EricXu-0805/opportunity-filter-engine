@@ -773,6 +773,14 @@ def _funding(payload: dict, canonical: dict, source: str) -> _Field:
     return field
 
 
+def pay_is_inferred(canonical: dict, paid: object) -> bool:
+    """Whether a pay value can only be displayed as an inference."""
+    return paid in ("yes", "stipend", "no") and (
+        is_read_off_the_page(canonical, "paid")
+        or paid_basis(canonical, paid) not in (None, BASIS_PROGRAM_POLICY)
+    )
+
+
 def paid_basis(canonical: dict, paid: object) -> str | None:
     """Why ``paid`` is not source-backed, or None when it is.
 
