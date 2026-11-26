@@ -1,0 +1,969 @@
+{
+  "baseline_main": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+  "date_utc": "2026-11-26",
+  "source_scope": "Complete official NanoEngineering table replay through production parser and normalizer. Does not replace next scheduled refresh.",
+  "record_id": "faculty-ucsd-nano-2097ee48",
+  "http_requests": {
+    "roster": {
+      "requested": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+      "http": 200,
+      "final": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty"
+    },
+    "department_page": {
+      "requested": "https://nanoengineering.ucsd.edu/node/917",
+      "http": 200,
+      "final": "https://nanoengineering.ucsd.edu/node/917"
+    },
+    "old_jacobs": {
+      "requested": "https://jacobsschool.ucsd.edu/faculty/faculty_bios/findprofile.sfe?department=NANO&fmp_recid=396",
+      "http": 200,
+      "final": "https://jacobsschool.ucsd.edu/faculty?department=NANO&fmp_recid=396"
+    },
+    "published_jacobs": {
+      "requested": "https://jacobsschool.ucsd.edu/faculty/profile?id=396",
+      "http": 200,
+      "final": "https://jacobsschool.ucsd.edu/faculty/profile?id=396"
+    },
+    "product_detail": {
+      "requested": "https://joinalab.com/opportunities/faculty-ucsd-nano-2097ee48",
+      "http": 200,
+      "final": "https://joinalab.com/opportunities/faculty-ucsd-nano-2097ee48"
+    },
+    "product_api": {
+      "requested": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-2097ee48",
+      "http": 200,
+      "final": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-2097ee48"
+    },
+    "deployed_backend": {
+      "requested": "https://joinalab.com/api/health",
+      "http": 200,
+      "final": "https://joinalab.com/api/health"
+    }
+  },
+  "old_route_request_note": "Browser HTTPS-upgrade equivalent to roster and production HTTP href",
+  "production_before": {
+    "api_fields": [
+      "url",
+      "source_url"
+    ],
+    "ui_visible_label": "View faculty profile",
+    "wrong_href": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/findprofile.sfe?department=NANO&fmp_recid=396",
+    "backend": "85f20cfad2dbb0f0600cdecdc14c976cf100f913",
+    "frontend": "85f20cfad2dbb0f0600cdecdc14c976cf100f913"
+  },
+  "source_evidence": {
+    "department_profile_heading": "Ping Liu",
+    "department_explicitly_links": "https://jacobsschool.ucsd.edu/faculty/profile?id=396",
+    "jacobs_profile_named_heading": "Ping Liu",
+    "old_jacobs_has_person_heading": false,
+    "email_matches_roster_label_and_jacobs": true
+  },
+  "official_roster": {
+    "table_rows": 56,
+    "parsed_with_links_before_cross_unit_dedupe": 42,
+    "unique_ids": 41,
+    "repeated_raw_profile_ids": [
+      "faculty-ucsd-nano-28e08ebd"
+    ],
+    "ids_in_roster_order": [
+      "faculty-ucsd-nano-d24bdcfa",
+      "faculty-ucsd-nano-28e08ebd",
+      "faculty-ucsd-nano-79dd203c",
+      "faculty-ucsd-nano-c8fc10d0",
+      "faculty-ucsd-nano-812f8dc1",
+      "faculty-ucsd-nano-2aa92754",
+      "faculty-ucsd-nano-2097ee48",
+      "faculty-ucsd-nano-0f313dcf",
+      "faculty-ucsd-nano-ef30f6e2",
+      "faculty-ucsd-nano-04ac1d79",
+      "faculty-ucsd-nano-65b8b318",
+      "faculty-ucsd-nano-e94320ae",
+      "faculty-ucsd-nano-6e6b276c",
+      "faculty-ucsd-nano-4c95244a",
+      "faculty-ucsd-nano-ecc31f16",
+      "faculty-ucsd-nano-467aa36b",
+      "faculty-ucsd-nano-58f109dc",
+      "faculty-ucsd-nano-27240933",
+      "faculty-ucsd-nano-5443ea03",
+      "faculty-ucsd-nano-f22f5fe7",
+      "faculty-ucsd-nano-28e08ebd",
+      "faculty-ucsd-nano-4296d17b",
+      "faculty-ucsd-nano-3b436240",
+      "faculty-ucsd-nano-fd63f909",
+      "faculty-ucsd-nano-52bb1d25",
+      "faculty-ucsd-nano-25a6d469",
+      "faculty-ucsd-nano-dc9e3de3",
+      "faculty-ucsd-nano-571a39eb",
+      "faculty-ucsd-nano-4bcf3471",
+      "faculty-ucsd-nano-3be64dab",
+      "faculty-ucsd-nano-6efedc5d",
+      "faculty-ucsd-nano-74646bb6",
+      "faculty-ucsd-nano-5e6a268c",
+      "faculty-ucsd-nano-6f1ca843",
+      "faculty-ucsd-nano-d181f3a2",
+      "faculty-ucsd-nano-92aa2cb4",
+      "faculty-ucsd-nano-a213f336",
+      "faculty-ucsd-nano-0b8a48ba",
+      "faculty-ucsd-nano-1d03d169",
+      "faculty-ucsd-nano-a37aa155",
+      "faculty-ucsd-nano-03f450ce",
+      "faculty-ucsd-nano-7c7f22ea"
+    ],
+    "baseline_active_nano_ids": 32,
+    "active_stored_nano_ids_not_in_roster": [],
+    "roster_ids_not_stored_active_nano": [
+      "faculty-ucsd-nano-0b8a48ba",
+      "faculty-ucsd-nano-1d03d169",
+      "faculty-ucsd-nano-4bcf3471",
+      "faculty-ucsd-nano-6efedc5d",
+      "faculty-ucsd-nano-6f1ca843",
+      "faculty-ucsd-nano-74646bb6",
+      "faculty-ucsd-nano-7c7f22ea",
+      "faculty-ucsd-nano-a213f336",
+      "faculty-ucsd-nano-c8fc10d0"
+    ],
+    "before_after_ids_sha256": "36d8090407a7657c797f817f4124847ec507d6464249821e4809b522fe8ba79f",
+    "changed_profile_destinations": [
+      "faculty-ucsd-nano-2097ee48"
+    ],
+    "row_identity_comparison": [
+      {
+        "official_section": "Professors",
+        "name": "Chen, Shaochen",
+        "name_has_link": true,
+        "collector_names": [
+          "Shaochen Chen"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-d24bdcfa"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-d24bdcfa",
+            "name": "Shaochen Chen",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Chen, Zheng",
+        "name_has_link": true,
+        "collector_names": [
+          "Zheng Chen"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-28e08ebd"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-28e08ebd",
+            "name": "Zheng Chen",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Fenning, David",
+        "name_has_link": true,
+        "collector_names": [
+          "David Fenning"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-79dd203c"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-79dd203c",
+            "name": "David Fenning",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Fullerton, Eric",
+        "name_has_link": true,
+        "collector_names": [
+          "Eric Fullerton"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-c8fc10d0"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-ece-a3a883e7",
+            "name": "Eric Fullerton",
+            "department": "Department of Electrical & Computer Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Gupta, Arunava",
+        "name_has_link": false,
+        "collector_names": [],
+        "collector_ids_before_cross_unit_dedupe": [],
+        "candidate_active_campus_records_by_name_url_or_email": []
+      },
+      {
+        "official_section": "Professors",
+        "name": "Jokerst, Jesse",
+        "name_has_link": true,
+        "collector_names": [
+          "Jesse Jokerst"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-812f8dc1"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-812f8dc1",
+            "name": "Jesse Jokerst",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Lipomi, Darren",
+        "name_has_link": true,
+        "collector_names": [
+          "Darren Lipomi"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-2aa92754"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-2aa92754",
+            "name": "Darren Lipomi",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Liu, Ping",
+        "name_has_link": true,
+        "collector_names": [
+          "Ping Liu"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-2097ee48"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-2097ee48",
+            "name": "Ping Liu",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Lubarda, Vlado",
+        "name_has_link": true,
+        "collector_names": [
+          "Vlado Lubarda"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-0f313dcf"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-0f313dcf",
+            "name": "Vlado Lubarda",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Luo, Jian",
+        "name_has_link": true,
+        "collector_names": [
+          "Jian Luo"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-ef30f6e2"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-ef30f6e2",
+            "name": "Jian Luo",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Meng, Shirley",
+        "name_has_link": true,
+        "collector_names": [
+          "Shirley Meng"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-04ac1d79"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-04ac1d79",
+            "name": "Shirley Meng",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Meyers, Marc",
+        "name_has_link": true,
+        "collector_names": [
+          "Marc Meyers"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-65b8b318"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-65b8b318",
+            "name": "Marc Meyers",
+            "department": "Department of NanoEngineering"
+          },
+          {
+            "id": "faculty-ucsd-mae-90f0b9f2",
+            "name": "Marc Meyers",
+            "department": "Department of Mechanical & Aerospace Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Ong, Shyue Ping",
+        "name_has_link": true,
+        "collector_names": [
+          "Shyue Ping Ong"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-e94320ae"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-e94320ae",
+            "name": "Shyue Ping Ong",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Pokorski, Jonathan K.",
+        "name_has_link": true,
+        "collector_names": [
+          "Jonathan K. Pokorski"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-6e6b276c"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-6e6b276c",
+            "name": "Jonathan K. Pokorski",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Steinmetz, Nicole F.",
+        "name_has_link": true,
+        "collector_names": [
+          "Nicole F. Steinmetz"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-4c95244a"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-4c95244a",
+            "name": "Nicole F. Steinmetz",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Tao, Andrea",
+        "name_has_link": true,
+        "collector_names": [
+          "Andrea Tao"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-ecc31f16"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-ecc31f16",
+            "name": "Andrea Tao",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Vecchio, Ken",
+        "name_has_link": true,
+        "collector_names": [
+          "Ken Vecchio"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-467aa36b"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-467aa36b",
+            "name": "Ken Vecchio",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Wang, Joseph",
+        "name_has_link": true,
+        "collector_names": [
+          "Joseph Wang"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-58f109dc"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-58f109dc",
+            "name": "Joseph Wang",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Xu, Sheng",
+        "name_has_link": true,
+        "collector_names": [
+          "Sheng Xu"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-27240933"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-27240933",
+            "name": "Sheng Xu",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Yang, Kesong",
+        "name_has_link": true,
+        "collector_names": [
+          "Kesong Yang"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-5443ea03"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-5443ea03",
+            "name": "Kesong Yang",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors",
+        "name": "Zhang, Liangfang",
+        "name_has_link": true,
+        "collector_names": [
+          "Liangfang Zhang"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-f22f5fe7"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-f22f5fe7",
+            "name": "Liangfang Zhang",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Associate Professors",
+        "name": "Chen, Zheng",
+        "name_has_link": true,
+        "collector_names": [
+          "Zheng Chen"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-28e08ebd"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-28e08ebd",
+            "name": "Zheng Chen",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Associate Professors",
+        "name": "Cubukcu, Ertugrul",
+        "name_has_link": true,
+        "collector_names": [
+          "Ertugrul Cubukcu"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-4296d17b"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-4296d17b",
+            "name": "Ertugrul Cubukcu",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Associate Professors",
+        "name": "Pascal, Tod",
+        "name_has_link": true,
+        "collector_names": [
+          "Tod Pascal"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-3b436240"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-3b436240",
+            "name": "Tod Pascal",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Associate Professors",
+        "name": "Sirbuly, Donald",
+        "name_has_link": true,
+        "collector_names": [
+          "Donald Sirbuly"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-fd63f909"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-fd63f909",
+            "name": "Donald Sirbuly",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Associate Professors",
+        "name": "Vazquez Mena, Oscar",
+        "name_has_link": true,
+        "collector_names": [
+          "Oscar Vazquez Mena"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-52bb1d25"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-52bb1d25",
+            "name": "Oscar Vazquez Mena",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors Emeriti",
+        "name": "Esener , Sadik",
+        "name_has_link": true,
+        "collector_names": [
+          "Esener"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-25a6d469"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-25a6d469",
+            "name": "Esener",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professors Emeriti",
+        "name": "Heller, Mike",
+        "name_has_link": true,
+        "collector_names": [
+          "Mike Heller"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-dc9e3de3"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-dc9e3de3",
+            "name": "Mike Heller",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Almutairi, Adah",
+        "name_has_link": true,
+        "collector_names": [
+          "Adah Almutairi"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-571a39eb"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-571a39eb",
+            "name": "Adah Almutairi",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Bandaru, Prab",
+        "name_has_link": true,
+        "collector_names": [
+          "Prab Bandaru"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-4bcf3471"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-mae-a504948b",
+            "name": "Prabhakar Bandaru",
+            "department": "Department of Mechanical & Aerospace Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Christman, Karen",
+        "name_has_link": true,
+        "collector_names": [
+          "Karen Christman"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-3be64dab"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-be-27f9cef3",
+            "name": "Karen Christman",
+            "department": "Department of Bioengineering"
+          },
+          {
+            "id": "faculty-ucsd-nano-3be64dab",
+            "name": "Karen Christman",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Cohen, Seth",
+        "name_has_link": false,
+        "collector_names": [],
+        "collector_ids_before_cross_unit_dedupe": [],
+        "candidate_active_campus_records_by_name_url_or_email": []
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Dayeh, Shadi",
+        "name_has_link": true,
+        "collector_names": [
+          "Shadi Dayeh"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-6efedc5d"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-ece-1010c6f3",
+            "name": "Shadi A. Dayeh",
+            "department": "Department of Electrical & Computer Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Graeve, Olivia",
+        "name_has_link": true,
+        "collector_names": [
+          "Olivia Graeve"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-74646bb6"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-mae-40961ac0",
+            "name": "Olivia Graeve",
+            "department": "Department of Mechanical & Aerospace Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Kummel, Andrew",
+        "name_has_link": true,
+        "collector_names": [
+          "Andrew Kummel"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-5e6a268c"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-5e6a268c",
+            "name": "Andrew Kummel",
+            "department": "Department of NanoEngineering"
+          },
+          {
+            "id": "faculty-ucsd-chem-a0f42184",
+            "name": "Andrew Kummel",
+            "department": "Department of Chemistry & Biochemistry"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Lo, Yu-Hwa",
+        "name_has_link": true,
+        "collector_names": [
+          "Yu-Hwa Lo"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-6f1ca843"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-ece-9aeb10ff",
+            "name": "Yu-Hwa Lo",
+            "department": "Department of Electrical & Computer Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Poulikakos, Lisa V.",
+        "name_has_link": true,
+        "collector_names": [
+          "Lisa V. Poulikakos"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-d181f3a2"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-d181f3a2",
+            "name": "Lisa V. Poulikakos",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Sailor, Michael",
+        "name_has_link": true,
+        "collector_names": [
+          "Michael Sailor"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-92aa2cb4"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-92aa2cb4",
+            "name": "Michael Sailor",
+            "department": "Department of NanoEngineering"
+          },
+          {
+            "id": "faculty-ucsd-chem-106022f7",
+            "name": "Michael Sailor",
+            "department": "Department of Chemistry & Biochemistry"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Shi, Lingyan",
+        "name_has_link": true,
+        "collector_names": [
+          "Lingyan Shi"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-a213f336"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-be-64fd9e5e",
+            "name": "Lingyan Shi",
+            "department": "Department of Bioengineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Silva, Gabriel",
+        "name_has_link": true,
+        "collector_names": [
+          "Gabriel Silva"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-0b8a48ba"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-be-3faa6dc0",
+            "name": "Gabriel Silva",
+            "department": "Department of Bioengineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Subramaniam, Shankar",
+        "name_has_link": true,
+        "collector_names": [
+          "Shankar Subramaniam"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-1d03d169"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-cse-36e2000d",
+            "name": "Shankar Subramaniam",
+            "department": "Department of Computer Science & Engineering"
+          },
+          {
+            "id": "faculty-ucsd-be-2c8b585d",
+            "name": "Shankar Subramaniam",
+            "department": "Department of Bioengineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Trogler, William",
+        "name_has_link": true,
+        "collector_names": [
+          "William Trogler"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-a37aa155"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-a37aa155",
+            "name": "William Trogler",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Whitesell, James",
+        "name_has_link": true,
+        "collector_names": [
+          "James Whitesell"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-03f450ce"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-nano-03f450ce",
+            "name": "James Whitesell",
+            "department": "Department of NanoEngineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Affiliated Faculty",
+        "name": "Yu, Paul",
+        "name_has_link": true,
+        "collector_names": [
+          "Paul Yu"
+        ],
+        "collector_ids_before_cross_unit_dedupe": [
+          "faculty-ucsd-nano-7c7f22ea"
+        ],
+        "candidate_active_campus_records_by_name_url_or_email": [
+          {
+            "id": "faculty-ucsd-ece-c79b156e",
+            "name": "Paul K. Yu",
+            "department": "Department of Electrical & Computer Engineering"
+          }
+        ]
+      },
+      {
+        "official_section": "Professional Research Staff",
+        "name": "Fang, Ronnie H.",
+        "name_has_link": false,
+        "collector_names": [],
+        "collector_ids_before_cross_unit_dedupe": [],
+        "candidate_active_campus_records_by_name_url_or_email": []
+      },
+      {
+        "official_section": "Professional Research Staff",
+        "name": "Gao, Weiwei",
+        "name_has_link": false,
+        "collector_names": [],
+        "collector_ids_before_cross_unit_dedupe": [],
+        "candidate_active_campus_records_by_name_url_or_email": []
+      },
+      {
+        "official_section": "Professional Research Staff",
+        "name": "Zhang, Minghao",
+        "name_has_link": false,
+        "collector_names": [],
+        "collector_ids_before_cross_unit_dedupe": [],
+        "candidate_active_campus_records_by_name_url_or_email": []
+      }
+    ],
+    "first_cell_anchor_elements": 43,
+    "table_linked_person_rows": 42
+  },
+  "shipped_shard": {
+    "ordered_rows": 1508,
+    "before_after_ordered_ids_sha256": "bb2fa84facb435b7db36e594fc25a34fb328b0070aee10b654be46b720b084a6",
+    "changed_fields": [
+      [
+        "faculty-ucsd-nano-2097ee48",
+        [
+          "source_url",
+          "url"
+        ]
+      ]
+    ],
+    "original_timestamps_preserved": true
+  }
+}
