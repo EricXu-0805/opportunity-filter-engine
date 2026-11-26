@@ -66,6 +66,8 @@ def _gatech_arch_emeritus(name: str, slug: str, previous_title: str, title: str)
     )
 
 
+_MSU_MGI_DIRECTORY = "https://directory.natsci.msu.edu/Directory/Directory/Department/26"
+
 REVIEWS = {
     # Keep the former school's own named appointment as historical provenance.
     # The ordinary directory pass owns whether this old Georgia Tech ID is active.
@@ -85,6 +87,12 @@ REVIEWS = {
         "https://www.scheller.gatech.edu/directory/emeritus/zhang/index.html",
         "https://www.scheller.gatech.edu/directory/index.json", datetime(2026, 11, 26, 15, 26, tzinfo=UTC),
         title="Professor Emeritus", previous_title="Steven A. Denning Professor in Technology & Management"),
+    "faculty-msu-mgi-5ca9b09b": ProfileReview(
+        "msu", "Department of Microbiology, Genetics and Immunology", "Kathleen A Hoag",
+        _MSU_MGI_DIRECTORY, _MSU_MGI_DIRECTORY,
+        "https://bld.natsci.msu.edu/news/dr-kathy-hoag-retires-after-25-years-at-the-BLD-Program.aspx",
+        datetime(2026, 11, 26, 15, 48, tzinfo=UTC),
+        title="Professor Emeritum", previous_title="Professor"),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
         "faculty/Baird.html", "Professor Emeritus"),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
@@ -97,6 +105,12 @@ REVIEWS = {
         "postdoctoral-researchers/qiang-gao.html", "Postdoctoral researchers"),
     "faculty-vt-che-b0225752": _vt_che("Fangxi Wang",
         "postdoctoral-researchers/fangxi-wang.html", "Postdoctoral researcher"),
+    "faculty-vt-che-e1d3b3cb": ProfileReview(
+        "vt", "Department of Chemical Engineering", "Julia Ross",
+        "https://che.vt.edu/People/faculty/Ross.html",
+        "https://www.provost.vt.edu/who_we_are/julie-ross-bio.html",
+        "https://che.vt.edu/People/faculty.html",
+        datetime(2026, 11, 26, 16, 15, 3, tzinfo=UTC)),
     "faculty-utexas-neuro-ed6d4734": ProfileReview(
         "utexas", "Department of Neuroscience", "Harold Zakon",
         "https://neuroscience.utexas.edu/directory/harold-zakon",

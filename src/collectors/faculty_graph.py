@@ -200,8 +200,10 @@ def run_start_ids(ids: frozenset[str]):
 _RUN_START_PROFILES: dict[tuple[str | None, str], frozenset[str]] = {}
 
 # The keys _enrich_profile reads research with; keep the two in step.
-_PROFILE_RESEARCH_KEYS = ("research_selector", "research_items_selector", "research_label_re",
-                          "research_html_re", "research_re", "cap_keywords", "digitalmeasures")
+_PROFILE_RESEARCH_KEYS = (
+    "research_selector", "research_items_selector", "stated_research_items_selector",
+    "research_label_re", "research_html_re", "research_re", "cap_keywords", "digitalmeasures",
+)
 
 
 def captured_profile_pages(rows: list[dict]) -> dict[tuple[str | None, str], frozenset[str]]:
@@ -696,6 +698,18 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         alias = reviewed_names.get(url) or reviewed_names.get(canonical_profile_url(url))
         if alias and name == alias[0]:
             id_name = alias[1]
+    # A published historical alias and the live name can both own saved URLs.
+    # Give a distinct same-name member their own ID only on an individual page
+    # in this roster's profile directory and with an independent contact.
+    owner = dept.get("reserved_profile_identity")
+    if owner and name in owner["names"]:
+        page = canonical_profile_url(person.get("url"))
+        if page == owner["profile"] or email == owner["email"]:
+            id_name = owner["name"]
+        elif page and email and page.rpartition("/")[0] == owner["profile"].rpartition("/")[0]:
+            id_name = f"{owner['name']}|{page}"
+        else:
+            return None
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
     marker = dept.get("cross_listing_marker")
     listing = ""
@@ -1422,6 +1436,9 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if re.match(r"(?i)\s*(tel|mailto|javascript|fax|sms):", href or ""):
             href = ""
         href = urljoin(base_url, href) if href else base_url
+        replacement = (sel.get("reviewed_profile_links") or {}).get(href)
+        if replacement and name == replacement[0]:
+            href = replacement[1]
         if sel.get("link_strip_query") and "?" in href:
             # Listing hrefs that append navigation state (Caltech's ?back_url=…)
             # would make the same profile a distinct URL per listing page —
@@ -2605,7 +2622,10 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             reads.add("research")
         reads_title = want_title or bool(enr.get("use_position_title") and enr.get("position_re"))
         held = _RUN_START_PROFILES.get((_url(target), _identity(_clean_name(p.get("name")))))
-        if not enr.get("always") and not reads_title and held is not None and reads <= held:
+        # Explicit personal research fields can change or disappear. Re-read
+        # their source on its scheduled profile pass even when a value is held.
+        checks_stated_research = bool(enr.get("stated_research_items_selector") and want_research)
+        if not (enr.get("always") or reads_title or checks_stated_research) and held is not None and reads <= held:
             continue
         memo_key = (target, p.get("name"), repr(sorted(enr.items())))
         enrichment = _PROFILE_MEMO.get(memo_key) if _PROFILE_MEMO is not None else None
@@ -2632,10 +2652,15 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
                 p["_contact_instruction_sources"] = sources
         if fetched:
             p["_verification_scope"] = "profile"
+            if checks_stated_research:
+                p["_checked_research_index"] = target
         if items and want_research:
             p["keywords"] = list(items)
         if research and want_research:
             p["research_areas"] = research
+            if checks_stated_research:
+                p["_research_areas_source_url"] = target
+                p["_research_areas_observed_at"] = datetime.now(UTC).date().isoformat()
             if enr.get("research_selector_label"):
                 # Keep only complete list items as chips, including an empty
                 # set when every statement is too long for a chip.
@@ -2762,9 +2787,15 @@ def _enrich_profile(
         if e_el is not None:
             email = _email_from_el(e_el)
     items: list[str] = []
-    if enrich.get("research_items_selector"):
-        items = _clean_selector_items(soup, enrich["research_items_selector"])
     kw = ""
+    if stated_items := enrich.get("stated_research_items_selector"):
+        # A named profile's explicit multi-value field supplies the complete
+        # statement. The keyword cleaner may separately trim chips for display.
+        statements = [el.get_text(" ", strip=True) for el in soup.select(stated_items)]
+        kw = "; ".join(dict.fromkeys(text for text in statements if text))
+        items = _clean_selector_items(soup, stated_items)
+    elif enrich.get("research_items_selector"):
+        items = _clean_selector_items(soup, enrich["research_items_selector"])
     if enrich.get("research_selector"):
         # Profiles that keep research areas as a prose block in a stable
         # element (Caltech's div.field__research_summary) — a CSS selector

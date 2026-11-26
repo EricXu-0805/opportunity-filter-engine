@@ -226,9 +226,10 @@ def is_deceased_listing(name: object, title: object) -> bool:
 # write: "Emeritus", "Emerita", Wisconsin's "Emerit", the plural "Emeriti" and
 # the misspellings "Emeritas" and "Emertius". Whole words only, so never
 # "Emergency", "Emerging" or "Emerson"; a bare "Emer." also abbreviates
-# "Emergency" and is not read.
+# "Emergency" and is not read. MSU also uses the standalone title "Professor
+# Emeritum"; an emeritum administrative appointment can accompany active teaching.
 _EMERITUS_OR_RETIRED_RE = re.compile(
-    r"\b(?:emerit(?:us|a|i|as|x)?|emertius|retired)\b", re.IGNORECASE)
+    r"\b(?:emerit(?:us|a|i|as|x)?|emertius|retired)\b|^\s*professor\s+emeritum\s*$", re.IGNORECASE)
 
 RETIRED_TITLE_REASON = "retired_title"
 
