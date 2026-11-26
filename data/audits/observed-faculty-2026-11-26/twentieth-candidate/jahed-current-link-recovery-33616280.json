@@ -1,0 +1,26 @@
+{
+  "named_biography_unavailable": {
+    "actual_current_roster_count": 36,
+    "named_profile_available": false,
+    "partial_render_rows": 1,
+    "added": 0,
+    "updated": 0,
+    "disk_row_count": 1,
+    "original_id": "faculty-ucsd-nano-8a42e65d",
+    "first_seen_unchanged": true,
+    "stored_active": true,
+    "scope": "Only the named profile request was set unavailable in the failure case. The other collection inputs and the entire retry were fetched from actual university routes."
+  },
+  "normal_retry": {
+    "actual_current_roster_count": 37,
+    "named_profile_available": true,
+    "partial_render_rows": 0,
+    "added": 0,
+    "updated": 1,
+    "disk_row_count": 1,
+    "original_id": "faculty-ucsd-nano-8a42e65d",
+    "first_seen_unchanged": true,
+    "stored_active": true,
+    "scope": "Only the named profile request was set unavailable in the failure case. The other collection inputs and the entire retry were fetched from actual university routes."
+  }
+}
