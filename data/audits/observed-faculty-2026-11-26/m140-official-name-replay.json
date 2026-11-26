@@ -1,0 +1,65 @@
+{
+  "scope": "Full official Miami nursing and Nebraska agronomy roster replays before and after the two profile-specific name mappings. Old published IDs and former alternate ID candidates compared.",
+  "sites": [
+    {
+      "dept": "SONHS",
+      "roster": "https://www.sonhs.miami.edu/about-sonhs/faculty-and-staff/faculty-directory/index.html",
+      "source_http": 200,
+      "old": {
+        "id": "faculty-miami-sonhs-3042ed43",
+        "name": "Lonar Anthony Umadhay",
+        "url": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7 ",
+        "last_seen_at": "2026-08-28T09:49:30.269127"
+      },
+      "before": {
+        "id": "faculty-miami-sonhs-e27a5674",
+        "name": "Tony Umadhay",
+        "url": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7 ",
+        "rank": "Assoc. Professor of Clinical"
+      },
+      "after": {
+        "id": "faculty-miami-sonhs-3042ed43",
+        "name": "Tony Umadhay",
+        "url": "https://people.miami.edu/profile/a1e7d2ef1ef8b9fd0c681b22e15044f7 ",
+        "rank": "Assoc. Professor of Clinical"
+      },
+      "rows_before": 48,
+      "rows_after": 48,
+      "observation": {
+        "fetch_status": "ok",
+        "failure_reason": null
+      }
+    },
+    {
+      "dept": "AGRO",
+      "roster": "https://agronomy.unl.edu/our-people/faculty-directories/faculty/",
+      "source_http": 200,
+      "old": {
+        "id": "faculty-unl-agro-f6340208",
+        "name": "Nicholas McMillan",
+        "url": "https://agronomy.unl.edu/mcmillan/",
+        "last_seen_at": "2026-09-06T03:11:44.424512"
+      },
+      "before": {
+        "id": "faculty-unl-agro-6f3a6f02",
+        "name": "Nic McMillan",
+        "url": "https://agronomy.unl.edu/mcmillan/",
+        "rank": "Asst Professor"
+      },
+      "after": {
+        "id": "faculty-unl-agro-f6340208",
+        "name": "Nic McMillan",
+        "url": "https://agronomy.unl.edu/mcmillan/",
+        "rank": "Asst Professor"
+      },
+      "rows_before": 62,
+      "rows_after": 62,
+      "observation": {
+        "fetch_status": "ok",
+        "failure_reason": null
+      }
+    }
+  ],
+  "observed_utc": "2026-11-26T09:26:35.740249+00:00",
+  "head": "687ee2c9"
+}
