@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { isPrivateImportId } from '@/lib/private-import-target-api';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { useHasLocalStorageKey } from '@/lib/use-local-storage-json';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import type { InteractionType } from '@/lib/supabase';
@@ -27,6 +29,7 @@ const COLUMN_ACCENT: Record<InteractionType, string> = {
 export default function TrackerPage() {
   const router = useRouter();
   const { t } = useT();
+  const needsLocalProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE) === false;
   const {
     items,
     unavailableItems,
@@ -254,13 +257,13 @@ export default function TrackerPage() {
       {showEmptyState ? (
         <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
           <p className="text-sm font-medium text-gray-800">{t('tracker.emptyTitle')}</p>
-          <p className="mt-1 text-[13px] text-gray-600">{t('tracker.emptyBody')}</p>
+          <p className="mt-1 text-[13px] text-gray-600">{t(needsLocalProfile ? 'tracker.emptyProfileBody' : 'tracker.emptyBody')}</p>
           <Link
             ref={emptyStateLinkRef}
-            href="/results"
+            href={needsLocalProfile ? '/' : '/results'}
             className="mt-5 inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
           >
-            {t('tracker.emptyCta')}
+            {t(needsLocalProfile ? 'tracker.emptyProfileCta' : 'tracker.emptyCta')}
           </Link>
         </div>
       ) : (
