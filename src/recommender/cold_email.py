@@ -1014,9 +1014,10 @@ def _common_parts(
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
-        is_posted_internship=record_kind(opportunity) == "listing" and (
-            opp_type == "internship" or opportunity.get("source_type") == "internship"
-        ),
+        # A career centre's page lists other employers' postings; it is not one.
+        is_posted_internship=record_kind(opportunity) == "listing"
+        and opportunity.get("source_type") not in {"campus_career", "ucb_career"}
+        and (opp_type == "internship" or opportunity.get("source_type") == "internship"),
         faculty_is_professor=faculty_is_professor,
         # A listing whose source states no topics: the template opener names
         # it by its title (_p1_research_hook). research_topic is unchanged.
