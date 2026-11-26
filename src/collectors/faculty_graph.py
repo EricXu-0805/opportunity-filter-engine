@@ -1314,6 +1314,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     Arts) instead of one umbrella label.
     """
     people: list[dict] = []
+    leadership = sel.get("leadership_title_re")
+    rank_filter = ladder_filter or {}
+    rank_patterns = [rank_filter[key] for key in ("require", "drop") if rank_filter.get(key)]
+    academic_rank = re.compile("|".join(rank_patterns), re.I) if leadership and rank_patterns else None
     if _ACTIVE_COVERAGE is not None:
         try:
             _ACTIVE_COVERAGE["_document_hrefs"].update(
@@ -1406,6 +1410,16 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # unreachable by a descendant selector from the card.
             title_el = card.find_next_sibling(sel["title_sibling"])
         title = title_el.get_text(" ", strip=True) if title_el else ""
+        # Some university directories list an administrative office before the
+        # person's academic appointment. Keep the first academic/excluded rank
+        # in source order so a later professorship cannot override an adjunct.
+        if (academic_rank and re.search(leadership, title, re.I) and not academic_rank.search(title)
+                and not is_trainee_title(title) and not is_retired_title(title)):
+            for node in card.select(sel["title"])[1:]:
+                rank = node.get_text(" ", strip=True)
+                if academic_rank.search(rank) or is_trainee_title(rank) or is_retired_title(rank):
+                    title = rank
+                    break
         if sel.get("title_re"):
             # Hand-edited CMS cards sometimes keep the rank as loose text with no
             # stable element path (UCSD Communication/Urban Studies); a regex over
