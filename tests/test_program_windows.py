@@ -385,7 +385,7 @@ def test_wlu_dart_keeps_its_identity_and_closes_the_2026_neuroscience_fellowship
     assert row["id"] == "wlu-88e9e20591ba"
     assert row["department"] == "Neuroscience Program"
     assert row["school"] == "wlu" and row["audience"] == "campus"
-    assert row["on_campus"] is False
+    assert row["on_campus"] is True  # All three host labs are on a university campus.
     assert row["location"] == "University of Illinois Chicago, University of Florida, or University of Michigan"
     assert row["eligibility"]["preferred_year"] == []
     assert row["paid"] == "stipend"

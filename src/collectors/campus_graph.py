@@ -110,7 +110,7 @@ def program(
     eligibility_majors: list[str] | None = None, preferred_year: list[str] | None = None,
     international_friendly: str = "unknown", deadline_note: str = "",
     keywords: list[str] | None = None, reference_only: bool = False, is_rolling: bool = True,
-    off_campus_location: str = "",
+    placement_location: str = "",
 ) -> dict:
     """Build one curated opportunity spec (school-agnostic)."""
     return {
@@ -122,7 +122,7 @@ def program(
         "preferred_year": preferred_year if preferred_year is not None else ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
         "keywords": keywords or [], "reference_only": reference_only, "is_rolling": is_rolling,
-        "off_campus_location": off_campus_location,
+        "placement_location": placement_location,
     }
 
 
@@ -233,7 +233,7 @@ def _normalize_program(
     keywords = list(dict.fromkeys(
         [k for k in program_spec.get("keywords", []) if k] + [source["source_type"]]
     ))
-    placement = program_spec.get("off_campus_location")
+    placement = program_spec.get("placement_location")
     record = {
         "id": _hash_id(school["school_slug"], src_value, program_spec["key"]),
         "source": src_value,
@@ -248,8 +248,11 @@ def _normalize_program(
         "contact_email": None,
         "url": program_spec["url"],
         "location": placement or school["location"],
-        # A campus program can place its own students at an outside institution.
-        "on_campus": school_slug is not None and not placement,
+        # Derived from the emit bucket, not hardcoded: "open" rows are external
+        # listings that merely surfaced on a campus page (school_slug None),
+        # everything else is this school's own program. The blanket False dated
+        # from the single-school era and made the field assert something untrue.
+        "on_campus": school_slug is not None,
         "remote_option": "unknown",
         "opportunity_type": program_spec.get("opportunity_type", "research"),
         "paid": program_spec.get("paid", "unknown"),
