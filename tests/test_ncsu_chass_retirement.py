@@ -90,12 +90,15 @@ def test_bradens_preferred_name_can_restore_only_his_confirmed_appointment(monke
         assert row['metadata']['is_active']
 
 
-def test_five_reviewed_public_names_keep_the_same_id_when_reappointed(monkeypatch):
+def test_reviewed_public_names_keep_the_same_id_when_reappointed(monkeypatch):
     dept = next(d for d in ncsu_faculty.SCHOOL['departments'] if d['short'] == 'CHASS')
     cases = [
         ('mehasket', 'Mary E Haskett', 'Mary Haskett', 'dcb028fb', 11927),
         ('mershon', 'Donald H. Mershon', 'Donald Mershon', 'ff4905cc', 11927),
         ('wpshaw', 'William Shaw', 'William Shaw PhD', '38b191e6', 11869),
+        ('peblank', 'Philip Blank', 'Philip Blank Jr', '1894dc04', 11869),
+        ('dbgreene', 'David Greene', 'David Greene Jr', '165fe06b', 11967),
+        ('pond', 'Samuel Pond', 'Samuel Pond III', 'd8c4ba8d', 11927),
         ('jnwall', 'John N Wall', 'John Wall', '98436171', 11869),
         ('mjohnson', 'Melissa A. Johnson', 'Melissa Johnson', 'acb2eb75', 11866),
     ]

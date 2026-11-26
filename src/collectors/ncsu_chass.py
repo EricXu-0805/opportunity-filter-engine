@@ -71,6 +71,7 @@ REVIEWED_PROFILES = {
     90924: ("mhunt", "Marvin Hunt"),
     90928: ("morillo", "John Morillo"),
     90932: ("pacolby", "Paul Colby"),
+    90936: ("peblank", "Philip Blank"),
     90938: ("prioli", "Carmine Prioli"),
     90942: ("rckeg", "Robert Kochersberger"),
     90949: ("sdicks", "Stan Dicks"),
@@ -103,6 +104,7 @@ REVIEWED_PROFILES = {
     91180: ("edsssl", "Edith Sylla"),
     91249: ("slspenc2", "Stephanie Spencer"),
     91265: ("wcharri2", "William Harris"),
+    91286: ("dbgreene", "David Greene"),
     91339: ("dvphi", "A. Donald VandeVeer"),
     91349: ("levin", "Hal Levin"),
     91354: ("mjpendle", "Michael Pendlebury"),
@@ -119,6 +121,7 @@ REVIEWED_PROFILES = {
     91417: ("mark-wilson", "Mark Wilson"),
     91419: ("mehasket", "Mary E Haskett"),
     91420: ("mershon", "Donald H. Mershon"),
+    91424: ("pond", "Samuel Pond"),
     91425: ("remitche", "Roger Mitchell"),
     91431: ("schulte", "Ann Schulte"),
     91434: ("tmhess", "Thomas Hess"),
@@ -146,9 +149,12 @@ REVIEWED_PUBLIC_ALIASES = {
     89855: "Melissa Johnson",
     BRADEN_POST: "Jeff Braden",
     90894: "John Wall",
+    90936: "Philip Blank Jr",
     90971: "William Shaw PhD",
+    91286: "David Greene Jr",
     91419: "Mary Haskett",
     91420: "Donald Mershon",
+    91424: "Samuel Pond III",
 }
 
 
