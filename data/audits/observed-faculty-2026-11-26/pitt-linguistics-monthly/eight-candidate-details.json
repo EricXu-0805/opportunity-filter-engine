@@ -1,0 +1,138 @@
+{
+  "checked_at": "2026-11-26T19:52:17.189496+00:00",
+  "scope": "Candidate normal Next.js page and FastAPI, 149882 records; production awaits deployment.",
+  "results": [
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "heading": [
+        "Richard Donato"
+      ],
+      "api_rank": "Emeritus Faculty, School of Education",
+      "rank_visible_on_page": false,
+      "contact_status": "unavailable",
+      "actionable": false,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.iise.pitt.edu/people/richard-donato"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "heading": [
+        "Amanda Godley"
+      ],
+      "api_rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+      "rank_visible_on_page": true,
+      "contact_status": "unavailable",
+      "actionable": true,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.education.pitt.edu/faculty/directory/amanda-godley/"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "heading": [
+        "Charles Perfetti"
+      ],
+      "api_rank": "Retired Distinguished University Professor of Psychology",
+      "rank_visible_on_page": false,
+      "contact_status": "unavailable",
+      "actionable": false,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.psychology.pitt.edu/people/charles-perfetti-phd"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "heading": [
+        "Natasha Tokowicz"
+      ],
+      "api_rank": "Professor of Psychology and Linguistics",
+      "rank_visible_on_page": true,
+      "contact_status": "sign_in_required",
+      "actionable": true,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://psychology.pitt.edu/people/natasha-tokowicz-phd"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "heading": [
+        "Kate Stanton"
+      ],
+      "api_rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+      "rank_visible_on_page": true,
+      "contact_status": "unavailable",
+      "actionable": false,
+      "profile_and_current_links": [
+        {
+          "label": "View current faculty record",
+          "destination": "/opportunities/faculty-pitt-phil-2930bf5f"
+        },
+        {
+          "label": "View faculty profile",
+          "destination": "https://philosophy.pitt.edu/people/kstanton"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "heading": [
+        "Mandy Simons"
+      ],
+      "api_rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+      "rank_visible_on_page": true,
+      "contact_status": "unavailable",
+      "actionable": true,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "heading": [
+        "Lori Levin"
+      ],
+      "api_rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+      "rank_visible_on_page": true,
+      "contact_status": "unavailable",
+      "actionable": true,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.lti.cmu.edu/people/faculty/levin-lori.html"
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-phil-2930bf5f",
+      "heading": [
+        "Kate Stanton"
+      ],
+      "api_rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+      "rank_visible_on_page": true,
+      "contact_status": "unavailable",
+      "actionable": true,
+      "profile_and_current_links": [
+        {
+          "label": "View faculty profile",
+          "destination": "https://www.philosophy.pitt.edu/people/kstanton"
+        }
+      ]
+    }
+  ]
+}

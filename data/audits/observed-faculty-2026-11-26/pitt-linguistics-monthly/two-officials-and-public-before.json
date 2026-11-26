@@ -1,0 +1,69 @@
+{
+  "checked_at": "2026-11-26T19:51:25.862329+00:00",
+  "production_before_after": [
+    [
+      "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "bdb523bec33c71f682e0d895f06a8bad859863b6"
+    ],
+    [
+      "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "bdb523bec33c71f682e0d895f06a8bad859863b6"
+    ]
+  ],
+  "result": [
+    {
+      "id": "faculty-pitt-ling-84276229",
+      "name": "Richard Donato",
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-84276229",
+      "production_header": [
+        "Richard Donato"
+      ],
+      "production_original_rank": "Professor of foreign language education,",
+      "production_actionable": true,
+      "old_destination": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+      "old_response": 404,
+      "primary_link_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20"
+        }
+      ],
+      "new_official_url": "https://www.iise.pitt.edu/people/richard-donato",
+      "official_heading": [
+        "Richard Donato"
+      ],
+      "official_http": 200,
+      "source_evidence": "https://www.iise.pitt.edu/people/iise-emeritus-faculty",
+      "corroborating_url": "https://www.app.education.pitt.edu/people/faculty",
+      "school_classification": "Emeritus Faculty",
+      "source_category": "IISE Emeritus Faculty"
+    },
+    {
+      "id": "faculty-pitt-ling-0dbe04f3",
+      "name": "Amanda Godley",
+      "production_url": "https://joinalab.com/opportunities/faculty-pitt-ling-0dbe04f3",
+      "production_header": [
+        "Amanda Godley"
+      ],
+      "production_original_rank": "Associate Professor, English Education and",
+      "production_actionable": true,
+      "old_destination": "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+      "old_response": 404,
+      "primary_link_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20"
+        }
+      ],
+      "new_official_url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+      "official_heading": [
+        "Amanda Godley"
+      ],
+      "official_http": 200,
+      "source_evidence": "https://www.education.pitt.edu/wp-content/uploads/2023/06/Amanda-Godley-CV.pdf",
+      "school_classification": "Professor",
+      "source_category": "Secondary Appointment in Department of Linguistics",
+      "source_pdf_page": 1
+    }
+  ]
+}

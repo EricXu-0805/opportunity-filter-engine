@@ -1,0 +1,3096 @@
+{
+  "checked_at": "2026-11-26T19:49:34.628075+00:00",
+  "base": "57b86bcb",
+  "changed_backfill_ids": [
+    "faculty-pitt-ling-0dbe04f3",
+    "faculty-pitt-ling-84276229"
+  ],
+  "actual_source_pages": {
+    "200": 23,
+    "404": 5
+  },
+  "cases": [
+    {
+      "starting_data": "previous source tree",
+      "replays": [
+        {
+          "stage": "normal monthly",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "one person unavailable",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "directory unavailable",
+          "emitted_linguistics_ids": [],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 0,
+              "fetch_status": "ok",
+              "parse_status": "zero_rows",
+              "failure_reason": null,
+              "live_roster_count": 0
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "restored",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "reverse repeat",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            },
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "starting_data": "November monthly saved contacts",
+      "replays": [
+        {
+          "stage": "normal monthly",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "one person unavailable",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "directory unavailable",
+          "emitted_linguistics_ids": [],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 0,
+              "fetch_status": "ok",
+              "parse_status": "zero_rows",
+              "failure_reason": null,
+              "live_roster_count": 0
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "restored",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            },
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        },
+        {
+          "stage": "reverse repeat",
+          "emitted_linguistics_ids": [
+            "faculty-pitt-ling-de044035",
+            "faculty-pitt-ling-b0bb8257",
+            "faculty-pitt-ling-00c04191",
+            "faculty-pitt-ling-beac652e",
+            "faculty-pitt-ling-f90b0dfa",
+            "faculty-pitt-ling-0c3d32be",
+            "faculty-pitt-ling-74160f43",
+            "faculty-pitt-ling-32eedf1c",
+            "faculty-pitt-ling-27850b9e",
+            "faculty-pitt-ling-a12887dd",
+            "faculty-pitt-ling-2da8fc2a",
+            "faculty-pitt-ling-5862284a",
+            "faculty-pitt-ling-d0ebdf0a",
+            "faculty-pitt-ling-12753a63",
+            "faculty-pitt-ling-5aaea2df",
+            "faculty-pitt-ling-11fb1b87",
+            "faculty-pitt-ling-3352f935",
+            "faculty-pitt-ling-63c0ff2f",
+            "faculty-pitt-ling-2cb085e3",
+            "faculty-pitt-ling-bfcf8516",
+            "faculty-pitt-ling-84276229",
+            "faculty-pitt-ling-0dbe04f3",
+            "faculty-pitt-ling-b87b919a",
+            "faculty-pitt-ling-14fc90c7",
+            "faculty-pitt-ling-84c5021c",
+            "faculty-pitt-ling-e0bda033",
+            "faculty-pitt-ling-00bb851a",
+            "faculty-pitt-ling-c7f555fa"
+          ],
+          "unit_counts": {
+            "phil": {
+              "observed_count": 23,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 23
+            },
+            "ling": {
+              "observed_count": 28,
+              "fetch_status": "ok",
+              "parse_status": "ok",
+              "failure_reason": null,
+              "live_roster_count": 28
+            }
+          },
+          "original_pitt_ids": 1147,
+          "public_details": [
+            {
+              "id": "faculty-pitt-ling-00bb851a",
+              "rank": "Professor of Psychology and Linguistics",
+              "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+              "active": true,
+              "current_id": null,
+              "contact_status": "sign_in_required",
+              "stored_mail_hash": "a077e4fef0de6b16"
+            },
+            {
+              "id": "faculty-pitt-ling-00c04191",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0c3d32be",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/janet-liu",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-0dbe04f3",
+              "rank": "Professor of Teaching, Learning and Leading · Secondary appointment in Linguistics",
+              "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-11fb1b87",
+              "rank": "Teaching Professor, ASL",
+              "url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-12753a63",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-14fc90c7",
+              "rank": "Retired Distinguished University Professor of Psychology",
+              "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-27850b9e",
+              "rank": "Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2cb085e3",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-2da8fc2a",
+              "rank": "Teaching Professor, Director of Undergraduate Studies for Arabic major, Academic Advisor, Certified ILR OPI Tester (Egyptian Arabic)",
+              "url": "https://www.linguistics.pitt.edu/people/amani-attia",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-32eedf1c",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-3352f935",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5862284a",
+              "rank": "Teaching Professor",
+              "url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-5aaea2df",
+              "rank": "Teaching Assistant Professor, Swahili Program Coordinator, Swahili Minor Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-63c0ff2f",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-74160f43",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84276229",
+              "rank": "Emeritus Faculty, School of Education",
+              "url": "https://www.iise.pitt.edu/people/richard-donato",
+              "active": false,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-84c5021c",
+              "rank": "Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+              "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-a12887dd",
+              "rank": "Teaching Assistant Professor",
+              "url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b0bb8257",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-b87b919a",
+              "rank": "Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+              "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-beac652e",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-bfcf8516",
+              "rank": "Teaching Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-c7f555fa",
+              "rank": "Associate Professor, Department of Psychology",
+              "url": "http://www.pitt.edu/~tessa/",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-d0ebdf0a",
+              "rank": "Senior Instructor, ASL Program Coordinator, ASL Certificate Advisor",
+              "url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-de044035",
+              "rank": "Associate Professor",
+              "url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-e0bda033",
+              "rank": "Associate Professor of Philosophy · Secondary appointment in Linguistics",
+              "url": "https://philosophy.pitt.edu/people/kstanton",
+              "active": false,
+              "current_id": "faculty-pitt-phil-2930bf5f",
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-ling-f90b0dfa",
+              "rank": "Professor",
+              "url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            },
+            {
+              "id": "faculty-pitt-phil-2930bf5f",
+              "rank": "Associate Professor of Philosophy and Admissions Director (Spring 2027) · Secondary appointment in Linguistics",
+              "url": "https://www.philosophy.pitt.edu/people/kstanton",
+              "active": true,
+              "current_id": null,
+              "contact_status": "unavailable",
+              "stored_mail_hash": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

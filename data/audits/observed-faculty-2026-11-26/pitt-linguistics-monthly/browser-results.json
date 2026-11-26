@@ -1,0 +1,166 @@
+{
+  "checked_at": "2026-11-26T19:46:42.903402+00:00",
+  "result": "twenty named university pages",
+  "rows": [
+    {
+      "id": "faculty-pitt-ling-de044035",
+      "person_heading": "Melinda Fricke",
+      "official_url": "https://www.linguistics.pitt.edu/people/melinda-fricke",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "72071cbe0b7ee1c3"
+    },
+    {
+      "id": "faculty-pitt-ling-b0bb8257",
+      "person_heading": "Shelome Gooden",
+      "official_url": "https://www.linguistics.pitt.edu/people/shelome-gooden",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "2de348504434d3fe"
+    },
+    {
+      "id": "faculty-pitt-ling-00c04191",
+      "person_heading": "Amanda Huensch",
+      "official_url": "https://www.linguistics.pitt.edu/people/amanda-huensch",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "52ec0df6c7e2d20b"
+    },
+    {
+      "id": "faculty-pitt-ling-beac652e",
+      "person_heading": "Matthew Kanwit",
+      "official_url": "https://www.linguistics.pitt.edu/people/matthew-kanwit",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "bfea9356dd10f364"
+    },
+    {
+      "id": "faculty-pitt-ling-f90b0dfa",
+      "person_heading": "Scott F. Kiesling",
+      "official_url": "https://www.linguistics.pitt.edu/people/scott-f-kiesling",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "11b4ab363ec067b1"
+    },
+    {
+      "id": "faculty-pitt-ling-0c3d32be",
+      "person_heading": "Janet Liu",
+      "official_url": "https://www.linguistics.pitt.edu/people/janet-liu",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "4c4d5d2d0c24a227"
+    },
+    {
+      "id": "faculty-pitt-ling-74160f43",
+      "person_heading": "Kevin McManus",
+      "official_url": "https://www.linguistics.pitt.edu/people/kevin-mcmanus",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "96fce58ae493be8f"
+    },
+    {
+      "id": "faculty-pitt-ling-32eedf1c",
+      "person_heading": "Marta Ortega-Llebaria",
+      "official_url": "https://www.linguistics.pitt.edu/people/marta-ortega-llebaria",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "ee7ae747de45dda1"
+    },
+    {
+      "id": "faculty-pitt-ling-27850b9e",
+      "person_heading": "Dan Villarreal",
+      "official_url": "https://www.linguistics.pitt.edu/people/dan-villarreal",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "2e3f1372c24144ec"
+    },
+    {
+      "id": "faculty-pitt-ling-a12887dd",
+      "person_heading": "Gretchen Aiyangar",
+      "official_url": "https://www.linguistics.pitt.edu/people/gretchen-aiyangar-0",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "cb6dff0c85b4f77d"
+    },
+    {
+      "id": "faculty-pitt-ling-2da8fc2a",
+      "person_heading": "Amani Attia",
+      "official_url": "https://www.linguistics.pitt.edu/people/amani-attia",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "daa4c3ff69dc00bf"
+    },
+    {
+      "id": "faculty-pitt-ling-5862284a",
+      "person_heading": "Na-Rae Han",
+      "official_url": "https://www.linguistics.pitt.edu/people/na-rae-han",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "51079299be0ef3f7"
+    },
+    {
+      "id": "faculty-pitt-ling-d0ebdf0a",
+      "person_heading": "Debra L. Hast",
+      "official_url": "https://www.linguistics.pitt.edu/people/debra-l-hast",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "d00d77ca7fafe8c9"
+    },
+    {
+      "id": "faculty-pitt-ling-12753a63",
+      "person_heading": "Jevon Heath",
+      "official_url": "https://www.linguistics.pitt.edu/people/jevon-heath",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "287a103f017e7d84"
+    },
+    {
+      "id": "faculty-pitt-ling-5aaea2df",
+      "person_heading": "Filipo Lubua",
+      "official_url": "https://www.linguistics.pitt.edu/people/filipo-lubua",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "603c581aedb903b0"
+    },
+    {
+      "id": "faculty-pitt-ling-11fb1b87",
+      "person_heading": "Claude E. Mauk",
+      "official_url": "https://www.linguistics.pitt.edu/people/claude-e-mauk",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "85e88ee01dc90414"
+    },
+    {
+      "id": "faculty-pitt-ling-3352f935",
+      "person_heading": "Dawn E. McCormick",
+      "official_url": "https://www.linguistics.pitt.edu/people/dawn-e-mccormick",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "e8a104da5cd402a0"
+    },
+    {
+      "id": "faculty-pitt-ling-63c0ff2f",
+      "person_heading": "Gregory Mizera",
+      "official_url": "https://www.linguistics.pitt.edu/people/gregory-mizera",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "0f03ef387069d5c9"
+    },
+    {
+      "id": "faculty-pitt-ling-2cb085e3",
+      "person_heading": "Phillip Rogers",
+      "official_url": "https://www.linguistics.pitt.edu/people/phillip-rogers",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "b4e409280d904a3f"
+    },
+    {
+      "id": "faculty-pitt-ling-bfcf8516",
+      "person_heading": "Abdesalam Soudi",
+      "official_url": "https://www.linguistics.pitt.edu/people/abdesalam-soudi",
+      "status": 200,
+      "visible_address_equals_link": true,
+      "contact_field_digest": "9f8e925060fca7d3"
+    }
+  ]
+}
