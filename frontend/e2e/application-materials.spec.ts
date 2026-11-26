@@ -281,10 +281,12 @@ test.describe('Submitted application PDF records', () => {
       await page.setViewportSize({ width: 320, height: 760 }); const net = await start(page, owner, {}, locale); await open(page, locale);
       await panel(page).scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`material-form-${locale}-320.png`) });
       const filename = '<img onerror=alert(1)>王'.repeat(5) + '.pdf'; await upload(page, filename, PDF, locale); await expect(panel(page)).toContainText(copy(locale).saved);
-      const name = panel(page).getByText(filename, { exact: true }); await expect(name).toBeVisible(); await expect(panel(page).locator('img,script,svg')).toHaveCount(0);
+      const history = panel(page).getByTestId('application-material-record');
+      await expect(history.getByText(filename, { exact: true })).toBeVisible();
+      await expect(panel(page).locator('img,script,svg')).toHaveCount(0);
       expect(await panel(page).evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await action(panel(page), 'delete', locale).focus(); await page.keyboard.press('Enter'); await expect(action(panel(page), 'cancel', locale)).toBeFocused(); await page.keyboard.press('Escape'); await expect(action(panel(page), 'delete', locale)).toBeFocused(); expect(net.deletions).toHaveLength(0);
-      await panel(page).getByTestId('application-material-record').scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`material-history-${locale}-320.png`) });
+      await history.scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`material-history-${locale}-320.png`) });
     } finally { await owner.http.dispose(); }
   });
 });

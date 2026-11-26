@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -323,6 +324,54 @@ class DirectoryRanks:
                     metadata["faculty_title_observation"].update(cms_post_id=post, directory_name=display_name)
             elif key in self.unavailable and not metadata.get("faculty_title"):
                 metadata["faculty_title_read_status"] = "directory_unavailable"
+
+
+# These two stored contact records shared a campus personal page. A campus
+# observation binds that destination to at most one listed contact at a time.
+REVIEWED_CONTACT_URL = "https://chass.ncsu.edu/people/jrclayt2/"
+REVIEWED_CONTACT_IDS = {"faculty-ncsu-chass-e417d225", "faculty-ncsu-chass-8026d528"}
+
+
+def _confirmed_current_contact(row: dict) -> bool:
+    meta = row.get("metadata") or {}
+    source = meta.get("faculty_title_observation")
+    return bool(isinstance(source, dict) and meta.get("is_active") is True and meta.get("faculty_title")
+                and source.get("source") == FACULTY_URL and source.get("profile") == row.get("url")
+                and source.get("name") == row.get("pi_name") and source.get("title") == meta["faculty_title"])
+
+
+def reconcile_contact_destination(stored: dict, incoming: list[dict]) -> None:
+    confirmed = {row["id"] for row in incoming if row.get("id") in REVIEWED_CONTACT_IDS
+                 and row.get("url") == REVIEWED_CONTACT_URL and _confirmed_current_contact(row)}
+    if len(confirmed) != 1:
+        return
+    other_id, = REVIEWED_CONTACT_IDS - confirmed
+    record = stored.get(other_id)
+    if not record or record.get("url") != REVIEWED_CONTACT_URL:
+        return
+    meta = record["metadata"]
+    if meta.get("is_active") is False:
+        return
+    today = datetime.now(UTC).date().isoformat()
+    meta.update(is_active=False, deactivation_reason="profile_identity_mismatch", deactivated_at=today)
+    meta["faculty_profile_review"] = {
+        "source_url": REVIEWED_CONTACT_URL, "roster_url": FACULTY_URL, "reviewed_on": today,
+        "outcome": "The confirmed campus profile and current roster do not display this stored contact name.",
+    }
+
+
+def prepare_update(previous: dict, incoming: dict) -> None:
+    prior = previous.get("metadata") or {}
+    if prior.get("deactivation_reason") != "profile_identity_mismatch" or prior.get("is_active") is not False:
+        retain_unread_title(previous, incoming)
+        return
+
+    # A stale CMS name or curated fallback cannot restore the misdirected link.
+    # A new, identity-bound campus roster entry can restore this original ID.
+    if _confirmed_current_contact(incoming) and incoming.get("pi_name") == previous.get("pi_name"):
+        return
+    incoming.clear()
+    incoming.update(deepcopy(previous))
 
 
 def retain_unread_title(previous: dict, incoming: dict) -> None:

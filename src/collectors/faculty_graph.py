@@ -4777,6 +4777,11 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
     cfg = dept.get("research_join")
     if not cfg:
         return
+    if cfg.get("bu_provost_homepage"):
+        from .bu_questrom_research import read_research
+
+        read_research(specs)
+        return
     if "lab_cards" in cfg:
         _join_lab_cards(cfg, specs)
         return
@@ -5659,7 +5664,10 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
     return [r for r in records if id(r) not in displaced]
 
 
-def merge_into_processed(new_opps: list[dict], *, prepare_update: Callable[[dict, dict], None] | None = None):
+def merge_into_processed(
+        new_opps: list[dict], *, prepare_update: Callable[[dict, dict], None] | None = None,
+        reconcile_snapshot: Callable[[dict, list[dict]], None] | None = None,
+):
     """Upsert faculty records into processed/opportunities.json by id.
 
     School-scoped (unlike ucb_common.merge_into_processed, which is hard-wired
@@ -5668,7 +5676,8 @@ def merge_into_processed(new_opps: list[dict], *, prepare_update: Callable[[dict
     upserts cleanly. We deliberately do NOT cross-dedup against other schools'
     faculty by name — two schools can have a professor with the same name.
     A source can use prepare_update(previous, incoming) to preserve an observed
-    field when its own current read explicitly failed.
+    field when its own current read explicitly failed. reconcile_snapshot can
+    review related stored IDs against the rows read together by that school.
     """
     import json
 
@@ -5706,6 +5715,8 @@ def merge_into_processed(new_opps: list[dict], *, prepare_update: Callable[[dict
             existing.append(opp)
             index[opp["id"]] = opp
             added += 1
+    if reconcile_snapshot is not None:
+        reconcile_snapshot(index, new_opps)
     with PROCESSED_FILE.open("w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
     return (added, updated)

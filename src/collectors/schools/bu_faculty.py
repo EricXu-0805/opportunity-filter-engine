@@ -242,6 +242,7 @@ SCHOOL: dict = {
         # ---- Questrom School of Business (WordPress REST roster) ------------
         {
             "short": "QST", "name": "Questrom School of Business",
+            "research_join": {"bu_provost_homepage": True},
             "majors": ["Business Administration", "Finance", "Accounting",
                        "Marketing", "Business Analytics"],
             "directory_url": "https://www.bu.edu/questrom/faculty-research/faculty/",

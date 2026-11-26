@@ -158,11 +158,11 @@ SMU_WINDOW = ProgramWindow(
 )
 STARS_SRO_IDS = ("sro-60f60fbd", "sro-bc33bc08")
 _STARS_SRO = "https://researchops.web.illinois.edu/opportunity/summer-training-research-scholars"
-_STARS_SRO_CURRENT = _STARS_SRO + "-stars-program"
-_STARS_SRO_ALIAS = _STARS_SRO + "-program-stars"
+STARS_SRO_CURRENT = _STARS_SRO + "-stars-program"
+STARS_SRO_ALIAS = _STARS_SRO + "-program-stars"
 _AGGREGATOR_WINDOWS = {
-    ("uiuc_sro", "sro-60f60fbd"): ("2027-02-01", replace(STARS_WINDOW, url=_STARS_SRO_CURRENT)),
-    ("uiuc_sro", "sro-bc33bc08"): ("2027-02-01", replace(STARS_WINDOW, url=_STARS_SRO_ALIAS)),
+    ("uiuc_sro", "sro-60f60fbd"): ("2027-02-01", replace(STARS_WINDOW, url=STARS_SRO_CURRENT)),
+    ("uiuc_sro", "sro-bc33bc08"): ("2027-02-01", replace(STARS_WINDOW, url=STARS_SRO_ALIAS)),
     ("uiuc_sro", "sro-3ec4ea4e"): ("2027-02-01", ProgramWindow(
         _CRISP_DIRECTORY, _CRISP_HOST, date(2026, 11, 26), date(2027, 1, 31), _CRISP_DATES,
         date(2026, 11, 15), _CRISP_DATES, "America/Indiana/Indianapolis", "Nov. 15, 2026",
@@ -186,8 +186,8 @@ _AGGREGATOR_WINDOWS = {
 
 
 _SRO_APPLICATION_LINKS = {
-    _STARS_SRO_CURRENT: {STARS_HOST},
-    _STARS_SRO_ALIAS: {STARS_OLD_HOST, STARS_HOST},
+    STARS_SRO_CURRENT: {STARS_HOST},
+    STARS_SRO_ALIAS: {STARS_OLD_HOST, STARS_HOST},
     _CRISP_DIRECTORY: {_CRISP_DIRECTORY, _CRISP_HOST},
     SMU_DIRECTORY: {SMU_DIRECTORY, _SMU_PROGRAM, _SMU_PROGRAM.lower()},
     WISCONSIN_DIRECTORY: {WISCONSIN_DIRECTORY, _WISCONSIN_HOST, "https://wiscience.wisc.edu/research/srp/"},
@@ -203,7 +203,7 @@ def _aggregator_window(record: dict, original_estimate: str, window: ProgramWind
     if deadline != window.closes_on.isoformat() and not (
         deadline == original_estimate and (
             record.get("deadline_is_estimate") is True
-            or (window.url == _STARS_SRO_CURRENT and record.get("deadline_is_estimate") is False)
+            or (window.url == STARS_SRO_CURRENT and record.get("deadline_is_estimate") is False)
         )
     ):
         return None

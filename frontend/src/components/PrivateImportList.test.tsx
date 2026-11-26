@@ -7,7 +7,9 @@ const feed = vi.hoisted(() => ({ locale: 'en' as 'en' | 'zh', state: null as unk
 vi.mock('@/lib/use-private-import-list', () => ({ usePrivateImportList: () => ({ state: feed.state, refresh: feed.refresh, loadMore: feed.more, open: feed.open, close: feed.close, remove: feed.remove }) }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: feed.signIn }) }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: feed.locale, t: translate }) }));
-import PrivateImportList from './PrivateImportList';
+import Panel from './PrivateImportList';
+import { usePrivateImportList } from '@/lib/use-private-import-list';
+function PrivateImportList() { return <Panel list={usePrivateImportList()} />; }
 function translate(key: string): string { return String(key.split('.').reduce<unknown>((value, part) => (value as Record<string, unknown>)[part], dictionaries[feed.locale])); }
 function target(revision = 2): PrivateImportTarget { return { id: 'private-import:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', owner_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', revision, created_at: '2026-09-28T12:00:00Z', updated_at: '2026-09-28T12:00:00Z', deleted_at: null, target_scope: 'private_import', verification: 'unverified', target_version: `pit1:${revision}`,
  opportunity: { source: 'url_parser', source_url: 'https://example.edu/source', url: 'https://example.edu/source', title: 'Full cloud source', description_raw: 'Source body. '.repeat(500) + 'FINAL CLOUD RESTRICTION', extra_fields: { description_source: 'page_text', ai_input_scope: 'full_source', suggested_skills: ['Python'] } }, import_source: { version: 1, description_source: 'page_text', ai_input_scope: 'source_excerpt', llm_enriched: true } }; }

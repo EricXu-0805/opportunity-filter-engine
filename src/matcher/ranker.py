@@ -49,6 +49,7 @@ from ..evidence import (
     keywords_are_source_topics,
     target_truth,
 )
+from ..normalizers import bu_stars
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from ..student_evidence import courses_counted_as_taken
 from .config import (
@@ -2308,7 +2309,7 @@ def score_readiness(
             if is_faculty_contact
             else "Your experience level is competitive"
         )
-    elif exp_score <= 30:
+    elif exp_score <= 30 and not bu_stars.checked_window(opportunity):
         reasons_gap.append(
             "Your experience signal is limited — ask what preparation would help"
             if is_faculty_contact
@@ -2950,6 +2951,10 @@ def _requires_graduate_standing(opportunity: dict) -> bool:
     if faculty_contact_claims_unverified(opportunity):
         return False
     title = str(opportunity.get("title", ""))
+    # BU's STaRS summer training teaches undergraduates how to apply to doctoral
+    # programs. The reviewed undergraduate audience takes precedence over prose.
+    if bu_stars.checked_window(opportunity):
+        return False
     if _GRAD_TITLE_RE.search(title):
         return True
     desc = str(opportunity.get("description_clean") or opportunity.get("description_raw") or "")
@@ -4170,7 +4175,8 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     if (not pref_years or any((p or "").lower() == "unknown" for p in pref_years)
             or (simplify and class_years_are_template(pref_years))):
         unknowns.append("opportunity.preferred_year")
-    if simplify or not elig.get("majors") or is_inferred(opportunity, "eligibility.majors"):
+    if ((simplify or not elig.get("majors") or is_inferred(opportunity, "eligibility.majors"))
+            and not bu_stars.checked_window(opportunity)):
         unknowns.append("opportunity.majors")
     if simplify and (opportunity.get("application") or {}).get("requires_resume") == "yes":
         unknowns.append("opportunity.resume_required")

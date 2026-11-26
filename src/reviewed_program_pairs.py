@@ -7,6 +7,9 @@ from src.program_windows import (
     NCSA_DIRECTORY,
     SMU_DIRECTORY,
     SMU_WINDOW,
+    STARS_SRO_ALIAS,
+    STARS_SRO_CURRENT,
+    STARS_WINDOW,
     WINDOWS,
     WISCONSIN_DIRECTORY,
     ProgramWindow,
@@ -22,14 +25,19 @@ class ProgramPair:
     directory_id: str
     directory_url: str
     previous_directory_ids: tuple[str, ...] = ()
+    additional_directory_ids: tuple[str, ...] = ()
 
     @property
-    def ids(self) -> tuple[str, str]:
-        return self.host_id, self.directory_id
+    def directory_ids(self) -> tuple[str, ...]:
+        return self.directory_id, *self.additional_directory_ids
+
+    @property
+    def ids(self) -> tuple[str, ...]:
+        return self.host_id, *self.directory_ids
 
     @property
     def historical_ids(self) -> tuple[str, ...]:
-        return (*self.ids, *self.previous_directory_ids)
+        return tuple(dict.fromkeys((*self.ids, *self.previous_directory_ids)))
 
     def verified(self, records: Mapping[str, dict | None], projected: bool = False) -> bool:
         for oid, source, url in (
@@ -47,7 +55,12 @@ class ProgramPair:
             checked = reviewed_window(record)
             if checked and checked.page == self.window.page and checked.closes_on == self.window.closes_on:
                 continue
-            # Public cards omit collector metadata but carry the source-bound opening.
+            # STaRS states no opening date. Its current cards bind the
+            # non-estimated student close to BU's actual program destination.
+            if (projected and self.window == STARS_WINDOW and record.get("deadline_is_estimate") is False
+                    and record.get("application_deadline_source_url") == self.window.page):
+                continue
+            # Other public cards omit collector metadata but carry the source-bound opening.
             opening = record.get("application_opens")
             if not (
                 projected
@@ -60,20 +73,27 @@ class ProgramPair:
         return True
 
     def preferred_id(self, existing: Collection[str]) -> str:
-        if self.directory_id in existing and self.host_id not in existing:
-            return self.directory_id
+        if self.host_id not in existing:
+            for oid in self.directory_ids:
+                if oid in existing:
+                    return oid
         return self.host_id
 
-    def redundant_id(self, existing: Collection[str]) -> str:
-        return self.directory_id if self.preferred_id(existing) == self.host_id else self.host_id
+    def redundant_ids(self, matched: Collection[str], preferred: Collection[str] = ()) -> set[str]:
+        if self.host_id not in matched:
+            # Source-only views retain every matching directory record. The
+            # directory collector owns its own retirement and fallback rules.
+            return set()
+        members = {oid for oid in self.ids if oid in matched}
+        keep = self.preferred_id(members.intersection(preferred))
+        return members - {keep}
 
     def reconcile_pending(self, ids: list[str], source: str) -> list[str]:
-        if source:
-            wanted = {self.host_source: self.host_id, "uiuc_sro": self.directory_id}.get(source)
-            return [oid for oid in ids if oid not in self.ids or oid == wanted]
-        if self.host_id in ids and self.directory_id in ids:
-            return [oid for oid in ids if oid != self.directory_id]
-        return ids
+        allowed = {self.host_source: (self.host_id,), "uiuc_sro": self.directory_ids, "": self.ids}.get(source, ())
+        # A queued reminder retains one of its own links, including when it
+        # contains two directory IDs and never contained the campus ID.
+        keep = next((oid for oid in allowed if oid in ids), None)
+        return [oid for oid in ids if oid not in self.ids or oid == keep]
 
 
 NCSA = ProgramPair(
@@ -98,7 +118,14 @@ _WISCONSIN_FALLBACK = replace(
 # In the interim both SRO pages can be present. Respect the collector's
 # preferred live entry, including the other entry when the original withdraws.
 SMU = ProgramPair("nsf-reu-2447670", "nsf_reu", SMU_WINDOW, "sro-44f176cd", SMU_DIRECTORY)
-SOURCES_BY_PROGRAM = ((NCSA,), (WISCONSIN, _WISCONSIN_FALLBACK), (SMU,))
+STARS = ProgramPair(
+    "bu-bbc659c6ac92", "bu_research_programs", STARS_WINDOW, "sro-60f60fbd", STARS_SRO_CURRENT,
+    ("sro-bc33bc08",),
+)
+_STARS_FALLBACK = replace(
+    STARS, directory_id="sro-bc33bc08", directory_url=STARS_SRO_ALIAS, previous_directory_ids=(STARS.directory_id,),
+)
+SOURCES_BY_PROGRAM = ((NCSA,), (WISCONSIN, _WISCONSIN_FALLBACK), (SMU,), (STARS, _STARS_FALLBACK))
 ALL_IDS = frozenset(oid for choices in SOURCES_BY_PROGRAM for pair in choices for oid in pair.ids)
 
 
@@ -107,6 +134,19 @@ def verified_pairs(by_id: Mapping[str, dict | None], *, projected: bool = False)
     for choices in SOURCES_BY_PROGRAM:
         for pair in choices:
             if pair.verified(by_id, projected):
+                if pair is STARS or pair is _STARS_FALLBACK:
+                    other_pair = _STARS_FALLBACK if pair is STARS else STARS
+                    if other_pair.verified(by_id, projected):
+                        # Both directories still appear before the next SRO
+                        # collection. Each has independently passed the host,
+                        # destination, activity and cohort checks above.
+                        pair = replace(pair, additional_directory_ids=(other_pair.directory_id,))
+                    else:
+                        other = by_id.get(other_pair.directory_id)
+                        metadata = other.get("metadata") if other else None
+                        if other and (not isinstance(metadata, dict) or metadata.get("is_active") is not False):
+                            # The live ID now describes a different program or cycle.
+                            pair = replace(pair, previous_directory_ids=())
                 result.append(pair)
                 break
     return tuple(result)

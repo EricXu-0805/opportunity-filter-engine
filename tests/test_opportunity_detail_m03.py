@@ -2463,3 +2463,29 @@ def test_a_category_map_major_list_is_ours_in_ask_ai_and_the_saved_target():
     prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
     assert "- Eligible majors: Computer Science\n" in prompt
     assert "majors_attribution" not in authoritative_target(canonical)["criteria"]["attribution"]
+
+
+def test_faculty_rank_uses_its_own_directory_observation_and_preserves_person_provenance():
+    profile = "https://school.edu/people/example/"
+    directory = "https://school.edu/group/faculty/"
+    observed = {"name": "Example Teacher", "profile": profile, "source": directory,
+                "checked_on": "2026-11-26", "title": "Senior Lecturer"}
+    row = _listing(source="example_faculty", source_type="faculty_research", pi_name="Example Teacher",
+                   url=profile, source_url=profile,
+                   metadata={"is_active": True, "last_verified": "2026-11-23T20:00:00",
+                             "faculty_title": "Senior Lecturer", "faculty_title_observation": observed})
+    field = _fields(row)["professor_or_lab"]
+    assert field["quotes"]["faculty_rank"] == {
+        "text": "Senior Lecturer", "source_url": directory, "observed_at": "2026-11-26",
+    }
+    assert field["provenance"]["source_url"] == profile
+    assert field["provenance"]["observed_at"].startswith("2026-11-23")
+    assert "principal_investigator" not in field["quotes"]
+
+    for key, value in (("name", "Another Teacher"), ("title", "Professor"), ("checked_on", "2026-02-31"),
+                       ("profile", directory), ("source", "https://unrelated.edu/rank"),
+                       ("source", "not a URL")):
+        row["metadata"]["faculty_title_observation"] = {**observed, key: value}
+        assert "faculty_rank" not in _fields(row)["professor_or_lab"]["quotes"]
+    row["metadata"].pop("faculty_title_observation")
+    assert "faculty_rank" not in _fields(row)["professor_or_lab"]["quotes"]

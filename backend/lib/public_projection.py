@@ -1115,6 +1115,13 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # The opening a program's reviewed window states, in the page's words. A
     # client shows it and withholds Apply until `at`; one that does not know
     # the field keeps showing Apply, as before.
+    # STaRS gives the student close without publishing an opening date. Keep
+    # its verified source on the compact results card, where the collector
+    # identity needed to distinguish another program is otherwise absent.
+    projected.pop("application_deadline_source_url", None)
+    window = bu_stars.checked_window(canonical_record)
+    if window and projected.get("deadline") == window.closes_on.isoformat():
+        projected["application_deadline_source_url"] = window.page
     projected.pop("application_opens", None)
     opening = public_opening(canonical_record)
     if opening is not None:
