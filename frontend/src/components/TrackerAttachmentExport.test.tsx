@@ -47,7 +47,7 @@ it('requests one explicit download per volume and never reports a failed final v
   const volume = { ...file, number: 1, total: 2, confirmBeforeDownload: vi.fn().mockResolvedValue(undefined) };
   mocks.run.mockImplementation(async (_uid, _token, _signal, _progress, offer) => {
     await offer(volume);
-    return { ...file, filename: 'complete.sha256', parts: 2, confirmBeforeDownload: verify };
+    return { ...file, filename: 'complete.sha256', parts: 2, downloadFreshReceipt: verify };
   });
   render(<TrackerAttachmentExport uid="one" />);
   fireEvent.click(button('start'));
@@ -67,6 +67,8 @@ it('hides an oversized attachment name immediately when the account that request
   render(<TrackerAttachmentExport uid="one" />);
   fireEvent.click(button('start'));
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('private-filename.pdf'));
+  expect(screen.getByRole('link', { name: 'account.attachmentExport.openTracker' })).toHaveAttribute('href', '/tracker');
   act(() => { mocks.uid = 'two'; mocks.listeners.forEach(cb => cb()); });
   expect(screen.getByRole('status')).not.toHaveTextContent('private-filename.pdf');
+  expect(screen.queryByRole('link', { name: 'account.attachmentExport.openTracker' })).toBeNull();
 });

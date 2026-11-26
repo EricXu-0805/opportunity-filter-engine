@@ -29,6 +29,12 @@ test('downloads independently verifiable single and multipart archives from ever
       return route.continue();
     });
     const anchorId = (key: string) => '00000000-0000-4000-8000-' + createHash('sha256').update(key).digest('hex').slice(0, 12);
+    await page.route('**/rest/v1/rpc/tracker_attachment_export_marker', route => {
+      const digest = (s: string) => createHash('sha256').update(s).digest('hex');
+      const hashes = [...files].map(([key, data]) => digest([uid + '/' + key, anchorId(key), 'o:fixture',
+        Buffer.byteLength(data), 'application/octet-stream'].join('\0')));
+      return route.fulfill({ json: { count: hashes.length, digest: digest(hashes.sort().join('')), observedAt: new Date().toISOString() } });
+    });
     await page.route('**/rest/v1/rpc/resolve_tracker_attachment_versions', route => {
       const paths: string[] = route.request().postDataJSON().p_paths;
       expect(paths.length).toBeLessThanOrEqual(100);
@@ -127,7 +133,9 @@ import hashlib, json, pathlib, sys, zipfile
 first, second, receipt = map(pathlib.Path, sys.argv[1:])
 expected = json.load(sys.stdin)
 seen = {}
-assert receipt.read_text().splitlines() == [
+receipt_lines = receipt.read_text().splitlines()
+assert receipt_lines[0].startswith('# Verified at ')
+assert receipt_lines[1:] == [
     hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name for p in (first, second)]
 for p in (first, second):
     with zipfile.ZipFile(p) as z:

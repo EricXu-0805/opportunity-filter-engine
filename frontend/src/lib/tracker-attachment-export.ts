@@ -104,6 +104,28 @@ export class AttachmentExportLimitError extends Error {
 const volumeBytes = 16 * 1024 * 1024;
 const volumeFiles = 128;
 const emptyDigest = '0'.repeat(64);
+const encoder = new TextEncoder();
+interface ExportMarker { count: number; digest: string; observedAt: string }
+interface VerifiedAttachmentDownload { filename: string; blob: Blob; verifiedAt: string }
+type ExportResult = VerifiedAttachmentDownload & { count: number } & (
+  | { parts?: undefined; downloadFreshReceipt?: undefined }
+  | { parts: number; downloadFreshReceipt: () => Promise<VerifiedAttachmentDownload> }
+);
+
+async function inventoryDigest(files: SourceFile[]) {
+  const hashes: string[] = [];
+  // This encoding is shared with tracker_attachment_export_marker(). Every
+  // resolved row must belong to the same snapshot, including rows from
+  // different pagination or resolver calls and changes that later revert.
+  for (let i = 0; i < files.length; i += pageSize) {
+    const batch = files.slice(i, i + pageSize).map(({ version }) => {
+      const fields = [version.path, version.anchorId, version.revision, String(version.sizeBytes), version.mimeType];
+      return sha256(encoder.encode(fields.join('\0')).buffer);
+    });
+    hashes.push(...await Promise.all(batch));
+  }
+  return sha256(encoder.encode(hashes.sort().join('')).buffer);
+}
 
 function manifestText(entries: ExportEntry[], exportId?: string) {
   const header = exportId ? { formatVersion: 2, scope: 'partial-volume', exportId } : { formatVersion: 1 };
@@ -144,20 +166,33 @@ function partition(entries: ExportEntry[], exportId: string) {
 }
 
 /** Account-wide, including keys whose opportunity no longer exists in the catalog. */
-export async function exportTrackerAttachments(uid: string, token: OwnerToken, signal: AbortSignal, progress: Progress, offerVolume?: OfferVolume) {
+export async function exportTrackerAttachments(uid: string, token: OwnerToken, signal: AbortSignal, progress: Progress, offerVolume?: OfferVolume): Promise<ExportResult | null> {
   const check = () => { signal.throwIfAborted(); assertAttachmentOwner(token, uid); };
   const confirmSession = () => runAttachmentRequest(token, { signal }, async request => {
     const auth = await request.wait(getAuthState({ throwOnError: true }));
     assertAttachmentOwner(token, auth.user?.id ?? null);
   });
+  const marker = () => runAttachmentRequest(token, { signal }, async request => {
+    const { data, error } = await request.wait(supabase.rpc('tracker_attachment_export_marker', {}));
+    assertAttachmentOwner(token, uid);
+    if (error || !data || !Number.isSafeInteger(data.count) || data.count < 0 ||
+        typeof data.digest !== 'string' || !/^[0-9a-f]{64}$/u.test(data.digest) ||
+        typeof data.observedAt !== 'string' || !Number.isFinite(Date.parse(data.observedAt))) unavailable();
+    return data as ExportMarker;
+  });
   check();
   await confirmSession();
+  const original = await marker();
   const files = await inventory(uid, token, signal);
+  if (original.count !== files.length || original.digest !== await inventoryDigest(files)) unavailable();
   const verify = async () => {
     const verified = await inventory(uid, token, signal);
     if (verified.length !== files.length || verified.some((file, i) => JSON.stringify(file) !== JSON.stringify(files[i]))) unavailable();
     await confirmSession();
+    const final = await marker();
     check();
+    if (final.count !== original.count || final.digest !== original.digest) unavailable();
+    return final.observedAt;
   };
   check();
   if (!files.length) { await verify(); return null; }
@@ -206,8 +241,8 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
     check();
     if (blob.size !== expected || blob.size > volumeBytes) unavailable();
     if (!multipart) {
-      await verify();
-      return { filename: 'tracker-attachments.zip', blob, count: files.length };
+      const verifiedAt = await verify();
+      return { filename: 'tracker-attachments.zip', blob, verifiedAt, count: files.length };
     }
     const name = 'tracker-attachments-' + exportId + '-partial-' + (index + 1) + '-of-' + ends.length + '.zip';
     sums.push(await sha256(await blob.arrayBuffer()) + '  ' + name);
@@ -219,7 +254,11 @@ export async function exportTrackerAttachments(uid: string, token: OwnerToken, s
   }
   // A partial volume only describes its own files. The separate whole-export
   // receipt is withheld until every volume was offered and the snapshot is rechecked.
-  await verify();
-  return { filename: 'tracker-attachments-' + exportId + '-complete.sha256',
-    blob: new Blob([sums.join('\n') + '\n'], { type: 'text/plain' }), count: files.length, parts: ends.length, confirmBeforeDownload: verify };
+  function receipt(verifiedAt: string): VerifiedAttachmentDownload {
+    const text = '# Verified at ' + verifiedAt + '\n' + sums.join('\n') + '\n';
+    return { filename: 'tracker-attachments-' + exportId + '-complete.sha256', verifiedAt,
+      blob: new Blob([text], { type: 'text/plain' }) };
+  }
+  return { ...receipt(await verify()), count: files.length, parts: ends.length,
+    downloadFreshReceipt: async () => receipt(await verify()) };
 }

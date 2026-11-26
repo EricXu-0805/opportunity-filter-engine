@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import Card from './Card';
 import { useT } from '@/i18n/client';
 import { downloadBlob } from '@/lib/browser-download';
@@ -16,6 +17,7 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
   const [limit, setLimit] = useState<{ error: AttachmentExportLimitError; owner: OwnerToken } | null>(null);
   const canShowPath = useSyncExternalStore(onLocalOwnerStateChange,
     () => limit !== null && isOwnerTokenValid(limit.owner, uid), () => false);
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
   const current = useRef<AbortController | null>(null);
 
@@ -37,11 +39,13 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
     setProgress({ done: 0, total: 0 });
     setLimit(null);
     setReceipt(null);
+    setVerifiedAt(null);
     setStatus('busy');
 
     // Each volume needs its own download click, including browsers that block
     // automatic multiple downloads. Only one Blob is offered at a time.
-    const offerDownload = (file: { filename: string; blob: Blob }, label: string, confirm: () => Promise<void>) =>
+    const offerDownload = (file: { filename: string; blob: Blob }, label: string,
+      prepare: () => Promise<void | { filename: string; blob: Blob; verifiedAt: string }>) =>
       new Promise<void>((resolve, reject) => {
         let used = false;
         const abort = () => reject(new DOMException('Export cancelled', 'AbortError'));
@@ -52,9 +56,10 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
           used = true;
           setOffer(null);
           try {
-            await confirm();
+            const fresh = await prepare();
             if (!active()) throw new DOMException('Export cancelled', 'AbortError');
-            downloadBlob(file);
+            downloadBlob(fresh ?? file);
+            if (fresh) setVerifiedAt(fresh.verifiedAt);
             resolve();
           } catch (error) { reject(error); }
           finally { controller.signal.removeEventListener('abort', abort); }
@@ -67,11 +72,12 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
       if (!active()) return;
       if (!file) { setStatus('empty'); return; }
       if (file.parts) {
-        await offerDownload(file, t('account.attachmentExport.receipt'), file.confirmBeforeDownload);
+        await offerDownload(file, t('account.attachmentExport.receipt'), file.downloadFreshReceipt);
         if (!active()) return;
         setReceipt(file.filename);
       } else {
         downloadBlob(file);
+        setVerifiedAt(file.verifiedAt);
       }
       setProgress({ done: file.count, total: file.count });
       setStatus('complete');
@@ -105,8 +111,13 @@ export default function TrackerAttachmentExport({ uid }: { uid: string }) {
       {status === 'busy' && (offer ? t('account.attachmentExport.partial') : progress.total ? t('account.attachmentExport.progress', progress) : t('account.attachmentExport.preparing'))}
       {status === 'empty' && t('account.attachmentExport.empty')}
       {status === 'error' && (limit && canShowPath ? t(limit.error.metadata ? 'account.attachmentExport.metadataLimit' : 'account.attachmentExport.limit', { path: limit.error.path }) : t('account.attachmentExport.failed'))}
+      {status === 'error' && limit && canShowPath && <p>
+        {t('account.attachmentExport.recovery')}{' '}
+        <Link href="/tracker" className="font-medium text-indigo-700 underline">{t('account.attachmentExport.openTracker')}</Link>
+      </p>}
       {status === 'complete' && <>
         <p>{t(receipt ? 'account.attachmentExport.multiComplete' : 'account.attachmentExport.complete', { count: progress.done })}</p>
+        {verifiedAt && <p>{t('account.attachmentExport.checkedAt', { time: verifiedAt })}</p>}
         <code className="text-xs">shasum -a 256 -c {receipt ?? 'SHA256SUMS'}</code>
       </>}
     </div>
