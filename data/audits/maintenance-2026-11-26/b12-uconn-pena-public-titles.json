@@ -1,0 +1,29 @@
+{
+  "checked_utc": "2026-11-26T18:06:05.779544+00:00",
+  "id": "faculty-uconn-cee-5374953b",
+  "public_detail": "https://joinalab.com/opportunities/faculty-uconn-cee-5374953b",
+  "api_url": "https://joinalab.com/api/opportunities/faculty-uconn-cee-5374953b",
+  "html_release": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "backend_release": "91140c465b5cd546e129c04f5097064b91fddb57",
+  "heading": "Malaquías Pena",
+  "attribution": "verified_author_id",
+  "works": [
+    {
+      "title": "When is logistic error growth a spectral reduction?",
+      "year": 2026,
+      "visible_link": "https://scholar.google.com/scholar?q=%22When%20is%20logistic%20error%20growth%20a%20spectral%20reduction%3F%22"
+    },
+    {
+      "title": "Logit--Koopman coordinates for scale-resolved forecast-error growth in a three-level Lorenz-96 system",
+      "year": 2026,
+      "visible_link": "https://scholar.google.com/scholar?q=%22Logit--Koopman%20coordinates%20for%20scale-resolved%20forecast-error%20growth%20in%20a%20three-level%20Lorenz-96%20system%22"
+    },
+    {
+      "title": "Impact of Assimilating Remote Sensing Observations on Wind and Wave Analysis Offshore of the Contiguous United States",
+      "year": 2026,
+      "visible_link": "https://scholar.google.com/scholar?q=%22Impact%20of%20Assimilating%20Remote%20Sensing%20Observations%20on%20Wind%20and%20Wave%20Analysis%20Offshore%20of%20the%20Contiguous%20United%20States%22"
+    }
+  ],
+  "method": "Anonymous production detail API and server-rendered public article. Checked visible heading and linked titles against source PR author review. Monthly refresh separate.",
+  "source_identity_review": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/c7426da0bc577ca454ffdf014653aaebb576a451/data/audits/m65-uconn-pena-publication-identity-2026-11-26.json"
+}
