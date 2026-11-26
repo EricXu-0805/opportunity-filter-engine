@@ -1006,6 +1006,30 @@ def test_refresh_counts_professors_in_the_rows_it_persists(monkeypatch, tmp_path
     assert ledger["sources"]["umich_faculty"]["faculty_sightings"] == {"active": 1, "reobserved": 1}
 
 
+def test_the_run_summary_does_not_call_a_mostly_unread_school_fully_fresh(monkeypatch, tmp_path):
+    """Every source of the school succeeds and its roster returns one of three
+    stored professors: too few to retire the others, and no unit to flag."""
+    seeded = [
+        _seed_faculty("umich_faculty", "fac-unread-1", days_ago=20),
+        _seed_faculty("umich_faculty", "fac-unread-2", days_ago=20),
+        _seed_faculty("umich_faculty", "fac-read", days_ago=0),
+    ]
+    _stub_with_processed_file(monkeypatch, tmp_path, seeded)
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", lambda *a, **k: [{"id": "fac-read"}])
+    monkeypatch.setattr(
+        refresh_all, "fetch_campus_graph_with_evidence",
+        lambda *a, **k: ([{"id": "campus-one"}], {
+            "deep": True, "crawl_sources_expected": 1, "crawl_sources_loaded": 1,
+            "live_pages_attempted": 1, "live_pages_loaded": 1, "seed_records": 0,
+            "discovered_records": 1, "crawl_errors": []}))
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
+    assert {name: summary["zero_classes"][name] for name in ("umich_faculty", "campus_graph:umich")} == {
+        "umich_faculty": "success_nonzero", "campus_graph:umich": "success_nonzero"}
+    report = summary["source_health"]
+    assert (report["fully_fresh_school_count"], report["partially_degraded_school_count"]) == (0, 1)
+
+
 def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
     monkeypatch, tmp_path,
 ):

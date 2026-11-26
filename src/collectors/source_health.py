@@ -760,6 +760,14 @@ def school_rows(
     :func:`record_faculty_sightings` counted for the school's faculty
     sources. Both are None until every one of them has a count for its latest
     attempt: part of a school's rows cannot speak for the rest.
+
+    ``unchecked_faculty_unit_count`` is how many faculty units with active
+    rows still lack a read (:func:`record_faculty_unit_checks`), and
+    ``public_status`` is what a public page says of the school
+    (:func:`public_school_freshness`). ``state`` is ``fully_fresh`` only
+    where that status is ``current``: a school qualified to students is not
+    reported whole to the operator. ``fully_stale`` and ``no_fresh_faculty``,
+    which the release gate reads, do not look at either.
     """
     from .refresh_contract import DAILY_NATIONAL_SOURCES, NATIONAL_SHARD
 
@@ -820,7 +828,7 @@ def school_rows(
             coverage_last_good += good
         shard_row = shards.get(school)
         shard_row = shard_row if isinstance(shard_row, dict) else {}
-        out.append({
+        row = {
             "school": school,
             "fresh_shard_count": fresh,
             "warn_shard_count": warn,
@@ -844,11 +852,6 @@ def school_rows(
             # from earned per-source successes, never from the publish
             # timestamp, so republishing retained data cannot clear it.
             "fully_stale": fully_stale,
-            "state": (
-                "fully_stale" if fully_stale
-                else "partially_degraded" if stale or degraded
-                else "fully_fresh"
-            ),
             "faculty_shard_count": len(faculty_rows),
             "fresh_faculty_shard_count": fresh_faculty,
             "no_fresh_faculty": bool(faculty_rows) and fresh_faculty == 0,
@@ -858,7 +861,17 @@ def school_rows(
             "faculty_reobserved_row_count": (
                 sum(reobserved for _, reobserved in sightings) if counted else None
             ),
-        })
+            "unchecked_faculty_unit_count": sum(
+                len(_unchecked_unit_keys(sources[r["source"]])) for r in rows
+            ),
+        }
+        row["public_status"] = _public_status(row)
+        row["state"] = (
+            "fully_stale" if fully_stale
+            else "fully_fresh" if row["public_status"] == PUBLIC_CURRENT
+            else "partially_degraded"
+        )
+        out.append(row)
     return out
 
 
@@ -905,6 +918,18 @@ PUBLIC_PARTLY_UNCHECKED = "partly_unchecked"
 PUBLIC_STALE = "stale"
 
 
+def _public_status(row: dict, *, judge_sightings: bool = True) -> str:
+    """The status of one :func:`school_rows` row, as
+    :func:`public_school_freshness` defines the three."""
+    active, reobserved = row["faculty_active_row_count"], row["faculty_reobserved_row_count"]
+    mostly_unread = judge_sightings and active is not None and reobserved * 2 < active
+    if row["fully_stale"] or row["no_fresh_faculty"] or mostly_unread:
+        return PUBLIC_STALE
+    if row["stale_shard_count"] or row["degraded_shard_count"] or row["unchecked_faculty_unit_count"]:
+        return PUBLIC_PARTLY_UNCHECKED
+    return PUBLIC_CURRENT
+
+
 def public_school_freshness(
     ledger: dict,
     now: datetime,
@@ -941,29 +966,18 @@ def public_school_freshness(
     """
     from .refresh_contract import NATIONAL_SHARD
 
-    unchecked = {
-        row.get("school") for name, row in (ledger.get("sources") or {}).items()
-        if name in eligible and isinstance(row, dict) and _unchecked_unit_keys(row)
-    }
     out: dict[str, dict] = {}
     for row in school_rows(ledger, now, eligible):
         if row["school"] == NATIONAL_SHARD:
             continue
-        active, reobserved = row["faculty_active_row_count"], row["faculty_reobserved_row_count"]
-        mostly_unread = judge_sightings and active is not None and reobserved * 2 < active
-        if row["fully_stale"] or row["no_fresh_faculty"] or mostly_unread:
-            status = PUBLIC_STALE
-        elif row["state"] == "partially_degraded" or row["school"] in unchecked:
-            status = PUBLIC_PARTLY_UNCHECKED
-        else:
-            status = PUBLIC_CURRENT
         checked = _parse(row["last_successful_school_activity"])
         out[row["school"]] = {
             # Whole seconds: the form every browser's Date parser accepts.
             "last_checked_at": (
                 checked.isoformat(timespec="seconds") if checked else None
             ),
-            "status": status,
+            "status": (row["public_status"] if judge_sightings
+                       else _public_status(row, judge_sightings=False)),
         }
     return out
 

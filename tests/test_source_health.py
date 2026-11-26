@@ -1135,6 +1135,68 @@ class TestReObservedProfessors:
             school: entry["last_checked_at"] for school, entry in newer.items()}
 
 
+class TestTheReportAndThePublicPageAgree:
+    """On 2026-11-25 the operator's report counted 23 schools fully fresh and
+    the public endpoint called 3 of them current: an unread faculty unit
+    qualified a school to students and not to the operator."""
+
+    def _ledger(self, at: datetime = OCT18) -> dict:
+        ledger = sh.empty_ledger()
+        for source in ("yale_faculty", "campus_graph:yale", "njit_faculty", "campus_graph:njit",
+                       "jhu_faculty", "campus_graph:jhu", "brown_faculty", "nsf_reu"):
+            _attempt(ledger, source, shard_of_source(source), sh.SUCCESS_NONZERO, 10, at, 10)
+        _attempt(ledger, "campus_graph:brown", "brown", sh.FAILED, 9, at, reason="seed_pages_failed")
+        ledger["sources"]["njit_faculty"]["unchecked_faculty_units"] = ["chem", "cs", "math"]
+        ledger["sources"]["njit_faculty"]["faculty_sightings"] = {"active": 504, "reobserved": 424}
+        ledger["sources"]["jhu_faculty"]["faculty_sightings"] = {"active": 4557, "reobserved": 78}
+        return ledger
+
+    def test_an_unread_unit_or_a_mostly_unread_roster_is_not_fully_fresh(self):
+        rows = {r["school"]: r for r in sh.school_rows(self._ledger(), OCT18, monitored_sources())}
+        assert {school: (r["state"], r["public_status"], r["unchecked_faculty_unit_count"])
+                for school, r in rows.items()} == {
+            "yale": ("fully_fresh", sh.PUBLIC_CURRENT, 0),
+            "njit": ("partially_degraded", sh.PUBLIC_PARTLY_UNCHECKED, 3),
+            "jhu": ("partially_degraded", sh.PUBLIC_STALE, 0),
+            "brown": ("partially_degraded", sh.PUBLIC_PARTLY_UNCHECKED, 0),
+            "national": ("fully_fresh", sh.PUBLIC_CURRENT, 0),
+        }
+        # Neither is the release gate's question: every source of both is fresh.
+        assert not any(r["fully_stale"] or r["no_fresh_faculty"] for r in rows.values())
+
+    def test_the_report_counts_fully_fresh_as_the_public_page_says_current(self):
+        ledger = self._ledger()
+        report = sh.corpus_report(ledger, OCT18, monitored_sources())
+        public = sh.public_school_freshness(ledger, OCT18, monitored_sources())
+        assert [s for s, entry in public.items() if entry["status"] == sh.PUBLIC_CURRENT] == ["yale"]
+        # yale, and the national pool the public page does not name.
+        assert report["fully_fresh_school_count"] == 2
+        assert report["partially_degraded_school_count"] == 3
+        assert report["fully_stale_school_count"] == report["no_fresh_faculty_school_count"] == 0
+        for row in sh.school_rows(ledger, OCT18, monitored_sources()):
+            if row["school"] in public:
+                assert row["public_status"] == public[row["school"]]["status"]
+                assert (row["state"] == "fully_fresh") == (row["public_status"] == sh.PUBLIC_CURRENT)
+
+    def test_the_report_prints_each_schools_unread_units_and_share(self, monkeypatch, tmp_path, capsys):
+        from scripts import source_freshness_report as cli
+
+        path = tmp_path / "source_health.json"
+        # The command reads the clock, so these attempts are an hour old.
+        sh.save_ledger(self._ledger(datetime.now(UTC) - timedelta(hours=1)), path)
+        monkeypatch.setattr(sh, "LEDGER_FILE", path)
+        assert cli.main(["report"]) == 0
+        lines = {line.split()[0]: " ".join(line.split()) for line in capsys.readouterr().out.splitlines()
+                 if line.startswith("    ")}
+        assert set(lines) == {"brown", "jhu", "njit", "yale", "national"}
+        assert "public=partly_unchecked" in lines["njit"] and "unread_units= 3" in lines["njit"]
+        assert "reobserved= 424/ 504 84.1%" in lines["njit"]
+        assert "public=stale" in lines["jhu"] and "reobserved= 78/ 4557 1.7%" in lines["jhu"]
+        assert "public=current" in lines["yale"] and "unread_units= 0" in lines["yale"]
+        # No faculty source, so no professors to count.
+        assert "reobserved= -" in lines["national"]
+
+
 class TestLedgerIO:
     def test_absent_ledger_reads_as_empty(self, tmp_path):
         assert sh.load_ledger(tmp_path / "nope.json") == sh.empty_ledger()

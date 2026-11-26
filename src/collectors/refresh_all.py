@@ -2186,10 +2186,11 @@ def refresh_all(
             try:
                 ledger_path = source_health.ledger_path_for(PROCESSED_FILE.parent)
                 health = source_health.load_ledger(ledger_path)
-                source_health.record_faculty_sightings(
-                    health, all_opps,
-                    datetime.fromisoformat(summary["source_health"]["generated_at"]))
+                attempted_at = datetime.fromisoformat(summary["source_health"]["generated_at"])
+                source_health.record_faculty_sightings(health, all_opps, attempted_at)
                 source_health.save_ledger(health, ledger_path)
+                # The counts decide which schools are fully fresh.
+                summary["source_health"] = source_health.corpus_report(health, attempted_at)
             except Exception as e:  # noqa: BLE001
                 logger.warning("source_health faculty sighting count failed: %s", e)
 
