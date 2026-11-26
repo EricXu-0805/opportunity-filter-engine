@@ -1,0 +1,443 @@
+{
+  "production": {
+    "sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45838197610/job/139972559927"
+  },
+  "fixed_isolated": {
+    "sha": "907e84282b22c41cf9f8d2c44d908bd4610427b8",
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45838197470/job/139972558475"
+  },
+  "browser": "Native Chromium tab zoom via chrome.tabs.setZoom(2), native scrolling settled 420 ms before sampling. Page-scale remained 1 and DPR doubled. Navigation used Tab, Shift+Tab, arrows, Enter and Escape.",
+  "physical_phone_observed": false,
+  "human_screen_reader_observed": false,
+  "cases": [
+    {
+      "locale": "en",
+      "production_before": {
+        "widths_100_200": [
+          1400,
+          700
+        ],
+        "focus_after_resources_arrow": {
+          "tag": "INPUT",
+          "id": "",
+          "role": null,
+          "name": "https://...",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "nested_arrow_selects_text": false,
+        "group_name": "Import mode",
+        "tab_corresponds_to_panel": false,
+        "tab_indices_after_arrow": [
+          null,
+          null
+        ],
+        "escape_restores_toggle": false,
+        "focus_after_escape": {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "name": "Skip to main content\nJoinALab\nSign in\n中文\nConnecting Students\nwith",
+          "focused": false,
+          "outline": false,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "menu_and_tab_focus": [
+          {
+            "tag": "BUTTON",
+            "id": "resources-tab-guides",
+            "role": "tab",
+            "name": "Guides & databases",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "BUTTON",
+            "id": "",
+            "role": "tab",
+            "name": "By URL",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "TEXTAREA",
+            "id": "",
+            "role": null,
+            "name": "Paste the full posting, email forward, or any description of the ",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "Favorites",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          }
+        ],
+        "internal_destination": "/favorites",
+        "after_route_focus": {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "name": "Skip to main content\nJoinALab\nSign in\n中文\nBack\nFavorites\n\nYou have",
+          "focused": false,
+          "outline": false,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "no_horizontal_overflow": true,
+        "unsubmitted_text_local": true,
+        "desktop_route_at_100": {
+          "visited": [
+            "/resources",
+            "/about",
+            "/resources"
+          ],
+          "about_link_focus": {
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "About",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          }
+        }
+      },
+      "candidate": {
+        "widths_100_200": [
+          1400,
+          700
+        ],
+        "focus_after_resources_arrow": {
+          "tag": "BUTTON",
+          "id": "resources-tab-import",
+          "role": "tab",
+          "name": "Import",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "nested_arrow_selects_text": true,
+        "group_name": "Import method",
+        "tab_corresponds_to_panel": true,
+        "tab_indices_after_arrow": [
+          "-1",
+          "0"
+        ],
+        "escape_restores_toggle": true,
+        "focus_after_escape": {
+          "tag": "BUTTON",
+          "id": "",
+          "role": null,
+          "name": "Open menu",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "menu_and_tab_focus": [
+          {
+            "tag": "BUTTON",
+            "id": "resources-tab-guides",
+            "role": "tab",
+            "name": "Guides & databases",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "BUTTON",
+            "id": "_r_0_-tab-url",
+            "role": "tab",
+            "name": "By URL",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "TEXTAREA",
+            "id": "",
+            "role": null,
+            "name": "Paste the full posting, email forward, or any description of the ",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "Favorites",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          }
+        ],
+        "internal_destination": "/favorites",
+        "after_route_focus": {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "name": "Skip to main content\nJoinALab\nSign in\n中文\nBack\n\nUsing this device’",
+          "focused": false,
+          "outline": false,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "no_horizontal_overflow": true,
+        "unsubmitted_text_local": true,
+        "desktop_route_at_100": {
+          "visited": [
+            "/resources",
+            "/about",
+            "/resources"
+          ],
+          "about_link_focus": {
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "About",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          }
+        }
+      }
+    },
+    {
+      "locale": "zh",
+      "production_before": {
+        "widths_100_200": [
+          780,
+          390
+        ],
+        "focus_after_resources_arrow": {
+          "tag": "INPUT",
+          "id": "",
+          "role": null,
+          "name": "https://...",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "nested_arrow_selects_text": false,
+        "group_name": "Import mode",
+        "tab_corresponds_to_panel": false,
+        "tab_indices_after_arrow": [
+          null,
+          null
+        ],
+        "escape_restores_toggle": false,
+        "focus_after_escape": {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "name": "跳到主要内容\n登录\nEN\n连接学生\n与机会\n\nJoinALab 定期核对高校名录、研究项目和实习信息。在个人资料中选好学校，即可查",
+          "focused": false,
+          "outline": false,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "menu_and_tab_focus": [
+          {
+            "tag": "BUTTON",
+            "id": "resources-tab-guides",
+            "role": "tab",
+            "name": "指南与数据库",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "BUTTON",
+            "id": "",
+            "role": "tab",
+            "name": "按链接",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "TEXTAREA",
+            "id": "",
+            "role": null,
+            "name": "粘贴完整职位描述、邮件转发,或机会的任何描述文字。适用于 LinkedIn、Indeed、付费墙等无法抓取 URL 的来源。",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "我的收藏",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          }
+        ],
+        "internal_destination": "/favorites",
+        "after_route_focus": {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "name": "跳到主要内容\n登录\nEN\nBack\n我的收藏\n\n你还没有收藏任何机会。\n\n账户中的导入\n\n这里只显示你主动上传的记录，浏览器副本单",
+          "focused": false,
+          "outline": false,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "no_horizontal_overflow": true,
+        "unsubmitted_text_local": true,
+        "desktop_route_at_100": null
+      },
+      "candidate": {
+        "widths_100_200": [
+          780,
+          390
+        ],
+        "focus_after_resources_arrow": {
+          "tag": "BUTTON",
+          "id": "resources-tab-import",
+          "role": "tab",
+          "name": "导入",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "nested_arrow_selects_text": true,
+        "group_name": "导入方式",
+        "tab_corresponds_to_panel": true,
+        "tab_indices_after_arrow": [
+          "-1",
+          "0"
+        ],
+        "escape_restores_toggle": true,
+        "focus_after_escape": {
+          "tag": "BUTTON",
+          "id": "",
+          "role": null,
+          "name": "打开菜单",
+          "focused": true,
+          "outline": true,
+          "ring": true,
+          "visible": true,
+          "uncovered": true
+        },
+        "menu_and_tab_focus": [
+          {
+            "tag": "BUTTON",
+            "id": "resources-tab-guides",
+            "role": "tab",
+            "name": "指南与数据库",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "BUTTON",
+            "id": "_r_0_-tab-url",
+            "role": "tab",
+            "name": "按链接",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "TEXTAREA",
+            "id": "",
+            "role": null,
+            "name": "粘贴完整职位描述、邮件转发,或机会的任何描述文字。适用于 LinkedIn、Indeed、付费墙等无法抓取 URL 的来源。",
+            "focused": true,
+            "outline": true,
+            "ring": true,
+            "visible": true,
+            "uncovered": true
+          },
+          {
+            "tag": "A",
+            "id": "",
+            "role": null,
+            "name": "我的收藏",
+            "focused": true,
+            "outline": true,
+            "ring": false,
+            "visible": true,
+            "uncovered": true
+          }
+        ],
+        "internal_destination": "/favorites",
+        "after_route_focus": {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "name": "跳到主要内容\n登录\nEN\nBack\n\n正在使用本机资料，暂不能读取云端更新。\n\n我的收藏\n\n你还没有收藏任何机会。\n\n账户中的导入",
+          "focused": false,
+          "outline": false,
+          "ring": false,
+          "visible": true,
+          "uncovered": true
+        },
+        "no_horizontal_overflow": true,
+        "unsubmitted_text_local": true,
+        "desktop_route_at_100": null
+      }
+    }
+  ]
+}
