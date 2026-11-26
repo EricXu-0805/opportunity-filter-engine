@@ -17,7 +17,7 @@ const response={total:1,high_priority:1,good_match:0,reach:0,low_fit:0,results:[
   const seeded=await fetch(db+'/rest/v1/rpc/commit_profile_patch_cas',{method:'POST',headers:{'Content-Type':'application/json',authorization:'Bearer '+sess.access_token},body:JSON.stringify({p_expected_device_id:sess.user.id,p_expected_revision:0,p_patch:profile})});
   if ((await seeded.json()).status!=='applied') throw new Error('Demo profile did not seed');
   const browser=await chromium.launch({channel:'chrome',args:['--no-sandbox','--disable-dev-shm-usage']});
-  const context=await browser.newContext({viewport:{width:1120,height:720},deviceScaleFactor:1,locale:'en-US',serviceWorkers:'block'});
+  const context=await browser.newContext({viewport:{width:980,height:630},deviceScaleFactor:1,locale:'en-US',serviceWorkers:'block'});
   await context.addInitScript(({sess})=>{if(!localStorage.getItem('demo_bootstrap')){localStorage.setItem('ofe_auth',JSON.stringify(sess));localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_school_confirmed',JSON.stringify({slug:'uiuc',ts:new Date().toISOString()}));localStorage.setItem('ofe_lang','en');localStorage.setItem('demo_bootstrap','1');}}, {sess});
   let matched=0;
   await context.route('**/*',async route=>{
@@ -30,10 +30,13 @@ const response={total:1,high_priority:1,good_match:0,reach:0,low_fit:0,results:[
     return route.continue();
   });
   const p=await context.newPage();p.setDefaultTimeout(30000);
+  // The product footer carries the author's real contact details. Keep it and all
+  // contact links out of every demo image, including diagnostic captures.
+  const screenshotCSS='footer, [href^="mailto:"] { visibility: hidden !important; }';
   const links=[], fname='frame-';let seq=0;
   async function frame(seconds){
     const name=fname+String(++seq).padStart(3,'0')+'.png';
-    await p.screenshot({path:path.join(dest,name),animations:'disabled'});
+    await p.screenshot({path:path.join(dest,name),animations:'disabled',style:screenshotCSS});
     links.push({file:name,seconds});
   }
   const center=async (el,block='center')=>el.evaluate((node,where)=>node.scrollIntoView({block:where,behavior:'instant'}),block);
@@ -60,6 +63,6 @@ const response={total:1,high_priority:1,good_match:0,reach:0,low_fit:0,results:[
     await expect(done).toBeVisible();await frame(3.4);
     fs.writeFileSync(path.join(dest,'frames.json'),JSON.stringify(links,null,2));
     console.log('Actual form, match reason and saved favorite verified; '+links.length+' frames.');
-  }catch(error){console.log('Capture page:',p.url(),(await p.locator('body').innerText()).slice(-1700));await p.screenshot({path:path.join(dest,'debug.png')});throw error;}
+  }catch(error){console.log('Capture did not finish at',new URL(p.url()).pathname);await p.screenshot({path:path.join(dest,'debug.png'),style:screenshotCSS});throw error;}
   finally{await browser.close()}
 })().catch(err=>{console.error(err);process.exit(1)});
