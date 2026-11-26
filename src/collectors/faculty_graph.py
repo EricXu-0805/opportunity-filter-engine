@@ -111,9 +111,12 @@ from .ucb_common import (
     _RETIRED_TITLE_RE,
     _is_person_name,
     _strip_nav_furniture,
+    apply_record_contact_claim,
     clear_contact_claim,
     clear_contact_evidence,
     profile_page_matches_person,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -778,7 +781,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     if email and isinstance(email_source, str) and email_source:
         metadata["email_source"] = email_source
 
-    return {
+    record = {
         "id": opp_id,
         "source": school["source"],
         "source_url": profile_url,
@@ -840,6 +843,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "audience": school.get("audience", "unknown"),
         "metadata": metadata,
     }
+    claim = person.get("_contact_claim")
+    if email and isinstance(claim, dict) and claim.get("contact_email") == email:
+        apply_record_contact_claim(record, claim)
+    return record
 
 
 # ---------------------------------------------------------------------------
@@ -1301,7 +1308,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
                  field_filter: dict | None = None, *,
-                 unit_filter: dict | None = None) -> list[dict]:
+                 unit_filter: dict | None = None, contact_page_url: str | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
@@ -1490,9 +1497,18 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                 dept_override = re.sub(r"\s+", " ", d_el.get_text(" ", strip=True)).strip()
         if _is_person_name(name):
             _cover("parsed_faculty_rows")
-            people.append(faculty(name, title=title, url=href, email=email,
-                                  research_areas=research, keywords=keywords,
-                                  department=dept_override))
+            person = faculty(name, title=title, url=href, email=email, research_areas=research,
+                             keywords=keywords, department=dept_override)
+            if contact_config := sel.get("bound_contact"):
+                # Require one named person and one consistent, school-owned address
+                # in this card; a page-level or neighbouring address cannot bind.
+                person["email"] = None
+                if len(card.select(sel["name"])) == 1:
+                    address = unique_bound_container_contact(card, contact_config, nested_record_selector=sel["card"])
+                    if stamp_bound_directory_contact(person, address, contact_config,
+                                                     source_soup=soup, requested_url=contact_page_url or base_url):
+                        person["email"] = address
+            people.append(person)
         else:
             # A row that reached the name stage but does not read as a person
             # ("Faculty Directory", "TBD", a stray heading). Not classifiable
@@ -1930,7 +1946,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                         _is_cf_interstitial(s2) or not s2.get_text(strip=True))):
                     not_read.add(pg)
                 fresh = [] if s2 is None else [
-                    p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
+                    p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff, contact_page_url=next_url)
                     if (p["name"], p["url"]) not in seen]
                 if not fresh:
                     barren += 1
