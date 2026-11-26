@@ -1,0 +1,221 @@
+{
+  "verified_at": "2026-11-26T13:23:24.742444+00:00",
+  "base": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "source_unit": "ucb_physics_faculty",
+  "complete_eight_area_and_five_page_run_with_profile_enrichment": 64,
+  "replayed_before_rows": 55,
+  "control_merge": [
+    [
+      1,
+      37
+    ],
+    [
+      0,
+      38
+    ]
+  ],
+  "corrected_merge": [
+    [
+      8,
+      37
+    ],
+    [
+      0,
+      45
+    ]
+  ],
+  "order_of_all_prior_ids_and_all_prior_fields_preserved": true,
+  "all_original_berkeley_shard_ids": 3332,
+  "berkeley_shard_ids_after": 3339,
+  "repeat_produced_zero_new_ids": true,
+  "new_physics_ids": [
+    "faculty-ucb-phys-2909d662",
+    "faculty-ucb-phys-292ba95b",
+    "faculty-ucb-phys-2dbb6beb",
+    "faculty-ucb-phys-aaf0186c",
+    "faculty-ucb-phys-d3349d5d",
+    "faculty-ucb-phys-d628a3a7",
+    "faculty-ucb-phys-d73bffe2"
+  ],
+  "old_ids_dropped": [],
+  "changed_existing_ids_in_same_starting_corpus": [],
+  "source_contacts": [
+    {
+      "id": "faculty-ucb-phys-2909d662",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-292ba95b",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-2dbb6beb",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-738b19cd",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-aaf0186c",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-ad9fe9d7",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-d3349d5d",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-d628a3a7",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    },
+    {
+      "id": "faculty-ucb-phys-d73bffe2",
+      "contact_present": true,
+      "passes_normal_action_gate": true,
+      "source_type": "profile_page"
+    }
+  ],
+  "after_standard_cross_department_dedup": {
+    "control_removed": 1,
+    "candidate_removed": 1,
+    "one_transient_cross_listed_name": "Carlos Bustamante",
+    "retained_original_id": "faculty-ucb-chem-3e23f031",
+    "different_existing_ids": [],
+    "new_ids": [
+      "faculty-ucb-phys-2909d662",
+      "faculty-ucb-phys-292ba95b",
+      "faculty-ucb-phys-2dbb6beb",
+      "faculty-ucb-phys-aaf0186c",
+      "faculty-ucb-phys-d3349d5d",
+      "faculty-ucb-phys-d628a3a7",
+      "faculty-ucb-phys-d73bffe2"
+    ]
+  },
+  "campus_switcher": {
+    "previous": {
+      "listing_count": 71,
+      "faculty_contact_count": 2154,
+      "unreviewed_count": 0,
+      "total_count": 2225
+    },
+    "after": {
+      "listing_count": 71,
+      "faculty_contact_count": 2161,
+      "unreviewed_count": 0,
+      "total_count": 2232
+    },
+    "national_before_and_after": 5599
+  },
+  "named_contact_fields": [
+    {
+      "id": "faculty-ucb-phys-2909d662",
+      "name": "Victoria Xu",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/victoria-xu",
+      "school_observed_at": "2026-11-26T13:20:34.981921+00:00",
+      "new_record": true
+    },
+    {
+      "id": "faculty-ucb-phys-d73bffe2",
+      "name": "Shimon Kolkowitz",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/shimon-kolkowitz",
+      "school_observed_at": "2026-11-26T13:20:34.989030+00:00",
+      "new_record": true
+    },
+    {
+      "id": "faculty-ucb-phys-2dbb6beb",
+      "name": "Aziza Suleymanzade",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/aziza-suleymanzade-0",
+      "school_observed_at": "2026-11-26T13:20:34.975256+00:00",
+      "new_record": true
+    },
+    {
+      "id": "faculty-ucb-phys-292ba95b",
+      "name": "Harry Levine",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/harry-levine-0",
+      "school_observed_at": "2026-11-26T13:20:42.917681+00:00",
+      "new_record": true
+    },
+    {
+      "id": "faculty-ucb-phys-738b19cd",
+      "name": "Kater Murch",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/kater-murch",
+      "school_observed_at": "2026-11-26T13:20:42.911148+00:00",
+      "new_record": false
+    },
+    {
+      "id": "faculty-ucb-phys-d628a3a7",
+      "name": "Luca Victor Iliesiu",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/luca-victor-iliesiu",
+      "school_observed_at": "2026-11-26T13:20:42.935708+00:00",
+      "new_record": true
+    },
+    {
+      "id": "faculty-ucb-phys-ad9fe9d7",
+      "name": "Yuan Cao",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/yuan-cao",
+      "school_observed_at": "2026-11-26T13:20:52.540853+00:00",
+      "new_record": false
+    },
+    {
+      "id": "faculty-ucb-phys-aaf0186c",
+      "name": "Raúl Briceño",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/ra%C3%BAl-brice%C3%B1o",
+      "school_observed_at": "2026-11-26T13:20:52.529872+00:00",
+      "new_record": true
+    },
+    {
+      "id": "faculty-ucb-phys-d3349d5d",
+      "name": "Chiara Salemi",
+      "official_personal_email_field_matches": true,
+      "ordinary_send_gate": true,
+      "evidence_contract_on_normalized_record": "profile_page",
+      "official_url": "https://physics.berkeley.edu/people/chiara-salemi",
+      "school_observed_at": "2026-11-26T13:20:52.535809+00:00",
+      "new_record": true
+    }
+  ]
+}
