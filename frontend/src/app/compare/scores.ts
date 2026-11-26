@@ -67,18 +67,19 @@ function tokens(s: string): string[] {
 }
 
 function majorMatchScore(userMajor: string, oppMajors: string[] | undefined): number | null {
-  if (!oppMajors || oppMajors.length === 0) return null;
-  const userTokArr = tokens(userMajor);
+  const major = userMajor.trim().toLowerCase();
+  const listed = (oppMajors ?? []).map((m) => m.trim().toLowerCase()).filter((m) => m && m !== 'unknown');
+  if (!major || major === 'unknown' || listed.length === 0) return null;
+  if (listed.includes(major)) return 100;
+
+  // The abbreviation and overlap estimates below need tokenizable text on both sides.
+  const userTokArr = tokens(major);
   const userTok = new Set(userTokArr);
-  if (userTok.size === 0) return 50;
+  const listedTokens = listed.map(tokens).filter((words) => words.length > 0);
+  if (userTok.size === 0 || listedTokens.length === 0) return null;
   const userInitials = userTokArr.map((t) => t[0]).join('');
 
-  for (const m of oppMajors) {
-    const lower = m.toLowerCase();
-    if (lower === userMajor.toLowerCase()) return 100;
-
-    const mTok = tokens(m);
-    if (mTok.length === 0) continue;
+  for (const mTok of listedTokens) {
     if (mTok.every((t) => userTok.has(t)) || mTok.some((t) => userTok.has(t) && t.length > 2)) {
       return 80;
     }
@@ -91,10 +92,10 @@ function majorMatchScore(userMajor: string, oppMajors: string[] | undefined): nu
 }
 
 function yearMatchScore(userYear: string, oppYears: string[] | undefined): number | null {
-  if (!oppYears || oppYears.length === 0) return null;
-  const statedYears = oppYears.filter((year) => year.toLowerCase() !== 'unknown');
-  if (statedYears.length === 0) return null;
-  return statedYears.some((year) => year.toLowerCase() === userYear.toLowerCase()) ? 100 : 50;
+  const year = userYear.trim().toLowerCase();
+  const statedYears = (oppYears ?? []).map((y) => y.trim().toLowerCase()).filter((y) => y && y !== 'unknown');
+  if (!year || year === 'unknown' || statedYears.length === 0) return null;
+  return statedYears.includes(year) ? 100 : 50;
 }
 
 function intlEligibilityScore(
