@@ -1,0 +1,31 @@
+{
+  "site": "https://joinalab.com",
+  "time": "2026-11-26T09:45:45.392110+00:00",
+  "frontend_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "pdf_title_in_complete_source": true,
+  "pdf_authors_in_complete_source": true,
+  "editor_generated_candidates": "Added 14 candidates quoted from your r\u00e9sum\u00e9. Confirm each one before it appears in the preview.",
+  "publication_records_after_generation": 0,
+  "publication_title": "Tidal Records in a Synthetic Library",
+  "source_backed_contact_education_role_project_dates_skills": [
+    "Synthetic Scholar",
+    "scholar@example.com",
+    "Example University",
+    "B.S.",
+    "Computer Science",
+    "2024",
+    "2028",
+    "Student Researcher",
+    "Mock Lab",
+    "2025",
+    "Synthetic Atlas",
+    "Python",
+    "SQL"
+  ],
+  "saved_and_read_again_from_real_profile_revision": 1,
+  "original_courses_visible": [
+    "Discrete Mathematics",
+    "Computer Vision"
+  ],
+  "unconfirmed_preview_empty": true
+}
