@@ -109,10 +109,16 @@ PGPASSFILE="$SOURCE_PGPASSFILE" PGSSLROOTCERT="$SOURCE_PGSSLROOTCERT" \
 Retain the SHA-256 of the capture file with the backup receipt. The capture
 compares application columns, applied migrations, and definitions of views, indexes, table
 constraints, user triggers, functions and procedures in the public and private
-schemas. PostgreSQL computes the DDL digest on the server in the same read-only
-statement. The capture stores counts, hashes, recovery point, project ref and
-timestamp. RLS behavior has a separate test. Backups with a missing capture or
-an earlier columns-only receipt remain `UNVERIFIED` for schema equivalence.
+schemas. The same digest includes relation RLS settings, policy definitions
+and roles, and schema, relation, column and routine grants. It covers triggers,
+policies and relation grants on `storage.objects` and `storage.buckets`, plus
+the public flag of each tracked attachment or application-material bucket.
+Read the bucket catalogue with an account that can see all its rows.
+
+PostgreSQL computes the digest in the same read-only statement. The capture
+stores counts, hashes, recovery point, project ref and timestamp. The drill
+also checks anonymous access separately. Source receipts produced before this
+access-metadata check remain `UNVERIFIED` for schema equivalence.
 
 The separate storage backup must supply its full private inventory and a
 SHA-256 retained with the backup receipt. Each bucket contains a list of

@@ -15,10 +15,29 @@ from scripts import restore_row_evidence
 from scripts.check_migration_parity import applied_rows, committed_migrations, compare
 from scripts.restore_attachment_evidence import ALL_BUCKETS, BUCKETS, catalogue_bytes
 
-METHOD = "postgres-application-ddl-and-migrations-v2"
+METHOD = "postgres-application-access-ddl-and-migrations-v3"
 QUERY = """
 WITH application_schema AS (
   SELECT oid, nspname FROM pg_namespace WHERE nspname IN ('public', 'private')
+), access_relations AS (
+  SELECT c.*, n.nspname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE (n.nspname IN ('public','private') AND c.relkind IN ('r','p','v','m','f','S'))
+     OR (n.nspname = 'storage' AND c.relname IN ('objects','buckets'))
+), access_objects(kind, schema_name, identity, owner_oid, acl) AS (
+  SELECT 'schema', nspname, to_jsonb(nspname), nspowner, COALESCE(nspacl, acldefault('n', nspowner))
+  FROM pg_namespace WHERE nspname IN ('public','private','storage')
+  UNION ALL
+  SELECT 'relation', nspname, jsonb_build_array(relkind, relname), relowner,
+         COALESCE(relacl, acldefault(CASE WHEN relkind = 'S' THEN 's' ELSE 'r' END::"char", relowner))
+  FROM access_relations
+  UNION ALL
+  SELECT 'column', c.nspname, jsonb_build_array(c.relname, a.attname), c.relowner, a.attacl
+  FROM access_relations c JOIN pg_attribute a ON a.attrelid = c.oid
+  WHERE a.attnum > 0 AND NOT a.attisdropped AND cardinality(a.attacl) > 0
+  UNION ALL
+  SELECT 'routine', n.nspname, jsonb_build_array(p.proname, pg_get_function_identity_arguments(p.oid)),
+         p.proowner, COALESCE(p.proacl, acldefault('f', p.proowner))
+  FROM pg_proc p JOIN application_schema n ON n.oid = p.pronamespace
 ), definitions(kind, schema_name, definition) AS (
   SELECT 'index', n.nspname, jsonb_build_array(pg_get_indexdef(i.indexrelid), i.indisvalid, i.indisready)
   FROM pg_index i JOIN pg_class t ON t.oid = i.indrelid
@@ -29,8 +48,7 @@ WITH application_schema AS (
   WHERE t.relkind IN ('v','m')
   UNION ALL
   SELECT 'trigger', n.nspname, jsonb_build_array(pg_get_triggerdef(g.oid), g.tgenabled)
-  FROM pg_trigger g JOIN pg_class t ON t.oid = g.tgrelid
-  JOIN application_schema n ON n.oid = t.relnamespace WHERE NOT g.tgisinternal
+  FROM pg_trigger g JOIN access_relations n ON n.oid = g.tgrelid WHERE NOT g.tgisinternal
   UNION ALL
   SELECT 'routine', n.nspname, to_jsonb(pg_get_functiondef(p.oid))
   FROM pg_proc p JOIN application_schema n ON n.oid = p.pronamespace WHERE p.prokind IN ('f','p','w')
@@ -38,8 +56,25 @@ WITH application_schema AS (
   SELECT 'constraint', n.nspname, jsonb_build_array(t.relname, c.conname, pg_get_constraintdef(c.oid), c.convalidated)
   FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
   JOIN application_schema n ON n.oid = t.relnamespace
+  UNION ALL
+  SELECT 'row-security', nspname, jsonb_build_array(relname, relrowsecurity, relforcerowsecurity)
+  FROM access_relations WHERE relkind IN ('r','p')
+  UNION ALL
+  SELECT 'policy', c.nspname, jsonb_build_array(c.relname, p.polname, p.polcmd, p.polpermissive,
+         ARRAY(SELECT (CASE WHEN r = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(r)::text END) COLLATE "C"
+               FROM unnest(p.polroles) AS r ORDER BY 1),
+         pg_get_expr(p.polqual, p.polrelid), pg_get_expr(p.polwithcheck, p.polrelid))
+  FROM pg_policy p JOIN access_relations c ON c.oid = p.polrelid
+  UNION ALL
+  SELECT 'access', schema_name, jsonb_build_array(kind, identity, pg_get_userbyid(owner_oid),
+         ARRAY(SELECT item::text FROM unnest(acl) AS item ORDER BY item::text COLLATE "C"))
+  FROM access_objects
+  UNION ALL
+  SELECT 'bucket-public', 'storage', jsonb_build_array(id, public) FROM storage.buckets
+  WHERE id IN ('tracker-attachments','tracker-attachment-versions','application-materials')
 )
 SELECT json_build_object(
+  'bucket_catalog_unfiltered', NOT row_security_active('storage.buckets'),
   'ddl_count', (SELECT count(*) FROM definitions),
   'ddl_sha256', (SELECT encode(sha256(convert_to(COALESCE(jsonb_agg(
     jsonb_build_array(kind, schema_name, definition)
@@ -90,6 +125,8 @@ def observe(project: str, backup: str, *, include_row_counts: bool = False,
     except (OSError, subprocess.SubprocessError):
         raise ValueError("catalogue read failed; check psql, direct database access and TLS") from None
     catalogue = json.loads(result.stdout)
+    if catalogue.get("bucket_catalog_unfiltered") is not True:
+        raise ValueError("an unfiltered Storage bucket catalogue is required to verify bucket visibility")
     columns = catalogue["columns"]
     migrations = catalogue["migrations"]
     if not isinstance(columns, list) or not columns or not isinstance(migrations, list) or not migrations:
