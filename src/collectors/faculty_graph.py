@@ -796,6 +796,13 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         metadata["listing_seen_on_source"] = True
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
+    if roster_url := person.get("_corroborating_roster_url"):
+        # The reviewed person page states the rank. The current directory independently
+        # confirms it, while student-facing faculty links must open the person's page.
+        metadata["faculty_title_observation"] = {
+            "name": name, "title": title, "source": profile_url, "profile": profile_url,
+            "roster_url": roster_url, "checked_on": now[:10],
+        }
     if person.get("_checked_research_index"):
         metadata["checked_research_index"] = person["_checked_research_index"]
     if research_areas and person.get("_research_areas_source_url"):
@@ -813,7 +820,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     record = {
         "id": opp_id,
         "source": school["source"],
-        "source_url": person.get("_cited_directory_url") or (dept["directory_url"] if cite_directory else profile_url),
+        "source_url": dept["directory_url"] if cite_directory else profile_url,
         "source_type": "faculty_research",
         "title": opp_title,
         "organization": school["organization"],
@@ -2041,11 +2048,10 @@ def _scrape_directory(dept: dict) -> list[dict]:
             for person in extra_people:
                 identity = person["name"], person["url"]
                 prior = existing_people.get(identity)
-                if page_config.get("cite_directory"):
+                if page_config.get("cite_profile_rank") and person.get("title"):
                     cited_person = prior if prior is not None else person
-                    cited_person["_cited_directory_url"] = _extra_url
-                    if person.get("title"):
-                        cited_person["title"] = person["title"]
+                    cited_person["_corroborating_roster_url"] = _extra_url
+                    cited_person["title"] = person["title"]
                 if prior is None:
                     people.append(person)
                     existing_people[identity] = person
