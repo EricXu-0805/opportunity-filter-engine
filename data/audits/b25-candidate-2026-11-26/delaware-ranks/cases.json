@@ -1,0 +1,100 @@
+[
+  {
+    "id": "faculty-udel-mseg-0544ab79",
+    "name": "Chitraleema Chakraborty",
+    "title": "Assistant Professor",
+    "source": "https://mseg.udel.edu/people/chakraborty/",
+    "old": true
+  },
+  {
+    "id": "faculty-udel-mseg-191c5afc",
+    "name": "Ryan Comes",
+    "title": "Associate Professor and Associate Chair for Graduate Education",
+    "source": "https://mseg.udel.edu/people/ryan-comes/",
+    "old": true
+  },
+  {
+    "id": "faculty-udel-mseg-22466e16",
+    "name": "Matthew Doty",
+    "title": "Professor",
+    "source": "https://mseg.udel.edu/people/doty/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-25082bef",
+    "name": "David C. Martin",
+    "title": "Karl W. and Renate Böer Chaired Professor of Materials Science and Engineering",
+    "source": "https://mseg.udel.edu/people/martin/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-58d683fd",
+    "name": "Xi Wang",
+    "title": "Associate Professor",
+    "source": "https://mseg.udel.edu/people/wang/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-5ade1fd3",
+    "name": "Ioanna Fampiou",
+    "title": "Assistant Professor",
+    "source": "https://mseg.udel.edu/people/ioanna-fampiou/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-5dbd4670",
+    "name": "Sheldon Hewlett",
+    "title": "Associate Professor and Associate Chair for Undergraduate Education",
+    "source": "https://mseg.udel.edu/people/hewlett/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-7fa44ddf",
+    "name": "S Ismat Shah",
+    "title": "Professor",
+    "source": "https://mseg.udel.edu/people/shah/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-8adc049f",
+    "name": "Christian W. Pester",
+    "title": "Associate Professor",
+    "source": "https://mseg.udel.edu/people/christian-w-pester/",
+    "old": true
+  },
+  {
+    "id": "faculty-udel-mseg-8f445ad2",
+    "name": "Laure Kayser",
+    "title": "Associate Professor",
+    "source": "https://mseg.udel.edu/people/kayser/",
+    "old": true
+  },
+  {
+    "id": "faculty-udel-mseg-a2bd5d6e",
+    "name": "Darrin Pochan",
+    "title": "Distinguished Professor of Materials Science",
+    "source": "https://mseg.udel.edu/people/pochan/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-c091c4cd",
+    "name": "Anderson Janotti",
+    "title": "Professor",
+    "source": "https://mseg.udel.edu/people/janotti/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-ed9f22f8",
+    "name": "Joshua Zide",
+    "title": "Professor and Chair",
+    "source": "https://mseg.udel.edu/people/zide/",
+    "old": false
+  },
+  {
+    "id": "faculty-udel-mseg-f765ff5d",
+    "name": "William Shafarman",
+    "title": "Professor",
+    "source": "https://mseg.udel.edu/people/shafarman/",
+    "old": false
+  }
+]

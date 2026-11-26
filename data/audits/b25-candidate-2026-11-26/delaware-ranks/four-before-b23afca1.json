@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-11-26T22:10:08.702749+00:00",
+  "phase": "old-four",
+  "versions_before": [
+    "b23afca130ade46a8a643dcd95f6afa1d492630f",
+    "b23afca130ade46a8a643dcd95f6afa1d492630f"
+  ],
+  "versions_after": [
+    "b23afca130ade46a8a643dcd95f6afa1d492630f",
+    "b23afca130ade46a8a643dcd95f6afa1d492630f"
+  ],
+  "public_details": [
+    {
+      "id": "faculty-udel-mseg-0544ab79",
+      "name": "Chitraleema Chakraborty",
+      "role_in_api": null,
+      "role_quote_in_api": {},
+      "role_in_page": "Rank Not provided Not provided",
+      "link_in_role": null,
+      "page_and_api_identity_match": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-udel-mseg-191c5afc",
+      "name": "Ryan Comes",
+      "role_in_api": null,
+      "role_quote_in_api": {},
+      "role_in_page": "Rank Not provided Not provided",
+      "link_in_role": null,
+      "page_and_api_identity_match": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-udel-mseg-8adc049f",
+      "name": "Christian W. Pester",
+      "role_in_api": null,
+      "role_quote_in_api": {},
+      "role_in_page": "Rank Not provided Not provided",
+      "link_in_role": null,
+      "page_and_api_identity_match": true,
+      "passed": true
+    },
+    {
+      "id": "faculty-udel-mseg-8f445ad2",
+      "name": "Laure Kayser",
+      "role_in_api": null,
+      "role_quote_in_api": {},
+      "role_in_page": "Rank Not provided Not provided",
+      "link_in_role": null,
+      "page_and_api_identity_match": true,
+      "passed": true
+    }
+  ]
+}
