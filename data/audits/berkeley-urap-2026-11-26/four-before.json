@@ -1,5 +1,5 @@
 {
-  "observed": "2026-11-26T20:06:52.785441+00:00",
+  "observed": "2026-11-26T20:07:55.712862+00:00",
   "cases": [
     {
       "original_id": "ucb-urap-proj-5d3f6167a36a",
@@ -9,7 +9,9 @@
       "h1": "The Mobilization of Undocumented Immigrants in Phoenix, Arizona",
       "prior_reported_mentor": "Prof. Reza Abbasi-Asl's URAP project",
       "department": "Neuroscience",
-      "student_visible_mentor": false,
+      "full_lab_label_in_html": false,
+      "old_person_name_in_visible_body": false,
+      "first_occurrence_context": "",
       "public_api_summary_sha256": "0f0cae9db26463b3340e9c1718a489f96804574dcb3cc39fe35e6d39dfea4f5f",
       "after_mentor": "URAP project with Kathryn Abrams",
       "after_department": "Law"
@@ -22,7 +24,9 @@
       "h1": "Geometry Resources in Dance (GRiD)\nDesign-based educational research for learners to objectify their tacit attentional anchors for movement coordination into auxiliary lines for geometric practice",
       "prior_reported_mentor": "Prof. Reza Abbasi-Asl's URAP project",
       "department": "Neuroscience",
-      "student_visible_mentor": false,
+      "full_lab_label_in_html": false,
+      "old_person_name_in_visible_body": false,
+      "first_occurrence_context": "",
       "public_api_summary_sha256": "0f0cae9db26463b3340e9c1718a489f96804574dcb3cc39fe35e6d39dfea4f5f",
       "after_mentor": "URAP project with Dor Abrahamson",
       "after_department": "Education"
@@ -31,11 +35,13 @@
       "original_id": "ucb-urap-proj-124e546d2fdd",
       "source_id": "20432-1",
       "official_detail": "https://joinalab.com/opportunities/ucb-urap-proj-124e546d2fdd",
-      "frontend_sha": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "frontend_sha": "87b1e916c0c88c32bba327256706a2beff293346",
       "h1": "Strengthening Early Childhood Systems Through Networks: Alumni Engagement, Campus Partnerships, and Community Outreach\n\nSponsored by UC Berkeley Equity &amp; Excellence in Early Childhood (E3C) (inter",
       "prior_reported_mentor": "Prof. Reza Abbasi-Asl's URAP project",
       "department": "Neuroscience",
-      "student_visible_mentor": false,
+      "full_lab_label_in_html": false,
+      "old_person_name_in_visible_body": false,
+      "first_occurrence_context": "",
       "public_api_summary_sha256": "f08771ae4dc7c0d2ca7b387b97c5f3e96a7093b3ebb437c0ebb923fb253d5afc",
       "after_mentor": "URAP project",
       "after_department": ""
@@ -44,11 +50,13 @@
       "original_id": "ucb-urap-proj-f800d57c6f64",
       "source_id": "20078-1",
       "official_detail": "https://joinalab.com/opportunities/ucb-urap-proj-f800d57c6f64",
-      "frontend_sha": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+      "frontend_sha": "87b1e916c0c88c32bba327256706a2beff293346",
       "h1": "Stability driven interpretation and compression of neural networks",
       "prior_reported_mentor": "Prof. Reza Abbasi-Asl's URAP project",
       "department": "Neuroscience",
-      "student_visible_mentor": false,
+      "full_lab_label_in_html": false,
+      "old_person_name_in_visible_body": false,
+      "first_occurrence_context": "",
       "public_api_summary_sha256": "0f0cae9db26463b3340e9c1718a489f96804574dcb3cc39fe35e6d39dfea4f5f",
       "after_mentor": "URAP project with Reza Abbasi-Asl",
       "after_department": "Neuroscience"

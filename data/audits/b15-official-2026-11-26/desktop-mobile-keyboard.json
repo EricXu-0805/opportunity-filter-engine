@@ -1,0 +1,80 @@
+{
+  "official_release": "87b1e916c0c88c32bba327256706a2beff293346",
+  "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45889051886",
+  "actual_native_zoom_percent": 200,
+  "machine_browser": "Chromium",
+  "human_screen_reader": false,
+  "physical_phone": false,
+  "scope": {
+    "import": [
+      {
+        "locale": "en",
+        "native_browser_zoom": 2,
+        "dimensions_200": {
+          "width": 700,
+          "client": 692,
+          "document": 692,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "separate_tabstops": [
+          "-1",
+          "0"
+        ],
+        "route_visited": "/favorites",
+        "local_input_submissions": 0,
+        "allowed_writes": [
+          "own anonymous sign-up"
+        ],
+        "focus_after_route": "BODY"
+      },
+      {
+        "locale": "zh",
+        "native_browser_zoom": 2,
+        "dimensions_200": {
+          "width": 390,
+          "client": 382,
+          "document": 382,
+          "ratio": 2,
+          "visualScale": 1
+        },
+        "separate_tabstops": [
+          "-1",
+          "0"
+        ],
+        "route_visited": "/favorites",
+        "local_input_submissions": 0,
+        "allowed_writes": [
+          "own anonymous sign-up"
+        ],
+        "focus_after_route": "BODY"
+      }
+    ],
+    "match": [
+      {
+        "locale": "en",
+        "native_200_width": 700,
+        "real_guest": true,
+        "category_right_changes_focus": true,
+        "category_right_changes_selection": true,
+        "wrap_home_end_and_panel": true,
+        "conditions_expanded": true,
+        "focus_returns_to_card": true,
+        "templates": 3,
+        "external_messages_sent": 0
+      },
+      {
+        "locale": "zh",
+        "native_200_width": 390,
+        "real_guest": true,
+        "category_right_changes_focus": true,
+        "category_right_changes_selection": true,
+        "wrap_home_end_and_panel": true,
+        "conditions_expanded": true,
+        "focus_returns_to_card": true,
+        "templates": 3,
+        "external_messages_sent": 0
+      }
+    ]
+  }
+}
