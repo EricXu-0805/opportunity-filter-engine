@@ -1,0 +1,23 @@
+name: Verify personally confirmed résumé excerpts in matching
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-m17-resume-confirmed.yml']
+permissions:
+  contents: read
+jobs:
+  official:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      OFE_EXPECTED_SITE_SHA: 91140c465b5cd546e129c04f5097064b91fddb57
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - name: Use one synthetic public guest, the official profile form, matching and draft controls
+        run: python -u scripts/verify_m17_resume_confirmed.py
