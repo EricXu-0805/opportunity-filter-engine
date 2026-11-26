@@ -5,7 +5,7 @@ import os
 import re
 from urllib.parse import urlsplit
 
-from playwright.sync_api import expect, sync_playwright
+from playwright.sync_api import Error as PlaywrightError, expect, sync_playwright
 import verify_public_matching_experience as common
 
 
@@ -56,7 +56,12 @@ def main():
             def record(r):
                 u = urlsplit(r.url)
                 if u.hostname == common.db and u.path == '/rest/v1/profiles' and r.ok and r.request.method=='GET':
-                    d = r.json()
+                    try:
+                        d = r.json()
+                    except PlaywrightError as error:
+                        if 'Target page, context or browser has been closed' in str(error):
+                            return
+                        raise
                     if isinstance(d,list) and d: d=d[0]
                     if isinstance(d,dict) and d.get('profile_data'): reads.append((d['revision'],d['profile_data']))
             c.on('response',record)
@@ -127,9 +132,9 @@ def main():
             if os.environ.get('M17_VERIFY_PDF_REPLACEMENT') == '1':
                 details = p.locator('#experience-library details').filter(has=p.locator('summary', has_text=first)).first
                 if not details.evaluate('(element) => element.open'):
-                    details.locator('summary').click()
+                    details.locator(':scope > summary').click()
                 details.get_by_role('button', name='Confirm facts', exact=True).click()
-                expect(details.locator('summary')).to_contain_text('Confirmed', ignore_case=True)
+                expect(details.locator(':scope > summary')).to_contain_text('Confirmed', ignore_case=True)
                 p.wait_for_timeout(2500)
                 c.close()
                 def reconfirmed(profile):
