@@ -671,7 +671,9 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # Some authoritative feeds (e.g. UCSD Physics' profile API) carry no
     # per-person page; point at the directory the person is listed on rather
     # than ship a record with no destination (the integrity gate requires url).
-    profile_url = person.get("url", "") or dept.get("directory_url", "")
+    # Campus CMS feeds sometimes carry HTML whitespace outside the actual address.
+    person_url = (person.get("url") or "").strip(" \t\r\n\f")
+    profile_url = person_url or dept.get("directory_url", "")
     # Final lowercase guard on every record's email (covers non-scrape sources —
     # coa_api/poly_api/WP-meta/curated/json_dir — that don't pass through
     # _clean_email); a capitalized local part trips the DQ corrupted-email gate,
@@ -694,8 +696,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     if reviewed_names := dept.get("profile_id_names"):
         # Some universities identify the person only in a query parameter.
         # Try the complete reviewed URL before the path-based aliases.
-        url = person.get("url")
-        alias = reviewed_names.get(url) or reviewed_names.get(canonical_profile_url(url))
+        alias = reviewed_names.get(person_url) or reviewed_names.get(canonical_profile_url(person_url))
         if alias and name == alias[0]:
             id_name = alias[1]
     # A published historical alias and the live name can both own saved URLs.
@@ -1436,7 +1437,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             link_el = card.select_one(sel["link"])
         else:
             link_el = name_el
-        href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
+        href = (link_el.get("href") or "").strip(" \t\r\n\f") if link_el else ""
         if link_filter and not re.search(link_filter, href):
             _cover("classified_nonfaculty_rows")
             continue
