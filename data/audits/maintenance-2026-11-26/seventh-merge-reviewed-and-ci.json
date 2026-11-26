@@ -1,0 +1,98 @@
+{
+  "source_heads": {
+    "1350": "ce5aa3afae45edfe7a23988a0d23422a32f931d7",
+    "1357": "da53bfe7307f151b80b7c528431a7d0aa582adec",
+    "1359": "334aa5631d4865683adf0d8d5a730ed32e317ccc",
+    "1360": "a6036fe20a08139f2848dbe405cab4933e5a6cfe",
+    "1361": "7bbb43aa5d97447219485219de18f00d6b558af3",
+    "1367": "e5afa96885ac22f94a956e7007768048f7691d27",
+    "1366": "f1e0cc8e447edc664c40442daeb4a14e9ccb7406"
+  },
+  "head": "d8212be31051d4707576da9d51661ee7c498c37c",
+  "base": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "synthetic_merge": "e0663503907dece2a4c3af9b1f937927b15b9d76",
+  "tree": "f5e0eef3768b90bfbc39dbdac133a69071d40308",
+  "parents": [
+    "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+    "d8212be31051d4707576da9d51661ee7c498c37c"
+  ],
+  "strict": {
+    "url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/branches/main/protection/required_status_checks",
+    "strict": true,
+    "contexts": [
+      "Backend (lint + pytest)",
+      "Frontend (typecheck + build)",
+      "E2E (Playwright)"
+    ],
+    "contexts_url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/branches/main/protection/required_status_checks/contexts",
+    "checks": [
+      {
+        "context": "Backend (lint + pytest)",
+        "app_id": 15368
+      },
+      {
+        "context": "Frontend (typecheck + build)",
+        "app_id": 15368
+      },
+      {
+        "context": "E2E (Playwright)",
+        "app_id": 15368
+      }
+    ]
+  },
+  "state": "clean",
+  "standard_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912",
+  "standard_jobs": {
+    "Decide (run or skip the suite)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912/job/139936600728"
+    },
+    "Frontend (typecheck + build)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912/job/139936729907"
+    },
+    "Backend (lint + pytest)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912/job/139936729908"
+    },
+    "Migrations (Flow B merge + CLI replay)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912/job/139936729947"
+    },
+    "E2E (Playwright)": {
+      "status": "success",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912/job/139936730050"
+    },
+    "Deploy backend (Render hook)": {
+      "status": "skipped",
+      "job_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45827870912/job/139951250931"
+    }
+  },
+  "preceding_release": {
+    "observed_utc": "2026-11-26T13:21:50.826880+00:00",
+    "expected_merge": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+    "observations": {
+      "homepage": {
+        "url": "https://joinalab.com/",
+        "status": 200,
+        "release_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
+      },
+      "official_site_api": {
+        "url": "https://joinalab.com/api/health",
+        "status": 200,
+        "release_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
+      },
+      "render_origin": {
+        "url": "https://opportunity-filter-engine-api.onrender.com/api/health",
+        "status": 200,
+        "release_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d"
+      }
+    },
+    "all_exact": true
+  },
+  "utc_checked": "2026-11-26T13:46:13Z",
+  "actual_merge": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "merged_at": "2026-11-26T13:46:25Z",
+  "observed_at": "2026-11-26T13:47:20.067809+00:00",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1372"
+}
