@@ -1,0 +1,370 @@
+{
+  "release_before": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "release_after": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+  "observed_utc": "2026-11-26T14:24:05.673707+00:00",
+  "method": "Six previously studied original product IDs and their original query limits, one sequential public read per query. Wall time includes transport and service. These observations cannot isolate backend compute or explain previous overloads.",
+  "rows": [
+    {
+      "source": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "limit": 1,
+      "similar_api": "https://joinalab.com/api/opportunities/simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4/similar?limit=1",
+      "request": {
+        "status": 200,
+        "elapsed_ms": 6649
+      },
+      "returned_source": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "total": 7238,
+      "ranked_ids": [
+        "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf"
+      ],
+      "normalized_response_sha256": "891bfa9a181ca4986f07b7db10673280204152551d13ea70a571b0fa2b9cbb5d",
+      "response_keys": [
+        "opportunities",
+        "source_id",
+        "total"
+      ],
+      "returned_count": 1,
+      "source_excluded": true,
+      "unique_results": true,
+      "page": "https://joinalab.com/opportunities/simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "page_request": {
+        "status": 200,
+        "elapsed_ms": 6171
+      },
+      "html_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "visible_heading_ssr": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "before_release_first_request": {
+        "status": 200,
+        "elapsed_ms": 6053
+      },
+      "before_release_retry": null,
+      "entire_response_equal_to_before": true,
+      "entire_response_equal_to_release_tree": true,
+      "browser_initial_visit": {
+        "main_heading": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+        "normal_retry_button_used": false,
+        "heading": "Similar opportunities",
+        "links_in_rendered_order": [
+          "simplify-intern-0146b19d-d59d-4b99-8b14-b713eb4e1adf",
+          "simplify-intern-219c4e1f-7e7a-4ed5-8be3-1afd2b7b5444",
+          "simplify-intern-3233703b-70f4-4fd0-9bff-e8e8c935f40a",
+          "simplify-intern-32a867ab-36be-40f9-8242-5da26a5ee011",
+          "simplify-intern-33d96aa1-005b-4988-b918-7ffecf83de91"
+        ],
+        "matches_release_default_query": true
+      }
+    },
+    {
+      "source": "faculty-cs-321c7f13",
+      "limit": 5,
+      "similar_api": "https://joinalab.com/api/opportunities/faculty-cs-321c7f13/similar?limit=5",
+      "request": {
+        "status": 200,
+        "elapsed_ms": 4794
+      },
+      "returned_source": "faculty-cs-321c7f13",
+      "total": 132579,
+      "ranked_ids": [
+        "faculty-ae-9849ad83",
+        "faculty-cs-a4162fc8",
+        "faculty-ece-16f72985",
+        "faculty-ece-478d2587",
+        "faculty-ece-c966bf23"
+      ],
+      "normalized_response_sha256": "538a5ecb9e515d6b1690dc528d38e83800dd6992cadcbfde44027df9987125f3",
+      "response_keys": [
+        "opportunities",
+        "source_id",
+        "total"
+      ],
+      "returned_count": 5,
+      "source_excluded": true,
+      "unique_results": true,
+      "page": "https://joinalab.com/opportunities/faculty-cs-321c7f13",
+      "page_request": {
+        "status": 200,
+        "elapsed_ms": 4639
+      },
+      "html_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "visible_heading_ssr": "Girish Chowdhary",
+      "before_release_first_request": {
+        "status": 200,
+        "elapsed_ms": 6827
+      },
+      "before_release_retry": null,
+      "entire_response_equal_to_before": true,
+      "entire_response_equal_to_release_tree": true,
+      "browser_initial_visit": {
+        "main_heading": "Girish Chowdhary",
+        "normal_retry_button_used": false,
+        "heading": "Similar opportunities",
+        "links_in_rendered_order": [
+          "faculty-ae-9849ad83",
+          "faculty-cs-a4162fc8",
+          "faculty-ece-16f72985",
+          "faculty-ece-478d2587",
+          "faculty-ece-c966bf23"
+        ],
+        "matches_release_default_query": true
+      }
+    },
+    {
+      "source": "faculty-cincinnati-cs-00772f54",
+      "limit": 20,
+      "similar_api": "https://joinalab.com/api/opportunities/faculty-cincinnati-cs-00772f54/similar?limit=20",
+      "request": {
+        "status": null,
+        "error": "ReadTimeout",
+        "elapsed_ms": 6002
+      },
+      "page": "https://joinalab.com/opportunities/faculty-cincinnati-cs-00772f54",
+      "page_request": {
+        "status": 200,
+        "elapsed_ms": 4002
+      },
+      "html_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "visible_heading_ssr": "Mehdi Norouzi",
+      "retry_time_utc": "2026-11-26T14:24:21.979640+00:00",
+      "retry": {
+        "status": 200,
+        "elapsed_ms": 6074
+      },
+      "returned_source": "faculty-cincinnati-cs-00772f54",
+      "total": 130544,
+      "ranked_ids": [
+        "faculty-cincinnati-acct-0d0bd997",
+        "faculty-cincinnati-acct-16414d70",
+        "faculty-cincinnati-acct-36801f1b",
+        "faculty-cincinnati-acct-793e5402",
+        "faculty-cincinnati-acct-8924782f",
+        "faculty-cincinnati-acct-8990fb05",
+        "faculty-cincinnati-acct-b14457ed",
+        "faculty-cincinnati-acct-b829b106",
+        "faculty-cincinnati-acct-d307c391",
+        "faculty-cincinnati-acct-d73d0aae",
+        "faculty-cincinnati-acct-e38e2f59",
+        "faculty-cincinnati-acct-e5dd814c",
+        "faculty-cincinnati-acct-f0431fad",
+        "faculty-cincinnati-acct-faa40461",
+        "faculty-cincinnati-aero-378c9705",
+        "faculty-cincinnati-aero-4b703da7",
+        "faculty-cincinnati-aero-4f4c43a7",
+        "faculty-cincinnati-aero-5b3db442",
+        "faculty-cincinnati-aero-5d982234",
+        "faculty-cincinnati-aero-62b25daf"
+      ],
+      "normalized_response_sha256": "6edc6df8b0f7e1c0030ad36bc740cc3d99e5116cbf241b8937336798f3f17c84",
+      "response_keys": [
+        "opportunities",
+        "source_id",
+        "total"
+      ],
+      "returned_count": 20,
+      "source_excluded": true,
+      "unique_results": true,
+      "before_release_first_request": {
+        "status": 200,
+        "elapsed_ms": 6308
+      },
+      "before_release_retry": null,
+      "entire_response_equal_to_before": true,
+      "entire_response_equal_to_release_tree": true,
+      "browser_initial_visit": {
+        "main_heading": "Mehdi Norouzi",
+        "normal_retry_button_used": false,
+        "heading": "Similar opportunities",
+        "links_in_rendered_order": [
+          "faculty-cincinnati-acct-0d0bd997",
+          "faculty-cincinnati-acct-16414d70",
+          "faculty-cincinnati-acct-36801f1b",
+          "faculty-cincinnati-acct-793e5402",
+          "faculty-cincinnati-acct-8924782f"
+        ],
+        "matches_release_default_query": true
+      }
+    },
+    {
+      "source": "faculty-emory-rsph-6e024408",
+      "limit": 5,
+      "similar_api": "https://joinalab.com/api/opportunities/faculty-emory-rsph-6e024408/similar?limit=5",
+      "request": {
+        "status": 200,
+        "elapsed_ms": 5709
+      },
+      "returned_source": "faculty-emory-rsph-6e024408",
+      "total": 130545,
+      "ranked_ids": [
+        "faculty-arizona-cs-d16638c6",
+        "faculty-english-f2d0ba9d",
+        "faculty-gatech-spp-696d4bed",
+        "faculty-purdue-acc-440fb988",
+        "faculty-rice-anth-ff0e2f79"
+      ],
+      "normalized_response_sha256": "a518858823c9f4e548b6824592a76bb41aae159ed12f24b00cd6146dfef3ed52",
+      "response_keys": [
+        "opportunities",
+        "source_id",
+        "total"
+      ],
+      "returned_count": 5,
+      "source_excluded": true,
+      "unique_results": true,
+      "page": "https://joinalab.com/opportunities/faculty-emory-rsph-6e024408",
+      "page_request": {
+        "status": 200,
+        "elapsed_ms": 4056
+      },
+      "html_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "visible_heading_ssr": "Anne Spaulding",
+      "before_release_first_request": {
+        "status": null,
+        "error": "ReadTimeout",
+        "elapsed_ms": 6003
+      },
+      "before_release_retry": {
+        "status": 200,
+        "elapsed_ms": 5664
+      },
+      "entire_response_equal_to_before": true,
+      "entire_response_equal_to_release_tree": true,
+      "browser_initial_visit": {
+        "main_heading": "Anne Spaulding",
+        "normal_retry_button_used": false,
+        "heading": "Similar opportunities",
+        "links_in_rendered_order": [
+          "faculty-arizona-cs-d16638c6",
+          "faculty-english-f2d0ba9d",
+          "faculty-gatech-spp-696d4bed",
+          "faculty-purdue-acc-440fb988",
+          "faculty-rice-anth-ff0e2f79"
+        ],
+        "matches_release_default_query": true
+      }
+    },
+    {
+      "source": "faculty-uconn-pols-739644c6",
+      "limit": 3,
+      "similar_api": "https://joinalab.com/api/opportunities/faculty-uconn-pols-739644c6/similar?limit=3",
+      "request": {
+        "status": 200,
+        "elapsed_ms": 3513
+      },
+      "returned_source": "faculty-uconn-pols-739644c6",
+      "total": 130544,
+      "ranked_ids": [
+        "faculty-ucsd-poli-9a6a5379",
+        "faculty-uw-pols-510091b7",
+        "faculty-uw-pols-5f8db0cf"
+      ],
+      "normalized_response_sha256": "8703a5d70fa96c2fd60aba2290cdd5c0b0b371ec184cc0a9882bc2243c27ae90",
+      "response_keys": [
+        "opportunities",
+        "source_id",
+        "total"
+      ],
+      "returned_count": 3,
+      "source_excluded": true,
+      "unique_results": true,
+      "page": "https://joinalab.com/opportunities/faculty-uconn-pols-739644c6",
+      "page_request": {
+        "status": 200,
+        "elapsed_ms": 4995
+      },
+      "html_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "visible_heading_ssr": "Lyle Scruggs",
+      "before_release_first_request": {
+        "status": 200,
+        "elapsed_ms": 1985
+      },
+      "before_release_retry": null,
+      "entire_response_equal_to_before": true,
+      "entire_response_equal_to_release_tree": true,
+      "browser_initial_visit": {
+        "main_heading": "Lyle Scruggs",
+        "normal_retry_button_used": false,
+        "heading": "Similar opportunities",
+        "links_in_rendered_order": [
+          "faculty-ucsd-poli-9a6a5379",
+          "faculty-uw-pols-510091b7",
+          "faculty-uw-pols-5f8db0cf",
+          "faculty-uconn-pols-47788aa2",
+          "faculty-asu-spgs-bf07eafa"
+        ],
+        "matches_release_default_query": true
+      }
+    },
+    {
+      "source": "faculty-uconn-pols-840e7c22",
+      "limit": 20,
+      "similar_api": "https://joinalab.com/api/opportunities/faculty-uconn-pols-840e7c22/similar?limit=20",
+      "request": {
+        "status": 200,
+        "elapsed_ms": 3549
+      },
+      "returned_source": "faculty-uconn-pols-840e7c22",
+      "total": 130544,
+      "ranked_ids": [
+        "faculty-arizona-sgpp-613f2cbe",
+        "faculty-buffalo-polsci-ace41353",
+        "faculty-wisc-pubaff-ddaea2fe",
+        "faculty-wisc-pubaff-ec738f0e",
+        "faculty-uconn-pols-575aaad4",
+        "faculty-uconn-pols-6dc33c27",
+        "faculty-arizona-sgpp-16205c54",
+        "faculty-arizona-sgpp-3ecb735e",
+        "faculty-arizona-sgpp-6384314d",
+        "faculty-arizona-sgpp-8ede0932",
+        "faculty-arizona-sgpp-ba77b8f1",
+        "faculty-arizona-sgpp-cf97b2fd",
+        "faculty-asu-sfis-23e38b12",
+        "faculty-asu-shprs-7011fb5c",
+        "faculty-asu-spa-07656277",
+        "faculty-asu-spgs-045377ee",
+        "faculty-asu-spgs-0f87124a",
+        "faculty-asu-spgs-29d06971",
+        "faculty-asu-spgs-2f0aca57",
+        "faculty-asu-spgs-3a46f7c4"
+      ],
+      "normalized_response_sha256": "b077aa42c36f92258d70b377ed3e6786c937832408be9466658353b4e8e6fe13",
+      "response_keys": [
+        "opportunities",
+        "source_id",
+        "total"
+      ],
+      "returned_count": 20,
+      "source_excluded": true,
+      "unique_results": true,
+      "page": "https://joinalab.com/opportunities/faculty-uconn-pols-840e7c22",
+      "page_request": {
+        "status": 200,
+        "elapsed_ms": 4709
+      },
+      "html_sha": "1bff5dbed56cb3a324d3a73abd4b4fb5c06ec0bf",
+      "visible_heading_ssr": "Jennifer Sterling-Folker",
+      "before_release_first_request": {
+        "status": 200,
+        "elapsed_ms": 6670
+      },
+      "before_release_retry": null,
+      "entire_response_equal_to_before": true,
+      "entire_response_equal_to_release_tree": true,
+      "browser_initial_visit": {
+        "main_heading": "Jennifer Sterling-Folker",
+        "normal_retry_button_used": false,
+        "heading": "Similar opportunities",
+        "links_in_rendered_order": [
+          "faculty-arizona-sgpp-613f2cbe",
+          "faculty-buffalo-polsci-ace41353",
+          "faculty-wisc-pubaff-ddaea2fe",
+          "faculty-wisc-pubaff-ec738f0e",
+          "faculty-uconn-pols-575aaad4"
+        ],
+        "matches_release_default_query": true
+      }
+    }
+  ],
+  "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1377",
+  "integration": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1380",
+  "baseline_release": "77603b9e0afac651bcd82428e6c59494aaa5b1ce",
+  "observation": "Six ordinary Chrome detail navigations; five rendered recommendations each. Same public service, source IDs and query limits before/after. A single sequential API retry is recorded for each first-request timeout. A transport timeout cost about six seconds in one case in each release. These client timings do not isolate server processing or establish outage causality."
+}
