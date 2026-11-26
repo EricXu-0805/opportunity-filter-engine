@@ -13,33 +13,33 @@ adjacent='Prepared synthetic field diagrams.'
 guidance='Review source text without a matching field'
 fixed=os.environ['PDF_ACCEPTANCE_MODE']=='fixed'
 
-def read_before_confirmation(browser):
-    """Reopen the owner's real profile and inspect the fresh first-party read."""
-    reader = home(browser, sessions[0])
-    try:
-        def profile_read(response):
-            address = urlsplit(response.url)
-            query = parse_qs(address.query)
-            expected_owner = sessions[0]['user']['id']
-            return (address.hostname == DATABASE and address.path == '/rest/v1/profiles'
-                    and query.get('id') == ['eq.' + expected_owner]
-                    and {'profile_data', 'revision'} <= set(query.get('select', [''])[0].split(','))
-                    and response.request.method == 'GET' and response.status == 200)
+def capture_own_read(page):
+    def requested_profile(response):
+        address = urlsplit(response.url)
+        query = parse_qs(address.query)
+        return (address.hostname == DATABASE and address.path == '/rest/v1/profiles'
+                and query.get('id') == ['eq.' + sessions[0]['user']['id']]
+                and {'profile_data', 'revision'} <= set(query.get('select', [''])[0].split(','))
+                and response.request.method == 'GET' and response.status == 200)
 
-        with reader.expect_response(profile_read, timeout=40000) as received:
-            reader.reload(wait_until='domcontentloaded')
-        response = received.value
-        headers = response.request.all_headers()
-        authorization = headers.get('authorization', '')
-        assert authorization.startswith('Bearer '), 'The profile read was unauthenticated'
-        token_payload = authorization.split('.', 2)[1]
-        claims = json.loads(base64.urlsafe_b64decode(token_payload + '=' * (-len(token_payload) % 4)))
-        assert claims.get('sub') == sessions[0]['user']['id'], 'A different visitor made the read'
-        # Chromium can retire a navigation's response resource as a page reloads.
-        # Repeat exactly the captured read with the same visitor and public client.
-        assert headers.get('apikey')
-        stable = reader.request.get(response.url, headers={'Authorization': authorization,
-                                  'apikey': headers['apikey'], 'Accept': 'application/json'})
+    with page.expect_response(requested_profile, timeout=40000) as received:
+        page.reload(wait_until='domcontentloaded')
+    req = received.value.request
+    headers = req.all_headers()
+    token = headers.get('authorization', '')
+    assert token.startswith('Bearer ') and headers.get('apikey')
+    jwt = token.split('.', 2)[1]
+    claims = json.loads(base64.urlsafe_b64decode(jwt + '=' * (-len(jwt) % 4)))
+    assert claims.get('sub') == sessions[0]['user']['id']
+    return req.url, {'Authorization': token, 'apikey': headers['apikey'], 'Accept': 'application/json'}
+
+
+def read_before_confirmation(browser, own_read):
+    """Use an independent HTTP context; leave the in-progress editor on its own page."""
+    reader = browser.new_context()
+    try:
+        url, headers = own_read
+        stable = reader.request.get(url, headers=headers)
         assert stable.status == 200
         payload = stable.json()
         assert not isinstance(payload, list) or len(payload) <= 1
@@ -62,7 +62,7 @@ def read_before_confirmation(browser):
                 'publication_field': 'absent' if publications is None else 'saved_empty_list',
                 'publication_count': 0}
     finally:
-        reader.context.close()
+        reader.close()
 
 with sync_playwright() as pw:
     browser=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
@@ -71,6 +71,8 @@ with sync_playwright() as pw:
         page.wait_for_timeout(200)
         if sessions and not page.get_by_test_id('hydration-note').is_visible(): break
     assert len(sessions)==1
+    own_read = capture_own_read(page)
+    page.locator("#student_name").wait_for()
     confirm_school(page)
     page.locator('#student_name').fill('Synthetic Unmapped Example')
     page.locator('#college').select_option(label='Grainger College of Engineering')
@@ -104,11 +106,16 @@ with sync_playwright() as pw:
         assert 'missing' not in status.inner_text().lower()
     checks = {}
     if fixed:
-        checks['after_scanning_before_entry'] = read_before_confirmation(browser)
+        checks['after_scanning_before_entry'] = read_before_confirmation(browser, own_read)
+    if checks: print('First-party before entering:', checks['after_scanning_before_entry'], flush=True)
+    confirm_school(page)
     section.get_by_role('button',name='Add publication').click()
     section.locator('label').filter(has_text='Publication title').locator('textarea').fill(title)
     if fixed:
-        checks['after_typing_before_confirmation'] = read_before_confirmation(browser)
+        checks['after_typing_before_confirmation'] = read_before_confirmation(browser, own_read)
+    if checks: print('First-party before confirming:', checks['after_typing_before_confirmation'], flush=True)
+    confirm_school(page)
+    assert section.locator('label').filter(has_text='Publication title').locator('textarea').input_value()==title
     section.get_by_role('button',name='Confirm Publication title',exact=True).click()
     master.get_by_role('button',name='Apply changes',exact=True).click()
     page.wait_for_timeout(2500)
