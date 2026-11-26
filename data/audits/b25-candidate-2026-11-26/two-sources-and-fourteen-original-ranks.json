@@ -1,0 +1,162 @@
+{
+  "checked_at": "2026-11-26T22:11:15.727684+00:00",
+  "stage": "Candidate before the preceding official releases",
+  "head": "66ef4b7370d66b36fa6524777a5903b3692cf90f",
+  "tree": "531289a9ec7034d039daa1319a25d20add002797",
+  "base": "49fe4a98cf2a61d3467772944188ef963f8d5944",
+  "original_sources": {
+    "1492": "dbd0c8b41cfb70cc8bd622b5e26dcf6893745fae",
+    "1493": "66b894664e674b0441194312e2ac9b0054ac05a7"
+  },
+  "source_ancestors_verified": true,
+  "changed_paths": [
+    "data/processed/shards/udel.json",
+    "frontend/src/app/favorites/OpportunityCard.test.tsx",
+    "frontend/src/app/favorites/OpportunityCard.tsx",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.test.tsx",
+    "frontend/src/app/opportunities/[id]/OpportunityHeader.tsx",
+    "frontend/src/lib/record-kind.ts",
+    "src/collectors/schools/udel_faculty.py",
+    "src/collectors/udel_materials_ranks.py",
+    "tests/test_collector_wiring.py",
+    "tests/test_udel_materials_ranks.py"
+  ],
+  "unchanged_shards": 116,
+  "shards": 117,
+  "all_original_ids_unchanged": 149954,
+  "delaware_original_ids_unchanged": 1059,
+  "delaware_rows_changed": 14,
+  "other_delaware_rows_unchanged": 1045,
+  "115_school_table_byte_identical": true,
+  "complete_predecessor": "4d248902d728cebc36c2f1e91ca7aa55925b7305",
+  "projected_tree": "cf3a7cf0a81d7c3857ce8f25c1027db386ca1a8b",
+  "other_predecessor_fields_preserved": true,
+  "ordinary_public_detail_responses": [
+    {
+      "id": "faculty-udel-mseg-0544ab79",
+      "name": "Chitraleema Chakraborty",
+      "rank_citation_in_public_response": {
+        "text": "Assistant Professor",
+        "source_url": "https://mseg.udel.edu/people/chakraborty/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-191c5afc",
+      "name": "Ryan Comes",
+      "rank_citation_in_public_response": {
+        "text": "Associate Professor and Associate Chair for Graduate Education",
+        "source_url": "https://mseg.udel.edu/people/ryan-comes/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-22466e16",
+      "name": "Matthew Doty",
+      "rank_citation_in_public_response": {
+        "text": "Professor",
+        "source_url": "https://mseg.udel.edu/people/doty/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-25082bef",
+      "name": "David C. Martin",
+      "rank_citation_in_public_response": {
+        "text": "Karl W. and Renate Böer Chaired Professor of Materials Science and Engineering",
+        "source_url": "https://mseg.udel.edu/people/martin/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-58d683fd",
+      "name": "Xi Wang",
+      "rank_citation_in_public_response": {
+        "text": "Associate Professor",
+        "source_url": "https://mseg.udel.edu/people/wang/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-5ade1fd3",
+      "name": "Ioanna Fampiou",
+      "rank_citation_in_public_response": {
+        "text": "Assistant Professor",
+        "source_url": "https://mseg.udel.edu/people/ioanna-fampiou/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-5dbd4670",
+      "name": "Sheldon Hewlett",
+      "rank_citation_in_public_response": {
+        "text": "Associate Professor and Associate Chair for Undergraduate Education",
+        "source_url": "https://mseg.udel.edu/people/hewlett/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-7fa44ddf",
+      "name": "S Ismat Shah",
+      "rank_citation_in_public_response": {
+        "text": "Professor",
+        "source_url": "https://mseg.udel.edu/people/shah/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-8adc049f",
+      "name": "Christian W. Pester",
+      "rank_citation_in_public_response": {
+        "text": "Associate Professor",
+        "source_url": "https://mseg.udel.edu/people/christian-w-pester/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-8f445ad2",
+      "name": "Laure Kayser",
+      "rank_citation_in_public_response": {
+        "text": "Associate Professor",
+        "source_url": "https://mseg.udel.edu/people/kayser/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-a2bd5d6e",
+      "name": "Darrin Pochan",
+      "rank_citation_in_public_response": {
+        "text": "Distinguished Professor of Materials Science",
+        "source_url": "https://mseg.udel.edu/people/pochan/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-c091c4cd",
+      "name": "Anderson Janotti",
+      "rank_citation_in_public_response": {
+        "text": "Professor",
+        "source_url": "https://mseg.udel.edu/people/janotti/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-ed9f22f8",
+      "name": "Joshua Zide",
+      "rank_citation_in_public_response": {
+        "text": "Professor and Chair",
+        "source_url": "https://mseg.udel.edu/people/zide/",
+        "observed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "faculty-udel-mseg-f765ff5d",
+      "name": "William Shafarman",
+      "rank_citation_in_public_response": {
+        "text": "Professor",
+        "source_url": "https://mseg.udel.edu/people/shafarman/",
+        "observed_at": "2026-11-26"
+      }
+    }
+  ]
+}
