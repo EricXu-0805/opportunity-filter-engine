@@ -1,0 +1,2526 @@
+{
+  "read_at": "2026-11-26T21:34:20.405Z",
+  "baseline": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "channel": "Both TypeScript normal frontend resolvers, 117 stored JSON shards. No production navigation claimed.",
+  "ids": 149944,
+  "citations_unchanged": 149944,
+  "actions_unchanged": 149451,
+  "actions_changed": 493,
+  "by_source": {
+    "georgetown_faculty": {
+      "named_link": 43,
+      "no_faculty_link": 0
+    },
+    "msu_faculty": {
+      "named_link": 425,
+      "no_faculty_link": 14
+    },
+    "tamu_faculty": {
+      "named_link": 0,
+      "no_faculty_link": 1
+    },
+    "ucb_datascience_faculty": {
+      "named_link": 9,
+      "no_faculty_link": 1
+    }
+  },
+  "examples": {
+    "georgetown_facultynamed_link": {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "url": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwokAAC/randall-bass?searchType=Contact-Info&searchText=randall%20bass",
+      "citation": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    "msu_facultynamed_link": {
+      "id": "faculty-msu-phys-c0440436",
+      "url": "https://directory.natsci.msu.edu/directory/Profiles/Person/102126",
+      "citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/34"
+    },
+    "msu_facultyno_faculty_link": {
+      "id": "faculty-msu-phys-e260a40e",
+      "url": null,
+      "citation": "https://directory.natsci.msu.edu/Directory/Directory/Department/34"
+    },
+    "tamu_facultyno_faculty_link": {
+      "id": "faculty-tamu-ece-d96cfd82",
+      "url": null,
+      "citation": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/engineering/electrical-computer/#faculty:~:text=Savari%2C%20Serap%20A%2C%20Associate%20Professor"
+    },
+    "ucb_datascience_facultynamed_link": {
+      "id": "faculty-ucb-cdss-118019dd",
+      "url": "https://eric-kim.net/eric-kim-net/index.html",
+      "citation": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+    },
+    "ucb_datascience_facultyno_faculty_link": {
+      "id": "faculty-ucb-cdss-cbe1719c",
+      "url": null,
+      "citation": "https://cdss.berkeley.edu/dsus/data-science-undergraduate-studies-faculty"
+    }
+  },
+  "changed": [
+    {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-3f3f47fd",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-60a11198",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-f9d788e9",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-912a5304",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-a9eb9b96",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-1cd68f39",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-e1e0eacd",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-7b76c532",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-cbc96696",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-b55b14a1",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-95ad177a",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-b072d3d6",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-888650c1",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-42b9eeaa",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-c5c27dac",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-c3711a29",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-983db631",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-0b30af59",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-0b965fab",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-4cc038ec",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-eabebde9",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-3628e405",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-66c04eaa",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-b09a1a61",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-a3879e7d",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-7aeebe3d",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-b6ef30b2",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-34f4f949",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-a58be95d",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-347f78f1",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-a672670d",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-598b7188",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-14396d28",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-5574b293",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-e6b06bba",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-d3964c5c",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-fbdd4dd9",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-414f6f7a",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-a9bfca89",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-e97a4daf",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "source": "georgetown_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-c0440436",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-146079cb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-5a01ba02",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-96586a4c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-910e04d3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-8417a9cb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-1c981818",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-27b82300",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-9515cabb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-d2ebfc05",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-75a50728",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-b4452cb7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-86895b05",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-6ba20627",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-45f8bd0f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ed6ccf5b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ea56f276",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-e260a40e",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-phys-91ba6e0c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ea6a1f82",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-39ceb024",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-4c910e1c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ca8e7911",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-752803fb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-d8f81a21",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-60f06eb0",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-b040265d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-83785fa1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ebe85f31",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-0fdcd72e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-930aca5c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-02f2ba15",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-20d3176d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-68a41afb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-27ab191f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-2ee0f9f5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-00cdafa3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-7910e3a6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-a3f1f92c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-b5dd6151",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-3b305209",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-3b248ada",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-8192f7b6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-f3b7f918",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ec86ed27",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-a727eb45",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-91db5547",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ce0e98f9",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-fcaa117e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-8542fd0a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-293c94ee",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-b3a8741a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-beeaba04",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-17925827",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-2fb4d3c3",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-phys-5c2a1d3f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-b7b5debd",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-d31455b2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-77f78108",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-f2a3e388",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-60974b27",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-4521eec8",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-5f1a707e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-29348fab",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-0032f197",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-5f35dc9e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-cdd9ba23",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-06f81bc3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-8155e233",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-386ff106",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-a3a4598f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-d8c3b465",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-7d3fe057",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-7f4d022c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-0486b95d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-bd79e4dc",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-659be8f2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-2887264b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-418c6a95",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-6d21dcd7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-5c8c1344",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-dc597b47",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-63ca87d0",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-6a5c8a38",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-ba407075",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-90b473b4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-0ccaed5b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-df589e2a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-37e6855d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-13dd464a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-7576a74d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-858a5bcb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-28076e24",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-9266677b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-936dd503",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-232a5ca0",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-912e265a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-2e411aa3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-bdffa3a3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-5b688bb4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-291c83bd",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-2d982342",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-76858713",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-24421088",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-cd34856d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-e2891df4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-affc423d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-5f27469f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-81a3a51b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-75018309",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-80fa2263",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-88d6fa82",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-0740c89d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-906cccaa",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-226025ea",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-6ccb27d3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-090af2ee",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-0a11b038",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-19881b3e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-363836ca",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-7125f93d",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-math-913b1f59",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-09328c2c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-2bd1295b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-d8495ab6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-9935e7f8",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-945da1cf",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-ad789a28",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-5e8c7218",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-c2487391",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-ac87f019",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-4f8185c8",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-78bc06fa",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-673dd837",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-4242cd65",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-6ad8843a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-9075de13",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-801725ab",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-b84f42ba",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-8404b5be",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-0b637ccc",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-1d6d8c00",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-1620f4bd",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-364572f7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-ac8691fb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-4b82a4ce",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-8b725d15",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-3f43ed67",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-e319cd90",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-fb58f0a2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-13be0b4e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-ec90b62d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-16f88abb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-f5c4d282",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-11324d0d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-b0471c15",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-f76f167a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-4a2be08b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-9d0ed871",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-3f99ce9a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-81332ce6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-eecdbf0c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-e0cb1aed",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-stat-18fd30c2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-1cb14657",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-03c1ed0d",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-stat-e60420f7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-d4a294ca",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-2b38c732",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-1228f23b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-21d29e57",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-a5eb711d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-f1759437",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-bda7dad3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-07e6d53d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-1dead63f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-c7ca21cc",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-b2cea049",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-04d5ede4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-370b26a9",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-a6834e3a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-ca7a7d35",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-a5e8d678",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-12947ce8",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-bmb-6f04fd35",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-8a3a77d7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-c9ac1a17",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-c681ae7f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-ece6d0e4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-1ca62e03",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-fe9ed573",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-c8472779",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-b26b7801",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-cd3ceace",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-bmb-c1653cb2",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-bmb-741b886e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-01b15318",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-914aef50",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-5bf75ed3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-f152de0a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-b3eff867",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-4332666c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-a35405c0",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-2104b5d2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-cc33ac38",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-f46bd9b5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-c4cbd805",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-08d3a6c2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-451465e3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-cbf069ef",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-939e5db8",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-0346075e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-2d2be168",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-9f7496f3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-2b62c45b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-7e1daa05",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-90eb8991",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-a2fa713d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-18b9f4a4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-24725591",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-110d6587",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-bf693df4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-0c130e7c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-999c9a18",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-aa134c27",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-2c5aac81",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-983c1b05",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-d4a0f856",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-e4b408d6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-ebb89b67",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-e1f1fd92",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-350c8c60",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-7bf05c7d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-4f3955d7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-1345c2f7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-124817f1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-7c9015cf",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-815dc042",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-66ef038d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-04ae0cd1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5f8e4609",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-cf9970e8",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-9c838b95",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-59f7fb46",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-1172a556",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-44f34750",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-92f5c944",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-a1294102",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5db3e23c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-90b82060",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-7b217683",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-f009e788",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-bcd724d2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-e4775804",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-098b4c07",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5ca9b09b",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-mgi-27b73a89",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-24e39668",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-b2dc7d17",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-32d90844",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-cc293dbd",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-c38a8bde",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-4cd9da15",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-11d69e41",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5ecff4d5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-f1e79376",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-58139ab2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-54e05ddf",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5b8a7b97",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-cfc83d00",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-2f059b14",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-84f8caed",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-2e1cf05e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-4672d274",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-33a6b9d2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5f73294c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-28381520",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-3c035b2a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-ec49368b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-7a0810b4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-b274adac",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-766607e1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-4cf4f08e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-19b3a687",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-07578f3c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-0c9af911",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-2373135c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-7fe0045f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-0994c852",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-f12f0e2f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-e9c29eda",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-3ea37686",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-a0d4be72",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-5b650d0e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-24839271",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-3cee8019",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-499ed565",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-370025d4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-410dc288",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-5ac7e9d2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-7e73801c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-15ba55b9",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-d37c87a6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-20717215",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-ed4d5ea3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-ed283b28",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-f09fa60e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-6900a76e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-e69f0f1f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-d0cb865f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-1b64ef4a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-17a71e55",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-30a48f49",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-ibio-77782697",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-cda758a9",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-c073415c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-12a8d0f4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-6f8c7158",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-cb03d504",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-92b807e4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-46e6fe24",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-233c46f0",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-ibio-1ea618c2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-c36b2905",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-d630d4ba",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-af0ea380",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-a2b8d91d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-0938e2f2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-60c041ed",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-bbddfff6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-a639b60e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-fdaf5e52",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-b6081a79",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-3356fa57",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-fb071c19",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-cb3dbd6d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-336d2e5b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-7ab940d7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-70b1878e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-5192315e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-bb491de4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-f303ef35",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-28210d51",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-3012d167",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-91f18041",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-28fec5eb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-9a3d9f1e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-084b5c8f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-0b9b0e21",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-61395d02",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-19d4bb6d",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-psl-cba5153a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-1fc9aefc",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-305703d5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-3e7983f3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-49bf5753",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-0cd061a7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-b2c63202",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-e7cbcaae",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-psl-ea63aaf5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-371e60a6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-1ea4f9cc",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-b9c0fd7b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-ad267457",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-15d06b4f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-d39548c1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-d6371aea",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-80b38cfc",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-a493144d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-25f2304e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-211ade4b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-31eb9d9f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-9000c116",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-7bc3eb3c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-4aea8ffb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-97040f25",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-2fd3176f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-9a87a96c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-143a2d80",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-86780717",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-10e45ec7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-f356a4e1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-61e8597d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-8fa76137",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-fd1ee950",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-26f50f47",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-7b3b5767",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-f14f521f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-math-08acdd84",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-db0c388b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-aab7dac3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-f03fc0fb",
+      "source": "msu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-msu-mgi-5236e400",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-b99d0757",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-563663f9",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-dd24b931",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-7b8a5897",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-a7df3eb3",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-64338c67",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-544fd41d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-30346551",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-9948cb8f",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-6b4dba0a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-c0e64ccf",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-25ca56c7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-56806e9e",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-2619d79b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-16a79b80",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-02786035",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-add391f6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-630d1e69",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-cf81267c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-2dd98b4d",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-85d0be85",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-a2124a20",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-c8cfe4fd",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-80a6858b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-33eba1fb",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-0c548f53",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-be3e40d1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-3c00f798",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-e2dae4c7",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-d8a2380c",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-00d181b1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-dfe5cb33",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-d5650c72",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-e378b82a",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-09d64fc4",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ees-42d34657",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-ed1756b8",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-4bb606e2",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-4e91dab5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-psl-f201ae17",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-bmb-f5a0490b",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-ibio-c37f66a6",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-mgi-750c0c00",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-phys-663bb7b1",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-1bd37418",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-msu-stat-d53fe8f5",
+      "source": "msu_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-tamu-ece-d96cfd82",
+      "source": "tamu_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-118019dd",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-768987a3",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-cbe1719c",
+      "source": "ucb_datascience_faculty",
+      "action": "no_faculty_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-0ac5b942",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-adcdda66",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-2b37be00",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-c0576a7c",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-a4440777",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-2bb51126",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    },
+    {
+      "id": "faculty-ucb-cdss-61b4cd4b",
+      "source": "ucb_datascience_faculty",
+      "action": "named_link"
+    }
+  ]
+}
