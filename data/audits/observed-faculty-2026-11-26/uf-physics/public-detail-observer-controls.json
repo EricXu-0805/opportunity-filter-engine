@@ -1,0 +1,11 @@
+{
+  "source": "6d67369a1e40847db3f3c8beda3ef668e85eec40",
+  "normal_in_process_candidate_API": 52,
+  "synthetic_html_controls": 6,
+  "known_faults_rejected": [
+    "department directory substituted for Jeff Andrews",
+    "the rank incorrectly cites the biography",
+    "wrong campus button on controlled HTML",
+    "wrong release identifier"
+  ]
+}
