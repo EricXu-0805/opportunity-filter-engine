@@ -16,7 +16,7 @@ jobs:
       - name: Check out the reviewed application commit
         uses: actions/checkout@v6
         with:
-          ref: ee9b4402250f0324d972e648a12e391d8c304792
+          ref: a18a68944b971f0a40139918d3a25b6776fcc340
           path: product
           persist-credentials: false
       - uses: actions/setup-node@v6
@@ -40,6 +40,8 @@ jobs:
             grep -Ei 'error|failed|fatal|denied' "$fixture/start.log" | tail -8 | cut -c1-220 || true
             exit 1
           fi
+          # Storage finishes creating its schema at startup. Apply its trigger now in this disposable container.
+          docker exec -i supabase_db_m212 psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < "$src/20261125130000_guard_tracker_attachment_replacement.sql"
           umask 077
           supabase status -o json >"$fixture/status.json"
           docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'

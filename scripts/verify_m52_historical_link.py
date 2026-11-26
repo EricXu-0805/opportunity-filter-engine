@@ -15,11 +15,11 @@ def req(path, body=None, session=None):
     http=request.Request(db+path,headers=headers,data=None if body is None else json.dumps(body).encode())
     with request.urlopen(http,timeout=20) as response: return json.load(response)
 
-def account(name,school,interests):
+def account(name,school,interests,*,college='Grainger College of Engineering',major='Computer Science'):
     s=req('/auth/v1/signup',{'email':str(uuid.uuid4())+'@example.com','password':str(uuid.uuid4())+'!a1'})
     user=s['user']; assert user['is_anonymous'] is False
-    profile={'name':name,'home_school':school,'search_weight':50,'college':'Grainger College of Engineering',
-      'major':'Computer Science','institution':school,'grade':'Sophomore','research_interests':interests,
+    profile={'name':name,'home_school':school,'search_weight':50,'college':college,
+      'major':major,'institution':school,'grade':'Sophomore','research_interests':interests,
       'skills':[{'name':'PyTorch','level':'experienced','source':'github','evidence':'private line from owner'}],
       'resume_text':'private résumé text from '+name,'coursework':[],'seeking_types':['research'],'is_international':False}
     response=req('/rest/v1/rpc/commit_profile_patch_cas',{'p_expected_device_id':user['id'],'p_expected_revision':0,'p_patch':profile},s)

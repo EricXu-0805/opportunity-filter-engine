@@ -7,7 +7,7 @@ from verify_m52_historical_link import account, row, site
 
 async def main():
     author = account('Author QA','uiuc','Original materials QA')
-    recipient = account('Recipient QA','purdue','Private recipient interests')
+    recipient = account('Recipient QA','purdue','Private recipient interests',college='College of Engineering',major='Computer Engineering')
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
         async def tab(session,school):
@@ -71,7 +71,7 @@ async def main():
         final=row(recipient)
         assert final['profile_data']['research_interests']=='Revised fields QA'
         assert final['profile_data']['skills']==[{'name':'PyTorch','level':'experienced','source':'shared'}]
-        for field in ('name','home_school','resume_text'):
+        for field in ('name','home_school','college','major','resume_text'):
             assert final['profile_data'][field]==before['profile_data'][field]
         await recv.goto(url,wait_until='domcontentloaded')
         await expect(recv.get_by_text('Revised fields QA',exact=True)).to_be_visible()
