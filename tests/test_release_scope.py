@@ -417,6 +417,8 @@ def test_hidden_professor_signals_never_leave_public_opportunity_surfaces(monkey
     }
     derived_id = "prof:v1:uiuc:0123456789abcdef0123"
     corpus = [opportunity, peer]
+    monkeypatch.setattr(opportunities_module, "load_indexed_opportunities",
+                        lambda: (corpus, opportunities_module.load_opportunities_by_id()))
     monkeypatch.setattr(
         opportunities_module,
         "load_opportunities_by_id",
@@ -621,6 +623,8 @@ def test_hidden_fellowship_records_never_leave_discovery_apis(scope_closed, monk
         lambda: lookup,
     )
     monkeypatch.setattr(opportunities_module, "_stats_cache", None)
+
+    monkeypatch.setattr(opportunities_module, "load_indexed_opportunities", lambda: (corpus, lookup))
 
     listed = client.get("/api/opportunities?limit=20").json()
     assert [item["id"] for item in listed["opportunities"]] == [

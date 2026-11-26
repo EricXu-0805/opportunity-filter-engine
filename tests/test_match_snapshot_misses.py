@@ -114,7 +114,7 @@ def test_a_retired_generation_is_filtered_but_not_kept(corpus, monkeypatch):
     m_module._activate_corpus_generation([dict(record) for record in retired])
 
     expected = m_module.actionable_opportunities(m_module.release_visible_opportunities(retired))
-    assert m_module._release_universe(retired) == expected
+    assert m_module.release_actionable_corpus(retired) == expected
     assert m_module._match_universe is None, "a reload retired this corpus while it was filtered"
 
 
