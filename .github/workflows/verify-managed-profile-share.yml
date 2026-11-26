@@ -1,0 +1,47 @@
+name: Verify owner-managed profile shares with isolated GoTrue and PostgREST
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-managed-profile-share.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check out the reviewed application commit
+        uses: actions/checkout@v6
+        with:
+          ref: a6e725def87be51e0229e99d338b4cd827b65ab6
+          path: product
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.95.4
+      - name: Start disposable profile database, Auth and PostgREST
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/m212"
+          mkdir -p "$fixture"; cd "$fixture"; supabase init
+          mkdir -p supabase/migrations
+          src="$GITHUB_WORKSPACE/product/supabase/migrations"
+          cp "$src"/*.sql supabase/migrations/
+          rm -f supabase/migrations/20261125130000_guard_tracker_attachment_replacement.sql
+          sed -i 's/^enable_anonymous_sign_ins = false/enable_anonymous_sign_ins = true/' supabase/config.toml
+          if ! supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >"$fixture/start.log" 2>&1; then
+            grep -Ei 'error|failed|fatal|denied' "$fixture/start.log" | tail -8 | cut -c1-220 || true
+            exit 1
+          fi
+          umask 077
+          supabase status -o json >"$fixture/status.json"
+          docker ps --format '{{.Image}}' | grep -E 'postgrest|gotrue|supabase/postgres:'
+      - name: Exercise current, replaced, revoked, expired and retried private shares
+        run: python -u product/supabase/tests/verify_managed_profile_shares.py "$RUNNER_TEMP/m212/status.json"
