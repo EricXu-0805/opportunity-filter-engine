@@ -1,0 +1,15 @@
+{
+  "environment": "production",
+  "frontend_and_backend_sha": "1b2c5b397c4ddd374d7e2cb4115e7066185fd75d",
+  "normal_surface": "https://joinalab.com/import",
+  "evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45830646223/job/139946196671",
+  "independent_anonymous_first_party_session": true,
+  "legacy_route_destination": "/resources",
+  "parser_offline_attempts": 2,
+  "input_unchanged_after_both_attempts": true,
+  "externally_forwarded_model_requests": 0,
+  "synthetic_legacy_record_provenance": "manually seeded in the test visitor\u2019s own browser, including the original text and ID",
+  "unchanged_after_close_and_reopen": true,
+  "account_save_response": "Sign in to save or view account copies. A guest session is not enough.",
+  "account_records_created": 0
+}
