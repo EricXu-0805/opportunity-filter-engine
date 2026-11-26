@@ -80,6 +80,7 @@ with sync_playwright() as pw:
         end=next(r for r in reversed(reads) if 'Complete synthetic replacement' in r['profile_data'].get('resume_text',''))
         assert end['revision']>current['revision'] and end['profile_data'].get('resume_incomplete_digest') is None
         expect(final.get_by_text(warning,exact=True)).to_have_count(0)
+        confirm_school(final)
         replacement_clears=True
         # Exercise removal using only the synthetic PDF created by this run.
         final.locator('input[type=file][accept*="pdf"]').first.set_input_files(
@@ -90,6 +91,7 @@ with sync_playwright() as pw:
             if writes and writes[-1]>end['revision']:break
         mixed_again=home(browser,sessions[0])
         expect(mixed_again.get_by_text(warning,exact=True)).to_be_visible(timeout=35000)
+        confirm_school(mixed_again)
         saved=next(r for r in reversed(reads) if r['revision']>end['revision']
                    and marker in r['profile_data'].get('resume_text',''))
         assert saved['profile_data'].get('resume_incomplete_digest')==digest
@@ -107,6 +109,7 @@ with sync_playwright() as pw:
         expect(removed.get_by_text(warning,exact=True)).to_have_count(0)
         expect(removed.get_by_role('button',name='Remove file',exact=True)).to_have_count(0)
         expect(removed.locator('#student_name')).to_have_value('Synthetic mixed page check')
+        confirm_school(removed)
         removed.locator('input[type=file][accept*="pdf"]').first.set_input_files(
             {'name':'restored-readable.pdf','mimeType':'application/pdf','buffer':replacement})
         expect(removed.get_by_text('Computer Vision',exact=True).first).to_be_visible()
