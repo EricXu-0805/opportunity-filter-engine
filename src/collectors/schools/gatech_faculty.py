@@ -44,11 +44,8 @@ def _engineering_directory(unit: str, old_card: str) -> dict:
             "always": True,
             "profile_url_re": rf"^https://{unit}\.gatech\.edu/(?:directory/person|people)/[^/?#]+/?$",
             "identity_selector": "h1",
-            "email_selector": (
-                ".field--name-field-person-email:not(:has(.field__item:is(.field__item ~ .field__item))) "
-                ".field__item > a[href^='mailto:']:only-child"
-            ),
-            "email_drop": r"^(?![^@]+@(?:[a-z0-9-]+\.)*gatech\.edu$)|^(?:info|office|admin|help|advising)@",
+            "email_selector": ".field--name-field-person-email",
+            "bound_contact": {"allowed_email_domains": ["gatech.edu"], "nested_record_selector": ".directory-person"},
         },
     }
 
@@ -271,7 +268,23 @@ SCHOOL: dict = {
                                   'name': '.faculty-name a',
                                   'link': '.faculty-name a',
                                   'title': '.faculty-title'},
-                    'link_filter': '/faculty/',
+                    # New faculty have user or personal paths alongside staff. A
+                    # named professor rank on the card qualifies those paths;
+                    # legacy faculty paths may instead carry a chair/director title.
+                    'field_filter': {
+                        'selector': ".faculty-name a[href*='/faculty/'], "
+                                    ".faculty-title:-soup-contains('Professor', 'professor')",
+                        'require_present': True,
+                    },
+                    'profile_enrich': {
+                        'always': True,
+                        'profile_url_re': r'^https://(?:www\.)?me\.gatech\.edu/(?:user/\d+|[\w-]+)/?$',
+                        'identity_selector': '.banner-text-wrapper h2',
+                        'research_selector': ".banner-text-wrapper h5:-soup-contains('Research Area')",
+                        'email_selector': ".banner-text-wrapper p:has(strong:-soup-contains('Email'))",
+                        'bound_contact': {'allowed_email_domains': ['gatech.edu'],
+                                          'nested_record_selector': '.banner-text-wrapper, h2'},
+                    },
                     'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|lecturer|of the '
                                               'practice|of practice|academic professional|research '
                                               '(scientist|engineer|faculty|professor)|helluva|coordinator|^staff$'},

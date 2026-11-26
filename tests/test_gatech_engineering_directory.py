@@ -73,3 +73,60 @@ def test_profile_enrichment_reads_one_typed_campus_field_for_the_roster_person(m
     assert not parsed(field("example.first@chbe.gatech.edu"), "Another Person")
     assert not parsed(field("example.first@another.edu"))
     assert not parsed(field("example.first@gatech.edu") + field("different@gatech.edu"))
+
+
+def test_legacy_engineering_cards_still_bind_only_their_own_profile():
+    for unit, card in (("AE", "node--type-dir-person"), ("CHBE", "views-row")):
+        legacy = (
+            f'<div class="{card}"><a class="dir_link" href="/people/old">Legacy Faculty</a>'
+            '<div class="field--name-field-person-job-title-s-">Professor</div></div>'
+        )
+        [old] = _rows(unit, legacy)
+        assert old["pi_name"] == "Legacy Faculty"
+        assert old["url"].endswith("/people/old")
+
+
+def test_mechanical_roster_preserves_legacy_profiles_and_adds_only_confirmed_ranks_on_other_paths():
+    def card(name, url, role):
+        return (
+            '<div class="faculty__user-wrapper">'
+            f'<div class="faculty-name"><a href="{url}">{name}</a></div>'
+            f'<div class="faculty-title">{role}</div></div>'
+        )
+
+    unit = UNITS["ME"]
+    cfg = unit["scrape"]
+    markup = (
+        card("Old Chair", "/faculty/old", "Center Director")
+        + card("Example Person", "/user/1086", "Assistant Professor")
+        + card("Second Faculty", "/second", "Associate Professor")
+        + card("Another Person", "/user/1198", "Financial Coordinator")
+        + card("Former Faculty", "/user/1199", "Professor Emeritus")
+        + card("Former Visitor", "/user/1200", "Adjunct Assistant Professor")
+        + card("Blank Title", "/user/1201", "")
+    )
+    specs = faculty_graph._parse_cards(
+        BeautifulSoup(markup, "html.parser"), cfg["selectors"], cfg["url"],
+        cfg["ladder_filter"], field_filter=cfg["field_filter"],
+    )
+    assert [s["name"] for s in specs] == ["Old Chair", "Example Person", "Second Faculty"]
+
+
+def test_mechanical_profile_requires_one_contact_field_with_one_consistent_address(monkeypatch):
+    cfg = UNITS["ME"]["scrape"]["profile_enrich"]
+    url = "https://me.gatech.edu/user/1086"
+    own = '<p><strong>Email:</strong> lin.ortiz@gatech.edu</p>'
+    other = '<p><strong>Email:</strong> assistant@gatech.edu</p>'
+
+    def read(fields):
+        html = '<div class="banner-text-wrapper"><h2>Lin Ortiz</h2>' + fields + '</div>'
+        doc = BeautifulSoup(html, "html.parser")
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_kw: doc)
+        [p] = faculty_graph._apply_profile_enrich([{"name": "Lin Ortiz", "url": url}], cfg)
+        return p.get("email")
+
+    assert read(own) == "lin.ortiz@gatech.edu"
+    assert not read(own + other)
+    assert not read('<p><strong>Email:</strong> person@gatech.edu or colleague@gatech.edu</p>')
+    assert not read('<p><strong>Email:</strong> <a href="mailto:other@gatech.edu">person@gatech.edu</a></p>')
+    assert not read('<p><strong>Email:</strong> office@gatech.edu</p>')
