@@ -354,6 +354,11 @@ _INTEREST_CONTINUATION = re.compile(
     r"specifically|with|where|when|which|while|if|although|because|rather|instead|"
     r"except|without|mostly|mainly|I|my)(?:\s|$)", re.I,
 )
+# Words that close a list without naming anything, each standing as its own
+# item. The lookbehind keeps a long run of spaces from being rescanned.
+_INTEREST_FILLER = re.compile(
+    r"(?:(?:^|(?<!\s)(?:\s*[,，、]\s*|\s+))(?:(?:and\s+)?etc\.?|and\s+more|and\s+so\s+on|等等|等))+\s*", re.I,
+)
 
 
 def _short_interest(interests: str) -> str:
@@ -362,6 +367,8 @@ def _short_interest(interests: str) -> str:
     # than interests; the opening only needs the student's first thought.
     text = (interests or "").strip().rstrip(".")
     text = re.split(r"(?<=[.!?。！？])\s+(?=I\b|I['’]|My\b|我)", text, maxsplit=1)[0].rstrip(".")
+    # "etc." is not an interest, and "A, B, and etc." is not a list.
+    text = _INTEREST_FILLER.sub(lambda found: "" if found.end() == len(text) else found[0], text)
     # Leave room for the conjunction. Cut a long field at a comma, never
     # inside a label, and keep the first label whole even when it alone is long.
     if len(text) > 156:
