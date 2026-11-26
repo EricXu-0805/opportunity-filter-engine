@@ -86,7 +86,7 @@ def run(page):
     health = page.request.get(site + "/api/health")
     assert health.ok
     receipt["backend_release"] = health.json().get("release_sha")
-    assert receipt["backend_release"] == "db3e8229b64e781b4dc74cddfe2c4acaa13d5896", receipt["backend_release"]
+    assert receipt["backend_release"] == "50d4aca1e4db82610e2c1483a4aa24b50f75b439", receipt["backend_release"]
     enter_results(page)
     all_tab = page.get_by_role("tab", name=re.compile("^All"))
     if all_tab.get_attribute("aria-selected") != "true":
@@ -191,11 +191,12 @@ def run(page):
         expect(login).not_to_be_visible()
     topic = chips.get_by_role("combobox", name="Research topic tag", exact=True)
     receipt["has_research_topic_filter"] = topic.count() == 1
+    expect(topic).to_be_visible(timeout=40000)
     if topic.count():
         with page.expect_response(lambda r: is_view(r) and not (r.request.post_data_json or {}).get("view", {}).get("opportunity_type"), timeout=90000):
             page.goto(site + "/results?tab=all&ai=0", wait_until="domcontentloaded")
         needle = "machine learning"
-        term_requests = lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("research_topic", "").casefold() == needle
+        term_requests = lambda r: is_view(r) and ((r.request.post_data_json or {}).get("view", {}).get("research_topic") or "").casefold() == needle
         topic.fill(needle)
         with page.expect_response(term_requests, timeout=90000) as topic_request:
             chips.get_by_role("button", name="Filter by topic", exact=True).click()
@@ -220,6 +221,33 @@ def run(page):
         reopened = check_topic(restored.value)
         assert reopened["ids"] == selected["ids"] and reopened["total"] == selected["total"]
         receipt["research_topic"] = {"url": shared, "selected": selected, "restored": reopened}
+        expect(topic).to_have_value(needle)
+        preset_name = "My machine learning tag"
+        page.once("dialog", lambda dialog: dialog.accept(preset_name))
+        page.get_by_role("button", name="Save preset", exact=True).click()
+        apply_topic = page.get_by_role("button", name="Apply preset " + preset_name, exact=True)
+        expect(apply_topic).to_be_visible()
+        blank_query = lambda r: is_view(r) and not (r.request.post_data_json or {}).get("view", {}).get("research_topic")
+        with page.expect_response(blank_query, timeout=90000):
+            page.goto(site + "/results?tab=all&ai=0", wait_until="domcontentloaded")
+        expect(topic).to_have_value("")
+        with page.expect_response(term_requests, timeout=90000) as saved:
+            apply_topic.click()
+        saved_tag = check_topic(saved.value)
+        assert selected["ids"] == saved_tag["ids"] and selected["total"] == saved_tag["total"]
+        expect(topic).to_have_value(needle)
+        receipt["saved_topic_on_device"] = {"name": preset_name, "tag": needle, "total": saved_tag["total"], "ids": saved_tag["ids"]}
+        apply_topic.screenshot(path=out / "saved-research-topic.png")
+        # A substring is a different tag; retrieve the actual matching tags,
+        # and keep its result count distinct from the whole phrase above.
+        other = "machine learn"
+        with page.expect_response(lambda r: is_view(r) and ((r.request.post_data_json or {}).get("view", {}).get("research_topic") or "") == other, timeout=90000) as partial:
+            topic.fill(other)
+            chips.get_by_role("button", name="Filter by topic", exact=True).click()
+        if partial.value.json()["filtered_total"] > 0:
+            assert all(other in {kw.strip().casefold() for kw in row["opportunity"]["keywords"]} for row in partial.value.json()["results"])
+        # A program may legitimately have both tags. Check the tag of every returned row.
+        receipt["different_partial_tag"] = {"tag": other, "total": partial.value.json()["filtered_total"]}
     # From the saved-search discrepancy replay, using the original stable IDs.
     estimates = (
         "nsf-reu-2548403 nsf-reu-2548073 nsf-reu-2548017 nsf-reu-2619097 nsf-reu-2547402 nsf-reu-2548122 "
