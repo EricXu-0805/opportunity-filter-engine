@@ -1,0 +1,121 @@
+{
+  "date_utc": "2026-11-26T17:35:28+00:00",
+  "production_baseline_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "scope": "Read-only follow-up to the two separate emeritus appointments. Four NanoEngineering records plus one Chemical Engineering record tracked separately. Status is evidence review; no records or actions changed.",
+  "new_directory": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+  "older_roster": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+  "university_catalog": "https://catalog.ucsd.edu/faculty/NANO.html",
+  "nano_records": [
+    {
+      "name": "Darren Lipomi",
+      "historical_id": "faculty-ucsd-nano-2aa92754",
+      "source_department": "Department of NanoEngineering",
+      "public_current_url": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-2aa92754",
+      "public_actionable_before": true,
+      "official_new_directory_rank": "Adjunct Professor",
+      "official_person_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=345",
+      "individual_heading": "Darren Lipomi",
+      "individual_unit_roles": [
+        "Adjunct Professor, NENG"
+      ],
+      "catalog_candidates_with_same_surname": [
+        "Darren Lipomi, PhD"
+      ],
+      "older_department_table": [
+        {
+          "older_table_name": "Lipomi, Darren",
+          "older_role_group": "Professors",
+          "linked": true
+        }
+      ]
+    },
+    {
+      "name": "Shirley Meng",
+      "historical_id": "faculty-ucsd-nano-04ac1d79",
+      "source_department": "Department of NanoEngineering",
+      "public_current_url": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-04ac1d79",
+      "public_actionable_before": true,
+      "official_new_directory_rank": "Adjunct Professor",
+      "official_person_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=284",
+      "individual_heading": "Ying Shirley Meng",
+      "individual_unit_roles": [
+        "Adjunct Professor, NENG"
+      ],
+      "catalog_candidates_with_same_surname": [
+        "Shirley Meng, PhD"
+      ],
+      "older_department_table": [
+        {
+          "older_table_name": "Meng, Shirley",
+          "older_role_group": "Professors",
+          "linked": true
+        }
+      ]
+    },
+    {
+      "name": "Shyue Ping Ong",
+      "historical_id": "faculty-ucsd-nano-e94320ae",
+      "source_department": "Department of NanoEngineering",
+      "public_current_url": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-e94320ae",
+      "public_actionable_before": true,
+      "official_new_directory_rank": "Adjunct Professor",
+      "official_person_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=358",
+      "individual_heading": "Shyue Ping Ong",
+      "individual_unit_roles": [
+        "Professor, NENG"
+      ],
+      "catalog_candidates_with_same_surname": [
+        "Shyue Ping Ong, PhD"
+      ],
+      "older_department_table": [
+        {
+          "older_table_name": "Ong, Shyue Ping",
+          "older_role_group": "Professors",
+          "linked": true
+        }
+      ]
+    },
+    {
+      "name": "Sheng Xu",
+      "historical_id": "faculty-ucsd-nano-27240933",
+      "source_department": "Department of NanoEngineering",
+      "public_current_url": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-27240933",
+      "public_actionable_before": true,
+      "official_new_directory_rank": "Adjunct Professor",
+      "official_person_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=387",
+      "individual_heading": "Sheng Xu",
+      "individual_unit_roles": [
+        "Adjunct Professor, NENG",
+        "Faculty-Affiliate, BENG",
+        "Faculty-Affiliate, ECE"
+      ],
+      "catalog_candidates_with_same_surname": [
+        "Sheng Xu, PhD"
+      ],
+      "older_department_table": [
+        {
+          "older_table_name": "Xu, Sheng",
+          "older_role_group": "Professors",
+          "linked": true
+        }
+      ]
+    }
+  ],
+  "chemical_engineering_separate": {
+    "name": "Jinhye Bae",
+    "historical_id": "faculty-ucsd-che-8330aad7",
+    "source_department": "Chemical Engineering Program",
+    "public_current_url": "https://joinalab.com/api/opportunities/faculty-ucsd-che-8330aad7",
+    "public_actionable_before": true,
+    "official_new_directory_rank": "Adjunct Professor",
+    "official_person_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=480",
+    "individual_heading": "Jinhye Bae",
+    "individual_unit_roles": [
+      "Adjunct Associate Professor, NENG"
+    ],
+    "catalog_candidates_with_same_surname": [
+      "Jinhye Bae, PhD"
+    ],
+    "older_department_table": []
+  }
+}
