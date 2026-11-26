@@ -1,0 +1,22 @@
+name: Verify long Unicode experiences in the official profile form
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-m17-public-long.yml', 'scripts/verify_m17_public_long_experience.py']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      OFE_EXPECTED_SITE_SHA: f30443aa8654bd1c0d093ccd6fd9c067c3f4148a
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -u scripts/verify_m17_public_long_experience.py
