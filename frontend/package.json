@@ -15,6 +15,7 @@
     "predev": "node scripts/prepare-pdfjs-assets.mjs"
   },
   "dependencies": {
+    "@noble/hashes": "2.4.0",
     "@supabase/supabase-js": "2.105.4",
     "client-zip": "2.5.0",
     "lucide-react": "^0.400.0",

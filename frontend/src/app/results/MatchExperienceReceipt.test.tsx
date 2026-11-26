@@ -9,11 +9,11 @@ it('shows the complete exact revision and source, then removes an obsolete or wi
     text: 'Built Python tools for a project. Retained the original organization, role and dates.',
     source: { kind: 'github', repository: 'sample-org/sample', head_repository: null, author: 'sample', number: 41, title: 'Add tools' } };
   const basis = { entry_id: 'work', revision: 3, method: 'Python', target_source: 'stated_requirement' as const };
-  const wrapper = render(<MatchExperienceReceipt basis={basis} entries={[entry]} />);
+  const wrapper = render(<MatchExperienceReceipt basis={basis} eligibleEntries={[entry]} />);
   expect(screen.getByText(entry.text)).toBeInTheDocument();
   expect(screen.getByText('sample-org/sample #41')).toHaveAttribute('href','https://github.com/sample-org/sample/pull/41');
-  wrapper.rerender(<MatchExperienceReceipt basis={basis} entries={[{ ...entry, revision: 4 }]} />);
+  wrapper.rerender(<MatchExperienceReceipt basis={basis} eligibleEntries={[{ ...entry, revision: 4 }]} />);
   expect(screen.queryByText(entry.text)).toBeNull();
-  wrapper.rerender(<MatchExperienceReceipt basis={basis} entries={[{ ...entry, status: 'withdrawn' }]} />);
+  wrapper.rerender(<MatchExperienceReceipt basis={basis} eligibleEntries={[{ ...entry, status: 'withdrawn' }]} />);
   expect(screen.queryByText(entry.text)).toBeNull();
 });
