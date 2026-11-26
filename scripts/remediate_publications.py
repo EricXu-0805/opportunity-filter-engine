@@ -350,6 +350,16 @@ def cmd_harvest(args: argparse.Namespace) -> int:
 # apply
 # ---------------------------------------------------------------------------
 
+def _apply_candidates(corpus: list[dict], mapping: dict) -> list[dict]:
+    """Keep every URL or author collision relevant to this verdict, across schools."""
+    from src.collectors.openalex_enrich import _record_url
+
+    authors = {entry["author_id"] for entry in mapping.values() if isinstance(entry, dict) and entry.get("author_id")}
+    return [record for record in corpus
+            if person_key(record) in mapping or _record_url(record) in mapping
+            or (record.get("metadata") or {}).get("publication_author_id") in authors]
+
+
 def cmd_apply(args: argparse.Namespace) -> int:
     from src.collectors.openalex_enrich import apply_works
 
@@ -415,17 +425,12 @@ def cmd_apply(args: argparse.Namespace) -> int:
     #    and retraction rules; re-implementing them here is how the driver and
     #    the pipeline would come to disagree about what a verified record is.
     #
-    #    Handed the WHOLE corpus, not just the claimed records: its bare-URL
-    #    fallback is gated on a URL being owned by exactly one faculty member,
-    #    and counting that over a subset would call a shared directory URL
-    #    unique and stamp one person's papers onto their colleagues.
-    #
-    #    The mapping is narrowed to the claimed keys instead. Every mutation
-    #    has to have a ledger entry behind it, and a mapping entry for an
-    #    unclaimed person is a mutation nobody is accounting for.
-    corpus = all_records(shards)
+    # Scan every school for the URL and author bindings in this harvest. This
+    # keeps shared-URL counts and author collisions intact, while preventing
+    # bulk apply from cleaning reviewed titles on unrelated, unclaimed rows.
     claimed_keys = {u["person_key"] for _s, u, _r in claimed}
     scoped = {k: v for k, v in mapping.items() if k in claimed_keys}
+    corpus = _apply_candidates(all_records(shards), scoped)
     before = {id(r): _trust_fingerprint(r) for r in corpus}
     applied = apply_works(corpus, scoped)
     print(f"apply_works touched {applied} record(s) "
@@ -720,10 +725,11 @@ def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str,
         raise _Refusal(f"the current gate kept none of the {len(raw)} recent work(s) OpenAlex "
                        f"returned for {author_id}; if none is theirs, record --removed")
 
-    corpus = all_records(shards)
-    before = {id(r): _trust_fingerprint(r) for r in corpus}
-    oa.apply_works(corpus, {person_key(record): {"author_id": author_id, "works": works}})
-    stray = [r for r in corpus if r is not record and before[id(r)] != _trust_fingerprint(r)]
+    mapping = {person_key(record): {"author_id": author_id, "works": works}}
+    candidates = _apply_candidates(all_records(shards), mapping)
+    before = {id(r): _trust_fingerprint(r) for r in candidates}
+    oa.apply_works(candidates, mapping)
+    stray = [r for r in candidates if r is not record and before[id(r)] != _trust_fingerprint(r)]
     if stray:
         raise _Refusal(f"stamping {author_id} also changed {len(stray)} other record(s) "
                        f"(first: {stray[0].get('id')}): another professor holds that author",
