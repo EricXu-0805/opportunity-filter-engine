@@ -101,36 +101,37 @@ def free_drafts(ctx,confirmed,entry=None):
             assert fact not in v['body'] and not receipt['selected'] and any(row['id']==entry['id'] and row['reason']=='rejected' for row in receipt['excluded'])
     p.close();return [v['id'] for v in variants]
 
-with sync_playwright() as pw:
-    b=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
-    # Check deployment before creating the first-party anonymous QA account.
-    probe=pw.request.new_context();assert probe.get(site+'/api/health').json()['release_sha']==release
-    assert 'data-release-sha="'+release+'"' in probe.get(site+'/about').text();probe.dispose()
-    c=cold(b);p=home(c);p.locator('#student_name').fill(student)
-    p.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)');p.locator('#major').select_option(label='Integrative Biology')
-    p.locator('#grade').select_option(label='Junior');p.locator('#research_interests').fill('Ecology, wetlands, geospatial analysis.')
-    p.wait_for_function("s=>Object.values(localStorage).some(v=>v.includes(s))",arg=student);p.wait_for_timeout(2500);c.close()
-    c=cold(b);baseline,_=results(c,False);p=home(c);expect(p.locator('#student_name')).to_have_value(student)
-    p.get_by_text('Import LinkedIn experience',exact=True).click()
-    p.get_by_label('Positions.csv',exact=True).set_input_files({'name':'Positions.csv','mimeType':'text/csv','buffer':csv.encode()})
-    p.get_by_role('button',name='Preview experiences').click();p.get_by_label('Choose what to save').select_option('new')
-    latest=len(revisions);p.get_by_role('button',name='Confirm selected experiences').click()
-    for _ in range(150):
-        if len(revisions)>latest:break
-        p.wait_for_timeout(250)
-    assert len(revisions)>latest;c.close();c=cold(b)
-    accepted,entry=results(c,True);assert accepted[0]>baseline[0] and accepted[1]>baseline[1] and accepted[2]==baseline[2]
-    p=home(c)
-    details=p.locator('#experience-library details').filter(has=p.locator('summary',has_text='Fictional Habitat Archive')).first
-    details.locator('summary').first.click();entry_text=details.locator('textarea').input_value()
-    assert all(x in entry_text for x in ['Fictional Habitat Archive','Mapping assistant','2024','2025',fact,'Checked 30 synthetic map cells'])
-    assert entry['text']==entry_text
-    accepted_drafts=free_drafts(c,True,entry)
-    latest=len(revisions);details.get_by_role('button',name='Do not use',exact=True).click()
-    for _ in range(150):
-        if len(revisions)>latest:break
-        p.wait_for_timeout(250)
-    assert len(revisions)>latest;c.close();c=cold(b);after,_=results(c,False);assert after==baseline
-    withdrawn_drafts=free_drafts(c,False,entry);assert set(accepted_drafts)==set(withdrawn_drafts)
-    print(json.dumps({'release_sha':release,'live_actual_results_and_cloud_auth':True,'synthetic_own_linkedin_file':True,'target':target,'score_readiness_eligibility':[baseline,accepted,after],'confirmed_templates_with_entire_source':accepted_drafts,'new_templates_after_withdrawal_without_source':withdrawn_drafts,'own_cloud_revisions':revisions,'external_messages_sent':0}))
-    c.close();b.close()
+if __name__ == '__main__':
+    with sync_playwright() as pw:
+        b=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
+        # Check deployment before creating the first-party anonymous QA account.
+        probe=pw.request.new_context();assert probe.get(site+'/api/health').json()['release_sha']==release
+        assert 'data-release-sha="'+release+'"' in probe.get(site+'/about').text();probe.dispose()
+        c=cold(b);p=home(c);p.locator('#student_name').fill(student)
+        p.locator('#college').select_option(label='Liberal Arts & Sciences (LAS)');p.locator('#major').select_option(label='Integrative Biology')
+        p.locator('#grade').select_option(label='Junior');p.locator('#research_interests').fill('Ecology, wetlands, geospatial analysis.')
+        p.wait_for_function("s=>Object.values(localStorage).some(v=>v.includes(s))",arg=student);p.wait_for_timeout(2500);c.close()
+        c=cold(b);baseline,_=results(c,False);p=home(c);expect(p.locator('#student_name')).to_have_value(student)
+        p.get_by_text('Import LinkedIn experience',exact=True).click()
+        p.get_by_label('Positions.csv',exact=True).set_input_files({'name':'Positions.csv','mimeType':'text/csv','buffer':csv.encode()})
+        p.get_by_role('button',name='Preview experiences').click();p.get_by_label('Choose what to save').select_option('new')
+        latest=len(revisions);p.get_by_role('button',name='Confirm selected experiences').click()
+        for _ in range(150):
+            if len(revisions)>latest:break
+            p.wait_for_timeout(250)
+        assert len(revisions)>latest;c.close();c=cold(b)
+        accepted,entry=results(c,True);assert accepted[0]>baseline[0] and accepted[1]>baseline[1] and accepted[2]==baseline[2]
+        p=home(c)
+        details=p.locator('#experience-library details').filter(has=p.locator('summary',has_text='Fictional Habitat Archive')).first
+        details.locator('summary').first.click();entry_text=details.locator('textarea').input_value()
+        assert all(x in entry_text for x in ['Fictional Habitat Archive','Mapping assistant','2024','2025',fact,'Checked 30 synthetic map cells'])
+        assert entry['text']==entry_text
+        accepted_drafts=free_drafts(c,True,entry)
+        latest=len(revisions);details.get_by_role('button',name='Do not use',exact=True).click()
+        for _ in range(150):
+            if len(revisions)>latest:break
+            p.wait_for_timeout(250)
+        assert len(revisions)>latest;c.close();c=cold(b);after,_=results(c,False);assert after==baseline
+        withdrawn_drafts=free_drafts(c,False,entry);assert set(accepted_drafts)==set(withdrawn_drafts)
+        print(json.dumps({'release_sha':release,'live_actual_results_and_cloud_auth':True,'synthetic_own_linkedin_file':True,'target':target,'score_readiness_eligibility':[baseline,accepted,after],'confirmed_templates_with_entire_source':accepted_drafts,'new_templates_after_withdrawal_without_source':withdrawn_drafts,'own_cloud_revisions':revisions,'external_messages_sent':0}))
+        c.close();b.close()
