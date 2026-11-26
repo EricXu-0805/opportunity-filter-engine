@@ -1,0 +1,192 @@
+{
+  "reviewed_at": "2026-11-26T12:54:10.423541+00:00",
+  "baseline": "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+  "eligible_primary_records": 61,
+  "old_department_only": 6,
+  "old_personal_site_times_out": 1,
+  "total_original_umd_ids": 1437,
+  "changed_ids_only": 7,
+  "preserved_other_ids": 1430,
+  "people": [
+    {
+      "id": "faculty-umd-math-0f940cb3",
+      "name": "Uri Bader",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-0f940cb3",
+      "production_heading": "Uri Bader",
+      "production_profile_action": "https://www-math.umd.edu/people/faculty.html",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Bader, Uri",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/2138-bader-uri.html",
+      "official_name_heading": "Bader, Uri",
+      "http": 200,
+      "after": "https://www-math.umd.edu/signage-directory-faculty/2138-bader-uri.html",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    },
+    {
+      "id": "faculty-umd-math-36800e3a",
+      "name": "Henri Berestycki",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-36800e3a",
+      "production_heading": "Henri Berestycki",
+      "production_profile_action": "https://www-math.umd.edu/people/faculty.html",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Berestycki, Henri",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/2050-berestycki-henri.html",
+      "official_name_heading": "Berestycki, Henri",
+      "http": 200,
+      "after": "https://www-math.umd.edu/signage-directory-faculty/2050-berestycki-henri.html",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    },
+    {
+      "id": "faculty-umd-math-dcee82bf",
+      "name": "Giovanni Forni",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-dcee82bf",
+      "production_heading": "Giovanni Forni",
+      "production_profile_action": "https://www-math.umd.edu/people/faculty.html",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Forni, Giovanni",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/1261-gforni.html",
+      "official_name_heading": "Forni, Giovanni",
+      "http": 200,
+      "after": "https://www-math.umd.edu/signage-directory-faculty/1261-gforni.html",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    },
+    {
+      "id": "faculty-umd-math-90a4b94e",
+      "name": "David H. Hamilton",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-90a4b94e",
+      "production_heading": "David H. Hamilton",
+      "production_profile_action": "https://www-math.umd.edu/people/faculty.html",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Hamilton, David H.",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/1285-dhh.html",
+      "official_name_heading": "Hamilton, David H.",
+      "http": 200,
+      "after": "https://www-math.umd.edu/signage-directory-faculty/1285-dhh.html",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    },
+    {
+      "id": "faculty-umd-math-9eb3e2a4",
+      "name": "Or Hershkovits",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-9eb3e2a4",
+      "production_heading": "Or Hershkovits",
+      "production_profile_action": "https://www-math.umd.edu/people/faculty.html",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Hershkovits, Or",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/2175-hershkovits-or.html",
+      "official_name_heading": "Hershkovits, Or",
+      "http": 200,
+      "after": "https://www-math.umd.edu/signage-directory-faculty/2175-hershkovits-or.html",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    },
+    {
+      "id": "faculty-umd-math-0300a4bb",
+      "name": "James A. Yorke",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-0300a4bb",
+      "production_heading": "James A. Yorke",
+      "production_profile_action": "http://yorke.umd.edu/",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Yorke, James A.",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/1464-yorke.html",
+      "official_name_heading": "Yorke, James A.",
+      "http": 200,
+      "after": "https://ipst.umd.edu/people/james-a-yorke",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    },
+    {
+      "id": "faculty-umd-math-93280e3c",
+      "name": "Bogdan Zavyalov",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-93280e3c",
+      "production_heading": "Bogdan Zavyalov",
+      "production_profile_action": "https://www-math.umd.edu/people/faculty.html",
+      "primary_roster": "https://www-math.umd.edu/people/faculty.html",
+      "secondary_source": "https://www-math.umd.edu/signage-directory-faculty.html",
+      "secondary_link_name": "Zavyalov, Bogdan",
+      "official_named_url": "https://www-math.umd.edu/signage-directory-faculty/2172-zavyalov.html",
+      "official_name_heading": "Zavyalov, Bogdan",
+      "http": 200,
+      "after": "https://www-math.umd.edu/signage-directory-faculty/2172-zavyalov.html",
+      "same_id": true,
+      "same_rank": true,
+      "same_contact": true,
+      "second_normalization_unchanged": true
+    }
+  ],
+  "slow_site_control": {
+    "time": "2026-11-26T12:42:44.050519+00:00",
+    "rows": [
+      {
+        "id": "faculty-umd-math-0300a4bb",
+        "name": "James A. Yorke",
+        "observed_url": "http://yorke.umd.edu/",
+        "landing_error": "ReadTimeout",
+        "recheck": [
+          {
+            "request": "http://yorke.umd.edu/",
+            "error": "ReadTimeout"
+          },
+          {
+            "request": "https://yorke.umd.edu/",
+            "error": "ReadTimeout"
+          }
+        ]
+      },
+      {
+        "id": "faculty-umd-math-fab275b7",
+        "name": "Yun Yang",
+        "observed_url": "https://sites.google.com/site/yunyangstat/",
+        "landing_error": "ReadTimeout",
+        "recheck": [
+          {
+            "request": "https://sites.google.com/site/yunyangstat/",
+            "http": 200,
+            "final": "https://sites.google.com/site/yunyangstat/",
+            "page_title": "Yun Yang",
+            "name_on_page": true
+          }
+        ]
+      }
+    ],
+    "replay": {
+      "at": "2026-11-26T12:49:42.244442+00:00",
+      "id": "faculty-umd-math-0300a4bb",
+      "department_roster": "https://www-math.umd.edu/people/faculty.html",
+      "all_cards": 61,
+      "eligible_ids": 61,
+      "source_before": "http://yorke.umd.edu/",
+      "live_detail": "https://joinalab.com/opportunities/faculty-umd-math-0300a4bb",
+      "live_main_action": [
+        "http://yorke.umd.edu/"
+      ],
+      "official_corrected_profile": "https://ipst.umd.edu/people/james-a-yorke",
+      "profile_http": 200,
+      "person_heading": "James A. Yorke",
+      "source_after_normal_refresh": "https://ipst.umd.edu/people/james-a-yorke",
+      "normal_serving_source": "https://ipst.umd.edu/people/james-a-yorke",
+      "repeat_left_unchanged": true
+    }
+  }
+}
