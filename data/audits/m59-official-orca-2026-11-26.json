@@ -1,0 +1,131 @@
+{
+  "official_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45858876112/job/140044343276",
+  "observations": {
+    "site": "https://joinalab.com",
+    "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+    "reader": "46.1",
+    "cases": [
+      {
+        "locale": "en",
+        "viewport_width": 1340,
+        "routes": [
+          {
+            "page": "profile",
+            "page_language": "en",
+            "expected_label_part": [
+              "Your name"
+            ],
+            "orca_speech": [
+              "切换到中文 push button.",
+              "tab",
+              "leaving navigation.",
+              "leaving banner.",
+              "main content",
+              "Your name entry e.g. Alex Chen.",
+              "Focus mode"
+            ],
+            "announced_on_forward_tab": true,
+            "where_am_i_if_needed": [],
+            "announced_on_where_am_i": false,
+            "synthesis_peak_signed_16_bit": 32768,
+            "recorded_audio_frames": 46493
+          },
+          {
+            "page": "resources",
+            "page_language": "en",
+            "expected_label_part": [
+              "Guides & databases"
+            ],
+            "orca_speech": [
+              "切换到中文 push button.",
+              "tab",
+              "Guides & databases page tab.",
+              "Focus mode"
+            ],
+            "announced_on_forward_tab": true,
+            "where_am_i_if_needed": [],
+            "announced_on_where_am_i": false,
+            "synthesis_peak_signed_16_bit": 32768,
+            "recorded_audio_frames": 46478
+          },
+          {
+            "page": "empty tracker",
+            "page_language": "en",
+            "expected_label_part": [
+              "Go to results"
+            ],
+            "orca_speech": [
+              "Back push button.",
+              "tab",
+              "Go to results link."
+            ],
+            "announced_on_forward_tab": true,
+            "where_am_i_if_needed": [],
+            "announced_on_where_am_i": false,
+            "synthesis_peak_signed_16_bit": 32768,
+            "recorded_audio_frames": 56134
+          }
+        ]
+      },
+      {
+        "locale": "zh",
+        "viewport_width": 510,
+        "routes": [
+          {
+            "page": "profile",
+            "page_language": "zh",
+            "expected_label_part": [
+              "你的姓名"
+            ],
+            "orca_speech": [
+              "tab",
+              "leaving banner.",
+              "main content",
+              "你的姓名 entry 例如 Alex Chen."
+            ],
+            "announced_on_forward_tab": true,
+            "where_am_i_if_needed": [],
+            "announced_on_where_am_i": false,
+            "synthesis_peak_signed_16_bit": 32768,
+            "recorded_audio_frames": 46443
+          },
+          {
+            "page": "resources",
+            "page_language": "zh",
+            "expected_label_part": [
+              "指南与数据库"
+            ],
+            "orca_speech": [
+              "tab",
+              "指南与数据库 page tab."
+            ],
+            "announced_on_forward_tab": true,
+            "where_am_i_if_needed": [],
+            "announced_on_where_am_i": false,
+            "synthesis_peak_signed_16_bit": 32768,
+            "recorded_audio_frames": 46477
+          },
+          {
+            "page": "empty tracker",
+            "page_language": "zh",
+            "expected_label_part": [
+              "去结果页"
+            ],
+            "orca_speech": [
+              "tab",
+              "去结果页 link."
+            ],
+            "announced_on_forward_tab": true,
+            "where_am_i_if_needed": [],
+            "announced_on_where_am_i": false,
+            "synthesis_peak_signed_16_bit": 32768,
+            "recorded_audio_frames": 68990
+          }
+        ]
+      }
+    ],
+    "profile_writes": 0,
+    "messages": 0
+  },
+  "scope": "Actual Orca 46 on isolated Ubuntu, native X11 forward Tab in Chromium on the public site, synthesized output captured from local virtual audio. English desktop / Chinese narrower browser widths. Only the profile name, resources Guides tab, and empty Tracker link were observed. No human listening, physical phone or mobile screen reader. The Tracker link announced its old visible wording and still led cold guests to the form; see #1446."
+}
