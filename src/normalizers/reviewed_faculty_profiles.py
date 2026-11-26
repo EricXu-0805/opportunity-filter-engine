@@ -58,7 +58,27 @@ def _umd_math_directory_profile(name: str, profile: str) -> ProfileReview:
     )
 
 
+def _gatech_arch_emeritus(name: str, slug: str, previous_title: str, title: str) -> ProfileReview:
+    profile = f"https://arch.gatech.edu/people/{slug}"
+    return ProfileReview(
+        "gatech", "School of Architecture", name, profile, profile, "https://arch.gatech.edu/people",
+        datetime(2026, 11, 26, 15, 37, tzinfo=UTC), title=title, previous_title=previous_title,
+    )
+
+
 REVIEWS = {
+    # Keep the former school's own named appointment as historical provenance.
+    # The ordinary directory pass owns whether this old Georgia Tech ID is active.
+    "faculty-gatech-arch-3a9c2373": ProfileReview(
+        "gatech", "School of Architecture", "Elisa Dainese", "https://arch.gatech.edu/people/elisa-dainese",
+        "https://arch.gatech.edu/feature/news-elisa-dainese-appointed-assistant-professor",
+        "https://arch.gatech.edu/people", datetime(2026, 11, 26, 15, 41, tzinfo=UTC),
+        previous_title="Assistant Professor"),
+    "faculty-gatech-arch-e98bc4d9": _gatech_arch_emeritus(
+        "Ellen Dunham-Jones", "ellen-dunham-jones", "Professor; Director, MS in Urban Design Program",
+        "Professor Emeritus"),
+    "faculty-gatech-arch-196687bf": _gatech_arch_emeritus(
+        "W. Jude LeBlanc", "w-jude-leblanc", "Associate Professor", "Associate Professor Emeritus"),
     "faculty-gatech-itm-21b8dd50": ProfileReview(
         "gatech", "Information Technology Management (Scheller College of Business)", "Han Zhang",
         "https://www.scheller.gatech.edu/directory/faculty/zhang/index.html",
@@ -246,16 +266,18 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
         previous_title = metadata.get("faculty_title")
         metadata["faculty_profile_review"]["previous_title"] = previous_title
         if previous_title and is_retired_title(review.title) and row.get("organization"):
-            # This older collector template invites applications. Change only
-            # its exact wording, preserving separately authored research prose.
-            legacy = (f"Research opportunity with {previous_title} {review.name} in the {review.department} "
-                      f"at {row['organization']}. Contact the professor directly to inquire about "
-                      "undergraduate research positions in their lab.")
+            # Older generated invitations optionally include a research-areas sentence.
+            intro = (f"Research opportunity with {previous_title} {review.name} in the {review.department} "
+                     f"at {row['organization']}.")
+            invitation = " Contact the professor directly to inquire about undergraduate research positions in their lab."
             corrected = f"{row['organization']} lists {review.name} as {review.title} in {review.department}."
             for target, field in ((row, "description_clean"), (row, "description_raw"),
                                   (row.get("eligibility") or {}, "eligibility_text_raw")):
-                if target.get(field) == legacy:
-                    target[field] = corrected
+                text = target.get(field)
+                if isinstance(text, str) and text.startswith(intro) and text.endswith(invitation):
+                    research = text[len(intro):-len(invitation)]
+                    if not research or research.startswith(" Research areas: "):
+                        target[field] = corrected + research
         metadata["faculty_title"] = review.title
         if classify_title:
             deactivate_deceased_faculty([row], today=review.reviewed_on)
