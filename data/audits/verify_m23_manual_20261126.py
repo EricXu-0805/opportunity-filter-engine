@@ -1,9 +1,7 @@
 """Follow the two historical UCSD links and the current Cal-Bridge application in production."""
-import ast
 import json
 from pathlib import Path
 import re
-import subprocess
 from playwright.sync_api import expect, sync_playwright
 
 site = "https://joinalab.com"
@@ -40,6 +38,11 @@ with sync_playwright() as pw:
                 button=page.get_by_role("link",name=re.compile("^Apply now$") if current else "View source",exact=True).first
                 expect(button).to_be_visible(timeout=45000)
                 expect(button).to_have_attribute("href",host)
+                if oid==cases[0][0]:
+                    tour=page.get_by_test_id("onboarding-skip")
+                    expect(tour).to_be_visible(timeout=15000)
+                    tour.click()
+                    expect(page.get_by_test_id("onboarding-intro")).not_to_be_visible()
                 body=page.locator("main").inner_text()
                 if current:
                     assert application==host and truth["actionable"] and data["deadline"] is None
@@ -66,6 +69,21 @@ with sync_playwright() as pw:
                 origin.screenshot(path=out/(oid+"-host.png"));origin.close()
             except Exception as exc:
                 errors[oid]=str(exc)[:550] or type(exc).__name__
+        profile={"name":"Sample Student","home_school":"ucsd","school":"UC San Diego","year":"junior",
+                 "major":"Biology","international_student":False,"gpa":3.7,
+                 "research_interests_text":"undergraduate research opportunities, biology, mentoring",
+                 "seeking_type":["research","summer_program"],"preferences":{"min_match_threshold":0}}
+        hidden={cases[0][0],cases[1][0]}
+        queries=receipt["historical_rank_and_saved_reads"]={}
+        for key, query, tab in (("current","McNair","all"),("starred","McNair","starred"),
+                                ("directory","UC San Diego Summer Research Programs","all")):
+            post={"profile":profile,"view":{"tab":tab,"today":"2026-11-26","search_query":query},"page_size":50}
+            if tab=="starred":post["view"]["favorite_ids"]=sorted(hidden)
+            resp=context.request.post(site+"/api/matches/view?llm=false",data=post,timeout=90000)
+            assert resp.ok
+            listing=resp.json();ids=[r["opportunity_id"] for r in listing["results"]]
+            assert not set(ids)&hidden and not listing["has_more"]
+            queries[key]={"ids":ids,"count":listing["filtered_total"]}
         assert not errors,errors
     finally:
         receipt["errors"]=errors
