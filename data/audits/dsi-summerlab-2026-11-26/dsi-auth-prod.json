@@ -1,0 +1,200 @@
+{
+  "scope": "M03/M23 UChicago Summer Lab. Compare general program citizenship, U.S. work authorization, and citizenship for supplementary NSF-funded support. Public reads only.",
+  "started": {
+    "utc": "2026-11-26T21:22:24.752652+00:00",
+    "website": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "api": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "opportunities": [
+    {
+      "id": "uchicago-8cd2def060b6",
+      "page": "https://joinalab.com/opportunities/uchicago-8cd2def060b6",
+      "page_status": 200,
+      "page_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+      "api_url": "https://joinalab.com/api/opportunities/uchicago-8cd2def060b6?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_status": 200,
+      "normal_anonymous_api": {
+        "eligibility": {
+          "citizenship_required": false,
+          "international_friendly": "yes",
+          "work_auth_notes": ""
+        },
+        "detail_eligibility": {
+          "state": "inferred",
+          "explicit": {},
+          "inferred": {
+            "majors": {
+              "value": [
+                "CS",
+                "Data Science",
+                "Materials Science"
+              ],
+              "basis": "text_scan"
+            },
+            "international_students": {
+              "value": "yes",
+              "basis": "configured"
+            }
+          },
+          "quotes": {},
+          "provenance": {
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/",
+            "observed_at": "2026-11-22T14:50:58.136717"
+          }
+        },
+        "detail_funding": {
+          "state": "inferred",
+          "explicit": {},
+          "inferred": {
+            "paid": {
+              "value": "stipend",
+              "basis": "configured"
+            },
+            "compensation": {
+              "value": "$5,600 stipend for 8 weeks (2026), plus free optional housing",
+              "basis": "configured"
+            }
+          },
+          "quotes": {},
+          "provenance": {
+            "source_url": "https://datascience.uchicago.edu/education/summerlab/",
+            "observed_at": null
+          }
+        }
+      },
+      "rendered_chrome": {
+        "general_citizenship": [
+          "CITIZENSHIP NOT PROVIDED",
+          "Not stated \u2014 check the source before ruling yourself in or out."
+        ],
+        "international_students": [
+          "INTERNATIONAL STUDENTS SYSTEM INFERENCE",
+          "Open to international students"
+        ],
+        "work_authorization": [
+          "WORK AUTHORIZATION NOT PROVIDED",
+          "Not provided"
+        ],
+        "description_clause": "international students are eligible if US work-authorized.",
+        "eligibility_section_link": "https://datascience.uchicago.edu/education/summerlab/"
+      }
+    },
+    {
+      "id": "sro-d6b78515",
+      "page": "https://joinalab.com/opportunities/sro-d6b78515",
+      "page_status": 200,
+      "page_release": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+      "api_url": "https://joinalab.com/api/opportunities/sro-d6b78515?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_status": 200,
+      "normal_anonymous_api": {
+        "eligibility": {
+          "citizenship_required": false,
+          "international_friendly": "yes",
+          "work_auth_notes": "No Citizenship Requirements"
+        },
+        "detail_eligibility": {
+          "state": "source",
+          "explicit": {
+            "citizenship": "not_required",
+            "work_authorization_notes": "No Citizenship Requirements"
+          },
+          "inferred": {
+            "majors": {
+              "value": [
+                "Sociology",
+                "Bioengineering",
+                "Political Science",
+                "Physics",
+                "Biology",
+                "Psychology",
+                "ECE",
+                "Data Science",
+                "Chemistry",
+                "Engineering",
+                "CS",
+                "STAT",
+                "IS"
+              ],
+              "basis": "text_scan"
+            },
+            "international_students": {
+              "value": "yes",
+              "basis": "derived_from_source"
+            }
+          },
+          "quotes": {},
+          "provenance": {
+            "source_url": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab",
+            "observed_at": "2026-11-22T14:30:36.699663+00:00"
+          }
+        },
+        "detail_funding": {
+          "state": "source",
+          "explicit": {
+            "paid": "yes",
+            "compensation": "$5,600"
+          },
+          "inferred": {},
+          "quotes": {},
+          "provenance": {
+            "source_url": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab",
+            "observed_at": "2026-11-22T14:30:36.699663+00:00"
+          }
+        }
+      },
+      "rendered_chrome": {
+        "general_citizenship": [
+          "CITIZENSHIP SOURCE SAYS",
+          "No citizenship requirement"
+        ],
+        "international_students": [
+          "INTERNATIONAL STUDENTS SYSTEM INFERENCE",
+          "Open to international students"
+        ],
+        "work_authorization": [
+          "WORK AUTHORIZATION SOURCE SAYS",
+          "No Citizenship Requirements"
+        ],
+        "eligibility_section_link": "https://researchops.web.illinois.edu/opportunity/data-science-institute-summer-lab"
+      }
+    }
+  ],
+  "official_sources": [
+    {
+      "url": "https://datascience.uchicago.edu/education/summerlab/faq/",
+      "status": 200,
+      "html_sha256": "fe0cc7c59214c7ce520cc389a154ffc5df04b24e1b882c81f383e0f4d22f9e7d",
+      "confirmed_clauses": [
+        "international undergraduate students are eligible to apply",
+        "all students must be authorized to work in the United States",
+        "provide all necessary documentation"
+      ]
+    },
+    {
+      "url": "https://datascience.uchicago.edu/education/summerlab/program-details/",
+      "status": 200,
+      "html_sha256": "6aae08dbfe08fb5f257e2b60878386e36fe7379c2a844541d9b2b045d1bf2cc0",
+      "confirmed_clauses": [
+        "Some projects will be funded by the National Science Foundation",
+        "those selected participants",
+        "undergraduates and U.S. citizens or permanent residents"
+      ]
+    }
+  ],
+  "finished": {
+    "utc": "2026-11-26T21:22:36.499491+00:00",
+    "website": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "api": "82c715f37b5591b03aec6aa7cba9dfe66ac47518"
+  },
+  "after_browser": {
+    "website": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "api": "82c715f37b5591b03aec6aa7cba9dfe66ac47518",
+    "utc": "2026-11-26T21:23:24.059097+00:00"
+  },
+  "method": "Normal Chrome read the public English eligibility panels at both saved URLs, and the anonymous HTTP checks read the HTML, the public truth-aware API, and the two university pages. No form was submitted.",
+  "official_constraints": {
+    "general_program": "International undergraduates can apply. The program FAQ does not impose a U.S. citizenship or permanent-residence requirement for general admission.",
+    "work_authorization": "All students must be authorized to work in the United States and provide supporting documentation for the stipend.",
+    "supplementary_NSF_support": "Only selected participants on NSF-funded projects receive supplementary support. Eligibility for that supplement is restricted to undergraduates who are U.S. citizens or permanent residents."
+  }
+}

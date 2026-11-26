@@ -1,0 +1,214 @@
+{
+  "method": "Real campus fetch, normalizer and processed-file merge. Initial and restored pages use an archived 200 response from the university. Other rows use synthetic later recruitment text and connection failures with the school configuration held fixed. The directory row is an independent control.",
+  "rows": [
+    {
+      "round": 1,
+      "case": "captured official 2027 university HTML",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": "2027-01-11",
+      "published_2027_stipend": true,
+      "observed_application_notice": {
+        "years": [
+          2027
+        ],
+        "text": "Applications for Summer 2027 are now open!",
+        "deadline": "2027-01-11",
+        "deadline_note": "The application will close on January 11, 2027 at 11:59PM (CT).",
+        "observed_at": "2026-11-26T21:29:40.630359"
+      }
+    },
+    {
+      "round": 2,
+      "case": "old class closed; later class terms pending",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": null,
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Details for Summer 2028 will appear later.",
+        "observed_at": "2026-11-26T21:29:40.640467"
+      }
+    },
+    {
+      "round": 3,
+      "case": "failure",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 0,
+      "deadline": null,
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Details for Summer 2028 will appear later.",
+        "observed_at": "2026-11-26T21:29:40.640467"
+      }
+    },
+    {
+      "round": 4,
+      "case": "readable page without a new recruitment notice",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": null,
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Details for Summer 2028 will appear later.",
+        "observed_at": "2026-11-26T21:29:40.640467"
+      }
+    },
+    {
+      "round": 5,
+      "case": "retry still unavailable",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 0,
+      "deadline": null,
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Details for Summer 2028 will appear later.",
+        "observed_at": "2026-11-26T21:29:40.640467"
+      }
+    },
+    {
+      "round": 6,
+      "case": "new cycle states its own closing date",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": "2028-02-02",
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Applications for Summer 2028 are open!",
+        "deadline": "2028-02-02",
+        "deadline_note": "Application deadline: February 2, 2028.",
+        "observed_at": "2026-11-26T21:29:40.644697"
+      }
+    },
+    {
+      "round": 7,
+      "case": "retry after that date was captured",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 0,
+      "deadline": "2028-02-02",
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Applications for Summer 2028 are open!",
+        "deadline": "2028-02-02",
+        "deadline_note": "Application deadline: February 2, 2028.",
+        "observed_at": "2026-11-26T21:29:40.644697"
+      }
+    },
+    {
+      "round": 8,
+      "case": "two open cycles coexist; date not attributable",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": null,
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2027,
+          2028
+        ],
+        "text": "Applications for Summer 2027 are open. Applications for Summer 2028 are open.",
+        "observed_at": "2026-11-26T21:29:40.647187"
+      }
+    },
+    {
+      "round": 9,
+      "case": "later class itself has explicitly closed",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": null,
+      "published_2027_stipend": false,
+      "observed_application_notice": {
+        "years": [
+          2028
+        ],
+        "text": "Applications for Summer 2028 have closed.",
+        "observed_at": "2026-11-26T21:29:40.648620"
+      }
+    },
+    {
+      "round": 10,
+      "case": "recovery confirms the previous 2027 class",
+      "returned": 1,
+      "new": 0,
+      "updated": 1,
+      "directory_row_untouched": true,
+      "campus_id": "uchicago-8cd2def060b6",
+      "campus_first_seen_preserved": true,
+      "pages_loaded": 1,
+      "deadline": "2027-01-11",
+      "published_2027_stipend": true,
+      "observed_application_notice": {
+        "years": [
+          2027
+        ],
+        "text": "Applications for Summer 2027 are now open!",
+        "deadline": "2027-01-11",
+        "deadline_note": "The application will close on January 11, 2027 at 11:59PM (CT).",
+        "observed_at": "2026-11-26T21:29:40.660636"
+      }
+    }
+  ]
+}

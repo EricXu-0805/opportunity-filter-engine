@@ -60,7 +60,26 @@ async function main() {
           assert.equal(row.cutoff,"2027-01-11T23:59:00-06:00");
           assert.equal(row.source_funding_url,official);
           assert.equal(apply.length>0,open);
-          if(open) {assert(row.stipend_5600 && row.conditional_1800);assert(cites.length>0);}
+          if(open) {
+            assert(row.stipend_5600 && row.conditional_1800);assert(cites.length>0);
+            if (process.env.DSI_VERIFY_WORK_AUTH === "1") {
+              const eligibility=record.detail_fields.fields.eligibility;
+              assert.equal(eligibility.explicit.citizenship,"not_required");
+              assert.equal(eligibility.explicit.international_students,"yes");
+              assert.equal(eligibility.explicit.work_authorization_notes,"All participants need U.S. work authorization and documentation for their stipend.");
+              assert(text.includes("No citizenship requirement"));
+              assert(text.includes("Open to international students"));
+              assert(text.includes(eligibility.explicit.work_authorization_notes));
+              assert(text.includes("Selected NSF-funded undergraduates who are U.S. citizens or permanent residents"));
+              row.eligibility = {};
+              for (const field of ["citizenship","international_students","work_authorization_notes"]) {
+                assert.equal(eligibility.quotes[field].source_url,"https://datascience.uchicago.edu/education/summerlab/faq/");
+                row.eligibility[field]={value:eligibility.explicit[field],source:eligibility.quotes[field].source_url};
+              }
+              const faq=links.filter(l=>l.href==="https://datascience.uchicago.edu/education/summerlab/faq/");
+              assert(faq.length>0);row.rendered_faq_citations=faq.length;
+            }
+          }
           else {assert(row.closed_message);assert(links.some(l=>l.href?.includes("uchicago.edu/") || l.href?.includes("researchops.web.illinois.edu/")));}
         } finally {await page.close();}
       }
