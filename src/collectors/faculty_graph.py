@@ -794,7 +794,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     record = {
         "id": opp_id,
         "source": school["source"],
-        "source_url": profile_url,
+        "source_url": dept["directory_url"] if dept.get("cite_directory") else profile_url,
         "source_type": "faculty_research",
         "title": opp_title,
         "organization": school["organization"],

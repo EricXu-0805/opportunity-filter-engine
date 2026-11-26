@@ -411,6 +411,8 @@ SCHOOL: dict = {
                "https://english.georgetown.edu/people/full-time-faculty-2/",
                enrich=_ENRICH,
                link="a.gu-block-image-text-cta-text-content-link[href], a.gu-block-link-cta[href]"),
+         # The English roster states the rank on each card and links to a separate GU360 bio.
+         "cite_directory": True,
          # Both department rosters name Holmes and link to Koulen's same GU360 record.
          "profile_id_names": {
              "gufaculty360.georgetown.edu/s/contact/003uh00000vihw6yal/marisa-koulen":

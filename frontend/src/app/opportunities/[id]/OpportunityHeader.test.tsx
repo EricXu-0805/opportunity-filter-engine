@@ -202,6 +202,21 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.queryByRole('link', { name: translate('en', 'detail.apply') })).toBeNull();
   });
 
+  it('opens the English department’s Georgetown bio separately from its roster citation', () => {
+    const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
+    const personal = 'https://gufaculty360.georgetown.edu/s/contact/123/avery-sample';
+    renderHeader({ opp: facultyOpp({ source: 'georgetown_faculty', source_url: directory, url: personal }) });
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute('href', personal);
+    expect(screen.queryByRole('link', { name: 'detail.apply' })).toBeNull();
+  });
+
+  it('keeps a Georgetown English card without a named bio as a roster link', () => {
+    const directory = 'https://english.georgetown.edu/people/full-time-faculty-2/';
+    renderHeader({ opp: facultyOpp({ source: 'georgetown_faculty', source_url: directory, url: directory }) });
+    expect(screen.getByRole('link', { name: 'detail.viewSource' })).toHaveAttribute('href', directory);
+    expect(screen.queryByRole('link', { name: 'detail.viewFacultyProfile' })).toBeNull();
+  });
+
   it('opens the personal link on a Berkeley CDSS roster card', () => {
     const directory = 'https://ccb.berkeley.edu/people/core-faculty';
     const personal = 'https://ccb.berkeley.edu/people/michael-boots';
