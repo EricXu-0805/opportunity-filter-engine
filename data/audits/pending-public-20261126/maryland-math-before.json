@@ -917,6 +917,46 @@
     "person": "Kayo Ide",
     "math": "faculty-umd-math-d477b648",
     "atmospheric": "faculty-umd-aosc-88534045",
-    "finding": "The official Math card points to the same UMD email as the preexisting active AOSC ID. Verify the destination of both historical IDs after the normal school refresh."
+    "finding": "Official Math and AOSC cards identify the same Kayo Ide. The existing same-person rule keeps the original Math ID active and archives the AOSC ID with duplicate_of set to it. Two successive refresh/merge replays retained both IDs.",
+    "observed_units": [
+      {
+        "unit": "math",
+        "live_roster_count": 61,
+        "emitted": 61,
+        "source": "https://www-math.umd.edu/people/faculty.html"
+      },
+      {
+        "unit": "aosc",
+        "live_roster_count": 17,
+        "emitted": 16,
+        "source": "https://aosc.umd.edu/people?field_post_category_target_id=21"
+      }
+    ],
+    "repeat_results": [
+      [
+        {
+          "id": "faculty-umd-math-d477b648",
+          "active": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-umd-aosc-88534045",
+          "active": false,
+          "duplicate_of": "faculty-umd-math-d477b648"
+        }
+      ],
+      [
+        {
+          "id": "faculty-umd-math-d477b648",
+          "active": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-umd-aosc-88534045",
+          "active": false,
+          "duplicate_of": "faculty-umd-math-d477b648"
+        }
+      ]
+    ]
   }
 }
