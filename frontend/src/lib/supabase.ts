@@ -2751,6 +2751,8 @@ export const ATTACHMENTS_ALLOWED_MIME = new Set([
 ]);
 
 export interface Attachment {
+  /** Set only by a reader that verified a usable replacement revision. */
+  canReplace?: boolean;
   name: string;
   sizeBytes: number;
   mimeType: string;

@@ -146,6 +146,7 @@ function AttachmentFiles({ opportunityId }: Props) {
   };
 
   const disabled = status !== 'ready' || !!action;
+  const hasReplaceableFile = files.some(file => file.canReplace);
   const buttonClass = 'inline-flex min-h-9 items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait';
   return (
     <section className="space-y-2 min-w-0" data-testid="tracker-attachments" aria-label={t('detail.attachments.label')}>
@@ -163,14 +164,14 @@ function AttachmentFiles({ opportunityId }: Props) {
               const file = event.target.files?.[0]; event.target.value = '';
               if (file) void runAction('upload', file.name, file);
             }} />
-          <input ref={replaceInput} type="file" disabled={disabled}
+          {hasReplaceableFile && <input ref={replaceInput} type="file" disabled={disabled}
             aria-label={t('detail.attachments.chooseReplacement')} className="hidden" onChange={event => {
               const file = event.target.files?.[0];
               const target = replaceTarget.current;
               event.target.value = '';
               replaceTarget.current = null;
-              if (file && target) void runAction('replace', target.name, file, target);
-            }} />
+              if (file && target?.canReplace) void runAction('replace', target.name, file, target);
+            }} />}
         </>}
       </div>
       {guest === true && <div data-testid="tracker-attachments-guest" className="flex flex-wrap items-center gap-2">
@@ -197,7 +198,7 @@ function AttachmentFiles({ opportunityId }: Props) {
             <span className="truncate text-gray-700">{file.name}</span>
             <span className="ml-auto text-[10px] text-gray-500 shrink-0 tabular-nums">{formatBytes(file.sizeBytes, t)}</span>
           </button>
-          {guest === false && <button type="button" onClick={() => {
+          {guest === false && file.canReplace && <button type="button" onClick={() => {
             if (!replaceInput.current) return;
             replaceTarget.current = file;
             replaceInput.current.accept = file.mimeType;
