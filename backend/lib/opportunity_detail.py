@@ -63,6 +63,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from datetime import date
+from urllib.parse import urlsplit
 
 # Module import, not a name import: the public projector imports this module
 # for `paid_basis`/`location_basis`/`keywords_basis`/`skills_basis`, and a name
@@ -525,6 +527,24 @@ def _department(payload: dict, canonical: dict, source: str) -> _Field:
     return field
 
 
+def _faculty_rank_quote(payload: dict, canonical: dict, rank: str | None) -> dict | None:
+    receipt = _dict(_dict(canonical.get("metadata")).get("faculty_title_observation"))
+    name = _text(payload.get("pi_name"))
+    if not rank or not name or receipt.get("name") != name or receipt.get("title") != rank:
+        return None
+    profile = public_projection.safe_public_http_url(payload.get("url"))
+    source = public_projection.safe_public_http_url(receipt.get("source"))
+    if not profile or not source or receipt.get("profile") != profile:
+        return None
+    if urlsplit(profile).netloc.casefold() != urlsplit(source).netloc.casefold():
+        return None
+    try:
+        checked = date.fromisoformat(receipt["checked_on"])
+    except (KeyError, ValueError, TypeError):
+        return None
+    return {"text": rank, "source_url": source, "observed_at": checked.isoformat()}
+
+
 def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     field = _Field("professor_or_lab")
     # The projector removes a derived pi_name outright (every derived name on
@@ -532,7 +552,8 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     # projection is one a collector read as a person.
     if pi_name_basis(canonical) is None:
         field.source("principal_investigator", _text(payload.get("pi_name")))
-    field.source("faculty_rank", _text(_dict(payload.get("metadata")).get("faculty_title")))
+    rank = _text(_dict(payload.get("metadata")).get("faculty_title"))
+    field.source("faculty_rank", rank, _faculty_rank_quote(payload, canonical, rank))
     lab = _text(payload.get("lab_or_program"))
     # Simplify and Handshake copy the employer into lab_or_program. A company
     # is not a lab, and repeating the organization here says nothing new.
