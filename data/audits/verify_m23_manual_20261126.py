@@ -69,9 +69,13 @@ with sync_playwright() as pw:
     ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
     page=ctx.new_page();page.on("response",capture)
     try:
-        release=ctx.request.get(site+"/api/health").json()["release_sha"]
-        assert release in ctx.request.get(site).text()
-        receipt["frontend_release"]=receipt["backend_release"]=release
+        for attempt in range(12):
+            release=ctx.request.get(site+"/api/health",params={"probe":str(attempt)}).json()["release_sha"]
+            front=re.search(r'data-release-sha="([a-f0-9]{40})"',ctx.request.get(site,params={"probe":str(attempt)}).text())[1]
+            receipt["frontend_release"],receipt["backend_release"]=front,release
+            if front==release:break
+            page.wait_for_timeout(5000)
+        assert front==release,(front,release)
         receipt["programs"]={}
         for oid,query,url,phrases in cases:
             entry=receipt["programs"][oid]={"program":query,"host":url}
