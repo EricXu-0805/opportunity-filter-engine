@@ -3836,21 +3836,20 @@ class _NamedInterestText(dict[str, bool]):
     def __init__(self, text: str) -> None:
         super().__init__()
         self.text = text
-        self.parts = [
-            (part, _word_count(part) >= _SENTENCE_WORDS)
-            for part in re.split(r"[,;，；、\n]+", text) if part.strip()
-        ]
+        self.parts = [part for part in re.split(r"[,;，；、\n]+", text) if part.strip()]
+        self.whole = frozenset(part.strip().casefold() for part in self.parts)
 
     def __missing__(self, phrase: str) -> bool:
         term = phrase.strip().lower()
         found = False
         if term and term in self.text:
-            pattern = _word_re(term)
-            multiple_words = _word_count(term) >= 2
-            found = any(
-                (multiple_words or not sentence) and pattern.search(part)
-                for part, sentence in self.parts
-            )
+            if _word_count(term) >= 2:
+                pattern = _word_re(term)
+                found = any(pattern.search(part) for part in self.parts)
+            else:
+                # One word is the student's interest only as a whole list item:
+                # "circuits" inside "neural circuits" is half of another topic.
+                found = term.casefold() in self.whole
         self[phrase] = found
         return found
 

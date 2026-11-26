@@ -1474,6 +1474,24 @@ class TestInterestReasonDedup:
         _, fit, _ = score_upside(profile, self._opp(["neural circuits", "robotics", "memory"]), precomputed_sim=0.5)
         assert any(line.startswith("Your interest in neural circuits, robotics closely matches") for line in fit)
 
+    @pytest.mark.parametrize("interests, keywords", [
+        ("neuroscience, neural circuits, calcium imaging", ["device modeling", "digital integrated circuits", "circuits"]),
+        ("machine learning, computer vision, robot perception", ["vision", "awareness", "attention"]),
+        ("machine learning, computer vision", ["learning", "memory", "child development"]),
+        ("public health, health policy", ["policy", "health", "labor economics"]),
+    ])
+    def test_one_word_of_a_longer_interest_is_not_named_as_the_students_interest(self, interests, keywords):
+        _, fit, _ = score_upside({"research_interests_text": interests}, self._opp(keywords), precomputed_sim=0.5)
+        assert not any(line.startswith("Your interest in") for line in fit)
+        assert any(line.endswith(f"also works on {', '.join(keywords)}") for line in fit)
+
+    def test_a_one_word_interest_the_student_wrote_is_still_named(self):
+        profile = {"research_interests_text": "machine learning;  Robotics , neural circuits"}
+        _, fit, _ = score_upside(
+            profile, self._opp(["learning", "robotics", "neural circuits", "circuits"]), precomputed_sim=0.5
+        )
+        assert any(line.startswith("Your interest in robotics, neural circuits closely matches") for line in fit)
+
     def test_interests_heading_is_not_a_research_topic(self):
         profile = {"research_interests_text": "research interests include robotics"}
         _, fit, _ = score_upside(profile, self._opp(["interests"]), precomputed_sim=0.5)
