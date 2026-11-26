@@ -1,0 +1,1235 @@
+{
+  "checked_utc": "2026-11-26T16:15:53.617906+00:00",
+  "scope": "Public institutional directory responses. Counts refer to the matched suffixes in the preexisting B9 cohort. School links, page titles and control headings are public-source comparisons, with no user, account, production opportunity status or contact information. No product changes or acceptance claimed.",
+  "school_interpretation": {
+    "clemson": "78 of 82 prior full names and user IDs shown by the corresponding two live rosters, with four unlisted originals still returning matching official individual headings. One additional listed university URL renders a generic personal page. Do not infer a faculty departure from the four roster omissions.",
+    "unl": "61 of 62 on the published directory. The remaining personal URL gives HTTP 200 with no matching name. Two different faculty and tracked URL controls are named; the bare page has no controlled identity.",
+    "ucla": "33 ecology originals have distinct faculty queries and named directory links. The stripped ecology URL displays many people, including the first controlled person. The statistics directory had a TLS verification failure; the 21 statistics rows remain unverified.",
+    "uva": "All 41 checked department UIDs matched personal names in the official Physics directory. Two confirmed people, tracking and the generic stripped page were compared.",
+    "rochester": "All 22 PSC names matched the department directory by their faculty IDs. The bare view returned 500, while two different named IDs and the tracked first ID worked.",
+    "vanderbilt": "The two Chemistry group links are directory sections labelled Primary Faculty and Teaching Faculty. The labels in the old input must never be counted as two people. Romance languages changed to a public faculty widget; personal and roster HTML shells alone do not identify people. AADS named department cards redirect to modern paths; bare-page titles alone are inconclusive.",
+    "fsu": "The 25 earlier rows include only 23 distinct named profile queries and two empty queries: two different directory names share the same multi-person URL. Bare page renders many faculty. Keep the 23 queries separate from the two generic directory links.",
+    "georgetown": "45 prior rows still have names and URLs on the department pages. Eight Chemistry targets are global search URLs, and the other 37 use the Faculty360 directory application. HTTP 200 with the common platform title is not live verification of the individual profile or a unique result.",
+    "pitt": "The two prior Linguistics original links are present on the official roster but both old Education pages returned 404. The current named Education page for Amanda Godley is 200. Richard Donato is listed on the university IISE Emeritus Faculty page. Distinguish current professor, emeritus, and broken link.",
+    "asu": "The five university directory APIs were accessible. The ten originals used external Scholar pages. Use first-party published institutional profile identities and explicit name evidence; an external query is not evidence of a university-owned profile. No Scholar HTTP calls were made.",
+    "usc": "One of nine departmental rosters was readable: the ECE directory contains all 74 original first-and-last-name keys and names; its individual endpoint returned 403. All eight other directory responses were 403. No denial was bypassed, no faculty departures inferred, and no original historical session identifiers are included."
+  },
+  "schools": {
+    "clemson": [
+      {
+        "school": "clemson",
+        "unit": "psyc",
+        "official_directory": "https://www.clemson.edu/cbshs/departments/psychology/people.html",
+        "directory_http": 200,
+        "directory_sha256": "0ad4adcd322f3026a3ec9bf83ca823c873340af61e61c5d8dcc22c4511fc8b21",
+        "principal_path": "clemson.edu/cbshs/about/profiles",
+        "original_rows": 44,
+        "distinct_original_queries": 44,
+        "source_name_cards": 48,
+        "exact_query_in_directory": 41,
+        "same_name_in_query_card": 41,
+        "same_name_in_any_directory_card": 41,
+        "controls": [
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=ealbrit",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=ealbrit",
+            "sha256": "7107be8832dc339eea627f7e74262e7d9e1f89b201b460d55cfc84759b4d80c2",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty and Staff Profile"
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=jinana",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=jinana",
+            "sha256": "f027af1e9cc922171d971bb634763896aca518095e0460e29b3031a1abcf720d",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Jinan Allan | Faculty and Staff Profile",
+            "page_title": "Jinan Allan | Faculty and Staff Profile"
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=ealbrit&utm_source=directory",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=ealbrit&utm_source=directory",
+            "sha256": "f92e5134df95cb7fbe1713eb7b93adf0a6e91b45cfb921a27c96139aa5af930c",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty and Staff Profile"
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html",
+            "sha256": "4f4cd81844e84c3fe4963f03c123cdfaf6776c465c0eba0525873d5a1f885f9d",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty and Staff Profile"
+          }
+        ],
+        "additional_public_source_controls": [
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=jrheste",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=jrheste",
+            "sha256": "655709d99a9163f7fdaa71d0e88ad3d705f2c81554419f1d38d8e8a7fa1e5238",
+            "control": "not_on_directory",
+            "identity_heading": "John Hester | Faculty and Staff Profile",
+            "page_title": "John Hester | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=keisham",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=keisham",
+            "sha256": "e5644349748061fa4f7de50fa0d6614769fc1c878746dba26f1579d830ebe659",
+            "control": "not_on_directory",
+            "identity_heading": "Keisha Mitchell | Faculty and Staff Profile",
+            "page_title": "Keisha Mitchell | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=msmall",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=msmall",
+            "sha256": "a8c14e82138673b79ee4f98c9fd77e70b2f0bc9b641f06a75847ba33ecd55e2c",
+            "control": "not_on_directory",
+            "identity_heading": "Mark  Small | Faculty and Staff Profile",
+            "page_title": "Mark  Small | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=ealbrit",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=ealbrit",
+            "sha256": "7107be8832dc339eea627f7e74262e7d9e1f89b201b460d55cfc84759b4d80c2",
+            "control": "additional_listed_control",
+            "identity_heading": null,
+            "page_title": "Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=abake26",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=abake26",
+            "sha256": "e9b610fe5ec12fba52f3d433c8a556542d1e29a433bcc2a3bb2f2c59dd4b338f",
+            "control": "additional_listed_control",
+            "identity_heading": "Anna Baker | Faculty and Staff Profile",
+            "page_title": "Anna Baker | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=blbenne",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=blbenne",
+            "sha256": "a6a68828d2e195ae8b3653f8f429ad48846db701255b4ef229ca94f16ab2b4c7",
+            "control": "additional_listed_control",
+            "identity_heading": "Brooke Bennett | Faculty and Staff Profile",
+            "page_title": "Brooke Bennett | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=twbritt",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=twbritt",
+            "sha256": "7aa46caa90e8b64a8215e08152f6d9b844a9c6e4159877f61584c42c5c3ad7e2",
+            "control": "additional_listed_control",
+            "identity_heading": "Thomas Britt | Faculty and Staff Profile",
+            "page_title": "Thomas Britt | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          }
+        ]
+      },
+      {
+        "school": "clemson",
+        "unit": "prtm",
+        "official_directory": "https://www.clemson.edu/cbshs/departments/prtm/about/prtm-directory.html",
+        "directory_http": 200,
+        "directory_sha256": "99c16cdc9aeac9c43bfea8a977c2f99cf9afdcf0302d000f049bc98a1072a12f",
+        "principal_path": "clemson.edu/cbshs/about/profiles",
+        "original_rows": 38,
+        "distinct_original_queries": 38,
+        "source_name_cards": 53,
+        "exact_query_in_directory": 37,
+        "same_name_in_query_card": 37,
+        "same_name_in_any_directory_card": 37,
+        "controls": [
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=emiliea",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=emiliea",
+            "sha256": "c5c1648ab0acd312c5f5ce4339e7c7d5fb9664a7a58277581050a5f3d000a1dc",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Em  Adams | Faculty and Staff Profile",
+            "page_title": "Em  Adams | Faculty and Staff Profile"
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=DANDER3",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=DANDER3",
+            "sha256": "ed3038cb5c081f5742d8f3c9bd960bc5edecb04ae31ff30ab816fe84bed04dcf",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Dan Anderson | Faculty and Staff Profile",
+            "page_title": "Dan Anderson | Faculty and Staff Profile"
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=emiliea&utm_source=directory",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=emiliea&utm_source=directory",
+            "sha256": "e1e44028c63cb38e89d5171b688decc1be52f65150c6ce9e6e4db75be76ce134",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Em  Adams | Faculty and Staff Profile",
+            "page_title": "Em  Adams | Faculty and Staff Profile"
+          },
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html",
+            "sha256": "4f4cd81844e84c3fe4963f03c123cdfaf6776c465c0eba0525873d5a1f885f9d",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty and Staff Profile"
+          }
+        ],
+        "additional_public_source_controls": [
+          {
+            "requested": "https://clemson.edu/cbshs/about/profiles/index.html?userid=lsteph2",
+            "status": 200,
+            "end": "https://www.clemson.edu/cbshs/about/profiles/index.html?userid=lsteph2",
+            "sha256": "5ef44f561c6a50ae08cc10634bf2c1d661807d3c00abf052c3d1f003aff29195",
+            "control": "not_on_directory",
+            "identity_heading": "Lauren E. Stephens | Faculty and Staff Profile",
+            "page_title": "Lauren E. Stephens | Faculty and Staff Profile",
+            "number_distinct_heading_entries": 23
+          }
+        ]
+      }
+    ],
+    "unl": [
+      {
+        "school": "unl",
+        "unit": "snr",
+        "official_directory": "https://snr.unl.edu/aboutus/who/people/directory.aspx",
+        "directory_http": 200,
+        "directory_sha256": "a9365d10c951f6f649524a0653b5ff3b66a9a88f2ed132474c9314e3e04fd0cd",
+        "principal_path": "snr.unl.edu/aboutus/who/people/faculty-member.aspx",
+        "original_rows": 62,
+        "distinct_original_queries": 62,
+        "source_name_cards": 116,
+        "exact_query_in_directory": 61,
+        "same_name_in_query_card": 61,
+        "same_name_in_any_directory_card": 61,
+        "controls": [
+          {
+            "requested": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=2611",
+            "status": 200,
+            "end": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=2611",
+            "sha256": "409b86ed5c46b9124a935fcca699969a8cb444b7c35b87708a334bc82d0f6c4b",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Lord Ameyaw",
+            "page_title": "Faculty | Our People | School of Natural Resources | University of Nebraska–Lincoln"
+          },
+          {
+            "requested": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=4",
+            "status": 200,
+            "end": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=4",
+            "sha256": "fabadfdbff8b2a13c2210a2e710444f44ae65c3859892b08dcc74b1a00fb5053",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Tala Awada",
+            "page_title": "Faculty | Our People | School of Natural Resources | University of Nebraska–Lincoln"
+          },
+          {
+            "requested": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=2611&utm_source=directory",
+            "status": 200,
+            "end": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=2611&utm_source=directory",
+            "sha256": "409b86ed5c46b9124a935fcca699969a8cb444b7c35b87708a334bc82d0f6c4b",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Lord Ameyaw",
+            "page_title": "Faculty | Our People | School of Natural Resources | University of Nebraska–Lincoln"
+          },
+          {
+            "requested": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx",
+            "status": 200,
+            "end": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx",
+            "sha256": "efc9d50d71259aeaa8ea231e21561ca3831b0b6f442e36d62cfa9cd3fce3cd7c",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty | Our People | School of Natural Resources | University of Nebraska–Lincoln"
+          }
+        ],
+        "additional_public_source_controls": [
+          {
+            "requested": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=2119",
+            "status": 200,
+            "end": "https://snr.unl.edu/aboutus/who/people/faculty-member.aspx?pid=2119",
+            "sha256": "440c7ca61c2fd81692c1a3681fe5c63a13d86d0fac66b69661fe9ae70e628bd7",
+            "control": "not_on_directory",
+            "identity_heading": null,
+            "page_title": "Faculty | Our People | School of Natural Resources | University of Nebraska–Lincoln",
+            "number_distinct_heading_entries": 12
+          }
+        ]
+      }
+    ],
+    "ucla": [
+      {
+        "school": "ucla",
+        "unit": "eeb",
+        "official_directory": "https://www.eeb.ucla.edu/faculty/",
+        "directory_http": 200,
+        "directory_sha256": "33fb6b3792ee07829211c8ef0ba6768dd16ad85b5d421f43b8601525fa5eb3ee",
+        "principal_path": "eeb.ucla.edu/indivfaculty",
+        "original_rows": 33,
+        "distinct_original_queries": 33,
+        "source_name_cards": 66,
+        "exact_query_in_directory": 33,
+        "same_name_in_query_card": 33,
+        "same_name_in_any_directory_card": 33,
+        "controls": [
+          {
+            "requested": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Aguillon",
+            "status": 200,
+            "end": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Aguillon",
+            "sha256": "e15dedd160c5f88a5a9b3995e9264d69082059763e0bd9d912e875fd9c46f22d",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Stepfanie Aguillon",
+            "page_title": "indivfaculty – Department of Ecology and Evolutionary Biology"
+          },
+          {
+            "requested": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Alfaro",
+            "status": 200,
+            "end": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Alfaro",
+            "sha256": "d1ce54fdd6d47fef8773999b783a37c67f9f9cbd048c70afcd90bbf940d2b783",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Michael Alfaro",
+            "page_title": "indivfaculty – Department of Ecology and Evolutionary Biology"
+          },
+          {
+            "requested": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Aguillon&utm_source=directory",
+            "status": 200,
+            "end": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Aguillon&utm_source=directory",
+            "sha256": "d871df0ef12b26bdaa622037b3ce128da6bc4d3434d3b5ded1c3558176b9291e",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Stepfanie Aguillon",
+            "page_title": "indivfaculty – Department of Ecology and Evolutionary Biology"
+          },
+          {
+            "requested": "https://www.eeb.ucla.edu/indivfaculty/",
+            "status": 200,
+            "end": "https://www.eeb.ucla.edu/indivfaculty/",
+            "sha256": "69ed672a73bb1cc9569541710aff126c3fb47477f77177152ba2561ed07e9487",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Stepfanie Aguillon",
+            "page_title": "indivfaculty – Department of Ecology and Evolutionary Biology"
+          }
+        ],
+        "additional_public_source_controls": [
+          {
+            "requested": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Aguillon",
+            "status": 200,
+            "end": "https://www.eeb.ucla.edu/indivfaculty/?faculty=Aguillon",
+            "sha256": "e15dedd160c5f88a5a9b3995e9264d69082059763e0bd9d912e875fd9c46f22d",
+            "control": "with_query",
+            "identity_heading": "Stepfanie Aguillon",
+            "page_title": "indivfaculty – Department of Ecology and Evolutionary Biology",
+            "number_distinct_heading_entries": 7
+          },
+          {
+            "requested": "https://www.eeb.ucla.edu/indivfaculty/",
+            "status": 200,
+            "end": "https://www.eeb.ucla.edu/indivfaculty/",
+            "sha256": "69ed672a73bb1cc9569541710aff126c3fb47477f77177152ba2561ed07e9487",
+            "control": "without_query",
+            "identity_heading": null,
+            "page_title": "indivfaculty – Department of Ecology and Evolutionary Biology",
+            "number_distinct_heading_entries": 49
+          }
+        ]
+      },
+      {
+        "school": "ucla",
+        "unit": "stat",
+        "official_directory": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
+        "directory_http": "SSLError",
+        "directory_sha256": null,
+        "principal_path": "statistics.ucla.edu/index.php/people1/all-faculty/7809-2",
+        "original_rows": 21,
+        "distinct_original_queries": 21,
+        "source_name_cards": 0,
+        "exact_query_in_directory": 0,
+        "same_name_in_query_card": 0,
+        "same_name_in_any_directory_card": 0,
+        "controls": []
+      }
+    ],
+    "uva": [
+      {
+        "school": "uva",
+        "unit": "phys",
+        "official_directory": "https://www.phys.virginia.edu/People/people-list.asp?CATEGORY=Faculty&VIEW=list",
+        "directory_http": 200,
+        "directory_sha256": "33d0d0a0ff0207535075f6d289c70931c1422970a906ae3db380b3e3592de5c9",
+        "principal_path": "phys.virginia.edu/people/personal.asp",
+        "original_rows": 41,
+        "distinct_original_queries": 41,
+        "source_name_cards": 42,
+        "exact_query_in_directory": 41,
+        "same_name_in_query_card": 41,
+        "same_name_in_any_directory_card": 41,
+        "controls": [
+          {
+            "requested": "https://www.phys.virginia.edu/People/personal.asp?UID=pa6z",
+            "status": 200,
+            "end": "https://www.phys.virginia.edu/People/personal.asp?UID=pa6z",
+            "sha256": "c7915461ba94ddbc1a395df439ff9cab6f260e544f564ca8ad4ec69f88ac1de7",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Peter Arnold - UVa Physics",
+            "page_title": "Peter Arnold - UVa Physics"
+          },
+          {
+            "requested": "https://www.phys.virginia.edu/People/personal.asp?UID=pef4ug",
+            "status": 200,
+            "end": "https://www.phys.virginia.edu/People/personal.asp?UID=pef4ug",
+            "sha256": "785f079023f63ccd727068487b4d5d577abfce0f2f7d72cba359c109a424d4f3",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Tomoya Asaba - UVa Physics",
+            "page_title": "Tomoya Asaba - UVa Physics"
+          },
+          {
+            "requested": "https://www.phys.virginia.edu/People/personal.asp?UID=pa6z&utm_source=directory",
+            "status": 200,
+            "end": "https://www.phys.virginia.edu/People/personal.asp?UID=pa6z&utm_source=directory",
+            "sha256": "6703e0df21eaaef4a8cdafd1c9de5ea94103a1a5bdf629e43a6b97cc9c733502",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Peter Arnold - UVa Physics",
+            "page_title": "Peter Arnold - UVa Physics"
+          },
+          {
+            "requested": "https://www.phys.virginia.edu/People/personal.asp",
+            "status": 200,
+            "end": "https://www.phys.virginia.edu/People/personal.asp",
+            "sha256": "1076283175e5bb29c2526ad2442599ec33158ff079cb9f3d4365619a1131f580",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "- UVa Physics"
+          }
+        ]
+      }
+    ],
+    "rochester": [
+      {
+        "school": "rochester",
+        "unit": "psc",
+        "official_directory": "https://www.sas.rochester.edu/psc/people/faculty.php",
+        "directory_http": 200,
+        "directory_sha256": "39a924a5b7ef9f1dd91a8ca128263cfeeb508ed7c3924e384d6a19a60fdb31e4",
+        "principal_path": "sas.rochester.edu/psc/people/view.php",
+        "original_rows": 22,
+        "distinct_original_queries": 22,
+        "source_name_cards": 41,
+        "exact_query_in_directory": 22,
+        "same_name_in_query_card": 22,
+        "same_name_in_any_directory_card": 22,
+        "controls": [
+          {
+            "requested": "https://www.sas.rochester.edu/psc/people/view.php?fid=145",
+            "status": 200,
+            "end": "https://www.sas.rochester.edu/psc/people/view.php?fid=145",
+            "sha256": "797a1d9aaeeb0c793336be8f18bbc7c3f834e5d7f8961fdfbd21d6c45bc7e6d5",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Scott Abramson",
+            "page_title": "Faculty Directory: Department of Political Science : University of Rochester"
+          },
+          {
+            "requested": "https://www.sas.rochester.edu/psc/people/view.php?fid=20192192",
+            "status": 200,
+            "end": "https://www.sas.rochester.edu/psc/people/view.php?fid=20192192",
+            "sha256": "93bb649b5cd96682dd8a984ec289296d287d471d68eb6c789f9600bcb699a0e5",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Dan Alexander",
+            "page_title": "Faculty Directory: Department of Political Science : University of Rochester"
+          },
+          {
+            "requested": "https://www.sas.rochester.edu/psc/people/view.php?fid=145&utm_source=directory",
+            "status": 200,
+            "end": "https://www.sas.rochester.edu/psc/people/view.php?fid=145&utm_source=directory",
+            "sha256": "797a1d9aaeeb0c793336be8f18bbc7c3f834e5d7f8961fdfbd21d6c45bc7e6d5",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Scott Abramson",
+            "page_title": "Faculty Directory: Department of Political Science : University of Rochester"
+          },
+          {
+            "requested": "https://www.sas.rochester.edu/psc/people/view.php",
+            "status": 500,
+            "end": "https://www.sas.rochester.edu/psc/people/view.php",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": null
+          }
+        ]
+      }
+    ],
+    "vanderbilt": [
+      {
+        "school": "vanderbilt",
+        "unit": "chem",
+        "official_directory": "https://as.vanderbilt.edu/chemistry/faculty/",
+        "directory_http": 200,
+        "directory_sha256": "42373c6fff32dc811f85402325abee4a97e0ce15cef1afaa3f9f24140256bf79",
+        "principal_path": "as.vanderbilt.edu/chemistry/faculty",
+        "original_rows": 2,
+        "distinct_original_queries": 2,
+        "source_name_cards": 42,
+        "exact_query_in_directory": 2,
+        "same_name_in_query_card": 2,
+        "same_name_in_any_directory_card": 2,
+        "controls": [
+          {
+            "requested": "https://as.vanderbilt.edu/chemistry/faculty/?group=primary-faculty",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/chemistry/faculty/?group=primary-faculty",
+            "sha256": "a8f1edf4812819829ebd6826fad7f55e9d4f4620dc3adeb8aabd590d32fc115a",
+            "control": "directory_group",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Primary Faculty",
+            "page_title": "Faculty |   Department of Chemistry | Vanderbilt University"
+          },
+          {
+            "requested": "https://as.vanderbilt.edu/chemistry/faculty/?group=teaching-faculty",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/chemistry/faculty/?group=teaching-faculty",
+            "sha256": "30cd1e9b3b0ed273700689ee713da0a0975a32d9098c6e2a31847d04af5bad21",
+            "control": "directory_group",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Teaching Faculty",
+            "page_title": "Faculty |   Department of Chemistry | Vanderbilt University"
+          },
+          {
+            "requested": "https://as.vanderbilt.edu/chemistry/faculty/?group=primary-faculty&utm_source=directory",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/chemistry/faculty/?group=primary-faculty&utm_source=directory",
+            "sha256": "b3c7e269630091af263d688a539e7d1a9ea5c1e2bf7c50bc96e349687e663777",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Primary Faculty",
+            "page_title": "Faculty |   Department of Chemistry | Vanderbilt University"
+          },
+          {
+            "requested": "https://as.vanderbilt.edu/chemistry/faculty/",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/chemistry/faculty/",
+            "sha256": "42373c6fff32dc811f85402325abee4a97e0ce15cef1afaa3f9f24140256bf79",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty |   Department of Chemistry | Vanderbilt University"
+          }
+        ]
+      },
+      {
+        "school": "vanderbilt",
+        "unit": "span",
+        "official_directory": "https://as.vanderbilt.edu/spanish-portuguese/people/",
+        "directory_http": 200,
+        "directory_sha256": "aa6324ff8dd04e10a472dbf762204d4357b95ba9e5a38d625343368e37a6f5c4",
+        "principal_path": "as.vanderbilt.edu/spanish-portuguese/people/bio",
+        "original_rows": 26,
+        "distinct_original_queries": 26,
+        "source_name_cards": 0,
+        "exact_query_in_directory": 0,
+        "same_name_in_query_card": 0,
+        "same_name_in_any_directory_card": 0,
+        "controls": [
+          {
+            "requested": "https://as.vanderbilt.edu/spanish-portuguese/people/bio/?who=21",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/romance-languages/bio/jose-aznar/",
+            "sha256": "ec82901601df6e46c75b2127ea7e59c0d11632102f6a5e9d54ea1c66e918be4c",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Bio | College of Arts and Science | Vanderbilt University"
+          },
+          {
+            "requested": "https://as.vanderbilt.edu/spanish-portuguese/people/bio/?who=75",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/romance-languages/bio/jose-cardenas%20bunsen/",
+            "sha256": "658b12db9b0b5b53096f58df64ec704002ec50dbe13b4cb88539694aaf0c4c0c",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Bio | College of Arts and Science | Vanderbilt University"
+          },
+          {
+            "requested": "https://as.vanderbilt.edu/spanish-portuguese/people/bio/?who=21&utm_source=directory",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/romance-languages/people/faculty/",
+            "sha256": "879e709f3f3c524f7fcffc8997366f4810f37984b9c2ac5c54e934ffeca2a6f8",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty | College of Arts and Science | Vanderbilt University"
+          },
+          {
+            "requested": "https://as.vanderbilt.edu/spanish-portuguese/people/bio/",
+            "status": 200,
+            "end": "https://as.vanderbilt.edu/romance-languages/people/faculty/",
+            "sha256": "2fd6fd11fa93d1aadd7abfea6fd6f1da06a014db701d2dfd9990fb4243afa7ac",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Faculty | College of Arts and Science | Vanderbilt University"
+          }
+        ]
+      },
+      {
+        "school": "vanderbilt",
+        "unit": "aads",
+        "official_directory": "https://as.vanderbilt.edu/african-american-diaspora-studies/faculty/",
+        "directory_http": 200,
+        "directory_sha256": "4153d86e65e648b1cd0831d757e9d97245d0367076e35202fdff22c6da251aa9",
+        "principal_path": "divinity.vanderbilt.edu/people/bio",
+        "original_rows": 2,
+        "distinct_original_queries": 2,
+        "source_name_cards": 12,
+        "exact_query_in_directory": 2,
+        "same_name_in_query_card": 2,
+        "same_name_in_any_directory_card": 2,
+        "controls": [
+          {
+            "requested": "https://divinity.vanderbilt.edu/people/bio/?pid=stacey-floyd-thomas",
+            "status": 200,
+            "end": "https://divinity.vanderbilt.edu/bio/stacey-floyd-thomas/",
+            "sha256": "47880b0d95beb140abf8af5b38c15929bb0a59aee1aefd5fe0727b083209a186",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Biography | Divinity School | Vanderbilt University"
+          },
+          {
+            "requested": "https://divinity.vanderbilt.edu/people/bio/?pid=yolanda-pierce",
+            "status": 200,
+            "end": "https://divinity.vanderbilt.edu/bio/yolanda-pierce/",
+            "sha256": "ff157959191a0553a7e258a30345e48083c8a5b0dd4813dc409588dc44432103",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Biography | Divinity School | Vanderbilt University"
+          },
+          {
+            "requested": "https://divinity.vanderbilt.edu/people/bio/?pid=stacey-floyd-thomas&utm_source=directory",
+            "status": 200,
+            "end": "https://divinity.vanderbilt.edu/bio/stacey-floyd-thomas/",
+            "sha256": "647ddfce8d37f748fda889fea63869cf5acc3f572b3e4d5adf60ab15cf49700f",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Biography | Divinity School | Vanderbilt University"
+          },
+          {
+            "requested": "https://divinity.vanderbilt.edu/people/bio/",
+            "status": 200,
+            "end": "https://divinity.vanderbilt.edu/bio/",
+            "sha256": "eaf6b3efc500028a65ad5b4b0ae6664db7e1a38f12994b64b8897a0822b619d6",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": null
+          }
+        ]
+      }
+    ],
+    "fsu": [
+      {
+        "school": "fsu",
+        "unit": "bio",
+        "official_directory": "https://www.bio.fsu.edu/faculty.php",
+        "directory_http": 200,
+        "directory_sha256": "2ecc5de5ec1ea6a39d9bdea2e4a01526587c00648b1627f1d4a77c3331e08b33",
+        "principal_path": "bio.fsu.edu/faculty.php",
+        "original_rows": 25,
+        "distinct_original_queries": 24,
+        "source_name_cards": 67,
+        "exact_query_in_directory": 25,
+        "same_name_in_query_card": 25,
+        "same_name_in_any_directory_card": 25,
+        "controls": [
+          {
+            "requested": "https://www.bio.fsu.edu/faculty.php?faculty-id=jbreithaupt",
+            "status": 200,
+            "end": "https://www.bio.fsu.edu/faculty.php?faculty-id=jbreithaupt",
+            "sha256": "a766f4c695992e5c2c7c466041b19caf29494d1f9a13bcb8d8f4deffef068628",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "FSU Biology - Faculty Page - Dr. Josh  Breithaupt",
+            "page_title": "FSU Biology - Faculty Page - Dr. Josh  Breithaupt"
+          },
+          {
+            "requested": "https://www.bio.fsu.edu/faculty.php?faculty-id=ebb05",
+            "status": 200,
+            "end": "https://www.bio.fsu.edu/faculty.php?faculty-id=ebb05",
+            "sha256": "bef22c88721ec2f6a93b6afa26f0ee0681715b9b50d1bd4f05c749fd61050ea1",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "FSU Biology - Faculty Page - Dr. Elizabeth  Brown",
+            "page_title": "FSU Biology - Faculty Page - Dr. Elizabeth  Brown"
+          },
+          {
+            "requested": "https://www.bio.fsu.edu/faculty.php?faculty-id=jbreithaupt&utm_source=directory",
+            "status": 200,
+            "end": "https://www.bio.fsu.edu/faculty.php?faculty-id=jbreithaupt&utm_source=directory",
+            "sha256": "a766f4c695992e5c2c7c466041b19caf29494d1f9a13bcb8d8f4deffef068628",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "FSU Biology - Faculty Page - Dr. Josh  Breithaupt",
+            "page_title": "FSU Biology - Faculty Page - Dr. Josh  Breithaupt"
+          },
+          {
+            "requested": "https://www.bio.fsu.edu/faculty.php",
+            "status": 200,
+            "end": "https://www.bio.fsu.edu/faculty.php",
+            "sha256": "2ecc5de5ec1ea6a39d9bdea2e4a01526587c00648b1627f1d4a77c3331e08b33",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": true,
+            "identity_heading": "Dr. Josh Breithaupt",
+            "page_title": "FSU Biology - Faculty Directory"
+          }
+        ],
+        "additional_public_source_controls": [
+          {
+            "requested": "https://www.bio.fsu.edu/faculty.php?faculty-id=jbreithaupt",
+            "status": 200,
+            "end": "https://www.bio.fsu.edu/faculty.php?faculty-id=jbreithaupt",
+            "sha256": "a766f4c695992e5c2c7c466041b19caf29494d1f9a13bcb8d8f4deffef068628",
+            "control": "with_query",
+            "identity_heading": "FSU Biology - Faculty Page - Dr. Josh  Breithaupt",
+            "page_title": "FSU Biology - Faculty Page - Dr. Josh  Breithaupt",
+            "number_distinct_heading_entries": 4
+          },
+          {
+            "requested": "https://www.bio.fsu.edu/faculty.php",
+            "status": 200,
+            "end": "https://www.bio.fsu.edu/faculty.php",
+            "sha256": "2ecc5de5ec1ea6a39d9bdea2e4a01526587c00648b1627f1d4a77c3331e08b33",
+            "control": "without_query",
+            "identity_heading": null,
+            "page_title": "FSU Biology - Faculty Directory",
+            "number_distinct_heading_entries": 65
+          }
+        ]
+      }
+    ],
+    "georgetown": [
+      {
+        "school": "georgetown",
+        "unit": "chem",
+        "official_directory": "https://chemistry.georgetown.edu/faculty/",
+        "directory_http": 200,
+        "directory_sha256": "69d9db0488c8740b5d4ff2a94a9bd8d21fbc44f312280c622b6f5a964c17c30d",
+        "principal_path": "gufaculty360.georgetown.edu/s/global-search",
+        "original_rows": 8,
+        "distinct_original_queries": 8,
+        "source_name_cards": 26,
+        "exact_query_in_directory": 8,
+        "same_name_in_query_card": 8,
+        "same_name_in_any_directory_card": 8,
+        "controls": [
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/global-search?searchType=all&searchText=braselmann",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/global-search?searchType=all&searchText=braselmann",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/global-search?searchType=all&searchText=gavvalapalli",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/global-search?searchType=all&searchText=gavvalapalli",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/global-search?searchType=all&searchText=braselmann&utm_source=directory",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/global-search?searchType=all&searchText=braselmann&utm_source=directory",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/global-search",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/global-search",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          }
+        ]
+      },
+      {
+        "school": "georgetown",
+        "unit": "hist",
+        "official_directory": "https://history.georgetown.edu/people/faculty/",
+        "directory_http": 200,
+        "directory_sha256": "341b696280357935133f62f8c27cb7dc6059d3c7dfd126588b7b0126a8f134d1",
+        "principal_path": "gufaculty360.georgetown.edu/s/faculty-profile",
+        "original_rows": 35,
+        "distinct_original_queries": 35,
+        "source_name_cards": 52,
+        "exact_query_in_directory": 35,
+        "same_name_in_query_card": 35,
+        "same_name_in_any_directory_card": 35,
+        "controls": [
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=abimerso/",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=abimerso%2F",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?id=00336000019GYOdAAO",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?id=00336000019GYOdAAO",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=agostong/",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=agostong%2F",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?id=00336000014SrmJAAS",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?id=00336000014SrmJAAS",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=abimerso/&utm_source=directory",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=abimerso%2F&utm_source=directory",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          }
+        ]
+      },
+      {
+        "school": "georgetown",
+        "unit": "stia",
+        "official_directory": "https://stia.georgetown.edu/faculty/",
+        "directory_http": 200,
+        "directory_sha256": "2e9debbe636a386a0fe37552e7d9adce54877ba7f599ec34d569c2a4e719006d",
+        "principal_path": "gufaculty360.georgetown.edu/s/faculty-profile",
+        "original_rows": 2,
+        "distinct_original_queries": 2,
+        "source_name_cards": 19,
+        "exact_query_in_directory": 2,
+        "same_name_in_query_card": 2,
+        "same_name_in_any_directory_card": 2,
+        "controls": [
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=rk952",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=rk952",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=cw1018",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=cw1018",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile?netid=rk952&utm_source=directory",
+            "status": "ReadTimeout",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": null
+          },
+          {
+            "requested": "https://gufaculty360.georgetown.edu/s/faculty-profile",
+            "status": 200,
+            "end": "https://gufaculty360.georgetown.edu/s/faculty-profile",
+            "sha256": "32efe37077f04abf8f2e44cd4b33d4ac164fca3c85c56e2dbf9cd0e048045b40",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Georgetown University Faculty Directory"
+          }
+        ]
+      }
+    ],
+    "pitt": [
+      {
+        "school": "pitt",
+        "unit": "ling",
+        "official_directory": "https://www.linguistics.pitt.edu/people/core-linguistics-faculty",
+        "directory_http": 200,
+        "directory_sha256": "0182a65a011e4a98e189d71d371036831e6f3dff954ca4493d5653aa9f72c670",
+        "principal_path": "education.pitt.edu/people/profile.aspx",
+        "original_rows": 2,
+        "distinct_original_queries": 2,
+        "source_name_cards": 28,
+        "exact_query_in_directory": 2,
+        "same_name_in_query_card": 2,
+        "same_name_in_any_directory_card": 2,
+        "controls": [
+          {
+            "requested": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+            "status": 404,
+            "end": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20",
+            "sha256": "a9d84271846630c51923ce4d26018d8a7ee0f5bb43a6aaa68b4f48f178c4dcfb",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Page not found - University of Pittsburgh School of Education"
+          },
+          {
+            "requested": "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+            "status": 404,
+            "end": "https://www.education.pitt.edu/people/profile.aspx?f=amandagodley%20",
+            "sha256": "8a1410d859e7ae8090425e728f1b47aefdd49d5cf3521dc326d800ba053078cd",
+            "control": "person",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Page not found - University of Pittsburgh School of Education"
+          },
+          {
+            "requested": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20&utm_source=directory",
+            "status": 404,
+            "end": "https://www.education.pitt.edu/people/profile.aspx?f=RichardDonato%20&utm_source=directory",
+            "sha256": "947202ab6a9b848a347d36c3a3375eb335bf1012846da63db528a20aadd57b56",
+            "control": "tracking",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Page not found - University of Pittsburgh School of Education"
+          },
+          {
+            "requested": "https://www.education.pitt.edu/people/profile.aspx",
+            "status": 404,
+            "end": "https://www.education.pitt.edu/people/profile.aspx",
+            "sha256": "1045f056bfc18680cf4c5f033146cbed2135a889a7e22030d24825e642e77ddb",
+            "control": "without_query",
+            "expected_directory_name_visible_in_heading": false,
+            "identity_heading": null,
+            "page_title": "Page not found - University of Pittsburgh School of Education"
+          }
+        ]
+      }
+    ],
+    "asu": [
+      {
+        "unit": "cs",
+        "official_public_directory": "https://faculty.engineering.asu.edu/directory/scai/computer-science-and-engineering/",
+        "official_public_api": "https://search.asu.edu/api/v1/webdir-profiles/faculty-staff/filtered?dept_ids=1661&size=1000&page=1",
+        "status": 200,
+        "source_names": 234,
+        "reported_external_scholar_ids": 2,
+        "original_count": 2,
+        "external_key_on_university_roster": 2,
+        "external_key_matches_university_name": 2,
+        "university_native_profile_available_by_exact_name": 2
+      },
+      {
+        "unit": "sgsup",
+        "official_public_directory": "https://sgsup.asu.edu/about/people/faculty",
+        "official_public_api": "https://search.asu.edu/api/v1/webdir-profiles/faculty-staff/filtered?dept_ids=1730&size=1000&page=1",
+        "status": 200,
+        "source_names": 111,
+        "reported_external_scholar_ids": 2,
+        "original_count": 2,
+        "external_key_on_university_roster": 2,
+        "external_key_matches_university_name": 2,
+        "university_native_profile_available_by_exact_name": 2
+      },
+      {
+        "unit": "spa",
+        "official_public_directory": "https://spa.asu.edu/content/school-directory",
+        "official_public_api": "https://search.asu.edu/api/v1/webdir-profiles/faculty-staff/filtered?dept_ids=2125&size=1000&page=1",
+        "status": 200,
+        "source_names": 136,
+        "reported_external_scholar_ids": 2,
+        "original_count": 2,
+        "external_key_on_university_roster": 2,
+        "external_key_matches_university_name": 2,
+        "university_native_profile_available_by_exact_name": 2
+      },
+      {
+        "unit": "chs",
+        "official_public_directory": "https://chs.asu.edu/about/faculty",
+        "official_public_api": "https://search.asu.edu/api/v1/webdir-profiles/faculty-staff/filtered?dept_ids=1534&size=1000&page=1",
+        "status": 200,
+        "source_names": 597,
+        "reported_external_scholar_ids": 3,
+        "original_count": 2,
+        "external_key_on_university_roster": 2,
+        "external_key_matches_university_name": 2,
+        "university_native_profile_available_by_exact_name": 2
+      },
+      {
+        "unit": "nurs",
+        "official_public_directory": "https://nursing.asu.edu/about/directory",
+        "official_public_api": "https://search.asu.edu/api/v1/webdir-profiles/faculty-staff/filtered?dept_ids=96401&size=1000&page=1",
+        "status": 200,
+        "source_names": 126,
+        "reported_external_scholar_ids": 1,
+        "original_count": 2,
+        "external_key_on_university_roster": 1,
+        "external_key_matches_university_name": 1,
+        "university_native_profile_available_by_exact_name": 1
+      }
+    ],
+    "usc": [
+      {
+        "unit": "cs",
+        "official_directory": "https://www.cs.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "336bc0318a8b159cb632f5d787126bd8ec1f7913c47ca5015febf8125492128a",
+        "official_name_cards": 0,
+        "original_count": 114,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "ece",
+        "official_directory": "https://minghsiehece.usc.edu/faculty-directory/",
+        "status": 200,
+        "body_sha256": "a43fb2ff684610164992a287b944698116076aa4a22989853533baef0c6ef537",
+        "official_name_cards": 136,
+        "original_count": 74,
+        "old_name_listed": 74,
+        "original_query_pair_listed": 74,
+        "profile_endpoint_observation": [
+          {
+            "requested": "https://minghsiehece.usc.edu/directory/faculty/profile/?lname=Applegate&fname=Brian",
+            "status": 403,
+            "end": "https://minghsiehece.usc.edu/directory/faculty/profile/?lname=Applegate&fname=Brian",
+            "sha256": "0a4bdf45f2c1dc508953a875cac4403b3af3a8bf62e370ed97b40fa7794669a9",
+            "identity_heading": null,
+            "title": "403 Forbidden"
+          }
+        ]
+      },
+      {
+        "unit": "ame",
+        "official_directory": "https://ame.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "761c3c35084655fd310314ecf58ae0165cb500da2f15bd34b8d68571a505195b",
+        "official_name_cards": 0,
+        "original_count": 43,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "bme",
+        "official_directory": "https://bme.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "6a2cc2d862a9a864465e6f0af704df369b4ae2e80b0646ec0f324e8a9cacc498",
+        "official_name_cards": 0,
+        "original_count": 17,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "cee",
+        "official_directory": "https://cee.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "24732477aea3fa89d7aaaa4323f477422d895bb59fa11872c877f20da1e8e7a7",
+        "official_name_cards": 0,
+        "original_count": 36,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "ise",
+        "official_directory": "https://ise.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "5b2e936729c49c4609fe34dfb34e9e4d471b72310853d916bd528cc93a7d5e1b",
+        "official_name_cards": 0,
+        "original_count": 20,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "chems",
+        "official_directory": "https://chems.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "abf950779efa104abe9bfcf3bb11daa13c8c3b5519ee93af48f01b87e0fc3e71",
+        "official_name_cards": 0,
+        "original_count": 34,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "aste",
+        "official_directory": "https://astronautics.usc.edu/directory/faculty/",
+        "status": 403,
+        "body_sha256": "643ba435478b0c00c654f9c3d3906b2980fb3b6b38822477e822c94eb5763fb2",
+        "official_name_cards": 0,
+        "original_count": 5,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      },
+      {
+        "unit": "gero",
+        "official_directory": "https://gero.usc.edu/faculty/",
+        "status": 403,
+        "body_sha256": "f239f8f4ce08faaf82a272bd0a07a18668f943dcc5eaa353c9d41065dcc99f87",
+        "official_name_cards": 0,
+        "original_count": 4,
+        "old_name_listed": 0,
+        "original_query_pair_listed": 0
+      }
+    ]
+  },
+  "pitt_independent_university_evidence": {
+    "faculty_roster": "https://app.education.pitt.edu/People/Faculty",
+    "http": 403,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "relevant_university_appointments": [],
+    "verified_current_profile": {
+      "url": "https://www.education.pitt.edu/faculty/directory/amanda-godley/",
+      "status": 200,
+      "title": "Amanda Godley - University of Pittsburgh School of Education",
+      "heading": "Amanda Godley"
+    },
+    "emeritus_university_directory": {
+      "url": "https://www.iise.pitt.edu/people/iise-emeritus-faculty",
+      "status": 200,
+      "directory_heading_and_name": [
+        [
+          "h3",
+          "IISE Emeritus Faculty"
+        ]
+      ],
+      "entry_text": "Richard Donato"
+    }
+  },
+  "vanderbilt_current_romance_directory": {
+    "official_department": "https://as.vanderbilt.edu/romance-languages/people/faculty/",
+    "widget_js": "https://as.vanderbilt.edu/wp-content/themes/anchordown-futurevu/library/scripts/peoplemanager-directory.js?ver=2026.11.26.04.10.24",
+    "script_http": 200,
+    "script_sha256": "ed7cf8646f7b4e648ee3deff6f6f57d094626d2b3e9b7177e0423f67ca117f4d",
+    "department_groups": [
+      {
+        "group": "Faculty",
+        "official_widget": "https://as.vanderbilt.edu/wp-content/themes/anchordown-futurevu/library/remote/peoplemanager-directory-remote-webcomm.php?option=choose-department&school=1&department=457&group=320&affiliated=all&neighborhood=none&showdept=false",
+        "status": 200,
+        "official_people": 43
+      },
+      {
+        "group": "Secondary",
+        "official_widget": "https://as.vanderbilt.edu/wp-content/themes/anchordown-futurevu/library/remote/peoplemanager-directory-remote-webcomm.php?option=choose-department&school=1&department=457&group=321&affiliated=all&neighborhood=none&showdept=false",
+        "status": 200,
+        "official_people": 1
+      },
+      {
+        "group": "Affiliated",
+        "official_widget": "https://as.vanderbilt.edu/wp-content/themes/anchordown-futurevu/library/remote/peoplemanager-directory-remote-webcomm.php?option=choose-department&school=1&department=457&group=322&affiliated=all&neighborhood=none&showdept=false",
+        "status": 200,
+        "official_people": 2
+      },
+      {
+        "group": "Emeriti",
+        "official_widget": "https://as.vanderbilt.edu/wp-content/themes/anchordown-futurevu/library/remote/peoplemanager-directory-remote-webcomm.php?option=choose-department&school=1&department=457&group=35&affiliated=all&neighborhood=none&showdept=false",
+        "status": 200,
+        "official_people": 8
+      },
+      {
+        "group": "retired",
+        "official_widget": "https://as.vanderbilt.edu/wp-content/themes/anchordown-futurevu/library/remote/peoplemanager-directory-remote-webcomm.php?option=choose-department&school=1&department=457&group=327&affiliated=all&neighborhood=none&showdept=false",
+        "status": 200,
+        "official_people": 5
+      }
+    ],
+    "distinct_names": 59,
+    "earlier_sample": 26,
+    "same_name_on_current_school_directory": 19,
+    "matched_groups": {
+      "Faculty": 18,
+      "Emeriti": 1
+    },
+    "original_legacy_who_urls_checked_against_current_official_slug": {
+      "http_200": 26,
+      "published_profile_path_equal": 26,
+      "matched_groups": {
+        "Faculty": 25,
+        "Emeriti": 1
+      },
+      "missing_profile_destinations": 0
+    }
+  }
+}

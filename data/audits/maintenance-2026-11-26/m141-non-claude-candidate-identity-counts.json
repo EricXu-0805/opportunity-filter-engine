@@ -1,0 +1,161 @@
+{
+  "baseline": "B9 091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "scope": "Read-only comparison within the original grouped 5729 URLs, by department. Comparison is limited to exact host/paths backed by official endpoint controls and only one unambiguous nonempty person key (both first and last for Bauer); UCSD index.sfe and UCI confirmed old/new endpoint pairs share the current person namespace. It measures distinguishable URL identity only, not a person\u2019s current role, membership, duplicate resolution or absence. No normalizer or product data changed.",
+  "counts": {
+    "originals": 5729,
+    "untested-or-excluded": 1786,
+    "distinct_department_candidate_signatures": 3941,
+    "original_signatures_for_candidate_rows": 66,
+    "candidate": 3941,
+    "no-person-value": 2
+  },
+  "by_school": {
+    "asu": {
+      "originals": 10,
+      "untested-or-excluded": 10,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "clemson": {
+      "originals": 82,
+      "candidate": 82,
+      "distinct_department_candidate_signatures": 82,
+      "original_signatures_for_candidate_rows": 2
+    },
+    "colostate": {
+      "originals": 291,
+      "candidate": 291,
+      "distinct_department_candidate_signatures": 291,
+      "original_signatures_for_candidate_rows": 8
+    },
+    "dartmouth": {
+      "originals": 127,
+      "candidate": 127,
+      "distinct_department_candidate_signatures": 127,
+      "original_signatures_for_candidate_rows": 5
+    },
+    "fsu": {
+      "originals": 25,
+      "candidate": 23,
+      "no-person-value": 2,
+      "distinct_department_candidate_signatures": 23,
+      "original_signatures_for_candidate_rows": 1
+    },
+    "georgetown": {
+      "originals": 45,
+      "untested-or-excluded": 45,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "houston": {
+      "originals": 166,
+      "candidate": 166,
+      "distinct_department_candidate_signatures": 166,
+      "original_signatures_for_candidate_rows": 5
+    },
+    "indiana": {
+      "originals": 651,
+      "untested-or-excluded": 4,
+      "candidate": 647,
+      "distinct_department_candidate_signatures": 647,
+      "original_signatures_for_candidate_rows": 2
+    },
+    "mit": {
+      "originals": 52,
+      "untested-or-excluded": 52,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "northwestern": {
+      "originals": 1490,
+      "candidate": 1490,
+      "distinct_department_candidate_signatures": 1490,
+      "original_signatures_for_candidate_rows": 1
+    },
+    "pitt": {
+      "originals": 2,
+      "untested-or-excluded": 2,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "psu": {
+      "originals": 481,
+      "candidate": 481,
+      "distinct_department_candidate_signatures": 481,
+      "original_signatures_for_candidate_rows": 13
+    },
+    "purdue": {
+      "originals": 780,
+      "untested-or-excluded": 780,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "rochester": {
+      "originals": 22,
+      "candidate": 22,
+      "distinct_department_candidate_signatures": 22,
+      "original_signatures_for_candidate_rows": 1
+    },
+    "uci": {
+      "originals": 172,
+      "candidate": 172,
+      "distinct_department_candidate_signatures": 172,
+      "original_signatures_for_candidate_rows": 11
+    },
+    "ucla": {
+      "originals": 54,
+      "candidate": 33,
+      "untested-or-excluded": 21,
+      "distinct_department_candidate_signatures": 33,
+      "original_signatures_for_candidate_rows": 1
+    },
+    "ucsc": {
+      "originals": 138,
+      "untested-or-excluded": 138,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "ucsd": {
+      "originals": 163,
+      "candidate": 163,
+      "distinct_department_candidate_signatures": 163,
+      "original_signatures_for_candidate_rows": 8
+    },
+    "unl": {
+      "originals": 62,
+      "candidate": 62,
+      "distinct_department_candidate_signatures": 62,
+      "original_signatures_for_candidate_rows": 1
+    },
+    "usc": {
+      "originals": 347,
+      "untested-or-excluded": 347,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "utexas": {
+      "originals": 141,
+      "candidate": 141,
+      "distinct_department_candidate_signatures": 141,
+      "original_signatures_for_candidate_rows": 6
+    },
+    "uva": {
+      "originals": 41,
+      "candidate": 41,
+      "distinct_department_candidate_signatures": 41,
+      "original_signatures_for_candidate_rows": 1
+    },
+    "vanderbilt": {
+      "originals": 30,
+      "untested-or-excluded": 30,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    },
+    "wesleyan": {
+      "originals": 357,
+      "untested-or-excluded": 357,
+      "distinct_department_candidate_signatures": 0,
+      "original_signatures_for_candidate_rows": 0
+    }
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "observed_at_utc": "2026-11-26T16:12:43.618703+00:00",
+  "scope": "The 163 grouped original person URLs and one separately checked legacy findprofile URL; all six UC San Diego engineering rosters were read. Per-department inputs include the extra legacy URL in Nano. These are public institution source checks. No user data, production states or department-wide acceptance.",
+  "departments": {
+    "ece": {
+      "url": "https://ece.ucsd.edu/people/faculty",
+      "http": 200,
+      "sha256": "634f5a5c48b3a2fe63a93d3f2786494277e0f534e4ff8e340b888581b5c25b30",
+      "cards": 61,
+      "jacobs_query_cards": 50,
+      "inputs": 49,
+      "exact_key_onsite": 49,
+      "name_onsite": 49,
+      "named_profiles": 49,
+      "same_key_at_modern_profile": 49,
+      "full_name_equals": 30
+    },
+    "mae": {
+      "url": "https://mae.ucsd.edu/people/faculty-profiles",
+      "http": 200,
+      "sha256": "22d805f240b35c8c2a02d1ed5acb031bb8ef00a709f1464b11591f0b942d353c",
+      "cards": 64,
+      "jacobs_query_cards": 52,
+      "inputs": 50,
+      "exact_key_onsite": 50,
+      "name_onsite": 50,
+      "named_profiles": 50,
+      "same_key_at_modern_profile": 50,
+      "full_name_equals": 49
+    },
+    "be": {
+      "url": "https://be.ucsd.edu/faculty",
+      "http": 200,
+      "sha256": "c1192ef378c2bad3b952e20ecb746ff26c706c66eff1b64f5f33778daa63cfc0",
+      "cards": 116,
+      "jacobs_query_cards": 52,
+      "inputs": 25,
+      "exact_key_onsite": 25,
+      "name_onsite": 25,
+      "named_profiles": 25,
+      "same_key_at_modern_profile": 25,
+      "full_name_equals": 23
+    },
+    "nano": {
+      "url": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+      "http": 200,
+      "sha256": "d37b880ac37649564651af6313f003f17a60ee93d18e383ea4b95d735fd6cf70",
+      "cards": 42,
+      "jacobs_query_cards": 8,
+      "inputs": 7,
+      "exact_key_onsite": 7,
+      "name_onsite": 7,
+      "named_profiles": 6,
+      "same_key_at_modern_profile": 6,
+      "full_name_equals": 3
+    },
+    "che": {
+      "url": "https://nanoengineering.ucsd.edu/chemical-engineering-faculty",
+      "http": 200,
+      "sha256": "be90e6bb19b92f0e0c8fe9b8cc743aee7f5f55bbff3cdea412a699759650fefc",
+      "cards": 20,
+      "jacobs_query_cards": 6,
+      "inputs": 5,
+      "exact_key_onsite": 5,
+      "name_onsite": 5,
+      "named_profiles": 5,
+      "same_key_at_modern_profile": 5,
+      "full_name_equals": 3
+    },
+    "se": {
+      "url": "https://se.ucsd.edu/people/faculty",
+      "http": 200,
+      "sha256": "3d15ba07a04651b32d39f9eed090d480c9d79272a31ad085de81d57ff28b2035",
+      "cards": 34,
+      "jacobs_query_cards": 30,
+      "inputs": 28,
+      "exact_key_onsite": 28,
+      "name_onsite": 28,
+      "named_profiles": 28,
+      "same_key_at_modern_profile": 28,
+      "full_name_equals": 16
+    }
+  },
+  "public_profile_endpoints": {
+    "distinct_requested_before_controls": 164,
+    "with_named_headings": 163,
+    "legacy_requested": 68,
+    "legacy_redirected_with_same_numeric_id": 67,
+    "controls": {
+      "https://jacobsschool.ucsd.edu/faculty/profile?id=531&utm_source=directory": {
+        "status": 200,
+        "end": "https://jacobsschool.ucsd.edu/faculty/profile?id=531&utm_source=directory",
+        "name": "Xiaolong  Wang",
+        "history": [],
+        "same_final_person_id": true,
+        "body_sha256": "782ac905e680d319ac8ba2847eb2e938caed269c0b505204819b610e230543b3"
+      },
+      "https://jacobsschool.ucsd.edu/faculty/profile": {
+        "status": 404,
+        "end": "https://jacobsschool.ucsd.edu/faculty/profile",
+        "name": null,
+        "history": [],
+        "same_final_person_id": true,
+        "body_sha256": "d364a2eb70c504677c0f1b4fdeadb9c7252ced7ea6689eea72a9b68f3186ec9b"
+      },
+      "https://jacobsschool.ucsd.edu/faculty/profile?id=525": {
+        "status": 200,
+        "end": "https://jacobsschool.ucsd.edu/faculty/profile?id=525",
+        "name": "Nicholas  Antipa",
+        "history": [],
+        "same_final_person_id": true,
+        "body_sha256": "a019e5cf0bf748308b76ef9c17cbdef1e893e66209887a571cdc7ef7d393c109"
+      },
+      "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=81": {
+        "status": 200,
+        "end": "https://jacobsschool.ucsd.edu/faculty/profile?id=81",
+        "name": "Kenneth  Zeger",
+        "history": [
+          [
+            301,
+            "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=81"
+          ],
+          [
+            301,
+            "http://jacobsschool.ucsd.edu/faculty/profile?id=81"
+          ]
+        ],
+        "same_final_person_id": true,
+        "body_sha256": "0c3c1f942a90c94835e0b205d4f96b6d09422558165c355a63944513cc736cbe"
+      },
+      "https://www.jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=487": {
+        "status": 200,
+        "end": "https://jacobsschool.ucsd.edu/faculty/profile?id=487",
+        "name": "Lingyan  Shi",
+        "history": [
+          [
+            301,
+            "https://www.jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=487"
+          ],
+          [
+            301,
+            "https://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=487"
+          ]
+        ],
+        "same_final_person_id": true,
+        "body_sha256": "abd85431c9d794f19c6003d9131cf5bb5c57e561e474c67a4de76b812ebfcbb9"
+      }
+    }
+  },
+  "independently_published_replacement_for_legacy_findprofile": {
+    "official_department_profile": "https://nanoengineering.ucsd.edu/node/917",
+    "http": 200,
+    "heading": "Ping Liu",
+    "official_link": "https://jacobsschool.ucsd.edu/faculty/profile?id=396",
+    "result_status": 200,
+    "result_name": "Ping  Liu",
+    "old_request_end": "https://jacobsschool.ucsd.edu/faculty?department=NANO&fmp_recid=396",
+    "old_request_status": 200,
+    "old_request_profile_heading": null
+  },
+  "grouped_original_count": 163,
+  "grouped_original_keys_found_on_department_directory": 163,
+  "grouped_original_names_found_on_department_directory": 163,
+  "grouped_original_person_pages_named_and_same_modern_id": 163
+}
