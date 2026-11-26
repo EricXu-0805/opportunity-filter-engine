@@ -1,0 +1,232 @@
+{
+  "parent": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+  "candidate": "33616280a6a8eac8ea7eecf22ad080641b0c3601",
+  "tree": "2bc2d61e3f81431fcbbbd265d7a2a70379748552",
+  "count": 149872,
+  "shards": 117,
+  "school_counts": 115,
+  "sources": {
+    "1460": {
+      "head": "f668e73546040abaa9bcd7ce84db924465ad8ca4",
+      "delta_from": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+      "shard_changes": {
+        "data/processed/shards/tamu.json": {
+          "faculty-tamu-ece-d96cfd82": [
+            "metadata",
+            "source_url",
+            "url"
+          ]
+        }
+      }
+    },
+    "1461": {
+      "head": "9486781fca5b829bdfee87990c1a0e3733dd989d",
+      "delta_from": "773aaa9a5adc2b531477f0337cac6e88363a627f",
+      "shard_changes": {
+        "data/processed/shards/vanderbilt.json": {
+          "faculty-vanderbilt-math-003f2725": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-0f21f127": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-11a4831f": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-19be968e": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-1b0133fd": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-1d5fbacf": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-233f7153": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-4a0b810e": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-4a34c098": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-4b7b1cbe": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-5627cf6c": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-58d474c0": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-62b94c8f": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-62ebf5a9": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-6b9a40d2": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-748ee12b": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-76afc187": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-76b40b18": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-7db3f2fa": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-86386ebd": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-92a7243e": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-976727e7": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-9ac31063": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-9d267bc4": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-9fdcdcb0": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-9fec5207": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-a72735e2": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-ac3c4dec": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-aca9b9bb": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-adb2e776": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-af44295f": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-b05184b0": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-bcb6a8a9": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-bff54fb3": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-c12b0bf6": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-cef39986": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-cf3d26ad": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-d1ba43a4": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-d2f3b2f3": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-db08a99f": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-dfa1ba47": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-e0439483": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-e5abb7b3": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-e6bb6cd9": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-e6c40273": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-e9826b43": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-fd2c4247": [
+            "metadata"
+          ],
+          "faculty-vanderbilt-math-fda8f56d": [
+            "metadata"
+          ]
+        }
+      }
+    },
+    "1462": {
+      "head": "7c6b3e1f4b7c073fd8586a37546492d93dd6702c",
+      "delta_from": "91140c465b5cd546e129c04f5097064b91fddb57",
+      "shard_changes": {}
+    },
+    "1463": {
+      "head": "dcad2b4e0b055844c9f6c61c73cb76a5e8cbdd9c",
+      "delta_from": "5305901ee08b094a27416c8550c1c8b48ff2383b",
+      "shard_changes": {
+        "data/processed/shards/ucsd.json": {
+          "faculty-ucsd-nano-8a42e65d": [
+            "application",
+            "audience",
+            "compensation_details",
+            "department",
+            "description_clean",
+            "eligibility",
+            "id",
+            "is_rolling",
+            "keywords",
+            "lab_or_program",
+            "location",
+            "metadata",
+            "opportunity_type",
+            "organization",
+            "paid",
+            "pi_name",
+            "remote_option",
+            "school",
+            "source",
+            "source_type",
+            "source_url",
+            "title",
+            "url"
+          ]
+        }
+      }
+    },
+    "1465": {
+      "head": "f5f45f35275b981aa8dd16ff7b7b8ba1634f1e88",
+      "delta_from": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+      "shard_changes": {}
+    },
+    "1466": {
+      "head": "e456f3aedc09f9e356ac73ecc2e50dea504e4851",
+      "delta_from": "f668e73546040abaa9bcd7ce84db924465ad8ca4",
+      "shard_changes": {
+        "data/processed/shards/ucf.json": {
+          "faculty-ucf-cs-edfc1c62": [
+            "application",
+            "metadata",
+            "source_url",
+            "url"
+          ]
+        }
+      }
+    }
+  }
+}
