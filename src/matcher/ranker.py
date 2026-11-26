@@ -390,6 +390,7 @@ def _major_lookup_keys(major_upper: str) -> list[str]:
     return keys
 
 
+@lru_cache(maxsize=4096)
 def _normalize_major(major: str) -> str:
     major_upper = major.upper().strip()
     exact = _MAJOR_ALIAS_LOOKUP.get(major_upper)
@@ -3310,6 +3311,24 @@ def _repeat_re(term: str) -> "re.Pattern[str]":
     return re.compile(left + re.escape(term) + plural + right)
 
 
+@lru_cache(maxsize=4096)
+def _course_signal_words(label: str) -> frozenset[str]:
+    return frozenset(_COURSE_WORD_RE.findall(label))
+
+
+@lru_cache(maxsize=4096)
+def _topic_candidate(keyword: str) -> tuple[str, str, frozenset[str]]:
+    """Corpus labels repeat across records. Only the label determines this match input."""
+    return (
+        keyword,
+        _canonicalize_skill(keyword),
+        frozenset(
+            _stem_align_token(token) for token in _tokenize(keyword)
+            if token not in _GENERIC_INTEREST_WORDS and token not in _LOW_SIGNAL_ALIGN_TOKENS
+        ),
+    )
+
+
 def _build_opp_static(opp: dict) -> _OppStatic:
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     keywords = opp.get("keywords", []) or []
@@ -3340,7 +3359,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     # student touches is what earns the relevance bonus, so they stay separate.
     course_signals = tuple(dict.fromkeys(
         ws for ws in (
-            frozenset(_COURSE_WORD_RE.findall(sig.lower()))
+            _course_signal_words(sig.lower())
             for sig in list(keywords) + list(elig.get("skills_required", []) or [])
             if isinstance(sig, str)
         ) if ws
@@ -3409,17 +3428,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         lab_label=lab_label,
         signal_text=signal_text,
         dept_lower=dept_lower,
-        topic_candidates=tuple(
-            (
-                kw,
-                _canonicalize_skill(kw),
-                frozenset(
-                    _stem_align_token(t) for t in _tokenize(kw)
-                    if t not in _GENERIC_INTEREST_WORDS and t not in _LOW_SIGNAL_ALIGN_TOKENS
-                ),
-            )
-            for kw in kw_lower if kw not in _BROAD_FIELDS
-        ),
+        topic_candidates=tuple(_topic_candidate(kw) for kw in kw_lower if kw not in _BROAD_FIELDS),
         topic_has_specific=topic_has_specific,
         requires_grad=requires_grad,
         research_summary=research_summary,
@@ -4803,7 +4812,9 @@ def rank_visible_universe(
 
     result_count = sum(sum(counts.values()) for counts in score_counts.values())
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
-    visible: list[MatchResult] = []
+    visible_bands: dict[str, list[MatchResult]] = {
+        band: [] for band in _BUCKET_ORDER if band != "low_fit"
+    }
     # The histograms give score thresholds, but cannot choose among a tied
     # boundary. Assign the strict shortlist in the same total order as rank_all.
     retained.sort(key=canonical_sort_key)
@@ -4814,12 +4825,13 @@ def rank_visible_universe(
     for result in retained:
         buckets[result.bucket] += 1
         if result.bucket != "low_fit":
-            visible.append(result)
+            visible_bands[result.bucket].append(result)
 
     # Everything not retained was strictly below the absolute Reach floor and
     # therefore low_fit under every percentile distribution.
     buckets["low_fit"] += result_count - len(retained)
-    visible.sort(key=served_sort_key)
+    # Each band already has canonical ordering from the strict-shortlist pass.
+    visible = [result for band in visible_bands.values() for result in band]
 
     if profile.get("exploring"):
         opportunity_lookup = _opportunity_lookup_for_results(opportunities, visible)
