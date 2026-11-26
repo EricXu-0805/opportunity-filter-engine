@@ -200,6 +200,7 @@ class TestPositionUnknown:
         "In Memoriam, Professor Emertius",
         "Emeritas Professor*",
         "Adjunct Assistant Professor Emeriti",
+        "Professor Emeritum",
     ])
     def test_emeritus_and_retired_titles_as_directories_spell_them(self, title):
         assert is_retired_title(title)
@@ -209,6 +210,8 @@ class TestPositionUnknown:
         "Professor of Emerging Media",
         "Emerson Professor of Engineering",
         "Professor and Director, EMERGE Institute",
+        "Professor and Vice Provost Emeritum",
+        "Professor Emeritum and current program faculty",
         "Zemerov Professor of Physics",
         "Associate Professor (phased retiree)",
         "Professor, English (phase retirement as of July 1, 2025)",

@@ -698,6 +698,18 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         alias = reviewed_names.get(url) or reviewed_names.get(canonical_profile_url(url))
         if alias and name == alias[0]:
             id_name = alias[1]
+    # A published historical alias and the live name can both own saved URLs.
+    # Give a distinct same-name member their own ID only on an individual page
+    # in this roster's profile directory and with an independent contact.
+    owner = dept.get("reserved_profile_identity")
+    if owner and name in owner["names"]:
+        page = canonical_profile_url(person.get("url"))
+        if page == owner["profile"] or email == owner["email"]:
+            id_name = owner["name"]
+        elif page and email and page.rpartition("/")[0] == owner["profile"].rpartition("/")[0]:
+            id_name = f"{owner['name']}|{page}"
+        else:
+            return None
     opp_id = f"faculty-{school['id_prefix']}-{_id_tail(short, id_name)}"
     marker = dept.get("cross_listing_marker")
     listing = ""

@@ -647,6 +647,58 @@ def test_reviewed_nickname_refreshes_the_published_id_only_at_its_profile(
     assert saved["metadata"]["last_seen_at"] == observed["metadata"]["last_seen_at"]
 
 
+@pytest.mark.parametrize("name", ["Suin Yi", "Su-in Yi"])
+def test_tamu_ece_keeps_both_published_ids_for_the_same_person(name, tmp_path, monkeypatch):
+    import json
+    from copy import deepcopy
+
+    from src.collectors import ucb_common
+    from src.collectors.schools import tamu_faculty
+
+    dept = next(unit for unit in tamu_faculty.SCHOOL["departments"] if unit["short"] == "ECE")
+    owner = dept["reserved_profile_identity"]
+    old_id, live_id = "faculty-tamu-ece-74ee208c", "faculty-tamu-ece-44b0285f"
+    profile = "https://" + owner["profile"]
+    new_page = profile.replace("yi-suin", "new-profile")
+    other_page = profile.replace("yi-suin", "another-person")
+
+    def normalize(url, email):
+        return fg._normalize(tamu_faculty.SCHOOL, dept, fg.faculty(name, url=url, email=email))
+
+    current = normalize(profile, owner["email"])
+    assert current["id"] == normalize(profile + "/", None)["id"] == live_id
+    assert normalize(new_page, owner["email"])["id"] == live_id
+    assert normalize(None, None) is None
+    assert normalize(dept["directory_url"], "different-campus-member@example.edu") is None
+    other = normalize(other_page, "different-campus-member@example.edu")
+    assert other["id"] not in (old_id, live_id)
+    assert normalize(other_page + "/", "different-campus-member@example.edu")["id"] == other["id"]
+
+    historic = deepcopy(current)
+    historic.update(id=old_id, pi_name="Suin Yi")
+    historic["metadata"].update(is_active=False, first_seen_at=OLD, last_seen_at=OLD, duplicate_of=live_id)
+    stored = tmp_path / "opportunities.json"
+    stored.write_text(json.dumps([historic, current]))
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", stored)
+    fg.merge_into_processed([other])
+    saved = {row["id"]: row for row in json.loads(stored.read_text())}
+    assert saved[old_id] == historic and saved[live_id] == current
+    assert saved[other["id"]]["pi_name"] == name
+
+    # The verified contact can confirm a later sighting even on a card that
+    # temporarily omits its link. Retain its latest home, including a move.
+    missing = normalize(None, owner["email"])
+    tamu_faculty.merge_into_processed([normalize(new_page, owner["email"])])
+    tamu_faculty.merge_into_processed([deepcopy(missing)])
+    retained = {row["id"]: row for row in json.loads(stored.read_text())}
+    assert retained[live_id]["url"] == retained[live_id]["source_url"] == new_page
+    assert retained[old_id] == historic
+    stored.write_text("[]")
+    tamu_faculty.merge_into_processed([deepcopy(missing)])
+    restored = json.loads(stored.read_text())[0]
+    assert restored["id"] == live_id and restored["url"] == restored["source_url"] == profile
+
+
 def _shared_profile_move(day):
     page = "https://testu.edu/people/pat-smith"
     old = _row("faculty-testu-math-0000aaaa", "Pat Smith", dept="Mathematics",

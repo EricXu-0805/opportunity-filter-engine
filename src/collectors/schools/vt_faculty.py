@@ -238,7 +238,11 @@ SCHOOL: dict = {
              "https://mse.vt.edu/faculty-staff/Faculty.html",
              desc_title=True, link_filter=r"mse\.vt\.edu"),
         _lst("ChE", "Department of Chemical Engineering", ["Chemical Engineering"],
-             "https://che.vt.edu/People/faculty.html", enrich=_ENRICH_RESEARCH),
+             "https://che.vt.edu/People/faculty.html", enrich=_ENRICH_RESEARCH,
+             # Core faculty sometimes have a redirect card for their campus biography.
+             # The separate /affiliated-faculty/ list can link to faculty in other departments.
+             card=(_BIO_CARD + ', .vt-list-item-wrapper:has(.vt-list-item-heading[data-itemtype="redirect"])'
+                   ':has(a.vt-list-item-title-link[href*="/People/faculty/" i])')),
         _lst("CEE", "Charles E. Via Jr. Department of Civil and Environmental Engineering",
              ["Civil Engineering", "Environmental Engineering"],
              "https://www.webapps.cee.vt.edu/index.php?category=people&item=faculty&do=listing",

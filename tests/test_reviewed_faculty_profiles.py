@@ -36,6 +36,7 @@ ARCHIVED = {
     "faculty-gatech-arch-e98bc4d9": ("Professor Emeritus", "retired_title"),
     "faculty-gatech-arch-196687bf": ("Associate Professor Emeritus", "retired_title"),
     "faculty-gatech-itm-21b8dd50": ("Professor Emeritus", "retired_title"),
+    "faculty-msu-mgi-5ca9b09b": ("Professor Emeritum", "retired_title"),
     **VT_APPOINTMENTS,
     "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),
@@ -353,3 +354,21 @@ def test_an_unranked_refresh_preserves_a_review_until_the_source_reports_a_new_a
         other = {**_old(oid), **changed}
         carry_forward_reviewed_appointment(archived, other)
         assert other["metadata"]["is_active"] is True
+
+
+def test_msu_retirement_notice_preserves_a_later_current_personal_appointment():
+    oid = "faculty-msu-mgi-5ca9b09b"
+    historic = _old(oid)
+    original_sighting = historic["metadata"]["last_seen_at"]
+    assert apply_reviewed_faculty_profiles([historic], today=AS_OF) == 1
+    assert historic["metadata"]["last_seen_at"] == original_sighting
+    assert historic["metadata"]["faculty_profile_review"]["source_url"] == REVIEWS[oid].roster_url
+    assert historic["metadata"]["faculty_title"] == "Professor Emeritum"
+    assert not historic["metadata"]["is_active"]
+    assert apply_reviewed_faculty_profiles([historic], today=AS_OF) == 0
+
+    returned = _old(oid)
+    returned["url"] = "https://directory.natsci.msu.edu/directory/Profiles/Person/100054"
+    returned["metadata"].update(faculty_title="Professor", last_seen_at="2026-12-01")
+    assert apply_reviewed_faculty_profiles([returned], today=date(2026, 12, 1)) == 0
+    assert returned["metadata"]["is_active"] is True
