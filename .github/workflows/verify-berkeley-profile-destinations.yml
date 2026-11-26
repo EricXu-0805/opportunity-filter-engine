@@ -1,0 +1,26 @@
+name: Check ten Berkeley faculty destinations by clicking the live primary action
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths:
+      - data/audits/verify_berkeley_profile_destinations_20261126.py
+permissions:
+  contents: read
+jobs:
+  visitor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: data/audits
+      - run: python -m pip install --disable-pip-version-check playwright==1.58.0
+      - run: python -u data/audits/verify_berkeley_profile_destinations_20261126.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-berkeley-profile-destinations
+          path: evidence/
+          if-no-files-found: ignore
+          retention-days: 30
