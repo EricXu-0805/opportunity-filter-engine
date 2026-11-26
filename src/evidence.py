@@ -114,7 +114,9 @@ def dept_name_stems(department: str) -> set[str]:
 
 def is_known_unit_mailbox(email: object) -> bool:
     """A published office address whose local part alone would also be a valid personal alias."""
-    return isinstance(email, str) and email.strip().casefold() == "lingpitt@pitt.edu"
+    return isinstance(email, str) and email.strip().casefold() in {
+        "lingpitt@pitt.edu", "scidean@pitt.edu", "scirecords@pitt.edu",
+    }
 
 
 def is_unit_mailbox_email(email: str, department: str = "") -> bool:

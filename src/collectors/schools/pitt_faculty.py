@@ -78,6 +78,8 @@ Deferred:
 
 from __future__ import annotations
 
+from src.normalizers.pitt_cs_appointments import COLLEGE_ID_NAMES
+
 from .. import faculty_graph
 
 # ---- Drupal 'views-row' family (CS, Physics) -------------------------------
@@ -94,6 +96,16 @@ _PHYS_LADDER = {
 }
 # CS lists full-time faculty only; drop the lone visiting appointment (+ any emeritus).
 _CS_LADDER = {"drop": r"visiting|emerit"}
+
+_CS_COLLEGE_ROSTER = {
+    "url": "https://www.sci.pitt.edu/people/department-computer-science-faculty",
+    "selectors": {
+        "card": "main .view-content .views-row:has(.views-field-title)",
+        "name": ".views-field-title a[href]", "name_strip": r"\s*»\s*$",
+        "link": ".views-field-title a[href]", "title": ".views-field-field-title .field-content",
+    },
+    "person_link": r"^(?:https://www\.sci\.pitt\.edu)?/people/[^/?#]+/?$",
+}
 
 # CS profiles keep a clean "Specific Research Interests" bullet list; the personal
 # email stays entity-obfuscated on the profile too, so enrich = research only.
@@ -249,6 +261,7 @@ SCHOOL: dict = {
         {
             "short": "CS", "name": "Department of Computer Science",
             "majors": ["Computer Science"],
+            "profile_id_names": COLLEGE_ID_NAMES,
             "directory_url": "https://www.cs.pitt.edu/people/full-time-faculty",
             "scrape": {
                 "url": "https://www.cs.pitt.edu/people/full-time-faculty",
@@ -259,6 +272,7 @@ SCHOOL: dict = {
                     "title": ".views-field-field-title .field-content",
                 },
                 "ladder_filter": _CS_LADDER,
+                "supplemental_roster": _CS_COLLEGE_ROSTER,
                 "profile_enrich": _CS_ENRICH,
             },
         },
