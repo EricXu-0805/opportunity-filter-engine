@@ -1,0 +1,464 @@
+{
+  "checked_at": "2026-11-26T10:47:20.408539+00:00",
+  "source": "https://www-math.umd.edu/people/faculty.html",
+  "school_link_count": 55,
+  "scope": "All 55 unique links taken directly from the card Website buttons. Record normal HTTP GET and whether the published surname appears in visible source text; the latter is a name check only.",
+  "links": [
+    {
+      "id": "faculty-umd-math-1c5ba4c5",
+      "source_url": "https://sites.google.com/umd.edu/arkaadhikari?pli=1&authuser=0",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-d9167d41",
+      "source_url": "http://www.math.umd.edu/~ssa/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-135699cf",
+      "source_url": "http://www.math.umd.edu/~rvbalan",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-7cb1adce",
+      "source_url": "https://math.umd.edu/~dbejleri/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-1516d149",
+      "source_url": "https://www.math.umd.edu/~sberhanu/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-a8700233",
+      "source_url": "http://www2.math.umd.edu/~pbrosnan/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-d6138cdd",
+      "source_url": "http://www.math.umd.edu/~cameron",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-c507be15",
+      "source_url": "http://www.math.umd.edu/~cerrai",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-938d3714",
+      "source_url": "https://chernikov.umd.edu/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-3cd59720",
+      "source_url": "https://www.dancristofarogardiner.com/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-36ccdb0d",
+      "source_url": "http://www.math.umd.edu/~wojtek",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-a3da6155",
+      "source_url": "http://www2.math.umd.edu/~tdarvas/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-738a3990",
+      "source_url": "http://www.math.umd.edu/~dmitry",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-78581485",
+      "source_url": "http://bassam.math.umd.edu/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-806c9572",
+      "source_url": "http://www2.math.umd.edu/~amingh/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-6bfb1b2f",
+      "source_url": "http://www.math.umd.edu/~wmg",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-9cfa9129",
+      "source_url": "http://www.math.umd.edu/~mng",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-b9c19178",
+      "source_url": "http://www.math.umd.edu/~ygu7",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-cb4e770c",
+      "source_url": "https://math.umd.edu/~agumel/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-893fa023",
+      "source_url": "http://www.math.umd.edu/~tjh",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-3d7ad323",
+      "source_url": "https://sites.google.com/view/ckhenderson",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-d477b648",
+      "source_url": "https://www2.atmos.umd.edu/~ide/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-82018d8f",
+      "source_url": "http://www.math.umd.edu/~koralov/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-8c529fb5",
+      "source_url": "https://math.umd.edu/~plahiri/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-81bbd8ec",
+      "source_url": "http://www.math.umd.edu/~mcl",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-5460f4ec",
+      "source_url": "http://alawrie.math.umd.edu/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-d41531e2",
+      "source_url": "http://www.math.umd.edu/~dlevy",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-e02031c7",
+      "source_url": "http://math.umd.edu/~lizhen01",
+      "http": null,
+      "error": "ReadTimeout",
+      "surname_in_visible_text": null,
+      "retry": {
+        "id": "faculty-umd-math-e02031c7",
+        "error": "ProxyError"
+      }
+    },
+    {
+      "id": "faculty-umd-math-b497d141",
+      "source_url": "https://www.math.umd.edu/~vlyzinsk",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-6e3b5b3f",
+      "source_url": "http://www.math.umd.edu/~mxm/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-c04f8168",
+      "source_url": "http://www.math.umd.edu/~dio",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-762389ab",
+      "source_url": "http://www.math.umd.edu/~mellet",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-53d548d5",
+      "source_url": "https://www.math.umd.edu/~hnguye90/",
+      "http": null,
+      "error": "ReadTimeout",
+      "surname_in_visible_text": null,
+      "retry": {
+        "id": "faculty-umd-math-53d548d5",
+        "status": 200,
+        "final": "https://www.math.umd.edu/~hnguye90/",
+        "surname_on_page": true
+      }
+    },
+    {
+      "id": "faculty-umd-math-d44d7b51",
+      "source_url": "http://www.math.umd.edu/~rhn",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-63e84dad",
+      "source_url": "https://sites.google.com/umd.edu/peledron/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-955401c0",
+      "source_url": "http://www.math.umd.edu/~atma",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-54766ea9",
+      "source_url": "https://deepray.github.io",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-60daca01",
+      "source_url": "http://www2.math.umd.edu/~jjren",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-10e144a3",
+      "source_url": "http://www.math.umd.edu/~jmr",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-56fc8ade",
+      "source_url": "http://sites.google.com/view/christian-rosendal",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-d52013f6",
+      "source_url": "http://www.math.umd.edu/~yanir",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-64de2a8d",
+      "source_url": "https://sites.google.com/umd.edu/tsaegusa/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-395976f0",
+      "source_url": "https://math.umd.edu/~senger/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-2f542ed6",
+      "source_url": "http://www.math.umd.edu/~evs",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-314bf290",
+      "source_url": "http://www.math.umd.edu/~tadmor",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-a944ef2f",
+      "source_url": "http://www.math.umd.edu/~harryt/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-32938979",
+      "source_url": "http://www.math.umd.edu/~trivisa",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-8699d8e4",
+      "source_url": "http://www.math.umd.edu/~tvp",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-647c2e23",
+      "source_url": "http://www.math.umd.edu/~lcw",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-b2de4069",
+      "source_url": "http://www.math.umd.edu/~raw",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-22dd1d69",
+      "source_url": "https://haizhaoyang.github.io/",
+      "http": null,
+      "error": "ReadTimeout",
+      "surname_in_visible_text": null,
+      "retry": {
+        "id": "faculty-umd-math-22dd1d69",
+        "status": 200,
+        "final": "https://haizhaoyang.github.io/",
+        "surname_on_page": true
+      }
+    },
+    {
+      "id": "faculty-umd-math-fab275b7",
+      "source_url": "https://sites.google.com/site/yunyangstat/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-0300a4bb",
+      "source_url": "http://yorke.umd.edu/",
+      "http": null,
+      "error": "ReadTimeout",
+      "surname_in_visible_text": null,
+      "retry": {
+        "id": "faculty-umd-math-0300a4bb",
+        "error": "ReadTimeout"
+      }
+    },
+    {
+      "id": "faculty-umd-math-f7d34508",
+      "source_url": "https://www.math.umd.edu/~bzh/",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    },
+    {
+      "id": "faculty-umd-math-afad5e58",
+      "source_url": "http://www.math.umd.edu/~zickert",
+      "http": 200,
+      "error": null,
+      "surname_in_visible_text": true,
+      "retry": null
+    }
+  ]
+}
