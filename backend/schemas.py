@@ -10,6 +10,7 @@ from pydantic_core import PydanticCustomError
 
 from backend.lib.email_claims import unsupported_action_claims
 from backend.lib.email_contact_context import contains_context_work_claim
+from backend.lib.github_contribution import GitHubPullSource
 from backend.lib.request_body import known_keys, string_items
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 from src.student_evidence import COURSE_SOURCES, COURSE_STATUSES
@@ -272,6 +273,7 @@ class MatchViewState(BaseModel):
 
     tab: Literal["all", "high_priority", "good_match", "reach", "starred"] = "all"
     search_query: str = Field(default="", max_length=200)
+    opportunity_type: Literal["", "research", "internship", "summer_program", "fellowship"] = ""
     paid: Literal["", "yes", "no"] = ""
     intl: Literal["", "yes", "no"] = ""
     source: str = Field(default="", max_length=100)
@@ -415,6 +417,7 @@ class MatchesResponse(BaseModel):
     view_counts: dict[str, int] = Field(default_factory=dict)
     source_facets: list[dict[str, Union[str, int]]] = Field(default_factory=list)
     scope_available: bool = False
+    applied_opportunity_type: str = ""
     # How many records each deadline chip would return, keyed "7"/"14"/"30"/
     # "passed". Empty from an older backend, which the rail reads as "no
     # evidence" and hides the chips — the same fail-closed direction as
@@ -459,7 +462,7 @@ class ExperienceEntry(BaseModel):
     revision: int = Field(gt=0, le=9007199254740991)
     status: Literal["candidate", "confirmed", "rejected", "withdrawn"]
     text: str = Field(min_length=1, max_length=6000)
-    source: Union[ExperienceManualSource, ExperienceResumeSource] = Field(discriminator="kind")
+    source: Union[ExperienceManualSource, ExperienceResumeSource, GitHubPullSource] = Field(discriminator="kind")
 
     @field_validator("id", "text")
     @classmethod
@@ -741,7 +744,7 @@ class SelectedExperience(BaseModel):
     id: str
     revision: int
     excerpt: str = Field(min_length=1, max_length=4000)
-    source: Union[ExperienceManualSource, ExperienceResumeReference] = Field(discriminator="kind")
+    source: Union[ExperienceManualSource, ExperienceResumeReference, GitHubPullSource] = Field(discriminator="kind")
 
 
 class SelectedExperienceWithContext(SelectedExperience):

@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { test, expect, type Page } from '@playwright/test';
+
+const ACCOUNT_SERVER = `http://127.0.0.1:${process.env.E2E_SUPABASE_PORT ?? 54321}`;
 
 async function goToResults(page: Page) {
   await page.goto('/');
@@ -10,29 +13,19 @@ async function goToResults(page: Page) {
   await expect(page.locator('[id^="match-card-"]').first()).toBeVisible({ timeout: 30_000 });
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 test.describe('Saved searches end-to-end', () => {
-  test('save current filters via /results button and see them on /favorites', async ({ page }) => {
+  test('save current filters via /results button and see them on /favorites', async ({ page, request }) => {
+    const email = `saved-search-${randomUUID()}@example.test`;
+    const signup = await request.post(`${ACCOUNT_SERVER}/auth/v1/signup`, { data: { email } });
+    expect(signup.status()).toBe(200);
+    const session = await signup.json();
+    expect(session.user).toMatchObject({ email, is_anonymous: false });
+    await page.addInitScript((session) => {
+      if (!localStorage.getItem('ofe_auth')) {
+        localStorage.setItem('ofe_auth', JSON.stringify(session));
+      }
+    }, session);
     await goToResults(page);
-
-    const hasSupabaseSession = await page
-      .waitForFunction(
-        () =>
-          Object.keys(localStorage).some(
-            (k) => k.startsWith('sb-') && k.includes('auth-token'),
-          ),
-        undefined,
-        { timeout: 5_000 },
-      )
-      .then(() => true)
-      .catch(() => false);
-    test.skip(
-      !hasSupabaseSession,
-      'Supabase anonymous session not established (no NEXT_PUBLIC_SUPABASE_* in this env) — skip the save flow; it requires real supabase to round-trip the row into /favorites.',
-    );
 
     await page.getByPlaceholder(/Search by title/i).fill('machine learning');
 
@@ -47,26 +40,23 @@ test.describe('Saved searches end-to-end', () => {
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     await dialog.getByLabel(/^Name$/).fill(testName);
 
-    const savePromise = page
-      .waitForResponse(
-        (resp) =>
-          resp.url().includes('saved_searches') && resp.request().method() === 'POST',
-        { timeout: 10_000 },
-      )
-      .catch(() => null);
-
+    const insert = page.waitForResponse(resp =>
+      new URL(resp.url()).pathname === '/rest/v1/saved_searches' && resp.request().method() === 'POST');
     await dialog.getByRole('button', { name: /^Save search$/i }).click();
-    await savePromise;
+    const response = await insert;
+    expect(response.ok()).toBe(true);
+    expect(response.request().postDataJSON()).toMatchObject({
+      device_id: session.user.id, name: testName, query: 'machine learning',
+    });
+    const saved = await response.json();
+    expect(saved).toMatchObject({ id: expect.any(String), name: testName, query: 'machine learning' });
 
     await page.goto('/favorites');
-
-    await expect(
-      page.getByRole('link', {
-        name: new RegExp(`Apply saved search "${escapeRegExp(testName)}"`),
-      }),
-    ).toBeVisible({ timeout: 15_000 });
-
-    await expect(page.getByText(/pending first sync|checked/i).first()).toBeVisible();
+    const apply = page.getByRole('link', { name: `Apply saved search "${testName}"`, exact: true });
+    await expect(apply).toBeVisible();
+    await expect(page.getByText(/pending first sync/i).first()).toBeVisible();
+    await apply.click();
+    await expect(page.getByPlaceholder(/Search by title/i)).toHaveValue('machine learning');
   });
 
   test('highlight ring renders on /results when ?highlight=<id> is set', async ({ page }) => {

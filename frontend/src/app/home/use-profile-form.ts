@@ -9,7 +9,7 @@ import { courseFields, coursesWithoutResume, importResumeCourses } from '@/lib/c
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
-import { skillsWithResume, withGitHubImportEvidence } from '@/lib/skill-evidence';
+import { newImportedSkill, skillsWithResume, withGitHubImportEvidence } from '@/lib/skill-evidence';
 import {
   browserMarkerNames,
   captureOwnerToken,
@@ -245,7 +245,7 @@ export interface UseProfileFormResult {
    *  student never settled (skillsWithResume). Interests it contributed
    *  STAY: nothing marks them as the résumé's. */
   handleResumeRemoved: () => boolean;
-  handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }) => boolean;
+  handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string; githubUrl?: string }) => boolean;
   handleResumeMasterChange: (master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }) => boolean;
   handleGitHubImport: () => Promise<void>;
   /** Why restoring the guest profile a merge set aside cannot be sent for
@@ -277,7 +277,7 @@ function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): Sk
   const githubSkills = new Map(incoming.filter((s) => s.source === 'github' && s.evidence?.trim())
     .map((s) => [s.name, s]));
   const kept = existing.map((s) => withGitHubImportEvidence(s, githubSkills.get(s.name)));
-  return [...kept, ...incoming.filter((s) => !names.has(s.name))];
+  return [...kept, ...incoming.filter((s) => !names.has(s.name)).map(newImportedSkill)];
 }
 
 // Free-text fields where a person TYPES, one keystroke at a time. Every other
@@ -3172,13 +3172,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     );
   }, [editProfile, editingOrigin, screenOrigin]);
 
-  const handleExperienceChange = useCallback((entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }): boolean => {
+  const handleExperienceChange = useCallback((entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string; githubUrl?: string }): boolean => {
     if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     const origin = editingOrigin();
     if (!origin) return false;
     const current = profileRef.current;
     // A delayed extraction or a superseded editor cannot replace newer work.
     if ((current.resume_text ?? '') !== expected.resumeText
+      || (expected.githubUrl !== undefined && (current.github_url ?? '') !== expected.githubUrl)
       || JSON.stringify(current.experience_entries ?? []) !== expected.entriesJson
       || !validateExperienceEntries(current.experience_entries).ok
       || !validateExperienceEntries(entries).ok) return false;
@@ -3255,7 +3256,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     }));
     // The skills the résumé on file brought go with it unless the new one
     // names them too or the student settled them (checklist M18).
-    const resumeSkills = skillsWithResume(profileRef.current.skills, newSkills);
+    const resumeSkills = skillsWithResume(profileRef.current.skills, newSkills, profileRef.current.github_url);
     // An import that only ADDS names says nothing about the ones already
     // there. Recorded as an operation so a conflict merges these into
     // whatever the other device holds instead of pushing this whole list over
@@ -3318,7 +3319,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       ? courseFields(coursesWithoutResume(profileRef.current)) : { coursework: [] };
     // And the skills only the résumé named that the student never settled,
     // written as the whole list (see handleResumeParsed).
-    const resumeSkills = skillsWithResume(profileRef.current.skills, []);
+    const resumeSkills = skillsWithResume(profileRef.current.skills, [], profileRef.current.github_url);
     const retainedSkills: Partial<Pick<ProfileData, 'skills'>> = resumeSkills.onlyAdds ? {} : { skills: resumeSkills.skills };
     const removalKeys = [
       ...(RELEASE_SCOPE.courseStatus ? REMOVAL_KEYS : REMOVAL_KEYS.filter((key) => key !== 'courses')),
@@ -3436,12 +3437,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const evidenceFor = new Map(
         (data.skill_evidence ?? []).map((e) => [e.skill, `repo ${e.repo}: ${e.field} ${e.value}`]),
       );
-      return data.extracted_skills.map((name) => ({
-        name,
-        level: 'beginner' as const,
-        source: 'github' as const,
-        ...(evidenceFor.get(name) ? { evidence: evidenceFor.get(name) } : {}),
-      }));
+      return data.extracted_skills.map((name) => {
+        const evidence = evidenceFor.get(name);
+        return {
+          name, level: 'beginner' as const, source: 'github' as const,
+          ...(evidence ? { evidence, github_receipt: { account: data.username, evidence } } : {}),
+        };
+      });
     } catch {
       if (request !== ghRequestRef.current) return null;
       if (!ownsScreen(origin)) return null;

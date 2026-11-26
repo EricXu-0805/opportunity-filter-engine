@@ -5,7 +5,8 @@ import { ChevronDown, EyeOff, GraduationCap, SlidersHorizontal } from 'lucide-re
 import { FilterSelect } from './FilterSelect';
 import { MinScoreFilter } from './MinScoreFilter';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
-import { DEFAULT_FILTERS, type Filters, type SortKey, type TFunc } from './types';
+import { SEEKING_TYPES } from '../home/types';
+import { DEFAULT_FILTERS, typeLabel, type Filters, type SortKey, type TFunc } from './types';
 
 export interface FilterRailProps {
   filters: Filters;
@@ -127,6 +128,12 @@ export function FilterRail({
         id="filter-rail-chips"
         className={`${mobileExpanded ? 'flex' : 'hidden'} sm:flex flex-wrap items-center gap-2 -mx-4 px-4 sm:mx-0 sm:px-0`}
       >
+        <FilterSelect
+          label={t('results.filters.typeAria')}
+          value={filters.opportunityType ?? ''}
+          onChange={(value) => onFiltersChange({ ...filters, opportunityType: SEEKING_TYPES.find(type => type === value) })}
+          options={[['', t('results.filters.typeAll')], ...SEEKING_TYPES.map((type): [string, string] => [type, typeLabel(type, t)])]}
+        />
         <FilterSelect
           label={t('results.filters.paidAria')}
           value={filters.paid}

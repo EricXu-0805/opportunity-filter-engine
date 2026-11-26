@@ -1,3 +1,4 @@
+import { validGitHubPullSource } from './github-contribution';
 import type { ExperienceEntry } from './types';
 import {
   BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_PERSON, RESUME_PLACE, RESUME_ROLE, resumeContactLine, resumeSectionHeading,
@@ -83,6 +84,8 @@ export function validateExperienceEntries(value: unknown): ExperienceValidation 
       }
       if (!wellFormedUnicode(source.quote)) return { ok: false, code: 'invalid_unicode' };
       quoteTotal += resumeTextCharacters(source.quote);
+    } else if (source.kind === 'github') {
+      if (!validGitHubPullSource(source)) return { ok: false, code: 'invalid_entry' };
     } else if (source.kind !== 'manual' || !exactKeys(source, ['kind'])) {
       return { ok: false, code: 'invalid_entry' };
     }
@@ -120,7 +123,7 @@ export interface ExperienceSourceContext {
 
 export function isActiveExperience(entry: ExperienceEntry, context: ExperienceSourceContext): boolean {
   if (!validateExperienceEntries([entry]).ok || entry.status !== 'confirmed') return false;
-  if (entry.source.kind === 'manual') return true;
+  if (entry.source.kind !== 'resume') return true;
   const { source } = entry;
   return wellFormedUnicode(context.rawText) && DIGEST.test(context.expectedDigest)
     && source.signature === context.expectedDigest
@@ -269,7 +272,7 @@ export function withdrawResumeEntries(value: unknown): ExperienceEntry[] {
   }));
 }
 
-/** Deleting the resume removes its quoted material. Explicit manual entries stay. */
+/** Deleting the resume removes its quoted material. Independent experiences stay. */
 export function removeResumeEntries(value: unknown): ExperienceEntry[] {
-  return requireEntries(value).filter((entry) => entry.source.kind === 'manual');
+  return requireEntries(value).filter((entry) => entry.source.kind !== 'resume');
 }

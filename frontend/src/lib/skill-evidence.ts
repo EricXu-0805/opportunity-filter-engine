@@ -1,9 +1,46 @@
 import type { SkillWithLevel } from './types';
 
-/** Attach only the missing repository evidence for a matching GitHub skill. */
+/** The GitHub importer also accepts a bare username. Match its account when
+ * deciding whether a saved repository receipt still belongs to this profile. */
+function githubAccount(value?: string | null): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const input = value.trim();
+  const urlAccount = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^/?#]+)(?:[/?#].*)?$/i.exec(input);
+  const account = urlAccount?.[1] ?? input;
+  return /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/i.test(account) ? account.toLowerCase() : undefined;
+}
+
+/** Older saved profiles may contain unvalidated JSON fields. Only a full,
+ * attributable repository receipt can survive the withdrawal of a résumé. */
+export function validGithubReceipt(value: unknown): value is NonNullable<SkillWithLevel['github_receipt']> {
+  if (!value || typeof value !== 'object') return false;
+  const receipt = value as Record<string, unknown>;
+  return typeof receipt.account === 'string' && Boolean(githubAccount(receipt.account))
+    && typeof receipt.evidence === 'string' && Boolean(receipt.evidence.trim());
+}
+
+/** A new GitHub skill already has the repository evidence as its primary
+ * source. Only the import operation needs the extra receipt for a potential
+ * concurrent résumé-based skill until the save is accepted. */
+export function newImportedSkill(skill: SkillWithLevel): SkillWithLevel {
+  if (skill.source !== 'github' || !skill.github_receipt) return skill;
+  const result = { ...skill };
+  delete result.github_receipt;
+  return result;
+}
+
+/** Add the independent repository evidence without changing the student's level. */
 export function withGitHubImportEvidence(existing: SkillWithLevel, imported?: SkillWithLevel): SkillWithLevel {
-  if (existing.source === 'github' && !existing.evidence?.trim() && imported?.source === 'github'
-      && imported.name === existing.name && imported.evidence?.trim()) {
+  if (!imported || existing.name !== imported.name) return existing;
+  const receipt = imported.github_receipt;
+  if (existing.source === 'resume' && validGithubReceipt(receipt)
+      && (imported.source === 'github' || imported.source === 'resume')) {
+    if (existing.github_receipt?.account === receipt.account && existing.github_receipt.evidence === receipt.evidence) {
+      return existing;
+    }
+    return { ...existing, github_receipt: receipt };
+  }
+  if (existing.source === 'github' && !existing.evidence?.trim() && imported.source === 'github' && imported.evidence?.trim()) {
     return { ...existing, evidence: imported.evidence };
   }
   return existing;
@@ -56,6 +93,7 @@ export function skillNeedsConfirming(skill: SkillWithLevel): boolean {
 export function skillsWithResume(
   skills: readonly SkillWithLevel[],
   found: readonly SkillWithLevel[],
+  currentGithub?: string | null,
 ): { skills: SkillWithLevel[]; onlyAdds: boolean } {
   const byName = new Map(found.map((skill) => [skill.name, skill]));
   const kept: SkillWithLevel[] = [];
@@ -63,6 +101,18 @@ export function skillsWithResume(
   for (const skill of skills) {
     if (skill.source !== 'resume') { kept.push(skill); continue; }
     const again = byName.get(skill.name);
+    if (!again && skill.github_receipt) {
+      const { github_receipt, ...rest } = skill;
+      const account = githubAccount(currentGithub);
+      onlyAdds = false;
+      if (account && validGithubReceipt(github_receipt) && account === githubAccount(github_receipt.account)) {
+        kept.push({ ...rest, source: 'github', evidence: github_receipt.evidence });
+      } else if (skillLevelIsTheStudentsOwn(skill)) {
+        delete rest.evidence;
+        kept.push(rest);
+      }
+      continue;
+    }
     if (!again && !skillLevelIsTheStudentsOwn(skill)) { onlyAdds = false; continue; }
     const evidence = again?.evidence;
     if (evidence === skill.evidence) { kept.push(skill); continue; }

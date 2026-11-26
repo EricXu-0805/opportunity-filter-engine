@@ -321,9 +321,9 @@
     },
     "northwestern": {
       "listing_count": 19,
-      "faculty_contact_count": 2812,
+      "faculty_contact_count": 2807,
       "unreviewed_count": 0,
-      "total_count": 2831
+      "total_count": 2826
     },
     "nyu": {
       "listing_count": 9,
@@ -645,9 +645,9 @@
     },
     "vt": {
       "listing_count": 7,
-      "faculty_contact_count": 1864,
+      "faculty_contact_count": 1858,
       "unreviewed_count": 0,
-      "total_count": 1871
+      "total_count": 1865
     },
     "washu": {
       "listing_count": 6,
@@ -692,5 +692,5 @@
       "total_count": 1256
     }
   },
-  "national_count": 5603
+  "national_count": 5601
 }

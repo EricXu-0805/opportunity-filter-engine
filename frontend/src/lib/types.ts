@@ -34,6 +34,8 @@ export interface SkillWithLevel {
    *  confirm, so a spurious match — "Relevant coursework: Introduction to
    *  Python" — is visible rather than silently becoming a claim. */
   evidence?: string;
+  /** Independent repository evidence for a skill still attributed to the résumé. */
+  github_receipt?: { account: string; evidence: string };
 }
 
 // ── Courses (checklist M13) ──────────────────────────────────────────
@@ -75,12 +77,21 @@ export type ExperienceSource =
     end: number;
   };
 
+export interface GitHubPullSource {
+  kind: 'github';
+  repository: string;
+  head_repository: string | null;
+  number: number;
+  author: string;
+  title: string;
+}
+
 export interface ExperienceEntry {
   id: string;
   revision: number;
   status: 'candidate' | 'confirmed' | 'rejected' | 'withdrawn';
   text: string;
-  source: ExperienceSource;
+  source: ExperienceSource | GitHubPullSource;
 }
 
 // ── Complete résumé master (source-preserving; independent of AI budgets) ──
@@ -579,6 +590,7 @@ export interface MatchesResponse {
   };
   source_facets?: Array<{ source: string; count: number }>;
   scope_available?: boolean;
+  applied_opportunity_type?: string;
   /** How many records each deadline chip would return, counted server-side
    *  over the whole snapshot against the caller's `today`. Absent from an
    *  older backend; the rail then hides the chips rather than assuming. */
@@ -619,7 +631,7 @@ export interface ExperienceUsage {
     id: string;
     revision: number;
     excerpt: string;
-    source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number };
+    source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number } | GitHubPullSource;
     context?: { master_id: string; master_revision: number; section: 'activities' | 'education' | 'publications'; id: string; kind?: string; fields: Record<string, ResumeFact> } | null;
   }>;
   excluded: Array<{

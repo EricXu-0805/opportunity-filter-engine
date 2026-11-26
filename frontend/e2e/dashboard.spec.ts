@@ -159,7 +159,11 @@ test.describe('Deep-link URL filters', () => {
     await expect(page.locator('[id^="match-card-"]').first()).toBeVisible({ timeout: 30_000 });
 
     await page.goto('/results?tab=high_priority&paid=yes');
-    const paidSelect = page.locator('select').first();
+    const disclosure = page.locator('button[aria-controls="filter-rail-chips"]');
+    if (await disclosure.isVisible() && await disclosure.getAttribute('aria-expanded') === 'false') {
+      await disclosure.click();
+    }
+    const paidSelect = page.getByRole('combobox', { name: 'Pay', exact: true });
     await expect(paidSelect).toHaveValue('yes');
   });
 });

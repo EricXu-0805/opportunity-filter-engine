@@ -2615,6 +2615,18 @@ export const en = {
     },
     experience: {
       "title": "Experience library",
+      "githubImport": "Import a GitHub pull request",
+      "githubLink": "Public pull request URL",
+      "githubHint": "Choose a pull request you opened. Its author must match the GitHub profile in Online profiles.",
+      "githubCheck": "Add for review",
+      "githubAuthor": "Opened by {author}",
+      "githubFromRepo": "Submitted from {repo}",
+      "githubFact": "I opened pull request #{number} in {repo} (“{title}”).",
+      "githubNeedProfile": "Enter your GitHub profile URL under Online profiles first.",
+      "githubNeedPull": "Enter a GitHub pull request URL ending in /pull/NUMBER.",
+      "githubWrongAuthor": "GitHub lists a different author. Check your profile URL or choose a pull request you opened.",
+      "githubMissing": "This public pull request could not be found. Check its current GitHub URL.",
+      "githubUnavailable": "GitHub could not verify this pull request. Try again later.",
       "description": "Review your resume excerpts or add an experience. Only entries you confirm can supply experience facts for cold emails, your résumé master and target résumés. Matching and the résumé bullet editor do not use this library yet.",
       "limits": "Up to 100 entries, 6,000 characters each and 60,000 in total. Original resume text is kept separately.",
       "invalidStored": "The saved experience library could not be read. It has not been replaced. Reload your profile or resolve the sync error before editing.",
@@ -2637,6 +2649,7 @@ export const en = {
         "withdrawn": "Withdrawn"
       },
       "source": {
+        "github": "GitHub pull request",
         "manual": "Entered by you",
         "resume": "Resume excerpt"
       },
@@ -3171,6 +3184,8 @@ export const en = {
       sortNewest: 'Sort: Recently posted',
       paidAria: 'Pay',
       intlAria: 'International students',
+      typeAria: 'Opportunity type',
+      typeAll: 'All opportunity types',
       sourceAria: 'Source',
       scopeAria: 'Scope',
       locAria: 'Location',
@@ -8106,6 +8121,18 @@ export const zh = {
       oppCount: '{count} 个活跃机会',
     },
     experience: {
+      "githubImport": "导入 GitHub 拉取请求",
+      "githubLink": "公开拉取请求网址",
+      "githubHint": "选择一条由你发起的拉取请求。其作者须与「在线主页」中的 GitHub 账号一致。",
+      "githubCheck": "加入待确认经历",
+      "githubAuthor": "发起人 {author}",
+      "githubFromRepo": "来自仓库 {repo}",
+      "githubFact": "我在 {repo} 发起了第 {number} 号拉取请求《{title}》。",
+      "githubNeedProfile": "请先在「在线主页」填写你的 GitHub 个人主页网址。",
+      "githubNeedPull": "请输入以 /pull/编号 结尾的 GitHub 拉取请求网址。",
+      "githubWrongAuthor": "GitHub 列出的作者不同。请检查个人主页，或选择你发起的拉取请求。",
+      "githubMissing": "没有找到这条公开拉取请求。请核对它现在的 GitHub 网址。",
+      "githubUnavailable": "暂时无法从 GitHub 核对，请稍后重试。",
       "title": "经历库",
       "description": "核对简历原文片段，也可以手动补充经历。只有你确认的条目才会作为经历事实，供邮件、简历母版和目标简历选用；匹配和经历条目编辑暂未接入。",
       "limits": "最多 100 条，每条 6,000 字，总计 60,000 字。简历原文单独保留。",
@@ -8129,6 +8156,7 @@ export const zh = {
         "withdrawn": "已撤回"
       },
       "source": {
+        "github": "GitHub 拉取请求",
         "manual": "手动填写",
         "resume": "简历原文"
       },
@@ -8642,6 +8670,8 @@ export const zh = {
       sortNewest: '排序：最新发布',
       paidAria: '薪酬',
       intlAria: '国际学生',
+      typeAria: '机会类型',
+      typeAll: '全部机会类型',
       sourceAria: '来源',
       scopeAria: '范围',
       locAria: '地点',

@@ -117,10 +117,13 @@ function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = ne
     // A label with nothing after it on its line opens no list.
     if (!found.some((list) => list.end > list.start)) continue;
     const lists = found.map((list) => lines[index].slice(list.start, list.end));
-    // Only a list that runs to the end of its line can go on to the next.
-    const runsOn = found[found.length - 1].end === lines[index].length;
+    // Geometry alone cannot distinguish a Chinese course title from the
+    // independent experience or award on the next line. Keep ambiguous
+    // breaks in the retained source. The text reader already joined wraps
+    // it could establish from the text and page together.
+    const runsOn = found[found.length - 1].end === lines[index].length && !CJK_TEXT.test(lines[index]);
     while (runsOn && possibleWraps.has(end) && index + 1 < lines.length
-      && !NOT_COURSEWORK.test(lines[index + 1]) && !RESUME_ROLE.test(lines[index + 1])) {
+      && !CJK_TEXT.test(lines[index + 1]) && !NOT_COURSEWORK.test(lines[index + 1]) && !RESUME_ROLE.test(lines[index + 1])) {
       index += 1;
       end += lines[index].length + 1;
       lists[lists.length - 1] += wrapJoin(lists[lists.length - 1], lines[index]) + lines[index];

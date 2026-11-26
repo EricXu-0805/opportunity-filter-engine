@@ -20,7 +20,7 @@ vi.mock('pdfjs-dist', () => ({
 
 import { parseResumePDF } from './pdf-parser';
 import { MAX_RESUME_TEXT_CHARACTERS, weakWrapEvidence, wrapEvidence } from './resume-input';
-import { courseRows } from './course-status';
+import { courseLists, courseRows, listedCourses } from './course-status';
 
 type MockPdf = {
   numPages: number;
@@ -30,6 +30,13 @@ type MockPdf = {
     getTextContent: () => Promise<{ items: Array<{ str: string; hasEOL?: boolean } | { type: string }> }>;
   }>;
 };
+
+it('ends a coursework field at the bullet that opens the next résumé field', () => {
+  const names = (line: string) => courseLists(line).flatMap(({ start, end }) =>
+    listedCourses(line.slice(start, end)).map((course) => course.name));
+  expect(names('主修课程：统计 • 核心课程：算法')).toEqual(['统计', '算法']);
+  expect(names('主修课程：数据结构 • 推荐教材')).toEqual(['数据结构']);
+});
 
 function fakePdf(pages: string[]): MockPdf {
   return {
@@ -639,6 +646,20 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
   }
   const parseFixture = async (name: string) => (await readFixture(name)).raw_text;
 
+  it('reads Chinese course lists with their original evidence and leaves course status unconfirmed', async () => {
+    const line = '主修课程：数据结构、统计，线性代数；专业技能：Python';
+    // This PDF also lists courses taught and recommended to others, and an empty course field.
+    const result = await readFixture('resume-zh-courses.pdf');
+    const names = ['CS 225 Data Structures', '数据结构', '统计', '线性代数', '機器學習', '算法'].sort();
+    expect(result.extracted_coursework).toEqual(names);
+    expect(courseRows({ coursework: names, resume_text: result.raw_text })).toContainEqual({
+      name: '统计', source: 'resume', status: 'unknown', line,
+    });
+    expect(courseRows({ coursework: ['统计'], resume_text: '' })).toEqual([
+      { name: '统计', source: 'resume', status: 'unknown' },
+    ]);
+  });
+
   // One file per stranger-walk report. Each wraps different lines: after
   // "baseline," and "(MATH" (CE-2), before "AUC", "& Statistics", "maps;" and
   // "78%" (TR-04), and inside "integrated-gradients" (tailor-renovate-02).
@@ -1106,6 +1127,10 @@ describe('positioned text items', () => {
       ])) });
       return parseResumePDF(fakeFile());
     };
+    const chinese = '主修课程：数据结构、线性代数';
+    for (const next of ['教授学生学习编程', '获得优秀学生奖学金', '工作经历', '相关技能：Python']) {
+      expect((await parse(chinese, 497, next)).extracted_coursework).toEqual(['数据结构', '线性代数']);
+    }
     const line = 'Relevant coursework: Introduction to Computer Science, Data';
     const result = await parse(line, 497, 'Structures and Algorithms, Discrete Mathematics');
     expect(result.raw_text.split('\n').slice(1)).toEqual([line, 'Structures and Algorithms, Discrete Mathematics']);

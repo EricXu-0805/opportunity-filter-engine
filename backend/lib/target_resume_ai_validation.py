@@ -10,6 +10,9 @@ import json
 import re
 from copy import deepcopy
 
+from pydantic import ValidationError
+
+from backend.lib.github_contribution import GitHubPullSource
 from backend.lib.target_resume_ai_schema import MAX_DOCUMENT_BYTES, MAX_SAFE_INTEGER
 from backend.lib.target_resume_context import InvalidTargetContext, validate_target_context
 
@@ -117,7 +120,14 @@ def validate_entries(entries):
             fail("invalid_experiences")
         seen.add(entry["id"])
         text(entry["text"], 6000, True)
-        valid_source(entry["source"], 6000)
+        source = entry["source"]
+        if isinstance(source, dict) and source.get("kind") == "github":
+            try:
+                GitHubPullSource.model_validate(source)
+            except ValidationError:
+                fail("invalid_source")
+        else:
+            valid_source(source, 6000)
         total += len(entry["text"])
         quotes += len(entry["source"].get("quote", ""))
     if total > 60000 or quotes > 60000:
@@ -215,7 +225,7 @@ def validate_master(master):
 
 def active(item, raw, signature):
     source = item["source"]
-    return item["status"] == "confirmed" and (source["kind"] == "manual" or (
+    return item["status"] == "confirmed" and (source["kind"] in {"manual", "github"} or (
         source["signature"] == signature and raw[source["start"]:source["end"]] == source["quote"]
     ))
 

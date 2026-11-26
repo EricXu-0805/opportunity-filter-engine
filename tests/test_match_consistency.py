@@ -1150,6 +1150,42 @@ class TestServerMatchView:
             + body["view_counts"]["reach"]
         )
 
+    def test_repeated_pages_reuse_only_the_current_filtered_snapshot(self, snapshot_env, monkeypatch):
+        scans = []
+        apply_view = m_module._apply_match_view_rows
+
+        def record_scan(results, rows, view, home_school):
+            scans.append(view)
+            return apply_view(results, rows, view, home_school)
+
+        monkeypatch.setattr(m_module, "_apply_match_view_rows", record_scan)
+        request = self._request(_profile())
+        first = client.post("/api/matches/view", json=request).json()
+        assert first["next_cursor"]
+        again = client.post("/api/matches/view", json=request).json()
+        assert again == first
+        next_page = client.post(
+            "/api/matches/view", json={**request, "cursor": first["next_cursor"], "page_size": 1}
+        ).json()
+        assert next_page["view_start"] == len(first["results"])
+        assert next_page["view_counts"] == first["view_counts"]
+        assert len(scans) == 1
+
+        saved = first["results"][0]["opportunity_id"]
+        favorites = self._request(_profile(), tab="starred", favorite_ids=[saved])
+        starred = client.post("/api/matches/view", json=favorites).json()
+        assert [r["opportunity_id"] for r in starred["results"]] == [saved]
+        assert starred["field_relevant_count"] <= 1
+        empty = client.post("/api/matches/view", json=self._request(_profile(), tab="starred")).json()
+        assert empty["filtered_total"] == 0
+        assert empty["field_relevant_count"] == 0
+        assert len(scans) == 3
+
+        # Rebuilding a ranking cannot reuse a filtered list from the old one.
+        m_module._match_snapshots.clear()
+        assert client.post("/api/matches/view", json=self._request(_profile(), tab="starred")).json() == empty
+        assert len(scans) == 4
+
     def test_view_cursor_rejects_filter_change(self, snapshot_env):
         profile = _profile()
         request = self._request(profile)

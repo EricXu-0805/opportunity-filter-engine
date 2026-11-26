@@ -56,6 +56,16 @@ def _listing(ident: str, **overrides) -> dict:
     return base
 
 
+def test_stamp_only_deadline_stays_an_estimate_on_the_card_and_in_filters():
+    listing = _listing("source-stamped", deadline="2026-03-01",
+                       metadata={"inferred_fields": {"deadline": "estimate:award_start"}})
+    card = m_module._match_card(listing)
+    assert card["deadline"] == "2026-03-01"
+    assert card["deadline_is_estimate"] is True
+    assert m_module._view_row_from_card(card).deadline is None
+    assert m_module._match_view_row(listing).deadline is None
+
+
 def _faculty(ident: str, **overrides) -> dict:
     base = {
         "id": ident,
@@ -537,3 +547,53 @@ def test_pay_filter_uses_the_displayed_evidence_in_views_and_saved_searches(paid
     ):
         assert {r.opportunity_id for r in filtered} == expected_ids
     assert set(matching_ids(records, {"paid": paid})) == expected_ids
+
+
+def test_type_filter_paginates_counted_results_without_changing_the_profile(match_env):
+    from tests.test_match_consistency import _profile
+
+    profile = _profile(seeking_type=["research", "internship"])
+    view = {"tab": "all", "today": _TODAY, "opportunity_type": "internship", "favorite_ids": ["opp-03", "opp-00"]}
+    request = {"view": view, "page_size": 1, "profile": profile}
+    first = client.post("/api/matches/view", json=request)
+    assert first.status_code == 200, first.text
+    page = first.json()
+    assert page["applied_opportunity_type"] == "internship"
+    assert page["view_counts"]["all"] == page["filtered_total"] == 3
+    assert page["view_counts"]["starred"] == 1
+    found = []
+    while True:
+        assert page["results"][0]["opportunity"]["opportunity_type"] == "internship"
+        found.append(page["results"][0]["opportunity_id"])
+        if not page["next_cursor"]:
+            break
+        following = client.post("/api/matches/view", json={**request, "cursor": page["next_cursor"]})
+        assert following.status_code == 200, following.text
+        page = following.json()
+    assert set(found) == {"opp-03", "opp-07", "opp-11"}
+    request["cursor"] = first.json()["next_cursor"]
+    request["view"] = {**view, "opportunity_type": "research"}
+    assert client.post("/api/matches/view", json=request).status_code == 409
+
+
+def test_type_filter_agrees_with_saved_searches_on_normalized_and_unknown_types():
+    from src.saved_searches.filter import matching_ids
+
+    records = [
+        _listing("canonical", opportunity_type="summer_program"),
+        _listing("old", opportunity_type="Summer program"),
+        _listing("research"),
+        _listing("unknown", opportunity_type=None),
+    ]
+    cards = {r["id"]: m_module._match_card(r) for r in records}
+    rows = {r["id"]: m_module._match_view_row(r) for r in records}
+    results = _results(records)
+    view = MatchViewState(today=_TODAY, opportunity_type="summer_program")
+    expected = {"canonical", "old"}
+    for filtered, *_ in (
+        m_module._apply_match_view(results, cards, view, "uiuc"),
+        m_module._apply_match_view_rows(results, rows, view, "uiuc"),
+    ):
+        assert {r.opportunity_id for r in filtered} == expected
+    assert set(matching_ids(records, {"opportunityType": "summer_program"})) == expected
+    assert set(matching_ids(records, {})) == {r["id"] for r in records}

@@ -85,3 +85,47 @@ describe('re-importing GitHub evidence', () => {
     expect(withGitHubImportEvidence(old, { ...imported, evidence: ' ' })).toBe(old);
   });
 });
+
+describe('M18 independent sources on the same skill', () => {
+  const resume = s({ source: 'resume', level: 'experienced', evidence: 'Skills: Python' });
+  const github = s({ source: 'github', evidence: 'repo example: language Python',
+    github_receipt: { account: 'example', evidence: 'repo example: language Python' } });
+
+  it('keeps the résumé quote while both sources are present, then uses only the remaining repository', () => {
+    const combined = withGitHubImportEvidence(resume, github);
+    expect(combined).toEqual({ ...resume, github_receipt: github.github_receipt });
+    expect(withGitHubImportEvidence(combined, github)).toBe(combined);
+    const replacement = s({ source: 'resume', evidence: 'Used Python for maps' });
+    const updated = skillsWithResume([combined], [replacement], 'example').skills;
+    expect(updated).toEqual([{ ...combined, evidence: replacement.evidence }]);
+    const expected: SkillWithLevel = { name: 'Python', source: 'github', evidence: github.evidence, level: 'experienced' };
+    for (const profile of ['example', 'https://github.com/Example/', 'https://github.com/example/tools']) {
+      expect(skillsWithResume(updated, [], profile)).toEqual({ skills: [expected], onlyAdds: false });
+    }
+    expect(skillNeedsConfirming(expected)).toBe(true);
+  });
+
+  it('discards malformed receipts in historical profile JSON without blocking removal or losing a confirmed level', () => {
+    for (const value of [{ account: 'example', evidence: 42 }, { account: false, evidence: 'repo x' }, 'broken', {}, []]) {
+      const corrupt = JSON.parse(JSON.stringify({ ...resume, github_receipt: value })) as SkillWithLevel;
+      expect(skillsWithResume([corrupt], [], 'example').skills).toEqual([]);
+      expect(skillsWithResume([{ ...corrupt, confirmed: true }], [], 'example').skills).toEqual([
+        { name: 'Python', source: 'resume', level: 'experienced', confirmed: true },
+      ]);
+      expect(withGitHubImportEvidence(resume, { ...github, github_receipt: corrupt.github_receipt })).toBe(resume);
+    }
+  });
+
+  it('does not use a previous account, an unattributed import, or evidence from an unrelated name', () => {
+    const combined = withGitHubImportEvidence(resume, github);
+    for (const url of ['', 'another', 'https://unrelated.example/example', 'https://notgithub.com/example']) {
+      expect(skillsWithResume([combined], [], url).skills).toEqual([]);
+    }
+    expect(withGitHubImportEvidence(resume, { ...github, name: 'Java' })).toBe(resume);
+    expect(withGitHubImportEvidence(resume, { ...github, github_receipt: undefined })).toBe(resume);
+    const shared = s({ source: 'shared', level: 'experienced' });
+    expect(withGitHubImportEvidence(shared, github)).toBe(shared);
+    const typed = s({ level: 'expert', confirmed: true });
+    expect(withGitHubImportEvidence(typed, github)).toBe(typed);
+  });
+});
