@@ -3,7 +3,9 @@ import json, re
 from urllib.parse import quote
 from playwright.sync_api import expect,sync_playwright
 from verify_m25_results_20261126 import capture,enter_results,is_view,out,receipt,site
+etap="https://etap.nsf.gov/award/8314/opportunity/12305"
 cases=[
+    ("sro-44f176cd","Advancing Data Science in the Public Interest",["https://researchops.web.illinois.edu/opportunity/reu-advancing-data-science-public-interest",etap]),
     ("sro-3ec4ea4e","Cancer Research Internship Summer Program",["https://researchops.web.illinois.edu/opportunity/cancer-research-internship-summer-program-crisp",'https://cancer.iu.edu/education/summer/acs-cancer-research-internship.html']),
     ("nsf-reu-2447670","Advancing Data Science in the Public Interest",["https://www.nsf.gov/awardsearch/showAward?AWD_ID=2447670",'https://www.smu.edu/provost/saes/academic-enrichment/engaged-learning/research/research-experiences-undergraduates']),
 ]
@@ -24,9 +26,15 @@ with sync_playwright() as pw:
                     tab=ctx.new_page()
                     try:
                         response=tab.goto(url,wait_until="domcontentloaded",timeout=45000)
+                        if url==etap:
+                            tab.get_by_text("Application Window",exact=True).wait_for(timeout=45000)
+                            expect(tab.get_by_text("2447670",exact=True)).to_be_visible()
+                            body=tab.locator("body").inner_text()
+                            assert "02/22/2027" in body and "11:59 PM ET" in body
+                            tab.screenshot(path=out/"smu-etap-2027.png",full_page=True)
                         result[url]={"http":response.status if response else None,"landed":tab.url,"title":tab.title()}
                         body=tab.locator("body").inner_text(timeout=30000)
-                        result[url]["date_lines"]=[x.strip()[:600] for x in body.splitlines() if re.search(r"deadline|applications? |apply by|anticipated|202[5678]|internship|SMU|sophomore",x,re.I)][:65]
+                        result[url]["date_lines"]=[x.strip()[:600] for x in body.splitlines() if re.search(r"deadline|applications? |apply by|anticipated|11:59 PM ET|2447670|202[5678]|internship|SMU|sophomore",x,re.I)][:65]
                     except Exception as exc:
                         result[url]={"source_visit":str(exc)[:300]}
                     finally:tab.close()
