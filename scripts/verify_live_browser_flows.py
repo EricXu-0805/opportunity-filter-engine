@@ -1,5 +1,5 @@
 """Replay deployed browser behavior with an isolated account. No external messages."""
-import asyncio, json, os, re, subprocess, sys
+import asyncio, base64, json, os, re, subprocess, sys
 from urllib.parse import parse_qs, urlsplit
 from playwright.async_api import async_playwright, expect
 import urllib.request, urllib.error
@@ -45,7 +45,7 @@ async def run(mode):
         else:
             raise RuntimeError('Isolated account service not ready after 30 seconds')
         print('Isolated account service ready:',mode,flush=True)
-        session=rpc('/auth/v1/signup',{'email':'m179@example.invalid','password':'local-fixture-only'} if mode.startswith('race') else {}); uid=session['user']['id']
+        session=rpc('/auth/v1/signup',{'email':'m179@example.invalid','password':'local-fixture-only'} if mode.startswith('race') or mode == 'push-switch-after' else {}); uid=session['user']['id']
         profile={'name':'Synthetic Student','institution':'UC Berkeley','home_school':'ucb','college':'Letters and Science','grade':'Sophomore','major':'Cognitive Science','research_interests':'understanding how memory changes during learning in biological circuits','skills':['Python'],'coursework':[],'seeking_types':['research'],'is_international':False}
         if mode == 'merged' or mode.startswith('race'):
             profile.update(institution='UIUC',home_school='uiuc',college='Grainger College of Engineering',major='Computer Science',skills=[])
@@ -115,6 +115,9 @@ async def run(mode):
             outcomes = []
             test_unsubscribe = False
             delete_allowed = False
+            switching = mode == 'push-switch-after'
+            push_rows = {uid}
+            owner_events = []
             large = mode.startswith('large-')
             table = 'interactions' if 'tracker' in mode else 'favorites'
             continuation_calls = []
@@ -125,8 +128,21 @@ async def run(mode):
                 cors={'Access-Control-Allow-Origin':'https://joinalab.com','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers.get('access-control-request-headers','*'),'Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,HEAD,OPTIONS','Access-Control-Expose-Headers':'Content-Range,Retry-After'}
                 if u.hostname=='mjpirkyduibkakvlbdko.supabase.co':
                     if req.method=='OPTIONS':return await route.fulfill(status=204,headers=cors)
+                    if switching and u.path == '/auth/v1/logout':
+                        assert uid not in push_rows
+                        owner_events.append(('LOGOUT', uid))
                     if push and u.path == '/rest/v1/push_subscriptions':
                         q = parse_qs(u.query)
+                        if switching:
+                            claims = req.headers['authorization'].split('.')[1]
+                            caller = json.loads(base64.urlsafe_b64decode(claims + '=' * (-len(claims) % 4)))['sub']
+                            assert q['device_id'] == ['eq.' + caller] and q['endpoint'] == ['eq.' + endpoint], q
+                            owner_events.append((req.method, caller))
+                            if req.method == 'GET':
+                                return await route.fulfill(headers=cors, json=[{'endpoint': endpoint}] if caller in push_rows else [])
+                            assert req.method == 'DELETE' and caller == uid
+                            push_rows.remove(caller)
+                            return await route.fulfill(status=204, headers=cors)
                         assert q['device_id'] == ['eq.' + uid] and q['endpoint'] == ['eq.' + endpoint], q
                         if req.method != 'GET':
                             outcomes.append(req.method)
@@ -210,6 +226,33 @@ async def run(mode):
                 await page.goto('https://joinalab.com/dashboard', wait_until='domcontentloaded')
                 enabled = page.get_by_role('button', name='Enable notifications', exact=True)
                 fault = page.get_by_role('alert').filter(has_text="Couldn't check notification status.")
+                if switching:
+                    on = page.get_by_role('button', name='Notifications on', exact=True)
+                    await expect(on).to_have_attribute('aria-pressed', 'true')
+                    await page.get_by_test_id('account-menu').click()
+                    await page.get_by_role('menuitem', name='Sign out').click()
+                    await page.get_by_role('dialog').get_by_role('button', name='Sign out', exact=True).click()
+                    await expect(page.get_by_role('dialog')).to_have_count(0)
+                    await page.wait_for_function("uid => {const s=JSON.parse(localStorage.getItem('ofe_auth')); return s?.user?.is_anonymous && s.user.id!==uid}", arg=uid)
+                    guest = await page.evaluate("JSON.parse(localStorage.getItem('ofe_auth')).user.id")
+                    await page.reload(wait_until='domcontentloaded')
+                    await expect(enabled).to_have_attribute('aria-pressed', 'false')
+                    assert ('GET', guest) in owner_events
+                    # Restore a different existing account on this same browser and endpoint.
+                    other = rpc('/auth/v1/signup', {'email':'m48-second@example.invalid', 'password':'local-fixture-only'})
+                    await page.evaluate("s => localStorage.setItem('ofe_auth', JSON.stringify(s))", other)
+                    await page.reload(wait_until='domcontentloaded')
+                    await expect(page.get_by_test_id('account-menu')).to_have_attribute('aria-label', re.compile('m48-second'))
+                    await expect(enabled).to_have_attribute('aria-pressed','false')
+                    for _ in range(100):
+                        if ('GET', other['user']['id']) in owner_events:
+                            break
+                        await asyncio.sleep(.1)
+                    assert ('GET', other['user']['id']) in owner_events and not push_rows, owner_events
+                    assert [verb for verb, owner in owner_events if verb != 'GET'] == ['DELETE','LOGOUT'], owner_events
+                    print('PASS M48: first account on, old account row deleted with its own session before logout, guest and second account off on the same endpoint; no cross-account write. Frontend',await page.locator('html').get_attribute('data-release-sha'),flush=True)
+                    await browser.close()
+                    return
                 if mode.endswith('-before'):
                     await expect(enabled).to_be_visible()
                     await expect(enabled).to_have_attribute('aria-pressed', 'false')
