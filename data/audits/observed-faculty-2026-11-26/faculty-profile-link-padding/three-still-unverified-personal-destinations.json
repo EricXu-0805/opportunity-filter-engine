@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-11-26T19:35:14.211648+00:00",
+  "origin": "Follow-up to the 23 active or historical source edges left unchanged in #1468.",
+  "entries": [
+    {
+      "id": "faculty-miami-chem-a0149798",
+      "name": "Claes R. Wahlestedt",
+      "chemical_department_official": "https://chemistry.as.miami.edu/people/faculty/index.html",
+      "chemical_listing": "Current complete directory has a secondary appointments section and did not list this name.",
+      "official_secondary_appointment": "https://med.miami.edu/graduate-studies/doctoral-programs/biochemistry-and-molecular-biology/faculty-profiles",
+      "ordinary_browser": "The publicly displayed named entry records Psychiatry and Behavioral Sciences and a secondary Chemistry appointment; the entry supplies no individual profile hyperlink.",
+      "proposed_personal_destination": "https://scholarship.miami.edu/esploro/profile/claes_wahlestedt",
+      "normal_http": 200,
+      "browser_result": "After the portal loaded in Chrome it navigated to the generic researcher search. A named researcher query with the same spelling returned zero profiles.",
+      "outcome": "Specific individual destination remains unverified. Keep as an open source exception. This observation does not imply retirement, a primary Chemistry appointment, or availability of a lab placement."
+    },
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "name": "Jeff Andrews",
+      "proposed_personal_destination": "https://phys.ufl.edu/directory/jeff-andrews/",
+      "normal_http": 403,
+      "outcome": "A campus registry names this person. The proposed destination itself could not be read during the ordinary source check. No individual URL backfill or appointment change."
+    },
+    {
+      "id": "faculty-miami-bio-4dfe1b88",
+      "name": "Don DeAngelis",
+      "current_department": "https://biology.as.miami.edu/people/index.html",
+      "ordinary_department_result": "The university lists a research professor. A profile address from the roster contains an email in the URL.",
+      "alternate_institutional_biography": "https://www.usgs.gov/staff-profiles/don-deangelis",
+      "alternate_normal_http": 403,
+      "outcome": "Keep the original person. No new public person URL and no change to the public link validation policy; outage is not evidence of departure."
+    }
+  ]
+}
