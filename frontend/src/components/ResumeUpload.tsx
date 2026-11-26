@@ -314,7 +314,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
         {state === 'error' && (
           <>
             <AlertCircle className="w-8 h-8 text-red-500" />
-            <p className="text-sm text-red-600 font-medium">{error}</p>
+            <p role="alert" className="text-sm text-red-600 font-medium">{error}</p>
             <button
               type="button"
               onClick={(e) => {

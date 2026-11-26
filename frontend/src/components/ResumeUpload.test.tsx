@@ -207,7 +207,7 @@ describe('ResumeUpload — upload happy path', () => {
 });
 
 describe('ResumeUpload — failure paths', () => {
-  it('shows the server-side parse-failure message when success=false', async () => {
+  it('announces a parse failure and clears the alert when the student retries', async () => {
     mockParse.mockResolvedValue({
       success: false,
       message: 'Could not detect text in the PDF',
@@ -218,10 +218,9 @@ describe('ResumeUpload — failure paths', () => {
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [pdfFile()] } });
 
-    await waitFor(() =>
-      expect(screen.getByText(/Could not detect text in the PDF/)).toBeInTheDocument(),
-    );
-    expect(screen.getByText(/resume.tryAgain/)).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not detect text in the PDF');
+    fireEvent.click(screen.getByRole('button', { name: 'resume.tryAgain' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('falls back to resume.errParse when success=false but no message supplied', async () => {
