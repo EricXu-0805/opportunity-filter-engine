@@ -1,0 +1,520 @@
+{
+  "candidate_tree": "dfb7f870c551baf6161be0e3c0086529accad7a0",
+  "source_receipts": [
+    "https://github.com/EricXu-0805/opportunity-filter-engine/blob/628e8c5499c70afae7a15fea133461aaa341a663/data/audits/m196-georgetown-43-profile-actions-and-two-historical-ids-2026-11-26.json",
+    "https://github.com/EricXu-0805/opportunity-filter-engine/blob/4262c572a891b8a01c274fe96ccfefa0bfc647d5/data/audits/maintenance-2026-11-26/indiana-kelley-cross-unit-and-historical-ids.json"
+  ],
+  "cases": [
+    {
+      "id": "faculty-georgetown-engl-19ef3e36",
+      "school": "georgetown",
+      "name": "Patricia Akhimie",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000S72UnYAJ/patricia-akhimie?searchType=Contact-Info&searchText=akhimie",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-6746abcd",
+      "school": "georgetown",
+      "name": "Randall Bass",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwokAAC/randall-bass?searchType=Contact-Info&searchText=randall%20bass",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-3f3f47fd",
+      "school": "georgetown",
+      "name": "Jessica Batychenko",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH000008FwblYAC/jessica-batychenko?searchType=Contact-Info&searchText=jessica%20batychenko",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-60a11198",
+      "school": "georgetown",
+      "name": "Caetlin Benson-Allott",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWn1AAG/caetlin-bensonallott?searchType=Contact-Info&searchText=caetlin%20benson",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-f9d788e9",
+      "school": "georgetown",
+      "name": "Alex Brostoff",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000Vw8EhYAJ/alex-brostoff",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-912a5304",
+      "school": "georgetown",
+      "name": "Elizabeth Catchmark (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jMw5QIAS/elizabeth-catchmark?searchType=Contact-Info&searchText=catchmark",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-a9eb9b96",
+      "school": "georgetown",
+      "name": "Manu Samriti Chander (He/Him/His)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jN3TiIAK/manu-chander?searchType=Contact-Info&searchText=chander",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-1cd68f39",
+      "school": "georgetown",
+      "name": "Maureen Corrigan",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVHiAAO/maureen-corrigan?searchType=Contact-Info&searchText=maureen%20corrigan",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-e1e0eacd",
+      "school": "georgetown",
+      "name": "Margaret Debelius",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RZgNAAW/maggie-debelius?searchType=Contact-Info&searchText=margaret%20debelius",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-7b76c532",
+      "school": "georgetown",
+      "name": "Jennifer Natalya Fink (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWdRAAW/jennifer-natalya-fink?searchType=Contact-Info&searchText=jennifer%20natalya%20fink",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-cbc96696",
+      "school": "georgetown",
+      "name": "Carolyn Forché",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgPhAAK/carolyn-forch%C3%A9?searchType=Contact-Info&searchText=carolyn%20forche",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-b55b14a1",
+      "school": "georgetown",
+      "name": "David Gewanter (He/Him/His)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RfVhAAK/david-s-gewanter-phd?searchType=Contact-Info&searchText=david%20gewanter",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-95ad177a",
+      "school": "georgetown",
+      "name": "John Glavin",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RgkYAAS/john-glavin?searchType=Contact-Info&searchText=john%20glavin",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-b072d3d6",
+      "school": "georgetown",
+      "name": "Nathan Hensley (He/Him/His)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Tw4pAAC/nathan-hensley?searchType=Contact-Info&searchText=nathan%20hensley",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-888650c1",
+      "school": "georgetown",
+      "name": "Brian Hochman (He/Him/His)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rf5JAAS/brian-hochman?searchType=Contact-Info&searchText=brian%20hochman",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-be9bd333",
+      "school": "georgetown",
+      "name": "Marisa Holmes",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH00000VIhW6YAL/marisa-koulen?searchType=Contact-Info&searchText=marisa%20koulen",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-e97a4daf",
+      "school": "georgetown",
+      "name": "Fatima Jafar",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003UH000011D0p9YAC/fatima-jafar?searchType=Contact-Info&searchText=fatima%20jafar",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-42b9eeaa",
+      "school": "georgetown",
+      "name": "M. Lindsay Kaplan (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RePLAA0/m-lindsay-kaplan?searchType=Contact-Info&searchText=lindsay%20kaplan",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-c5c27dac",
+      "school": "georgetown",
+      "name": "Peggy Lee (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cJxCrQAK/peggy-lee?searchType=Contact-Info&searchText=peggy%20lee",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-c3711a29",
+      "school": "georgetown",
+      "name": "Sherry Linkon",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TmvhAAC/sherry-linkon?searchType=Contact-Info&searchText=sherry%20linkon",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-983db631",
+      "school": "georgetown",
+      "name": "David Lipscomb",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rjf5AAC/david-lipscomb?searchType=Contact-Info&searchText=david%20lipscomb",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-0b30af59",
+      "school": "georgetown",
+      "name": "Eddie Maloney",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVrMAAW/eddie-maloney?searchType=Contact-Info&searchText=eddie%20maloney",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-0b965fab",
+      "school": "georgetown",
+      "name": "Monica Maxwell",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RBIXAA4/monica-maxwell-phd?searchType=Contact-Info&searchText=monica%20maxwell",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-4cc038ec",
+      "school": "georgetown",
+      "name": "Mark McMorris",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RcRSAA0/mark-mcmorris?searchType=Contact-Info&searchText=mark%20mcmorris",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-eabebde9",
+      "school": "georgetown",
+      "name": "Sarah McNamer",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rlp1AAC/sarah-mcnamer?searchType=Contact-Info&searchText=sarah%20mcnamer",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-3628e405",
+      "school": "georgetown",
+      "name": "Lori Merish (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014ReiYAAS/lori-merish?searchType=Contact-Info&searchText=lori%20merish",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-66c04eaa",
+      "school": "georgetown",
+      "name": "Angelyn L. Mitchell",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rd9BAAS/angelyn-mitchell-phd?searchType=Contact-Info&searchText=angelyn%20mitchell",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-b09a1a61",
+      "school": "georgetown",
+      "name": "Amani Morrison (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002F2fULQAZ/amani-morrison?searchType=Contact-Info&searchText=amani%20morrison",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-a3879e7d",
+      "school": "georgetown",
+      "name": "Patrick R. O’Malley",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWRFAA4/patrick-omalley?searchType=Contact-Info&searchText=patrick%20o%27malley",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-a9bfca89",
+      "school": "georgetown",
+      "name": "Lindsey O’Neil",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002cu3B2QAI/lindsey-oneil?searchType=Contact-Info&searchText=o%27neil",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-7aeebe3d",
+      "school": "georgetown",
+      "name": "J Palmeri (They/He)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/003Hp00002jOsa6IAC/j-palmeri?searchType=Contact-Info&searchText=palmeri",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-b6ef30b2",
+      "school": "georgetown",
+      "name": "Cóilín Parsons",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfI6AAK/c%C3%B3il%C3%ADn-parsons?searchType=Contact-Info&searchText=coilin%20parsons",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-34f4f949",
+      "school": "georgetown",
+      "name": "Seth Perlow",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014SeXiAAK/seth-perlow?searchType=Contact-Info&searchText=seth%20perlow",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-a58be95d",
+      "school": "georgetown",
+      "name": "Amanda Phillips (They/He/She)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014SM4eAAG/amanda-phillips?searchType=Contact-Info&searchText=amanda%20phillips",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-347f78f1",
+      "school": "georgetown",
+      "name": "Libbie S. Rifkin",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWqtAAG/libbie-rifkin?searchType=Contact-Info&searchText=libbie%20rifkin",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-a672670d",
+      "school": "georgetown",
+      "name": "Nicole Rizzuto",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TfTfAAK/nicole-rizzuto?searchType=Contact-Info&searchText=nicole%20rizzuto",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-598b7188",
+      "school": "georgetown",
+      "name": "Phil Sandick",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gIAAQ/phil-sandick?searchType=Contact-Info&searchText=phil%20sandick",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-14396d28",
+      "school": "georgetown",
+      "name": "Daniel Shore",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RVhhAAG/daniel-shore?searchType=Contact-Info&searchText=daniel%20shore",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-5574b293",
+      "school": "georgetown",
+      "name": "Christine So",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014TwMpAAK/christine-so?searchType=Contact-Info&searchText=christine%20so",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-e6b06bba",
+      "school": "georgetown",
+      "name": "Mecca Jamilah Sullivan",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/0031Q00002XGKx2QAH/mecca-sullivan?searchType=Contact-Info&searchText=mecca%20sullivan",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-d3964c5c",
+      "school": "georgetown",
+      "name": "Rebecca Tarsa",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000015z0gSAAQ/rebecca-tarsa?searchType=Contact-Info&searchText=rebecca%20tarsa",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-fbdd4dd9",
+      "school": "georgetown",
+      "name": "Kathryn Temple (She/Her/Hers)",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014RdTbAAK/kathryn-d-temple",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-414f6f7a",
+      "school": "georgetown",
+      "name": "Duncan Wu",
+      "actionable": true,
+      "profile": "https://gufaculty360.georgetown.edu/s/contact/00336000014Rr5BAAS/duncan-wu?searchType=Contact-Info&searchText=duncan%20wu",
+      "roster": "https://english.georgetown.edu/people/full-time-faculty-2/"
+    },
+    {
+      "id": "faculty-georgetown-engl-9b02f5b4",
+      "school": "georgetown",
+      "name": "Marisa Koulen",
+      "actionable": false,
+      "current": "faculty-georgetown-engl-be9bd333"
+    },
+    {
+      "id": "faculty-georgetown-engl-debbaefc",
+      "school": "georgetown",
+      "name": "Ricardo Ortíz",
+      "actionable": false,
+      "current": null
+    },
+    {
+      "id": "faculty-indiana-ds-ea99afa1",
+      "school": "indiana",
+      "name": "Jeff Prince",
+      "actionable": false,
+      "profile": "https://luddy.iu.edu/people/prince-jeff.html",
+      "current": "faculty-indiana-kelley-ff454afe",
+      "contact_status": "unavailable"
+    },
+    {
+      "id": "faculty-indiana-ds-f5498657",
+      "school": "indiana",
+      "name": "Alan Dennis",
+      "actionable": false,
+      "profile": "https://luddy.iu.edu/people/dennis-alan.html",
+      "current": "faculty-indiana-kelley-11743f42",
+      "contact_status": "unavailable"
+    },
+    {
+      "id": "faculty-indiana-kelley-081bbbd6",
+      "school": "indiana",
+      "name": "Jorge Mejia",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JMMEJIA",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-11743f42",
+      "school": "indiana",
+      "name": "Alan Dennis",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=ARDENNIS",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-1e116337",
+      "school": "indiana",
+      "name": "Diane L. Sturek",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=DLSTUREK",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-22c1e898",
+      "school": "indiana",
+      "name": "Gerry A Hays",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=GAHAYS",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-296262cf",
+      "school": "indiana",
+      "name": "Cynthia Stone",
+      "actionable": false,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=STONEC",
+      "current": null,
+      "contact_status": "unavailable"
+    },
+    {
+      "id": "faculty-indiana-kelley-57a2b5d5",
+      "school": "indiana",
+      "name": "Rainie Tian",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=RMTIAN",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-607b7a2d",
+      "school": "indiana",
+      "name": "Christopher England",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHENGLAN",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-8bfcd281",
+      "school": "indiana",
+      "name": "Kathie Nussbaum",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=KNUSSBAU",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-9c403bb8",
+      "school": "indiana",
+      "name": "M.K. Chin",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=CHINMK",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-bc4f96e0",
+      "school": "indiana",
+      "name": "Marynancy Mwakalindile",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=MSMWAKAL",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-bcec98fc",
+      "school": "indiana",
+      "name": "Nancy E. Paton",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=NPATON",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-f87d53c6",
+      "school": "indiana",
+      "name": "Erik Benrud, CFA, CAIA, FRM, CFP®",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=EBENRUD",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-f89fcdfc",
+      "school": "indiana",
+      "name": "Linette M. Rousseau",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=LMROUSSE",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-kelley-ff454afe",
+      "school": "indiana",
+      "name": "Jeff Prince",
+      "actionable": true,
+      "profile": "https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=JEFFPRIN",
+      "current": null,
+      "contact_status": "sign_in_required"
+    },
+    {
+      "id": "faculty-indiana-msch-a9928298",
+      "school": "indiana",
+      "name": "Nancy Paton",
+      "actionable": false,
+      "profile": "https://mediaschool.indiana.edu/people/profile.html?p=npaton",
+      "current": "faculty-indiana-kelley-bcec98fc",
+      "contact_status": "unavailable"
+    }
+  ]
+}

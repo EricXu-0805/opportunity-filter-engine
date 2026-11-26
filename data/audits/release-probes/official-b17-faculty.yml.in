@@ -1,0 +1,35 @@
+name: Check Georgetown and Indiana original faculty records on the deployed release
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths:
+      - '.github/workflows/check-deployed-b17-faculty.yml'
+permissions:
+  contents: read
+jobs:
+  details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      EXPECTED_RELEASE: '__OFFICIAL_SHA__'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -m playwright install chromium --with-deps >"$RUNNER_TEMP/browser-install.log"
+      - run: python data/audits/release-probes/verify_b17_faculty.py --sha "$EXPECTED_RELEASE" --out release-receipt.json __SCOPE_ARGS__
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: public-original-id-receipt
+          path: release-receipt.json
+          if-no-files-found: warn
+      - if: always()
+        run: |
+          if test -f release-receipt.json; then
+            python -c "import json; f=json.load(open('release-receipt.json')); print('PUBLIC B17 FACULTY RECEIPT', json.dumps(f, separators=(',',':'), ensure_ascii=False))"
+          fi
