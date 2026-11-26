@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import os
 from check import confirm_school, expect, home, reads, sessions, sync_playwright, writes
 
 title = 'Tidal Records in a Synthetic Library'
@@ -41,7 +42,13 @@ with sync_playwright() as pw:
     section=master.get_by_text('Publications',exact=True).filter(visible=True).first.locator('..')
     expect(section.get_by_role('button',name='Add publication')).to_be_visible()
     candidates=section.locator('fieldset').count()
-    assert candidates == 0, candidates
+    fixed = os.environ.get('PDF_ACCEPTANCE_MODE') == 'fixed'
+    assert candidates == (1 if fixed else 0), candidates
+    if fixed:
+        for label, content in [('Publication title',title),('Authors in exact order',authors),('Journal / conference','Synthetic Proceedings'),('Publication date','2025')]:
+            expect(section.get_by_label(label,exact=True)).to_have_value(content)
+            expect(section.get_by_label(label,exact=True).locator('xpath=../..')).to_contain_text('Needs confirmation')
+
     for course in ['Discrete Mathematics','Computer Vision']:
         expect(page.get_by_text(course, exact=True).first).to_be_visible()
     supplied = ['Synthetic Scholar','scholar@example.com','Example University','B.S.','Computer Science',
@@ -51,6 +58,10 @@ with sync_playwright() as pw:
     assert not (set(supplied)-set(controls)), set(supplied)-set(controls)
     preview = master.get_by_role('heading', name='Confirmed content preview').locator('..')
     expect(preview.get_by_text('No confirmed content to preview yet.',exact=True)).to_be_visible()
+    if fixed:
+        section.get_by_role('button', name='Confirm Publication title',exact=True).click()
+        expect(preview.get_by_text(title,exact=True)).to_be_visible()
+        expect(preview.get_by_text(authors,exact=True)).to_have_count(0)
     master.get_by_role('button',name='Apply changes',exact=True).click()
     page.wait_for_timeout(2300)
     reopened=home(browser,sessions[0])
@@ -61,12 +72,24 @@ with sync_playwright() as pw:
     saved_controls=editor2.locator('textarea').evaluate_all('(elements) => elements.map(x => x.value)')
     assert set(supplied).issubset(set(saved_controls)), set(supplied)-set(saved_controls)
     stored=next(r for r in reversed(reads) if r.get('profile_data',{}).get('resume_master'))
-    assert len(stored['profile_data']['resume_master']['publications'])==0
+    records=stored['profile_data']['resume_master']['publications']
+    assert len(records)==candidates
+    if fixed:
+        raw = stored['profile_data']['resume_text']
+        for key, value in [('title',title),('authors',authors),('venue','Synthetic Proceedings'),('date','2025')]:
+            field=records[0][key]
+            assert field['value'] == value
+            assert field['status'] == ('confirmed' if key=='title' else 'candidate')
+            source=field['source']
+            assert source['kind']=='resume' and raw[source['start']:source['end']]==source['quote']==value
+        expect(editor2.get_by_label('Publication title',exact=True)).to_have_value(title)
+
     receipt={'site':'https://joinalab.com','time':datetime.now(timezone.utc).isoformat(),
              'frontend_sha':page.locator('html').get_attribute('data-release-sha'),
              'pdf_title_in_complete_source':True,'pdf_authors_in_complete_source':True,
              'editor_generated_candidates':master.get_by_role('status').filter(has_text='candidates quoted from your résumé').inner_text(),
              'publication_records_after_generation':candidates, 'publication_title':title,
+             'confirmed_title_only_after_reopening':fixed,
              'source_backed_contact_education_role_project_dates_skills':supplied,
              'saved_and_read_again_from_real_profile_revision':stored['revision'],
              'original_courses_visible':['Discrete Mathematics','Computer Vision'],'unconfirmed_preview_empty':True}

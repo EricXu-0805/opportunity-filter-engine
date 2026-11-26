@@ -2,13 +2,23 @@ name: Verify a synthetic anonymous resume through the official site
 on:
   push:
     branches: [codex/verify-m11-coursework]
-    paths: ['.github/workflows/verify-public-guest-pdf.yml', 'data/audits/m11-coursework/**']
+    paths: [data/audits/m11-coursework/next.json]
+  workflow_dispatch:
+    inputs:
+      scenario:
+        type: choice
+        required: true
+        options: [courses, publication, layouts, unreadable]
+      expectation:
+        type: choice
+        required: true
+        options: [fixed, baseline]
 permissions:
   contents: read
 jobs:
   public:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v6
         with:
@@ -17,7 +27,11 @@ jobs:
             data/audits/m11-coursework
             frontend/src/lib/__fixtures__/resume-pdf
       - run: python -m pip install --quiet playwright==1.55.0
-      - run: python -u data/audits/m11-coursework/unreadable.py
+      - name: Check the released profile
+        env:
+          INPUT_SCENARIO: ${{ inputs.scenario }}
+          INPUT_EXPECTATION: ${{ inputs.expectation }}
+        run: python -u data/audits/m11-coursework/run.py
       - uses: actions/upload-artifact@v4
         with:
           name: M11-coursework
