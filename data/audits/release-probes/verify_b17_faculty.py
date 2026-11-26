@@ -48,7 +48,7 @@ async def inspect(context, page, case, expected):
         # The header must show the inactive state and withhold current outreach.
         checks["inactive_banner"] = await page.get_by_role("status").filter(has_text="This record is no longer active.").first.is_visible()
         checks["no_email_draft"] = not await page.get_by_role("button", name="Draft email", exact=True).first.is_visible()
-        checks["no_apply_link"] = not await page.get_by_role("link", name="Apply", exact=True).first.is_visible()
+        checks["no_apply_link"] = not await page.get_by_role("link", name="Apply now", exact=True).first.is_visible()
     if case.get("roster"):
         action = page.get_by_role("link", name="View faculty profile", exact=True).first
         checks["personal_action"] = await action.is_visible() and await action.get_attribute("href") == case["profile"]
