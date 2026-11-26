@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/observe-uf-physics-originals.yml'
       - 'data/audits/read_uf_physics_current.py'
+      - 'data/audits/replay_uf_physics_current.py'
 permissions:
   contents: read
 jobs:
@@ -16,16 +17,21 @@ jobs:
         with:
           persist-credentials: false
           path: audit
+      - uses: actions/checkout@v6
+        with:
+          ref: ac904dd766e9bf4cf7fa1d31f70aef357ab131ac
+          path: candidate
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: audit/requirements.txt
-      - working-directory: audit
+      - working-directory: candidate
         run: |
           pip install -q -r requirements.txt
-          PYTHONPATH=. python data/audits/read_uf_physics_current.py
+          PYTHONPATH=. python ../audit/data/audits/replay_uf_physics_current.py
       - uses: actions/upload-artifact@v6
         with:
-          name: uf-physics-official-roster-identity-and-appointments
-          path: uf-physics-evidence.json
+          name: uf-physics-normal-replay
+          path: uf-physics-normal-replay.json
