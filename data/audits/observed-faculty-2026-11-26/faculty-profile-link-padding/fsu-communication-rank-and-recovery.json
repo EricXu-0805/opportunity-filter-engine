@@ -1,0 +1,224 @@
+{
+  "initial": {
+    "stage": "previous",
+    "time": "2026-11-26T19:20:17.551000+00:00",
+    "roster": "https://directory.cci.fsu.edu/",
+    "named_person": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+    "id": "faculty-fsu-comm-e3519c6b",
+    "phases": [
+      {
+        "phase": "before",
+        "emitted": 0,
+        "stored_school_originals": 687,
+        "rank": "Associate Professor, Director PEAKS Research Laboratory",
+        "public_url": null,
+        "date_seen": "2026-08-31",
+        "last_observation": "2026-08-31T08:27:10.102557",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": null
+      },
+      {
+        "phase": "normal",
+        "emitted": 24,
+        "stored_school_originals": 687,
+        "rank": "Associate Professor, Director PEAKS Research Laboratory",
+        "public_url": null,
+        "date_seen": "2026-08-31",
+        "last_observation": "2026-08-31T08:27:10.102557",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 24,
+          "classified_nonfaculty_rows": 7,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      },
+      {
+        "phase": "named_biography_unavailable",
+        "emitted": 24,
+        "stored_school_originals": 687,
+        "rank": "Associate Professor, Director PEAKS Research Laboratory",
+        "public_url": null,
+        "date_seen": "2026-08-31",
+        "last_observation": "2026-08-31T08:27:10.102557",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 24,
+          "classified_nonfaculty_rows": 7,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      },
+      {
+        "phase": "recovery",
+        "emitted": 24,
+        "stored_school_originals": 687,
+        "rank": "Associate Professor, Director PEAKS Research Laboratory",
+        "public_url": null,
+        "date_seen": "2026-08-31",
+        "last_observation": "2026-08-31T08:27:10.102557",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 24,
+          "classified_nonfaculty_rows": 7,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      },
+      {
+        "phase": "repeated",
+        "emitted": 24,
+        "stored_school_originals": 687,
+        "rank": "Associate Professor, Director PEAKS Research Laboratory",
+        "public_url": null,
+        "date_seen": "2026-08-31",
+        "last_observation": "2026-08-31T08:27:10.102557",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 24,
+          "classified_nonfaculty_rows": 7,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "stage": "candidate",
+    "time": "2026-11-26T19:20:06.974663+00:00",
+    "roster": "https://directory.cci.fsu.edu/",
+    "named_person": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+    "id": "faculty-fsu-comm-e3519c6b",
+    "phases": [
+      {
+        "phase": "before",
+        "emitted": 0,
+        "stored_school_originals": 687,
+        "rank": "Associate Professor, Director PEAKS Research Laboratory",
+        "public_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "date_seen": "2026-08-31",
+        "last_observation": "2026-08-31T08:27:10.102557",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": null
+      },
+      {
+        "phase": "normal",
+        "emitted": 25,
+        "stored_school_originals": 687,
+        "rank": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+        "public_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "date_seen": "2026-11-26",
+        "last_observation": "2026-11-26T19:20:05.465449",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 25,
+          "classified_nonfaculty_rows": 6,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      },
+      {
+        "phase": "named_biography_unavailable",
+        "emitted": 24,
+        "stored_school_originals": 687,
+        "rank": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+        "public_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "date_seen": "2026-11-26",
+        "last_observation": "2026-11-26T19:20:05.465449",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 24,
+          "classified_nonfaculty_rows": 6,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 1
+        }
+      },
+      {
+        "phase": "recovery",
+        "emitted": 25,
+        "stored_school_originals": 687,
+        "rank": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+        "public_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "date_seen": "2026-11-26",
+        "last_observation": "2026-11-26T19:20:06.336735",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 25,
+          "classified_nonfaculty_rows": 6,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      },
+      {
+        "phase": "repeated",
+        "emitted": 25,
+        "stored_school_originals": 687,
+        "rank": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+        "public_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+        "date_seen": "2026-11-26",
+        "last_observation": "2026-11-26T19:20:06.745566",
+        "unchanged_id": true,
+        "active": true,
+        "unit_coverage": {
+          "raw_roster_rows": 31,
+          "parsed_faculty_rows": 25,
+          "classified_nonfaculty_rows": 6,
+          "unparsed_rows": 0,
+          "ambiguous_rows": 0,
+          "duplicate_rows": 0,
+          "identity_match_failures": 0,
+          "parser_errors": 0,
+          "partial_render_rows": 0
+        }
+      }
+    ]
+  },
+  "original_ids_in_school": 687,
+  "official_directory_rank_card": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Profess",
+  "named_biography_rank": "Director of Undergraduate Studies | Director PEAKS Research Laboratory | Associate Professor",
+  "original_id": "faculty-fsu-comm-e3519c6b"
+}
