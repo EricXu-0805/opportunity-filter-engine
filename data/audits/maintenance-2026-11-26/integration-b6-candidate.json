@@ -1,0 +1,92 @@
+{
+  "head": "be34a8c2f8127a1d0d06210531728ce522d260ec",
+  "tree": "d566a4cca4d2e2a3ea6cf633ab57c6f836327d25",
+  "fifth_batch": "d5a82aed1acdee14bace525be5937612c361746c",
+  "scope": "Sixth-batch candidate pre-deployment checks; hosted E2E and real-world acceptance remain separate.",
+  "source_heads": {
+    "1353": "836499d534736e97804076cd2c6e623cd6a0c5f0",
+    "1354": "72d8d31c70e8647d400d8b357d2d85ee5bf2e27d",
+    "1348": "b95d7c0e6611aa73947fd51efcf75474f9d9dc44",
+    "1356": "c6bfad343a3b2e7efeea7eed1d306f06b264ab13"
+  },
+  "uiuc_prerequisite": "5bf3312ac45fd5ac513853ff55e7cda91818c328",
+  "files_matching_input_union": 64,
+  "match_card_files_changed": 0,
+  "assembled_corpus": 149775,
+  "school_count_fallback_verified": 115,
+  "real_backend": {
+    "real_program_api": [
+      {
+        "id": "uiuc-siebel-ugresearch",
+        "http": 200,
+        "reason": "reference_only",
+        "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research"
+      },
+      {
+        "id": "uiuc-our-general",
+        "http": 200,
+        "reason": "reference_only",
+        "source_url": "https://undergradresearch.illinois.edu/"
+      },
+      {
+        "id": "uiuc-career-center-ugr",
+        "http": 200,
+        "reason": "reference_only",
+        "source_url": "https://www.careercenter.illinois.edu/undergraduateresearch"
+      }
+    ],
+    "synthetic_id_in_standard_backend_http": 404
+  },
+  "row_comparison": {
+    "data/processed/shards/uiuc.json": {
+      "ids_preserved": 3463,
+      "changed_ids": [
+        "uiuc-siebel-ugresearch",
+        "uiuc-our-general",
+        "uiuc-career-center-ugr"
+      ],
+      "first_seen_and_order_preserved": true
+    },
+    "data/manual_entries/seed_v1.json": {
+      "ids_preserved": 13,
+      "changed_ids": [
+        "uiuc-siebel-ugresearch",
+        "uiuc-our-general",
+        "uiuc-career-center-ugr"
+      ],
+      "first_seen_and_order_preserved": true
+    },
+    "uiuc_counts": {
+      "before": {
+        "listing_count": 4,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2950
+      },
+      "after": {
+        "listing_count": 1,
+        "faculty_contact_count": 2946,
+        "unreviewed_count": 0,
+        "total_count": 2947
+      }
+    }
+  },
+  "targeted_backend_with_registry_and_full_data_quality": 608,
+  "all_frontend_vitest": {
+    "tests_passed": 9781,
+    "files_passed": 377,
+    "workers": 3,
+    "initial_run": "one TargetResumeAiPanel timing assertion failed under native concurrency; all 54 passed in isolation and all 9781 passed on the controlled complete rerun"
+  },
+  "targeted_frontend": 178,
+  "typescript": "passed",
+  "production_frontend_build": "passed",
+  "mp4": {
+    "codec": "h264",
+    "width": 980,
+    "height": 630,
+    "seconds": 22.68
+  },
+  "local_browser": "macOS refused Chromium Mach service on startup; no local browser scenario claimed",
+  "hosted_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45810702026"
+}
