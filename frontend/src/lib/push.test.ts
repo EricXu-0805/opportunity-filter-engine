@@ -239,11 +239,11 @@ describe('getPushStatus', () => {
     await expect(getPushStatus()).rejects.toThrow();
   });
 
-  it('returns "default" when getRegistration throws (swallows the error)', async () => {
+  it('rejects when the browser cannot read its existing registration', async () => {
     installNotification('default');
     installPushManager();
     installUnreadableServiceWorker();
-    expect(await getPushStatus()).toBe('default');
+    await expect(getPushStatus()).rejects.toThrow('boom');
   });
 });
 

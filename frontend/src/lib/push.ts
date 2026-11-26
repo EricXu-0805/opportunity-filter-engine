@@ -34,12 +34,7 @@ async function browserSubscription(): Promise<PushSubscription | null> {
 export async function getPushStatus(): Promise<PushStatus> {
   if (!isPushSupported()) return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
-  let sub: PushSubscription | null;
-  try {
-    sub = await browserSubscription();
-  } catch {
-    return 'default';
-  }
+  const sub = await browserSubscription();
   if (!sub) return 'default';
   const deviceId = await getDeviceId();
   if (!deviceId) return 'default';
