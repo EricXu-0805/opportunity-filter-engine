@@ -1,0 +1,30 @@
+name: Read the MSU Natural Science source from the refresh runner
+on:
+  push:
+    branches: [codex/diagnose-nov25-roster-sources]
+    paths: [data/audits/read_msu_natsci_20261126.py]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: data/audits
+      - uses: actions/checkout@v4
+        with:
+          ref: 573288d8c08cd2ba7deec508f2f71061bebd3328
+          path: scheduled-source
+          persist-credentials: false
+          sparse-checkout: src/collectors
+      - run: python -m pip install --quiet requests
+      - run: python -u data/audits/read_msu_natsci_20261126.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: msu-natsci-runner-read
+          path: evidence/msu-natsci.json
+          retention-days: 30
