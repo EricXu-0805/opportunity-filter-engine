@@ -1,0 +1,24 @@
+{
+  "utc": "2026-11-26T22:05:43.365992+00:00",
+  "stage": "Local rehearsal on independently reconciled complete B23; actual B23 main pending.",
+  "frozen_b23": "72a8b0027b314903c0228fcaa536769e9b7fe91e",
+  "complete_b23_tree": "e1680273036b08b29ca8f0c23430cd1e15b89343",
+  "b24_head": "49fe4a98cf2a61d3467772944188ef963f8d5944",
+  "combined_tree": "4d248902d728cebc36c2f1e91ca7aa55925b7305",
+  "b24_product_files_preserved": 30,
+  "sole_inherited_difference": {
+    "path": "data/processed/shards/vanderbilt.json",
+    "original": "faculty-vanderbilt-math-1d5fbacf",
+    "fields": {
+      "record.metadata.faculty_title_observation.directory_name": [
+        "Chris Kapulkin",
+        null
+      ],
+      "record.metadata.faculty_title_observation.name": [
+        "Krzysztof Kapulkin",
+        "Chris Kapulkin"
+      ]
+    },
+    "title_source": "https://as.vanderbilt.edu/math/faculty/"
+  }
+}
