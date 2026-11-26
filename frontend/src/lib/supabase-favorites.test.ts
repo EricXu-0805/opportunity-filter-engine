@@ -191,13 +191,14 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
 
   it('checks past a count-less page before reconciling queued saves', async () => {
     writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["c"]', captureOwnerToken());
-    const gt = vi.fn()
-      .mockResolvedValueOnce({ data: [{ opportunity_id: 'c' }], count: null, error: null })
-      .mockResolvedValueOnce({ data: [], count: null, error: null });
-    mockEq.mockResolvedValueOnce({ data: [{ opportunity_id: 'a' }, { opportunity_id: 'b' }], count: null, error: null })
-      .mockReturnValue({ gt });
+    const gt = vi.fn(async (_key: string, last: string) => ({
+      data: last === 'b' ? [{ opportunity_id: 'c' }] : [], count: null, error: null,
+    }));
+    const first = { data: [{ opportunity_id: 'a' }, { opportunity_id: 'b' }], count: null, error: null };
+    mockEq.mockResolvedValueOnce(first).mockReturnValueOnce({ gt }).mockReturnValueOnce({ gt })
+      .mockResolvedValueOnce(first).mockReturnValueOnce({ gt }).mockReturnValueOnce({ gt });
     expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['a', 'b', 'c']), complete: true });
-    expect(gt.mock.calls).toEqual([['opportunity_id', 'b'], ['opportunity_id', 'c']]);
+    expect(gt.mock.calls).toEqual(Array(2).fill([['opportunity_id', 'b'], ['opportunity_id', 'c']]).flat());
     expect(mockInsert).not.toHaveBeenCalled();
     expect(localMirror()).toEqual([]);
   });
@@ -206,9 +207,10 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
     const old = Array.from({ length: 1000 }, (_, i) => ({ opportunity_id: String(i).padStart(4, '0') }));
     writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["1000"]', captureOwnerToken());
     const gt = vi.fn().mockResolvedValueOnce({ data: null, error: { message: 'offline' } })
-      .mockResolvedValueOnce({ data: [{ opportunity_id: '1000' }], count: 1, error: null });
+      .mockResolvedValue({ data: [{ opportunity_id: '1000' }], count: 1, error: null });
     const first = { data: old, count: 1001, error: null };
     mockEq.mockResolvedValueOnce(first).mockReturnValueOnce({ gt })
+      .mockResolvedValueOnce(first).mockReturnValueOnce({ gt })
       .mockResolvedValueOnce(first).mockReturnValueOnce({ gt });
     expect((await getFavoritesSnapshot()).complete).toBe(false);
     expect(localMirror()).toEqual(['1000']);
@@ -220,7 +222,51 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
     expect(recovered.ids.has('1000')).toBe(true);
     expect(localMirror()).toEqual([]);
     expect(mockInsert).not.toHaveBeenCalled();
-    expect(gt.mock.calls).toEqual(Array(2).fill(['opportunity_id', '0999']));
+    expect(gt.mock.calls).toEqual(Array(3).fill(['opportunity_id', '0999']));
+  });
+
+  it.each([
+    { initialCount: 3, replacement: [] },
+    { initialCount: 3, replacement: ['aa'] },
+    { initialCount: null, replacement: ['aa'] },
+  ])('keeps the queue when membership changes behind a cursor ($initialCount, $replacement)', async ({ initialCount, replacement }) => {
+    const ids = new Set(['a', 'b', 'c']);
+    writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["pending"]', captureOwnerToken());
+    let reads = 0;
+    const read = (after = '') => {
+      if (++reads === 2) {
+        ids.delete('a');
+        for (const id of replacement) ids.add(id);
+      }
+      const remaining = [...ids].sort().filter(id => id > after);
+      return {
+        data: remaining.slice(0, 2).map(opportunity_id => ({ opportunity_id })),
+        count: initialCount == null ? null : remaining.length,
+        error: null,
+      };
+    };
+    mockEq.mockImplementation(() => ({
+      then: (resolve: (value: ReturnType<typeof read>) => unknown) => Promise.resolve().then(() => resolve(read())),
+      gt: (_key: string, cursor: string) => Promise.resolve(read(cursor)),
+    }));
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set([...ids, 'pending']), complete: false });
+    expect(localMirror()).toEqual(['pending']);
+    expect(mockInsert).not.toHaveBeenCalled();
+    mockInsert.mockResolvedValueOnce({ error: null });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set([...ids, 'pending']), complete: true });
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(localMirror()).toEqual([]);
+  });
+
+  it('retains queued saves when the second scan fails before membership is verified', async () => {
+    writeUserScopedRaw(STORAGE_KEYS.FAVORITES_FALLBACK, '["queued"]', captureOwnerToken());
+    const first = { data: [{ opportunity_id: 'a' }], count: 2, error: null };
+    const gt = vi.fn().mockResolvedValue({ data: [{ opportunity_id: 'b' }], count: 1, error: null });
+    mockEq.mockResolvedValueOnce(first).mockReturnValueOnce({ gt })
+      .mockResolvedValueOnce({ data: null, error: { message: 'connection lost' } });
+    expect(await getFavoritesSnapshot()).toEqual({ ids: new Set(['queued']), complete: false });
+    expect(localMirror()).toEqual(['queued']);
+    expect(mockInsert).not.toHaveBeenCalled();
   });
 
   it('discards the old account’s earlier pages if ownership changes during continuation', async () => {

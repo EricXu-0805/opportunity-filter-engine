@@ -1658,6 +1658,38 @@ export async function getFavorites(): Promise<Set<string>> {
   return (await getFavoritesSnapshot()).ids;
 }
 
+async function readCloudFavoriteIds(deviceId: string, token: OwnerToken) {
+  const query = () => supabase.from('favorites')
+    .select('opportunity_id', { count: 'exact' })
+    .order('opportunity_id', { ascending: true })
+    .eq('device_id', deviceId);
+  const remote = new Set<string>();
+  let pagesWithRows = 0;
+  const invalid = 'The full saved list could not be checked.';
+  let page = await query();
+  const total = page.count;
+  for (;;) {
+    if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set<string>(), pagesWithRows, error: invalid };
+    const { data, error, count } = page;
+    if (error || !Array.isArray(data) || data.some(row => !row?.opportunity_id || typeof row.opportunity_id !== 'string')
+      || (typeof total === 'number' && count !== total - remote.size)) {
+      return { ids: remote, pagesWithRows, error: error?.message || invalid };
+    }
+
+    if (data.length > 0) pagesWithRows += 1;
+    const previousSize = remote.size;
+    for (const row of data) remote.add(row.opportunity_id);
+    if (remote.size - previousSize !== data.length || (typeof total === 'number' && remote.size > total)) {
+      return { ids: remote, pagesWithRows, error: invalid };
+    }
+    // Without an exact count even a short page can be capped by the server.
+    if (total == null ? data.length === 0 : remote.size === total) break;
+    if (!data.length) return { ids: remote, pagesWithRows, error: invalid };
+    page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
+  }
+  return { ids: remote, pagesWithRows, error: null };
+}
+
 /** A readable queue can supply individual favorites when the cloud read fails.
  * Only this request's confirmed union can establish a total or an empty state. */
 export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
@@ -1696,34 +1728,21 @@ export async function getFavoritesSnapshot(): Promise<FavoriteSnapshot> {
     return { ids: local, complete: !SUPABASE_CONFIGURED && queue.complete };
   }
 
-  const query = () => supabase.from('favorites')
-    .select('opportunity_id', { count: 'exact' })
-    .order('opportunity_id', { ascending: true })
-    .eq('device_id', deviceId);
-  const remote = new Set<string>();
-  const incomplete = (reason: string): FavoriteSnapshot => {
-    setStorageStatus('local-only', reason);
+  const first = await readCloudFavoriteIds(deviceId, token);
+  let reading = first;
+  if (first.error === null && first.pagesWithRows > 1 && isOwnerTokenValid(token, deviceId)) {
+    // Counts after a cursor exclude rows already read. A second ordered scan
+    // also detects an earlier deletion offset by a different newly saved ID.
+    reading = await readCloudFavoriteIds(deviceId, token);
+    if (reading.error === null && (first.ids.size !== reading.ids.size || [...first.ids].some(id => !reading.ids.has(id)))) {
+      reading.error = 'The saved list changed while it was being read.';
+    }
+  }
+  if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
+  const remote = reading.ids;
+  if (reading.error !== null) {
+    setStorageStatus('local-only', reading.error);
     return { ids: new Set([...remote, ...local]), complete: false };
-  };
-  let page = await query();
-  const total = page.count;
-  for (;;) {
-    if (!isOwnerTokenValid(token, deviceId)) return { ids: new Set(), complete: false };
-    const { data, error, count } = page;
-    if (error || !Array.isArray(data) || data.some(row => !row?.opportunity_id || typeof row.opportunity_id !== 'string')
-      || (typeof total === 'number' && count !== total - remote.size)) {
-      return incomplete(error?.message ?? 'The full saved list could not be checked.');
-    }
-
-    const previousSize = remote.size;
-    for (const row of data) remote.add(row.opportunity_id);
-    if (remote.size - previousSize !== data.length || (typeof total === 'number' && remote.size > total)) {
-      return incomplete('The full saved list could not be checked.');
-    }
-    // Without an exact count even a short page can be capped by the server.
-    if (total == null ? data.length === 0 : remote.size === total) break;
-    if (!data.length) return incomplete('The full saved list could not be checked.');
-    page = await query().gt('opportunity_id', data[data.length - 1].opportunity_id);
   }
 
   const toPush = Array.from(local).filter(id => !remote.has(id));
