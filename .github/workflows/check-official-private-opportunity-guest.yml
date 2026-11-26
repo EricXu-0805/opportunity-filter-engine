@@ -1,0 +1,23 @@
+name: Verify production guest private import recovery and account boundary
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/check-official-private-opportunity-guest.yml']
+permissions:
+  contents: read
+jobs:
+  official:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      OFE_EXPECTED_SITE_SHA: 1b2c5b397c4ddd374d7e2cb4115e7066185fd75d
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - name: Use the official guest form, its saved copy, and source retry controls
+        run: python -u scripts/verify_public_private_opportunity_guest.py
