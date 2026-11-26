@@ -1,0 +1,988 @@
+{
+  "source_head": "361e49ffbc4343a598bb86624789982f6a3ae760",
+  "actual_input_rows": 365,
+  "baseline_original_ids": 1437,
+  "published_candidate_ids": 1455,
+  "actual_source_pages": {
+    "ece": {
+      "fetched_rows": 149,
+      "eligible_before_dedup": 116,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "me": {
+      "fetched_rows": 111,
+      "eligible_before_dedup": 73,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "bioe": {
+      "fetched_rows": 68,
+      "eligible_before_dedup": 54,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "ae": {
+      "fetched_rows": 67,
+      "eligible_before_dedup": 53,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "cee": {
+      "fetched_rows": 79,
+      "eligible_before_dedup": 52,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "chbe": {
+      "fetched_rows": 46,
+      "eligible_before_dedup": 26,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "mse": {
+      "fetched_rows": 90,
+      "eligible_before_dedup": 37,
+      "ambiguous": 0,
+      "unparsed": 0
+    },
+    "fpe": {
+      "fetched_rows": 26,
+      "eligible_before_dedup": 10,
+      "ambiguous": 0,
+      "unparsed": 0
+    }
+  },
+  "on_prior_shard": [
+    {
+      "pass": 1,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 42,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    },
+    {
+      "pass": 2,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 42,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    }
+  ],
+  "on_candidate_shard": [
+    {
+      "pass": 1,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 42,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    },
+    {
+      "pass": 2,
+      "removed_prior_ids": [],
+      "people": [
+        [
+          "Alireza Khaligh",
+          "faculty-umd-ece-e6ccf284",
+          "Professor",
+          [
+            "faculty-umd-ece-e6ccf284"
+          ]
+        ],
+        [
+          "Michelle Mazurek",
+          "faculty-umd-cs-ec45fae9",
+          "Professor",
+          [
+            "faculty-umd-cs-ec45fae9"
+          ]
+        ],
+        [
+          "Patrick G. O'Shea",
+          "faculty-umd-ece-ddfd861f",
+          "Professor",
+          [
+            "faculty-umd-ece-ddfd861f"
+          ]
+        ],
+        [
+          "Ankur Srivastava",
+          "faculty-umd-ece-bdf563fd",
+          "Professor",
+          [
+            "faculty-umd-ece-bdf563fd"
+          ]
+        ],
+        [
+          "Ichiro Takeuchi",
+          "faculty-umd-ece-52eda433",
+          "Minta Martin Professor",
+          [
+            "faculty-umd-ece-52eda433"
+          ]
+        ],
+        [
+          "Sennur Ulukus",
+          "faculty-umd-ece-a4499b8f",
+          "Distinguished University Professor",
+          [
+            "faculty-umd-ece-a4499b8f"
+          ]
+        ],
+        [
+          "Samuel Graham Jr.",
+          "faculty-umd-me-3814f66d",
+          "Nariman Farvardin Professor",
+          [
+            "faculty-umd-me-3814f66d"
+          ]
+        ],
+        [
+          "F. Patrick McCluskey",
+          "faculty-umd-me-a2f74a77",
+          "Professor and Interim Chair",
+          [
+            "faculty-umd-me-a2f74a77"
+          ]
+        ],
+        [
+          "Ryan D. Sochol",
+          "faculty-umd-me-fbacae93",
+          "Associate Professor",
+          [
+            "faculty-umd-me-fbacae93"
+          ]
+        ],
+        [
+          "Alisa Morss Clyne",
+          "faculty-umd-bioe-7d3a7d0a",
+          "Professor",
+          [
+            "faculty-umd-bioe-7d3a7d0a"
+          ]
+        ],
+        [
+          "Kimberly Stroka",
+          "faculty-umd-bioe-8a3e5f2a",
+          "Associate Professor",
+          [
+            "faculty-umd-bioe-8a3e5f2a"
+          ]
+        ],
+        [
+          "Alison B. Flatau",
+          "faculty-umd-ae-5041d999",
+          "Professor",
+          [
+            "faculty-umd-ae-5041d999"
+          ]
+        ],
+        [
+          "Pino Martin",
+          "faculty-umd-ae-7a7fab6a",
+          "Professor of Aerospace",
+          [
+            "faculty-umd-ae-7a7fab6a"
+          ]
+        ],
+        [
+          "Darryll J. Pines",
+          "faculty-umd-ae-5d6fa086",
+          "Glenn L. Martin Professor of Aerospace Engineering",
+          [
+            "faculty-umd-ae-5d6fa086"
+          ]
+        ],
+        [
+          "Natasha Andrade",
+          "faculty-umd-cee-09c3398d",
+          "Principal Lecturer",
+          [
+            "faculty-umd-cee-09c3398d"
+          ]
+        ],
+        [
+          "Kaye L. Brubaker",
+          "faculty-umd-cee-7bfc6dd8",
+          "Professor",
+          [
+            "faculty-umd-cee-7bfc6dd8"
+          ]
+        ],
+        [
+          "Allen P. Davis",
+          "faculty-umd-cee-e78daa70",
+          "Professor",
+          [
+            "faculty-umd-cee-e78daa70"
+          ]
+        ],
+        [
+          "Alba Torrents",
+          "faculty-umd-cee-7272ff63",
+          "Professor",
+          [
+            "faculty-umd-cee-7272ff63"
+          ]
+        ],
+        [
+          "Xianfeng (Terry) Yang",
+          "faculty-umd-cee-53d4c71d",
+          "Associate Professor",
+          [
+            "faculty-umd-cee-53d4c71d"
+          ]
+        ],
+        [
+          "Sudarsanam (Suresh) Babu",
+          "faculty-umd-mse-fdd307eb",
+          "Professor",
+          [
+            "faculty-umd-mse-fdd307eb"
+          ]
+        ],
+        [
+          "Kasra Sardashti",
+          "faculty-umd-mse-2121a633",
+          "Associate Research Professor of Physics",
+          [
+            "faculty-umd-mse-2121a633"
+          ]
+        ]
+      ],
+      "units": {
+        "ece": {
+          "observed_count": 116,
+          "live_roster_count": 116,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "me": {
+          "observed_count": 67,
+          "live_roster_count": 73,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "bioe": {
+          "observed_count": 50,
+          "live_roster_count": 54,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "ae": {
+          "observed_count": 42,
+          "live_roster_count": 53,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "cee": {
+          "observed_count": 50,
+          "live_roster_count": 52,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        },
+        "chbe": {
+          "observed_count": 18,
+          "live_roster_count": 26,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "mse": {
+          "observed_count": 18,
+          "live_roster_count": 37,
+          "retirement_authorized": false,
+          "failure_reason": "blocked_identity_match_failures",
+          "completeness_status": "partial"
+        },
+        "fpe": {
+          "observed_count": 4,
+          "live_roster_count": 10,
+          "retirement_authorized": true,
+          "failure_reason": null,
+          "completeness_status": "complete"
+        }
+      }
+    }
+  ]
+}

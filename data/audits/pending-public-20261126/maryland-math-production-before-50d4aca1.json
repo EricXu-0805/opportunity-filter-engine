@@ -1,0 +1,1484 @@
+{
+  "at": "2026-11-26T12:21:42.945154+00:00",
+  "mode": "math",
+  "source_commit_floor": "1e1f637ac",
+  "phase": "before",
+  "site_release_before": [
+    "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+    "50d4aca1e4db82610e2c1483a4aa24b50f75b439"
+  ],
+  "site_release_after": [
+    "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+    "50d4aca1e4db82610e2c1483a4aa24b50f75b439"
+  ],
+  "normal_anonymous": true,
+  "asked_for_addresses": false,
+  "count": 61,
+  "errors": {},
+  "people": [
+    {
+      "id": "faculty-umd-math-1c5ba4c5",
+      "name": "Arka Adhikari",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1815-aarka.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-1c5ba4c5",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Arka Adhikari",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1815-aarka.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1815-aarka.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1815-aarka.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-d9167d41",
+      "name": "Stuart S. Antman",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/236-ssa.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-d9167d41",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Stuart S. Antman",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/236-ssa.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/236-ssa.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/236-ssa.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-0f940cb3",
+      "name": "Uri Bader",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1812-bader-uri.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-0f940cb3",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Uri Bader",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1812-bader-uri.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1812-bader-uri.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1812-bader-uri.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-135699cf",
+      "name": "Radu Victor Balan",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/242-rvbalan.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-135699cf",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Radu Victor Balan",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/242-rvbalan.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/242-rvbalan.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/242-rvbalan.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-7cb1adce",
+      "name": "Dori Bejleri",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1715-bejleri.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-7cb1adce",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Dori Bejleri",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1715-bejleri.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1715-bejleri.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1715-bejleri.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-36800e3a",
+      "name": "Henri Berestycki",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1720-berestycki-henri.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-36800e3a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Henri Berestycki",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1720-berestycki-henri.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1720-berestycki-henri.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1720-berestycki-henri.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-1516d149",
+      "name": "Shiferaw Berhanu",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-1516d149",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Shiferaw Berhanu",
+      "public_source": "https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/signage-directory-faculty/2025-sberhanu.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-a8700233",
+      "name": "Patrick Brosnan",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/258-pbrosnan.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-a8700233",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Patrick Brosnan",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/258-pbrosnan.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/258-pbrosnan.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/258-pbrosnan.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-d6138cdd",
+      "name": "Maria K. Cameron",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/259-mariakc.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-d6138cdd",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Maria K. Cameron",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/259-mariakc.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/259-mariakc.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/259-mariakc.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-c507be15",
+      "name": "Sandra Cerrai",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/263-cerrai.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-c507be15",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sandra Cerrai",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/263-cerrai.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/263-cerrai.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/263-cerrai.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-938d3714",
+      "name": "Artem Chernikov",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1716-artem.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-938d3714",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Artem Chernikov",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1716-artem.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1716-artem.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1716-artem.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-3cd59720",
+      "name": "Dan Cristofaro-Gardiner",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1606-dcristof.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-3cd59720",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Dan Cristofaro-Gardiner",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1606-dcristof.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1606-dcristof.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1606-dcristof.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-36ccdb0d",
+      "name": "Wojciech Czaja",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/279-czaja.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-36ccdb0d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Wojciech Czaja",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/279-czaja.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/279-czaja.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/279-czaja.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-a3da6155",
+      "name": "Tamás Darvas",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1145-tdarvas.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-a3da6155",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Tamás Darvas",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1145-tdarvas.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1145-tdarvas.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1145-tdarvas.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-738a3990",
+      "name": "Dmitry Dolgopyat",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/289-dolgop.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-738a3990",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Dmitry Dolgopyat",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/289-dolgop.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/289-dolgop.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/289-dolgop.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-78581485",
+      "name": "Bassam Fayad",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1607-bassam.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-78581485",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Bassam Fayad",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1607-bassam.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1607-bassam.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1607-bassam.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-dcee82bf",
+      "name": "Giovanni Forni",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/299-gforni.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-dcee82bf",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Giovanni Forni",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/299-gforni.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/299-gforni.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/299-gforni.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-806c9572",
+      "name": "Amin Gholampour",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/309-amingh.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-806c9572",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Amin Gholampour",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/309-amingh.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/309-amingh.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/309-amingh.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-6bfb1b2f",
+      "name": "William M. Goldman",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/313-wmg.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-6bfb1b2f",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "William M. Goldman",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/313-wmg.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/313-wmg.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/313-wmg.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-9cfa9129",
+      "name": "Manoussos Grillakis",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/317-mggrlk.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-9cfa9129",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Manoussos Grillakis",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/317-mggrlk.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/317-mggrlk.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/317-mggrlk.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-b9c19178",
+      "name": "Yu Gu",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1608-guyu.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-b9c19178",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Yu Gu",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1608-guyu.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1608-guyu.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1608-guyu.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-cb4e770c",
+      "name": "Abba Gumel",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1698-agumel.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-cb4e770c",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Abba Gumel",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1698-agumel.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1698-agumel.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1698-agumel.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-893fa023",
+      "name": "Thomas Haines",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/325-tjh.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-893fa023",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Thomas Haines",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/325-tjh.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/325-tjh.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/325-tjh.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-90a4b94e",
+      "name": "David H. Hamilton",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/327-dhh.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-90a4b94e",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "David H. Hamilton",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/327-dhh.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/327-dhh.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/327-dhh.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-3d7ad323",
+      "name": "Christopher Henderson",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1850-henderson-christopher.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-3d7ad323",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Christopher Henderson",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1850-henderson-christopher.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1850-henderson-christopher.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1850-henderson-christopher.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-9eb3e2a4",
+      "name": "Or Hershkovits",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1849-hershkovits-or.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-9eb3e2a4",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Or Hershkovits",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1849-hershkovits-or.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1849-hershkovits-or.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1849-hershkovits-or.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-d477b648",
+      "name": "Kayo Ide",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1592-ide.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-d477b648",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Kayo Ide",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1592-ide.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1592-ide.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1592-ide.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-82018d8f",
+      "name": "Leonid Koralov",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/370-koralov.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-82018d8f",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Leonid Koralov",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/370-koralov.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/370-koralov.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/370-koralov.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-8c529fb5",
+      "name": "Partha Lahiri",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/755-plahiri.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-8c529fb5",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Partha Lahiri",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/755-plahiri.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/755-plahiri.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/755-plahiri.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-81bbd8ec",
+      "name": "Michael C. Laskowski",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/376-laskow.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-81bbd8ec",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Michael C. Laskowski",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/376-laskow.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/376-laskow.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/376-laskow.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-5460f4ec",
+      "name": "Andrew Lawrie",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1816-alawrie.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-5460f4ec",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Andrew Lawrie",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1816-alawrie.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1816-alawrie.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1816-alawrie.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-d41531e2",
+      "name": "Doron Levy",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/385-dlevy.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-d41531e2",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Doron Levy",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/385-dlevy.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/385-dlevy.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/385-dlevy.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-e02031c7",
+      "name": "Lizhen Lin",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1714-lizhen01.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-e02031c7",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Lizhen Lin",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1714-lizhen01.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1714-lizhen01.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1714-lizhen01.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-b497d141",
+      "name": "Vince Lyzinski",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1474-vlyzinsk.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-b497d141",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Vince Lyzinski",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1474-vlyzinsk.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1474-vlyzinsk.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1474-vlyzinsk.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-6e3b5b3f",
+      "name": "Matei Machedon",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/396-matei.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-6e3b5b3f",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Matei Machedon",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/396-matei.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/396-matei.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/396-matei.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-c04f8168",
+      "name": "Dionisios Margetis",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/399-diom.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-c04f8168",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Dionisios Margetis",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/399-diom.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/399-diom.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/399-diom.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-762389ab",
+      "name": "Antoine Mellet",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/410-mellet.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-762389ab",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Antoine Mellet",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/410-mellet.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/410-mellet.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/410-mellet.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-53d548d5",
+      "name": "Huy Quang Nguyen",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1609-hnguye30.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-53d548d5",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Huy Quang Nguyen",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1609-hnguye30.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1609-hnguye30.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1609-hnguye30.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-d44d7b51",
+      "name": "Ricardo H. Nochetto",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/423-rhn.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-d44d7b51",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ricardo H. Nochetto",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/423-rhn.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/423-rhn.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/423-rhn.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-63e84dad",
+      "name": "Ron Peled",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1810-peled-ron.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-63e84dad",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ron Peled",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1810-peled-ron.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1810-peled-ron.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1810-peled-ron.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-955401c0",
+      "name": "Niranjan Ramachandran",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/442-atma.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-955401c0",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Niranjan Ramachandran",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/442-atma.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/442-atma.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/442-atma.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-54766ea9",
+      "name": "Deep Ray",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1709-deepray.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-54766ea9",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Deep Ray",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1709-deepray.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1709-deepray.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1709-deepray.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-60daca01",
+      "name": "Joan JianJian Ren",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/445-jjren.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-60daca01",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Joan JianJian Ren",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/445-jjren.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/445-jjren.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/445-jjren.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-10e144a3",
+      "name": "Jonathan M. Rosenberg",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/449-jmr.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-10e144a3",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Jonathan M. Rosenberg",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/449-jmr.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/449-jmr.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/449-jmr.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-56fc8ade",
+      "name": "Christian Rosendal",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1610-crosendal.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-56fc8ade",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Christian Rosendal",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1610-crosendal.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1610-crosendal.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1610-crosendal.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-64de2a8d",
+      "name": "Takumi Saegusa",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1241-tsaegusa.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-64de2a8d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Takumi Saegusa",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1241-tsaegusa.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1241-tsaegusa.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1241-tsaegusa.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-395976f0",
+      "name": "Andrew Senger",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1848-senger.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-395976f0",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Andrew Senger",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1848-senger.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1848-senger.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1848-senger.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-2f542ed6",
+      "name": "Eric Slud",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/477-slud.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-2f542ed6",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Eric Slud",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/477-slud.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/477-slud.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/477-slud.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-314bf290",
+      "name": "Eitan Tadmor",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/488-tadmor.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-314bf290",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Eitan Tadmor",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/488-tadmor.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/488-tadmor.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/488-tadmor.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-a944ef2f",
+      "name": "Harry Tamvakis",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/490-harryt.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-a944ef2f",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Harry Tamvakis",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/490-harryt.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/490-harryt.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/490-harryt.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-32938979",
+      "name": "Konstantina Trivisa",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/500-trivisa.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-32938979",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Konstantina Trivisa",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/500-trivisa.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/500-trivisa.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/500-trivisa.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-8699d8e4",
+      "name": "Tobias Von Petersdorff",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/505-petersd.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-8699d8e4",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Tobias Von Petersdorff",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/505-petersd.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/505-petersd.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/505-petersd.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-647c2e23",
+      "name": "Larry Washington",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/509-lcw.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-647c2e23",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Larry Washington",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/509-lcw.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/509-lcw.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/509-lcw.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-b2de4069",
+      "name": "Richard Wentworth",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/512-raw.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-b2de4069",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Richard Wentworth",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/512-raw.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/512-raw.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/512-raw.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-22dd1d69",
+      "name": "Haizhao Yang",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1699-hzyang.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-22dd1d69",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Haizhao Yang",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1699-hzyang.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1699-hzyang.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1699-hzyang.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-fab275b7",
+      "name": "Yun Yang",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1811-yy84.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-fab275b7",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Yun Yang",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1811-yy84.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1811-yy84.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1811-yy84.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-0300a4bb",
+      "name": "James A. Yorke",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/528-yorke.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-0300a4bb",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "James A. Yorke",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/528-yorke.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/528-yorke.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/528-yorke.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-93280e3c",
+      "name": "Bogdan Zavyalov",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1846-zavyalov.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-93280e3c",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Bogdan Zavyalov",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1846-zavyalov.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1846-zavyalov.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1846-zavyalov.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-f7d34508",
+      "name": "Boyu Zhang",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/1611-bzh.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-f7d34508",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Boyu Zhang",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/1611-bzh.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/1611-bzh.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/1611-bzh.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-afad5e58",
+      "name": "Christian Krogager Zickert",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/535-zickert.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-afad5e58",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Christian Krogager Zickert",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/535-zickert.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/535-zickert.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/535-zickert.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-math-d52013f6",
+      "name": "Yanir A. Rubinstein",
+      "active_in_release": true,
+      "official_source": "https://www-math.umd.edu/people/faculty/item/711-yanir.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-math-d52013f6",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Yanir A. Rubinstein",
+      "public_source": "https://www-math.umd.edu/people/faculty/item/711-yanir.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://www-math.umd.edu/people/faculty/item/711-yanir.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://www-math.umd.edu/people/faculty/item/711-yanir.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    }
+  ]
+}

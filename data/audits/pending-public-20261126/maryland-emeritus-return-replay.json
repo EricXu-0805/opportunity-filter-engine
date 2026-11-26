@@ -1,0 +1,26 @@
+{
+  "fix": "d5022af6d3e170ed5956915c1d84741cb0b0fb82",
+  "scope": "Hypothetical future current card, through the real parse, normalize and merge. The university has not announced these reappointments. The actual official sources today indicate emeritus only.",
+  "cases": [
+    {
+      "id": "faculty-umd-bioe-7f9ec70b",
+      "unit": "BIOE",
+      "real_archived_title": "Distinguished University Professor Emeritus",
+      "stored_last_live_date": "2026-08-19T06:23:52.086820",
+      "simulated_reappearance_title": "Distinguished University Professor",
+      "stable_id_after_simulation": "faculty-umd-bioe-7f9ec70b",
+      "active_after_simulation": true,
+      "unchanged_after_emeritus_replay": true
+    },
+    {
+      "id": "faculty-umd-ece-f49e3f74",
+      "unit": "ECE",
+      "real_archived_title": "Associate Professor Emeritus",
+      "stored_last_live_date": "2026-07-22T07:03:47.281575",
+      "simulated_reappearance_title": "Associate Professor",
+      "stable_id_after_simulation": "faculty-umd-ece-f49e3f74",
+      "active_after_simulation": true,
+      "unchanged_after_emeritus_replay": true
+    }
+  ]
+}
