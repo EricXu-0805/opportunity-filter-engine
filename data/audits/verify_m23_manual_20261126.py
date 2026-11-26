@@ -116,7 +116,10 @@ with sync_playwright() as pw:
             links[oid]["recommendations"] = facts.inner_text()
             links[oid]["recommender_deadline"] = faculty_deadline.inner_text()
         prior_id = "sro-51c40e5b"
-        prior = ctx.request.get(site+"/api/opportunities/"+prior_id)
+        # Historical detail requests from the released web client declare compatibility.
+        prior = ctx.request.get(site+"/api/opportunities/"+prior_id, params={
+            "_release_scope":"mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+        })
         assert prior.ok and prior.json()["id"]==prior_id
         old = prior.json()
         assert old["deadline"] != "2027-01-15" and "degree_path" not in old["detail_fields"]["fields"]["eligibility"]["explicit"]
