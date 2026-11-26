@@ -99,6 +99,16 @@ def _ucsd_nano_adjunct(name: str, old_url: str, jacobs_id: int, *, previous_name
 
 
 REVIEWS = {
+    # The department still labels this card "Professor". His March 2026 CV
+    # names Mechanical Engineering among his emeritus appointments from 2024.
+    "faculty-udel-me-4b7217c7": ProfileReview(
+        "udel", "Department of Mechanical Engineering", "John Gillespie Jr.",
+        "https://me.udel.edu/faculty/john-w-gillespie-jr/",
+        "https://me.udel.edu/faculty/john-w-gillespie-jr/",
+        "https://me.udel.edu/wp-content/uploads/2022/07/3-5-2026_Current-JWG-CV.pdf",
+        datetime(2026, 11, 26, 21, 35, tzinfo=UTC),
+        title="Professor Emeritus", previous_title="Professor",
+        appointment_summary="John Gillespie Jr. is a professor emeritus of mechanical engineering at the University of Delaware."),
     # Keep the former school's own named appointment as historical provenance.
     # The ordinary directory pass owns whether this old Georgia Tech ID is active.
     "faculty-gatech-arch-3a9c2373": ProfileReview(

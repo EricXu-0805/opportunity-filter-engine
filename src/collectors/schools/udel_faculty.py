@@ -126,12 +126,27 @@ _CCEE_SEL = {
     "email": "a.dmach-acf-value[href^='mailto:']",
 }
 
-# --- MSEG / BME: Divi text grid (name link + mailto, no rank line) -----------
+# --- BME: Divi text grid (name link + mailto, no rank line) -----------
 _ENGR_TEXT_SEL = {
     "card": "div.et_pb_text_inner:has(a:is(div.et_pb_text_inner h4 a))",
     "name": "h4 a",
     "link": "h4 a",
     "email": "a[href^='mailto:']",
+}
+
+# MSEG separates full-time, retired and affiliated rosters. Within the current
+# roster a portrait link may precede a second heading link containing the name.
+_MSEG_NAME_LINK = "h4 a[href]:not(:has(img))"
+_MSEG_SEL = {
+    "card": "#faculty div.et_pb_text_inner",
+    "name": _MSEG_NAME_LINK,
+    "email": "a[href^='mailto:']",
+}
+# NYU announced this specific appointment transfer on August 19, 2026.
+# Both the card name and the individual profile must still match the review.
+_MSEG_FORMER_APPOINTMENT = {
+    "selector": _MSEG_NAME_LINK + ":is([href='https://mseg.udel.edu/people/korley/'], [href='/people/korley/'])",
+    "exclude": r"^LaShanda Korley$",
 }
 
 # --- Central AEM "Our People" (CAS) -----------------------------------------
@@ -237,11 +252,13 @@ def _callout(short: str, name: str, majors: list[str], slug: str) -> dict:
 
 
 def _scrape(short: str, name: str, majors: list[str], url: str, selectors: dict,
-            ladder: dict | None = None) -> dict:
+            ladder: dict | None = None, *, field_filter: dict | None = None) -> dict:
     """A single-page Divi/WordPress engineering directory (subdomain sites)."""
     cfg = {"url": url, "selectors": selectors, "profile_enrich": _ENRICH}
     if ladder:
         cfg["ladder_filter"] = ladder
+    if field_filter:
+        cfg["field_filter"] = field_filter
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url, "scrape": cfg}
 
@@ -298,7 +315,7 @@ SCHOOL: dict = {
                 "https://ccee.udel.edu/people/faculty/", _CCEE_SEL),
         _scrape("MSEG", "Department of Materials Science and Engineering",
                 ["Materials Science and Engineering"],
-                "https://mseg.udel.edu/people/faculty/", _ENGR_TEXT_SEL),
+                "https://mseg.udel.edu/people/faculty/", _MSEG_SEL, field_filter=_MSEG_FORMER_APPOINTMENT),
         _scrape("BME", "Department of Biomedical Engineering",
                 ["Biomedical Engineering"],
                 "https://bme.udel.edu/people/", _ENGR_TEXT_SEL),
