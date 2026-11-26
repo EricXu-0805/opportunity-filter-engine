@@ -1,0 +1,2863 @@
+{
+  "observed_at": "2026-11-26T11:36:11.485169+00:00",
+  "base_commit": "7bbb43aa5d97447219485219de18f00d6b558af3",
+  "physics_directory": "https://physics.ucsd.edu/people/faculty",
+  "former_physics_endpoint": "https://physics.ucsd.edu/api/profiles/faculty",
+  "former_response": {},
+  "source_profile_response_count": 84,
+  "source_profile_http200": 84,
+  "all_source_rank_counts": {
+    "Assistant Professor": 7,
+    "Assistant Teaching Professor": 2,
+    "Associate Professor": 9,
+    "Professor": 20,
+    "Professor Emeritus": 19,
+    "Distinguished Professor": 12,
+    "Chancellor's Distinguished Professor of Physics": 1,
+    "Professor Emerita": 2,
+    "Distinguished Professor Emeritus": 3,
+    "Research Scientist": 1,
+    "Associate Teaching Professor": 3,
+    "Distinguished Research Scientist": 1,
+    "Adjunct Professor": 3,
+    "Department Chair": 1
+  },
+  "old_fresh_collection_physics_count": 0,
+  "new_fresh_collection_physics_count": 55,
+  "saved_original_count": 1508,
+  "unchanged_original_rows": 1448,
+  "before_and_after_60_published_physics": [
+    {
+      "original_id": "faculty-ucsd-phys-df968327",
+      "official_roster_name": "Monica Allen",
+      "linked_profile_heading": "Monica Allen",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/607",
+      "current_rank_on_both_sources": "Assistant Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-df968327",
+      "last_active_observation_retained": "2026-11-13T16:01:26.561763"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-e807ac88",
+      "official_roster_name": "Jessica Arlett",
+      "linked_profile_heading": "Jessica Arlett",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1087",
+      "current_rank_on_both_sources": "Assistant Teaching Professor",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-e807ac88",
+      "last_active_observation_retained": "2026-11-13T16:01:26.561867"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d3c666b0",
+      "official_roster_name": "Kam Arnold",
+      "linked_profile_heading": "Kam Arnold",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/172",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Associate Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d3c666b0",
+      "last_active_observation_retained": "2026-11-13T16:01:26.561923"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d3c54ebd",
+      "official_roster_name": "Daniel Arovas",
+      "linked_profile_heading": "Daniel Arovas",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/68",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d3c54ebd",
+      "last_active_observation_retained": "2026-11-13T16:01:26.561974"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-472c2a50",
+      "official_roster_name": "Richard Averitt",
+      "linked_profile_heading": "Richard Averitt",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/545",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-472c2a50",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562021"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-376aeb40",
+      "official_roster_name": "Gurleen Bal",
+      "linked_profile_heading": "Gurleen Bal",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1088",
+      "current_rank_on_both_sources": "Assistant Teaching Professor",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-376aeb40",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562065"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-7011bbae",
+      "official_roster_name": "Julio Barreiro Guerrero",
+      "linked_profile_heading": "Julio Barreiro",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/546",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Associate Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-7011bbae",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562127"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-8fe28f0b",
+      "official_roster_name": "Leonid Butov",
+      "linked_profile_heading": "Leonid Butov",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/389",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-8fe28f0b",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562218"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-64b9acbc",
+      "official_roster_name": "R Sekhar Chivukula",
+      "linked_profile_heading": "R. Sekhar Chivukula",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/608",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-64b9acbc",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562266"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-73030256",
+      "official_roster_name": "Massimiliano Di Ventra",
+      "linked_profile_heading": "Max (Massimiliano) Di Ventra",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/396",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-73030256",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562321"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-21d6acea",
+      "official_roster_name": "Patrick Diamond",
+      "linked_profile_heading": "Patrick Diamond",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/101",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-21d6acea",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562367"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-526e74c3",
+      "official_roster_name": "Javier Duarte",
+      "linked_profile_heading": "Javier Duarte",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/613",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Associate Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-526e74c3",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562413"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-0370093f",
+      "official_roster_name": "Daniel Dubin",
+      "linked_profile_heading": "Daniel Dubin",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/107",
+      "current_rank_on_both_sources": "Professor Emeritus",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-0370093f",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562455"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-6e4ae821",
+      "official_roster_name": "Olga Dudko",
+      "linked_profile_heading": "Olga Dudko",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/451",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-6e4ae821",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562496"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-ee7dc055",
+      "official_roster_name": "Zachary Fisk",
+      "linked_profile_heading": "Zachary Fisk",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1093",
+      "current_rank_on_both_sources": "Professor Emeritus",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-ee7dc055",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562537"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-43a38bc0",
+      "official_roster_name": "Raphael Flauger",
+      "linked_profile_heading": "Raphael Flauger",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/555",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Associate Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-43a38bc0",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562583"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-e4db6c91",
+      "official_roster_name": "Michael Fogler",
+      "linked_profile_heading": "Michael M. Fogler",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/352",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-e4db6c91",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562625"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-9fad8c63",
+      "official_roster_name": "Alex Frano",
+      "linked_profile_heading": "Alex FraÃ±Ã³",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/596",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-9fad8c63",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562670"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-1dff91ca",
+      "official_roster_name": "George Fuller",
+      "linked_profile_heading": "George Fuller",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/114",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-1dff91ca",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562717"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-9e8c2319",
+      "official_roster_name": "Nigel Goldenfeld",
+      "linked_profile_heading": "Nigel Goldenfeld",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/618",
+      "current_rank_on_both_sources": "Chancellor's Distinguished Professor of Physics",
+      "old_title": "Chancellor's Distinguished Professor of Physics",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-9e8c2319",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562774"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-b026c45d",
+      "official_roster_name": "Daniel Green",
+      "linked_profile_heading": "Daniel Green",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/595",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Associate Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-b026c45d",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562823"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-350f5272",
+      "official_roster_name": "Benjamin Grinstein",
+      "linked_profile_heading": "Benjamin Grinstein",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/120",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-350f5272",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562869"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d1bdb2ff",
+      "official_roster_name": "Alexander Groisman",
+      "linked_profile_heading": "Alexander Groisman",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/354",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d1bdb2ff",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562913"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-6c8e05f6",
+      "official_roster_name": "Tarun Grover",
+      "linked_profile_heading": "Tarun Grover",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/554",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-6c8e05f6",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562957"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-644b2b09",
+      "official_roster_name": "Jorge Hirsch",
+      "linked_profile_heading": "Jorge Hirsch",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/132",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-644b2b09",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562999"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-918092da",
+      "official_roster_name": "Michael Holst",
+      "linked_profile_heading": "Michael Holst",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/464",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-918092da",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563043"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-cd5776ea",
+      "official_roster_name": "Kenneth Intriligator",
+      "linked_profile_heading": "Kenneth Intriligator",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/137",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-cd5776ea",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563151"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-8822888c",
+      "official_roster_name": "Elizabeth Jenkins",
+      "linked_profile_heading": "Elizabeth Jenkins",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/143",
+      "current_rank_on_both_sources": "Professor Emerita",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-8822888c",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563196"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-651f3a74",
+      "official_roster_name": "Suckjoon Jun",
+      "linked_profile_heading": "Suckjoon Jun",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/538",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-651f3a74",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563238"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-a15abe3e",
+      "official_roster_name": "Brian Keating",
+      "linked_profile_heading": "Brian Keating",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/395",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-a15abe3e",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563280"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-f6b40970",
+      "official_roster_name": "Dusan Keres",
+      "linked_profile_heading": "Dusan Keres",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/537",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-f6b40970",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563321"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-34de0c54",
+      "official_roster_name": "Elena Koslover",
+      "linked_profile_heading": "Elena Koslover",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/553",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-34de0c54",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563412"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-a07d14cc",
+      "official_roster_name": "Julius Kuti",
+      "linked_profile_heading": "Julius Kuti",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/157",
+      "current_rank_on_both_sources": "Distinguished Professor Emeritus",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-a07d14cc",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563460"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-19f90538",
+      "official_roster_name": "Tongyan Lin",
+      "linked_profile_heading": "Tongyan Lin",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/598",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-19f90538",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563545"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-e72a39bd",
+      "official_roster_name": "Aneesh Manohar",
+      "linked_profile_heading": "Aneesh Manohar",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/170",
+      "current_rank_on_both_sources": "Distinguished Professor Emeritus",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-e72a39bd",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563590"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-a57a1776",
+      "official_roster_name": "M Maple",
+      "linked_profile_heading": "Brian Maple",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/445",
+      "current_rank_on_both_sources": "Distinguished Professor Emeritus",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-a57a1776",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563634"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-8fb1ab73",
+      "official_roster_name": "Carl Mc Ilwain",
+      "linked_profile_heading": "Carl Mc Ilwain",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/177",
+      "current_rank_on_both_sources": "Professor Emeritus",
+      "old_title": "Research Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-8fb1ab73",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563685"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-119a8c8f",
+      "official_roster_name": "John Mcgreevy",
+      "linked_profile_heading": "John McGreevy",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/539",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-119a8c8f",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563726"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-2d58cbff",
+      "official_roster_name": "Andrew Meyertholen",
+      "linked_profile_heading": "Andrew Meyertholen",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/610",
+      "current_rank_on_both_sources": "Associate Teaching Professor",
+      "old_title": "Associate Teaching Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-2d58cbff",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563772"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d0b391f6",
+      "official_roster_name": "Thomas Murphy",
+      "linked_profile_heading": "Thomas Murphy",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/383",
+      "current_rank_on_both_sources": "Professor Emeritus",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d0b391f6",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563814"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-dc9aab87",
+      "official_roster_name": "Kaixuan Ni",
+      "linked_profile_heading": "Kaixuan Ni",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/544",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-dc9aab87",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563855"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-5c2226d7",
+      "official_roster_name": "Seungeun Oh",
+      "linked_profile_heading": "Seungeun Oh",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1090",
+      "current_rank_on_both_sources": "Assistant Professor",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-5c2226d7",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563894"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-889b0cc9",
+      "official_roster_name": "Daniel Parker",
+      "linked_profile_heading": "Daniel Parker",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1379",
+      "current_rank_on_both_sources": "Assistant Professor",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-889b0cc9",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563933"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-9b753dae",
+      "official_roster_name": "Tenio Popmintchev",
+      "linked_profile_heading": "Tenio Popmintchev",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/173",
+      "current_rank_on_both_sources": "Assistant Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-9b753dae",
+      "last_active_observation_retained": "2026-11-13T16:01:26.563976"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-6b694610",
+      "official_roster_name": "Marcelo Rozenberg",
+      "linked_profile_heading": "Marcelo Rozenberg",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1382",
+      "current_rank_on_both_sources": "Adjunct Professor",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-6b694610",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564019"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-6ee1e49f",
+      "official_roster_name": "Ivan Schuller",
+      "linked_profile_heading": "Ivan Schuller",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/216",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-6ee1e49f",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564063"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-b9c71903",
+      "official_roster_name": "Mattia Serra",
+      "linked_profile_heading": "Mattia Serra",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/616",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-b9c71903",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564116"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d0668c09",
+      "official_roster_name": "Vivek Sharma",
+      "linked_profile_heading": "Vivek Sharma",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/220",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d0668c09",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564161"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-bb365b31",
+      "official_roster_name": "Brian Shotwell",
+      "linked_profile_heading": "Brian Shotwell",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/594",
+      "current_rank_on_both_sources": "Associate Teaching Professor",
+      "old_title": "Assistant Teaching Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-bb365b31",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564206"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-7549ad8c",
+      "official_roster_name": "Elizabeth Simmons",
+      "linked_profile_heading": "Elizabeth Simmons",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/603",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-7549ad8c",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564251"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-a7482326",
+      "official_roster_name": "Douglas Smith",
+      "linked_profile_heading": "Douglas Smith",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/284",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-a7482326",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564295"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d6fa004a",
+      "official_roster_name": "Tzer Han Tan",
+      "linked_profile_heading": "Tzer Han Tan",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1092",
+      "current_rank_on_both_sources": "Assistant Professor",
+      "old_title": "",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d6fa004a",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564338"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-3ed7134c",
+      "official_roster_name": "Philbert Tsai",
+      "linked_profile_heading": "Phil Tsai",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/592",
+      "current_rank_on_both_sources": "Associate Teaching Professor",
+      "old_title": "Associate Teaching Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-3ed7134c",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564384"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-fe463583",
+      "official_roster_name": "Shelley Wright",
+      "linked_profile_heading": "Shelley Wright",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/548",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Assoc. Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-fe463583",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564431"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-34c8541c",
+      "official_roster_name": "Frank Wuerthwein",
+      "linked_profile_heading": "Frank Wuerthwein",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/386",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-34c8541c",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564473"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d186fec3",
+      "official_roster_name": "Avi Yagil",
+      "linked_profile_heading": "Avi (Avraham) Yagil",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/438",
+      "current_rank_on_both_sources": "Distinguished Professor",
+      "old_title": "Distinguished Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d186fec3",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564518"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-3bfbd803",
+      "official_roster_name": "Liang Yang",
+      "linked_profile_heading": "Liang Yang",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/614",
+      "current_rank_on_both_sources": "Professor",
+      "old_title": "Associate Professor",
+      "official_contact_changed": true,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-3bfbd803",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564562"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-81af8b59",
+      "official_roster_name": "Yi-Zhuang You",
+      "linked_profile_heading": "Yi-Zhuang You",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/597",
+      "current_rank_on_both_sources": "Associate Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-81af8b59",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564608"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-d779b29b",
+      "official_roster_name": "Hongbo Zhao",
+      "linked_profile_heading": "Hongbo Zhao",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/1390",
+      "current_rank_on_both_sources": "Assistant Professor",
+      "old_title": "Assistant Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": true,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-d779b29b",
+      "last_active_observation_retained": "2026-11-13T16:01:26.564652"
+    },
+    {
+      "original_id": "faculty-ucsd-phys-98cfc04c",
+      "official_roster_name": "James Branson",
+      "linked_profile_heading": "James Branson",
+      "linked_profile_url": "https://physics.ucsd.edu/people/profile/78",
+      "current_rank_on_both_sources": "Professor Emeritus",
+      "old_title": "Professor",
+      "official_contact_changed": false,
+      "old_actionable": true,
+      "updated_actionable": false,
+      "public_detail": "https://joinalab.com/opportunities/faculty-ucsd-phys-98cfc04c",
+      "last_active_observation_retained": "2026-11-13T16:01:26.562175"
+    }
+  ],
+  "newly_read_published_or_candidate_physics_ids": [
+    {
+      "id": "faculty-ucsd-phys-df968327",
+      "name": "Monica Allen",
+      "source_url": "https://physics.ucsd.edu/people/profile/607",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-e807ac88",
+      "name": "Jessica Arlett",
+      "source_url": "https://physics.ucsd.edu/people/profile/1087",
+      "source_rank": "Assistant Teaching Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-d3c666b0",
+      "name": "Kam Arnold",
+      "source_url": "https://physics.ucsd.edu/people/profile/172",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-d3c54ebd",
+      "name": "Daniel Arovas",
+      "source_url": "https://physics.ucsd.edu/people/profile/68",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-472c2a50",
+      "name": "Richard Averitt",
+      "source_url": "https://physics.ucsd.edu/people/profile/545",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-376aeb40",
+      "name": "Gurleen Bal",
+      "source_url": "https://physics.ucsd.edu/people/profile/1088",
+      "source_rank": "Assistant Teaching Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-7011bbae",
+      "name": "Julio Barreiro Guerrero",
+      "source_url": "https://physics.ucsd.edu/people/profile/546",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": false,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-8fe28f0b",
+      "name": "Leonid Butov",
+      "source_url": "https://physics.ucsd.edu/people/profile/389",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-64b9acbc",
+      "name": "R Sekhar Chivukula",
+      "source_url": "https://physics.ucsd.edu/people/profile/608",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-73030256",
+      "name": "Massimiliano Di Ventra",
+      "source_url": "https://physics.ucsd.edu/people/profile/396",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-21d6acea",
+      "name": "Patrick Diamond",
+      "source_url": "https://physics.ucsd.edu/people/profile/101",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-526e74c3",
+      "name": "Javier Duarte",
+      "source_url": "https://physics.ucsd.edu/people/profile/613",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-6e4ae821",
+      "name": "Olga Dudko",
+      "source_url": "https://physics.ucsd.edu/people/profile/451",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-43a38bc0",
+      "name": "Raphael Flauger",
+      "source_url": "https://physics.ucsd.edu/people/profile/555",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-e4db6c91",
+      "name": "Michael Fogler",
+      "source_url": "https://physics.ucsd.edu/people/profile/352",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-9fad8c63",
+      "name": "Alex Frano",
+      "source_url": "https://physics.ucsd.edu/people/profile/596",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": false,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-1dff91ca",
+      "name": "George Fuller",
+      "source_url": "https://physics.ucsd.edu/people/profile/114",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-9e8c2319",
+      "name": "Nigel Goldenfeld",
+      "source_url": "https://physics.ucsd.edu/people/profile/618",
+      "source_rank": "Chancellor's Distinguished Professor of Physics",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-b026c45d",
+      "name": "Daniel Green",
+      "source_url": "https://physics.ucsd.edu/people/profile/595",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-350f5272",
+      "name": "Benjamin Grinstein",
+      "source_url": "https://physics.ucsd.edu/people/profile/120",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-d1bdb2ff",
+      "name": "Alexander Groisman",
+      "source_url": "https://physics.ucsd.edu/people/profile/354",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-6c8e05f6",
+      "name": "Tarun Grover",
+      "source_url": "https://physics.ucsd.edu/people/profile/554",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-644b2b09",
+      "name": "Jorge Hirsch",
+      "source_url": "https://physics.ucsd.edu/people/profile/132",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-918092da",
+      "name": "Michael Holst",
+      "source_url": "https://physics.ucsd.edu/people/profile/464",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-a61d5227",
+      "name": "Terence Hwa",
+      "source_url": "https://physics.ucsd.edu/people/profile/134",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-cd5776ea",
+      "name": "Kenneth Intriligator",
+      "source_url": "https://physics.ucsd.edu/people/profile/137",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-651f3a74",
+      "name": "Suckjoon Jun",
+      "source_url": "https://physics.ucsd.edu/people/profile/538",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-a15abe3e",
+      "name": "Brian Keating",
+      "source_url": "https://physics.ucsd.edu/people/profile/395",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-f6b40970",
+      "name": "Dusan Keres",
+      "source_url": "https://physics.ucsd.edu/people/profile/537",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-bf3b5e4e",
+      "name": "David Kleinfeld",
+      "source_url": "https://physics.ucsd.edu/people/profile/153",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-34de0c54",
+      "name": "Elena Koslover",
+      "source_url": "https://physics.ucsd.edu/people/profile/553",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-bca2a855",
+      "name": "Aobo Li",
+      "source_url": "https://physics.ucsd.edu/people/profile/1089",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-19f90538",
+      "name": "Tongyan Lin",
+      "source_url": "https://physics.ucsd.edu/people/profile/598",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-119a8c8f",
+      "name": "John Mcgreevy",
+      "source_url": "https://physics.ucsd.edu/people/profile/539",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-2d58cbff",
+      "name": "Andrew Meyertholen",
+      "source_url": "https://physics.ucsd.edu/people/profile/610",
+      "source_rank": "Associate Teaching Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-dc9aab87",
+      "name": "Kaixuan Ni",
+      "source_url": "https://physics.ucsd.edu/people/profile/544",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-5c2226d7",
+      "name": "Seungeun Oh",
+      "source_url": "https://physics.ucsd.edu/people/profile/1090",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-889b0cc9",
+      "name": "Daniel Parker",
+      "source_url": "https://physics.ucsd.edu/people/profile/1379",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-9b753dae",
+      "name": "Tenio Popmintchev",
+      "source_url": "https://physics.ucsd.edu/people/profile/173",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-6ee1e49f",
+      "name": "Ivan Schuller",
+      "source_url": "https://physics.ucsd.edu/people/profile/216",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-b9c71903",
+      "name": "Mattia Serra",
+      "source_url": "https://physics.ucsd.edu/people/profile/616",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-d0668c09",
+      "name": "Vivek Sharma",
+      "source_url": "https://physics.ucsd.edu/people/profile/220",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-bb365b31",
+      "name": "Brian Shotwell",
+      "source_url": "https://physics.ucsd.edu/people/profile/594",
+      "source_rank": "Associate Teaching Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-b552613a",
+      "name": "Oleg Shpyrko",
+      "source_url": "https://physics.ucsd.edu/people/profile/453",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-7549ad8c",
+      "name": "Elizabeth Simmons",
+      "source_url": "https://physics.ucsd.edu/people/profile/603",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": false,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-a7482326",
+      "name": "Douglas Smith",
+      "source_url": "https://physics.ucsd.edu/people/profile/284",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-d6fa004a",
+      "name": "Tzer Han Tan",
+      "source_url": "https://physics.ucsd.edu/people/profile/1092",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-3ed7134c",
+      "name": "Philbert Tsai",
+      "source_url": "https://physics.ucsd.edu/people/profile/592",
+      "source_rank": "Associate Teaching Professor",
+      "direct_public_contact": false,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-315f4f47",
+      "name": "Massimo Vergassola",
+      "source_url": "https://physics.ucsd.edu/people/profile/547",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-fe463583",
+      "name": "Shelley Wright",
+      "source_url": "https://physics.ucsd.edu/people/profile/548",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-34c8541c",
+      "name": "Frank Wuerthwein",
+      "source_url": "https://physics.ucsd.edu/people/profile/386",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-d186fec3",
+      "name": "Avi Yagil",
+      "source_url": "https://physics.ucsd.edu/people/profile/438",
+      "source_rank": "Distinguished Professor",
+      "direct_public_contact": true,
+      "has_research_statement": false
+    },
+    {
+      "id": "faculty-ucsd-phys-3bfbd803",
+      "name": "Liang Yang",
+      "source_url": "https://physics.ucsd.edu/people/profile/614",
+      "source_rank": "Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-81af8b59",
+      "name": "Yi-Zhuang You",
+      "source_url": "https://physics.ucsd.edu/people/profile/597",
+      "source_rank": "Associate Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    },
+    {
+      "id": "faculty-ucsd-phys-d779b29b",
+      "name": "Hongbo Zhao",
+      "source_url": "https://physics.ucsd.edu/people/profile/1390",
+      "source_rank": "Assistant Professor",
+      "direct_public_contact": true,
+      "has_research_statement": true
+    }
+  ],
+  "partial_source_replay": "Three original UCSD sources were collected, then merged once and repeated on the local full school corpus. The scheduled 11/27 school refresh and live deployment still require observation.",
+  "local_three_department_full_shard_replays": [
+    {
+      "attempt": 1,
+      "input_count": 181,
+      "read_school_units": {
+        "phys": {
+          "observed_count": 55,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        },
+        "hdsi": {
+          "observed_count": 61,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        },
+        "math": {
+          "observed_count": 65,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        }
+      },
+      "all_1508_original_ids_present": true,
+      "target": {
+        "id": "faculty-ucsd-math-5a86bec6",
+        "actionable": false,
+        "reason": "listed_as_emeritus",
+        "last_seen_at": "2026-10-09T13:22:31.902153"
+      },
+      "original_control_ids": [
+        {
+          "id": "faculty-ucsd-math-0e70967c",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-phys-918092da",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "public_actionable": true,
+          "duplicate_of": null
+        }
+      ],
+      "joint_appointment_fates": [
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-phys-918092da",
+          "unit": "Department of Physics",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ery Arias-Castro",
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hwsph-ecbb1d29",
+          "unit": "Herbert Wertheim School of Public Health and Human Longevity Science",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-hdsi-c20ac5c2",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        }
+      ],
+      "nine_retired_originals_non_actionable": [
+        "faculty-ucsd-phys-0370093f",
+        "faculty-ucsd-phys-8822888c",
+        "faculty-ucsd-phys-8fb1ab73",
+        "faculty-ucsd-phys-98cfc04c",
+        "faculty-ucsd-phys-a07d14cc",
+        "faculty-ucsd-phys-a57a1776",
+        "faculty-ucsd-phys-d0b391f6",
+        "faculty-ucsd-phys-e72a39bd",
+        "faculty-ucsd-phys-ee7dc055"
+      ],
+      "current_physics_originals_in_corpus": 60,
+      "all_dept_newly_collected_fates": [
+        {
+          "collected_id": "faculty-ucsd-phys-df968327",
+          "name": "Monica Allen",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-df968327"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-e807ac88",
+          "name": "Jessica Arlett",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-e807ac88"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d3c666b0",
+          "name": "Kam Arnold",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d3c666b0"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d3c54ebd",
+          "name": "Daniel Arovas",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d3c54ebd"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-472c2a50",
+          "name": "Richard Averitt",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-472c2a50"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-376aeb40",
+          "name": "Gurleen Bal",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-376aeb40"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-7011bbae",
+          "name": "Julio Barreiro Guerrero",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-8fe28f0b",
+          "name": "Leonid Butov",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-8fe28f0b"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-64b9acbc",
+          "name": "R Sekhar Chivukula",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-64b9acbc"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-73030256",
+          "name": "Massimiliano Di Ventra",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-73030256"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-21d6acea",
+          "name": "Patrick Diamond",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-21d6acea"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-526e74c3",
+          "name": "Javier Duarte",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-526e74c3"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-6e4ae821",
+          "name": "Olga Dudko",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-6e4ae821"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-43a38bc0",
+          "name": "Raphael Flauger",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-43a38bc0"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-e4db6c91",
+          "name": "Michael Fogler",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-e4db6c91"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-9fad8c63",
+          "name": "Alex Frano",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-1dff91ca",
+          "name": "George Fuller",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-1dff91ca"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-9e8c2319",
+          "name": "Nigel Goldenfeld",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-9e8c2319"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-b026c45d",
+          "name": "Daniel Green",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-b026c45d"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-350f5272",
+          "name": "Benjamin Grinstein",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-350f5272"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d1bdb2ff",
+          "name": "Alexander Groisman",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d1bdb2ff"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-6c8e05f6",
+          "name": "Tarun Grover",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-6c8e05f6"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-644b2b09",
+          "name": "Jorge Hirsch",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-644b2b09"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-918092da",
+          "name": "Michael Holst",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-918092da"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-a61d5227",
+          "name": "Terence Hwa",
+          "record_persisted": false,
+          "active": null,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-bio-966837fe"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-cd5776ea",
+          "name": "Kenneth Intriligator",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-cd5776ea"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-651f3a74",
+          "name": "Suckjoon Jun",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-651f3a74"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-a15abe3e",
+          "name": "Brian Keating",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-a15abe3e"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-f6b40970",
+          "name": "Dusan Keres",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-f6b40970"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-bf3b5e4e",
+          "name": "David Kleinfeld",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-bf3b5e4e"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-34de0c54",
+          "name": "Elena Koslover",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-34de0c54"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-bca2a855",
+          "name": "Aobo Li",
+          "record_persisted": false,
+          "active": null,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-hdsi-65b300f9"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-19f90538",
+          "name": "Tongyan Lin",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-19f90538"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-119a8c8f",
+          "name": "John Mcgreevy",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-119a8c8f"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-2d58cbff",
+          "name": "Andrew Meyertholen",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-2d58cbff"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-dc9aab87",
+          "name": "Kaixuan Ni",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-dc9aab87"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-5c2226d7",
+          "name": "Seungeun Oh",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-5c2226d7"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-889b0cc9",
+          "name": "Daniel Parker",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-889b0cc9"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-9b753dae",
+          "name": "Tenio Popmintchev",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-9b753dae"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-6ee1e49f",
+          "name": "Ivan Schuller",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-6ee1e49f"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-b9c71903",
+          "name": "Mattia Serra",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-b9c71903"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d0668c09",
+          "name": "Vivek Sharma",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d0668c09"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-bb365b31",
+          "name": "Brian Shotwell",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-bb365b31"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-b552613a",
+          "name": "Oleg Shpyrko",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-b552613a"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-7549ad8c",
+          "name": "Elizabeth Simmons",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-a7482326",
+          "name": "Douglas Smith",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-a7482326"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d6fa004a",
+          "name": "Tzer Han Tan",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d6fa004a"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-3ed7134c",
+          "name": "Philbert Tsai",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-315f4f47",
+          "name": "Massimo Vergassola",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-315f4f47"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-fe463583",
+          "name": "Shelley Wright",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-fe463583"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-34c8541c",
+          "name": "Frank Wuerthwein",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-34c8541c"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d186fec3",
+          "name": "Avi Yagil",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d186fec3"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-3bfbd803",
+          "name": "Liang Yang",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-3bfbd803"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-81af8b59",
+          "name": "Yi-Zhuang You",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-81af8b59"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d779b29b",
+          "name": "Hongbo Zhao",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d779b29b"
+          ]
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "input_count": 181,
+      "read_school_units": {
+        "phys": {
+          "observed_count": 55,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        },
+        "hdsi": {
+          "observed_count": 61,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        },
+        "math": {
+          "observed_count": 65,
+          "fetch_status": "ok",
+          "parse_status": "ok",
+          "failure_reason": null
+        }
+      },
+      "all_1508_original_ids_present": true,
+      "target": {
+        "id": "faculty-ucsd-math-5a86bec6",
+        "actionable": false,
+        "reason": "listed_as_emeritus",
+        "last_seen_at": "2026-10-09T13:22:31.902153"
+      },
+      "original_control_ids": [
+        {
+          "id": "faculty-ucsd-math-0e70967c",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-phys-918092da",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "public_actionable": true,
+          "duplicate_of": null
+        },
+        {
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "public_actionable": true,
+          "duplicate_of": null
+        }
+      ],
+      "joint_appointment_fates": [
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-phys-918092da",
+          "unit": "Department of Physics",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ery Arias-Castro",
+          "id": "faculty-ucsd-hdsi-a668c220",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hdsi-80d4f8ba",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Ronghui (Lily) Xu",
+          "id": "faculty-ucsd-hwsph-ecbb1d29",
+          "unit": "Herbert Wertheim School of Public Health and Human Longevity Science",
+          "status": "active",
+          "duplicate_of": null
+        },
+        {
+          "name": "Michael Holst",
+          "id": "faculty-ucsd-hdsi-c20ac5c2",
+          "unit": "Halıcıoğlu Data Science Institute",
+          "status": "active",
+          "duplicate_of": null
+        }
+      ],
+      "nine_retired_originals_non_actionable": [
+        "faculty-ucsd-phys-0370093f",
+        "faculty-ucsd-phys-8822888c",
+        "faculty-ucsd-phys-8fb1ab73",
+        "faculty-ucsd-phys-98cfc04c",
+        "faculty-ucsd-phys-a07d14cc",
+        "faculty-ucsd-phys-a57a1776",
+        "faculty-ucsd-phys-d0b391f6",
+        "faculty-ucsd-phys-e72a39bd",
+        "faculty-ucsd-phys-ee7dc055"
+      ],
+      "current_physics_originals_in_corpus": 60,
+      "all_dept_newly_collected_fates": [
+        {
+          "collected_id": "faculty-ucsd-phys-df968327",
+          "name": "Monica Allen",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-df968327"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-e807ac88",
+          "name": "Jessica Arlett",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-e807ac88"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d3c666b0",
+          "name": "Kam Arnold",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d3c666b0"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d3c54ebd",
+          "name": "Daniel Arovas",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d3c54ebd"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-472c2a50",
+          "name": "Richard Averitt",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-472c2a50"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-376aeb40",
+          "name": "Gurleen Bal",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-376aeb40"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-7011bbae",
+          "name": "Julio Barreiro Guerrero",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-8fe28f0b",
+          "name": "Leonid Butov",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-8fe28f0b"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-64b9acbc",
+          "name": "R Sekhar Chivukula",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-64b9acbc"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-73030256",
+          "name": "Massimiliano Di Ventra",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-73030256"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-21d6acea",
+          "name": "Patrick Diamond",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-21d6acea"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-526e74c3",
+          "name": "Javier Duarte",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-526e74c3"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-6e4ae821",
+          "name": "Olga Dudko",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-6e4ae821"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-43a38bc0",
+          "name": "Raphael Flauger",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-43a38bc0"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-e4db6c91",
+          "name": "Michael Fogler",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-e4db6c91"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-9fad8c63",
+          "name": "Alex Frano",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-1dff91ca",
+          "name": "George Fuller",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-1dff91ca"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-9e8c2319",
+          "name": "Nigel Goldenfeld",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-9e8c2319"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-b026c45d",
+          "name": "Daniel Green",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-b026c45d"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-350f5272",
+          "name": "Benjamin Grinstein",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-350f5272"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d1bdb2ff",
+          "name": "Alexander Groisman",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d1bdb2ff"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-6c8e05f6",
+          "name": "Tarun Grover",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-6c8e05f6"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-644b2b09",
+          "name": "Jorge Hirsch",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-644b2b09"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-918092da",
+          "name": "Michael Holst",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-918092da"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-a61d5227",
+          "name": "Terence Hwa",
+          "record_persisted": false,
+          "active": null,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-bio-966837fe"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-cd5776ea",
+          "name": "Kenneth Intriligator",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-cd5776ea"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-651f3a74",
+          "name": "Suckjoon Jun",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-651f3a74"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-a15abe3e",
+          "name": "Brian Keating",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-a15abe3e"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-f6b40970",
+          "name": "Dusan Keres",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-f6b40970"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-bf3b5e4e",
+          "name": "David Kleinfeld",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-bf3b5e4e"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-34de0c54",
+          "name": "Elena Koslover",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-34de0c54"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-bca2a855",
+          "name": "Aobo Li",
+          "record_persisted": false,
+          "active": null,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-hdsi-65b300f9"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-19f90538",
+          "name": "Tongyan Lin",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-19f90538"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-119a8c8f",
+          "name": "John Mcgreevy",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-119a8c8f"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-2d58cbff",
+          "name": "Andrew Meyertholen",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-2d58cbff"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-dc9aab87",
+          "name": "Kaixuan Ni",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-dc9aab87"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-5c2226d7",
+          "name": "Seungeun Oh",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-5c2226d7"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-889b0cc9",
+          "name": "Daniel Parker",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-889b0cc9"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-9b753dae",
+          "name": "Tenio Popmintchev",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-9b753dae"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-6ee1e49f",
+          "name": "Ivan Schuller",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-6ee1e49f"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-b9c71903",
+          "name": "Mattia Serra",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-b9c71903"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d0668c09",
+          "name": "Vivek Sharma",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d0668c09"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-bb365b31",
+          "name": "Brian Shotwell",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-bb365b31"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-b552613a",
+          "name": "Oleg Shpyrko",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-b552613a"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-7549ad8c",
+          "name": "Elizabeth Simmons",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-a7482326",
+          "name": "Douglas Smith",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-a7482326"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d6fa004a",
+          "name": "Tzer Han Tan",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d6fa004a"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-3ed7134c",
+          "name": "Philbert Tsai",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": []
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-315f4f47",
+          "name": "Massimo Vergassola",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-315f4f47"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-fe463583",
+          "name": "Shelley Wright",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-fe463583"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-34c8541c",
+          "name": "Frank Wuerthwein",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-34c8541c"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d186fec3",
+          "name": "Avi Yagil",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d186fec3"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-3bfbd803",
+          "name": "Liang Yang",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-3bfbd803"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-81af8b59",
+          "name": "Yi-Zhuang You",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-81af8b59"
+          ]
+        },
+        {
+          "collected_id": "faculty-ucsd-phys-d779b29b",
+          "name": "Hongbo Zhao",
+          "record_persisted": true,
+          "active": true,
+          "duplicate_of": null,
+          "same_school_active_ids_by_source_contact": [
+            "faculty-ucsd-phys-d779b29b"
+          ]
+        }
+      ]
+    }
+  ],
+  "real_production_before": {
+    "observed_at": "2026-11-26T11:32:48.828625+00:00",
+    "rows": [
+      {
+        "original_id": "faculty-ucsd-phys-df968327",
+        "career_source": "https://physics.ucsd.edu/people/profile/607",
+        "new_source_rank": "Assistant Professor",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-df968327",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-df968327",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.561763",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-0370093f",
+        "career_source": "https://physics.ucsd.edu/people/profile/107",
+        "new_source_rank": "Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-0370093f",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-0370093f",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.562455",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-ee7dc055",
+        "career_source": "https://physics.ucsd.edu/people/profile/1093",
+        "new_source_rank": "Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-ee7dc055",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-ee7dc055",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.562537",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-918092da",
+        "career_source": "https://physics.ucsd.edu/people/profile/464",
+        "new_source_rank": "Distinguished Professor",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-918092da",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-918092da",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563043",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-8822888c",
+        "career_source": "https://physics.ucsd.edu/people/profile/143",
+        "new_source_rank": "Professor Emerita",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-8822888c",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-8822888c",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563196",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-a07d14cc",
+        "career_source": "https://physics.ucsd.edu/people/profile/157",
+        "new_source_rank": "Distinguished Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-a07d14cc",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-a07d14cc",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563460",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-e72a39bd",
+        "career_source": "https://physics.ucsd.edu/people/profile/170",
+        "new_source_rank": "Distinguished Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-e72a39bd",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-e72a39bd",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563590",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-a57a1776",
+        "career_source": "https://physics.ucsd.edu/people/profile/445",
+        "new_source_rank": "Distinguished Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-a57a1776",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-a57a1776",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563634",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-8fb1ab73",
+        "career_source": "https://physics.ucsd.edu/people/profile/177",
+        "new_source_rank": "Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-8fb1ab73",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-8fb1ab73",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563685",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-d0b391f6",
+        "career_source": "https://physics.ucsd.edu/people/profile/383",
+        "new_source_rank": "Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-d0b391f6",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-d0b391f6",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.563814",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-6b694610",
+        "career_source": "https://physics.ucsd.edu/people/profile/1382",
+        "new_source_rank": "Adjunct Professor",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-6b694610",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-6b694610",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.564019",
+          "expires_at": null
+        },
+        "http_status": 200
+      },
+      {
+        "original_id": "faculty-ucsd-phys-98cfc04c",
+        "career_source": "https://physics.ucsd.edu/people/profile/78",
+        "new_source_rank": "Professor Emeritus",
+        "detail_url": "https://joinalab.com/opportunities/faculty-ucsd-phys-98cfc04c",
+        "api_url": "https://joinalab.com/api/opportunities/faculty-ucsd-phys-98cfc04c",
+        "html_release_sha": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+        "source_action_before": [
+          "https://physics.ucsd.edu/people/faculty"
+        ],
+        "api_url_before": "https://physics.ucsd.edu/people/faculty",
+        "api_source_before": "https://physics.ucsd.edu/people/faculty",
+        "api_target_before": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": true,
+          "accepting_state": "unknown",
+          "reason_code": null,
+          "verified_at": "2026-11-13T16:01:26.562175",
+          "expires_at": null
+        },
+        "http_status": 200
+      }
+    ]
+  },
+  "experimental_source_receipts": {
+    "current_math_source_rows": 66,
+    "math_retained_in_unit": 65,
+    "math_filtered_by_cross_unit_credit": {
+      "Michael Holst": "faculty-ucsd-phys-918092da"
+    },
+    "physics_exported": 55,
+    "hdsi_exported": 61,
+    "open_source_html_pages": 84,
+    "normal_profile_verified_contact": 51,
+    "normal_profile_saved_research_statement": 39,
+    "existing_addresses_updated_only_after_normal_profile_gate": 22
+  },
+  "genuine_joint_appointment_control": {
+    "name": "David Kleinfeld",
+    "policy": "Independent professorships in peer departments may retain distinct records. The original biology ID is still present; physics has an independent professor record.",
+    "official_cv": "https://neurophysics.ucsd.edu/kleinfeldcv.php",
+    "official_units": [
+      "https://biology.ucsd.edu/research/faculty/dkleinfeld",
+      "https://physics.ucsd.edu/people/profile/153"
+    ],
+    "original_biology_id": "faculty-ucsd-bio-90e34353",
+    "physics_id_in_replay": "faculty-ucsd-phys-bf3b5e4e",
+    "source_appointments": [
+      "Physics since 1998",
+      "Neurobiology since 2011"
+    ]
+  },
+  "current_program_scope": {
+    "source_backfill": "All 60 previously published physics destinations changed from the department directory to their own linked page. Source-stated ranks and available identity-verified contact fields were updated, with previous general observation dates preserved.",
+    "emeriti": "The source explicitly gives nine previous contacts an emeritus/emerita title; these nine remain readable and are held from active outreach.",
+    "adjunct_control": "One department adjunct remains on the actual faculty directory; his current title and personal profile are retained. The existing collector rank filter excludes his title from newly emitted opportunities. Static correction does not claim retirement for an adjunct."
+  },
+  "next_verification": "After merge verify the original production URLs and archived contacts, then compare the actual Nov 27 UCSD school-run ledger and all old IDs."
+}
