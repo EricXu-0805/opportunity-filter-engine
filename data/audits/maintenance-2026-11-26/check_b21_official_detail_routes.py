@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, urlsplit
 import requests
 from playwright.sync_api import expect, sync_playwright
 
+from b21_nc_state_destinations import CASES as NC_STATE, verify_click
+
 SITE = "https://joinalab.com"
 DB = "mjpirkyduibkakvlbdko.supabase.co"
 SCOPE = "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
@@ -134,6 +136,23 @@ def run(args, cases):
                 result = {"id":case["id"],"original_pr":case["pr"],"ok":False}
                 try:
                     cases.check_case(case,SimpleNamespace(site=SITE,scope=SCOPE,sha=args.sha,out=str(args.out)),page,result)
+                    if page.url != result["page_url"]:
+                        # The secondary appointment check already followed its link to the primary ID.
+                        # Reopen the original before checking its own campus reading action.
+                        assert result.get("archive_to_current_clicked") == page.url
+                        response = page.goto(result["page_url"], wait_until="domcontentloaded", timeout=90000)
+                        assert response and response.status == 200
+                        cases.page_ready(page, args.sha)
+                    main = page.get_by_role("main")
+                    reading_link = main.get_by_role("link", name=result["reading_label"], exact=True)
+                    expected_link = reading_link.and_(main.locator("a[href=" + json.dumps(result["reading_href"]) + "]")).first
+                    expect(expected_link).to_be_visible(timeout=15000)
+                    result["reading_action_visible"] = True
+                    if not case["active"]:
+                        assert not main.get_by_role("button", name="Apply now", exact=True).is_visible()
+                        result["archived_apply_button_absent"] = True
+                    if case["id"] in NC_STATE:
+                        result["campus_click"] = verify_click(page, case["id"], args.sha)
                     result["ok"] = True
                 except Exception as exc:
                     result["failure"] = str(exc)[:500]
