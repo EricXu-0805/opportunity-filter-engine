@@ -1,0 +1,618 @@
+{
+  "when": "2026-11-26T15:12:11.934877+00:00",
+  "production_api_start_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "production_api_end_sha": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "prior_official_directory_evidence": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/69167e01f40dda7c83262e886a0cd9c271ffe653/data/audits/m196-ucsd-math-uf-english-2026-11-27-baseline.json",
+  "scope": "Read all 33 original IDs from the anonymous production API before the November 27 scheduled refresh. Compared URLs to the UF source directory baseline, specialty and recent observation to the published shard. The upcoming refresh is a separate observation.",
+  "count": 33,
+  "rows": [
+    {
+      "id": "faculty-uf-eng-0150a165",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-0150a165",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-0150a165",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/uwem-akpan/",
+      "expected_name": "Uwem Akpan",
+      "actual_name": "Uwem Akpan",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Creative Writing (Fiction)",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-565b1bf2",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-565b1bf2",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-565b1bf2",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/apollo-amoko/",
+      "expected_name": "Apollo Amoko",
+      "actual_name": "Apollo Amoko",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Postcolonial Theory & Literatures (esp. African Literature), Critical Theory, Modern Drama",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-7fc2cdac",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-7fc2cdac",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-7fc2cdac",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/pietro-bianchi/",
+      "expected_name": "Pietro Bianchi",
+      "actual_name": "Pietro Bianchi",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Psychoanalysis, Film Theory, Visual Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-e101948f",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-e101948f",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-e101948f",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/richard-burt/",
+      "expected_name": "Richard Burt",
+      "actual_name": "Richard Burt",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Shakespeare and Renaissance Drama; Film, Mass Media, and Digital Media; Literacy and Media Theory",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-09eb7cb4",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-09eb7cb4",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-09eb7cb4",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/thomas-conners/",
+      "expected_name": "Thomas Conners",
+      "actual_name": "Thomas Conners",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "U.S. Latinx literatures, queer theory, legal studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-48210e3d",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-48210e3d",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-48210e3d",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/michael-deagler/",
+      "expected_name": "Michael Deagler",
+      "actual_name": "Michael Deagler",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Creative Writing (Fiction)",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-4535d789",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-4535d789",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-4535d789",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/victor-del-hierro/",
+      "expected_name": "Victor Del Hierro",
+      "actual_name": "Victor Del Hierro",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Digital Writing, Cultural Rhetoric, Hip Hop",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-1481557a",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-1481557a",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-1481557a",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/sid-dobrin/",
+      "expected_name": "Sid Dobrin",
+      "actual_name": "Sid Dobrin",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Writing Studies, Digital Media, Environmental Rhetoric/Ecocriticism/Ecocomposition",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-ca7b65ea",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-ca7b65ea",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-ca7b65ea",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/margaret-galvan/",
+      "expected_name": "Margaret Galvan",
+      "actual_name": "Margaret Galvan",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Contemporary American Literature, Comics Studies, Digital Humanities, Archival Science, Feminist & Queer Theory, Visual Rhetoric",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-45c5f0cf",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-45c5f0cf",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-45c5f0cf",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/laura-gonzales/",
+      "expected_name": "Laura Gonzales",
+      "actual_name": "Laura Gonzales",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Digital writing, technical communication, user-experience",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-d604aace",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-d604aace",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-d604aace",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/sean-grass/",
+      "expected_name": "Sean Grass",
+      "actual_name": "Sean Grass",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Victorian Literature, the novel, print and material culture",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-8c98073a",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-8c98073a",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-8c98073a",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/terry-harpold/",
+      "expected_name": "Terry Harpold",
+      "actual_name": "Terry Harpold",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Environmental humanities & ecopoetics, critical plant & animal studies, science fiction literature & film, space sciences",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-f603011e",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-f603011e",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-f603011e",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/tace-hedrick/",
+      "expected_name": "Tace Hedrick",
+      "actual_name": "Tace Hedrick",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "US Latinx Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-df8f1bea",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-df8f1bea",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-df8f1bea",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/susan-hegeman/",
+      "expected_name": "Susan Hegeman",
+      "actual_name": "Susan Hegeman",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "American studies, cultural studies, 20th- 21st century literature",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-444ddfb2",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-444ddfb2",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-444ddfb2",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/michael-hofmann/",
+      "expected_name": "Michael Hofmann",
+      "actual_name": "Michael Hofmann",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Creative Writing (Poetry), Translation",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-3f676137",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-3f676137",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-3f676137",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/kenneth-kidd/",
+      "expected_name": "Kenneth Kidd",
+      "actual_name": "Kenneth Kidd",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "19th-Century Literature and Culture, Children’s Literature and Media, Queer Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-936ace14",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-936ace14",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-936ace14",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/david-leavitt/",
+      "expected_name": "David Leavitt",
+      "actual_name": "David Leavitt",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Creative Writing (Fiction)",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-e18b0841",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-e18b0841",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-e18b0841",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/william-logan/",
+      "expected_name": "William Logan",
+      "actual_name": "William Logan",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Poetry. Poetry. Poetry.",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-e02a8f56",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-e02a8f56",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-e02a8f56",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/roger-maioli/",
+      "expected_name": "Roger Maioli",
+      "actual_name": "Roger Maioli",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "18th-century British literature, the rise of the novel, literature and ethics, the history of aesthetics, cultural and epistemic relativism",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-a639d963",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-a639d963",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-a639d963",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/barbara-mennel/",
+      "expected_name": "Barbara Mennel",
+      "actual_name": "Barbara Mennel",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "International Cinema, Feminist and Queer Studies, German Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-9f9a7ce9",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-9f9a7ce9",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-9f9a7ce9",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/ange-mlinko/",
+      "expected_name": "Ange Mlinko",
+      "actual_name": "Ange Mlinko",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Creative Writing (Poetry)",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-276f5062",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-276f5062",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-276f5062",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/trevor-mowchun/",
+      "expected_name": "Trevor Mowchun",
+      "actual_name": "Trevor Mowchun",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Filmmaking, Philosophy of Film, Aesthetics",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-58dea6e3",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-58dea6e3",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-58dea6e3",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/robert-ray/",
+      "expected_name": "Robert B. Ray",
+      "actual_name": "Robert B. Ray",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Film History and Film Analysis, Philosophy and the Cinema, Storytelling in Literature and Film",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-2357532e",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-2357532e",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-2357532e",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/mark-a-reid/",
+      "expected_name": "Mark A. Reid",
+      "actual_name": "Mark A. Reid",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "African and African Diaspora Studies in Film, Media and Literature, Cultural Studies, Womanism and Gender Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-44c3116a",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-44c3116a",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-44c3116a",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/leah-rosenberg/",
+      "expected_name": "Leah Rosenberg",
+      "actual_name": "Leah Rosenberg",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Anglophone Caribbean Studies, Postcolonial Studies, Cultural Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-cdaeb1f0",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-cdaeb1f0",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-cdaeb1f0",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/peter-l-rudnytsky/",
+      "expected_name": "Peter L. Rudnytsky",
+      "actual_name": "Peter L. Rudnytsky",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Freud, Psychoanalytic Studies, Shakespeare, Renaissance Literature",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-89ca7d81",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-89ca7d81",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-89ca7d81",
+      "http_attempts": [
+        "ReadTimeout",
+        "ReadTimeout",
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/raul-sanchez/",
+      "expected_name": "Raúl Sánchez",
+      "actual_name": "Raúl Sánchez",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Composition Studies, Composition Theory, Critical Theory",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-c46eff8e",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-c46eff8e",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-c46eff8e",
+      "http_attempts": [
+        "ReadTimeout",
+        "ReadTimeout",
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/catherine-saunders/",
+      "expected_name": "Catherine Saunders",
+      "actual_name": "Catherine Saunders",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "African American/Black Diasporic Literature and Theory, Black Interiority, Pop Culture/Cultural Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-a309170e",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-a309170e",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-a309170e",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/jodi-schorb/",
+      "expected_name": "Jodi Schorb",
+      "actual_name": "Jodi Schorb",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Early American Literatures and Cultures (pre 1840s); Early Gender, Sexuality and LGBT Studies; Prison Studies; Life Writing/Memoir",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-610fdcb3",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-610fdcb3",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-610fdcb3",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/malini-johar-schueller/",
+      "expected_name": "Malini Johar Schueller",
+      "actual_name": "Malini Johar Schueller",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "19th- and 20th-Century American Literature, Asian-American Studies, Postcolonial and Critical Race Theory, Feminist Theories",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-cda27571",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-cda27571",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-cda27571",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/stephanie-a-smith/",
+      "expected_name": "Stephanie A. Smith",
+      "actual_name": "Stephanie A. Smith",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "19th-early 20th American Literature and Culture, Critical Theory, Fiction Writing",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-aa090c4e",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-aa090c4e",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-aa090c4e",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/anastasia-ulanowicz/",
+      "expected_name": "Anastasia Ulanowicz",
+      "actual_name": "Anastasia Ulanowicz",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "Children’s Literature and; Media, Comics/Visual Rhetoric, Religion & Literature, Trauma Studies",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    },
+    {
+      "id": "faculty-uf-eng-29b562f6",
+      "product": "https://joinalab.com/opportunities/faculty-uf-eng-29b562f6",
+      "api": "https://joinalab.com/api/opportunities/faculty-uf-eng-29b562f6",
+      "http_attempts": [
+        200
+      ],
+      "official_person_url": "https://english.ufl.edu/phillip-wegner/",
+      "expected_name": "Phillip Wegner",
+      "actual_name": "Phillip Wegner",
+      "returned_same_id": true,
+      "personal_urls_match": true,
+      "shown_research": "20th-Century American, British, and World Literatures; Marxism; Film; Science Fiction; Utopias; Cultural Studies; Theory",
+      "research_matches_stored_specialty": true,
+      "faculty_rank": null,
+      "last_seen_listed_at": "2026-11-06",
+      "previous_source_date": "2026-11-06"
+    }
+  ],
+  "verification_ended": "2026-11-26T15:13:06.277681+00:00",
+  "returned_same_id": 33,
+  "personal_urls_match": 33,
+  "research_matches_stored_specialty": 33,
+  "neutral_rank_on_returned_rows": 33,
+  "all_original_names_match": true,
+  "last_observed_dates": [
+    "2026-11-06"
+  ],
+  "rows_with_transport_retry": 2
+}
