@@ -459,7 +459,7 @@ def _clean_keywords(person: dict) -> list[str]:
     that only fills research_areas yields something the title can show.
     """
     kws = [k.strip() for k in person.get("keywords", []) if k and k.strip()]
-    if kws:
+    if kws or person.get("_profile_list_keywords"):
         # Even a curated list can carry a bare nav-junk word ("Research",
         # "People") that scraped in alongside real areas — zero-signal noise as
         # a tag chip. Drop only these unambiguous non-areas; a broad-but-real
@@ -2574,8 +2574,12 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             p["_verification_scope"] = "profile"
         if items and want_research:
             p["keywords"] = list(items)
-        elif research and want_research:
+        if research and want_research:
             p["research_areas"] = research
+            if enr.get("research_selector_label"):
+                # Keep only complete list items as chips, including an empty
+                # set when every statement is too long for a chip.
+                p["_profile_list_keywords"] = True
         if email and enr.get("email_drop") and re.search(enr["email_drop"], email, re.I):
             # A profile whose first mailto is a shared departmental inbox
             # (info@english.upenn.edu) must not become anyone's personal
@@ -2697,9 +2701,23 @@ def _enrich_profile(
         # Profiles that keep research areas as a prose block in a stable
         # element (Caltech's div.field__research_summary) — a CSS selector
         # beats a serialized-HTML regex, which nested markup can truncate.
-        r_el = soup.select_one(enrich["research_selector"])
+        selector = enrich["research_selector"]
+        label = enrich.get("research_selector_label")
+        if label:
+            r_el = next((el for el in soup.select(selector)
+                         if (heading := el.find_previous_sibling()) is not None
+                         and heading.get_text(" ", strip=True).rstrip(":").casefold() == label.casefold()), None)
+        else:
+            r_el = soup.select_one(selector)
         if r_el is not None:
-            kw = re.sub(r"\s+", " ", r_el.get_text(" ", strip=True)).strip()
+            if label and r_el.name in ("ul", "ol"):
+                # Each bullet is a separate source statement, even when an
+                # individual sentence is too long to use as a keyword chip.
+                text = "; ".join(li.get_text(" ", strip=True) for li in r_el.find_all("li", recursive=False))
+                items = _clean_selector_items(r_el, ":scope > li")
+            else:
+                text = r_el.get_text(" ", strip=True)
+            kw = re.sub(r"\s+", " ", text).strip()
             # The block often embeds its own heading ("Research Summary
             # Geochemical investigations…") — strip the label, keep the prose.
             kw = re.sub(r"^research\s+(summary|interests?|areas?)\s*:?\s*", "", kw, flags=re.I)

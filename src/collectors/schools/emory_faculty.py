@@ -182,6 +182,11 @@ def _coh(short: str, name: str, majors: list[str], url: str,
               # heading followed by a <ul> of atomic areas; heading-scoped so the
               # profile's other h2+ul blocks never leak. Rides the email pass.
               "research_items_selector": 'h2:-soup-contains("Areas of Interest") + ul li'}
+    if short == "RSPH":
+        # In addition to the standard taxonomy list, some Rollins faculty
+        # write their areas as complete sentences in the profile biography.
+        enrich["research_selector"] = 'article p:has(> strong:only-child) + ul'
+        enrich["research_selector_label"] = "Research Interests"
     if email_drop:
         enrich["email_drop"] = email_drop
     return {"short": short, "name": name, "majors": majors,
