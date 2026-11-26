@@ -1,7 +1,7 @@
 {
-  "product_commit": "02626ceb9ae0c6c2d9a559f8aef4cae0c3aa0507",
+  "product_commit": "7c6b3e1f4b7c073fd8586a37546492d93dd6702c",
   "pull_request": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1462",
-  "isolated_browser_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875133552/job/140100177771",
+  "isolated_browser_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45877110528/job/140106871491",
   "evidence_scope": "Isolated real Chromium, local Auth/Postgres/PostgREST, application APIs and a synthetic fixture pair. No production acceptance claimed.",
   "generated_pdf_and_account_isolation": {
     "actual_chromium_gotrue_postgrest_fastapi": true,
@@ -66,5 +66,11 @@
   "before_fix_official_guest": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45873733981/job/140095430964",
   "first_candidate_fingerprint_error": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45874412653/job/140097751578",
   "ready_for_post_release": "scripts/verify_m17_resume_confirmed.py with M17_RESUME_EXPECT_FIXED=1 and the actual production SHA",
-  "production_fix_verified": false
+  "production_fix_verified": false,
+  "previous_matching_implementation_job": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45875133552/job/140100177771",
+  "standard_pr_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45877058381",
+  "local_frontend_suite": {
+    "vitest_files_passed": 380,
+    "vitest_tests_passed": 9806
+  }
 }
