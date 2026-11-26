@@ -4,7 +4,7 @@ This collector creates a **new review candidate** for 1–10 explicitly selected
 
 ## Current coverage
 
-Only reviewed UCB Statistics professor profile layouts are supported:
+UCB Statistics professor profiles use the following reviewed layouts.
 
 - `school: ucb`, `source: ucb_stat_faculty`, `source_type: faculty_research`, `department: Department of Statistics`.
 - Exact HTTPS host `statistics.berkeley.edu`, profile path `/people/<slug>`.
@@ -15,6 +15,8 @@ Only reviewed UCB Statistics professor profile layouts are supported:
 Reviewed template evidence: the preserved `PROFILE_WITH_INTERESTS_HTML` fixture in `tests/test_ucb_stat_faculty.py`, plus direct reads of the official [Peng Ding](https://statistics.berkeley.edu/people/peng-ding) and [Rasmus Nielsen](https://statistics.berkeley.edu/people/rasmus-nielsen) pages on 2026-09-26. Both current pages initially failed the historical selector; their saved HTML now passes full reviewed-field comparison, including Nielsen's complete description. `tests/test_lab_current_template.py` retains the current structure with synthetic prose. These two observations and the previous 49-record configuration preflight do not establish all-faculty coverage or recruitment availability.
 
 Same names do not transfer authority between records: snapshots bind record ID, complete identity, school, department and exact profile URL. This is a finite template/identity check, not a universal people-disambiguation system.
+
+Caltech Physics records on `www.pma.caltech.edu/people/<person>` support the individually named Research Interests field and the labelled topic list in the person's Overview. A fresh, public source can fill the detail page's missing research areas. The website excerpt retains the complete fields, including annotations, with the observation time and original URL.
 
 ## Explicit invocation
 
@@ -84,7 +86,7 @@ B49 adds a separate local application flow. It accepts the existing B48 candidat
   --expected-candidate-sha256 SHA256_PRINTED_BY_BUILD
 ```
 
-Repeat `--source-shard` if the original input combined more than one school. The current website policy remains limited to UCB Statistics: `unsupported_policy` and `invalid_target` attempts cannot be promoted into other targets. Unselected records within a named source shard stay unchanged, but **the entire named shard is the conflict boundary**. Any byte change in that shard after the base prevents application, even if it affects a different professor. Valid changes in other shards are preserved. Duplicate record IDs anywhere in the base or current corpus reject the operation.
+Repeat `--source-shard` if the original input combined more than one school. Current source policies cover the reviewed UCB Statistics and Caltech Physics profiles described above. The validator rejects `unsupported_policy` and `invalid_target` attempts. Unselected records within a named source shard stay unchanged, but **the entire named shard is the conflict boundary**. Any byte change in that shard after the base prevents application, even if it affects a different professor. Valid changes in other shards are preserved. Duplicate record IDs anywhere in the base or current corpus reject the operation.
 
 Verification reconstructs the result from the committed preimage and candidate, rechecks current source policy, exact identity/source binding, schema, observation times and durable revocation, and compares the stored artifact byte for byte. Only `metadata.lab_snapshot` and `metadata.lab_refresh` may change. Paper/research snapshots, recent works, publication attribution, descriptions and arbitrary other fields are retained. Failed observations cannot replace the previous successful snapshot or clear identity revocation. A successful identity recheck must be later than the revocation.
 

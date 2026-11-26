@@ -16,6 +16,7 @@ from src.evidence import (
     configured_value_unstated,
     faculty_safe_eligibility,
     faculty_verification_scope,
+    is_inferred,
     is_read_off_the_page,
     page_states_applications_open,
     record_kind,
@@ -1057,6 +1058,10 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # of the page, and hedging those would hide real money.
     #
     # M03 widens the trigger from stamps to the collector-template registry:
+    # Cards omit inference metadata. Keep the source date's evidence when
+    # projecting it so a cached card cannot turn an estimate into a deadline.
+    if projected.get("deadline") and is_inferred(canonical_record, "deadline"):
+        projected["deadline_is_estimate"] = True
     # Simplify writes "stipend" on all 6,096 internships because its feed has
     # no pay field, and that green badge was the same guess without a stamp.
     # `paid_basis` is the one rule the detail facts use too, so the badge and

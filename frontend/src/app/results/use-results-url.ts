@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { resultSessionUrl } from '@/lib/result-session';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { SEEKING_TYPES } from '../home/types';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 
 // Pure reader for the URL → initial-state hydration that runs once on mount
@@ -31,6 +32,7 @@ export function readInitialFiltersFromUrl(
     values: readonly T[],
     fallback: T,
   ): T => (raw !== null && values.includes(raw as T) ? raw as T : fallback);
+  const opportunityType = SEEKING_TYPES.find(type => type === searchParams.get('type'));
   const rawMinScore = Number(searchParams.get('min') || 0);
   const minScore = Number.isFinite(rawMinScore)
     ? Math.min(100, Math.max(0, Math.trunc(rawMinScore)))
@@ -44,6 +46,7 @@ export function readInitialFiltersFromUrl(
     ),
     searchQuery: (searchParams.get('q') || '').slice(0, 200),
     filters: {
+      ...(opportunityType && { opportunityType }),
       paid: allow(searchParams.get('paid'), ['', 'yes', 'no'], ''),
       intl: allow(searchParams.get('intl'), ['', 'yes', 'no'], ''),
       source: (searchParams.get('source') || '').slice(0, 100),
@@ -128,6 +131,7 @@ export function buildResultsUrl(state: ResultsUrlState): string {
   if (filters.paid) params.set('paid', filters.paid);
   if (filters.intl) params.set('intl', filters.intl);
   if (filters.source) params.set('source', filters.source);
+  if (filters.opportunityType) params.set('type', filters.opportunityType);
   if (filters.onCampus) params.set('loc', filters.onCampus);
   if (filters.deadline) params.set('dl', filters.deadline);
   if (filters.minScore > 0) params.set('min', String(filters.minScore));

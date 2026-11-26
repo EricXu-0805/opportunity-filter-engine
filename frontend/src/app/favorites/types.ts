@@ -2,6 +2,7 @@ import { importSourceInfo, type ImportSourceInfo } from '@/lib/import-source';
 import { importSuggestions } from '@/lib/import-suggestions';
 import type { CustomImport } from '@/lib/custom-imports';
 import type { SavedSearch, SavedSearchDigest } from '@/lib/saved-searches';
+import { typeLabel } from '../results/types';
 import { humanizeTime } from '@/lib/humanize-time';
 import type { ContactEmailStatus, FacultyAvailabilityStatus, PublicTargetTruth } from '@/lib/types';
 
@@ -98,6 +99,7 @@ export function customImportToOpp(c: CustomImport): Opp {
 
 export function summarizeSavedSearchFilters(search: SavedSearch, t: TFunc): string {
   const parts: string[] = [];
+  if (search.filters.opportunityType) parts.push(typeLabel(search.filters.opportunityType, t));
   if (search.query) parts.push(`"${search.query}"`);
   if (search.filters.paid === 'yes') parts.push('paid');
   if (search.filters.paid === 'no') parts.push('unpaid');

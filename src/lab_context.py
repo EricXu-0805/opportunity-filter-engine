@@ -100,25 +100,29 @@ def _same_complete_name(a, b):
 
 
 def reviewed_profile_policy(opp):
-    """Reviewed Statistics profile bindings. No generic .edu fallback.
+    """Reviewed Berkeley Statistics and Caltech Physics profile bindings.
 
     Collector layouts cover the preserved direct-h3 fixture and the current
-    node__content/h1 layout read on 2026-09-26 from the official Peng Ding and
-    Rasmus Nielsen profiles. Other schools and linked lab pages are separate
-    policies; matching this binding is not a fresh observation of every page.
+    node__content/h1 layout on the Peng Ding and Rasmus Nielsen profiles.
+    Caltech Physics uses the PMA individual pages with a matched full name.
+    Each profile still requires an observation of its own reviewed layout.
     """
     if type(opp) is not dict:
         return None
     url = opp.get('source_url') if opp.get('source_url') is not None else opp.get('url')
     canonical = canonical_lab_url(url)
+    alternate = opp.get('url')
+    if (canonical is None or (alternate is not None and canonical_lab_url(alternate) != canonical)
+            or canonical.rstrip('/').rsplit('/', 1)[-1] in {'faculty', 'staff', 'students', 'people', 'directory'}):
+        return None
+    if (opp.get('school') == 'caltech' and opp.get('source') == 'caltech_faculty'
+            and opp.get('source_type') == 'faculty_research' and opp.get('department') == 'Physics'
+            and re.fullmatch(r'https://www\.pma\.caltech\.edu/people/[a-z0-9]+(?:-[a-z0-9]+)*', canonical)):
+        return {'version': 1, 'url': canonical, 'layout': 'caltech_pma'}
     if (opp.get('school') != 'ucb' or opp.get('source') != 'ucb_stat_faculty'
             or opp.get('source_type') != 'faculty_research'
             or opp.get('department') != 'Department of Statistics'
-            or canonical is None or re.fullmatch(r'https://statistics\.berkeley\.edu/people/[a-z0-9]+(?:-[a-z0-9]+)*/?', canonical) is None
-            or canonical.rstrip('/').rsplit('/', 1)[-1] in {'faculty', 'staff', 'students', 'people', 'directory'}):
-        return None
-    alternate = opp.get('url')
-    if alternate is not None and canonical_lab_url(alternate) != canonical:
+            or re.fullmatch(r'https://statistics\.berkeley\.edu/people/[a-z0-9]+(?:-[a-z0-9]+)*/?', canonical) is None):
         return None
     return {'version': 1, 'url': canonical, 'container': 'article.node--type-faculty',
             'identity': 'h3.page--title',

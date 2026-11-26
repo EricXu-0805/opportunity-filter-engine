@@ -1746,10 +1746,12 @@ def refresh_all(
         # deactivate_trainee_faculty), in every school the run refreshes. One
         # exception: UIUC's collector decides which emeritus titles stay
         # listed, so the retired-title pass counts UIUC's rows and leaves them.
-        deceased = deactivate_deceased_faculty(all_opps, selected)
-        reviewed_profiles = apply_reviewed_faculty_profiles(all_opps, selected)
+        # Apply reviewed source titles before the three normal retirement passes so
+        # their per-school reports include the people just classified.
+        reviewed_profiles = apply_reviewed_faculty_profiles(all_opps, selected, classify_title=False)
         if reviewed_profiles:
             logger.info("Applied %d reviewed faculty profile corrections", reviewed_profiles)
+        deceased = deactivate_deceased_faculty(all_opps, selected)
         retired_titles = deactivate_retired_title_faculty(
             all_opps, selected, held=frozenset({"uiuc"}))
         trainees = deactivate_trainee_faculty(all_opps, selected)

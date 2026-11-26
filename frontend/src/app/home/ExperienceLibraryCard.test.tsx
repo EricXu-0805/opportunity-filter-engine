@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dictionaries } from '@/i18n/dictionaries';
+import * as api from '@/lib/api';
 import * as evidence from '@/lib/experience-evidence';
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
 import { DEFAULT_PROFILE, type TFunc } from './types';
@@ -111,4 +112,31 @@ describe('experience library review', () => {
     fireEvent.click(screen.getByRole('button', { name: 'home.experience.extract' })); unmount();
     await act(async () => settle([manual()])); expect(onChange).not.toHaveBeenCalled();
   });
+});
+
+
+it('imports an authored GitHub PR for review, preserves the source on correction, and deduplicates it', async () => {
+  const source = { kind: 'github' as const, author: 'Student', repository: 'team/vision',
+    head_repository: 'Student/vision', number: 8, title: 'Measure crop growth' };
+  const lookup = vi.spyOn(api, 'fetchGitHubContribution').mockResolvedValue({ id: 'github-pr:321', source });
+  render(<Harness initial={{ ...DEFAULT_PROFILE, github_url: 'https://github.com/Student' }} />);
+  const input = screen.getByLabelText('home.experience.githubLink');
+  const add = screen.getByRole('button', { name: 'home.experience.githubCheck' });
+  const url = 'https://github.com/team/vision/pull/8';
+  fireEvent.change(input, { target: { value: url } });
+  fireEvent.click(add);
+  await waitFor(() => expect(stored()).toHaveLength(1));
+  expect(lookup).toHaveBeenCalledWith('Student', { owner: 'team', repo: 'vision', number: 8 });
+  expect(stored()[0]).toMatchObject({ id: 'github-pr:321', status: 'candidate', source });
+  const editor = editorFor('home.experience.githubFact');
+  expect(within(editor).getByRole('link')).toHaveAttribute('href', url);
+  fireEvent.change(within(editor).getByRole('textbox'), { target: { value: 'I proposed a growth measure.' } });
+  fireEvent.click(within(editor).getByRole('button', { name: 'home.experience.confirmCorrection' }));
+  const accepted = stored()[0];
+  expect(accepted).toMatchObject({ revision: 2, text: 'I proposed a growth measure.', status: 'confirmed', source });
+  expect(evidence.removeResumeEntries([accepted])).toEqual([accepted]);
+  fireEvent.change(input, { target: { value: url } });
+  fireEvent.click(add);
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('duplicate_id'));
+  expect(stored()).toEqual([accepted]);
 });
