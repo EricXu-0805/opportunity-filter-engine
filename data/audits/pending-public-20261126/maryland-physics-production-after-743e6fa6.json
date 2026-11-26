@@ -1,0 +1,1500 @@
+{
+  "at": "2026-11-26T12:51:52.255713+00:00",
+  "mode": "physics",
+  "source_commit_floor": "a2339fd3",
+  "phase": "after",
+  "site_release_before": [
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+  ],
+  "site_release_after": [
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f",
+    "743e6fa6e6b8d56c39e5c2eb29a92a4fcdc16d7f"
+  ],
+  "normal_anonymous": true,
+  "asked_for_addresses": false,
+  "count": 62,
+  "errors": {},
+  "people": [
+    {
+      "id": "faculty-umd-phys-37bf632e",
+      "name": "Kaustubh Agashe",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/kagashe.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-37bf632e",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Kaustubh Agashe",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/kagashe.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/kagashe.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/kagashe.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-169be80e",
+      "name": "Steven Anlage",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-169be80e",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Steven Anlage",
+      "public_source": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/983/Steven-Anlage"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-1fe07ac6",
+      "name": "Thomas M. Antonsen Jr.",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-1fe07ac6",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Thomas M. Antonsen Jr.",
+      "public_source": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/352/Thomas-M-AntonsenJr"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-98c23a3e",
+      "name": "Drew Baden",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/drew.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-98c23a3e",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Drew Baden",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/drew.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/drew.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/drew.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-870137b6",
+      "name": "Maissam Barkeshli",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/maissam.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-870137b6",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Maissam Barkeshli",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/maissam.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/maissam.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/maissam.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-3ee64b50",
+      "name": "Paulo Bedaque",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/bedaque.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-3ee64b50",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Paulo Bedaque",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/bedaque.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/bedaque.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/bedaque.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-bfa6d058",
+      "name": "Alberto Belloni",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/abelloni.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-bfa6d058",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alberto Belloni",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/abelloni.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/abelloni.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/abelloni.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-bf150f57",
+      "name": "Zackaria Chacko",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/zchacko.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-bf150f57",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Zackaria Chacko",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/zchacko.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/zchacko.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/zchacko.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-64390071",
+      "name": "Brian Clark",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/baclark.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-64390071",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Brian Clark",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/baclark.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/baclark.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/baclark.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-c7f22684",
+      "name": "Thomas Cohen",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/cohen.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-c7f22684",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Thomas Cohen",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/cohen.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/cohen.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/cohen.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-f5476a54",
+      "name": "Sankar Das Sarma",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/dassarma.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-f5476a54",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sankar Das Sarma",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/dassarma.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/dassarma.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/dassarma.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-892f2d84",
+      "name": "Zohreh Davoudi",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/davoudi.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-892f2d84",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Zohreh Davoudi",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/davoudi.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/davoudi.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/davoudi.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-9e2e46c0",
+      "name": "James Drake",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/drake.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-9e2e46c0",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "James Drake",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/drake.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/drake.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/drake.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-be25083e",
+      "name": "Sarah Eno",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/eno.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-be25083e",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sarah Eno",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/eno.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/eno.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/eno.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-e827a6f7",
+      "name": "Lennard Fisk",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/lfisk.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-e827a6f7",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Lennard Fisk",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/lfisk.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/lfisk.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/lfisk.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-0b70e59e",
+      "name": "Will Fox",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/willfox.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-0b70e59e",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Will Fox",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/willfox.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/willfox.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/willfox.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-107d6250",
+      "name": "Manuel Franco Sevilla",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/manuelf.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-107d6250",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Manuel Franco Sevilla",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/manuelf.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/manuelf.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/manuelf.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-50c9e8c0",
+      "name": "Victor Galitski",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/galitski.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-50c9e8c0",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Victor Galitski",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/galitski.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/galitski.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/galitski.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-dda63c09",
+      "name": "Sylvester Gates",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/gatess.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-dda63c09",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sylvester Gates",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/gatess.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/gatess.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/gatess.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-90b9dbe4",
+      "name": "Michelle Girvan",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/girvan.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-90b9dbe4",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Michelle Girvan",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/girvan.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/girvan.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/girvan.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-8a79246a",
+      "name": "Jordan Goodman",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/goodman.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-8a79246a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Jordan Goodman",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/goodman.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/goodman.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/goodman.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-e208a274",
+      "name": "Mohammad Hafezi",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-e208a274",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Mohammad Hafezi",
+      "public_source": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/403/Mohammad-Hafezi"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-caac4639",
+      "name": "Carter Hall",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/crhall.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-caac4639",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Carter Hall",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/crhall.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/crhall.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/crhall.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-03469f81",
+      "name": "Phoebe Hamilton",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/pmham.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-03469f81",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Phoebe Hamilton",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/pmham.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/pmham.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/pmham.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-81c136f1",
+      "name": "Kara Hoffman",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/kara.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-81c136f1",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Kara Hoffman",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/kara.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/kara.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/kara.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-05706e78",
+      "name": "Anson Hook",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/hook.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-05706e78",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Anson Hook",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/hook.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/hook.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/hook.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-59488f54",
+      "name": "Bei Lok Hu",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/blhu.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-59488f54",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Bei Lok Hu",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/blhu.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/blhu.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/blhu.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-c87f47e1",
+      "name": "Theodore Jacobson",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/jacobson.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-c87f47e1",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Theodore Jacobson",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/jacobson.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jacobson.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jacobson.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-chemj-4b4d8967",
+      "name": "Christopher Jarzynski",
+      "active_in_release": true,
+      "official_source": "https://chem.umd.edu/people/christopher-jarzynski",
+      "url": "https://joinalab.com/opportunities/faculty-umd-chemj-4b4d8967",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Christopher Jarzynski",
+      "public_source": "https://chem.umd.edu/people/christopher-jarzynski",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://chem.umd.edu/people/christopher-jarzynski"
+        },
+        {
+          "label": "Source page",
+          "url": "https://chem.umd.edu/people/christopher-jarzynski"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-15dc29b5",
+      "name": "Abolhassan Jawahery",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/jawahery.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-15dc29b5",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Abolhassan Jawahery",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/jawahery.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jawahery.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jawahery.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-0662d840",
+      "name": "Ki-Yong Kim",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/kykim.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-0662d840",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ki-Yong Kim",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/kykim.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/kykim.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/kykim.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-30842815",
+      "name": "Alicia Kollár",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-30842815",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alicia Kollár",
+      "public_source": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/1242/Alicia-Koll%C3%A1r"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-1de15cb6",
+      "name": "Matt Landreman",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-1de15cb6",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Matt Landreman",
+      "public_source": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/1279/Matt-Landreman"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-119a91a4",
+      "name": "Daniel Lathrop",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-119a91a4",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Daniel Lathrop",
+      "public_source": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/425/Daniel-Lathrop"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-47489f51",
+      "name": "Norbert Linke",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/linke.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-47489f51",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Norbert Linke",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/linke.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/linke.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/linke.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-bioe-c93ce78a",
+      "name": "Wolfgang Losert",
+      "active_in_release": true,
+      "official_source": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert",
+      "url": "https://joinalab.com/opportunities/faculty-umd-bioe-c93ce78a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Wolfgang Losert",
+      "public_source": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert"
+        },
+        {
+          "label": "Source page",
+          "url": "https://bioe.umd.edu/clark/faculty/166/Wolfgang-Losert"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-b1bc560d",
+      "name": "John Mather",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/jmather1.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-b1bc560d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "John Mather",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/jmather1.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jmather1.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jmather1.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-3b1079a9",
+      "name": "Howard Milchberg",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-3b1079a9",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Howard Milchberg",
+      "public_source": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/440/Howard-Milchberg"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-82cea1e0",
+      "name": "Christopher Monroe",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-82cea1e0",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Christopher Monroe",
+      "public_source": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/1241/Christopher-Monroe"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-8b4e0c5c",
+      "name": "Ryo Mori",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/rmori.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-8b4e0c5c",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ryo Mori",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/rmori.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/rmori.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/rmori.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-6d91988b",
+      "name": "Maria Mukhina",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/mukhina.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-6d91988b",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Maria Mukhina",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/mukhina.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/mukhina.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/mukhina.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-e8c4f78b",
+      "name": "Min Ouyang",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/mouyang.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-e8c4f78b",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Min Ouyang",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/mouyang.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/mouyang.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/mouyang.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-3bba8c82",
+      "name": "Johnpierre Paglione",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/paglione.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-3bba8c82",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Johnpierre Paglione",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/paglione.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/paglione.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/paglione.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-c20d5feb",
+      "name": "Christopher Palmer",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/capalmer.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-c20d5feb",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Christopher Palmer",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/capalmer.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/capalmer.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/capalmer.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-f5a0b51d",
+      "name": "William Phillips",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/wdp.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-f5a0b51d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "William Phillips",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/wdp.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/wdp.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/wdp.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-52990ca5",
+      "name": "Douglas Roberts",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-52990ca5",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Douglas Roberts",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/roberts.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-e274a77b",
+      "name": "Steven Rolston",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/rolston.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-e274a77b",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Steven Rolston",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/rolston.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/rolston.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/rolston.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-a73e2f99",
+      "name": "Jay Sau",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/jaydsau.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-a73e2f99",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Jay Sau",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/jaydsau.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jaydsau.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/jaydsau.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-dd78eea9",
+      "name": "Nathan Schine",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/nschine.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-dd78eea9",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Nathan Schine",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/nschine.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/nschine.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/nschine.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-7fdec92b",
+      "name": "Eun-Suk Seo",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/seo.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-7fdec92b",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Eun-Suk Seo",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/seo.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/seo.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/seo.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-dbeb09eb",
+      "name": "Peter Shawhan",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-dbeb09eb",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Peter Shawhan",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/pshawhan.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-d124868c",
+      "name": "Phillip Sprangle",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-d124868c",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Phillip Sprangle",
+      "public_source": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/483/Phillip-Sprangle"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-0d290abe",
+      "name": "Aaron Sternbach",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/ajs01123.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-0d290abe",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Aaron Sternbach",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/ajs01123.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/ajs01123.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/ajs01123.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-6738b795",
+      "name": "Gregory Sullivan",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/gws.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-6738b795",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Gregory Sullivan",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/gws.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/gws.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/gws.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-f4ab218a",
+      "name": "Raman Sundrum",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/raman.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-f4ab218a",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Raman Sundrum",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/raman.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/raman.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/raman.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-3a463db2",
+      "name": "Arpita Upadhyaya",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/arpitau.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-3a463db2",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Arpita Upadhyaya",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/arpitau.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/arpitau.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/arpitau.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-ece-09b45e43",
+      "name": "Edo Waks",
+      "active_in_release": true,
+      "official_source": "https://ece.umd.edu/clark/faculty/492/Edo-Waks",
+      "url": "https://joinalab.com/opportunities/faculty-umd-ece-09b45e43",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Edo Waks",
+      "public_source": "https://ece.umd.edu/clark/faculty/492/Edo-Waks",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://ece.umd.edu/clark/faculty/492/Edo-Waks"
+        },
+        {
+          "label": "Source page",
+          "url": "https://ece.umd.edu/clark/faculty/492/Edo-Waks"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-896169e8",
+      "name": "Ronald Walsworth",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/rwalswor.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-896169e8",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Ronald Walsworth",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/rwalswor.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/rwalswor.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/rwalswor.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-77c38596",
+      "name": "Victor Yakovenko",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/yakovenk.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-77c38596",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Victor Yakovenko",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/yakovenk.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/yakovenk.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/yakovenk.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-c3598528",
+      "name": "Frank Zhao",
+      "active_in_release": true,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/current/syfzhao.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-c3598528",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Frank Zhao",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/current/syfzhao.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/syfzhao.html"
+        },
+        {
+          "label": "Source page",
+          "url": "https://umdphysics.umd.edu/directory/faculty/current/syfzhao.html"
+        }
+      ],
+      "public_contact_status": "sign_in_required",
+      "expected_contact_status": "sign_in_required",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-2a694261",
+      "name": "Alessandra Buonanno",
+      "active_in_release": false,
+      "official_source": "https://umdphysics.umd.edu/directory/faculty/research-professors/buonanno.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-2a694261",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Alessandra Buonanno",
+      "public_source": "https://umdphysics.umd.edu/directory/faculty/research-professors/buonanno.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/directory/faculty/research-professors/buonanno.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    },
+    {
+      "id": "faculty-umd-phys-ca81041d",
+      "name": "Sasha Philippov",
+      "active_in_release": false,
+      "official_source": "https://umdphysics.umd.edu/people/faculty/current/item/1893-sashaph.html",
+      "url": "https://joinalab.com/opportunities/faculty-umd-phys-ca81041d",
+      "api_http": 200,
+      "page_http": 200,
+      "heading": "Sasha Philippov",
+      "public_source": "https://umdphysics.umd.edu/people/faculty/current/item/1893-sashaph.html",
+      "rendered_source_actions": [
+        {
+          "label": "View faculty profile",
+          "url": "https://umdphysics.umd.edu/people/faculty/current/item/1893-sashaph.html"
+        }
+      ],
+      "public_contact_status": "unavailable",
+      "expected_contact_status": "unavailable",
+      "errors": []
+    }
+  ]
+}
