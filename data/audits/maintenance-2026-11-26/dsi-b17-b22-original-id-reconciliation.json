@@ -1,0 +1,131 @@
+{
+  "observed_at": "2026-11-26T21:08:29.148169+00:00",
+  "source": "b31484f9ccd5f05783274df034efa994b18129d9",
+  "source_national_blob": "e8f8e6baa5ffee390e1a506864428f92321cc7a3",
+  "scope": "Two-row data transplant replay, actual source and retained corpus; separate from code integration, deployment and natural refresh.",
+  "cases": [
+    {
+      "ref": "29544f32cd6ba9bb45f921677fe63125e8167b36",
+      "before": "765f5af4ff84c0f9c4a0e71f4f48db539a31962d",
+      "after": "e8f8e6baa5ffee390e1a506864428f92321cc7a3",
+      "national_ids": 14198,
+      "unchanged": 14196,
+      "changed": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ],
+      "verified_original_id_order": true,
+      "old_deadlines": [
+        "2027-01-12",
+        null
+      ],
+      "new_deadlines": [
+        "2027-01-11",
+        "2027-01-11"
+      ]
+    },
+    {
+      "ref": "f81bbd40",
+      "before": "6c5dd93b2969d4c117defce89ff82b1d0d8d3041",
+      "after": "86c20db8c86b68cf00113e1475f6bac94902b0a1",
+      "national_ids": 14198,
+      "unchanged": 14196,
+      "changed": [
+        "sro-d6b78515",
+        "uchicago-8cd2def060b6"
+      ],
+      "verified_original_id_order": true,
+      "old_deadlines": [
+        "2027-01-12",
+        null
+      ],
+      "new_deadlines": [
+        "2027-01-11",
+        "2027-01-11"
+      ]
+    }
+  ],
+  "preserved_b22_updates": [
+    {
+      "id": "sro-3ec4ea4e",
+      "title": "Cancer Research Internship Summer Program (CRISP)"
+    },
+    {
+      "id": "sro-44f176cd",
+      "title": "REU Advancing Data Science in the Public Interest"
+    },
+    {
+      "id": "sro-595e912d",
+      "title": "Cellular and Molecular Biology of Stress Summer Research Program"
+    },
+    {
+      "id": "nsf-reu-2447670",
+      "title": "REU: Advancing Data Science in the Public Interest"
+    },
+    {
+      "id": "wisc-86cba49b83d7",
+      "title": "Biological Interactions Summer Research Program (formerly Cellular and Molecular Biology of Stress)"
+    },
+    {
+      "id": "sro-3c378261",
+      "title": "Cellular and Molecular Biology of Stress Summer Research Program"
+    },
+    {
+      "id": "simplify-intern-01c4d1da-b058-4813-b47e-7f8e4dba1bd1",
+      "title": "Technical Intern and New Grad"
+    }
+  ],
+  "production_observation": {
+    "timestamp": "2026-11-26T21:08:52.645484+00:00",
+    "backend_release": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+    "detail_pages": [
+      {
+        "id": "sro-d6b78515",
+        "url": "https://joinalab.com/opportunities/sro-d6b78515",
+        "api_status": {
+          "title": "Data Science Institute Summer Lab",
+          "deadline": "2027-01-12",
+          "deadline_is_estimate": true,
+          "is_rolling": false
+        },
+        "page_text_samples": [
+          "2026",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22",
+          "2027-01-12",
+          "Rolling admissions",
+          "Observed 2026-11-22",
+          "$5,600",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22"
+        ]
+      },
+      {
+        "id": "uchicago-8cd2def060b6",
+        "url": "https://joinalab.com/opportunities/uchicago-8cd2def060b6",
+        "api_status": {
+          "title": "DSI Summer Lab (Data Science Institute)",
+          "deadline": null,
+          "deadline_is_estimate": null,
+          "is_rolling": true
+        },
+        "page_text_samples": [
+          "2026",
+          "An immersive eight-week paid summer research program (2026: June 15-August 7) pairing undergraduates from any institution — plus Chicago-area high school students — with data-science mentors across computer science, social science, climate and energy policy, m",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22",
+          "Observed 2026-11-22",
+          "No deadline found — this does not mean there is none.",
+          "Rolling admissions",
+          "The 2026 program has concluded; the 2027 program application is not posted yet (the page says to check back in fall 2026). Graduating college seniors are not eligible.",
+          "$5,600 stipend for 8 weeks (2026), plus free optional housing",
+          "Observed 2026-11-22",
+          "Last verified: 2026-11-22"
+        ]
+      }
+    ]
+  }
+}
