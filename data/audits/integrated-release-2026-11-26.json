@@ -1,0 +1,63 @@
+{
+  "observed_utc": "2026-11-26T07:10:18.142543+00:00",
+  "origin": "https://joinalab.com",
+  "merge_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "backend": {
+    "status": 200,
+    "release_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041"
+  },
+  "frontend": {
+    "id": 8078795070,
+    "sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+    "status_url": "https://api.github.com/repos/EricXu-0805/opportunity-filter-engine/deployments/8078795070/statuses",
+    "updated_at": "2026-11-26T07:08:13Z"
+  },
+  "account_service_worker": {
+    "url": "https://joinalab.com/sw.js?account=1",
+    "status": 200,
+    "sha256": "6e76735d52381336122372ef32d373b153a4531db59375fb3076a7b94df8e853",
+    "matches_commit": "0741df3be2d6ccd50e40789f0833f9d21dd0d041"
+  },
+  "public_pages": {
+    "/": {
+      "status": 200,
+      "title": "JoinALab — Research & Internship Matching for Students"
+    },
+    "/dashboard": {
+      "status": 200,
+      "title": "JoinALab — Research & Internship Matching for Students"
+    },
+    "/favorites": {
+      "status": 200,
+      "title": "JoinALab — Research & Internship Matching for Students"
+    },
+    "/opportunities/jhu-d72ba740f62d": {
+      "status": 200,
+      "title": "Johns Hopkins School of Medicine Summer Internship Program (SIP) at Johns Hopkins University School of Medicine · JoinALab",
+      "contains_2026": true,
+      "contains_2027": false,
+      "apply_now_links": 1,
+      "open_application_links": 1,
+      "detail_deadline_texts": [
+        "No deadline found — this does not mean there is none.",
+        "2026 applications closed; cycles typically open in fall with winter deadlines",
+        "From our listing’s deadline note. Check the program’s current dates.",
+        "Open application page"
+      ],
+      "structured_deadline": null,
+      "published_deadline_note": "2026 applications closed; cycles typically open in fall with winter deadlines",
+      "published_citizenship_required": true,
+      "published_international_friendly": "no"
+    },
+    "/opportunities/ucb-urap-proj-4029d15a89db": {
+      "status": 200,
+      "title": "Steelhead trout bioenergetics and movement study at University of California, Berkeley · JoinALab",
+      "contains_2026": true,
+      "contains_2027": false,
+      "apply_now_links": 0,
+      "open_application_links": 0,
+      "closed_listing_notice": true
+    }
+  },
+  "scope": "Unauthenticated read-only release evidence. Account changes, notifications and backup restores require their own user-flow or recovery receipts."
+}
