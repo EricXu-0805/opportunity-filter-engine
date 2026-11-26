@@ -23,7 +23,7 @@ def active(p):
     p.wait_for_timeout(1300)
     return p.evaluate("""() => {const e=document.activeElement, cs=getComputedStyle(e), r=e.getBoundingClientRect();
       const x=Math.max(0,Math.min(innerWidth-1,r.x+r.width/2)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height/2));
-      const cover=document.elementFromPoint(x,y);return {tag:e.tagName,id:e.id,role:e.getAttribute('role'),name:(e.getAttribute('aria-label')||e.innerText||e.getAttribute('placeholder')||'').slice(0,65),focused:e.matches(':focus-visible'),outline:cs.outlineStyle!=='none'&&parseFloat(cs.outlineWidth)>0,ring:cs.boxShadow!=='none',visible:r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0,uncovered:cover===e||e.contains(cover)}}""")
+      const cover=document.elementFromPoint(x,y);return {scroll_y:Math.round(scrollY),top:Math.round(r.top),bottom:Math.round(r.bottom),viewport_h:innerHeight,doc_h:document.documentElement.scrollHeight,cover_tag:cover?.tagName,cover_id:cover?.id,tag:e.tagName,id:e.id,role:e.getAttribute('role'),name:(e.getAttribute('aria-label')||e.innerText||e.getAttribute('placeholder')||'').slice(0,65),focused:e.matches(':focus-visible'),outline:cs.outlineStyle!=='none'&&parseFloat(cs.outlineWidth)>0,ring:cs.boxShadow!=='none',visible:r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0,uncovered:cover===e||e.contains(cover)}}""")
 def metric(p):return p.evaluate('()=>({width:innerWidth,client:document.documentElement.clientWidth,document:document.documentElement.scrollWidth,ratio:devicePixelRatio,visualScale:visualViewport.scale})')
 
 def native_zoom(worker,page,factor):
@@ -80,13 +80,17 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         group=p.get_by_role('tablist',name='Notes view mode' if locale=='en' else '笔记视图模式')
         expect(group).to_be_visible(timeout=20000)
         edit,preview=group.get_by_role('tab').all()
-        focus(p,edit);p.keyboard.press('ArrowRight');p.wait_for_timeout(300)
+        focus(p,edit);before_arrow=active(p);p.keyboard.press('ArrowRight');p.wait_for_timeout(300)
         moved=preview.evaluate('e=>document.activeElement===e') and preview.get_attribute('aria-selected')=='true'
         if LOCAL: assert moved, (locale, active(p))
         if not moved:
             focus(p,preview);p.keyboard.press('Enter')
         expect(preview).to_have_attribute('aria-selected','true')
         view=active(p)
+        if LOCAL and not view['visible']:
+            p.wait_for_timeout(1800);view_late=active(p)
+            print('NOTE PREVIEW SCROLL',json.dumps({'locale':locale,'before':before_arrow,'after':view,'later':view_late},ensure_ascii=False),flush=True)
+        else:view_late=view
         if moved:
             expect(p.get_by_role('tabpanel',name='Preview' if locale=='en' else '预览')).to_be_visible()
             p.keyboard.press('Home');expect(edit).to_be_focused()
@@ -99,7 +103,7 @@ with tempfile.TemporaryDirectory() as tmp,sync_playwright() as pw:
         expect(edit).to_have_attribute('aria-selected','true')
         note=p.locator('#tracker-records textarea')
         expect(note).to_be_disabled()
-        case={'locale':locale,'layout':after,'detail_id':target,'records_trigger':start,'notes_preview_focus':view,
+        case={'locale':locale,'layout':after,'detail_id':target,'records_trigger':start,'notes_edit_focus':before_arrow,'notes_preview_focus':view,'settled_preview_focus':view_late,
               'arrow_changes_focus_and_selection':moved,'fallback_tab_enter_works':not moved,
               'editor_read_only_before_tracking':True,'external_messages':0}
         print('DETAIL KEYBOARD CASE',json.dumps(case,ensure_ascii=False),flush=True)
