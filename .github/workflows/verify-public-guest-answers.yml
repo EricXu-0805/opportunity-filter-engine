@@ -1,0 +1,17 @@
+name: Verify a synthetic guest resolving two-tab conflicts through the official site
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths: ['.github/workflows/verify-public-guest-answers.yml', 'scripts/verify_public_guest_answers.py', 'scripts/profile_answer_browser_check.py']
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -u scripts/verify_public_guest_answers.py
