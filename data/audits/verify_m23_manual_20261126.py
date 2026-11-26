@@ -19,7 +19,8 @@ cases = [
 
 
 def check(page, ctx, oid, query, source, qualifier, deadline, skills, actionable):
-    entry = receipt[oid] = {"official": source}
+    school = receipt["current_profile"]
+    entry = receipt[school][oid] = {"official": source}
     tab = ctx.new_page()
     try:
         official = tab.goto(source, wait_until="domcontentloaded")
@@ -57,7 +58,7 @@ def check(page, ctx, oid, query, source, qualifier, deadline, skills, actionable
     if not actionable:
         assert not action_controls
     entry["detail_excerpt"] = [s for s in page.locator("main").inner_text().splitlines() if re.search("python|programming|closed|reference|december|2027|apply|deadline|citizenship|citizens", s, re.I)]
-    page.screenshot(path=out / (oid + "-detail.png"))
+    page.screenshot(path=out / (school + "-" + oid + "-detail.png"))
     with page.expect_response(lambda r: is_view(r) and (r.request.post_data_json or {}).get("view", {}).get("search_query") == query, timeout=90000) as resp:
         page.goto(site + "/results?tab=all&ai=0&q=" + quote(query), wait_until="domcontentloaded")
     assert resp.value.ok
@@ -65,16 +66,29 @@ def check(page, ctx, oid, query, source, qualifier, deadline, skills, actionable
     entry["match_count"] = wire["filtered_total"]
     ids = [r["opportunity_id"] for r in wire["results"]]
     entry["listed"] = oid in ids
+    entry["returned_ids"] = ids
+    request_body = resp.value.request.post_data_json
+    entry["actual_view"] = request_body["view"]
+    profile = request_body["profile"]
+    entry["student"] = {k: profile.get(k) for k in ("home_school", "degree", "year", "seeking_type", "international_student", "research_interests", "preferences")}
     assert not wire["has_more"]
-    assert entry["listed"] is actionable
-    card = page.locator("#match-card-" + oid)
     if actionable:
+        answer = page.request.post(site + "/api/matches/" + oid + "/explain?llm=false", data=profile, timeout=90000)
+        assert answer.ok, answer.status
+        details = answer.json()
+        entry["individual_explanation"] = {k: details.get(k) for k in ("in_results", "excluded_reason", "bucket", "final_score", "reasons_gap", "method")}
+        assert details["method"] == "local"
+        assert details["in_results"] == entry["listed"], (entry["individual_explanation"], entry["actual_view"])
+    else:
+        assert not entry["listed"]
+    card = page.locator("#match-card-" + oid)
+    if entry["listed"]:
         expect(card).to_be_visible(timeout=90000)
         card.get_by_role("button", name="Show details", exact=True).click()
         entry["card_text"] = card.inner_text()
         if oid != "ext-uiuc-ncsa-reu":
             assert not re.search(r"Missing skills:[^\n]*Python", entry["card_text"], re.I)
-        card.screenshot(path=out / (oid + "-card.png"), animations="disabled")
+        card.screenshot(path=out / (school + "-" + oid + "-card.png"), animations="disabled")
     else:
         expect(page.get_by_role("tablist")).to_be_visible(timeout=90000)
         expect(card).to_have_count(0)
@@ -83,22 +97,29 @@ def check(page, ctx, oid, query, source, qualifier, deadline, skills, actionable
 
 with sync_playwright() as pw:
     browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox", "--disable-dev-shm-usage"])
-    ctx = browser.new_context(locale="en-US", service_workers="block", viewport={"width": 1250, "height": 950})
-    ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
-    page = ctx.new_page()
-    page.on("response", capture)
-    page.set_default_timeout(40000)
     failures = {}
     try:
-        health = page.request.get(site + "/api/health").json()
-        receipt["backend_release"] = health["release_sha"]
-        assert receipt["backend_release"] == "db3e8229b64e781b4dc74cddfe2c4acaa13d5896"
-        enter_results(page, "uiuc")
-        for row in cases:
-            try:
-                check(page, ctx, *row)
-            except Exception as exc:
-                failures[row[0]] = repr(exc)
+        for school in ("uiuc", "ucb"):
+            ctx = browser.new_context(locale="en-US", service_workers="block", viewport={"width": 1250, "height": 950})
+            ctx.add_init_script("if(location.hostname==='joinalab.com'){localStorage.setItem('ofe_onboarding_seen','1');localStorage.setItem('ofe_semantic_rerank_opt_in_v1','0');localStorage.setItem('ofe_lang','en');}")
+            page = ctx.new_page()
+            page.on("response", capture)
+            page.set_default_timeout(40000)
+            health = page.request.get(site + "/api/health").json()
+            receipt["backend_release"] = health["release_sha"]
+            assert receipt["backend_release"] == "db3e8229b64e781b4dc74cddfe2c4acaa13d5896"
+            receipt["guest_signup"] = receipt["profile_commit"] = None
+            enter_results(page, school)
+            receipt["current_profile"] = school
+            receipt[school] = {"guest_signup": receipt["guest_signup"], "profile_commit": receipt["profile_commit"]}
+            for row in cases:
+                if school == "ucb" and not row[-1]:
+                    continue
+                try:
+                    check(page, ctx, *row)
+                except Exception as exc:
+                    failures[school + "/" + row[0]] = repr(exc)
+            ctx.close()
         receipt["failures"] = failures
         assert not failures, failures
     finally:
