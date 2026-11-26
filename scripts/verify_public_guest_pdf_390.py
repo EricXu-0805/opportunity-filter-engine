@@ -7,6 +7,9 @@ from playwright.sync_api import sync_playwright, expect
 site = 'https://joinalab.com'
 db_host = 'mjpirkyduibkakvlbdko.supabase.co'
 marker = 'I checked synthetic sensor measurements.'
+skill_case = '--independent-github-skill' in sys.argv
+repo_evidence = []
+if skill_case: marker += ' PyTorch'
 receipt = {'site':site,'only_synthetic_guest':True,'viewports':[],'started':datetime.now(timezone.utc).isoformat()}
 records = []
 auth_sessions = []
@@ -23,6 +26,8 @@ blocked = 0
 
 def capture(r):
     u=urlsplit(r.url)
+    if u.hostname=='joinalab.com' and r.status==200 and u.path=='/api/resume/github/pytorch':
+        repo_evidence.extend(e for e in r.json().get('skill_evidence',[]) if e['skill']=='PyTorch')
     if u.hostname != db_host or r.status!=200: return
     if u.path.endswith('/auth/v1/signup'):
         session=r.json()
@@ -108,7 +113,7 @@ with sync_playwright() as pw:
             matched=[(rev,d) for rev,d in records if marker in (d.get('resume_text') or '') and '220' in str(d.get('coursework'))]
             assert matched,'fresh browser did not read PDF and ECE 220 from production'
             receipt['viewports'].append({'language':lang,'width':390,'profile_revision':matched[-1][0],'synthetic_pdf_text':True,'coursework_read':True,'attachment_badge':True})
-            if conflict_case and lang=='zh':
+            if (conflict_case or skill_case) and lang=='zh':
                 protected_text=matched[-1][1]['resume_text']
                 protected_courses=matched[-1][1]['coursework']
                 actual_headers={}
@@ -139,6 +144,39 @@ with sync_playwright() as pw:
                     entry.locator('textarea').fill(text)
                     entry.get_by_role('button').click()
                     expect(tab.locator('#experience-library summary').get_by_text(text,exact=True)).to_be_visible()
+                if skill_case:
+                    select_campus_if_needed(pg)
+                    def by_name(d,n):return next((x for x in d.get('skills',[]) if x['name']==n),None)
+                    before=read_owned()['profile_data']
+                    assert by_name(before,'PyTorch')['source']=='resume' and before['name']=='Synthetic PDF check' and marker in before['resume_text']
+                    github=pg.locator('#github_url')
+                    github.fill('https://github.com/pytorch')
+                    github.locator('..').get_by_role('button').click()
+                    for _ in range(80):
+                        pg.wait_for_timeout(250)
+                        mid=read_owned()
+                        if repo_evidence and by_name(mid['profile_data'],'Python'):break
+                    assert repo_evidence and by_name(mid['profile_data'],'Python')['source']=='github'
+                    assert not by_name(mid['profile_data'],'PyTorch').get('confirmed')
+                    allow_synthetic_removal=True
+                    pg.get_by_role('button',name='移除文件',exact=True).click()
+                    expect(pg.get_by_role('button',name='移除文件',exact=True)).to_have_count(0)
+                    for _ in range(60):
+                        pg.wait_for_timeout(200)
+                        final=read_owned()
+                        if not final['profile_data'].get('resume_text'):break
+                    assert not final['profile_data'].get('resume_text') and by_name(final['profile_data'],'Python')
+                    pg.reload(wait_until='domcontentloaded')
+                    expect(pg.locator('#student_name')).to_have_value('Synthetic PDF check')
+                    raw=read_owned()
+                    assert raw==final
+                    surviving=by_name(raw['profile_data'],'PyTorch')
+                    if '--expect-retained' in sys.argv:
+                        assert surviving and surviving['source']=='github' and repo_evidence[0]['repo'] in surviving['evidence'] and not surviving.get('confirmed'),surviving
+                    else: assert surviving is None,surviving
+                    receipt['independent_skill']={'legacy_source':'resume','github_import':repo_evidence[0],'detail_after_import':by_name(mid['profile_data'],'PyTorch'),'other_github_skill_retained':'Python','after_removal':surviving,'revision_after_import':mid['revision'],'revision_after_removal':raw['revision'],'fresh_read':True}
+                    cold.close()
+                    continue
                 add_entry(pg,baseline_entry)
                 for _ in range(50):
                     row=read_owned()
