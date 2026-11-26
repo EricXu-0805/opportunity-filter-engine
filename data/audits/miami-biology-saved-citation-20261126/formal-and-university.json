@@ -1,0 +1,399 @@
+{
+  "observed": "2026-11-26T23:18:08.132851+00:00",
+  "stage": "current production before local fix, and independent unsigned university HTTP. No private data reads or writing. No address value retained.",
+  "target_id": "faculty-miami-bio-4dfe1b88",
+  "official_card": {
+    "url": "https://biology.as.miami.edu/people/index.html",
+    "retrieval_http": 200,
+    "raw_document_sha256": "b67c6a2a3916a7bfdc17729f8a789da6f6d02ede3b83df7e07f3eb91e2d969ab",
+    "named_cards": 37,
+    "name_raw": "\u200cDon  DeAngelis",
+    "name_normalized": "Don DeAngelis",
+    "name_source_bytes_hex": "e2808c446f6e20204465416e67656c6973",
+    "heading_source_literal_utf8": true,
+    "image_alt_uses_html_entity": "&#8204;Don DeAngelis",
+    "title": "Research Professor",
+    "raw_href_sha256": "f85a9936f677ba23e8a766d3c41a7a59ada10ae7f90f923f429dabb94e5f55bb",
+    "raw_href_utf8_octets": 49,
+    "raw_href_leading_unicode": "U+0020",
+    "raw_href_trailing_unicode": "U+0020",
+    "href_is_scheme_relative": true,
+    "raw_href_has_personal_email_in_path": true,
+    "card_anchor_id": null,
+    "descendant_ids": 0,
+    "positive_controls": {
+      "faculty-miami-bio-bccf1363": {
+        "name": "Michelle E. Afkhami",
+        "rank": "Professor",
+        "personal_link": "https://people.miami.edu/profile/defb78091b377054cfe5647a009f2c6a"
+      },
+      "faculty-miami-bio-24adf167": {
+        "name": "James D Baker",
+        "rank": "Research Associate Professor",
+        "personal_link": "https://people.miami.edu/profile/d38177c1012c90941168db9af1f3f347"
+      }
+    }
+  },
+  "individual_target": {
+    "anonymous_get_http": 200,
+    "document_sha256": "a54798905fed419d9d3ed3d9925a5438820ee0a3b6156cfaed568acde04f8b20",
+    "host": "people.miami.edu",
+    "path_format": "/profile/[institutional-address]",
+    "absolute_trimmed_href_sha256": "5913ccad5454fbd952ae751907b9c311e581f2a852f5a9d764d693743b3afcd6",
+    "h1_raw": "\u200cDon  DeAngelis",
+    "h1_normalized": "Don DeAngelis",
+    "title": "Research Professor",
+    "og_url_matches_email_bearing_target": true,
+    "declared_html_canonical": null,
+    "official_link_is_personal": true,
+    "as_public_profile": false,
+    "reason": "The authenticated-contact boundary rejects email anywhere in an otherwise valid public URL, including its path. The linked Miami page confirms the name and rank but this address cannot be sent to a public client. No independent, address-free canonical URL was published in this profile. The Biology roster is a valid citation, not a personal page.",
+    "public_citation": "https://biology.as.miami.edu/people/index.html",
+    "usgs_context_only": "https://www.usgs.gov/staff-profiles/don-deangelis",
+    "usgs_title": "Don DeAngelis, Ph.D. (Former Employee)",
+    "usgs_limitation": "USGS employment describes a different institution and does not determine the Miami appointment."
+  },
+  "expected_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+  "originals": [
+    {
+      "id": "faculty-miami-bio-4dfe1b88",
+      "case": "subject",
+      "previous_control_actionable": true,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-bio-4dfe1b88",
+      "html_http": 200,
+      "html_sha256": "789c611867779bf009724a9850bab8b7e46e0778587ec3522d22891183d94cf3",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "\u200cDon DeAngelis",
+      "source_actions": [],
+      "historical_banner": false,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-bio-4dfe1b88?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-bio-4dfe1b88",
+      "api_name": "\u200cDon DeAngelis",
+      "api_faculty_title": "Research Professor",
+      "api_actionable": true,
+      "api_reason": null,
+      "last_seen_listed_at": "2026-11-20",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "sign_in_required",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-11-20T16:55:45.127863"
+    },
+    {
+      "id": "faculty-miami-bio-bccf1363",
+      "case": "previously_actionable_biology_control",
+      "previous_control_actionable": true,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-bio-bccf1363",
+      "html_http": 200,
+      "html_sha256": "a9826f52a3a522ebacc61433ae1f053073a74c420c464c0ef0d2f9ad5e10c92b",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "Michelle E. Afkhami",
+      "source_actions": [],
+      "historical_banner": false,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-bio-bccf1363?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-bio-bccf1363",
+      "api_name": "Michelle E. Afkhami",
+      "api_faculty_title": "Professor",
+      "api_actionable": true,
+      "api_reason": null,
+      "last_seen_listed_at": "2026-11-20",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "sign_in_required",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-11-20T16:55:45.127380"
+    },
+    {
+      "id": "faculty-miami-bio-24adf167",
+      "case": "previously_actionable_biology_control",
+      "previous_control_actionable": true,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-bio-24adf167",
+      "html_http": 200,
+      "html_sha256": "df30f307efa4236afd2ee6a6ebf570a6e3b77a63bca25535eb21295cdcfb0638",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "James D Baker",
+      "source_actions": [],
+      "historical_banner": false,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-bio-24adf167?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-bio-24adf167",
+      "api_name": "James D Baker",
+      "api_faculty_title": "Research Associate Professor",
+      "api_actionable": true,
+      "api_reason": null,
+      "last_seen_listed_at": "2026-11-20",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "sign_in_required",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-11-20T16:55:45.127489"
+    },
+    {
+      "id": "faculty-miami-chem-d89d76d6",
+      "case": "previously_archived_control",
+      "previous_control_actionable": false,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-chem-d89d76d6",
+      "html_http": 200,
+      "html_sha256": "860c1a7fdb90b7c3d2b5dad195fe7bac256159031cf31636d4fdd46bc386a87e",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "Leslie D Knecht",
+      "source_actions": [],
+      "historical_banner": true,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-chem-d89d76d6?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-chem-d89d76d6",
+      "api_name": "Leslie D Knecht",
+      "api_faculty_title": "Distinguished Senior Lecturer",
+      "api_actionable": false,
+      "api_reason": "inactive",
+      "last_seen_listed_at": "2026-08-14",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "unavailable",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-08-14T07:06:31.142610"
+    },
+    {
+      "id": "faculty-miami-chem-bb2aa9f3",
+      "case": "previously_archived_control",
+      "previous_control_actionable": false,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-chem-bb2aa9f3",
+      "html_http": 200,
+      "html_sha256": "047262adff91c783b098e5f5cc9859ac57faa54e13dd3b1060cabadd7a55e31d",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "Marc R Knecht",
+      "source_actions": [],
+      "historical_banner": true,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-chem-bb2aa9f3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-chem-bb2aa9f3",
+      "api_name": "Marc R Knecht",
+      "api_faculty_title": "Professor",
+      "api_actionable": false,
+      "api_reason": "inactive",
+      "last_seen_listed_at": "2026-08-14",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "unavailable",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-08-14T07:06:31.142676"
+    },
+    {
+      "id": "faculty-miami-eng-4c63f134",
+      "case": "previously_archived_control",
+      "previous_control_actionable": false,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-eng-4c63f134",
+      "html_http": 200,
+      "html_sha256": "b5e9484c40bc5a7da3dcc17feb6a9265826d607c860e8cf493734de626e4b5c2",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "Kimberly Reyes",
+      "source_actions": [
+        {
+          "label": "View current faculty record",
+          "href": "/opportunities/faculty-miami-eng-ea8958df"
+        }
+      ],
+      "historical_banner": true,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-eng-4c63f134?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-eng-4c63f134",
+      "api_name": "Kimberly Reyes",
+      "api_faculty_title": "Asst. Professor",
+      "api_actionable": false,
+      "api_reason": "inactive",
+      "last_seen_listed_at": "2026-10-23",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "unavailable",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": true,
+      "canonical_original_last_seen_at": "2026-10-23T12:57:46.757053"
+    },
+    {
+      "id": "faculty-miami-soc-333506ca",
+      "case": "previously_archived_control",
+      "previous_control_actionable": false,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-soc-333506ca",
+      "html_http": 200,
+      "html_sha256": "d5a8992dc4a6d300fc39634cc9c193cde81a13c46e0d165ea069ca55a8a8b94a",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "Kathryn M Nowotny",
+      "source_actions": [],
+      "historical_banner": true,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-soc-333506ca?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-soc-333506ca",
+      "api_name": "Kathryn M Nowotny",
+      "api_faculty_title": "Professor",
+      "api_actionable": false,
+      "api_reason": "inactive",
+      "last_seen_listed_at": "2026-09-11",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "unavailable",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-09-11T06:48:31.526279"
+    },
+    {
+      "id": "faculty-miami-phil-adf5263e",
+      "case": "previously_archived_control",
+      "previous_control_actionable": false,
+      "html_url": "https://joinalab.com/opportunities/faculty-miami-phil-adf5263e",
+      "html_http": 200,
+      "html_sha256": "def58d7bb8b9e6e8e6ba0dae2642b0d3ff054be515efd423850bab8d35dbb2f0",
+      "page_release": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+      "h1": "Hwan Ryu",
+      "source_actions": [],
+      "historical_banner": true,
+      "public_api_url": "https://joinalab.com/api/opportunities/faculty-miami-phil-adf5263e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "api_http": 200,
+      "api_id": "faculty-miami-phil-adf5263e",
+      "api_name": "Hwan Ryu",
+      "api_faculty_title": "Lecturer",
+      "api_actionable": false,
+      "api_reason": "inactive",
+      "last_seen_listed_at": "2026-07-31",
+      "api_individual_url": null,
+      "api_source_url": null,
+      "api_contact_email_status": "unavailable",
+      "api_field_personal_provenance": null,
+      "is_current_duplicate_pointer": false,
+      "canonical_original_last_seen_at": "2026-07-31T08:23:10.353570"
+    }
+  ],
+  "requests": [
+    {
+      "at": "2026-11-26T23:18:13.346235+00:00",
+      "url": "https://joinalab.com/about",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:13.565991+00:00",
+      "url": "https://joinalab.com/api/health",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:16.230981+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-bio-4dfe1b88",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:17.480648+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-bio-4dfe1b88?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:20.235736+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-bio-bccf1363",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:21.526933+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-bio-bccf1363?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:24.169540+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-bio-24adf167",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:25.460634+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-bio-24adf167?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:28.245356+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-chem-d89d76d6",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:29.458759+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-chem-d89d76d6?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:32.644961+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-chem-bb2aa9f3",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:33.547290+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-chem-bb2aa9f3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:36.312280+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-eng-4c63f134",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:37.460953+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-eng-4c63f134?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:40.181483+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-soc-333506ca",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:41.486978+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-soc-333506ca?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:44.235220+00:00",
+      "url": "https://joinalab.com/opportunities/faculty-miami-phil-adf5263e",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:45.545998+00:00",
+      "url": "https://joinalab.com/api/opportunities/faculty-miami-phil-adf5263e?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:47.512248+00:00",
+      "url": "https://joinalab.com/about",
+      "status": 200
+    },
+    {
+      "at": "2026-11-26T23:18:49.519108+00:00",
+      "url": "https://joinalab.com/api/health",
+      "status": 200
+    }
+  ],
+  "before": {
+    "at": "2026-11-26T23:18:13.572142+00:00",
+    "frontend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "backend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a"
+  },
+  "after": {
+    "at": "2026-11-26T23:18:49.525795+00:00",
+    "frontend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "backend": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a"
+  },
+  "same_expected_release": true,
+  "projected_source_boundaries": {
+    "projection_file": "backend/lib/public_projection.py",
+    "exact_git_blob": "2045c92b47439650000b0aa3aac2337e1b252e2d",
+    "trimmed_address_bearing_personal_url_rejected": true,
+    "percent_encoded_address_bearing_url_rejected": true,
+    "department_roster_url_allowed": true
+  },
+  "counts": {
+    "official_named_cards": 37,
+    "production_html_api_pairs": 8,
+    "positive_active_controls": 2,
+    "negative_archived_controls": 5
+  },
+  "control_limitation": "The two previously active Biology controls remain active on this deployment. Their previously recorded padded source URLs are also withheld before the separate broad link repair goes live. They validate preservation of active IDs, not the presence of a source button."
+}
