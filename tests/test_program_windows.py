@@ -700,7 +700,7 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
         ranked = rank_opportunity(student, loaded)
         assert "opportunity.majors" not in ranked.unknowns and "profile.gpa" in ranked.unknowns
         assert all("graduate / PhD" not in reason and "Limited prior experience" not in reason for reason in ranked.reasons_gap)
-        prep = {**loaded, "description_clean": "Learn how to apply to a PhD program in biomedical science."}
+        prep = {**loaded, "description_clean": "Scholars learn how the PhD program in biomedical science reviews applications."}
         assert not _requires_graduate_standing(prep)
         assert _requires_graduate_standing({**prep, "id": "unreviewed"})
         card = project_public_opportunity_payload(loaded, loaded)
@@ -768,3 +768,104 @@ def test_boston_stars_student_deadline_and_current_application_destination(tmp_p
     [new] = json.loads(stored.read_text())
     assert new["organization"] == "Another school" and reviewed_window(new) is None
     assert new["eligibility"]["min_gpa"] is None and new["application"]["requires_recommendation"] == "unknown"
+
+
+@pytest.mark.parametrize(("oid", "slug", "organization", "host", "first_deadline", "opening"), [
+    ("sro-e74d89e9", "michigan-humanities-emerging-research-scholars-program-michhers",
+     "University of Michigan", "https://rackham.umich.edu/prospective-students/michhers/", "Anticipated 2/10/27", "2026-12-02"),
+    ("sro-7f860ddc", "microbiology-summer-undergraduate-research-program-microsurp-trainee-program",
+     "McGovern Medical School", "https://med.uth.edu/mmg/summer-research-program/", "2/1/27", "2026-12-01"),
+])
+def test_host_window_survives_a_partial_directory_refresh_only_for_the_same_program_and_cohort(
+    tmp_path, monkeypatch, oid, slug, organization, host, first_deadline, opening,
+):
+    from backend.routes.matches import _match_card
+    from src.collectors.base import RawOpportunity
+    from src.collectors.uiuc_sro import merge_into_processed, raw_to_normalized
+
+    directory_url = "https://researchops.web.illinois.edu/opportunity/" + slug
+
+    def observed(deadline=first_deadline, link=host, school=organization, deep=False):
+        return raw_to_normalized(RawOpportunity(
+            "uiuc_sro", "https://researchops.web.illinois.edu/?page=3", slug, "", directory_url, organization=school,
+            extra_fields={"deadline_raw": deadline, "program_url": link, "deep_scraped": deep},
+        ))
+
+    original = observed(deep=True)
+    assert original["id"] == oid and original["deadline"] == "2027-02-01"
+    assert original["deadline_is_estimate"] is False and original["is_rolling"] is False
+    assert ("superseded_directory_deadline" in original["metadata"]) == first_deadline.startswith("Anticipated")
+    stored = tmp_path / "program.json"
+
+    def reread(new):
+        stored.write_text(json.dumps([original]))
+        merge_into_processed([new], str(stored))
+        [loaded] = json.loads(stored.read_text())
+        return loaded
+
+    for row in (original, reread(observed(link="", school="")), reread(observed(deadline="", link="", school=""))):
+        fields = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
+        assert fields["explicit"]["deadline"] == "2027-02-01"
+        assert fields["quotes"]["deadline"]["source_url"] == host
+        assert row["metadata"].get("superseded_directory_deadline") == original["metadata"].get("superseded_directory_deadline")
+        card = _match_card(row)
+        assert card["application_opens"]["on"] == opening and card["application_opens"]["source_url"] == host
+        assert card["deadline"] == "2027-02-01" and card["is_rolling"] is False
+        monkeypatch.setattr(evidence, "_today", lambda: date(2027, 2, 3))
+        assert evidence.target_truth(row).actionable is False
+    for observation in (observed("2/1/28", link="", school=""), observed(link="https://www.example.org/"),
+                        observed(deadline="", school="Different sponsor")):
+        row = reread(observation)
+        assert reviewed_window(row) is None
+        assert "application_opens" not in _match_card(row)
+        assert "superseded_directory_deadline" not in row["metadata"]
+        assert row["deadline"] == observation["deadline"]
+
+
+def test_stanford_application_window_is_for_the_reviewed_cycle_and_source():
+    row = _row("stanford", "ssrp_amgen_scholars")
+    assert row["id"] == "stanford-1a20b2e045cf" and row["deadline"] == "2027-02-01"
+    for mismatch in (
+        {**row, "id": "another-campus-program"},
+        {**row, "source": "unrelated"},
+        {**row, "deadline": "2028-02-02"},
+        {**row, "deadline": None, "metadata": {**row["metadata"], "deadline_note": "Applications for 2028."}},
+    ):
+        assert reviewed_window(mismatch) is None
+
+
+def test_mcnair_student_portal_deadline_and_undergraduate_admissions(monkeypatch):
+    from backend.routes.matches import _match_card
+    from src.matcher.ranker import _requires_graduate_standing
+
+    row = _row("ucsd", "mcnair")
+    assert row["id"] == "ucsd-c6d547c9321a" and not _requires_graduate_standing(row)
+    assert row["eligibility"]["majors"] == [] and row["eligibility"]["preferred_year"] == ["junior", "senior"]
+    assert "2.8" in row["description"] and "3.0" in row["description"]
+    assert row["application"]["application_url"] == "https://ucsd-research.academicworks.com/opportunities/2368"
+    assert row["deadline"] == "2026-11-20" and row["is_rolling"] is False
+    assert "November 11 priority" in row["metadata"]["deadline_note"] and "October 29" in row["metadata"]["deadline_note"]
+    assert _match_card(row)["deadline"] == "2026-11-20"
+    timing = build_detail_fields(copy.deepcopy(row), row)["fields"]["timing"]
+    assert timing["quotes"]["deadline"]["source_url"] == row["url"]
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 26))
+    assert evidence.target_truth(row).reason_code == "listing_closed"
+    monkeypatch.setattr(evidence, "_today", lambda: date(2026, 11, 19))
+    assert evidence.target_truth(row).actionable
+    for changed in ({"url": row["url"] + "0"}, {"id": "another-mcnair"}, {"deadline": "2027-11-20"}):
+        assert reviewed_window({**row, **changed}) is None
+
+
+def test_calbridge_undergraduate_program_preserves_transfer_eligibility_and_its_own_website():
+    from src.matcher.ranker import _requires_graduate_standing
+
+    row = _row("ucsb", "cal_bridge")
+    assert row["id"] == "ucsb-45d0bef1a207" and not _requires_graduate_standing(row)
+    source = "https://calbridge.org/undergraduate-program/"
+    assert row["source_url"] == row["url"] == row["application"]["application_url"] == source
+    assert "Community College students transferring" in row["description"]
+    assert set(row["eligibility"]["majors"]) == {"Physics", "Astronomy", "Computer Science", "Computer Engineering",
+                                                "Mathematics", "Statistics"}
+    assert "April" in row["metadata"]["deadline_note"] and "2026 cohort" in row["metadata"]["deadline_note"]
+    assert row["deadline"] is None and row["is_rolling"] is False
+    assert "Santa Barbara" not in row["location"] and row["organization"] == "Cal-Bridge"

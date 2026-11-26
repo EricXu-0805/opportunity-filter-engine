@@ -2942,6 +2942,15 @@ _GRAD_DESC_RE = re.compile(
     r"\b(?:ms|m\.s\.)\s*/\s*ph\.?\s?d\b",
     re.IGNORECASE,
 )
+# A mentor's degree and a student's plans for future study do not establish
+# current standing. Check each match independently for a separate requirement.
+_GRAD_INTENT_OR_MENTOR = re.compile(
+    r"\b(?:consider(?:ing)?\s+|interest(?:ed)?\s+in\s+|apply(?:ing)?\s+to\s+(?:an?\s+)?|"
+    r"work(?:ing)?\s+(?:closely\s+)?with\s+(?:an?\s+)?)$",
+    re.IGNORECASE,
+)
+
+
 _GRADUATE_YEARS = frozenset({
     "graduate", "grad", "masters", "master", "phd", "ph.d", "doctoral", "postdoc",
 })
@@ -2958,7 +2967,10 @@ def _requires_graduate_standing(opportunity: dict) -> bool:
     if _GRAD_TITLE_RE.search(title):
         return True
     desc = str(opportunity.get("description_clean") or opportunity.get("description_raw") or "")
-    return bool(_GRAD_DESC_RE.search(desc))
+    return any(
+        not _GRAD_INTENT_OR_MENTOR.search(desc, max(0, match.start() - 64), match.start())
+        for match in _GRAD_DESC_RE.finditer(desc)
+    )
 
 
 def _is_undergrad(profile: dict) -> bool:

@@ -183,6 +183,7 @@ _REFERENCE_PAGES = {
     "northwestern": {"nu_our_hub", "nu_mccormick_summer_programs", "nu_mccormick_research_hub",
                      "nu_baker_program_hub", "nu_naise_undergrad", "nu_feinberg_lurie_summer"},
     "uchicago": {"uchicago_handshake"},
+    "ucsd": {"srp_summer"},
     "ucf": {"ucf_office_of_undergraduate_research", "ucf_ramp_scholar_programs", "ucf_looking_for_research"},
     "uf": {"cur_hub", "ursp"},
     "unl": {"unl_office_undergraduate_research_fellowships", "unl_research_fellowships"},
@@ -194,7 +195,6 @@ _REFERENCE_PAGES = {
 # sees them at GRAD_LEVEL_PENALTY with a "Targets graduate / PhD students"
 # concern. A configured text newly read that way fails here.
 _GRADUATE_ONLY_ROWS = {
-    ("stanford", "ssrp_amgen_scholars"), ("ucsb", "cal_bridge"), ("ucsd", "mcnair"),
     ("umich", "sure"), ("upenn", "hillman_scholars"),
 }
 
@@ -250,6 +250,7 @@ class TestSeedNormalization:
             nonrolling = (o["metadata"]["collector_school"], o["metadata"]["collector_key"]) in {
                 ("caltech", "ligo_surf"), ("caltech", "chen_institute"), ("ucr", "ucr_cnas_student_research"), ("umd", "honors_college"),
                 ("udel", "udel_undergraduate_research_program"), ("bc", "bc_undergrad_research_opportunities"),
+                ("ucsb", "cal_bridge"), ("ucsd", "srp_summer"),
             }
             assert o.get("is_rolling") is (window is None and not nonrolling)
 
@@ -2087,6 +2088,20 @@ class TestUcsd:
     def test_summer_programs_present(self, recs):
         assert any(o["opportunity_type"] == "summer_program" for o in recs)
 
+    def test_summer_directory_keeps_its_link_without_an_application(self, recs):
+        from src.evidence import target_truth
+
+        programs = {o["metadata"]["collector_key"]: o for o in recs}
+        guide = programs["srp_summer"]
+        assert guide["id"] == "ucsd-d93b49abd299" and target_truth(guide).reason_code == "reference_only"
+        assert guide["url"] == "https://ugresearch.ucsd.edu/programs/urh-summer/index.html"
+        assert guide["application"]["application_url"] is None and not guide["is_rolling"]
+        assert guide["paid"] == "unknown" and guide["eligibility"]["international_friendly"] == "unknown"
+        for key in ("mcnair", "uc_scholars", "urs"):
+            child = programs[key]
+            assert not target_truth(child).reference_only
+            assert child["application"]["application_url"] == child["url"] != guide["url"]
+
     def test_every_record_is_ucsd_scoped(self, recs):
         for o in recs:
             # campus + lab buckets are ucsd-homed; open (if any) is national.
@@ -2151,7 +2166,10 @@ class TestUcsb:
         for o in recs:
             assert o["school"] in ("ucsb", None)
             assert o["organization"]
-            assert o["location"] == "Santa Barbara, CA"
+            if o["metadata"]["collector_key"] == "cal_bridge":
+                assert o["location"] == "Participating California State University campuses, California"
+            else:
+                assert o["location"] == "Santa Barbara, CA"
 
     def test_breakdown_totals_consistent(self, recs):
         bd = cg.source_breakdown(recs)
