@@ -1,0 +1,653 @@
+{
+  "scope": "Public Colorado State university directory pages with two named positive controls for each exact campus subdomain and additional ordinary query comparisons. Each source page was requested directly.",
+  "source_checks": [
+    {
+      "department": "biol",
+      "directory_url": "https://www.biology.colostate.edu/directory/",
+      "directory_sha256": "700440a69837a3553a3ea58cca1a79f4b4253ddfa4dba3ffaa1c2e173cdc955a",
+      "public_directory_cards_with_person_id": 280,
+      "observed_at": "2026-11-26T15:38:34.800042+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://www.biology.colostate.edu/person/?id=2A07E3FF3DF21B226D0CD044D4A7CC83&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Salah Abdel-Ghany",
+          "matched_heading": "Salah Abdel-Ghany",
+          "first_heading": [
+            "Salah Abdel-Ghany | College of Natural Sciences – Department of Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:35.435936+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://www.biology.colostate.edu/person/?id=9F890EFE66BA0A4880713F666D446DAB&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Lisa Angeloni",
+          "matched_heading": "Lisa Angeloni",
+          "first_heading": [
+            "Lisa Angeloni | College of Natural Sciences – Department of Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:36.073524+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://www.biology.colostate.edu/person/?id=2A07E3FF3DF21B226D0CD044D4A7CC83",
+          "has_matching_person_header": true,
+          "expected_official_name": "Salah Abdel-Ghany",
+          "matched_heading": "Salah Abdel-Ghany",
+          "first_heading": [
+            "Salah Abdel-Ghany | College of Natural Sciences – Department of Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:36.736629+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://www.biology.colostate.edu/person/?utm_source=academic-directory&id=2A07E3FF3DF21B226D0CD044D4A7CC83",
+          "has_matching_person_header": true,
+          "expected_official_name": "Salah Abdel-Ghany",
+          "matched_heading": "Salah Abdel-Ghany",
+          "first_heading": [
+            "Salah Abdel-Ghany | College of Natural Sciences – Department of Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:37.394978+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://www.biology.colostate.edu/person/?id=2a07e3ff3df21b226d0cd044d4a7cc83",
+          "has_matching_person_header": true,
+          "expected_official_name": "Salah Abdel-Ghany",
+          "matched_heading": "Salah Abdel-Ghany",
+          "first_heading": [
+            "Salah Abdel-Ghany | College of Natural Sciences – Department of Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:38.922731+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://www.biology.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Salah Abdel-Ghany",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:39.538343+00:00"
+        }
+      }
+    },
+    {
+      "department": "bmb",
+      "directory_url": "https://www.bmb.colostate.edu/about/people/",
+      "directory_sha256": "9fd20a3b948c943c055378f4313a8c6c85a67ecb506c196d79b95ba56b167ec9",
+      "public_directory_cards_with_person_id": 38,
+      "observed_at": "2026-11-26T15:38:41.782249+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://www.bmb.colostate.edu/person/?id=A4CEA929246AA6DAF38E3B0126DA5977&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Soham Chanda",
+          "matched_heading": "Soham Chanda",
+          "first_heading": [
+            "Soham Chanda | College of Natural Sciences – Department of Biochemistry and Molecular Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:42.484410+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://www.bmb.colostate.edu/person/?id=B7AF5E0E1EC353F92840DA5A9246D31C&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Chaoping Chen",
+          "matched_heading": "Chaoping Chen",
+          "first_heading": [
+            "Chaoping Chen | College of Natural Sciences – Department of Biochemistry and Molecular Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:43.151114+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://www.bmb.colostate.edu/person/?id=A4CEA929246AA6DAF38E3B0126DA5977",
+          "has_matching_person_header": true,
+          "expected_official_name": "Soham Chanda",
+          "matched_heading": "Soham Chanda",
+          "first_heading": [
+            "Soham Chanda | College of Natural Sciences – Department of Biochemistry and Molecular Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:43.782692+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://www.bmb.colostate.edu/person/?utm_source=academic-directory&id=A4CEA929246AA6DAF38E3B0126DA5977",
+          "has_matching_person_header": true,
+          "expected_official_name": "Soham Chanda",
+          "matched_heading": "Soham Chanda",
+          "first_heading": [
+            "Soham Chanda | College of Natural Sciences – Department of Biochemistry and Molecular Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:44.409605+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://www.bmb.colostate.edu/person/?id=a4cea929246aa6daf38e3b0126da5977",
+          "has_matching_person_header": true,
+          "expected_official_name": "Soham Chanda",
+          "matched_heading": "Soham Chanda",
+          "first_heading": [
+            "Soham Chanda | College of Natural Sciences – Department of Biochemistry and Molecular Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:45.102753+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://www.bmb.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Soham Chanda",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Biochemistry and Molecular Biology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:45.766783+00:00"
+        }
+      }
+    },
+    {
+      "department": "chem",
+      "directory_url": "https://www.chem.colostate.edu/people/",
+      "directory_sha256": "1e487645ecb9f4d278ffcb2170310fba7664720b324c578a32fdb14b4ad10bc9",
+      "public_directory_cards_with_person_id": 85,
+      "observed_at": "2026-11-26T15:38:33.906228+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://www.chem.colostate.edu/person/?id=E0544C3FB33448D09892464C8CFF5C24&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Chris Ackerson",
+          "matched_heading": "Chris Ackerson",
+          "first_heading": [
+            "Chris Ackerson | College of Natural Sciences – Department of Chemistry | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:34.617240+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://www.chem.colostate.edu/person/?id=0A7479DCCA4CD7894E352B8C5A16A62F&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Anna Allen",
+          "matched_heading": "Anna Allen",
+          "first_heading": [
+            "Anna Allen | College of Natural Sciences – Department of Chemistry | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:35.286677+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://www.chem.colostate.edu/person/?id=E0544C3FB33448D09892464C8CFF5C24",
+          "has_matching_person_header": true,
+          "expected_official_name": "Chris Ackerson",
+          "matched_heading": "Chris Ackerson",
+          "first_heading": [
+            "Chris Ackerson | College of Natural Sciences – Department of Chemistry | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:35.909838+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://www.chem.colostate.edu/person/?utm_source=academic-directory&id=E0544C3FB33448D09892464C8CFF5C24",
+          "has_matching_person_header": true,
+          "expected_official_name": "Chris Ackerson",
+          "matched_heading": "Chris Ackerson",
+          "first_heading": [
+            "Chris Ackerson | College of Natural Sciences – Department of Chemistry | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:36.523931+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://www.chem.colostate.edu/person/?id=e0544c3fb33448d09892464c8cff5c24",
+          "has_matching_person_header": true,
+          "expected_official_name": "Chris Ackerson",
+          "matched_heading": "Chris Ackerson",
+          "first_heading": [
+            "Chris Ackerson | College of Natural Sciences – Department of Chemistry | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:37.235464+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://www.chem.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Chris Ackerson",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Chemistry | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:37.905004+00:00"
+        }
+      }
+    },
+    {
+      "department": "cs",
+      "directory_url": "https://compsci.colostate.edu/people/",
+      "directory_sha256": "b85b9d0cd8406476175132314f9526ee47b7e818875bc15aba830c622c2f71fa",
+      "public_directory_cards_with_person_id": 61,
+      "observed_at": "2026-11-26T15:38:25.956508+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://compsci.colostate.edu/person/?id=4693E9806BCCA9FA94E18EF5D7A86F7C&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Mohammed Arefin",
+          "matched_heading": "Mohammed Arefin",
+          "first_heading": [
+            "Mohammed Arefin | College of Natural Sciences – Department of Computer Science | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:26.564490+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://compsci.colostate.edu/person/?id=457391C9C82BFDCBB4947278C0401E41&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Asa Ben-Hur",
+          "matched_heading": "Asa Ben-Hur",
+          "first_heading": [
+            "Asa Ben-Hur | College of Natural Sciences – Department of Computer Science | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:27.183691+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://compsci.colostate.edu/person/?id=4693E9806BCCA9FA94E18EF5D7A86F7C",
+          "has_matching_person_header": true,
+          "expected_official_name": "Mohammed Arefin",
+          "matched_heading": "Mohammed Arefin",
+          "first_heading": [
+            "Mohammed Arefin | College of Natural Sciences – Department of Computer Science | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:27.831811+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://compsci.colostate.edu/person/?utm_source=academic-directory&id=4693E9806BCCA9FA94E18EF5D7A86F7C",
+          "has_matching_person_header": true,
+          "expected_official_name": "Mohammed Arefin",
+          "matched_heading": "Mohammed Arefin",
+          "first_heading": [
+            "Mohammed Arefin | College of Natural Sciences – Department of Computer Science | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:28.462573+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://compsci.colostate.edu/person/?id=4693e9806bcca9fa94e18ef5d7a86f7c",
+          "has_matching_person_header": true,
+          "expected_official_name": "Mohammed Arefin",
+          "matched_heading": "Mohammed Arefin",
+          "first_heading": [
+            "Mohammed Arefin | College of Natural Sciences – Department of Computer Science | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:29.083683+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://compsci.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Mohammed Arefin",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Computer Science | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:29.699903+00:00"
+        }
+      }
+    },
+    {
+      "department": "math",
+      "directory_url": "https://mathematics.colostate.edu/people/faculty/",
+      "directory_sha256": "5049fd8d2f05af24f3a5a554e47b4412da4146519b8871b34b8639edca1dd143",
+      "public_directory_cards_with_person_id": 67,
+      "observed_at": "2026-11-26T15:38:25.753576+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://mathematics.colostate.edu/person/?id=83A05CA66D858AB105C17F8F4C610889&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Jeffrey Achter",
+          "matched_heading": "Jeffrey Achter",
+          "first_heading": [
+            "Jeffrey Achter | College of Natural Sciences – Department of Mathematics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:26.359086+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://mathematics.colostate.edu/person/?id=C024A5903143912AF05455DF48517F16&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Joseph Antonides",
+          "matched_heading": "Joseph Antonides",
+          "first_heading": [
+            "Joseph Antonides | College of Natural Sciences – Department of Mathematics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:26.981465+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://mathematics.colostate.edu/person/?id=83A05CA66D858AB105C17F8F4C610889",
+          "has_matching_person_header": true,
+          "expected_official_name": "Jeffrey Achter",
+          "matched_heading": "Jeffrey Achter",
+          "first_heading": [
+            "Jeffrey Achter | College of Natural Sciences – Department of Mathematics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:28.475202+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://mathematics.colostate.edu/person/?utm_source=academic-directory&id=83A05CA66D858AB105C17F8F4C610889",
+          "has_matching_person_header": true,
+          "expected_official_name": "Jeffrey Achter",
+          "matched_heading": "Jeffrey Achter",
+          "first_heading": [
+            "Jeffrey Achter | College of Natural Sciences – Department of Mathematics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:29.096424+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://mathematics.colostate.edu/person/?id=83a05ca66d858ab105c17f8f4c610889",
+          "has_matching_person_header": true,
+          "expected_official_name": "Jeffrey Achter",
+          "matched_heading": "Jeffrey Achter",
+          "first_heading": [
+            "Jeffrey Achter | College of Natural Sciences – Department of Mathematics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:29.712695+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://mathematics.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Jeffrey Achter",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Mathematics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:30.451397+00:00"
+        }
+      }
+    },
+    {
+      "department": "phys",
+      "directory_url": "https://www.physics.colostate.edu/about/people/",
+      "directory_sha256": "c30d308ca3b135f30f703e66156d92ef327da33e28a4da616abf6d9617653638",
+      "public_directory_cards_with_person_id": 86,
+      "observed_at": "2026-11-26T15:38:24.473468+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://www.physics.colostate.edu/person/?id=661844D5BAA65662E90C7CE6CCDC08D3&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Joshua Berger",
+          "matched_heading": "Joshua Berger",
+          "first_heading": [
+            "Joshua Berger | College of Natural Sciences – Department of Physics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:25.213700+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://www.physics.colostate.edu/person/?id=8FCD96EB01E8614D5CF444E5FD9F06F8&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Richard Bradley",
+          "matched_heading": "Richard Bradley",
+          "first_heading": [
+            "Richard Bradley | College of Natural Sciences – Department of Physics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:25.841600+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://www.physics.colostate.edu/person/?id=661844D5BAA65662E90C7CE6CCDC08D3",
+          "has_matching_person_header": true,
+          "expected_official_name": "Joshua Berger",
+          "matched_heading": "Joshua Berger",
+          "first_heading": [
+            "Joshua Berger | College of Natural Sciences – Department of Physics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:26.451999+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://www.physics.colostate.edu/person/?utm_source=academic-directory&id=661844D5BAA65662E90C7CE6CCDC08D3",
+          "has_matching_person_header": true,
+          "expected_official_name": "Joshua Berger",
+          "matched_heading": "Joshua Berger",
+          "first_heading": [
+            "Joshua Berger | College of Natural Sciences – Department of Physics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:27.081086+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://www.physics.colostate.edu/person/?id=661844d5baa65662e90c7ce6ccdc08d3",
+          "has_matching_person_header": true,
+          "expected_official_name": "Joshua Berger",
+          "matched_heading": "Joshua Berger",
+          "first_heading": [
+            "Joshua Berger | College of Natural Sciences – Department of Physics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:27.712147+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://www.physics.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Joshua Berger",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Physics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:28.362182+00:00"
+        }
+      }
+    },
+    {
+      "department": "psy",
+      "directory_url": "https://psychology.colostate.edu/people/",
+      "directory_sha256": "1e190476810a2916ceced76c6d935a567d607cd218740854a63c6b1f3f49f4f8",
+      "public_directory_cards_with_person_id": 56,
+      "observed_at": "2026-11-26T15:38:42.691740+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://psychology.colostate.edu/person/?id=BE4121169C55197B7F8A587F666B0BC1",
+          "has_matching_person_header": true,
+          "expected_official_name": "Madison Adrian-Manuel",
+          "matched_heading": "Madison Adrian-Manuel",
+          "first_heading": [
+            "Madison Adrian-Manuel | College of Natural Sciences – Department of Psychology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:43.313634+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://psychology.colostate.edu/person/?id=C7281D191AEE92C13DEB9F722DA0BC8F",
+          "has_matching_person_header": true,
+          "expected_official_name": "Marti Amberg",
+          "matched_heading": "Marti Amberg",
+          "first_heading": [
+            "Marti Amberg | College of Natural Sciences – Department of Psychology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:43.995736+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://psychology.colostate.edu/person/?id=BE4121169C55197B7F8A587F666B0BC1",
+          "has_matching_person_header": true,
+          "expected_official_name": "Madison Adrian-Manuel",
+          "matched_heading": "Madison Adrian-Manuel",
+          "first_heading": [
+            "Madison Adrian-Manuel | College of Natural Sciences – Department of Psychology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:44.625722+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://psychology.colostate.edu/person/?utm_source=academic-directory&id=BE4121169C55197B7F8A587F666B0BC1",
+          "has_matching_person_header": true,
+          "expected_official_name": "Madison Adrian-Manuel",
+          "matched_heading": "Madison Adrian-Manuel",
+          "first_heading": [
+            "Madison Adrian-Manuel | College of Natural Sciences – Department of Psychology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:45.263434+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://psychology.colostate.edu/person/?id=be4121169c55197b7f8a587f666b0bc1",
+          "has_matching_person_header": true,
+          "expected_official_name": "Madison Adrian-Manuel",
+          "matched_heading": "Madison Adrian-Manuel",
+          "first_heading": [
+            "Madison Adrian-Manuel | College of Natural Sciences – Department of Psychology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:45.884409+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://psychology.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Madison Adrian-Manuel",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Psychology | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:46.552356+00:00"
+        }
+      }
+    },
+    {
+      "department": "stat",
+      "directory_url": "https://statistics.colostate.edu/faculty-staff/",
+      "directory_sha256": "4a4c2253a17f5a29bc4f2efef744048c27d2b22ecdeebd5885303e5dd7369e33",
+      "public_directory_cards_with_person_id": 32,
+      "observed_at": "2026-11-26T15:38:34.362573+00:00",
+      "controls": {
+        "first": {
+          "http": 200,
+          "source_url": "https://statistics.colostate.edu/person/?id=273F46D577F51E391421FA39ADE8205A&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Daniel Cooley",
+          "matched_heading": "Daniel Cooley",
+          "first_heading": [
+            "Daniel Cooley | College of Natural Sciences – Department of Statistics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:34.995588+00:00"
+        },
+        "second": {
+          "http": 200,
+          "source_url": "https://statistics.colostate.edu/person/?id=4D5431136ECC2F9D2E40330330659FF9&sq=t",
+          "has_matching_person_header": true,
+          "expected_official_name": "Stacy Edmondson",
+          "matched_heading": "Stacy Edmondson",
+          "first_heading": [
+            "Stacy Edmondson | College of Natural Sciences – Department of Statistics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:35.694988+00:00"
+        },
+        "drop_sq": {
+          "http": 200,
+          "source_url": "https://statistics.colostate.edu/person/?id=273F46D577F51E391421FA39ADE8205A",
+          "has_matching_person_header": true,
+          "expected_official_name": "Daniel Cooley",
+          "matched_heading": "Daniel Cooley",
+          "first_heading": [
+            "Daniel Cooley | College of Natural Sciences – Department of Statistics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:36.317858+00:00"
+        },
+        "tracked": {
+          "http": 200,
+          "source_url": "https://statistics.colostate.edu/person/?utm_source=academic-directory&id=273F46D577F51E391421FA39ADE8205A",
+          "has_matching_person_header": true,
+          "expected_official_name": "Daniel Cooley",
+          "matched_heading": "Daniel Cooley",
+          "first_heading": [
+            "Daniel Cooley | College of Natural Sciences – Department of Statistics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:36.934370+00:00"
+        },
+        "case_changed": {
+          "http": 200,
+          "source_url": "https://statistics.colostate.edu/person/?id=273f46d577f51e391421fa39ade8205a",
+          "has_matching_person_header": true,
+          "expected_official_name": "Daniel Cooley",
+          "matched_heading": "Daniel Cooley",
+          "first_heading": [
+            "Daniel Cooley | College of Natural Sciences – Department of Statistics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:37.555762+00:00"
+        },
+        "no_id": {
+          "http": 200,
+          "source_url": "https://statistics.colostate.edu/person/",
+          "has_matching_person_header": false,
+          "expected_official_name": "Daniel Cooley",
+          "matched_heading": null,
+          "first_heading": [
+            "Directory | College of Natural Sciences – Department of Statistics | CSU",
+            "Colorado State University"
+          ],
+          "when": "2026-11-26T15:38:38.188074+00:00"
+        }
+      }
+    }
+  ]
+}
