@@ -1,0 +1,27 @@
+{
+  "pull_request": 1409,
+  "integration_pull_request": 1414,
+  "production_before": {
+    "observed_utc": "2026-11-26T18:31:32.560277+00:00",
+    "frontend_and_backend_release": "a6ce051e4b9b3d0932ce21bd7bd1409de65362e2",
+    "original_id": "faculty-bu-qst-3cc6c010",
+    "api_http": 200,
+    "public_detail_http": 200,
+    "research_was_unknown_in_api_and_ui": true
+  },
+  "production_after": {
+    "observed_utc": "2026-11-26T19:28:27.028300+00:00",
+    "frontend_and_backend_release": "bdb523bec33c71f682e0d895f06a8bad859863b6",
+    "original_id": "faculty-bu-qst-3cc6c010",
+    "api_http": 200,
+    "public_detail_http": 200,
+    "research_and_source_date_visible": true,
+    "public_citation_matches_api": true,
+    "clicked_source_http": 200,
+    "clicked_source_confirms_research": true,
+    "official_appointment_http": 200,
+    "university_names_and_links_current_person": true,
+    "department_and_rank_retain_campus_source": true,
+    "scheduled_collection_checked_here": false
+  }
+}
