@@ -66,9 +66,10 @@ async def main():
             assert PRIVATE not in json.dumps(req) and REPLACEMENT not in json.dumps(req)
             assert not control.get('experience_basis')
             if entry:
-                assert req['match_experiences']==[{'id':entry['id'],'revision':entry['revision'],'source':'resume','status':'confirmed','text':FACT}]
+                reference='pdf:'+hashlib.sha256(entry['id'].encode()).hexdigest()
+                assert req['match_experiences']==[{'id':reference,'revision':entry['revision'],'source':'resume','status':'confirmed','text':FACT}]
                 assert entry['source']['signature'] not in json.dumps(req)
-                assert one.get('experience_basis')=={'entry_id':entry['id'],'revision':entry['revision'],'method':'Python','target_source':'stated_requirement'}
+                assert one.get('experience_basis')=={'entry_id':reference,'revision':entry['revision'],'method':'Python','target_source':'stated_requirement'}
                 await p.get_by_text('Experience used for this match · Python').click()
                 await expect(p.get_by_text(FACT,exact=True)).to_be_visible()
                 await expect(p.get_by_text('Current résumé · Confirmed by you',exact=False)).to_be_visible()

@@ -27,8 +27,10 @@ def matching(c, expect_entry=None):
     assert 'resume_text' not in req and 'Independent purple clock marker' not in json.dumps(req)
     rows=req.get('match_experiences',[])
     if expect_entry:
-        assert rows==[{'id':expect_entry['id'],'revision':expect_entry['revision'],'text':expect_entry['text'],'source':'resume','status':'confirmed'}]
-        assert item['experience_basis']=={'entry_id':expect_entry['id'],'revision':expect_entry['revision'],'method':'GIS','target_source':'research_area'}
+        reference='pdf:'+hashlib.sha256(expect_entry['id'].encode()).hexdigest()
+        assert expect_entry['source']['signature'] not in json.dumps(req)
+        assert rows==[{'id':reference,'revision':expect_entry['revision'],'text':expect_entry['text'],'source':'resume','status':'confirmed'}]
+        assert item['experience_basis']=={'entry_id':reference,'revision':expect_entry['revision'],'method':'GIS','target_source':'research_area'}
         p.get_by_text('Experience used for this match · GIS').click()
         expect(p.get_by_text(expect_entry['text'],exact=True)).to_be_visible()
         expect(p.get_by_text('Current résumé · Confirmed by you',exact=False)).to_be_visible()
