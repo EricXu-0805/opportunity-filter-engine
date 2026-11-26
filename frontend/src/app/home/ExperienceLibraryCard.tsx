@@ -191,7 +191,7 @@ export function ExperienceLibraryCard({ profile, ready, onChange, t }: {
                   onRemove={() => apply(entries.filter((item) => item.id !== entry.id))} />
               ))}
             </div>
-            <LinkedInExperienceImport entries={entries} raw={raw} disabled={!ready || busy} onSave={apply} />
+            {ready && <LinkedInExperienceImport entries={entries} raw={raw} disabled={busy} onSave={apply} />}
             <details className="mt-4">
               <summary className="cursor-pointer text-sm font-medium text-indigo-700">{t('home.experience.githubImport')}</summary>
               <label className="mt-2 block text-sm">{t('home.experience.githubLink')}
