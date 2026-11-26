@@ -1,0 +1,64 @@
+name: Verify the released B19 or B21 faculty and program detail links
+on:
+  push:
+    branches: [audit/m180-archived-faculty-summary-1126]
+    paths:
+      - 'data/audits/maintenance-2026-11-26/request-published-batch.json'
+permissions:
+  contents: read
+jobs:
+  official-details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 3d7cdfa451fc3d6f6f3a6428c0ce9ac184da5e94
+          path: original_checks
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install the normal browser
+        run: |
+          python -m pip install -q requests playwright==1.55.0
+          python -m playwright install --with-deps chromium > "$RUNNER_TEMP/chromium.log"
+      - name: Verify production versions before opening the original links
+        run: |
+          python - <<'PY'
+          import json,os,re
+          from pathlib import Path
+          import requests
+          spec=json.loads(Path("audit/data/audits/maintenance-2026-11-26/request-published-batch.json").read_bytes())
+          sha=spec["release_sha"]
+          batch=spec["batch"]
+          assert batch in (19,21) and re.fullmatch(r"[a-f0-9]{40}",sha)
+          site="https://joinalab.com"
+          html=requests.get(site+"/about",timeout=60)
+          html.raise_for_status()
+          assert f'data-release-sha="{sha}"' in html.text
+          health=requests.get(site+"/api/health",timeout=60)
+          health.raise_for_status()
+          assert health.json()["release_sha"]==sha
+          with open(os.environ["GITHUB_ENV"],"a") as f:
+              f.write(f"BATCH={batch}\nRELEASE_SHA={sha}\n")
+          PY
+      - name: Check the exact released faculty and program links
+        run: |
+          CHECKS=audit/data/audits/maintenance-2026-11-26
+          mkdir results
+          if [ "$BATCH" = "19" ]; then
+            python "$CHECKS/check_b19_original_details.py" --site https://joinalab.com --sha "$RELEASE_SHA" --scope mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2 --out results/b19-original-detail-pages.json
+          else
+            python "$CHECKS/check_b21_official_detail_routes.py" --audited-checkout original_checks --sha "$RELEASE_SHA" --out results/b21-original-detail-pages.json
+          fi
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: actual-release-original-detail-pages
+          path: results/
+          if-no-files-found: warn
