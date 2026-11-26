@@ -74,6 +74,8 @@ Deferred:
 
 from __future__ import annotations
 
+from functools import partial
+
 from .. import faculty_graph, ncsu_chass
 
 # ---- v4 person-CPT wp-json family ------------------------------------------
@@ -339,9 +341,17 @@ SCHOOL: dict = {
 def fetch_and_normalize(deep: bool = True,
                         unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
-                                            unit_ledger=unit_ledger)
+    ranks = ncsu_chass.DirectoryRanks()
+    departments = [
+        {**dept, "api": {**dept["api"], "filter_records": partial(ncsu_chass.current_faculty, ranks=ranks)}}
+        if dept["short"] == "CHASS" else dept
+        for dept in SCHOOL["departments"]
+    ]
+    records = faculty_graph.fetch_and_normalize({**SCHOOL, "departments": departments}, deep=deep,
+                                               unit_ledger=unit_ledger)
+    ranks.apply(records)
+    return records
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps)
+    return faculty_graph.merge_into_processed(opps, prepare_update=ncsu_chass.retain_unread_title)

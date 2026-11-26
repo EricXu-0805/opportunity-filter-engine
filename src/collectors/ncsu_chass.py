@@ -1,9 +1,11 @@
-"""Read CHASS retirement only where its public staff taxonomy and faculty card agree."""
+"""Read CHASS appointments and ranks from the college faculty directory."""
 
 from __future__ import annotations
 
 import re
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from . import faculty_graph, ucb_common
 
@@ -204,8 +206,73 @@ def _reviewed_candidate(person: dict) -> bool:
     return person.get("link") == f"https://chass.ncsu.edu/people/{slug}/"
 
 
-def current_faculty(records: list[dict]) -> list[dict]:
-    if not any(isinstance(person, dict) and _reviewed_candidate(person) for person in records):
+@dataclass
+class DirectoryRanks:
+    """Role observations from this one CHASS roster read, keyed by exact profile and name."""
+
+    titles: dict[tuple[str, str], str] = field(default_factory=dict)
+    unavailable: set[tuple[str, str]] = field(default_factory=set)
+
+    def observe(self, person, cards, available):
+        url = person.get("link")
+        label = person.get("title")
+        if not isinstance(url, str) or not re.fullmatch(r"https://chass\.ncsu\.edu/people/[^/?#]+/", url):
+            return
+        if isinstance(label, dict):
+            label = label.get("rendered")
+        if not isinstance(label, str):
+            return
+        name = faculty_graph._wp_text(label).casefold()
+        key = (url, name)
+        if not available:
+            self.unavailable.add(key)
+            return
+        matches = cards.get(url, [])
+        if len(matches) != 1 or matches[0][0].casefold() != name:
+            return
+        title = matches[0][1]
+        if (re.search(r"\b(?:professor|lecturer|instructor)\b", title, re.I)
+                and not re.search(r"retir|emerit|former|memoriam|adjunct|affiliate|visiting|staff|advis", title, re.I)):
+            self.titles[key] = title
+
+    def apply(self, records):
+        checked = datetime.now(UTC).date().isoformat()
+        for record in records:
+            if not record.get("id", "").startswith("faculty-ncsu-chass-"):
+                continue
+            key = (record["url"], record["pi_name"].casefold())
+            metadata = record["metadata"]
+            if title := self.titles.get(key):
+                if metadata.get("faculty_title") and metadata["faculty_title"] != title:
+                    continue
+                metadata["faculty_title"] = title
+                metadata["faculty_title_observation"] = {
+                    "source": FACULTY_URL, "profile": key[0], "name": record["pi_name"],
+                    "title": title, "checked_on": checked,
+                }
+            elif key in self.unavailable and not metadata.get("faculty_title"):
+                metadata["faculty_title_read_status"] = "directory_unavailable"
+
+
+def retain_unread_title(previous: dict, incoming: dict) -> None:
+    metadata = incoming.get("metadata") or {}
+    if metadata.get("faculty_title_read_status") != "directory_unavailable" or metadata.get("faculty_title"):
+        return
+    prior = previous.get("metadata") or {}
+    observation = prior.get("faculty_title_observation")
+    if not isinstance(observation, dict) or prior.get("is_active") is not True:
+        return
+    if (observation.get("source") == FACULTY_URL
+            and observation.get("profile") == previous.get("url") == incoming.get("url")
+            and observation.get("name") == previous.get("pi_name") == incoming.get("pi_name")
+            and observation.get("title") and observation["title"] == prior.get("faculty_title")):
+        metadata["faculty_title"] = observation["title"]
+        metadata["faculty_title_observation"] = observation.copy()
+
+
+def current_faculty(records: list[dict], *, ranks: DirectoryRanks | None = None) -> list[dict]:
+    if not records or (ranks is None
+                       and not any(isinstance(person, dict) and _reviewed_candidate(person) for person in records)):
         return records
 
     roster = ucb_common.fetch_soup(FACULTY_URL, bounded=True)
@@ -214,8 +281,10 @@ def current_faculty(records: list[dict]) -> list[dict]:
         for card in roster.select(".person-card"):
             name = card.select_one("a.name[href]")
             title = card.select_one("p.title")
-            if name is not None and title is not None:
-                cards[name["href"]].append((" ".join(name.stripped_strings), " ".join(title.stripped_strings)))
+            if name is not None:
+                rank = " ".join(title.stripped_strings) if title is not None else ""
+                cards[name["href"]].append((" ".join(name.stripped_strings), rank))
+    ranks_available = any(rank for group in cards.values() for _, rank in group)
 
     reported = {person.get("link") for person in records if isinstance(person, dict)}
     missing = cards.keys() - reported
@@ -228,6 +297,8 @@ def current_faculty(records: list[dict]) -> list[dict]:
         if not isinstance(person, dict):
             faculty_graph._cover("unparsed_rows")
             continue
+        if ranks is not None:
+            ranks.observe(person, cards, ranks_available)
         if _reviewed_candidate(person):
             matched = cards.get(person.get("link"), [])
             if len(matched) != 1 or not matched[0][1]:

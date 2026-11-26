@@ -144,3 +144,43 @@ def test_funkhousers_former_deanship_retires_only_his_reviewed_post(monkeypatch)
     roster.select_one('.title').string = 'Professor'
     target['group'] = [11847]
     assert ncsu_chass.current_faculty([target]) == [target]
+
+
+def test_live_chass_rank_is_bound_to_one_named_card_and_survives_only_an_outage(monkeypatch):
+    target = person("cynthia", "Cynthia Hyman", [11847])
+    dept = next(d for d in ncsu_faculty.SCHOOL["departments"] if d["short"] == "CHASS")
+    monkeypatch.setitem(ncsu_faculty.SCHOOL, "departments", [dept])
+    monkeypatch.setattr(faculty_graph, "_wp_get_json", lambda url: [target])
+    monkeypatch.delenv("OFE_ENRICH_PROFILES", raising=False)
+
+    def fetch(html):
+        roster = BeautifulSoup(html, "html.parser") if html is not None else None
+        monkeypatch.setattr(ncsu_chass.ucb_common, "fetch_soup", lambda *_args, **_kwargs: roster)
+        row, = ncsu_faculty.fetch_and_normalize()
+        return row
+
+    old = fetch(card(target, "Cynthia Hyman", "Senior Lecturer"))
+    assert old["metadata"]["faculty_title"] == "Senior Lecturer"
+    evidence = old["metadata"]["faculty_title_observation"]
+    assert evidence["source"] == ncsu_chass.FACULTY_URL and evidence["profile"] == target["link"]
+    outage = fetch(None)
+    ncsu_chass.retain_unread_title(old, outage)
+    assert outage["metadata"]["faculty_title_observation"] == evidence
+    other = fetch(None)
+    other["url"] = "https://chass.ncsu.edu/people/someone-else/"
+    ncsu_chass.retain_unread_title(old, other)
+    assert not other["metadata"]["faculty_title"]
+
+    for rejected in (
+        card(target, "Another Person", "Professor"),
+        card(target, "Cynthia Hyman", "Professor Emerita"),
+        card(target, "Cynthia Hyman", "Visiting Professor"),
+        card(target, "Cynthia Hyman", "Professor") * 2,
+        card(target, "Cynthia Hyman", "Professor") + card(target, "Cynthia Hyman", "").replace('<p class="title"></p>', ""),
+    ):
+        current = fetch(rejected)
+        ncsu_chass.retain_unread_title(old, current)
+        assert not current["metadata"]["faculty_title"]
+    promoted = fetch(card(target, "Cynthia Hyman", "Teaching Professor"))
+    assert promoted["id"] == old["id"]
+    assert promoted["metadata"]["faculty_title"] == "Teaching Professor"
