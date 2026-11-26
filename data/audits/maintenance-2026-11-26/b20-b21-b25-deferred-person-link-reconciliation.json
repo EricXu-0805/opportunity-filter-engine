@@ -1,0 +1,734 @@
+{
+  "utc": "2026-11-26T23:07:12.086451+00:00",
+  "refs": [
+    "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "0d84316f6a2d010eadf8787dad93998a50721e2a",
+    "66ef4b7370d66b36fa6524777a5903b3692cf90f"
+  ],
+  "rows": [
+    {
+      "id": "faculty-duke-nurs-36cb4f9e",
+      "original_reason": "institution returned 404 or 410 for the cleaned original",
+      "states": [
+        {
+          "name": "Lisa S. Lewis",
+          "url": "https://scholars.duke.edu/person/lisa.lewis ",
+          "source_url": "https://scholars.duke.edu/person/lisa.lewis ",
+          "active": true
+        },
+        {
+          "name": "Lisa S. Lewis",
+          "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+          "source_url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+          "active": false
+        },
+        {
+          "name": "Lisa S. Lewis",
+          "url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+          "source_url": "https://dukeahead.duke.edu/profile/lisa-lewis",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-fsu-comm-e3519c6b",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Jessica Wendorf Muhamad",
+          "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/ ",
+          "source_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/ ",
+          "active": true
+        },
+        {
+          "name": "Jessica Wendorf Muhamad",
+          "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+          "source_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+          "active": true
+        },
+        {
+          "name": "Jessica Wendorf Muhamad",
+          "url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+          "source_url": "https://directory.cci.fsu.edu/jessica-wendorf-muhamad/",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-chem-d89d76d6",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Leslie D Knecht",
+          "url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+          "source_url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+          "active": false
+        },
+        {
+          "name": "Leslie D Knecht",
+          "url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+          "source_url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+          "active": false
+        },
+        {
+          "name": "Leslie D Knecht",
+          "url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+          "source_url": "https://people.miami.edu/profile/1be2574226bd644778a73b5c49f2723f ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-chem-bb2aa9f3",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Marc R Knecht",
+          "url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+          "source_url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+          "active": false
+        },
+        {
+          "name": "Marc R Knecht",
+          "url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+          "source_url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+          "active": false
+        },
+        {
+          "name": "Marc R Knecht",
+          "url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+          "source_url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-chem-a0149798",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Claes R. Wahlestedt",
+          "url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+          "source_url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+          "active": true
+        },
+        {
+          "name": "Claes R. Wahlestedt",
+          "url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+          "source_url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+          "active": true
+        },
+        {
+          "name": "Claes R. Wahlestedt",
+          "url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+          "source_url": "https://people.miami.edu/profile/5ee1f54d90d032382411370bb611716e ",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-bio-4dfe1b88",
+      "original_reason": "remaining address is rejected by the existing public projector",
+      "states": [
+        {
+          "name": "‌Don DeAngelis",
+          "url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+          "source_url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+          "active": true
+        },
+        {
+          "name": "‌Don DeAngelis",
+          "url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+          "source_url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+          "active": true
+        },
+        {
+          "name": "‌Don DeAngelis",
+          "url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+          "source_url": "https://people.miami.edu/profile/ddeangelis@miami.edu ",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-eng-4c63f134",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Kimberly Reyes",
+          "url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+          "source_url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+          "active": false
+        },
+        {
+          "name": "Kimberly Reyes",
+          "url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+          "source_url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+          "active": false
+        },
+        {
+          "name": "Kimberly Reyes",
+          "url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+          "source_url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-soc-333506ca",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Kathryn M Nowotny",
+          "url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+          "source_url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+          "active": false
+        },
+        {
+          "name": "Kathryn M Nowotny",
+          "url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+          "source_url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+          "active": false
+        },
+        {
+          "name": "Kathryn M Nowotny",
+          "url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+          "source_url": "https://people.miami.edu/profile/72bba51e2227712bf10d1bd87b06ea20 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-phil-adf5263e",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Hwan Ryu",
+          "url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+          "source_url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+          "active": false
+        },
+        {
+          "name": "Hwan Ryu",
+          "url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+          "source_url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+          "active": false
+        },
+        {
+          "name": "Hwan Ryu",
+          "url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+          "source_url": "https://people.miami.edu/profile/450d8669527038e4eda1fd30ceae91f6 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-anth-f44ecccd",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Karlisa Alicia Callwood",
+          "url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+          "source_url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+          "active": false
+        },
+        {
+          "name": "Karlisa Alicia Callwood",
+          "url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+          "source_url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+          "active": false
+        },
+        {
+          "name": "Karlisa Alicia Callwood",
+          "url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+          "source_url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-anth-659f1e32",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Theresa Pinto",
+          "url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+          "source_url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+          "active": false
+        },
+        {
+          "name": "Theresa Pinto",
+          "url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+          "source_url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+          "active": false
+        },
+        {
+          "name": "Theresa Pinto",
+          "url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+          "source_url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-tha-8bbb317a",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Jordan Jones",
+          "url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+          "source_url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+          "active": false
+        },
+        {
+          "name": "Jordan Jones",
+          "url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+          "source_url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+          "active": false
+        },
+        {
+          "name": "Jordan Jones",
+          "url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+          "source_url": "https://people.miami.edu/profile/65a9c2147b85f40ec31d0bc5dfe9b8a2 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-art-604e3825",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Nathan James Timpano",
+          "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+          "source_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c ",
+          "active": true
+        },
+        {
+          "name": "Nathan James Timpano",
+          "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+          "source_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+          "active": true
+        },
+        {
+          "name": "Nathan James Timpano",
+          "url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+          "source_url": "https://people.miami.edu/profile/48a2c3ffab0fc77f5fa883edf97ace8c",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-ise-53e51312",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Cheng-Bang Chen",
+          "url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+          "source_url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+          "active": false
+        },
+        {
+          "name": "Cheng-Bang Chen",
+          "url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+          "source_url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+          "active": false
+        },
+        {
+          "name": "Cheng-Bang Chen",
+          "url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+          "source_url": "https://people.miami.edu/profile/a5bcffd617e5f70be8fd3f93ca5921c5 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-sonhs-2781d776",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Ruth Everett-Thomas",
+          "url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+          "source_url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+          "active": false
+        },
+        {
+          "name": "Ruth Everett-Thomas",
+          "url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+          "source_url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+          "active": false
+        },
+        {
+          "name": "Ruth Everett-Thomas",
+          "url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+          "source_url": "https://people.miami.edu/profile/1ccd8e0eb999ba07f5e72e698e6d4931 ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-sonhs-4832609f",
+      "original_reason": "historical row; separate identity and link review",
+      "states": [
+        {
+          "name": "Wonsuk Yoo",
+          "url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+          "source_url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+          "active": false
+        },
+        {
+          "name": "Wonsuk Yoo",
+          "url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+          "source_url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+          "active": false
+        },
+        {
+          "name": "Wonsuk Yoo",
+          "url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+          "source_url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc ",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-miami-mll-791077cc",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Chloe Ming Hwa Summers Edmondson",
+          "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd ",
+          "source_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd ",
+          "active": true
+        },
+        {
+          "name": "Chloe Ming Hwa Summers Edmondson",
+          "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+          "source_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+          "active": true
+        },
+        {
+          "name": "Chloe Ming Hwa Summers Edmondson",
+          "url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+          "source_url": "https://people.miami.edu/profile/516e10f611757d73af54c09a763afdcd",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-b87b919a",
+      "original_reason": "institution returned 404 or 410 for the cleaned original",
+      "states": [
+        {
+          "name": "Lori Levin",
+          "url": "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html ",
+          "source_url": "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html ",
+          "active": true
+        },
+        {
+          "name": "Lori Levin",
+          "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+          "source_url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+          "active": true
+        },
+        {
+          "name": "Lori Levin",
+          "url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+          "source_url": "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-14fc90c7",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Charles Perfetti",
+          "url": "\n  http://www.pitt.edu/~perfetti/charles-perfetti.htm ",
+          "source_url": "\n  http://www.pitt.edu/~perfetti/charles-perfetti.htm ",
+          "active": true
+        },
+        {
+          "name": "Charles Perfetti",
+          "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+          "source_url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+          "active": false
+        },
+        {
+          "name": "Charles Perfetti",
+          "url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+          "source_url": "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-84c5021c",
+      "original_reason": "institution returned 404 or 410 for the cleaned original",
+      "states": [
+        {
+          "name": "Mandy Simons",
+          "url": "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html ",
+          "source_url": "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html ",
+          "active": true
+        },
+        {
+          "name": "Mandy Simons",
+          "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+          "source_url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+          "active": true
+        },
+        {
+          "name": "Mandy Simons",
+          "url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+          "source_url": "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-e0bda033",
+      "original_reason": "institution returned 404 or 410 for the cleaned original",
+      "states": [
+        {
+          "name": "Kate Stanton",
+          "url": "https://www.philosophy.pitt.edu/person/kate-stanton ",
+          "source_url": "https://www.philosophy.pitt.edu/person/kate-stanton ",
+          "active": true
+        },
+        {
+          "name": "Kate Stanton",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "source_url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false
+        },
+        {
+          "name": "Kate Stanton",
+          "url": "https://philosophy.pitt.edu/people/kstanton",
+          "source_url": "https://philosophy.pitt.edu/people/kstanton",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Natasha Tokowicz",
+          "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd ",
+          "source_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd ",
+          "active": true
+        },
+        {
+          "name": "Natasha Tokowicz",
+          "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+          "source_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+          "active": true
+        },
+        {
+          "name": "Natasha Tokowicz",
+          "url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+          "source_url": "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-uf-phy-51d99691",
+      "original_reason": "current individual destination/roster match unconfirmed",
+      "states": [
+        {
+          "name": "Jeff ANDREWS",
+          "url": "https://phys.ufl.edu/people/faculty/jeff-andrews/ ",
+          "source_url": "https://phys.ufl.edu/people/faculty/jeff-andrews/ ",
+          "active": true
+        },
+        {
+          "name": "Jeff ANDREWS",
+          "url": "https://phys.ufl.edu/people/faculty/jeff-andrews/ ",
+          "source_url": "https://phys.ufl.edu/people/faculty/jeff-andrews/ ",
+          "active": true
+        },
+        {
+          "name": "Jeff Andrews",
+          "url": "https://phys.ufl.edu/directory/jeff-andrews/",
+          "source_url": "https://phys.ufl.edu/directory/jeff-andrews/",
+          "active": true
+        }
+      ]
+    }
+  ],
+  "miami_public_baseline": {
+    "before_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "observed": [
+      {
+        "id": "faculty-miami-chem-d89d76d6",
+        "api_id_ok": true,
+        "public_name": "Leslie D Knecht",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "error": "HTTP Error 404: Not Found"
+      },
+      {
+        "id": "faculty-miami-chem-bb2aa9f3",
+        "api_id_ok": true,
+        "public_name": "Marc R Knecht",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "school_http": 200,
+        "school_final_url": "https://people.miami.edu/profile/72cc5a22135f252c490e690d0ce573e7",
+        "school_headings": [
+          "Marc Knecht",
+          "University of Miami",
+          "University of Miami",
+          "Marc R Knecht"
+        ],
+        "school_canonical": null
+      },
+      {
+        "id": "faculty-miami-chem-a0149798",
+        "api_id_ok": true,
+        "public_name": "Claes R. Wahlestedt",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": true,
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "id": "faculty-miami-bio-4dfe1b88",
+        "api_id_ok": true,
+        "public_name": "‌Don DeAngelis",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": true,
+        "school_http": 200,
+        "school_final_url": "https://people.miami.edu/profile/ddeangelis@miami.edu",
+        "school_headings": [
+          "‌Don DeAngelis",
+          "University of Miami",
+          "University of Miami",
+          "‌Don DeAngelis"
+        ],
+        "school_canonical": null
+      },
+      {
+        "id": "faculty-miami-eng-4c63f134",
+        "api_id_ok": true,
+        "public_name": "Kimberly Reyes",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "school_http": 200,
+        "school_final_url": "https://people.miami.edu/profile/2e0602d03d30f879a861853cb1df0948",
+        "school_headings": [
+          "Kimberly Connor-Reyes",
+          "University of Miami",
+          "University of Miami",
+          "Kimberly Connor-Reyes"
+        ],
+        "school_canonical": null
+      },
+      {
+        "id": "faculty-miami-soc-333506ca",
+        "api_id_ok": true,
+        "public_name": "Kathryn M Nowotny",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "id": "faculty-miami-phil-adf5263e",
+        "api_id_ok": true,
+        "public_name": "Hwan Ryu",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "error": "HTTP Error 404: Not Found"
+      },
+      {
+        "id": "faculty-miami-anth-f44ecccd",
+        "api_id_ok": true,
+        "public_name": "Karlisa Alicia Callwood",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "school_http": 200,
+        "school_final_url": "https://people.miami.edu/profile/e4cf30fce1b3b45ffde1f5f7dde2ca37",
+        "school_headings": [
+          "Karlisa Callwood",
+          "University of Miami",
+          "University of Miami",
+          "Karlisa Alicia Callwood"
+        ],
+        "school_canonical": null
+      },
+      {
+        "id": "faculty-miami-anth-659f1e32",
+        "api_id_ok": true,
+        "public_name": "Theresa Pinto",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "school_http": 200,
+        "school_final_url": "https://people.miami.edu/profile/dd529e42c1b64d3e34be8e6b524f2261",
+        "school_headings": [
+          "Theresa Pinto",
+          "University of Miami",
+          "University of Miami",
+          "Theresa Pinto"
+        ],
+        "school_canonical": null
+      },
+      {
+        "id": "faculty-miami-tha-8bbb317a",
+        "api_id_ok": true,
+        "public_name": "Jordan Jones",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "error": "HTTP Error 404: Not Found"
+      },
+      {
+        "id": "faculty-miami-ise-53e51312",
+        "api_id_ok": true,
+        "public_name": "Cheng-Bang Chen",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "error": "HTTP Error 404: Not Found"
+      },
+      {
+        "id": "faculty-miami-sonhs-2781d776",
+        "api_id_ok": true,
+        "public_name": "Ruth Everett-Thomas",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "error": "HTTP Error 404: Not Found"
+      },
+      {
+        "id": "faculty-miami-sonhs-4832609f",
+        "api_id_ok": true,
+        "public_name": "Wonsuk Yoo",
+        "public_url": null,
+        "public_source": null,
+        "public_actionable": false,
+        "school_http": 200,
+        "school_final_url": "https://people.miami.edu/profile/52de17354eead20a354e1186018101fc",
+        "school_headings": [
+          "Wonsuk Yoo",
+          "University of Miami",
+          "University of Miami",
+          "Wonsuk Yoo"
+        ],
+        "school_canonical": null
+      }
+    ],
+    "after_sha": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+    "utc": "2026-11-26T23:08:35.189643+00:00"
+  }
+}
