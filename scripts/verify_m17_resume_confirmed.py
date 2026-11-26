@@ -53,7 +53,7 @@ def main():
         expect(p.get_by_role('button',name='Remove file',exact=True)).to_be_visible(timeout=65000)
         p.get_by_role('button',name='Prepare excerpts for review',exact=True).click()
         summary=p.locator('#experience-library summary').filter(has_text=first).first
-        expect(summary).to_contain_text('Candidate',ignore_case=True,timeout=35000)
+        expect(summary).to_contain_text('Needs confirmation',ignore_case=True,timeout=35000)
         p.wait_for_timeout(3000)
         c.close()
         c,p,(revision,profile)=read(lambda d:any(e['status']=='candidate' and first in e['text'] for e in d.get('experience_entries',[])))
