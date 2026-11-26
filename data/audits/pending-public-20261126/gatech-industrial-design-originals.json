@@ -1,0 +1,131 @@
+{
+  "release": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "observed_date": 20261126,
+  "candidate_originals": [
+    {
+      "source_id": "faculty-gatech-id-52e0ff3b",
+      "public_id": "faculty-gatech-id-52e0ff3b",
+      "official_url": "https://id.gatech.edu/people/leila-aflatoony",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-5474de17",
+      "public_id": "faculty-gatech-id-5474de17",
+      "official_url": "https://id.gatech.edu/people/roger-ball",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-e7117291",
+      "public_id": "faculty-gatech-id-e7117291",
+      "official_url": "https://id.gatech.edu/people/jonathan-colton",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-897c1ca5",
+      "public_id": "faculty-gatech-id-897c1ca5",
+      "official_url": "https://id.gatech.edu/people/stephen-harmon",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-a93c7977",
+      "public_id": "faculty-gatech-arch-fe01c8ef",
+      "official_url": "https://id.gatech.edu/people/sabir-khan",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-fe460077",
+      "public_id": "faculty-gatech-id-fe460077",
+      "official_url": "https://id.gatech.edu/people/eunsook-kwon",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-ffeedb7b",
+      "public_id": "faculty-gatech-id-ffeedb7b",
+      "official_url": "https://id.gatech.edu/people/wayne-li",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-ba03be7a",
+      "public_id": "faculty-gatech-id-ba03be7a",
+      "official_url": "https://id.gatech.edu/people/lisa-marks",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-87f93bef",
+      "public_id": "faculty-gatech-id-87f93bef",
+      "official_url": "https://id.gatech.edu/people/leandro-tonetto",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-d2a7c020",
+      "public_id": "faculty-gatech-id-d2a7c020",
+      "official_url": "https://id.gatech.edu/people/hyunjoo-oh",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-3db2b675",
+      "public_id": "faculty-gatech-id-3db2b675",
+      "official_url": "https://id.gatech.edu/people/stephen-sprigle",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-80bad501",
+      "public_id": "faculty-gatech-id-80bad501",
+      "official_url": "https://id.gatech.edu/people/abigale-stangl",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    },
+    {
+      "source_id": "faculty-gatech-id-30c3e7d8",
+      "public_id": "faculty-gatech-id-30c3e7d8",
+      "official_url": "https://id.gatech.edu/people/yixiao-wang",
+      "official_named_profile_http": 200,
+      "public_detail_http": 200,
+      "public_page_http": 200,
+      "existing_identity_and_rank_match": true
+    }
+  ],
+  "eligible_originals_on_repeated_merges": [
+    13,
+    13
+  ],
+  "missing_originals_on_repeated_merges": [
+    0,
+    0
+  ]
+}
