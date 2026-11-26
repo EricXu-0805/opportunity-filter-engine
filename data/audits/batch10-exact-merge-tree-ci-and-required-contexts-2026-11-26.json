@@ -1,0 +1,61 @@
+{
+  "time_utc": "2026-11-26T15:37:44.303476+00:00",
+  "pr": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1384",
+  "actual_main": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "head": "14b61b8bbf89571e3bb3681f6d35d1118c6fd5de",
+  "github_test_merge_commit": "cbc16304f3a7c525eb43fa5ea26322ff26f34bdd",
+  "identical_source_and_test_merge_tree": "2aeda873479532bbd04ba0e810fa69717f8d86cf",
+  "actual_main_is_immediate_parent_of_head": true,
+  "pr_state": "open",
+  "pr_draft": false,
+  "mergeability": "blocked",
+  "exact_ci": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448",
+  "event": "workflow_dispatch",
+  "conclusion": "success",
+  "ci_completed": "2026-11-26T15:14:41Z",
+  "jobs": [
+    {
+      "name": "Decide (run or skip the suite)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448/job/139988549177"
+    },
+    {
+      "name": "Backend (lint + pytest)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448/job/139988684172"
+    },
+    {
+      "name": "Frontend (typecheck + build)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448/job/139988684213"
+    },
+    {
+      "name": "Migrations (Flow B merge + CLI replay)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448/job/139988684248"
+    },
+    {
+      "name": "E2E (Playwright)",
+      "conclusion": "success",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448/job/139988684250"
+    },
+    {
+      "name": "Deploy backend (Render hook)",
+      "conclusion": "skipped",
+      "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45842782448/job/140003552938"
+    }
+  ],
+  "strict_branch_status_requirements": [
+    "Backend (lint + pytest)",
+    "Frontend (typecheck + build)",
+    "E2E (Playwright)"
+  ],
+  "required_head_check_results": {
+    "Backend (lint + pytest)": "success",
+    "Frontend (typecheck + build)": "success",
+    "E2E (Playwright)": "success"
+  },
+  "github_generated_test_merge_checks": [],
+  "readiness": "Four candidate suites succeeded. The GitHub PR indicates no tree conflict but is still blocked for merge. The ordinary protected merge and deployment are pending.",
+  "existing_full_diff_and_original_id_receipt": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/1df1141f1fc1a457258d512bca7866be6a78e4db/data/audits/batch10-final-same-tree-and-actual-main-2026-11-26.json"
+}
