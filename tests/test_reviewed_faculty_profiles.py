@@ -24,12 +24,20 @@ VT_APPOINTMENTS = {
 }
 PREVIOUS_TITLES = {
     **dict.fromkeys(VT_APPOINTMENTS, ""),
+    "faculty-duke-nurs-36cb4f9e": "Associate Professor",
+    "faculty-pitt-ling-14fc90c7": "Professor of psychology and linguistics",
+    "faculty-pitt-ling-00bb851a": "Associate Professor, Department of Psychology",
+    "faculty-pitt-ling-b87b919a": "Associate Professor, Carnegie Mellon",
+    "faculty-pitt-ling-84c5021c": "Professor of philosophy, Carnegie Mellon",
+    "faculty-pitt-ling-e0bda033": "Assistant Professor, Philosophy &",
     "faculty-ucsc-envs-c7e85a3f": "Distinguished Professor",
     HERSHATTER: "Research Professor and Distinguished Professor of History Emer.",
     "faculty-ucsc-lit-f8043691": "Professor of Literature",
 }
 ARCHIVED = {
     **VT_APPOINTMENTS,
+    "faculty-duke-nurs-36cb4f9e": ("Retired Associate Clinical Professor", "retired_title"),
+    "faculty-pitt-ling-14fc90c7": ("Retired Distinguished University Professor of Psychology", "retired_title"),
     "faculty-ucsc-envs-c7e85a3f": ("Distinguished Professor Emeritus; Director of UCSC Forest Ecology Research Plot", "retired_title"),
     "faculty-ucsc-lit-f8043691": ("Professor Emeritx of Literature; Founding Director, Teaching and Learning Center", "retired_title"),
     HERSHATTER: ("Research Professor and Distinguished Professor of History Emerita", "retired_title"),
@@ -310,3 +318,57 @@ def test_an_unranked_refresh_preserves_a_review_until_the_source_reports_a_new_a
         other = {**_old(oid), **changed}
         carry_forward_reviewed_appointment(archived, other)
         assert other["metadata"]["is_active"] is True
+
+
+@pytest.mark.parametrize("oid", [
+    "faculty-pitt-ling-b87b919a", "faculty-pitt-ling-84c5021c",
+    "faculty-pitt-ling-e0bda033", "faculty-duke-nurs-36cb4f9e",
+    "faculty-pitt-ling-14fc90c7", "faculty-pitt-ling-00bb851a",
+])
+def test_padded_saved_profile_and_unchanged_roster_are_reviewed_without_touching_later_appointments(oid):
+    review = REVIEWS[oid]
+    row = _old(oid)
+    row["url"] = row["source_url"] = row["application"]["application_url"] = f"\n  {review.previous_url} "
+    row["organization"] = "Duke University" if review.school == "duke" else "University of Pittsburgh"
+    source_summary = (f"Faculty research profile for {review.previous_title} {review.name} in the "
+                      f"{review.department} at {row['organization']}. Contact this faculty member "
+                      "to ask whether undergraduate research opportunities are currently available.")
+    row["eligibility"] = {"eligibility_text_raw": source_summary}
+    row["description_raw"] = "Independently reported source text."
+    row["description_clean"] = source_summary
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF) == 1
+    assert row["url"] == row["source_url"] == row["application"]["application_url"] == review.profile_url
+    assert row["description_clean"] == row["eligibility"]["eligibility_text_raw"] == review.appointment_summary
+    assert row["description_raw"] == "Independently reported source text."
+    assert row["metadata"]["is_active"] == (oid not in ARCHIVED)
+    assert not apply_reviewed_faculty_profiles([row], today=AS_OF)
+
+    fresh = _old(oid)
+    fresh["metadata"]["faculty_title"] = "Professor and Department Chair"
+    fresh["url"] = fresh["source_url"] = "https://campus.example.edu/faculty/new-biography"
+    original = deepcopy(fresh)
+    assert not apply_reviewed_faculty_profiles([fresh], today=AS_OF)
+    assert fresh == original
+
+
+def test_pitt_reappointment_keeps_the_new_rank_and_current_profile_independently():
+    oid = "faculty-pitt-ling-e0bda033"
+    row = _old(oid)
+    row["metadata"]["faculty_title"] = "Professor of Philosophy"
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF)
+    assert row["url"] == row["source_url"] == REVIEWS[oid].profile_url
+    assert row["metadata"]["faculty_title"] == "Professor of Philosophy"
+    assert "previous_title" not in row["metadata"]["faculty_profile_review"]
+
+
+@pytest.mark.parametrize("padded_receipt", [False, True])
+def test_recovered_personal_page_is_publishable_from_a_padded_saved_row(padded_receipt):
+    oid = "faculty-pitt-ling-e0bda033"
+    row = _old(oid)
+    if not padded_receipt:
+        _successful_profile_read(row, attempted="2026-11-26T19:09:00+00:00")
+    row["url"] = row["source_url"] = f"  {row['url']} "
+    if padded_receipt:
+        _successful_profile_read(row, attempted="2026-11-26T19:09:00+00:00")
+    assert apply_reviewed_faculty_profiles([row], today=AS_OF)
+    assert row["url"] == row["source_url"] == REVIEWS[oid].previous_url

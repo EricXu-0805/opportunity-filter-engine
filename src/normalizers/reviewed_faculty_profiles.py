@@ -25,6 +25,8 @@ class ProfileReview:
     previous_title: str | None = None
     previous_department_label: str | None = None
     previous_is_directory: bool = False
+    appointment_summary: str | None = None
+    independently_verified_profile: bool = False
 
     @property
     def reviewed_on(self) -> date:
@@ -59,6 +61,61 @@ def _umd_math_directory_profile(name: str, profile: str) -> ProfileReview:
 
 
 REVIEWS = {
+    "faculty-pitt-ling-14fc90c7": ProfileReview(
+        "pitt", "Department of Linguistics", "Charles Perfetti",
+        "http://www.pitt.edu/~perfetti/charles-perfetti.htm",
+        "https://www.psychology.pitt.edu/people/charles-perfetti-phd",
+        "https://lrdc.pitt.edu/departments-and-services/communications-news-media/"
+        "enduring-legacy-distinguished-university-professor-and-former-lrdc-director-charles-perfetti-retire",
+        datetime(2026, 11, 26, 19, 12, tzinfo=UTC),
+        title="Retired Distinguished University Professor of Psychology",
+        previous_title="Professor of psychology and linguistics", independently_verified_profile=True,
+        appointment_summary="Pitt reports that Charles Perfetti retired from the university on January 31, 2026."),
+    "faculty-pitt-ling-00bb851a": ProfileReview(
+        "pitt", "Department of Linguistics", "Natasha Tokowicz",
+        "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+        "https://psychology.pitt.edu/people/natasha-tokowicz-phd",
+        "https://www.provost.pitt.edu/people/natasha-tokowicz",
+        datetime(2026, 11, 26, 19, 12, tzinfo=UTC),
+        title="Professor of Psychology and Linguistics", previous_title="Associate Professor, Department of Psychology",
+        independently_verified_profile=True,
+        appointment_summary="Natasha Tokowicz is a professor of psychology and linguistics at Pitt."),
+    "faculty-pitt-ling-b87b919a": ProfileReview(
+        "pitt", "Department of Linguistics", "Lori Levin",
+        "https://www.cmu.edu/dietrich/linguistics/faculty/lori-levin.html",
+        "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+        "https://www.lti.cmu.edu/people/faculty/levin-lori.html",
+        datetime(2026, 11, 26, 19, 8, tzinfo=UTC),
+        title="Affiliated faculty in Linguistics (Pitt) · Research Professor (Carnegie Mellon)",
+        previous_title="Associate Professor, Carnegie Mellon",
+        independently_verified_profile=True, appointment_summary="Pitt lists Lori Levin as affiliated faculty in Linguistics. "
+                            "Levin is a research professor in Carnegie Mellon's Language Technologies Institute."),
+    "faculty-pitt-ling-84c5021c": ProfileReview(
+        "pitt", "Department of Linguistics", "Mandy Simons",
+        "https://www.cmu.edu/dietrich/linguistics/faculty/mandy-simons.html",
+        "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+        "https://www.cmu.edu/dietrich/philosophy/people/faculty/simons.html",
+        datetime(2026, 11, 26, 19, 8, tzinfo=UTC),
+        title="Adjunct in Linguistics (Pitt) · Professor of Philosophy (Carnegie Mellon)",
+        previous_title="Professor of philosophy, Carnegie Mellon",
+        independently_verified_profile=True, appointment_summary="Mandy Simons is a professor of philosophy at Carnegie Mellon "
+                            "with an adjunct appointment in Linguistics at Pitt."),
+    "faculty-pitt-ling-e0bda033": ProfileReview(
+        "pitt", "Department of Linguistics", "Kate Stanton",
+        "https://www.philosophy.pitt.edu/person/kate-stanton",
+        "https://philosophy.pitt.edu/people/kstanton", "https://philosophy.pitt.edu/people/kstanton",
+        datetime(2026, 11, 26, 19, 8, tzinfo=UTC),
+        title="Associate Professor of Philosophy · Secondary appointment in Linguistics",
+        previous_title="Assistant Professor, Philosophy &",
+        independently_verified_profile=True, appointment_summary="Kate Stanton is an associate professor of philosophy at Pitt "
+                            "with a secondary appointment in Linguistics."),
+    "faculty-duke-nurs-36cb4f9e": ProfileReview(
+        "duke", "School of Nursing", "Lisa S. Lewis", "https://scholars.duke.edu/person/lisa.lewis",
+        "https://dukeahead.duke.edu/profile/lisa-lewis",
+        "https://nursing.duke.edu/sites/default/files/documents/Duke%20Nursing%20Magazine%20Fall-Winter%202026.pdf#page=21",
+        datetime(2026, 11, 26, 19, 8, tzinfo=UTC),
+        title="Retired Associate Clinical Professor", previous_title="Associate Professor",
+        independently_verified_profile=True, appointment_summary="Duke's School of Nursing lists Lisa S. Lewis among its retiring faculty in 2026."),
     "faculty-vt-che-be391032": _vt_che("Donald Baird",
         "faculty/Baird.html", "Professor Emeritus"),
     "faculty-vt-che-762a80d6": _vt_che("David Cox",
@@ -156,11 +213,20 @@ def _old_page_restored(row: dict, review: ProfileReview) -> bool:
     # Its successful read cannot make it their individual profile.
     if review.previous_is_directory:
         return False
-    for page in contact_instruction_pages(row):
+    pages = contact_instruction_pages(row)
+    # Older shards may have padding only on the stored address while the fetch
+    # recorded the clean URL. Recheck the existing identity-bound receipt on
+    # that address; never rewrite the historical fetch observation.
+    if not pages and row["url"] != row["url"].strip(" \t\r\n\f"):
+        clean_row = dict(row, url=row["url"].strip(" \t\r\n\f"))
+        if row.get("source_url") == row["url"]:
+            clean_row["source_url"] = clean_row["url"]
+        pages = contact_instruction_pages(clean_row)
+    for page in pages:
         receipt = page.get("receipt") or {}
         if (receipt.get("status") in {"captured", "empty"}
-                and same_source_page(page["requested_source_url"], review.previous_url)
-                and same_source_page(receipt["source_url"], review.previous_url)
+                and same_source_page(page["requested_source_url"].strip(" \t\r\n\f"), review.previous_url)
+                and same_source_page(receipt["source_url"].strip(" \t\r\n\f"), review.previous_url)
                 and datetime.fromisoformat(receipt["attempted_at"]) > review.reviewed_at):
             return True
     return False
@@ -170,7 +236,8 @@ def _matches_review(row: dict, review: ProfileReview) -> bool:
     return (
         row.get("school") == review.school and row.get("department") == review.department
         and row.get("source") == f"{review.school}_faculty" and row.get("source_type") == "faculty_research"
-        and row.get("pi_name") == review.name and row.get("url") in (review.previous_url, review.profile_url)
+        and row.get("pi_name") == review.name
+        and isinstance(row.get("url"), str) and row["url"].strip(" \t\r\n\f") in (review.previous_url, review.profile_url)
     )
 
 
@@ -208,10 +275,16 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
     metadata = row.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("is_active") is False:
         return False
-    if review.previous_title is not None and (metadata.get("faculty_title") or "") != review.previous_title:
+    matches_title = review.previous_title is None or (metadata.get("faculty_title") or "") == review.previous_title
+    if not matches_title and not review.independently_verified_profile:
         return False
-    update_url = (row["url"] == review.previous_url and review.previous_url != review.profile_url
-                  and not _old_page_restored(row, review))
+    original_url = row["url"]
+    clean_url = original_url.strip(" \t\r\n\f")
+    destination = clean_url
+    if clean_url == review.previous_url and clean_url != review.profile_url and not _old_page_restored(row, review):
+        destination = review.profile_url
+    update_url = original_url != destination
+    update_title = matches_title and review.title
     # Even a successful fetch of a restored URL establishes the address only.
     # An old directory title cannot overturn the appointment on the reviewed
     # emeritus roster and profile. A different appointment URL is outside this review.
@@ -223,21 +296,30 @@ def apply_reviewed_faculty_profile(row: dict, selected=None, *, today: date | No
             stamp_inferred(metadata, "keywords", DEPARTMENT_FIELD_METHOD)
         metadata["research_areas_raw"] = ""
         metadata.pop("research_areas_verified_at", None)
-    if not update_url and not review.title:
+    if not update_url and not update_title:
         return False
     if update_url:
-        row["url"] = review.profile_url
-        if row.get("source_url") == review.previous_url:
-            row["source_url"] = review.profile_url
+        row["url"] = destination
+        if row.get("source_url") in (original_url, review.previous_url):
+            row["source_url"] = destination
         application = row.get("application")
-        if isinstance(application, dict) and application.get("application_url") == review.previous_url:
-            application["application_url"] = review.profile_url
+        if isinstance(application, dict) and application.get("application_url") in (original_url, review.previous_url):
+            application["application_url"] = destination
     metadata["faculty_profile_review"] = {
         "previous_url": review.previous_url, "source_url": review.roster_url,
         "reviewed_on": review.reviewed_on.isoformat(),
     }
-    if review.title:
+    if update_title:
         metadata["faculty_profile_review"]["previous_title"] = metadata.get("faculty_title")
+        if review.appointment_summary and row.get("organization"):
+            original = (f"Faculty research profile for {review.previous_title} {review.name} "
+                        f"in the {review.department} at {row['organization']}. "
+                        "Contact this faculty member to ask whether undergraduate research opportunities "
+                        "are currently available.")
+            for target, field in ((row, "description_clean"), (row, "description_raw"),
+                                  (row.get("eligibility") or {}, "eligibility_text_raw")):
+                if target.get(field) == original:
+                    target[field] = review.appointment_summary
         metadata["faculty_title"] = review.title
         if classify_title:
             deactivate_deceased_faculty([row], today=review.reviewed_on)
