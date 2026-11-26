@@ -74,7 +74,7 @@ def measure_disclosure(page, url):
         page.wait_for_timeout(160)
     expect(first).to_be_focused()
     page.wait_for_timeout(1300)
-    summary=page.locator('summary')
+    summary=page.locator('summary').first
     obs=press_and_read(page,'Tab',summary)
     full=' '.join(obs['utterances']).casefold()
     # In synthetic data log the exact words and ordering even if Orca combined
@@ -86,7 +86,7 @@ def measure_disclosure(page, url):
     obs['dom_text']=summary.inner_text()
     obs['chromium_accessible_snapshot']=summary.aria_snapshot()
     key('Return')
-    expect(page.locator('details')).to_have_attribute('open','')
+    expect(summary.locator('..')).to_have_attribute('open','')
     obs['expanded']=True
     return obs
 
