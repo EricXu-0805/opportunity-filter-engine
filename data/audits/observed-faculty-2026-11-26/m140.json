@@ -1,0 +1,1620 @@
+{
+  "observed_utc": "2026-11-26T08:38:56.900390+00:00",
+  "release_sha": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "before_data_commit": "308e04289f19cc575d2ca0031e8ca217612dc71b^1",
+  "published_data_commit": "308e04289f19cc575d2ca0031e8ca217612dc71b",
+  "refresh_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+  "prior_counts": {
+    "observed_since_fix": 190,
+    "inactive": 8,
+    "active_date_old": 17,
+    "missing": 1
+  },
+  "current_counts": {
+    "observed_since_fix": 192,
+    "inactive": 8,
+    "active_date_old": 15,
+    "missing": 1
+  },
+  "changed_categories": [
+    {
+      "id": "faculty-purdue-bsc-e4bf6c5d",
+      "school": "purdue",
+      "before": "active_date_old",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-purdue-cs-bb6831d2",
+      "school": "purdue",
+      "before": "active_date_old",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    }
+  ],
+  "purdue_aliases": [
+    {
+      "id": "faculty-purdue-cs-bb6831d2",
+      "name": "Kazem Taram",
+      "profile_url": "https://www.cs.purdue.edu/people/faculty/mtaram.html",
+      "current": "observed_since_fix",
+      "deactivation_reason": null,
+      "duplicate_of": null,
+      "public": {
+        "http": 200,
+        "name": "Kazem Taram",
+        "id": "faculty-purdue-cs-bb6831d2",
+        "source_url": "https://www.cs.purdue.edu/people/faculty/mtaram.html",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-25",
+        "detail": "https://joinalab.com/opportunities/faculty-purdue-cs-bb6831d2"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Kazem Taram",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-purdue-bsc-e4bf6c5d",
+      "name": "Kyu Kang",
+      "profile_url": "https://polytechnic.purdue.edu/profile/kyukang",
+      "current": "observed_since_fix",
+      "deactivation_reason": null,
+      "duplicate_of": null,
+      "public": {
+        "http": 200,
+        "name": "Kyu Kang",
+        "id": "faculty-purdue-bsc-e4bf6c5d",
+        "source_url": "https://polytechnic.purdue.edu/profile/kyukang",
+        "actionable": true,
+        "reason": null,
+        "last_seen_listed_at": "2026-11-25",
+        "detail": "https://joinalab.com/opportunities/faculty-purdue-bsc-e4bf6c5d"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Kyu Kang",
+        "action_labels": []
+      }
+    },
+    {
+      "id": "faculty-purdue-cs-412c3ce0",
+      "name": "Kazem Taram",
+      "profile_url": "https://www.cs.purdue.edu/people/faculty/mtaram.html",
+      "current": "inactive",
+      "deactivation_reason": "duplicate_of_live_record",
+      "duplicate_of": "faculty-purdue-cs-bb6831d2",
+      "public": {
+        "http": 200,
+        "name": "Kazem Taram",
+        "id": "faculty-purdue-cs-412c3ce0",
+        "source_url": "https://www.cs.purdue.edu/people/faculty/mtaram.html",
+        "actionable": false,
+        "reason": "duplicate_of_live_record",
+        "last_seen_listed_at": "2026-11-18",
+        "detail": "https://joinalab.com/opportunities/faculty-purdue-cs-412c3ce0"
+      },
+      "html": {
+        "http": 200,
+        "h1": "Kazem Taram",
+        "action_labels": []
+      }
+    }
+  ],
+  "baseline_216": [
+    {
+      "id": "faculty-amherst-enst-878fdc63",
+      "school": "amherst",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-arizona-pbhl-ead8f540",
+      "school": "arizona",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-29"
+    },
+    {
+      "id": "faculty-boulder-chem-371636ec",
+      "school": "boulder",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-boulder-envs-727aa8eb",
+      "school": "boulder",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-29"
+    },
+    {
+      "id": "faculty-boulder-slhs-3bf64fa7",
+      "school": "boulder",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-29"
+    },
+    {
+      "id": "faculty-boulder-wgst-024d363a",
+      "school": "boulder",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-29"
+    },
+    {
+      "id": "faculty-bowdoin-eos-b01d2a34",
+      "school": "bowdoin",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-brown-mcm-9fcb6e49",
+      "school": "brown",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-buffalo-polsci-052b0cc3",
+      "school": "buffalo",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-carleton-afam-97122731",
+      "school": "carleton",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-carleton-ccst-284f2079",
+      "school": "carleton",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-carleton-dah-5fc0450c",
+      "school": "carleton",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-carleton-ents-32df1fa8",
+      "school": "carleton",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-cincinnati-biol-07d33a23",
+      "school": "cincinnati",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-cincinnati-psyc-88c48e44",
+      "school": "cincinnati",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-cincinnati-soc-10464c7f",
+      "school": "cincinnati",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-clemson-chem-4a302aba",
+      "school": "clemson",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-coloradocollege-anth-a2096d8c",
+      "school": "coloradocollege",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-coloradocollege-engl-28857bc4",
+      "school": "coloradocollege",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-colostate-bus-9d210abe",
+      "school": "colostate",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-08-29"
+    },
+    {
+      "id": "faculty-cornell-cs-57676ca4",
+      "school": "cornell",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-cornell-math-c0edc456",
+      "school": "cornell",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-cornell-math-db6a5c52",
+      "school": "cornell",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-dartmouth-engs-123137e4",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-25e781b6",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-2ddc5b4c",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-3787732a",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-3f027b38",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-4fce5dd7",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-5b3a0439",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-5ca6cbd7",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-62110018",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-62e653d2",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-6e591040",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-79c2d5ef",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-7c9fac50",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-809b4436",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-80ee9e17",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-861a4aaf",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-8c2ffb0f",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-8def6472",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-9b1a2520",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-9e2849e9",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-a816e02d",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-aa622242",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-adff57fb",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-b4e4f3f0",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-b5bcfffd",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-ba7aa88b",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-bcca3a8a",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-bcdffeb1",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-c15243bb",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-c177d451",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-c87a951e",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-d49d5887",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-engs-e7bc4ccc",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-mus-378e759c",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-dartmouth-thea-92b6282f",
+      "school": "dartmouth",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-duke-mems-4d3d5cd5",
+      "school": "duke",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-duke-mems-5c56b1f0",
+      "school": "duke",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-duke-mems-ea428fc7",
+      "school": "duke",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-duke-phil-5f22ad45",
+      "school": "duke",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-emory-nurs-98d8dd37",
+      "school": "emory",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-emory-nurs-e83f3643",
+      "school": "emory",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-23"
+    },
+    {
+      "id": "faculty-harvard-hls-02551060",
+      "school": "harvard",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-haverford-anth-585b98e5",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-6c3bdf7a",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-73903881",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-8112de5f",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-8b0c04ea",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-8b56d5fd",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-dccd5e1c",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-biol-e201d23a",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-haverford-econ-733a49f4",
+      "school": "haverford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-04"
+    },
+    {
+      "id": "faculty-houston-bme-1aa0fd3d",
+      "school": "houston",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-kenyon-phil-a3b1ca0b",
+      "school": "kenyon",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-lsu-cmst-99509bdb",
+      "school": "lsu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-lsu-soci-a1f3e89d",
+      "school": "lsu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-miami-art-604e3825",
+      "school": "miami",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-miami-sonhs-3042ed43",
+      "school": "miami",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-08-28"
+    },
+    {
+      "id": "faculty-njit-chem-cd6f856b",
+      "school": "njit",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-10"
+    },
+    {
+      "id": "faculty-njit-hss-abded0f8",
+      "school": "njit",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-10"
+    },
+    {
+      "id": "faculty-northwestern-ciera-9b57ab7e",
+      "school": "northwestern",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-09-11"
+    },
+    {
+      "id": "faculty-northwestern-math-7fcda76a",
+      "school": "northwestern",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-osu-bme-16e6344f",
+      "school": "osu",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-07-18"
+    },
+    {
+      "id": "faculty-osu-design-73e460f2",
+      "school": "osu",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-07-18"
+    },
+    {
+      "id": "faculty-osu-earth-132f633d",
+      "school": "osu",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-09-06"
+    },
+    {
+      "id": "faculty-osu-engl-0aab76dd",
+      "school": "osu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-osu-hist-093c8ed5",
+      "school": "osu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-osu-hist-7c954a01",
+      "school": "osu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-osu-math-97f2049e",
+      "school": "osu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-osu-polisci-ae97e652",
+      "school": "osu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-osu-soc-6a23677a",
+      "school": "osu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-pitt-che-4aab9df5",
+      "school": "pitt",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-pitt-che-e1310456",
+      "school": "pitt",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-29"
+    },
+    {
+      "id": "faculty-pitt-ling-00bb851a",
+      "school": "pitt",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-psu-csd-f21c1d37",
+      "school": "psu",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-purdue-bsc-e4bf6c5d",
+      "school": "purdue",
+      "before": "active_date_old",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-purdue-cs-bb6831d2",
+      "school": "purdue",
+      "before": "active_date_old",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-purdue-soet-e62b3700",
+      "school": "purdue",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-stanford-educ-0cd946fb",
+      "school": "stanford",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-syracuse-php-09f48758",
+      "school": "syracuse",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-tamu-bme-dccdf5db",
+      "school": "tamu",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-08-25"
+    },
+    {
+      "id": "faculty-tamu-ece-74ee208c",
+      "school": "tamu",
+      "before": "missing",
+      "after": "missing",
+      "last_seen_at": ""
+    },
+    {
+      "id": "faculty-ucf-cs-edfc1c62",
+      "school": "ucf",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-07-31"
+    },
+    {
+      "id": "faculty-uchicago-crown-609e894a",
+      "school": "uchicago",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-uci-phys-981c4356",
+      "school": "uci",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-ucla-epss-417dbefd",
+      "school": "ucla",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-ucsd-phil-a14e93b6",
+      "school": "ucsd",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-08-14"
+    },
+    {
+      "id": "faculty-ucsd-tdps-ed927348",
+      "school": "ucsd",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-uf-art3-c6d12231",
+      "school": "uf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-20"
+    },
+    {
+      "id": "faculty-uga-fina-4f496f3a",
+      "school": "uga",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-uky-acc-2d66e7fe",
+      "school": "uky",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-09-16"
+    },
+    {
+      "id": "faculty-unc-educ-c9538316",
+      "school": "unc",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-07-28"
+    },
+    {
+      "id": "faculty-unl-agro-f6340208",
+      "school": "unl",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-09-06"
+    },
+    {
+      "id": "faculty-usf-info-e14bee11",
+      "school": "usf",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-08-18"
+    },
+    {
+      "id": "faculty-usf-nurs-07f4d1cf",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-12cb0f60",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-135e7481",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-22992a9c",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-2774b516",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-355f9fcf",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-37081ab2",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-4077d9af",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-5ce988f5",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-6c49579e",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-75c4a850",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-82e5e836",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-86fb20b1",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-8acd0752",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-8ece49e8",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-a21c2ada",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-c2a88f26",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-c45637b9",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-d66ad3e8",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-dfa7320c",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-eaf9b91f",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-f1d6710a",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-usf-nurs-f9389d5b",
+      "school": "usf",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-24"
+    },
+    {
+      "id": "faculty-utexas-aero-00855ada",
+      "school": "utexas",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-utexas-linguistics-ab991fd0",
+      "school": "utexas",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-10-08"
+    },
+    {
+      "id": "faculty-utexas-td-d00c0f11",
+      "school": "utexas",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-29"
+    },
+    {
+      "id": "faculty-utk-mse-6a18d92d",
+      "school": "utk",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-21"
+    },
+    {
+      "id": "faculty-uw-nurs-7107a1f8",
+      "school": "uw",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-vanderbilt-frit-e7199b52",
+      "school": "vanderbilt",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-19"
+    },
+    {
+      "id": "faculty-vanderbilt-math-1d5fbacf",
+      "school": "vanderbilt",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-08-20"
+    },
+    {
+      "id": "faculty-wisc-consci-cd2160dd",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-cs-8742a33d",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-cs-b7fae59b",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-cscs-3590dd17",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-cscs-3c9426d6",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-econ-7e90db8a",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-econ-8e19eaeb",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-elpa-4ef6e11a",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-elpa-c72c0f7d",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-elpa-fabc11f6",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-engl-52878de6",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-engl-5c29bdb9",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-geo-3486bf32",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-geo-39d78fb0",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-geo-3f0d21b8",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-geog-f889e88e",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-056848c2",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-0a9ca002",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-0c778145",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-13a479d2",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-1525b8c7",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-1a404569",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-28f45871",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-3505ca23",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-3f8206c9",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-520f6896",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-5390487c",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-60519148",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-606a2abf",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-62fdb310",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-6cb8ec82",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-70e6c22c",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-791c5fed",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-7a0ef2fc",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-7f8e204b",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-80177db9",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-87a50b2f",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-92945c36",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-94355118",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-999570b1",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-a3c26915",
+      "school": "wisc",
+      "before": "inactive",
+      "after": "inactive",
+      "last_seen_at": "2026-10-28"
+    },
+    {
+      "id": "faculty-wisc-law-ae6a82da",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-b6c70ca9",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-b76d546f",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-c78e99d8",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-e693e446",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-e7fcd9ba",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-e820e73f",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-f115312b",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-fc5a102a",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-law-fe58911e",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-mhr-608e6b9e",
+      "school": "wisc",
+      "before": "active_date_old",
+      "after": "active_date_old",
+      "last_seen_at": "2026-06-29"
+    },
+    {
+      "id": "faculty-wisc-nurs-0403a858",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-177f4e4e",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-1f158472",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-2bfac834",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-2c79910f",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-47721b50",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-53146fb7",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-53c51e3d",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-5e2eeba2",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-6c749bdf",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-7b68bb0c",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-8b0dc54f",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-9f457188",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-a3328a13",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-b8fe2339",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-nurs-dd10985f",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-phil-a4bc8af3",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    },
+    {
+      "id": "faculty-wisc-pubaff-864d3065",
+      "school": "wisc",
+      "before": "observed_since_fix",
+      "after": "observed_since_fix",
+      "last_seen_at": "2026-11-25"
+    }
+  ]
+}
