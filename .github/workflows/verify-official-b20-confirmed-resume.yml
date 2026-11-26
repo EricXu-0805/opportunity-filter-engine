@@ -21,5 +21,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install --quiet playwright==1.55.0
-      - name: Verify the official PDF picker, personal confirmation and clean-browser matching
+      - name: Verify confirmed matching, withdrawal and same-sentence PDF replacement
         run: python -u scripts/verify_m17_resume_confirmed.py
