@@ -1,0 +1,47 @@
+{
+  "observed_utc": "2026-11-26T23:05:38.893013+00:00",
+  "deployed": "f30443aa8654bd1c0d093ccd6fd9c067c3f4148a",
+  "workflow": "https://raw.githubusercontent.com/EricXu-0805/opportunity-filter-engine/f30443aa8654bd1c0d093ccd6fd9c067c3f4148a/.github/workflows/refresh-data.yml",
+  "source_workflow": "https://raw.githubusercontent.com/EricXu-0805/opportunity-filter-engine/f5f45f35275b981aa8dd16ff7b7b8ba1634f1e88/.github/workflows/refresh-data.yml",
+  "identical_workflow": true,
+  "schedule": [
+    "- cron: '7 6 * * *'    # daily 06:07 UTC \u2014 that day's shard, deep"
+  ],
+  "static_source": "https://raw.githubusercontent.com/EricXu-0805/opportunity-filter-engine/f30443aa8654bd1c0d093ccd6fd9c067c3f4148a/frontend/src/lib/school-stats.json",
+  "live_source": "https://joinalab.com/api/opportunities/coverage",
+  "school_count": 115,
+  "same_school_keys": true,
+  "compared_fields": [
+    "listing_count",
+    "faculty_contact_count",
+    "unreviewed_count",
+    "total_count"
+  ],
+  "mismatches": {},
+  "previously_affected": {
+    "ucb": {
+      "listing_count": 71,
+      "faculty_contact_count": 2161,
+      "unreviewed_count": 0,
+      "total_count": 2232
+    },
+    "uiuc": {
+      "listing_count": 1,
+      "faculty_contact_count": 2945,
+      "unreviewed_count": 0,
+      "total_count": 2946
+    },
+    "ncsu": {
+      "listing_count": 5,
+      "faculty_contact_count": 2198,
+      "unreviewed_count": 0,
+      "total_count": 2203
+    },
+    "uva": {
+      "listing_count": 5,
+      "faculty_contact_count": 1635,
+      "unreviewed_count": 0,
+      "total_count": 1640
+    }
+  }
+}
