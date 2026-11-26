@@ -1904,19 +1904,26 @@ def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
     return first_open if first_open is not None else (None, None)
 
 
-# These four units formerly labeled rows read from committed JSON exports
-# as "directory". Profile fetches and genuine sightings keep their own proof.
-_FILE_ROSTER_UNITS = {
-    "jhu_faculty": {"faculty-jhu-bsph", "faculty-jhu-som"},
-    "northwestern_faculty": {"faculty-northwestern-kellogg", "faculty-northwestern-feinberg"},
-}
+def _file_roster_harvest(source: object, record_id: object) -> str | None:
+    """The day the committed file behind a faculty row's unit was harvested,
+    or None for a row of a unit that is read live."""
+    if not isinstance(source, str) or not isinstance(record_id, str):
+        return None
+    # The units are whichever configs name a file, and the configs import the
+    # engine that imports this module.
+    from src.collectors.faculty_graph import file_roster_units
+
+    unit, _, digest = record_id.rpartition("-")
+    if re.fullmatch(r"[0-9a-f]{8}", digest) is None:
+        return None
+    return file_roster_units().get(source, {}).get(unit)
 
 
 def legacy_file_roster(source: str, record_id: str) -> bool:
-    if not isinstance(source, str) or source not in _FILE_ROSTER_UNITS or not isinstance(record_id, str):
-        return False
-    unit, _, digest = record_id.rpartition("-")
-    return unit in _FILE_ROSTER_UNITS[source] and re.fullmatch(r"[0-9a-f]{8}", digest) is not None
+    """A row of a unit read from a committed JSON export. Such rows were
+    formerly labeled "directory". Profile fetches and genuine sightings keep
+    their own proof."""
+    return _file_roster_harvest(source, record_id) is not None
 
 
 def _record_metadata(record: dict) -> dict:
@@ -1943,10 +1950,14 @@ def source_last_seen_at(record: dict) -> str | None:
 
 
 def source_verified_at(record: dict) -> str | None:
-    """A page-read timestamp. Re-emitting configured faculty fields reads no page."""
-    if faculty_verification_scope(record) == "curated":
-        return None
+    """A page-read timestamp. Re-emitting configured faculty fields reads no
+    page, so a seed has none. A row from a committed roster file was read the
+    day that file was harvested, and has that day once a refresh has written
+    it: until then it carries a run's clock, which is no read."""
     verified = _record_metadata(record).get("last_verified")
+    if faculty_verification_scope(record) == "curated":
+        harvested = _file_roster_harvest(record.get("source"), record.get("id"))
+        return verified if harvested is not None and verified == harvested else None
     return verified if isinstance(verified, str) else None
 
 

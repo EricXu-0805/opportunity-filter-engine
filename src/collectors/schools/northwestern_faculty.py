@@ -411,6 +411,9 @@ SCHOOL: dict = {
             "directory_url": "https://www.kellogg.northwestern.edu/academics-research/faculty-directory/",
             "json_dir": {
                 "file": "data/faculty_seeds/nu_kellogg.json",
+                # The day the file was committed (#543), the only date the
+                # harvest left.
+                "harvested_on": "2026-07-10",
                 "name_fields": ["name"], "title_field": "title",
                 "email_field": "email", "link_field": "url",
                 "ladder_filter": {"require": r"\bprofessor\b",
@@ -432,6 +435,9 @@ SCHOOL: dict = {
             "directory_url": "https://www.feinberg.northwestern.edu/faculty-profiles/",
             "json_dir": {
                 "file": "data/faculty_seeds/nu_feinberg.json",
+                # The day the file was committed (#543), the only date the
+                # harvest left.
+                "harvested_on": "2026-07-10",
                 "name_fields": ["name"], "title_field": "title",
                 "email_field": "email", "link_field": "url",
                 "department_field": "department",

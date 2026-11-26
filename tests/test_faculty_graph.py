@@ -41,6 +41,20 @@ class TestValidator:
         bad = {**SCHOOL, "departments": [{"short": "X", "name": "X Dept"}]}
         assert any("no curated faculty" in e for e in fg.validate(bad))
 
+    @pytest.mark.parametrize("harvested_on", [None, "", "July 2026", "2026-07", "2026-07-10T03:04:43", 20260710])
+    def test_a_roster_file_must_say_the_day_it_was_harvested(self, harvested_on):
+        roster = {"file": "data/faculty_seeds/x.json", "name_fields": ["name"]}
+        school = {**SCHOOL, "departments": [{"short": "X", "name": "X School", "json_dir": roster}]}
+        if harvested_on is not None:
+            roster["harvested_on"] = harvested_on
+        assert fg.validate(school) == ["X: json_dir file needs harvested_on, the day (YYYY-MM-DD) the file was harvested"]
+        roster["harvested_on"] = "2026-07-10"
+        assert fg.validate(school) == []
+        # A live feed reads its page every run and has no such day.
+        live = {**SCHOOL, "departments": [{"short": "X", "name": "X School",
+                                           "json_dir": {"url": "https://x.example.edu/api"}}]}
+        assert fg.validate(live) == []
+
     @staticmethod
     def _walk_units(*units):
         return {**SCHOOL, "departments": [
@@ -3940,11 +3954,15 @@ class TestIdentityProvenance:
         snapshot = tmp_path / "snapshot.json"
         snapshot.write_text(json.dumps([person]))
         dept = {"name": "School of Medicine", "short": "SOM", "directory_url": "https://example.edu/faculty",
-                "json_dir": {"file": str(snapshot), "name_fields": ["name"], "link_field": "url"}}
+                "json_dir": {"file": str(snapshot), "harvested_on": "2026-07-26",
+                             "name_fields": ["name"], "link_field": "url"}}
         school = {**SCHOOL, "source": "jhu_faculty", "id_prefix": "jhu", "departments": [dept]}
         [row] = fg.fetch_and_normalize(school, deep=True)
         assert row["metadata"]["verification_scope"] == "curated"
-        assert row["metadata"]["last_seen_at"] is None and row["metadata"]["last_verified"] is None
+        # Read on the day the file was harvested, and seen listed by no run since.
+        assert row["metadata"]["last_verified"] == "2026-07-26"
+        assert row["metadata"]["last_seen_at"] is None
+        assert "listing_seen_on_source" not in row["metadata"]
 
         old = {**row, "metadata": {**row["metadata"], "verification_scope": "directory",
                                   "last_seen_at": "2026-11-15", "last_verified": "2026-11-15"}}
@@ -3954,6 +3972,7 @@ class TestIdentityProvenance:
         fg.merge_into_processed([row])
         [saved] = json.loads(corpus.read_text())
         assert saved["metadata"]["last_seen_at"] is None
+        assert saved["metadata"]["last_verified"] == "2026-07-26"
 
         # The same person in the config seed and in the file is still one offline source.
         [duplicate] = fg.fetch_and_normalize({**school, "departments": [{**dept, "faculty": [person]}]}, deep=True)
@@ -3965,6 +3984,34 @@ class TestIdentityProvenance:
         assert live["metadata"]["verification_scope"] == "directory"
         assert live["metadata"]["listing_seen_on_source"] is True
         assert live["metadata"]["last_seen_at"] == live["metadata"]["last_verified"]
+
+    def test_the_units_read_from_a_file_are_the_ones_whose_config_names_a_file(self, monkeypatch):
+        from src.collectors.schools import jhu_faculty, northwestern_faculty
+        from src.evidence import legacy_file_roster
+
+        assert fg.file_roster_units() == {
+            "jhu_faculty": {"faculty-jhu-bsph": "2026-07-10", "faculty-jhu-som": "2026-07-26"},
+            "northwestern_faculty": {"faculty-northwestern-feinberg": "2026-07-10",
+                                     "faculty-northwestern-kellogg": "2026-07-10"},
+        }
+        live = next(d for d in northwestern_faculty.SCHOOL["departments"] if not d.get("json_dir"))
+        row_id = f"faculty-northwestern-{live['short'].lower()}-0123abcd"
+        assert legacy_file_roster("jhu_faculty", "faculty-jhu-bsph-0123abcd")
+        assert not legacy_file_roster("northwestern_faculty", row_id)
+        assert not legacy_file_roster("northwestern_faculty", "faculty-northwestern-kellogg-notahash")
+        assert not legacy_file_roster("jhu_faculty", "faculty-northwestern-kellogg-0123abcd")
+
+        # Moving a unit onto a file, or off one, is a config edit and nothing else.
+        som = next(d for d in jhu_faculty.SCHOOL["departments"] if d["short"] == "SOM")
+        monkeypatch.setitem(live, "json_dir", {"file": "data/faculty_seeds/x.json", "harvested_on": "2027-01-15"})
+        monkeypatch.setitem(som, "json_dir", {**som["json_dir"], "file": None, "url": "https://example.edu/api"})
+        fg.file_roster_units.cache_clear()
+        try:
+            assert legacy_file_roster("northwestern_faculty", row_id)
+            assert not legacy_file_roster("jhu_faculty", "faculty-jhu-som-0123abcd")
+        finally:
+            monkeypatch.undo()
+            fg.file_roster_units.cache_clear()
 
     def test_seed_configs_not_mutated_by_harvest(self):
         dept = SCHOOL["departments"][0]

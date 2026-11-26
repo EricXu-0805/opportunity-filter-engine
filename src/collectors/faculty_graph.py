@@ -67,6 +67,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, date, datetime
+from functools import cache
 from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
 from backend.lib.contact_visibility import carries_contact_evidence
@@ -307,6 +308,11 @@ def validate(school: dict) -> list[str]:
         jd = dept.get("json_dir")
         if isinstance(jd, dict) and jd.get("render") and not isinstance(jd.get("attr_json"), dict):
             errors.append(f"{short}: json_dir render needs attr_json")
+        if isinstance(jd, dict) and jd.get("file") and not _is_day(jd.get("harvested_on")):
+            # No run reads these people's pages, so the day someone did is all
+            # their rows can say about when they were verified.
+            errors.append(f"{short}: json_dir file needs harvested_on, the day "
+                          "(YYYY-MM-DD) the file was harvested")
         if isinstance(jd, dict) and jd.get("total_key"):
             # Only a paged walk reads the total; without a row key a repeated
             # row would pass for the one it displaced.
@@ -325,6 +331,42 @@ def validate(school: dict) -> list[str]:
             errors.append(f"{', '.join(shorts)}: the units of one json_dir walk need "
                           "the same id_names")
     return errors
+
+
+def _is_day(value: object) -> bool:
+    if not isinstance(value, str) or len(value) != 10:
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+@cache
+def file_roster_units() -> dict[str, dict[str, str]]:
+    """``{source: {id prefix: harvested_on}}`` for every unit whose rows are
+    read from a committed file (``json_dir.file``), from the school configs.
+
+    A row's id is ``{prefix}-{8 hex}`` (``_id_tail``). Read from the configs
+    so that a unit moved onto a file, or off one, needs no second list.
+    """
+    import importlib
+    import pkgutil
+
+    from . import schools
+
+    units: dict[str, dict[str, str]] = {}
+    for module in pkgutil.iter_modules(schools.__path__):
+        if not module.name.endswith("_faculty"):
+            continue
+        school = importlib.import_module(f"{schools.__name__}.{module.name}").SCHOOL
+        for dept in school.get("departments", []):
+            roster = dept.get("json_dir") or {}
+            if roster.get("file"):
+                prefix = f"faculty-{school['id_prefix']}-{dept['short'].lower()}"
+                units.setdefault(school["source"], {})[prefix] = roster["harvested_on"]
+    return units
 
 
 # ---------------------------------------------------------------------------
@@ -759,7 +801,9 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     listed = person.get("_listing_seen_on_source") is True
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
-        "last_verified": None if curated else now,
+        # A seed's fields were read by no run. One from a committed file was
+        # read the day that file was harvested.
+        "last_verified": person.get("_harvested_on") if curated else now,
         "first_seen_at": now,
         "last_seen_at": now if not curated or listed else None,
         "is_active": True,
@@ -3653,6 +3697,7 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None,
         people = _json_dir_records(dept, cfg, recs)
         for person in people:
             person["_verification_scope"] = "curated"
+            person["_harvested_on"] = cfg["harvested_on"]
         return people
     if cfg.get("render"):
         # One render serves every unit that reads the same page, and a failed
