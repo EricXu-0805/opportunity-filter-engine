@@ -354,4 +354,6 @@ def fetch_and_normalize(deep: bool = True,
 
 
 def merge_into_processed(opps: list[dict]):
-    return faculty_graph.merge_into_processed(opps, prepare_update=ncsu_chass.retain_unread_title)
+    return faculty_graph.merge_into_processed(
+        opps, prepare_update=ncsu_chass.prepare_update, reconcile_snapshot=ncsu_chass.reconcile_contact_destination,
+    )
