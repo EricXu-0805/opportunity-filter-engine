@@ -40,10 +40,13 @@ def restrict(route):
 
 def responses(res):
     req, url = res.request, urlsplit(res.url)
+    if url.hostname and url.hostname.endswith(".supabase.co"):
+        endpoint=url.path.rsplit("/",1)[-1]
+        evidence.setdefault("real_account_requests",[]).append([req.method,endpoint,res.status])
     if url.hostname and url.hostname.endswith(".supabase.co") and req.method=="POST":
         if url.path=="/auth/v1/signup" and res.status==200:
             evidence["signed_up"] = True
-        if url.path.endswith("/rpc/commit_profile_patch_cas") and res.status==200:
+        if url.path.endswith("/rpc/commit_profile_patch_cas") and res.status in (200,201,204):
             evidence["committed"] = True
     if req.method!="POST" or url.path not in ("/api/matches/view","/api/cold-email/variants"): return
     if res.status!=200:
@@ -72,15 +75,30 @@ def responses(res):
 def choose_campus(page, slug):
     card=page.get_by_test_id("university-card-"+slug)
     if not card.is_visible():
+        record("open school selector")
         page.get_by_role("button",name="Change",exact=True).click()
+        if not card.is_visible(timeout=2500):
+            page.wait_for_timeout(1000)
+            if not card.is_visible():
+                page.get_by_role("button",name="Change",exact=True).click()
+    record("select campus "+slug)
     card.click()
+    record("confirm campus "+slug)
     page.get_by_test_id("switcher-confirm").click()
+    expect(page.get_by_test_id("switcher-confirm")).not_to_be_visible(timeout=15000)
 
 def locate_results(page):
     generate=page.get_by_test_id("generate-matches")
     expect(generate).to_be_enabled(timeout=45000)
     generate.click()
-    page.wait_for_url(re.compile(r"/results"),timeout=70000)
+    for _ in range(25):
+        page.wait_for_timeout(250)
+        if urlsplit(page.url).path.startswith("/results"):
+            break
+    if urlsplit(page.url).path=="/" and generate.is_enabled():
+        record("retry enabled Generate once",profile_status=page.locator("#profile-save-status").inner_text())
+        generate.click()
+    page.wait_for_url(re.compile(r"/results"),timeout=45000)
     page.locator('[id^=match-card-]').first.wait_for(timeout=85000)
 
 def test(page):
@@ -93,12 +111,21 @@ def test(page):
     response=page.goto(target,wait_until="domcontentloaded",timeout=60000)
     record("load form",status=response.status)
     page.locator("#student_name").wait_for(timeout=40000)
+    for _ in range(80):
+        page.wait_for_timeout(250)
+        if evidence["signed_up"] and not page.get_by_test_id("hydration-note").is_visible() and not page.get_by_test_id("profile-refresh-status").is_visible():
+            break
+    record("guest form ready",signed_up=evidence["signed_up"],readiness=page.locator("#profile-save-status").inner_text())
     if MODE=="amherst":
         choose_campus(page,"amherst")
         record("fill Amherst freshman form")
         page.locator("#student_name").fill("Sample Student")
-        page.locator("#college").select_option(label="Division of Humanities")
-        page.locator("#major").select_option(label="English")
+        for selector,value in (("#college","Division of Humanities"),("#major","English")):
+            field=page.locator(selector)
+            if field.evaluate("e=>e.tagName")== "SELECT":
+                field.select_option(label=value)
+            else:
+                field.fill(value)
         page.locator("#grade").select_option(label="Freshman")
         page.locator("#research_interests").fill("summer research, senior thesis, faculty-advised research, research award")
         if not page.get_by_test_id("generate-matches").is_enabled():
@@ -131,6 +158,18 @@ def test(page):
         expect(editor).to_be_visible(timeout=60000)
         assert editor.input_value().strip() and evidence.get('free_variants',0)>0 and evidence.get('inherited_names_in_templates')==0
         record("unconfirmed template editor verified",opportunity_id=oid,visible_editor=True)
+        page.goto(SITE+"/",wait_until="domcontentloaded")
+        confirm=page.get_by_role("button",name=re.compile(r"Keep this level for Skill 1 \("))
+        expect(confirm).to_be_visible(timeout=30000)
+        confirm.click()
+        record("one archived skill confirmed by guest")
+        locate_results(page)
+        assert evidence.get("confirmed_count")==1
+        another=page.locator('[id^=match-card-]').filter(has=page.get_by_role("button",name="Draft email",exact=True)).nth(1)
+        another.get_by_role("button",name="Draft email",exact=True).click()
+        expect(page.locator("#cold-email-body")).to_be_visible(timeout=60000)
+        assert evidence.get("free_variants",0)>0
+        record("confirmed profile reached template editor",confirmed_count=1)
     assert evidence['signed_up'] and evidence.get('match_status')==200 and evidence.get('ai_refined') is False
 
 with sync_playwright() as pw:
@@ -141,7 +180,7 @@ with sync_playwright() as pw:
     page=context.new_page();page.on("response",responses);page.set_default_timeout(25000)
     try: test(page)
     except Exception as ex:
-        print(json.dumps({"failed_stage":stage,"error_class":type(ex).__name__,"page_path":urlsplit(page.url).path,"headings":page.get_by_role("heading").all_text_contents()[:9],"statuses":page.get_by_role("alert").all_text_contents()[:2],"buttons":page.get_by_role("button").all_text_contents()[:18]}),flush=True)
+        print(json.dumps({"failed_stage":stage,"error_class":type(ex).__name__,"error":re.sub(r'https?://\S+','[URL]',str(ex))[:400],"flow_status":page.get_by_role("status").all_inner_texts()[:6],"validation":page.locator("#match-validation").all_inner_texts(),"page_path":urlsplit(page.url).path,"headings":page.get_by_role("heading").all_text_contents()[:9],"statuses":page.get_by_role("alert").all_text_contents()[:2],"buttons":page.get_by_role("button").all_text_contents()[:18]}),flush=True)
         raise SystemExit(1) from None
     finally:
         print("PUBLIC RECEIPT",json.dumps(evidence),flush=True);browser.close()
