@@ -100,3 +100,21 @@ def test_the_dean_and_student_records_inboxes_never_become_a_professors_contact(
         faculty_graph._merge_faculty_fields(newer, old)
         assert not newer["contact_email"]
     assert faculty_graph._clean_email("scidean@other.edu") == "scidean@other.edu"
+
+
+def test_walker_keeps_the_documented_promotion_on_department_recovery_and_accepts_a_new_appointment():
+    from src.normalizers.reviewed_faculty_profiles import REVIEWS, apply_reviewed_faculty_profile
+
+    review = REVIEWS["faculty-pitt-cs-0a7196f1"]
+    for profile in (review.previous_url, review.profile_url):
+        incoming = faculty_graph._normalize(SCHOOL, CS, {"name": review.name, "title": review.previous_title,
+                                                        "url": profile})
+        assert apply_reviewed_faculty_profile(incoming)
+        assert incoming["metadata"]["faculty_title"] == review.title
+        assert review.appointment_summary == incoming["eligibility"]["eligibility_text_raw"]
+        assert "Associate Professor" not in incoming["description_clean"]
+
+    newer = faculty_graph._normalize(SCHOOL, CS, {"name": review.name, "title": "Distinguished Professor",
+                                                 "url": review.previous_url})
+    assert not apply_reviewed_faculty_profile(newer)
+    assert newer["metadata"]["faculty_title"] == "Distinguished Professor"
