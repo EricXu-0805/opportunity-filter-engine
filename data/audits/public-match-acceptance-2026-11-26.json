@@ -1,0 +1,339 @@
+{
+  "observed_utc": "2026-11-26T05:35:15.926653+00:00",
+  "site": "https://joinalab.com",
+  "api_release_sha": "f61d755b8f6312d55b9da4781a57ef5f1e5c435c",
+  "matcher_version": "41.2539eabb",
+  "http_endpoint": "https://joinalab.com/api/matches/view?llm=false",
+  "method": "POST",
+  "access": "Anonymous synthetic matches with llm=false. No cookies, auth headers, stored favorites, or account writes.",
+  "replay": "jq -c '.matches[0].request' public-match-acceptance-2026-11-26.json | curl -fsS -H 'Content-Type: application/json' --data-binary @- 'https://joinalab.com/api/matches/view?llm=false' | jq '.results[] | {opportunity_id, reasons_fit, reasons_gap}'",
+  "matches": [
+    {
+      "case": "M188/MIT top 50",
+      "request": {
+        "profile": {
+          "name": "probe",
+          "school": "Massachusetts Institute of Technology",
+          "home_school": "mit",
+          "year": "junior",
+          "major": "Mechanical Engineering",
+          "college": "",
+          "secondary_interests": [],
+          "international_student": false,
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "desired_fields": [
+            "Interests Design Product Development Machine Dynamics"
+          ],
+          "hard_skills": [],
+          "coursework": [],
+          "experience_level": "beginner",
+          "resume_ready": true,
+          "can_cold_email": true,
+          "research_interests_text": "Interests Design Product Development Machine Dynamics",
+          "linkedin_url": "",
+          "github_url": "",
+          "scholar_url": "",
+          "search_weight": 50,
+          "exploring": false,
+          "include_cross_school": false
+        },
+        "view": {
+          "tab": "all",
+          "search_query": "",
+          "today": "2026-11-25"
+        },
+        "page_size": 50,
+        "cursor": null
+      },
+      "id": "faculty-mit-meche-96e2e5bf",
+      "position": 7,
+      "rows_on_page": 50,
+      "removed_phrase_count": 0,
+      "fit_reason_keys": [
+        "interests_lab_focus",
+        "major_department_aligns",
+        "brand_faculty_university",
+        "type_match",
+        "outreach_comfortable"
+      ],
+      "ai_refined": false
+    },
+    {
+      "case": "M188/MIT selected",
+      "request": {
+        "profile": {
+          "name": "probe",
+          "school": "Massachusetts Institute of Technology",
+          "home_school": "mit",
+          "year": "junior",
+          "major": "Mechanical Engineering",
+          "college": "",
+          "secondary_interests": [],
+          "international_student": false,
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "desired_fields": [
+            "Interests Design Product Development Machine Dynamics"
+          ],
+          "hard_skills": [],
+          "coursework": [],
+          "experience_level": "beginner",
+          "resume_ready": true,
+          "can_cold_email": true,
+          "research_interests_text": "Interests Design Product Development Machine Dynamics",
+          "linkedin_url": "",
+          "github_url": "",
+          "scholar_url": "",
+          "search_weight": 50,
+          "exploring": false,
+          "include_cross_school": false
+        },
+        "view": {
+          "tab": "starred",
+          "favorite_ids": [
+            "faculty-mit-meche-96e2e5bf"
+          ],
+          "today": "2026-11-25"
+        },
+        "page_size": 50,
+        "cursor": null
+      },
+      "id": "faculty-mit-meche-96e2e5bf",
+      "position": 1,
+      "rows_on_page": 1,
+      "removed_phrase_count": 0,
+      "fit_reason_keys": [
+        "interests_lab_focus",
+        "major_department_aligns",
+        "brand_faculty_university",
+        "type_match",
+        "outreach_comfortable"
+      ],
+      "ai_refined": false
+    },
+    {
+      "case": "M188/Berkeley long",
+      "request": {
+        "profile": {
+          "name": "",
+          "school": "UC Berkeley",
+          "home_school": "ucb",
+          "year": "junior",
+          "major": "Cognitive Science",
+          "college": "",
+          "secondary_interests": [],
+          "international_student": false,
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "desired_fields": [
+            "i want to study how neural circuits encode memory"
+          ],
+          "hard_skills": [],
+          "coursework": [],
+          "experience_level": "beginner",
+          "resume_ready": true,
+          "can_cold_email": true,
+          "research_interests_text": "i want to study how neural circuits encode memory",
+          "linkedin_url": "",
+          "github_url": "",
+          "scholar_url": "",
+          "search_weight": 50,
+          "exploring": false,
+          "include_cross_school": false
+        },
+        "view": {
+          "today": "2026-11-25",
+          "tab": "starred",
+          "favorite_ids": [
+            "faculty-ucb-neuro-36c1f1bc",
+            "faculty-ucb-psych-adf7bfeb",
+            "faculty-ucb-bioe-9f9e8431",
+            "faculty-ucb-eecs-553baf90",
+            "faculty-ucb-mcb-2124be94",
+            "faculty-ucb-mcb-49fe5366",
+            "faculty-ucb-mcb-e4cf2df2",
+            "faculty-ucb-eecs-cd584e25",
+            "faculty-ucb-eecs-42a31b9f",
+            "faculty-ucb-eecs-c7574d80",
+            "faculty-ucb-eecs-d05b887d",
+            "faculty-ucb-eecs-b9dd9ce9",
+            "faculty-ucb-eecs-bdd7d99c",
+            "faculty-ucb-eecs-347d29e2",
+            "faculty-ucb-eecs-c8da212c",
+            "faculty-ucb-eecs-a6bc57e0",
+            "faculty-ucb-eecs-bc69e20c",
+            "faculty-ucb-eecs-155bfe17",
+            "faculty-ucb-eecs-ee03e4f0",
+            "faculty-ucb-eecs-0f311e1b",
+            "faculty-ucb-mcb-ad393b0d",
+            "faculty-ucb-music-35523648",
+            "faculty-ucb-tdps-dd42e8c5"
+          ]
+        },
+        "page_size": 100,
+        "cursor": null
+      },
+      "original_ids_returned": 23,
+      "single_word_attributions": 0,
+      "attributed_ids": [],
+      "ai_refined": false
+    },
+    {
+      "case": "M188/Berkeley short",
+      "request": {
+        "profile": {
+          "name": "",
+          "school": "UC Berkeley",
+          "home_school": "ucb",
+          "year": "junior",
+          "major": "Cognitive Science",
+          "college": "",
+          "secondary_interests": [],
+          "international_student": false,
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "desired_fields": [
+            "memory"
+          ],
+          "hard_skills": [],
+          "coursework": [],
+          "experience_level": "beginner",
+          "resume_ready": true,
+          "can_cold_email": true,
+          "research_interests_text": "memory",
+          "linkedin_url": "",
+          "github_url": "",
+          "scholar_url": "",
+          "search_weight": 50,
+          "exploring": false,
+          "include_cross_school": false
+        },
+        "view": {
+          "today": "2026-11-25",
+          "tab": "starred",
+          "favorite_ids": [
+            "faculty-ucb-neuro-36c1f1bc",
+            "faculty-ucb-psych-adf7bfeb",
+            "faculty-ucb-bioe-9f9e8431",
+            "faculty-ucb-eecs-553baf90",
+            "faculty-ucb-mcb-2124be94",
+            "faculty-ucb-mcb-49fe5366",
+            "faculty-ucb-mcb-e4cf2df2",
+            "faculty-ucb-eecs-cd584e25",
+            "faculty-ucb-eecs-42a31b9f",
+            "faculty-ucb-eecs-c7574d80",
+            "faculty-ucb-eecs-d05b887d",
+            "faculty-ucb-eecs-b9dd9ce9",
+            "faculty-ucb-eecs-bdd7d99c",
+            "faculty-ucb-eecs-347d29e2",
+            "faculty-ucb-eecs-c8da212c",
+            "faculty-ucb-eecs-a6bc57e0",
+            "faculty-ucb-eecs-bc69e20c",
+            "faculty-ucb-eecs-155bfe17",
+            "faculty-ucb-eecs-ee03e4f0",
+            "faculty-ucb-eecs-0f311e1b",
+            "faculty-ucb-mcb-ad393b0d",
+            "faculty-ucb-music-35523648",
+            "faculty-ucb-tdps-dd42e8c5"
+          ]
+        },
+        "page_size": 100,
+        "cursor": null
+      },
+      "original_ids_returned": 23,
+      "single_word_attributions": 3,
+      "attributed_ids": [
+        "faculty-ucb-neuro-36c1f1bc",
+        "faculty-ucb-psych-adf7bfeb",
+        "faculty-ucb-mcb-ad393b0d"
+      ],
+      "ai_refined": false
+    },
+    {
+      "case": "M88/Amherst freshman",
+      "request": {
+        "profile": {
+          "name": "probe",
+          "school": "Amherst College",
+          "home_school": "amherst",
+          "year": "freshman",
+          "major": "English",
+          "college": "",
+          "secondary_interests": [],
+          "international_student": false,
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "desired_fields": [
+            "summer research",
+            "senior thesis",
+            "faculty-advised research",
+            "research award"
+          ],
+          "hard_skills": [],
+          "coursework": [],
+          "experience_level": "beginner",
+          "resume_ready": true,
+          "can_cold_email": true,
+          "research_interests_text": "English literature, faculty-advised research, senior thesis, summer research",
+          "linkedin_url": "",
+          "github_url": "",
+          "scholar_url": "",
+          "search_weight": 50,
+          "exploring": false,
+          "include_cross_school": false
+        },
+        "view": {
+          "tab": "all",
+          "search_query": "Gregory",
+          "today": "2026-11-25"
+        },
+        "page_size": 50,
+        "cursor": null
+      },
+      "id": "amherst-8b2e68d735f0",
+      "position": 2,
+      "filtered_total": 4,
+      "reasons_gap": [
+        "Our listing suggests junior, senior students — not confirmed on the program page"
+      ],
+      "reasons_gap_keys": [
+        {
+          "key": "year_listing_targets",
+          "params": {
+            "years": "junior, senior"
+          }
+        }
+      ],
+      "ai_refined": false,
+      "scope": "Production result payload; the visual card in a real Amherst freshman session and production lane saturation were not exercised."
+    }
+  ],
+  "public_links": {
+    "M57": {
+      "source": "https://joinalab.com/about",
+      "control": "LinkedIn",
+      "observation": "The link was clicked in Chrome. It resolved to the intended personal profile and its heading matched the listed founder. The destination browser had an existing LinkedIn session.",
+      "other_observations": [
+        "The third About step describes drafting and reviewing a cold email. The signed-in drafting flow was not exercised.",
+        "The production privacy page section 7 still states that requests will be acted on within 30 days. Owner disposition remains open."
+      ],
+      "privacy": "https://joinalab.com/privacy"
+    }
+  },
+  "scope": "A scoped production receipt. No screenshot, profile persistence, email draft generation, or production saturation test.",
+  "prior_work": {
+    "M188_berkeley_regression_script": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/124bcddf3/scripts/probe-berkeley-attribution.py",
+    "note": "Only the response observations above were replayed by this receipt. Broader offline corpus comparisons and browser-cache behavior are separate evidence."
+  }
+}
