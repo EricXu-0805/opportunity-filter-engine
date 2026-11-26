@@ -1,0 +1,42 @@
+{
+  "observed_utc_date": "2026-11-26",
+  "production_commit": "091c3800c9b5310fba6c591d3eaa1f588390055f",
+  "official_architecture_rows": 86,
+  "eligible_roster_originals": [
+    "faculty-gatech-arch-00a366c4",
+    "faculty-gatech-arch-0c0270af",
+    "faculty-gatech-arch-22368bcf",
+    "faculty-gatech-arch-28061934",
+    "faculty-gatech-arch-31404403",
+    "faculty-gatech-arch-5348c6a3",
+    "faculty-gatech-arch-53c37cf2",
+    "faculty-gatech-arch-56075f7f",
+    "faculty-gatech-arch-56907927",
+    "faculty-gatech-arch-5f1bf9f6",
+    "faculty-gatech-arch-6205f608",
+    "faculty-gatech-arch-67237800",
+    "faculty-gatech-arch-69d5352e",
+    "faculty-gatech-arch-6e2ef74d",
+    "faculty-gatech-arch-7c136dc2",
+    "faculty-gatech-arch-83ac432e",
+    "faculty-gatech-arch-abe25412",
+    "faculty-gatech-arch-aecf1d69",
+    "faculty-gatech-arch-b98c933e",
+    "faculty-gatech-arch-cd68223d",
+    "faculty-gatech-arch-e4a1058b",
+    "faculty-gatech-arch-fac4ce68",
+    "faculty-gatech-arch-fe01c8ef"
+  ],
+  "ineligible_roster_rows": 63,
+  "reviewed_emeritus_originals": [
+    "faculty-gatech-arch-196687bf",
+    "faculty-gatech-arch-e98bc4d9"
+  ],
+  "absent_from_current_unit_original": "faculty-gatech-arch-3a9c2373",
+  "public_original_details_http_200": 26,
+  "before_fix_wrong_actions_with_delivered_page": 3,
+  "after_fix_local_unavailable": 3,
+  "after_fix_local_active_control": 1,
+  "school_original_ids_retained": 1419,
+  "successful_normal_replays": 2
+}
