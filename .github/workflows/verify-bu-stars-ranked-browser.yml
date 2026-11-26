@@ -1,4 +1,4 @@
-name: Verify Boston STaRS branch in a real results browser
+name: Verify undergraduate programs in a real results browser
 on:
   push:
     branches: [codex/diagnose-m04-public-targets]
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      TEST_SHA: e5546eeef2bc4e7c8cbf1696bf8df9cfe9585e03
+      TEST_SHA: 0d3345c819dd5cf9dcf408d72cf713452bb0804b
       NEXT_TELEMETRY_DISABLED: '1'
       BACKEND_URL: http://127.0.0.1:28147
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:28148
@@ -59,7 +59,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bu-stars-ranked-browser
+          name: undergraduate-ranked-browser
           path: |
             evidence/
             health.json

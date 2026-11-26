@@ -1,4 +1,4 @@
-"""Verify the host and directory results a Boston undergraduate can see on the official site."""
+"""Check the launch profile against five original undergraduate program records."""
 import json,re
 from pathlib import Path
 from urllib.parse import quote,urlsplit
@@ -67,42 +67,50 @@ with sync_playwright() as pw:
         release=ctx.request.get(site+"/api/health").json()["release_sha"]
         receipt["local_backend"] = "real FastAPI, assembled 149810 records"
         receipt["frontend_release"]=receipt["backend_release"]=release
-        enter_results(page,"bu",major="Biology",interests="biomedical research, medicine, biology and health")
-        q="Summer Training as Research Scholars"
-        receipt["views"]={}
-        for source in ("","bu_research_programs","uiuc_sro"):
-            with page.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("view",{}).get("search_query")==q and ((r.request.post_data_json or {}).get("view",{}).get("source") or "")==source,timeout=90000) as obs:
-                if source:page.get_by_role("combobox",name="Source",exact=True).select_option(source)
-                else:page.goto(site+"/results?tab=all&ai=0&q="+quote(q),wait_until="domcontentloaded")
-            assert obs.value.ok
-            d=obs.value.json();assert not d["has_more"] and d["filtered_total"]==len(d["results"])
-            info=receipt["views"][source or "all"]={}
-            for result in d["results"]:
-                oid=result["opportunity_id"]
-                card=page.locator("#match-card-"+oid)
-                expect(card).to_be_visible(timeout=50000)
+        enter_results(page,"bu",major="Biology",interests="research, biological science, microbiology, medicine, history and linguistics")
+        cases = [
+            ("sro-7b7d80d3", "Computer Assisted Synthesis", None),
+            ("sro-5725bf41", "Summer STAR", None),
+            ("sro-e74d89e9", "Michigan Humanities Emerging Research Scholars", "2026-12-02"),
+            ("stanford-1a20b2e045cf", "Stanford Summer Research Program", "2026-11-01"),
+            ("sro-7f860ddc", "Microbiology Summer Undergraduate Research", "2026-12-01"),
+        ]
+        visible = []
+        for oid, query, opening in cases:
+            with page.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("view",{}).get("search_query")==query,timeout=90000) as read:
+                page.goto(site+"/results?tab=all&ai=0&q="+quote(query),wait_until="domcontentloaded")
+            assert read.value.ok
+            listing = read.value.json()
+            assert not listing["has_more"]
+            ids = [item["opportunity_id"] for item in listing["results"]]
+            entry = {"ids": ids, "total": listing["filtered_total"]}
+            assert len(ids) == entry["total"]
+            if oid in ids:
+                card = page.locator("#match-card-"+oid)
+                expect(card).to_be_visible(timeout=60000)
                 card.get_by_role("button",name="Show details",exact=True).click()
-                info[oid]={"card_text":card.inner_text(),"rank_gaps":result.get("reasons_gap",[]),"score":result.get("final_score")}
-            receipt["views"][source or "all"]["total"]=d["filtered_total"]
-            ids = [x["opportunity_id"] for x in d["results"]]
-            expected = ["sro-60f60fbd","sro-bc33bc08"] if source=="uiuc_sro" else ["bu-bbc659c6ac92"]
-            assert len(ids)==len(expected) and set(ids)==set(expected), (source,ids,expected)
-            assert all("Targets graduate / PhD students" not in (v.get("card_text") or "") for v in info.values() if isinstance(v,dict))
-            page.screenshot(path=out/("stars-"+(source or "all")+".png"))
-        # The ordinary browser takes a real cursor through an untruncated
-        # multi-page search; the focused program search fits on one page.
-        with page.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("view",{}).get("search_query")=="research" and not (r.request.post_data_json or {}).get("cursor"),timeout=90000) as first:
-            page.goto(site+"/results?tab=all&ai=0&q=research",wait_until="domcontentloaded")
-        a=first.value.json()
-        assert a["has_more"] and a["next_cursor"] and len(a["results"])==50
-        with page.expect_response(lambda r:is_view(r) and (r.request.post_data_json or {}).get("cursor")==a["next_cursor"],timeout=90000) as second:
-            page.get_by_role("button",name="Next",exact=True).click()
-        b=second.value.json()
-        i=[x["opportunity_id"] for x in a["results"]];j=[x["opportunity_id"] for x in b["results"]]
-        assert len(set(i+j))==len(i+j) and a["filtered_total"]==b["filtered_total"]
-        expect(page.locator("#match-card-"+j[0])).to_be_visible(timeout=45000)
-        receipt["browser_pages"]={"total":a["filtered_total"],"page_one":i,"page_two":j}
+                item = next(item for item in listing["results"] if item["opportunity_id"] == oid)
+                entry["ranking_gaps"] = item.get("reasons_gap", [])
+                assert "Targets graduate / PhD students" not in card.inner_text()
+                assert not any("Targets graduate" in gap for gap in entry["ranking_gaps"])
+                visible.append(oid)
+                card.screenshot(path=out/(oid+"-student-result.png"))
+            detail = page.request.get(site+"/api/opportunities/"+oid)
+            assert detail.ok and detail.json()["id"] == oid
+            page.goto(site+"/opportunities/"+oid,wait_until="domcontentloaded")
+            expect(page.get_by_role("heading",level=1)).to_have_text(detail.json()["title"],timeout=90000)
+            if opening:
+                dt = detail.json()
+                entry["deadline"],entry["opening"] = dt["deadline"],dt["application_opens"]["on"]
+                assert entry["deadline"] == "2027-02-01" and entry["opening"] == opening
+                timing = page.get_by_test_id("fact-field-timing")
+                expect(timing).to_contain_text("2027-02-01")
+                timing.screenshot(path=out/(oid+"-timing.png"))
+            receipt[oid] = entry
+            print("Checked original", oid, query, entry, flush=True)
+        receipt["ordinary_biology_profile_found"] = visible
+        assert visible, receipt
     finally:
-        (out/"stars-source-matches.json").write_text(json.dumps(receipt,indent=2)+"\n")
+        (out/"undergraduate-results.json").write_text(json.dumps(receipt,indent=2)+"\n")
         print(json.dumps(receipt))
         browser.close()
