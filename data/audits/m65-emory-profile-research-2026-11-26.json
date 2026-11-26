@@ -1,0 +1,175 @@
+{
+  "scope": "Comparison of the former and corrected school collector on the same real Emory HTML, with source identity checks, before merge. No production write or scheduled refresh.",
+  "official_directory": "https://sph.emory.edu/faculty-directory",
+  "input_folder_selection": "Target sampled in M65 plus the first 12 faculty links on the currently served first page. That page listed 15 faculty cards.",
+  "unchanged_emory_shard_rows": 1489,
+  "rows": [
+    {
+      "name": "Anne Spaulding",
+      "original_id": "faculty-emory-rsph-6e024408",
+      "university_source": "https://sph.emory.edu/profile/faculty/anne-spaulding",
+      "observed_at": "2026-11-26T10:12:12.280104+00:00",
+      "before_items": 0,
+      "after_items": 4,
+      "before_stated_text": false,
+      "after_stated_text": true,
+      "observed_list_count": 5,
+      "original_three_source_fields_unchanged": false
+    },
+    {
+      "name": "Howard Chang",
+      "original_id": "faculty-emory-rsph-4ec4537c",
+      "university_source": "https://sph.emory.edu/profile/faculty/howard-chang",
+      "observed_at": "2026-11-26T10:12:12.243575+00:00",
+      "before_items": 8,
+      "after_items": 8,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 8,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Benjamin Druss",
+      "original_id": "faculty-emory-rsph-fec042e7",
+      "university_source": "https://sph.emory.edu/profile/faculty/benjamin-druss",
+      "observed_at": "2026-11-26T10:12:12.280155+00:00",
+      "before_items": 4,
+      "after_items": 4,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 4,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Laura Gaydos",
+      "original_id": "faculty-emory-rsph-28ec4880",
+      "university_source": "https://sph.emory.edu/profile/faculty/laura-gaydos",
+      "observed_at": "2026-11-26T10:12:16.087129+00:00",
+      "before_items": 7,
+      "after_items": 7,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 7,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Jodie Guest",
+      "original_id": "faculty-emory-rsph-f0f49cb6",
+      "university_source": "https://sph.emory.edu/profile/faculty/jodie-guest",
+      "observed_at": "2026-11-26T10:12:16.061372+00:00",
+      "before_items": 12,
+      "after_items": 12,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 14,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Robert Krafty",
+      "original_id": "faculty-emory-rsph-cb5ab59f",
+      "university_source": "https://sph.emory.edu/profile/faculty/robert-krafty",
+      "observed_at": "2026-11-26T10:12:16.061666+00:00",
+      "before_items": 8,
+      "after_items": 8,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 8,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Timothy Lash",
+      "original_id": "faculty-emory-rsph-09cc5a36",
+      "university_source": "https://sph.emory.edu/profile/faculty/timothy-lash",
+      "observed_at": "2026-11-26T10:12:19.639416+00:00",
+      "before_items": 1,
+      "after_items": 1,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 1,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Donghai Liang",
+      "original_id": "faculty-emory-rsph-3f3789e1",
+      "university_source": "https://sph.emory.edu/profile/faculty/donghai-liang",
+      "observed_at": "2026-11-26T10:12:19.598180+00:00",
+      "before_items": 9,
+      "after_items": 9,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 9,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Yang Liu",
+      "original_id": "faculty-emory-rsph-5a470ab9",
+      "university_source": "https://sph.emory.edu/profile/faculty/yang-liu",
+      "observed_at": "2026-11-26T10:12:19.619362+00:00",
+      "before_items": 8,
+      "after_items": 8,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 8,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Carmen Marsit",
+      "original_id": "faculty-emory-rsph-18df41e1",
+      "university_source": "https://sph.emory.edu/profile/faculty/carmen-marsit",
+      "observed_at": "2026-11-26T10:12:23.407216+00:00",
+      "before_items": 10,
+      "after_items": 10,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 10,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Don Operario",
+      "original_id": "faculty-emory-rsph-0f89bacf",
+      "university_source": "https://sph.emory.edu/profile/faculty/don-operario",
+      "observed_at": "2026-11-26T10:12:23.366991+00:00",
+      "before_items": 7,
+      "after_items": 7,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 7,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Stephen Patrick",
+      "original_id": "faculty-emory-rsph-7b1a2e97",
+      "university_source": "https://sph.emory.edu/profile/faculty/stephen-patrick",
+      "observed_at": "2026-11-26T10:12:23.387291+00:00",
+      "before_items": 12,
+      "after_items": 12,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 12,
+      "original_three_source_fields_unchanged": true
+    },
+    {
+      "name": "Usha Ramakrishnan",
+      "original_id": "faculty-emory-rsph-694ac3de",
+      "university_source": "https://sph.emory.edu/profile/faculty/usha-ramakrishnan",
+      "observed_at": "2026-11-26T10:12:26.915254+00:00",
+      "before_items": 3,
+      "after_items": 3,
+      "before_stated_text": false,
+      "after_stated_text": false,
+      "observed_list_count": 3,
+      "original_three_source_fields_unchanged": true
+    }
+  ],
+  "verified_result": {
+    "id": "faculty-emory-rsph-6e024408",
+    "raw_areas": "Infectious disease prevalence and incidence within institutionalized populations, in US and abroad; Viral hepatitis epidemiology, with a focus on HCV; HIV testing and linkage to care; Translational and implementation science; Research ethics",
+    "keywords": [
+      "Viral hepatitis epidemiology / with a focus on HCV",
+      "HIV testing and linkage to care",
+      "Translational and implementation science",
+      "Research ethics"
+    ],
+    "observed_at": "2026-11-26T10:12:12.280104+00:00"
+  }
+}
