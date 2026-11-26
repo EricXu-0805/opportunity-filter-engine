@@ -1,0 +1,197 @@
+{
+  "observed_at": "2026-11-26T09:43:49.135906+00:00",
+  "release": "0741df3be2d6ccd50e40789f0833f9d21dd0d041",
+  "scope": "Read-only comparison of independently published school sources for the computer science departments. No observation date, title, eligibility, membership, or ID in the production collection was modified. Counts cover only the specified units.",
+  "haverford": {
+    "primary_403": "https://www.haverford.edu/computer-science/faculty-staff",
+    "scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45660672280",
+    "secondary_200": "https://catalog.haverford.edu/programs/computer-science/",
+    "academic_year": "2026\u201327",
+    "section": "Affiliated Faculty (Haverford); separate Bryn Mawr section excluded",
+    "school_active_faculty": 120,
+    "catalog_people": [
+      {
+        "name": "Jane Chandlee",
+        "role": "Associate Professor and Chair of Linguistics (TriCo)",
+        "original_active_id": "faculty-haverford-cmsc-ae00473d"
+      },
+      {
+        "name": "John Dougherty",
+        "role": "Associate Professor and Chair of Computer Science",
+        "original_active_id": "faculty-haverford-cmsc-36a5e0c9"
+      },
+      {
+        "name": "Sorelle Friedler",
+        "role": "The Shibulal Family Computer Science Professor; Professor of Computer Science",
+        "original_active_id": "faculty-haverford-math-afbd8f70"
+      },
+      {
+        "name": "Alvin Grissom",
+        "role": "Associate Professor of Computer Science",
+        "original_active_id": "faculty-haverford-cmsc-9ab996b7"
+      },
+      {
+        "name": "Suzanne Lindell",
+        "role": "Amanuensis",
+        "original_active_id": null
+      },
+      {
+        "name": "Steven Lindell",
+        "role": "Professor of Computer Science; Coordinator of Scientific Computing",
+        "original_active_id": "faculty-haverford-math-23e37ba7"
+      },
+      {
+        "name": "David Lippel",
+        "role": "Lab Instructor and Visiting Assistant Professor of Mathematics and Statistics",
+        "original_active_id": null
+      },
+      {
+        "name": "Robert Manning",
+        "role": "Professor of Mathematics and Statistics; William H. and Johanna A. Harris Chair of Computational Science",
+        "original_active_id": "faculty-haverford-math-c9cf17fc"
+      },
+      {
+        "name": "Thao Nguyen",
+        "role": "Assistant Professor of Computer Science",
+        "original_active_id": "faculty-haverford-cmsc-4043512c"
+      },
+      {
+        "name": "Dung Nguyen",
+        "role": "Visiting Assistant Professor of Computer Science",
+        "original_active_id": null
+      },
+      {
+        "name": "Michael Wehar",
+        "role": "Visiting Assistant Professor of Computer Science",
+        "original_active_id": null
+      },
+      {
+        "name": "Christopher Wells",
+        "role": "Visiting Assistant Professor of Mathematics and Statistics",
+        "original_active_id": null
+      },
+      {
+        "name": "David Wonnacott",
+        "role": "Professor of Computer Science",
+        "original_active_id": "faculty-haverford-phys-a74aa42a"
+      }
+    ],
+    "current_active_matches": 8,
+    "current_active_cmsc_ids": [
+      "faculty-haverford-cmsc-36a5e0c9",
+      "faculty-haverford-cmsc-9ab996b7",
+      "faculty-haverford-cmsc-4043512c",
+      "faculty-haverford-cmsc-ae00473d"
+    ],
+    "notes": "Of 13 named college faculty/staff in this catalogue section, eight map to active same-name school IDs. Four other roles are explicitly visiting and one is an amanuensis. Home/joint appointments account for cross-department IDs. The annual catalogue is not a live read of the blocked web directory."
+  },
+  "colby": {
+    "primary_403": "https://www.colby.edu/people/people-directory/",
+    "scheduled_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/44914388022",
+    "secondary_200": "https://www.cs.colby.edu/faculty.php",
+    "school_active_faculty": 239,
+    "department_people": [
+      {
+        "name_on_page": "Ying Li",
+        "name_in_shard": "Ying Li",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-0160c405",
+        "central_profile": "https://www.colby.edu/people/people-directory/ying-li/",
+        "department_role": "Associate Professor and Chair",
+        "rank_in_published_shard": "Associate Professor of Computer Science; Chair of Computer Science"
+      },
+      {
+        "name_on_page": "Oliver Layton",
+        "name_in_shard": "Oliver Layton",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-f66b654f",
+        "central_profile": "https://www.colby.edu/people/people-directory/oliver-layton/",
+        "department_role": "Associate Professor and Associate Chair",
+        "rank_in_published_shard": "Associate Professor of Computer Science; Associate Chair of Computer Science"
+      },
+      {
+        "name_on_page": "Eric Aaron",
+        "name_in_shard": "Eric Aaron",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-1ebf5448",
+        "central_profile": "https://www.colby.edu/people/people-directory/eric-aaron/",
+        "department_role": "Associate Professor",
+        "rank_in_published_shard": "Associate Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Naser Al Madi",
+        "name_in_shard": "Naser Al Madi",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-af1ddf9d",
+        "central_profile": "https://www.colby.edu/people/people-directory/naser-al-madi/",
+        "department_role": "Assistant Professor",
+        "rank_in_published_shard": "Associate Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Max Bender",
+        "name_in_shard": "Maximillian Bender",
+        "match": "name variant",
+        "original_active_id": "faculty-colby-cs-26087763",
+        "central_profile": "https://www.colby.edu/people/people-directory/maximillian-bender/",
+        "department_role": "Assistant Professor",
+        "rank_in_published_shard": "Assistant Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Tahiya Chowdhury",
+        "name_in_shard": "Tahiya Chowdhury",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-b06ca8cd",
+        "central_profile": "https://www.colby.edu/people/people-directory/tahiya-chowdhury/",
+        "department_role": "Clare Boothe Luce Assistant Professor",
+        "rank_in_published_shard": "Clare Boothe Luce Assistant Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Stacy Doore",
+        "name_in_shard": "Stacy Doore",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-111eac20",
+        "central_profile": "https://www.colby.edu/people/people-directory/stacy-doore/",
+        "department_role": "Clare Boothe Luce Assistant Professor",
+        "rank_in_published_shard": "Clare Booth Luce Associate Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Allen Harper",
+        "name_in_shard": "Allen Harper",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-61bfcdc8",
+        "central_profile": "https://www.colby.edu/people/people-directory/allen-harper/",
+        "department_role": "Assistant Professor",
+        "rank_in_published_shard": "Lecturer of Computer Science"
+      },
+      {
+        "name_on_page": "Ike Lage",
+        "name_in_shard": "Isaac Lage",
+        "match": "name variant",
+        "original_active_id": "faculty-colby-cs-4b912bc8",
+        "central_profile": "https://www.colby.edu/people/people-directory/isaac-lage/",
+        "department_role": "Assistant Professor",
+        "rank_in_published_shard": "Assistant Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Stephanie Taylor",
+        "name_in_shard": "Stephanie Taylor",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-1addb0bd",
+        "central_profile": "https://www.colby.edu/people/people-directory/stephanie-taylor/",
+        "department_role": "Professor",
+        "rank_in_published_shard": "Professor of Computer Science"
+      },
+      {
+        "name_on_page": "Hannen Wolfe",
+        "name_in_shard": "Hannen Wolfe",
+        "match": "exact",
+        "original_active_id": "faculty-colby-cs-ab8b7405",
+        "central_profile": "https://www.colby.edu/people/people-directory/hannen-hannah-wolfe/",
+        "department_role": "Assistant Professor",
+        "rank_in_published_shard": "Assistant Professor of Computer Science"
+      }
+    ],
+    "notes": "Department table includes 11 faculty plus one administrative secretary. Separate associated/emeritus table excluded. Nine exact names, two named variants; no duplicate or departure inferred. This department table uses old ranks for two people promoted in the 2026 college announcement; its titles were not copied to the corpus.",
+    "college_promotion_source": "https://news.colby.edu/story/tenure-granted-to-seven-faculty-members/"
+  }
+}
