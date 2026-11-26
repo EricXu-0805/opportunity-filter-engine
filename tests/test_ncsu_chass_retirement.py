@@ -66,3 +66,25 @@ def test_removing_retirement_term_or_changing_the_name_alone_does_not_reopen(mon
         roster = BeautifulSoup(card(target, name, title), 'html.parser')
         monkeypatch.setattr(ncsu_chass.ucb_common, 'fetch_soup', lambda url, result=roster, **kw: result)
         assert ncsu_chass.current_faculty([target]) == []
+
+
+def test_bradens_preferred_name_can_restore_only_his_confirmed_appointment(monkeypatch):
+    target = person('jpbraden', 'Jeffery Braden', [11847, 11927])
+    dept = next(d for d in ncsu_faculty.SCHOOL['departments'] if d['short'] == 'CHASS')
+    monkeypatch.setattr(faculty_graph, '_wp_get_json', lambda url: [target])
+
+    def observe(display, rank):
+        html = BeautifulSoup(card(target, display, rank), 'html.parser')
+        monkeypatch.setattr(ncsu_chass.ucb_common, 'fetch_soup', lambda url, **kw: html)
+        return faculty_graph._fetch_wp_api(dept)
+
+    assert observe('Jeff Braden', 'Dean and Professor Emeritus') == []
+    assert observe('Different Braden', 'Professor') == []
+    target['group'] = [11847]
+    assert observe('Jeff Braden', 'Dean and Professor Emeritus') == []
+    for cms_name in ('Jeffery Braden', 'Jeff Braden'):
+        target['title'] = {'rendered': cms_name}
+        returned, = observe('Jeff Braden', 'Professor')
+        row = faculty_graph._normalize(ncsu_faculty.SCHOOL, dept, returned)
+        assert row['id'] == 'faculty-ncsu-chass-089a76c8'
+        assert row['metadata']['is_active']
