@@ -161,7 +161,7 @@ def test_summer_lab_separates_admission_work_authorization_and_funding_through_r
     import json
 
     from backend.data_loader import _sanitize_opportunity
-    from backend.lib.opportunity_detail import build_detail_fields
+    from backend.lib.opportunity_detail import build_detail_fields, pay_is_inferred
     from src.collectors.uiuc_sro import merge_into_processed
     from src.program_windows import DSI_WORK_AUTHORIZATION
 
@@ -177,6 +177,8 @@ def test_summer_lab_separates_admission_work_authorization_and_funding_through_r
 
     def assert_qualifications(row):
         fields = build_detail_fields(row, row)["fields"]
+        assert row["paid"] == "yes" and not pay_is_inferred(row, row["paid"])
+        assert matching_ids([row], {"paid": "yes", "intl": "yes"}) == [row["id"]]
         eligibility = fields["eligibility"]
         assert eligibility["explicit"]["citizenship"] == "not_required"
         assert eligibility["explicit"]["international_students"] == "yes"

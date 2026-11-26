@@ -398,6 +398,11 @@ def apply_program_window(record: dict) -> None:
             record["metadata"]["directory_compensation"] = record["compensation_details"]
             record["compensation_details"] = DSI_SUPPORT
         if window.page == DSI_WINDOW.page:
+            if record.get("compensation_details") == DSI_SUPPORT and record.get("paid") in ("yes", "stipend"):
+                record["paid"] = "yes"
+                stamps = record["metadata"].get("inferred_fields")
+                if isinstance(stamps, dict) and stamps.get("paid") == "default:configured_program":
+                    stamps.pop("paid")
             eligibility = record.get("eligibility")
             if isinstance(eligibility, dict) and eligibility.get("citizenship_required") is not True:
                 original = eligibility.get("work_auth_notes")

@@ -110,6 +110,8 @@ def quote(record: dict, field: str) -> dict | None:
                 else "all students must be authorized to work in the United States")
         return {"text": text, "source_url": DSI_WINDOW.url + "faq/", "observed_at": window.reviewed_on.isoformat()}
     if record.get("id") in DSI_IDS and field in {"paid", "compensation"}:
+        if field == "paid" and record.get("paid") not in ("yes", "stipend"):
+            return None
         window = reviewed_window(record)
         if window and window.page == DSI_WINDOW.page and record.get("compensation_details") == DSI_SUPPORT:
             return {"text": "$1,800 travel and food stipend along with the $5,600 program stipend",
