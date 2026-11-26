@@ -150,7 +150,7 @@ describe('a course added beside an older build\'s résumé removal (R2a, MF2): o
     olderResumeOp('', []);
     const tab = await open();
     expect(tab.result.current.conflicts.map((q) => q.key).sort())
-      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text']);
     expect(tab.result.current.conflicts.every((q) => q.candidates.some((c) => c.opIds.length > 0))).toBe(true);
     await answer(tab, 'keep');
     expect(tab.result.current.saveStatus).toBe('conflict-several-typed');
@@ -273,7 +273,7 @@ describe('a résumé a phase-1 tab typed while it held the course question (revi
     act(() => { tab.result.current.update('courses', [...MARKED, STAT] as never); }); await tick(3000);
     // The names are the résumé's: asked about, the résumé is asked with them.
     expect(tab.result.current.conflicts.map((q) => q.key).sort())
-      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text']);
     // Its form showed this tab's course names while the question was held.
     olderResumeOp(`${RT}\nTA for CS 225`, [...NAMES, 'STAT 400'], { lineage: 'phase-1-tab', baseRevision: 2, base: [...NAMES, 'PHYS 211'] });
     await focus();

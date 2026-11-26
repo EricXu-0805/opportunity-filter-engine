@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createHash, webcrypto } from 'node:crypto';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import type { ProfileData, ResumeParseResponse } from '@/lib/types';
 
@@ -13,6 +14,20 @@ const t = ((key: string) => key) as never;
 
 describe('DocumentsCard — the remove button reaches the profile', () => {
   beforeEach(() => { vi.clearAllMocks(); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('restores the partial-page warning only for the exact saved résumé, including across older client edits', async () => {
+    vi.stubGlobal('crypto', webcrypto);
+    const digest = createHash('sha256').update(profile.resume_text!).digest('hex');
+    const renderProfile = (next: ProfileData) =>
+      <DocumentsCard profile={next} onResumeParsed={vi.fn()} onResumeRemoved={vi.fn()} t={t} />;
+    const view = render(renderProfile({ ...profile, resume_incomplete_digest: digest }));
+    expect(await screen.findByText('resume.incompletePages')).toBeVisible();
+    view.rerender(renderProfile({ ...profile, resume_text: 'Replacement by older client', resume_incomplete_digest: digest }));
+    expect(screen.queryByText('resume.incompletePages')).not.toBeInTheDocument();
+    view.rerender(renderProfile(profile));
+    expect(screen.queryByText('resume.incompletePages')).not.toBeInTheDocument();
+  });
 
   it('clicking Remove on the real uploader calls the parent\'s removal handler', async () => {
     const onResumeRemoved = vi.fn();

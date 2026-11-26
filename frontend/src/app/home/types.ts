@@ -43,6 +43,7 @@ export function selectedSeekingTypes(profile: Pick<ProfileData, 'seeking_types'>
 export const FRESH_PROFILE = {
   ...DEFAULT_PROFILE,
   resume_text: '',
+  resume_incomplete_digest: null,
   coursework: [],
   courses: [],
   exploring: false,

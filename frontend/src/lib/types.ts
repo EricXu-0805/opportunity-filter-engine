@@ -181,6 +181,8 @@ export interface ProfileData {
   research_interests: string;
   skills: SkillWithLevel[];
   resume_text?: string;
+  /** SHA-256 of the extracted text when at least one PDF page had no readable text. */
+  resume_incomplete_digest?: string | null;
   /** Missing in older profiles: no student-confirmed experience evidence. */
   experience_entries?: ExperienceEntry[];
   /** Missing/null means the student has not created a complete master yet. */
@@ -956,6 +958,7 @@ export interface ResumeSkillEvidence {
 export interface ResumeParseResponse {
   error_code?: 'text_too_long' | 'no_readable_text' | 'pdf_resources_unavailable';
   pages_without_text?: number[];
+  incomplete_source_digest?: string;
   extracted_skills: string[];
   skill_evidence: ResumeSkillEvidence[];
   extracted_coursework: string[];

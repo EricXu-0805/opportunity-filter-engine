@@ -170,7 +170,7 @@ describe('an operation carrying `courses` that another tab left', () => {
     const { result } = await start();
     await focus(); await tick(3000);
     // The names go with the résumé they belong to (RESUME_BUNDLE), unchanged.
-    expect(sentSince(0)).toEqual([{ courses: MARKED, coursework: NAMES, resume_text: RT0, experience_entries: [], resume_master: null }]);
+    expect(sentSince(0)).toEqual([{ courses: MARKED, coursework: NAMES, resume_text: RT0, experience_entries: [], resume_master: null, resume_incomplete_digest: null }]);
     expect(remote.courses).toEqual(MARKED);
     expect(result.current.profile.courses).toEqual(MARKED);
     expect(result.current.conflicts).toEqual([]);

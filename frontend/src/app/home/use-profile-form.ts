@@ -285,7 +285,7 @@ function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): Sk
 // and records one operation per action as it always has.
 const TYPED_KEYS: ReadonlySet<keyof ProfileData> = new Set<keyof ProfileData>(['research_interests']);
 /** What removing the résumé writes: its bundle and the courses that outlive it. */
-const REMOVAL_KEYS: readonly (keyof ProfileData)[] = ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework'];
+const REMOVAL_KEYS: readonly (keyof ProfileData)[] = ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework', 'resume_incomplete_digest'];
 // How long the typing has to pause before the burst's final value is written
 // down. Shorter than the 1.5 s autosave debounce by design: the journal is
 // the crash record, the autosave is the send.
@@ -2675,10 +2675,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         const moved = (key: string) => (fieldEpochRef.current.get(key) ?? 0) !== atIssue.get(key);
         const preserve = new Set<string>(PROFILE_KEYS.filter((key) => moved(key)
           || unrepresented.has(key) || owed.has(key) || (disputed.has(key) && !notTypedHere.has(key))));
-        const sourceBundle = ['resume_text', 'coursework', 'experience_entries', 'resume_master'] as const;
         // The source and its confirmations are one revision, never a mixture
         // of the old editor's metadata with the newly read résumé text.
-        if (sourceBundle.some((key) => preserve.has(key))) for (const key of sourceBundle) preserve.add(key);
+        if (RESUME_BUNDLE.some((key) => preserve.has(key))) for (const key of RESUME_BUNDLE) preserve.add(key);
         // The course list is kept only when this tab changed it. A résumé
         // edit keeps the names with the résumé but shows the list as read,
         // since the next course edit is made on the list shown and must not
@@ -3270,6 +3269,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         ...prev,
         skills: resumeSkills.skills,
         resume_text: data.raw_text,
+        resume_incomplete_digest: data.incomplete_source_digest ?? null,
         experience_entries: resumeEntries,
         resume_master: resumeMaster,
         // Merged by name: a status the student set survives a re-import, and
@@ -3328,14 +3328,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     if (!resumeSkills.onlyAdds) markSkillsReplaced(origin.token);
     editProfile(
       (prev) => (
-        (prev.resume_text ?? '') === ''
+        (prev.resume_text ?? '') === '' && !prev.resume_incomplete_digest
           && resumeSkills.onlyAdds
           && JSON.stringify(prev.courses ?? []) === JSON.stringify(retainedCourses.courses ?? prev.courses ?? [])
           && JSON.stringify(prev.coursework ?? []) === JSON.stringify(retainedCourses.coursework)
           && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
           && JSON.stringify(prev.resume_master ?? null) === JSON.stringify(retainedMaster)
           ? prev
-          : { ...prev, resume_text: '', ...retainedCourses, ...retainedSkills, experience_entries: retainedEntries, resume_master: retainedMaster }
+          : { ...prev, resume_text: '', resume_incomplete_digest: null, ...retainedCourses, ...retainedSkills, experience_entries: retainedEntries, resume_master: retainedMaster }
       ),
       // Record the whole source bundle, including an already-empty member.
       // Deletion must not revive old quoted evidence during reconciliation.
@@ -3357,6 +3357,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const cleansed = normalizeProfileForRelease({
       ...profileRef.current,
       resume_text: '',
+      resume_incomplete_digest: null,
       ...retainedCourses,
       ...retainedSkills,
       experience_entries: retainedEntries,

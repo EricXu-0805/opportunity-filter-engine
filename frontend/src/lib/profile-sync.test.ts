@@ -746,7 +746,7 @@ describe('the résumé bundle', () => {
     await stageProfilePatch(
       { ...FULL, resume_text: '', coursework: [] }, ['resume_text'], captureOwnerToken(),
     );
-    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
+    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text']);
   });
 
   it('a collision on either half conflicts BOTH — coursework never outlives its résumé', async () => {
@@ -761,7 +761,7 @@ describe('the résumé bundle', () => {
     );
     expect(result.status).toBe('conflict');
     expect((result as { conflictKeys: string[] }).conflictKeys.sort())
-      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
+      .toEqual(['coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text']);
   });
 
   it('journals a second course edit on a profile saved before courses existed', async () => {
@@ -791,7 +791,7 @@ describe('the résumé bundle', () => {
     commitMock.mockResolvedValue(saved(added, 9));
     await stageProfilePatch(added, ['courses', 'coursework'], captureOwnerToken());
     expect(Object.keys(commitMock.mock.calls[1][0].patch).sort())
-      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text']);
   });
 });
 
@@ -6506,7 +6506,7 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     expect(server.rev).toBe(2);
     expect(server.row).toMatchObject({ resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'], college: 'Grainger' });
     // The résumé went out as a patch on revision 1, never as a partial create.
-    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'] }]);
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: ['coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text', 'skills'] }]);
     expect(journalOps()).toEqual([]);
   });
 
@@ -6542,7 +6542,7 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     expect(next.status).toBe('saved');
     expect(server.rev).toBe(3);
     expect(server.row).toMatchObject({ resume_text: 'Built a PyTorch pipeline.', research_interests: 'medical imaging' });
-    const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
+    const resumeKeys = ['coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text', 'skills'];
     expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: resumeKeys }]);
   });
 
@@ -6578,7 +6578,7 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     commitMock.mockImplementation(async (intent) => server.handle(intent));
     const next = await stageProfilePatch(edited, ['resume_text'], token, { allowCreate: true });
     // The résumé and what was read from it are one question.
-    const resumeKeys = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
+    const resumeKeys = ['resume_text', 'coursework', 'experience_entries', 'resume_master', 'resume_incomplete_digest'];
     expect(next).toMatchObject({ status: 'conflict', conflictKeys: resumeKeys });
     expect(server.seen.slice(1), 'no partial create goes out').toEqual([]);
 
@@ -6619,10 +6619,10 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     server.elsewhere({ resume_text: 'Another device\'s résumé.' });
     commitMock.mockImplementation(async (intent) => server.handle(intent));
     const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
-    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] });
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master', 'resume_incomplete_digest'] });
     expect(server.row).toMatchObject({ resume_text: 'Another device\'s résumé.', coursework: [],
       skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] });
-    const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
+    const resumeKeys = ['coursework', 'experience_entries', 'resume_incomplete_digest', 'resume_master', 'resume_text', 'skills'];
     expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: ['skills'] }]);
   });
 });
