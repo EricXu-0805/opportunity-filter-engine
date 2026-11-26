@@ -26,6 +26,10 @@ with sync_playwright() as pw:
                     tab=ctx.new_page()
                     try:
                         response=tab.goto(url,wait_until="domcontentloaded",timeout=45000)
+                        if url=="https://cancer.iu.edu/education/summer/index.html":
+                            tab.get_by_role("button",name="Q: What are the expectations for an intern?",exact=True).click(timeout=45000)
+                            expect(tab.get_by_text("The program will be held in-person at the cancer center in Indianapolis.",exact=False)).to_be_visible()
+                            tab.screenshot(path=out/"indiana-location-faq.png")
                         if url==etap:
                             tab.get_by_text("Application Window",exact=True).wait_for(timeout=45000)
                             expect(tab.get_by_text("2447670",exact=True)).to_be_visible()
@@ -39,6 +43,10 @@ with sync_playwright() as pw:
                     except Exception as exc:
                         result[url]={"source_visit":str(exc)[:300]}
                     finally:tab.close()
+                if oid=="sro-3ec4ea4e":
+                    assert any("in-person at the cancer center in Indianapolis" in x for x in result["https://cancer.iu.edu/education/summer/index.html"]["date_lines"])
+                if oid=="sro-44f176cd":
+                    assert any("US Citizenship or permanent resident" in x for x in result[etap]["date_lines"])
                 response=page.request.get(site+"/api/opportunities/"+oid,params={"_release_scope":"mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"})
                 assert response.ok,(oid,response.status)
                 d=response.json()
