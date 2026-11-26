@@ -559,6 +559,24 @@ def test_wisconsin_host_dates_survive_a_refresh_of_the_preferred_directory_id_an
         before = copy.deepcopy(other)
         host_program_terms.apply_terms(other)
         assert other == before and host_program_terms.quote(other, "paid") is None
+    # The same-cycle shallow retry must retain the last deep source paragraph.
+    preferred["description_clean"] += "\n\nPrevious deep source paragraph."
+    preferred["description_raw"] = "Previous deep source paragraph."
+    output.write_text(json.dumps([host_record, alias, preferred]))
+    shallow = source_row(directory + "-0", directory + "-0")
+    shallow["organization"] = ""
+    merge_into_processed([shallow], str(output))
+    same = next(r for r in json.loads(output.read_text()) if r["id"] == preferred["id"])
+    assert same["description_clean"].count("Previous deep source paragraph.") == 1
+    assert same["description_clean"].count(SUMMARY) == 1
+    new_cycle = source_row(directory + "-0", old_host, "Anticipated 2/15/28")
+    new_cycle["description_clean"] = new_cycle["description_raw"] = "New cohort eligibility is pending."
+    for _ in range(2):
+        merge_into_processed([copy.deepcopy(new_cycle)], str(output))
+        current = next(r for r in json.loads(output.read_text()) if r["id"] == preferred["id"])
+        assert current["description_clean"] == current["description_raw"] == "New cohort eligibility is pending."
+        assert current["deadline"] == "2028-02-15" and current["compensation_details"] != SUPPORT
+
 
 
 
