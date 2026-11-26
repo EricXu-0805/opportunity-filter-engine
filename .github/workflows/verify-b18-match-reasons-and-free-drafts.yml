@@ -1,0 +1,39 @@
+name: Read the original free draft from two public match cards
+on:
+  push:
+    branches: [audit/b20-original-details-20261126]
+    paths:
+      - '.github/workflows/verify-b18-match-reasons-and-free-drafts.yml'
+      - 'data/audits/m04-original-public/normal_card_to_draft.py'
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        campus: [caltech, uiuc]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: data/audits/m04-original-public
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install Chromium for the public read
+        run: |
+          python -m pip install -q playwright==1.58.0
+          python -m playwright install --with-deps chromium > "$RUNNER_TEMP/chromium-install.log"
+      - name: Read the reasons, open the same free draft and check the displayed text
+        env:
+          CAMPUS: ${{ matrix.campus }}
+        run: python -u data/audits/m04-original-public/normal_card_to_draft.py evidence
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: original-match-draft-${{ matrix.campus }}
+          path: evidence/
+          retention-days: 30
