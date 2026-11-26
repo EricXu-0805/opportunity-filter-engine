@@ -1,0 +1,14 @@
+{
+  "batch": 18,
+  "release_sha": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+  "release_scope": "public detail observations",
+  "same_version_before_probe": {
+    "observed": "2026-11-26T21:57:22+00:00",
+    "target": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+    "sha_by_url": {
+      "https://joinalab.com/about": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+      "https://joinalab.com/api/health": "b23afca130ade46a8a643dcd95f6afa1d492630f",
+      "https://opportunity-filter-engine-api.onrender.com/api/health": "b23afca130ade46a8a643dcd95f6afa1d492630f"
+    }
+  }
+}
