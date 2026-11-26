@@ -330,8 +330,7 @@ def filter_opportunities(
             if oid in program_pairs.ALL_IDS:
                 matched_members.add(oid)
     hidden = {
-        pair.redundant_id(preferred_ids) for pair in program_pairs.verified_pairs(candidates)
-        if pair.host_id in matched_members and pair.directory_id in matched_members
+        oid for pair in program_pairs.verified_pairs(candidates) for oid in pair.redundant_ids(matched_members, preferred_ids)
     }
     if hidden:
         return [o for o in selected if o.get("id") not in hidden]
