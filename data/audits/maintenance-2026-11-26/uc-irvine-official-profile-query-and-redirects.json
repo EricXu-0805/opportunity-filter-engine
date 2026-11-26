@@ -1,0 +1,225 @@
+{
+  "institution": "University of California, Irvine",
+  "source_checks": [
+    {
+      "source_department": "hist",
+      "directory": "https://www.humanities.uci.edu/history/core-faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 37
+    },
+    {
+      "source_department": "phil",
+      "directory": "https://www.humanities.uci.edu/philosophy/faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 15
+    },
+    {
+      "source_department": "arth",
+      "directory": "https://www.humanities.uci.edu/arthistory/core-faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 20
+    },
+    {
+      "source_department": "clas",
+      "directory": "https://www.humanities.uci.edu/classics/faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 9
+    },
+    {
+      "source_department": "fms",
+      "directory": "https://www.humanities.uci.edu/filmandmediastudies/core-faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 19
+    },
+    {
+      "source_department": "pharm",
+      "directory": "https://pharmsci.uci.edu/about/our-faculty/",
+      "http": null,
+      "read_error": "ProxyError",
+      "individual_keys_published_on_directory": 0
+    },
+    {
+      "source_department": "engl",
+      "directory": "https://www.humanities.uci.edu/english/core-faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 43
+    },
+    {
+      "source_department": "complit",
+      "directory": "https://www.humanities.uci.edu/complit/meet-faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 41
+    },
+    {
+      "source_department": "ealc",
+      "directory": "https://www.humanities.uci.edu/eastasian/core-faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 10
+    },
+    {
+      "source_department": "els",
+      "directory": "https://www.humanities.uci.edu/els/faculty",
+      "http": 200,
+      "read_error": null,
+      "individual_keys_published_on_directory": 41
+    }
+  ],
+  "individual_page_controls": [
+    {
+      "host": "www.faculty.uci.edu",
+      "path": "/profile/",
+      "observations": [
+        {
+          "source_request": "https://www.faculty.uci.edu/profile/?facultyId=7094",
+          "http": 200,
+          "final_url": "https://www.faculty.uci.edu/profile/?facultyId=7094",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Kevan Antonio Aguilar"
+          ],
+          "comparison": "first"
+        },
+        {
+          "source_request": "https://www.faculty.uci.edu/profile/?facultyId=7280",
+          "http": 200,
+          "final_url": "https://www.faculty.uci.edu/profile/?facultyId=7280",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Rachel Baron-Bloch"
+          ],
+          "comparison": "second"
+        },
+        {
+          "source_request": "https://www.faculty.uci.edu/profile/?utm_source=university-directory&facultyId=7094",
+          "http": 200,
+          "final_url": "https://www.faculty.uci.edu/profile/?utm_source=university-directory&facultyId=7094",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Kevan Antonio Aguilar"
+          ],
+          "comparison": "tracking"
+        },
+        {
+          "source_request": "https://www.faculty.uci.edu/profile/",
+          "http": 500,
+          "final_url": "https://www.faculty.uci.edu/profile/",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Oops, an error occurred!"
+          ],
+          "comparison": "no_id"
+        }
+      ]
+    },
+    {
+      "host": "faculty.uci.edu",
+      "path": "/profile/",
+      "observations": [
+        {
+          "source_request": "https://faculty.uci.edu/profile/?facultyId=7199",
+          "http": 200,
+          "final_url": "https://faculty.uci.edu/profile/?facultyId=7199",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Samantha Q De Vera"
+          ],
+          "comparison": "first"
+        },
+        {
+          "source_request": "https://faculty.uci.edu/profile/?facultyId=7198",
+          "http": 200,
+          "final_url": "https://faculty.uci.edu/profile/?facultyId=7198",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Nivedita Nath"
+          ],
+          "comparison": "second"
+        },
+        {
+          "source_request": "https://faculty.uci.edu/profile/?utm_source=university-directory&facultyId=7199",
+          "http": 200,
+          "final_url": "https://faculty.uci.edu/profile/?utm_source=university-directory&facultyId=7199",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Samantha Q De Vera"
+          ],
+          "comparison": "tracking"
+        },
+        {
+          "source_request": "https://faculty.uci.edu/profile/",
+          "http": 500,
+          "final_url": "https://faculty.uci.edu/profile/",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Oops, an error occurred!"
+          ],
+          "comparison": "no_id"
+        }
+      ]
+    },
+    {
+      "host": "www.faculty.uci.edu",
+      "path": "/profile.cfm",
+      "observations": [
+        {
+          "source_request": "https://www.faculty.uci.edu/profile.cfm?faculty_id=7330",
+          "http": 200,
+          "final_url": "https://www.faculty.uci.edu/profile/?facultyId=7330",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Margaux Fitoussi"
+          ],
+          "comparison": "first"
+        },
+        {
+          "source_request": "https://www.faculty.uci.edu/profile.cfm?faculty_id=5510",
+          "http": 200,
+          "final_url": "https://www.faculty.uci.edu/profile/?facultyId=5510",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Catherine L. Benamou"
+          ],
+          "comparison": "second"
+        },
+        {
+          "source_request": "https://www.faculty.uci.edu/profile.cfm?utm_source=university-directory&faculty_id=7330",
+          "http": 200,
+          "final_url": "https://www.faculty.uci.edu/profile/?facultyId=7330",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Margaux Fitoussi"
+          ],
+          "comparison": "tracking"
+        },
+        {
+          "source_request": "https://www.faculty.uci.edu/profile.cfm",
+          "http": 500,
+          "final_url": "https://www.faculty.uci.edu/profile/?facultyId=",
+          "source_headings": [
+            "UC Irvine - Faculty Profile System",
+            "Oops, an error occurred!"
+          ],
+          "comparison": "no_id"
+        }
+      ]
+    }
+  ],
+  "official_profile_response_counts": {
+    "legacy_rows": 82,
+    "modern_rows": 94,
+    "named_and_same_numeric_key": 176,
+    "named_and_same_numeric_key_for_legacy": 82,
+    "source_statuses": {
+      "200": 176
+    },
+    "blocked": false
+  }
+}
