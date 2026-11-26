@@ -13,6 +13,7 @@ combined = 'Fictional Copper Studio analyst, 2024 to 2025. Reviewed synthetic sa
 profile_link = 'https://www.linkedin.com/in/ofe-fictional-sample-1354'
 csv = f'Company Name,Title,Started On,Finished On,Description,Results\n{company},Analyst,2024,2025,Reviewed synthetic values,Reported two examples'
 fixed = os.environ['PDF_ACCEPTANCE_MODE'] == 'fixed'
+across_release = os.environ.get('VERIFY_GUEST_ACROSS_RELEASE') == '1'
 
 
 def wait_for_write(page, before):
@@ -85,6 +86,41 @@ with sync_playwright() as pw:
              'backend_sha':prior.request.get(SITE+'/api/health').json()['release_sha'],
              'before_revision':old['revision'],'only_link_saved_experiences':0,'mode':'fixed' if fixed else 'baseline'}
     gate=prior.get_by_text('Import LinkedIn experience',exact=True)
+    if across_release:
+        expect(gate).to_have_count(0)
+        old_front = receipt['frontend_sha']
+        old_back = receipt['backend_sha']
+        receipt['profile_created_before_frontend_sha'] = old_front
+        receipt['profile_created_before_backend_sha'] = old_back
+        print('Existing synthetic profile established before release at', old_front, 'revision', old['revision'], flush=True)
+        observed = {old_front}
+        for _ in range(58):
+            # Keep the same browser session alive. No credentials leave this job.
+            prior.wait_for_timeout(60000)
+            response = prior.request.get(SITE)
+            match = re.search(r'data-release-sha="([a-f0-9]{40})"', response.text())
+            back = prior.request.get(SITE+'/api/health').json().get('release_sha')
+            if not match or match[1] in observed or back==old_back:
+                continue
+            digest = match[1]
+            opt = prior.evaluate("() => JSON.parse(localStorage.getItem('ofe_auth'))")
+            if opt:
+                assert opt['user']['id'] == sessions[0]['user']['id']
+                sessions[0] = opt
+            candidate, row = fresh(browser,lambda p: p.get('linkedin_url')==profile_link and original in (p.get('resume_text') or ''))
+            new_gate = candidate.get_by_text('Import LinkedIn experience',exact=True)
+            if not new_gate.is_visible():
+                observed.add(digest)
+                candidate.context.close()
+                continue
+            assert row['revision']==old['revision']
+            assert not row['profile_data'].get('experience_entries')
+            prior.context.close()
+            prior=candidate
+            receipt.update({'frontend_sha':digest,'backend_sha':back,'same_pre_release_profile_and_revision':True})
+            break
+        else:
+            raise TimeoutError('The import did not reach the official site during the release observation window.')
     if fixed:
         panel=uploader(prior)
         panel.get_by_label('Input method').select_option('paste')
