@@ -249,5 +249,95 @@
     "The English conditions disclosure expanded, but neither forward Tab nor the reader query yielded its full allowlisted title. A missed exact title cannot establish silence.",
     "Both close operations restored real focus to the original opportunity. The Orca location command named it in both languages, while the original closing action did not produce the allowlisted name during the observation window.",
     "Human listening, mobile VoiceOver and TalkBack, and physical devices are outstanding."
-  ]
+  ],
+  "isolated_comparison": {
+    "run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45862206054/job/140055832345",
+    "source_markup": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/85f20cfad2dbb0f0600cdecdc14c976cf100f913/frontend/src/components/EmailTargetConditionsPanel.tsx",
+    "scope": "Only static loopback pages with the same published English title and two public status formats, and a native HTML dialog control. No real or guest accounts. Official reader events were already sanitized, so the exact earlier official utterance remains uncollected. The control establishes a reproducible title/text joining bug and reproduces native desktop focus return.",
+    "observations": {
+      "local_disclosures": {
+        "unreviewed_shipped": {
+          "utterances": [
+            "tab",
+            "Target conditions for this draftApplication conditions need review toggle button collapsed."
+          ],
+          "peak": 32768,
+          "frames": 31617,
+          "known_words_present": {
+            "target": true,
+            "conditions": true,
+            "for": true,
+            "this": true,
+            "draft": true
+          },
+          "strict_production_extractor_would_match": false,
+          "contains_full_title": true,
+          "dom_text": "Target conditions for this draftApplication conditions need review",
+          "chromium_accessible_snapshot": "- text: Target conditions for this draftApplication conditions need review",
+          "expanded": true
+        },
+        "sourced_shipped": {
+          "utterances": [
+            "tab",
+            "Target conditions for this draft2 sourced · 3 to review toggle button collapsed.",
+            "Focus mode"
+          ],
+          "peak": 32768,
+          "frames": 31603,
+          "known_words_present": {
+            "target": true,
+            "conditions": true,
+            "for": true,
+            "this": true,
+            "draft": true
+          },
+          "strict_production_extractor_would_match": true,
+          "contains_full_title": true,
+          "dom_text": "Target conditions for this draft2 sourced · 3 to review",
+          "chromium_accessible_snapshot": "- text: Target conditions for this draft2 sourced · 3 to review",
+          "expanded": true
+        },
+        "unreviewed_with_space": {
+          "utterances": [
+            "tab",
+            "Target conditions for this draft Application conditions need review toggle button collapsed.",
+            "Focus mode"
+          ],
+          "peak": 32768,
+          "frames": 31674,
+          "known_words_present": {
+            "target": true,
+            "conditions": true,
+            "for": true,
+            "this": true,
+            "draft": true
+          },
+          "strict_production_extractor_would_match": true,
+          "contains_full_title": true,
+          "dom_text": "Target conditions for this draft Application conditions need review",
+          "chromium_accessible_snapshot": "- text: Target conditions for this draft Application conditions need review",
+          "expanded": true
+        }
+      },
+      "interface_language": "en",
+      "native_dialog_return": {
+        "utterances": [
+          "return"
+        ],
+        "peak": 32768,
+        "frames": 28335,
+        "location_query": {
+          "utterances": [
+            "main content",
+            "Draft email push button.",
+            "Draft email push button."
+          ],
+          "peak": 32768,
+          "frames": 28307
+        },
+        "focus_on_original_button": true
+      },
+      "orca": "46.1"
+    }
+  }
 }
