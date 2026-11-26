@@ -1,8 +1,9 @@
 import { importSourceInfo, type ImportSourceInfo } from '@/lib/import-source';
 import { importSuggestions } from '@/lib/import-suggestions';
 import type { CustomImport } from '@/lib/custom-imports';
-import type { SavedSearch, SavedSearchDigest } from '@/lib/saved-searches';
-import { typeLabel } from '../results/types';
+import { savedSearchToUrl, type SavedSearch, type SavedSearchDigest } from '@/lib/saved-searches';
+import { readInitialFiltersFromUrl } from '../results/use-results-url';
+import { deadlineFilterLabel, sourceLabel, TABS, typeLabel } from '../results/types';
 import { humanizeTime } from '@/lib/humanize-time';
 import type { ContactEmailStatus, FacultyAvailabilityStatus, PublicTargetTruth } from '@/lib/types';
 
@@ -99,19 +100,24 @@ export function customImportToOpp(c: CustomImport): Opp {
 
 export function summarizeSavedSearchFilters(search: SavedSearch, t: TFunc): string {
   const parts: string[] = [];
-  if (search.filters.researchTopic) parts.push(search.filters.researchTopic);
-  if (search.filters.opportunityType) parts.push(typeLabel(search.filters.opportunityType, t));
-  if (search.query) parts.push(`"${search.query}"`);
-  if (search.filters.paid === 'yes') parts.push('paid');
-  if (search.filters.paid === 'no') parts.push('unpaid');
-  if (search.filters.intl === 'yes') parts.push('intl');
-  if (search.filters.onCampus === 'yes') parts.push('on-campus');
-  if (search.filters.deadline === 'passed') parts.push('past-due');
-  else if (search.filters.deadline) parts.push(`≤${search.filters.deadline}d`);
-  if (search.filters.minScore > 0) parts.push(`≥${search.filters.minScore}`);
-  if (search.filters.source) parts.push(search.filters.source);
-  if (search.tab && search.tab !== 'all') parts.push(search.tab);
-  if (search.sort_by && search.sort_by !== 'score') parts.push(`by ${search.sort_by}`);
+  // Old rows can predate a facet or carry a value that results no longer accepts.
+  const params = new URLSearchParams(savedSearchToUrl(search).split('?')[1]);
+  const { filters, searchQuery, activeTab, sortBy } = readInitialFiltersFromUrl(params);
+  const { researchTopic, opportunityType, paid, intl, onCampus, deadline, scope, minScore, source } = filters;
+  if (researchTopic) parts.push(researchTopic);
+  if (opportunityType) parts.push(typeLabel(opportunityType, t));
+  if (searchQuery) parts.push(`"${searchQuery}"`);
+  if (paid) parts.push(t(paid === 'yes' ? 'results.filters.paidYes' : 'results.filters.paidNo'));
+  if (intl) parts.push(t(intl === 'yes' ? 'results.filters.intlYes' : 'results.filters.intlNo'));
+  if (onCampus) parts.push(t(onCampus === 'yes' ? 'results.filters.locYes' : 'results.filters.locNo'));
+  if (deadline) parts.push(deadlineFilterLabel(deadline, t));
+  if (scope) parts.push(t(scope === 'campus' ? 'results.filters.scopeMySchool' : 'results.filters.scopeOpen'));
+  if (minScore > 0) parts.push(t('results.minScore.buttonActive', { value: minScore }));
+  if (source) parts.push(sourceLabel(source, t));
+  const tab = TABS.find(({ key }) => key === activeTab);
+  if (tab && tab.key !== 'all') parts.push(t(tab.labelKey));
+  if (sortBy === 'deadline') parts.push(t('results.filters.sortDeadline'));
+  if (sortBy === 'newest') parts.push(t('results.filters.sortNewest'));
   return parts.length > 0 ? parts.join(' · ') : t('favorites.savedSearches.filtersFallback');
 }
 
