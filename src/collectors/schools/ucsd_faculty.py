@@ -22,8 +22,8 @@ directory HTML, Jul 2026):
   line lands as keywords via ``research_re``.
 - **Odd one out**: HDSI's WordPress grid (``vc_grid-term-faculty`` cards,
   ladder-filtered).
-- Physics rides its public JSON profile API via the engine's ``json_dir``
-  block (names/titles/emails in the feed).
+- Physics publishes faculty cards with appointments and personal page links.
+  The linked pages provide personal emails and labeled research statements.
 
 **Batch 2 — remaining Social Sciences, Arts & Humanities, Math, professional
 schools (17 depts):** mostly the same Blink card template with per-dept quirks
@@ -335,23 +335,30 @@ SCHOOL: dict = {
             "short": "PHYS", "name": "Department of Physics",
             "majors": ["Physics", "General Physics", "Astronomy & Astrophysics"],
             "directory_url": "https://physics.ucsd.edu/people/faculty",
-            # The listing page is a JS spinner over this public JSON API.
-            "json_dir": {
-                "url": "https://physics.ucsd.edu/api/profiles/faculty",
-                "name_fields": ["first_name", "last_name"],
-                "title_field": "display_title",
-                "email_field": "email",
-                "ladder_filter": {"require": r"\bprofessor\b",
+            # The Physics directory now renders the name, appointment and
+            # personal page in each card. The old JSON roster returns {}.
+            "scrape": {
+                "url": "https://physics.ucsd.edu/people/faculty",
+                "selectors": {
+                    "card": ".profiles_container .row > .col-sm-3 > .pe-5:has(> a[href] > h4)",
+                    "name": "a[href] > h4",
+                    "link": "a[href]:has(> h4)",
+                    "title": "h5",
+                },
+                "ladder_filter": {"require": r"\bprofessor\b|^Department Chair$",
                                   "drop": r"\bemerit|\badjunct|\bvisiting"},
-            },
-            # The roster feed has no research field; the site's own JS enriches
-            # each person from /api/profile/<email-user>/<dept-code>, whose JSON
-            # carries a research paragraph. Dept-level (the json_dir path has no
-            # scrape block); gated pass.
-            "profile_enrich": {
-                "url_template": "https://physics.ucsd.edu/api/profile/{email_local}/000220",
-                "research_html_re": r'"research":"((?:[^"\\]|\\.)*)"',
-                "throttle": 1.0,
+                "profile_enrich": {
+                    # Cross-appointed faculty are reconciled by their own published email.
+                    "always": True,
+                    # The chair card lists only the office. Their own profile
+                    # separately states their professorship before the final rank gate.
+                    "title_selector": '.profile_container .col-sm-9 > h3:-soup-contains("Professor")',
+                    "ladder_recheck": {"require": r"\bprofessor\b",
+                                       "drop": r"\bemerit|\badjunct|\bvisiting"},
+                    "email_selector": '.profile_container .col-sm-3 > h4:-soup-contains-own("Email") + p',
+                    "research_selector": '.profile_container .col-sm-9 > h4:-soup-contains-own("Research Statement") + p',
+                    "throttle": 0.25,
+                },
             },
         },
         # ---- School of Social Sciences --------------------------------------
