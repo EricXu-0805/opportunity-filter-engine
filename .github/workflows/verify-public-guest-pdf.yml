@@ -17,7 +17,7 @@ jobs:
             data/audits/m11-coursework
             frontend/src/lib/__fixtures__/resume-pdf
       - run: python -m pip install --quiet playwright==1.55.0
-      - run: python -u data/audits/m11-coursework/layouts.py
+      - run: python -u data/audits/m11-coursework/publication.py
       - uses: actions/upload-artifact@v4
         with:
           name: M11-coursework
