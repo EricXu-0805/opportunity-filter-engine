@@ -306,6 +306,27 @@ describe('an edit made while a send is in flight', () => {
     await waitFor(() => expect(storedDraft()?.[field]).toBe(value));
   });
 
+  it('keeps edits across a reload after a lost receipt and retries as a new ticket', async () => {
+    mockSubmitFeedback.mockResolvedValueOnce({ ok: false, reason: 'error' });
+    render(<FeedbackWidget />);
+    openAndType('The old message');
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    await screen.findByTestId('feedback-error');
+    fireEvent.change(screen.getByPlaceholderText('feedback.placeholder'), { target: { value: 'The edited message' } });
+    cleanup();
+    render(<FeedbackWidget />);
+    fireEvent.click(screen.getByTestId('feedback-open'));
+    mockSubmitFeedback.mockResolvedValueOnce({ ok: false, reason: 'earlier-version' });
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    await waitFor(() => expect(screen.getByTestId('feedback-error')).toHaveTextContent('feedback.earlierVersion'));
+    expect(tokenOfCall(1)).toBe(tokenOfCall(0));
+    expect(storedDraft()?.message).toBe('The edited message');
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    await screen.findByTestId('feedback-reference');
+    expect(tokenOfCall(2)).not.toBe(tokenOfCall(0));
+    expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
+  });
+
   it('an untouched draft is still cleared by its own receipt', async () => {
     const finish = holdSend();
     render(<FeedbackWidget />);
