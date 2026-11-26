@@ -1,0 +1,143 @@
+{
+  "expected_head": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "backend_start": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "backend_end": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+  "site": "https://joinalab.com",
+  "checked_at": "2026-11-26T20:49:18.410740+00:00",
+  "expected_behavior": "fixed",
+  "guest_http": [
+    {
+      "path": "/auth/v1/signup",
+      "status": 200
+    }
+  ],
+  "guest_setup": "One dedicated QA visitor completed the normal NC State school-selection tour and changed the on-screen language. No emails or applications.",
+  "rows": [
+    {
+      "id": "faculty-ncsu-chass-089a76c8",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-089a76c8",
+      "public_rank": "Dean and Professor Emeritus",
+      "api_actionable": false,
+      "observations": [
+        {
+          "language": "en",
+          "person": "Jeffery Braden",
+          "heading": "Recent publications",
+          "visible_scholar_titles": {
+            "On (Cognitive) Bias in School Psychology": "https://scholar.google.com/scholar?q=%22On%20(Cognitive)%20Bias%20in%20School%20Psychology%22",
+            "The Value Gap: A School Psychologist’s Perspective on Rausch et al. (2023)": "https://scholar.google.com/scholar?q=%22The%20Value%20Gap%3A%20A%20School%20Psychologist%E2%80%99s%20Perspective%20on%20Rausch%20et%20al.%20(2023)%22",
+            "ADVOCATING FOR THE HUMANITIES AND SOCIAL SCIENCES": "https://scholar.google.com/scholar?q=%22ADVOCATING%20FOR%20THE%20HUMANITIES%20AND%20SOCIAL%20SCIENCES%22"
+          },
+          "source_disclaimer_visible": true,
+          "visible_outreach_advice": {
+            "professor": false,
+            "lecturer": false
+          },
+          "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+          "passed": true
+        },
+        {
+          "language": "zh",
+          "person": "Jeffery Braden",
+          "heading": "近期论文",
+          "visible_scholar_titles": {
+            "On (Cognitive) Bias in School Psychology": "https://scholar.google.com/scholar?q=%22On%20(Cognitive)%20Bias%20in%20School%20Psychology%22",
+            "The Value Gap: A School Psychologist’s Perspective on Rausch et al. (2023)": "https://scholar.google.com/scholar?q=%22The%20Value%20Gap%3A%20A%20School%20Psychologist%E2%80%99s%20Perspective%20on%20Rausch%20et%20al.%20(2023)%22",
+            "ADVOCATING FOR THE HUMANITIES AND SOCIAL SCIENCES": "https://scholar.google.com/scholar?q=%22ADVOCATING%20FOR%20THE%20HUMANITIES%20AND%20SOCIAL%20SCIENCES%22"
+          },
+          "source_disclaimer_visible": true,
+          "visible_outreach_advice": {
+            "professor": false,
+            "lecturer": false
+          },
+          "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-ncsu-chass-9dbafbfb",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-9dbafbfb",
+      "public_rank": "Professor",
+      "api_actionable": true,
+      "observations": [
+        {
+          "language": "en",
+          "person": "Kirsti Cole",
+          "heading": "Recent publications",
+          "visible_scholar_titles": {
+            "Reimagining Graduate Education in Writing Studies: Sustainable, Equitable, and Inclusive Approaches": "https://scholar.google.com/scholar?q=%22Reimagining%20Graduate%20Education%20in%20Writing%20Studies%3A%20Sustainable%2C%20Equitable%2C%20and%20Inclusive%20Approaches%22",
+            "Reimagining Graduate Education in Writing Studies": "https://scholar.google.com/scholar?q=%22Reimagining%20Graduate%20Education%20in%20Writing%20Studies%22",
+            "Conflicts in Shared Governance and Policy Development": "https://scholar.google.com/scholar?q=%22Conflicts%20in%20Shared%20Governance%20and%20Policy%20Development%22"
+          },
+          "source_disclaimer_visible": true,
+          "visible_outreach_advice": {
+            "professor": true,
+            "lecturer": false
+          },
+          "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+          "passed": true
+        },
+        {
+          "language": "zh",
+          "person": "Kirsti Cole",
+          "heading": "近期论文",
+          "visible_scholar_titles": {
+            "Reimagining Graduate Education in Writing Studies: Sustainable, Equitable, and Inclusive Approaches": "https://scholar.google.com/scholar?q=%22Reimagining%20Graduate%20Education%20in%20Writing%20Studies%3A%20Sustainable%2C%20Equitable%2C%20and%20Inclusive%20Approaches%22",
+            "Reimagining Graduate Education in Writing Studies": "https://scholar.google.com/scholar?q=%22Reimagining%20Graduate%20Education%20in%20Writing%20Studies%22",
+            "Conflicts in Shared Governance and Policy Development": "https://scholar.google.com/scholar?q=%22Conflicts%20in%20Shared%20Governance%20and%20Policy%20Development%22"
+          },
+          "source_disclaimer_visible": true,
+          "visible_outreach_advice": {
+            "professor": true,
+            "lecturer": false
+          },
+          "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "faculty-ncsu-chass-fe45bd2c",
+      "url": "https://joinalab.com/opportunities/faculty-ncsu-chass-fe45bd2c",
+      "public_rank": "Senior Lecturer",
+      "api_actionable": true,
+      "observations": [
+        {
+          "language": "en",
+          "person": "Jennifer Despain",
+          "heading": "Recent publications",
+          "visible_scholar_titles": {
+            "Nurturing the human connection: Increasing student engagement and personal connection in an asynchronous language course": "https://scholar.google.com/scholar?q=%22Nurturing%20the%20human%20connection%3A%20Increasing%20student%20engagement%20and%20personal%20connection%20in%20an%20asynchronous%20language%20course%22",
+            "The changing system of Costa Rican pronouns of address": "https://scholar.google.com/scholar?q=%22The%20changing%20system%20of%20Costa%20Rican%20pronouns%20of%20address%22",
+            "Reviews of Multimedia Products": "https://scholar.google.com/scholar?q=%22Reviews%20of%20Multimedia%20Products%22"
+          },
+          "source_disclaimer_visible": true,
+          "visible_outreach_advice": {
+            "professor": false,
+            "lecturer": true
+          },
+          "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+          "passed": true
+        },
+        {
+          "language": "zh",
+          "person": "Jennifer Despain",
+          "heading": "近期论文",
+          "visible_scholar_titles": {
+            "Nurturing the human connection: Increasing student engagement and personal connection in an asynchronous language course": "https://scholar.google.com/scholar?q=%22Nurturing%20the%20human%20connection%3A%20Increasing%20student%20engagement%20and%20personal%20connection%20in%20an%20asynchronous%20language%20course%22",
+            "The changing system of Costa Rican pronouns of address": "https://scholar.google.com/scholar?q=%22The%20changing%20system%20of%20Costa%20Rican%20pronouns%20of%20address%22",
+            "Reviews of Multimedia Products": "https://scholar.google.com/scholar?q=%22Reviews%20of%20Multimedia%20Products%22"
+          },
+          "source_disclaimer_visible": true,
+          "visible_outreach_advice": {
+            "professor": false,
+            "lecturer": true
+          },
+          "sha": "c1b0c3c21b3c806bbf9b7b6ff95ece078f98d541",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}
