@@ -24,7 +24,7 @@ from urllib.parse import urljoin, urlsplit
 import requests
 from bs4 import BeautifulSoup
 
-from src.normalizers import fodommat
+from src.normalizers import fodommat, host_program_terms
 from src.normalizers.deadlines import normalize_deadline, to_legacy
 from src.program_windows import apply_program_window, reviewed_window
 
@@ -903,6 +903,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         },
     }
     apply_program_window(record)
+    host_program_terms.apply_terms(record)
     fodommat.apply_requirements(record)
     return record
 
@@ -1035,6 +1036,12 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                         carried.remove("eligibility")
                     carried = [key for key in carried
                                if key not in ("deadline", "deadline_is_estimate", "is_rolling")]
+                if (
+                    opp.get("deadline") and host_program_terms.checked_window(prior)
+                    and not host_program_terms.checked_window(opp)
+                ):
+                    # A shallow update for a later cohort cannot borrow last summer's terms.
+                    carried = [k for k in carried if k not in ("eligibility", "paid", "compensation_details", "duration")]
                 for key in carried:
                     opp[key] = deepcopy(prior[key])
                 if "deadline" in carried:
@@ -1051,6 +1058,9 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             carry_forward_contact_instruction_sources(prior, opp)
             # The shallow merge can restore a deep host link or an older set
             # of inferred majors. Recheck against the merged record.
+            if opp["id"] in host_program_terms.IDS:
+                apply_program_window(opp)
+                host_program_terms.apply_terms(opp)
             if opp["id"] == "sro-1532726e":
                 apply_program_window(opp)
                 fodommat.apply_requirements(opp)

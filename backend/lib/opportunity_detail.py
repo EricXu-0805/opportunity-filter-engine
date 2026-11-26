@@ -85,7 +85,7 @@ from src.evidence import (
     record_kind,
     source_last_seen_at,
 )
-from src.normalizers import fodommat
+from src.normalizers import fodommat, host_program_terms
 from src.normalizers.school_audience import reviewed_program_audience
 from src.program_windows import reviewed_window
 
@@ -642,6 +642,9 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     years = [y for y in years if y != "unknown"]
     if years:
         basis, quote = _stamped_or_configured(canonical, "eligibility.preferred_year", "class_year")
+        host_quote = host_program_terms.quote(canonical, "class_year")
+        if host_quote:
+            basis, quote = None, host_quote
         stamped = _basis_for(canonical, "eligibility.preferred_year") is not None
         if not stamped and quote is None and tuple(sorted(years)) in _TEMPLATE_CLASS_YEARS:
             pass  # a default list, and no page text names it: no class-year statement. Unknown.
@@ -655,7 +658,7 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
 
     gpa = elig.get("min_gpa")
     if isinstance(gpa, int | float) and not isinstance(gpa, bool) and 0 < gpa <= 5:
-        field.source("min_gpa", float(gpa))
+        field.source("min_gpa", float(gpa), host_program_terms.quote(canonical, "min_gpa"))
 
     intl = _text(elig.get("international_friendly"))
     intl_explicit = False
@@ -755,7 +758,8 @@ def _timing(payload: dict, canonical: dict, source: str) -> _Field:
         field.put("start_date", start, _START_DATE_TEMPLATES.get(source))
     duration = _text(payload.get("duration"))
     if duration:
-        field.put("duration", duration, _DURATION_TEMPLATES.get(source))
+        quote = host_program_terms.quote(canonical, "duration")
+        field.put("duration", duration, None if quote else _DURATION_TEMPLATES.get(source), quote)
     field.source("posted_date", _date(payload.get("posted_date")))
     return field
 
@@ -765,13 +769,17 @@ def _funding(payload: dict, canonical: dict, source: str) -> _Field:
     paid = _text(payload.get("paid"))
     if paid in {"yes", "stipend", "no"}:
         basis, quote = paid_basis(canonical, paid), None
-        if basis is None:
+        quote = host_program_terms.quote(canonical, "paid")
+        if basis is None and quote is None:
             basis, quote = _configured(canonical, "paid")
         field.put("paid", paid, basis, quote)
     compensation = _text(payload.get("compensation_details"))
     if compensation:
         basis, quote = _COMPENSATION_TEMPLATES.get(source), None
-        if basis is None:
+        host_quote = host_program_terms.quote(canonical, "compensation")
+        if host_quote:
+            basis, quote = None, host_quote
+        elif basis is None:
             basis, quote = _configured(canonical, "compensation")
         field.put("compensation", compensation, basis, quote)
     return field
@@ -791,6 +799,8 @@ def paid_basis(canonical: dict, paid: object) -> str | None:
     Shared with the public projector so the header badge and the detail facts
     cannot disagree about whether a pay value is the posting's or ours.
     """
+    if paid == "yes" and host_program_terms.quote(canonical, "paid"):
+        return None
     stamped = _basis_for(canonical, "paid")
     if stamped is not None:
         return stamped

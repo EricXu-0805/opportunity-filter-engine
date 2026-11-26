@@ -15,7 +15,7 @@ from src.evidence import (
     stamp_collector_templates,
 )
 from src.import_source import sanitize_import_source
-from src.normalizers import fodommat
+from src.normalizers import fodommat, host_program_terms
 from src.normalizers.reviewed_faculty_profiles import apply_reviewed_faculty_profile
 from src.normalizers.school_audience import apply_program_audience
 from src.program_windows import apply_program_window
@@ -91,6 +91,7 @@ def _sanitize_opportunity(opp: dict) -> dict:
     # Committed shards predate a window or a reviewed audience until the
     # school's next refresh.
     apply_program_window(opp)
+    host_program_terms.apply_terms(opp)
     fodommat.apply_requirements(opp)
     apply_legacy_window(opp)
     apply_program_audience(opp)
