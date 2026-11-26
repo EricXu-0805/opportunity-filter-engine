@@ -1,0 +1,30 @@
+name: Check target résumé supplement recovery on the public site
+on:
+  push:
+    branches: [codex/verify-m212-profile-retry]
+    paths:
+      - 'scripts/verify_deployed_m39_supplement.py'
+      - '.github/workflows/verify-m39-target-supplement.yml'
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      OFE_EXPECTED_SITE_SHA: 428516b07eb63bdc1bc31693a7d399f51bc6bd96
+      OFE_M39_RESULT: /tmp/ofe-m39-production-result.json
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - run: python -u scripts/verify_deployed_m39_supplement.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m39-public-supplement
+          path: /tmp/ofe-m39-production-result.json
