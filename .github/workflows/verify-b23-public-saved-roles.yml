@@ -1,0 +1,66 @@
+name: Check the six saved public Michigan and two-campus records on B23
+on:
+  push:
+    branches: [audit/pitt-duke-affiliates-20261126]
+    paths:
+      - 'data/audits/observed-faculty-2026-11-26/b23-public/release-request.json'
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: b23-public-saved-roles
+  cancel-in-progress: false
+jobs:
+  public-details:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      QA: data/audits/observed-faculty-2026-11-26
+      PUBLIC_SITE: https://joinalab.com
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: audit
+          sparse-checkout: data/audits/observed-faculty-2026-11-26
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: 5ff85de2549e0107b6f2cb995616472d9558f31a
+          path: jia
+          sparse-checkout: data/audits/maintenance-2026-11-26
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Confirm the reviewed release on both public services
+        working-directory: audit
+        run: |
+          python "$QA/b23-public/guard_release.py" --request "$QA/b23-public/release-request.json" --environment "$GITHUB_ENV" --out "$GITHUB_WORKSPACE/b23-version-start.json"
+      - name: Install the browser
+        run: |
+          pip install --quiet playwright==1.55.0
+          python -m playwright install --with-deps chromium > "$RUNNER_TEMP/public-browser-install.log"
+      - name: Four MSU original records and both staff role languages
+        working-directory: audit
+        run: |
+          python "$QA/b23-public/guard_release.py" --request "$QA/b23-public/release-request.json" --out "$GITHUB_WORKSPACE/b23-version-msu.json"
+          python "$QA/msu-chair-profiles/check_four.py" --site "$PUBLIC_SITE" --sha "$PUBLIC_SHA" --scope "$PUBLIC_TRUTH_SCOPE" --out "$GITHUB_WORKSPACE/b23-msu-public.json"
+      - name: Old Pitt and current Rutgers records on the same production release
+        if: ${{ !cancelled() && env.PUBLIC_SHA != '' }}
+        run: |
+          python "audit/$QA/b23-public/guard_release.py" --request "audit/$QA/b23-public/release-request.json" --out b23-version-jia.json
+          python jia/data/audits/maintenance-2026-11-26/check_pitt_rutgers_appointment.py --site "$PUBLIC_SITE" --sha "$PUBLIC_SHA" --scope "$PUBLIC_TRUTH_SCOPE" --out b23-jia-public.json
+      - name: Confirm both public services at the end
+        if: ${{ !cancelled() && env.PUBLIC_SHA != '' }}
+        run: |
+          python "audit/$QA/b23-public/guard_release.py" --request "audit/$QA/b23-public/release-request.json" --out b23-version-end.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: b23-six-public-saved-records
+          path: |
+            b23-version-*.json
+            b23-*-public.json
+            faculty-msu-*.png
+          if-no-files-found: warn
