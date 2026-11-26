@@ -1,0 +1,84 @@
+{
+  "observed_utc": "2026-11-26T12:10:50.120254+00:00",
+  "cases": [
+    {
+      "id": "simplify-intern-555a5129-471f-4c93-8e7b-aa4a1996fa61",
+      "response": 200,
+      "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "first": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+      "retried": false,
+      "final": "2027 Summer Intern, PhD, Safety Research, Human Behavior Analytics",
+      "hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8197899"
+      ],
+      "expected_employer_link": "https://careers.withwaymo.com/jobs?gh_jid=8197899",
+      "matched": true
+    },
+    {
+      "id": "simplify-intern-3f32b0ed-b696-49d8-9b5c-ea946e53c009",
+      "response": 200,
+      "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "first": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+      "retried": false,
+      "final": "2027 Summer Intern, MS/PhD, Conflict Behavior",
+      "hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8210138"
+      ],
+      "expected_employer_link": "https://careers.withwaymo.com/jobs?gh_jid=8210138",
+      "matched": true
+    },
+    {
+      "id": "simplify-intern-c87514d0-01b1-4240-8fcd-9e9a605d96e1",
+      "response": 200,
+      "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "first": "2027 Summer Intern, MBA, Salesforce Product Owner",
+      "retried": false,
+      "final": "2027 Summer Intern, MBA, Salesforce Product Owner",
+      "hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8198582"
+      ],
+      "expected_employer_link": "https://careers.withwaymo.com/jobs?gh_jid=8198582",
+      "matched": true
+    },
+    {
+      "id": "simplify-intern-a9d476c2-4d74-43de-9305-8e0c1bc59841",
+      "response": 200,
+      "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "first": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+      "retried": false,
+      "final": "2027 Summer Intern, BS/MS/PhD, Software Engineer, Eval Data Infra",
+      "hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8257205"
+      ],
+      "expected_employer_link": "https://careers.withwaymo.com/jobs?gh_jid=8257205",
+      "matched": true
+    },
+    {
+      "id": "simplify-intern-fc6751c5-e093-4970-8fe5-90af5713b9e4",
+      "response": 200,
+      "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "first": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "retried": false,
+      "final": "2027 Summer Intern, PhD, Research, World Modeling Evaluation",
+      "hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8265173"
+      ],
+      "expected_employer_link": "https://careers.withwaymo.com/jobs?gh_jid=8265173",
+      "matched": true
+    },
+    {
+      "id": "simplify-intern-e13a771d-0bef-4eba-8e4c-922902e13085",
+      "response": 200,
+      "release": "50d4aca1e4db82610e2c1483a4aa24b50f75b439",
+      "first": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+      "retried": false,
+      "final": "2027 Summer Intern, BS/MS, Software Engineer, Multiverse",
+      "hrefs": [
+        "https://careers.withwaymo.com/jobs?gh_jid=8350832"
+      ],
+      "expected_employer_link": "https://careers.withwaymo.com/jobs?gh_jid=8350832",
+      "matched": true
+    }
+  ],
+  "backend": "50d4aca1e4db82610e2c1483a4aa24b50f75b439"
+}
