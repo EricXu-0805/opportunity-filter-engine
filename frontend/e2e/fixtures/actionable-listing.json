@@ -22,6 +22,7 @@
       "majors": [],
       "skills_required": [],
       "skills_preferred": [],
+      "citizenship_required": null,
       "international_friendly": "unknown"
     },
     "contact_email": "program@research.example.test",
