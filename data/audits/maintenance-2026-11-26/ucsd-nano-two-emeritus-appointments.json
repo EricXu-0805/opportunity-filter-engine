@@ -1,0 +1,491 @@
+{
+  "checked_at_utc": "2026-11-26T17:28:53+00:00",
+  "baseline_commit": "025fdfcb361f340d1fd358a78deb99b8441a894e",
+  "candidate_commit": "87d4d7d12d8a30dd557a6fdb799f2d3004e8d549",
+  "production_baseline_release": "daa5a43eb3b91974869c59dfb9a3c342b9082c6b",
+  "scope": "Production GETs of both original details and a distinct actionable control, official university sources, full roster replay twice against candidate, local candidate FastAPI GETs on real shipped rows. Scheduled source refresh and deployed candidate acceptance remain open.",
+  "raw_requests": {
+    "original_roster": {
+      "requested": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty",
+      "status": 200,
+      "final": "https://nanoengineering.ucsd.edu/fac/nanoe-faculty"
+    },
+    "current_directory": {
+      "requested": "https://www.nanoengineering.ucsd.edu/index.php/fac",
+      "status": 200,
+      "final": "https://www.nanoengineering.ucsd.edu/index.php/fac"
+    },
+    "university_catalog": {
+      "requested": "https://catalog.ucsd.edu/faculty/NANO.html",
+      "status": 200,
+      "final": "https://catalog.ucsd.edu/faculty/NANO.html"
+    },
+    "adjunct": {
+      "requested": "https://nanoengineering.ucsd.edu/node/1041",
+      "status": 200,
+      "final": "https://nanoengineering.ucsd.edu/node/1041"
+    },
+    "health": {
+      "requested": "https://joinalab.com/api/health",
+      "status": 200,
+      "final": "https://joinalab.com/api/health"
+    },
+    "faculty-ucsd-nano-25a6d469_profile": {
+      "requested": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "status": 200,
+      "final": "https://jacobsschool.ucsd.edu/faculty/profile?id=31"
+    },
+    "faculty-ucsd-nano-25a6d469_legacy": {
+      "requested": "https://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=31",
+      "status": 200,
+      "final": "https://jacobsschool.ucsd.edu/faculty/profile?id=31"
+    },
+    "faculty-ucsd-nano-dc9e3de3_profile": {
+      "requested": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "status": 200,
+      "final": "https://jacobsschool.ucsd.edu/faculty/profile?id=1"
+    },
+    "faculty-ucsd-nano-dc9e3de3_legacy": {
+      "requested": "https://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=1",
+      "status": 200,
+      "final": "https://jacobsschool.ucsd.edu/faculty/profile?id=1"
+    },
+    "faculty-ucsd-nano-25a6d469_ui": {
+      "requested": "https://joinalab.com/opportunities/faculty-ucsd-nano-25a6d469",
+      "status": 200,
+      "final": "https://joinalab.com/opportunities/faculty-ucsd-nano-25a6d469"
+    },
+    "faculty-ucsd-nano-25a6d469_api": {
+      "requested": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-25a6d469?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200,
+      "final": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-25a6d469?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+    },
+    "faculty-ucsd-nano-dc9e3de3_ui": {
+      "requested": "https://joinalab.com/opportunities/faculty-ucsd-nano-dc9e3de3",
+      "status": 200,
+      "final": "https://joinalab.com/opportunities/faculty-ucsd-nano-dc9e3de3"
+    },
+    "faculty-ucsd-nano-dc9e3de3_api": {
+      "requested": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-dc9e3de3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200,
+      "final": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-dc9e3de3?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+    },
+    "faculty-ucsd-nano-d24bdcfa_ui": {
+      "requested": "https://joinalab.com/opportunities/faculty-ucsd-nano-d24bdcfa",
+      "status": 200,
+      "final": "https://joinalab.com/opportunities/faculty-ucsd-nano-d24bdcfa"
+    },
+    "faculty-ucsd-nano-d24bdcfa_api": {
+      "requested": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-d24bdcfa?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+      "status": 200,
+      "final": "https://joinalab.com/api/opportunities/faculty-ucsd-nano-d24bdcfa?_release_scope=mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+    }
+  },
+  "department": "UC San Diego NanoEngineering",
+  "verified_appointments": {
+    "faculty-ucsd-nano-25a6d469": {
+      "historical_db_name": "Esener",
+      "verified_full_name": "Sadik Esener",
+      "school_current_directory_role": "Professor Emeritus",
+      "school_catalogue_person_and_rank": "Sadik C. Esener, PhD, Professor Emeritus, CNE/ECE",
+      "jacobs_biography_unit_appointments": [
+        "Professor Emeritus, NENG",
+        "Professor Emeritus, ECE"
+      ],
+      "old_profile": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=31",
+      "its_https_redirect": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "new_individual_biography": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+      "baseline_product_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-25a6d469",
+      "baseline_public_api_actionable": true,
+      "baseline_ui_view_faculty_profile_href": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=31",
+      "source_last_seen_unchanged": "2026-11-20T16:57:50.632744",
+      "candidate_historical_reason": "retired_title",
+      "candidate_local_real_http": {
+        "status": 200,
+        "public_name": "Sadik Esener",
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=31",
+        "truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": false,
+          "accepting_state": "unknown",
+          "reason_code": "inactive",
+          "verified_at": "2026-11-20T16:57:50.632744",
+          "expires_at": null
+        },
+        "client_without_archive_support": 409,
+        "active_contact": false
+      }
+    },
+    "faculty-ucsd-nano-dc9e3de3": {
+      "historical_db_name": "Mike Heller",
+      "verified_full_name": "Michael Heller",
+      "school_current_directory_role": "Professor Emeritus",
+      "school_catalogue_person_and_rank": "Michael J. Heller, PhD, Professor Emeritus, CNE/BENG",
+      "jacobs_biography_unit_appointments": [
+        "Professor Emeritus, NENG",
+        "Faculty-Recall, BENG"
+      ],
+      "old_profile": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=1",
+      "its_https_redirect": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "new_individual_biography": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+      "baseline_product_detail": "https://joinalab.com/opportunities/faculty-ucsd-nano-dc9e3de3",
+      "baseline_public_api_actionable": true,
+      "baseline_ui_view_faculty_profile_href": "http://jacobsschool.ucsd.edu/faculty/faculty_bios/index.sfe?fmp_recid=1",
+      "source_last_seen_unchanged": "2026-11-20T16:57:50.632786",
+      "candidate_historical_reason": "retired_title",
+      "candidate_local_real_http": {
+        "status": 200,
+        "public_name": "Michael Heller",
+        "source": "https://jacobsschool.ucsd.edu/faculty/profile?id=1",
+        "truth": {
+          "listing_state": "unknown",
+          "reference_only": false,
+          "actionable": false,
+          "accepting_state": "unknown",
+          "reason_code": "inactive",
+          "verified_at": "2026-11-20T16:57:50.632786",
+          "expires_at": null
+        },
+        "client_without_archive_support": 409,
+        "active_contact": false
+      }
+    }
+  },
+  "department_reconciliation": {
+    "table_rows": 56,
+    "linked_name_cells": 42,
+    "name_cell_links": 43,
+    "parsed_rows_before": 42,
+    "parsed_rows_after": 40,
+    "unique_before": 41,
+    "unique_after": 39,
+    "old_stored_unit_active": 32,
+    "new_stored_unit_active": 30,
+    "unmatched_active_stored_ids": [],
+    "historical_ids_kept": [
+      "faculty-ucsd-nano-25a6d469",
+      "faculty-ucsd-nano-dc9e3de3"
+    ],
+    "projected_unit_ids_kept_elsewhere_in_campus_source": [
+      "faculty-ucsd-nano-0b8a48ba",
+      "faculty-ucsd-nano-1d03d169",
+      "faculty-ucsd-nano-4bcf3471",
+      "faculty-ucsd-nano-6efedc5d",
+      "faculty-ucsd-nano-6f1ca843",
+      "faculty-ucsd-nano-74646bb6",
+      "faculty-ucsd-nano-7c7f22ea",
+      "faculty-ucsd-nano-a213f336",
+      "faculty-ucsd-nano-c8fc10d0"
+    ],
+    "each_source_row_before_and_after": [
+      {
+        "official_group": "Professors",
+        "displayed_name": "Chen, Shaochen",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-d24bdcfa",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Chen, Zheng",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-28e08ebd",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Fenning, David",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-79dd203c",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Fullerton, Eric",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-c8fc10d0",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Jokerst, Jesse",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-812f8dc1",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Lipomi, Darren",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-2aa92754",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Liu, Ping",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-2097ee48",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Lubarda, Vlado",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-0f313dcf",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Luo, Jian",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-ef30f6e2",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Meng, Shirley",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-04ac1d79",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Meyers, Marc",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-65b8b318",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Ong, Shyue Ping",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-e94320ae",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Pokorski, Jonathan K.",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-6e6b276c",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Steinmetz, Nicole F.",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-4c95244a",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Tao, Andrea",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-ecc31f16",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Vecchio, Ken",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-467aa36b",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Wang, Joseph",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-58f109dc",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Xu, Sheng",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-27240933",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Yang, Kesong",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-5443ea03",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors",
+        "displayed_name": "Zhang, Liangfang",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-f22f5fe7",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Associate Professors",
+        "displayed_name": "Chen, Zheng",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-28e08ebd",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Associate Professors",
+        "displayed_name": "Cubukcu, Ertugrul",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-4296d17b",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Associate Professors",
+        "displayed_name": "Pascal, Tod",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-3b436240",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Associate Professors",
+        "displayed_name": "Sirbuly, Donald",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-fd63f909",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Associate Professors",
+        "displayed_name": "Vazquez Mena, Oscar",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-52bb1d25",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Professors Emeriti",
+        "displayed_name": "Esener , Sadik",
+        "first_cell_anchor_count": 2,
+        "raw_projected_unit_id": "faculty-ucsd-nano-25a6d469",
+        "still_in_active_parser": false
+      },
+      {
+        "official_group": "Professors Emeriti",
+        "displayed_name": "Heller, Mike",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-dc9e3de3",
+        "still_in_active_parser": false
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Almutairi, Adah",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-571a39eb",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Bandaru, Prab",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-4bcf3471",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Christman, Karen",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-3be64dab",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Dayeh, Shadi",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-6efedc5d",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Graeve, Olivia",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-74646bb6",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Kummel, Andrew",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-5e6a268c",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Lo, Yu-Hwa",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-6f1ca843",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Poulikakos, Lisa V.",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-d181f3a2",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Sailor, Michael",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-92aa2cb4",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Shi, Lingyan",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-a213f336",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Silva, Gabriel",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-0b8a48ba",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Subramaniam, Shankar",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-1d03d169",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Trogler, William",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-a37aa155",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Whitesell, James",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-03f450ce",
+        "still_in_active_parser": true
+      },
+      {
+        "official_group": "Affiliated Faculty",
+        "displayed_name": "Yu, Paul",
+        "first_cell_anchor_count": 1,
+        "raw_projected_unit_id": "faculty-ucsd-nano-7c7f22ea",
+        "still_in_active_parser": true
+      }
+    ],
+    "active_control_original_id": "faculty-ucsd-nano-d24bdcfa"
+  },
+  "shipped_ucsd_shard": {
+    "before_and_after_row_count": 1508,
+    "before_and_after_ordered_ids_sha256": "bb2fa84facb435b7db36e594fc25a34fb328b0070aee10b654be46b720b084a6",
+    "only_changed_ids": [
+      "faculty-ucsd-nano-25a6d469",
+      "faculty-ucsd-nano-dc9e3de3"
+    ]
+  },
+  "out_of_scope_appointments": {
+    "Michael Heller": "Faculty-Recall, BENG (Jacobs biography). No Bioengineering record added or changed.",
+    "Arunava Gupta": "Adjunct Professor, confirmed in current departmental directory and individual biography. Not added as missing ladder faculty."
+  }
+}
