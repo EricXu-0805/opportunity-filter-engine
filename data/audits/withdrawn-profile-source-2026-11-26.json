@@ -1,0 +1,82 @@
+{
+  "issue": "M18",
+  "production": true,
+  "frontend_release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "backend_release": "db3e8229b64e781b4dc74cddfe2c4acaa13d5896",
+  "started": "2026-11-26T10:58:31.563390+00:00",
+  "identity": "normal newly registered production guest; the profile and uploaded PDF were synthetic",
+  "fix": "https://github.com/EricXu-0805/opportunity-filter-engine/pull/1315",
+  "full_browser_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45806176073/job/139861920556",
+  "before_fix_match": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/45791601423/job/139811736630",
+  "project_withdrawal": "https://github.com/EricXu-0805/opportunity-filter-engine/blob/72879eed68b100cce139a50c5363523ee6d82ff8/data/audits/github-experience-2026-11-26.json",
+  "student_confirmed_skill": {
+    "name": "SPSS",
+    "user_action": "keep suggested level in the form",
+    "level_after_removal": "beginner",
+    "old_pdf_evidence_removed": true,
+    "in_fresh_match": true
+  },
+  "independent_skill": {
+    "legacy_source": "resume",
+    "github_import": {
+      "skill": "PyTorch",
+      "repo": "ao",
+      "field": "topic",
+      "value": "pytorch"
+    },
+    "detail_after_import": {
+      "name": "PyTorch",
+      "level": "beginner",
+      "source": "resume",
+      "evidence": "I checked synthetic sensor measurements. PyTorch MATLAB SPSS",
+      "github_receipt": {
+        "account": "pytorch",
+        "evidence": "repo ao: topic pytorch"
+      }
+    },
+    "other_github_skill_retained": "Python",
+    "after_removal": {
+      "name": "PyTorch",
+      "level": "beginner",
+      "source": "github",
+      "evidence": "repo ao: topic pytorch"
+    },
+    "revision_after_import": 3,
+    "revision_after_removal": 4,
+    "fresh_read": true
+  },
+  "fresh_match": {
+    "returned_results": 20,
+    "resume_only_matlab_removed": true,
+    "corroborated_pytorch": {
+      "name": "PyTorch",
+      "level": "beginner",
+      "source": "github",
+      "evidenced": true
+    },
+    "another_github_skill": "Python",
+    "new_imports": 0
+  },
+  "historical_tailor": {
+    "target": "/opportunities/simplify-intern-3ea65aaa-0297-4b8f-9378-51e35478fb95",
+    "author_text_unchanged": true,
+    "before_removal_stale_badges": 0,
+    "after_removal_stale_badges": 1,
+    "ai_generations": 0,
+    "handwritten_text_entered_in_form": true
+  },
+  "historical_email": {
+    "subject_and_handwritten_body_retained": true,
+    "revision_before_pdf_removal": 3,
+    "revision_after_pdf_removal": 4,
+    "newly_shown_review_notice": true,
+    "free_template_reads": 1,
+    "email_open_or_send_actions": 0
+  },
+  "applied_revisions": [
+    1,
+    2,
+    3,
+    4
+  ]
+}
